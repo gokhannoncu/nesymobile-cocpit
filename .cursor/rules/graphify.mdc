@@ -1,0 +1,38 @@
+---
+description: Use graphify knowledge graph for codebase questions and keep it updated after changes
+alwaysApply: true
+---
+
+# graphify Knowledge Graph
+
+`graphify-out/graph.json` is the project's navigable knowledge graph. Prefer it over grep for architecture and relationship questions.
+
+## Before answering codebase questions
+
+1. Check that `graphify-out/graph.json` exists.
+2. Run `graphify query "<question>"` first.
+3. Use `graphify path "<A>" "<B>"` or `graphify explain "<concept>"` when tracing dependencies.
+4. Fall back to `GRAPH_REPORT.md` or source files only if the graph lacks enough context.
+
+Do not invent relationships not present in graph output.
+
+## After modifying code
+
+Run `graphify update .` (AST-only, no API cost) before answering questions about the changed area.
+
+If `graphify-out/needs_update` exists after doc/markdown changes, semantic re-extraction is stale — run `graphify update .` and mention that docs may need a full `--update` pass.
+
+## Committed graph artifacts
+
+These are tracked in git and should stay in sync with the codebase:
+- `graphify-out/graph.json`
+- `graphify-out/GRAPH_REPORT.md`
+- `graphify-out/manifest.json`
+
+After a meaningful code change session, remind the user to commit updated graph files if hooks have not already rebuilt them.
+
+## Background automation
+
+- `post-commit` hook rebuilds the graph for code changes (log: `~/.cache/graphify-rebuild.log`)
+- `post-checkout` hook rebuilds on branch switch
+- Brand logo SVGs under `apps/web/public/media/` are excluded from semantic extraction — low information value

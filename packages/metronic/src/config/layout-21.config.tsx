@@ -40,6 +40,7 @@ import {
   Search,
   ShieldCheck,
   Siren,
+  Smartphone,
   Table2,
   Tag,
   Terminal,
@@ -280,6 +281,27 @@ export const WORKSPACES: Workspace[] = [
             title: 'Overview',
             path: '/engineering/overview',
             icon: LayoutDashboard,
+          },
+          {
+            title: 'Mobile Knowledge Hub',
+            icon: BookOpen,
+            children: [
+              {
+                title: 'Hub Overview',
+                path: '/engineering/mobile-knowledge',
+                icon: LayoutDashboard,
+              },
+              {
+                title: 'Backend Handbook',
+                path: '/engineering/mobile-knowledge/backend',
+                icon: Network,
+              },
+              {
+                title: 'Screen Manual',
+                path: '/engineering/mobile-knowledge/screens',
+                icon: Smartphone,
+              },
+            ],
           },
           {
             title: 'Reliability & Operations',
