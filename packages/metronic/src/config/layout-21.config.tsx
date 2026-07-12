@@ -11,6 +11,7 @@ import {
   CircleHelp,
   Compass,
   Cpu,
+  Database,
   FileText,
   Flag,
   FlaskConical,
@@ -41,6 +42,7 @@ import {
   Siren,
   Table2,
   Tag,
+  Terminal,
   Target,
   Ticket,
   TrendingUp,
@@ -344,6 +346,27 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Security Posture',
                 path: '/engineering/security',
                 icon: ShieldCheck,
+              },
+            ],
+          },
+          {
+            title: 'Engineering Tools',
+            icon: Bolt,
+            children: [
+              {
+                title: 'Data Locator',
+                path: '/engineering/tools/data-locator',
+                icon: Compass,
+              },
+              {
+                title: 'MongoDB Query Generator',
+                path: '/engineering/tools/mongodb-query-generator',
+                icon: Database,
+              },
+              {
+                title: 'Graylog Query Generator',
+                path: '/engineering/tools/graylog-query-generator',
+                icon: Terminal,
               },
             ],
           },

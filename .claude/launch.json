@@ -13,6 +13,19 @@
       "autoPort": true
     },
     {
+      "name": "web-auto",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nesy/web",
+        "exec",
+        "next",
+        "dev"
+      ],
+      "port": 3103,
+      "autoPort": true
+    },
+    {
       "name": "web-3102",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
