@@ -149,13 +149,16 @@ function injectTabHeadings(root: HTMLElement): void {
  * `source` başka bir document'ten (ör. iframe) gelebilir; bu yüzden `cloneNode`
  * yerine `document.importNode` kullanılır — düğüm ana document'e uyarlanarak alınır.
  */
-function buildCaptureRoot(source: HTMLElement): HTMLElement {
+function buildCaptureRoot(source: HTMLElement, opts?: { pad?: boolean }): HTMLElement {
   const wrapper = document.createElement('div')
   wrapper.className = ROOT_CLASS
   wrapper.setAttribute('aria-hidden', 'true')
   wrapper.setAttribute(
     'style',
-    `position:fixed;top:0;left:-100000px;width:${PORTRAIT_WIDTH}px;z-index:-1;background:#ffffff;`,
+    `position:fixed;top:0;left:-100000px;width:${PORTRAIT_WIDTH}px;z-index:-1;background:#ffffff;` +
+      // Tek bölüm (slayt) yakalanırken `main` kuralındaki iç boşluk uygulanmaz;
+      // beyaz çerçeveyi wrapper üzerinden veriyoruz.
+      (opts?.pad ? 'padding:28px;' : ''),
   )
   const clone = document.importNode(source, true) as HTMLElement
   wrapper.appendChild(clone)
@@ -335,9 +338,10 @@ export function appendCanvasToPdf(
  */
 export async function captureElementToCanvas(
   source: HTMLElement,
+  opts?: { pad?: boolean },
 ): Promise<{ canvas: HTMLCanvasElement; orientation: PdfOrientation }> {
   ensureCaptureStyle()
-  const captureRoot = buildCaptureRoot(source)
+  const captureRoot = buildCaptureRoot(source, opts)
   document.body.appendChild(captureRoot)
 
   try {
@@ -373,11 +377,66 @@ export interface ExportPageToPdfOptions {
   title: string
 }
 
-/** Aktif sayfanın içerik alanını A4 PDF olarak doğrudan indirir. */
+/**
+ * Planlı (slayt) export: her `[data-pdf-slide]` bölümü kendi sayfasında başlar —
+ * sürekli tek akış yerine PowerPoint benzeri "bölüm başına slayt" çıktı.
+ * Yön (dikey/yatay) her slayt için ayrı çözülür; geniş tablo/grafik içeren
+ * bölüm tek başına yatay olabilir. Bölümler DOM sırasında işlenir; istenirse
+ * `data-pdf-slide-order` ile sıra bozulmadan yeniden düzenlenebilir.
+ */
+export async function exportSlidesToPdf({
+  title,
+  slides,
+}: {
+  title: string
+  slides: HTMLElement[]
+}): Promise<void> {
+  if (slides.length === 0) throw new Error('Yakalanacak slayt bulunamadı')
+
+  const JsPDF = await loadJsPDF()
+  let pdf: jsPDF | null = null
+
+  for (const slide of slides) {
+    const { canvas, orientation } = await captureElementToCanvas(slide, { pad: true })
+    if (!pdf) {
+      // İlk slayt dokümanın kurucu sayfasına yazılır (fazladan boş sayfa olmaz).
+      pdf = new JsPDF({ orientation, unit: 'mm', format: 'a4', compress: true })
+      pdf.setProperties({ title })
+      appendCanvasToPdf(pdf, canvas, orientation, { skipFirstAddPage: true })
+    } else {
+      // Sonraki her slayt yeni sayfada başlar.
+      appendCanvasToPdf(pdf, canvas, orientation)
+    }
+  }
+
+  const date = new Date().toISOString().slice(0, 10)
+  pdf!.save(`nesy-${slugify(title)}-${date}.pdf`)
+}
+
+/**
+ * Aktif sayfanın içerik alanını A4 PDF olarak doğrudan indirir.
+ *
+ * İki mod: sayfa bölümleri `data-pdf-slide` ile işaretlenmişse PLANLI (slayt)
+ * mod devreye girer — her bölüm kendi sayfasında başlar. İşaret yoksa sayfa
+ * tek sürekli akış olarak yakalanıp A4 sayfalarına bölünür (varsayılan).
+ */
 export async function exportPageToPdf({ title }: ExportPageToPdfOptions): Promise<void> {
   const source = document.querySelector<HTMLElement>('main[role="content"]')
   if (!source) throw new Error('Sayfa içerik alanı (main[role="content"]) bulunamadı')
 
+  // Planlı mod: bölüm başına slayt.
+  const slideNodes = Array.from(source.querySelectorAll<HTMLElement>('[data-pdf-slide]')).filter(
+    (el) => !el.closest('[data-pdf-exclude]'),
+  )
+  if (slideNodes.length > 0) {
+    slideNodes.sort(
+      (a, b) => Number(a.dataset.pdfSlideOrder ?? 0) - Number(b.dataset.pdfSlideOrder ?? 0),
+    )
+    await exportSlidesToPdf({ title, slides: slideNodes })
+    return
+  }
+
+  // Varsayılan: sürekli akış.
   const { canvas, orientation } = await captureElementToCanvas(source)
 
   const JsPDF = await loadJsPDF()

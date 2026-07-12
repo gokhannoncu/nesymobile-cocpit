@@ -65,8 +65,13 @@ export function GlobalSearchDialog({
     router.push(href)
   }
 
+  const handleOpenChange = (o: boolean) => {
+    if (!o) setQ('')
+    onOpenChange(o)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl gap-0 p-0" showCloseButton={false}>
         <DialogHeader className="border-b p-4">
           <DialogTitle className="sr-only">Mobile Knowledge Hub araması</DialogTitle>

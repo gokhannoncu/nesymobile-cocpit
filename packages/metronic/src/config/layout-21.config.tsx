@@ -2,7 +2,6 @@ import { MenuConfig, Workspace } from '@nesy/metronic/config/types'
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   Bolt,
   BookOpen,
   Bug,
@@ -30,12 +29,13 @@ import {
   Map,
   MapPin,
   MessageSquare,
+  MonitorSmartphone,
   Network,
   Package,
+  Play,
   Radar,
   Rocket,
   Route,
-  Scale,
   ScrollText,
   Search,
   ShieldCheck,
@@ -46,7 +46,6 @@ import {
   Terminal,
   Target,
   Ticket,
-  TrendingUp,
   UserRound,
   Users,
   Zap,
@@ -392,60 +391,19 @@ export const WORKSPACES: Workspace[] = [
               },
             ],
           },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'business',
-    label: 'Business & Growth',
-    icon: TrendingUp,
-    className: 'border-white bg-emerald-500 hover:bg-emerald-600 text-white hover:text-white',
-    path: '/business/overview',
-    basePaths: ['/business'],
-    menu: [
-      {
-        title: 'Business & Growth',
-        children: [
           {
-            title: 'Overview',
-            path: '/business/overview',
-            icon: LayoutDashboard,
-          },
-          {
-            title: 'Strategy',
-            icon: Target,
+            title: 'Device Lab',
+            icon: MonitorSmartphone,
             children: [
               {
-                title: 'Business Model',
-                path: '/business/business-model',
-                icon: BookOpen,
+                title: 'ADB Scenario Runner',
+                path: '/engineering/device-lab/adb-scenarios',
+                icon: Play,
               },
               {
-                title: 'Metrics & KPIs',
-                path: '/business/metrics-and-kpis',
-                icon: BarChart3,
-              },
-              {
-                title: 'Go-To-Market',
-                path: '/business/go-to-market',
-                icon: Route,
-              },
-            ],
-          },
-          {
-            title: 'Governance',
-            icon: Scale,
-            children: [
-              {
-                title: 'Decision Log',
-                path: '/business/decision-log',
+                title: 'Device Log Explorer',
+                path: '/engineering/device-lab/log-explorer',
                 icon: ScrollText,
-              },
-              {
-                title: 'Risk Register',
-                path: '/business/risk-register',
-                icon: AlertTriangle,
               },
             ],
           },

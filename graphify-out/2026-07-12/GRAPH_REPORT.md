@@ -1,18 +1,13 @@
-# Graph Report - NesyMobileCocpit  (2026-07-13)
+# Graph Report - .  (2026-07-12)
 
 ## Corpus Check
-- 271 files · ~238,281 words
+- 437 files · ~227,923 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2034 nodes · 3705 edges · 124 communities (106 shown, 18 thin omitted)
+- 1902 nodes · 3359 edges · 111 communities (98 shown, 13 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
-
-## Graph Freshness
-- Built from commit: `efc60a99`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Field Tickets|Field Tickets]]
@@ -89,7 +84,6 @@
 - [[_COMMUNITY_Feature Library|Feature Library]]
 - [[_COMMUNITY_Engineering Performance|Engineering Performance]]
 - [[_COMMUNITY_Metronic Tsconfig|Metronic Tsconfig]]
-- [[_COMMUNITY_Table Metronic|Table Metronic]]
 - [[_COMMUNITY_Typescript Config|Typescript Config]]
 - [[_COMMUNITY_Switch Metronic|Switch Metronic]]
 - [[_COMMUNITY_Types Tsconfig|Types Tsconfig]]
@@ -98,12 +92,10 @@
 - [[_COMMUNITY_Toggle Group|Toggle Group]]
 - [[_COMMUNITY_Text Reveal|Text Reveal]]
 - [[_COMMUNITY_Typing Text|Typing Text]]
-- [[_COMMUNITY_Input Metronic|Input Metronic]]
 - [[_COMMUNITY_Number Sliding|Number Sliding]]
 - [[_COMMUNITY_Typescript Config|Typescript Config]]
 - [[_COMMUNITY_Typescript Config|Typescript Config]]
 - [[_COMMUNITY_Grid Background|Grid Background]]
-- [[_COMMUNITY_Progress Metronic|Progress Metronic]]
 - [[_COMMUNITY_Github Button|Github Button]]
 - [[_COMMUNITY_Next Config|Next Config]]
 - [[_COMMUNITY_Claude Launch|Claude Launch]]
@@ -115,29 +107,18 @@
 - [[_COMMUNITY_Index Types|Index Types]]
 - [[_COMMUNITY_Config Postcss|Config Postcss]]
 - [[_COMMUNITY_Root Claude|Root Claude]]
-- [[_COMMUNITY_Community 111|Community 111]]
-- [[_COMMUNITY_Community 112|Community 112]]
-- [[_COMMUNITY_Community 113|Community 113]]
-- [[_COMMUNITY_Community 115|Community 115]]
-- [[_COMMUNITY_Community 116|Community 116]]
-- [[_COMMUNITY_Community 117|Community 117]]
-- [[_COMMUNITY_Community 118|Community 118]]
-- [[_COMMUNITY_Community 119|Community 119]]
-- [[_COMMUNITY_Community 121|Community 121]]
-- [[_COMMUNITY_Community 122|Community 122]]
-- [[_COMMUNITY_Community 123|Community 123]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `ProductPage()` - 41 edges
-2. `PageSection()` - 40 edges
-3. `Badge()` - 35 edges
-4. `HeroCallout()` - 34 edges
-5. `Callout()` - 31 edges
-6. `Button()` - 30 edges
-7. `Tone` - 29 edges
-8. `toneText` - 27 edges
-9. `useDataGrid()` - 25 edges
-10. `toneCard` - 23 edges
+1. `ProductPage()` - 36 edges
+2. `Badge()` - 35 edges
+3. `PageSection()` - 34 edges
+4. `HeroCallout()` - 31 edges
+5. `Button()` - 30 edges
+6. `Callout()` - 29 edges
+7. `useDataGrid()` - 25 edges
+8. `Tone` - 25 edges
+9. `StatCard()` - 23 edges
+10. `StatGrid()` - 23 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `versionFreshnessTone()` --calls--> `Number()`  [INFERRED]
@@ -151,7 +132,7 @@
 - `buildApp()` --calls--> `fastify`  [INFERRED]
   apps/api/src/app.ts → apps/api/package.json
 
-## Communities (124 total, 18 thin omitted)
+## Communities (111 total, 13 thin omitted)
 
 ### Community 0 - "Field Tickets"
 Cohesion: 0.06
@@ -162,12 +143,12 @@ Cohesion: 0.06
 Nodes (48): COV_SYMBOL, CoverageView(), LIKE_ORDER, RelationshipsView(), RiskMapView(), SelectFn, SEV_ORDER, TestNextPanel() (+40 more)
 
 ### Community 2 - "Product Pages"
-Cohesion: 0.13
-Nodes (16): highlights, statusTone, moduleIcons, moduleTones, moduleIcons, moduleTones, InfoCard(), COUNTRIES (+8 more)
+Cohesion: 0.11
+Nodes (23): highlights, statusTone, moduleIcons, moduleTones, moduleIcons, moduleTones, Callout(), HeroCallout() (+15 more)
 
 ### Community 3 - "Data Locator"
-Cohesion: 0.09
-Nodes (31): DataCatalog(), HEADER_BADGES, SourceDetailBody(), SourceDetailHeader(), ALL_COUNTRIES, ALL_DOMAINS, ALL_ENVIRONMENTS, ALL_SOURCE_TYPES (+23 more)
+Cohesion: 0.06
+Nodes (40): HEADER_BADGES, ALL_COUNTRIES, ALL_DOMAINS, ALL_ENVIRONMENTS, ALL_SOURCE_TYPES, DataDomain, Guardrail, GUARDRAILS (+32 more)
 
 ### Community 4 - "Graylog Tools"
 Cohesion: 0.07
@@ -183,19 +164,19 @@ Nodes (42): dependencies, class-variance-authority, clsx, lucide-react, @radix-u
 
 ### Community 7 - "Layout 21 Shell"
 Cohesion: 0.11
-Nodes (30): ColumnMeta, DataGridApiFetchParams, DataGridApiResponse, DataGridContext, DataGridContextProps, DataGridProps, DataGridRequestParams, bodyCellSpacingVariants (+22 more)
+Nodes (31): DataGridColumnHeader(), ColumnMeta, DataGridApiFetchParams, DataGridApiResponse, DataGridContext, DataGridContextProps, DataGridProps, DataGridRequestParams (+23 more)
 
 ### Community 8 - "PM Releases"
 Cohesion: 0.08
 Nodes (27): statusLabel, statusMap, statusTone, TR_MONTHS, getLatestRelease(), getReleasedVersions(), releases, CountryVersion (+19 more)
 
 ### Community 9 - "Engineering Overview"
-Cohesion: 0.07
-Nodes (29): ALL_SCREENS, filterTickets(), sevOrder, sortTickets(), CountryId, CustomerRef, DeliverableStatus, EffortSize (+21 more)
+Cohesion: 0.06
+Nodes (33): dateStr(), eventTypeColor, eventTypeLabel, pad(), TR_MONTHS, WEEKDAYS, calendarEvents, getActiveSprint() (+25 more)
 
 ### Community 10 - "Metronic Background"
-Cohesion: 0.09
-Nodes (4): GradientBackgroundProps, MarqueeProps, ShimmeringTextProps, SvgTextProps
+Cohesion: 0.05
+Nodes (8): CountingNumberProps, GradientBackgroundProps, HoverBackgroundProps, MarqueeProps, ShimmeringTextProps, SvgTextProps, VideoTextProps, WordRotateProps
 
 ### Community 11 - "Form Card"
 Cohesion: 0.06
@@ -210,44 +191,44 @@ Cohesion: 0.06
 Nodes (34): dependencies, class-variance-authority, clsx, framer-motion, html2canvas-pro, jspdf, lucide-react, next-themes (+26 more)
 
 ### Community 14 - "Metronic UI Kit"
-Cohesion: 0.15
-Nodes (13): ButtonArrowProps, Command(), CommandDialogProps, CommandEmpty(), CommandGroup(), CommandInput(), CommandItem(), CommandList() (+5 more)
+Cohesion: 0.08
+Nodes (18): ButtonArrowProps, Command(), CommandDialogProps, CommandEmpty(), CommandGroup(), CommandInput(), CommandItem(), CommandList() (+10 more)
 
 ### Community 15 - "Incidents Data"
 Cohesion: 0.06
 Nodes (16): PI_META, PI_METRIC_FLOWS, PI_PRIORITY_ENDPOINTS, PiAction, chartTooltipStyle, COUNTRY_COLORS, COUNTRY_NAMES, FLOW_STEPS (+8 more)
 
 ### Community 16 - "Architecture Diagram"
-Cohesion: 0.08
-Nodes (31): DEFAULT_SOURCES, EMPTY_IDENTIFIERS, ResultPanel(), ANOMALY_EXAMPLES, AnomalyExample, APP_VERSIONS, APPLICATIONS, COUNTRIES (+23 more)
+Cohesion: 0.09
+Nodes (27): SavedInvestigations(), DEFAULT_SOURCES, EMPTY_IDENTIFIERS, AnomalyExample, APP_VERSIONS, APPLICATIONS, COUNTRIES, DEVICES (+19 more)
 
 ### Community 17 - "Package Scripts"
-Cohesion: 0.22
-Nodes (9): scripts, build, clean, dev, lint, start, test, test:watch (+1 more)
+Cohesion: 0.06
+Nodes (30): dependencies, dotenv, fastify, @fastify/cors, fastify-type-provider-zod, @nesy/types, socket.io, zod (+22 more)
 
 ### Community 18 - "Menu Accordion"
-Cohesion: 0.14
-Nodes (19): SidebarNavLink(), CollapsibleSectionItem, SidebarCollapsibleSectionProps, AccordionMenu(), AccordionMenuClassNames, AccordionMenuContext, AccordionMenuContextValue, AccordionMenuGroupProps (+11 more)
+Cohesion: 0.12
+Nodes (21): CollapsibleSectionItem, SidebarCollapsibleSectionProps, MENU_SIDEBAR_RESOURCES, MENU_SIDEBAR_WORKSPACES, WORKSPACES, AccordionMenu(), AccordionMenuClassNames, AccordionMenuContext (+13 more)
 
 ### Community 19 - "Crashlytics"
-Cohesion: 0.14
-Nodes (19): SidebarPrimary(), MENU_SIDEBAR_RESOURCES, MENU_SIDEBAR_WORKSPACES, WORKSPACES, ALL_WORKSPACES, BreadcrumbCrumb, findMenuChain(), findMenuItemByPath() (+11 more)
+Cohesion: 0.12
+Nodes (20): SidebarCollapsibleSection(), SidebarPrimaryMenu(), SidebarWorkspaceSections(), ALL_WORKSPACES, BreadcrumbCrumb, findMenuChain(), findMenuItemByPath(), findWorkspaceMenuItem() (+12 more)
 
 ### Community 20 - "API Backend"
-Cohesion: 0.11
-Nodes (19): hubCounts(), KnowledgeNav(), MobileKnowledgeOverviewPage(), ALL_GROUPS, tickets, Callout(), HeroCallout(), CardGrid() (+11 more)
+Cohesion: 0.09
+Nodes (18): ALL_GROUPS, ALL_SCREENS, filterTickets(), sevOrder, sortTickets(), tickets, emptyFilters, Filters (+10 more)
 
 ### Community 21 - "Sheet Mongodb"
-Cohesion: 0.11
-Nodes (16): SavedInvestigations(), RecentQueriesTable(), SAVED_INVESTIGATIONS, SavedInvestigation, RECENT_QUERIES, RECENT_STATUS_META, CodeBlock(), Sheet() (+8 more)
+Cohesion: 0.10
+Nodes (16): DataCatalog(), SourceDetailBody(), SourceDetailHeader(), RecentQueriesTable(), DATA_SOURCES, DataSource, RECENT_QUERIES, RECENT_STATUS_META (+8 more)
 
 ### Community 22 - "Sortable Metronic"
 Cohesion: 0.07
 Nodes (18): ColumnContext, dropAnimationConfig, ItemContext, KanbanBoardProps, KanbanColumnContentProps, KanbanColumnHandleProps, KanbanColumnProps, KanbanContext (+10 more)
 
 ### Community 23 - "Routes Startup"
-Cohesion: 0.24
-Nodes (10): AppSocketServer, createSocketServer(), body, env, AppContext, buildApp(), Env, envSchema (+2 more)
+Cohesion: 0.14
+Nodes (21): border(), boxLine(), c, padVisible(), printStartupBanner(), route(), row(), visibleLength() (+13 more)
 
 ### Community 24 - "Engineering Architecture"
 Cohesion: 0.08
@@ -262,16 +243,16 @@ Cohesion: 0.12
 Nodes (22): StepIndicators, StepItemContext, StepItemContextValue, StepperContent(), StepperContentProps, StepperContext, StepperContextValue, StepperDescription() (+14 more)
 
 ### Community 27 - "Export Group"
-Cohesion: 0.10
-Nodes (38): getWorkspacePages(), WorkspacePageRef, buildCoverDom(), buildTocDom(), chunk(), createHiddenIframe(), domToPdfPages(), escapeHtml() (+30 more)
+Cohesion: 0.15
+Nodes (22): domToPdfPages(), appendCanvasToPdf(), buildCaptureRoot(), canvasToPdfPages(), captureElementToCanvas(), contentSize(), countClippedElements(), ensureCaptureStyle() (+14 more)
 
 ### Community 28 - "Navigation Feedback"
-Cohesion: 0.15
-Nodes (18): LayoutContext, LayoutProvider(), LayoutProviderProps, LayoutState, useLayout(), HeaderBreadcrumbs(), PdfButton, Header() (+10 more)
+Cohesion: 0.16
+Nodes (17): LayoutContext, LayoutProvider(), LayoutProviderProps, LayoutState, useLayout(), HeaderBreadcrumbs(), Header(), HeaderMenu() (+9 more)
 
 ### Community 29 - "Dropdown Menu"
-Cohesion: 0.19
-Nodes (13): DataGridColumnHeader(), DataGridColumnHeaderProps, DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuPortal() (+5 more)
+Cohesion: 0.17
+Nodes (13): Team, DataGridColumnHeaderProps, DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuPortal() (+5 more)
 
 ### Community 30 - "Kanban Metronic"
 Cohesion: 0.09
@@ -282,8 +263,8 @@ Cohesion: 0.10
 Nodes (20): devDependencies, eslint, eslint-config-prettier, @eslint/js, eslint-plugin-only-warn, eslint-plugin-react, eslint-plugin-react-hooks, eslint-plugin-turbo (+12 more)
 
 ### Community 32 - "Product Evidence"
-Cohesion: 0.14
-Nodes (14): dateStr(), eventTypeColor, eventTypeLabel, pad(), TR_MONTHS, WEEKDAYS, calendarEvents, getActiveSprint() (+6 more)
+Cohesion: 0.13
+Nodes (15): inter, metadata, EvidenceLevel, levelConfig, RecurrenceRiskBadge(), riskLabel, riskTone, SeverityBadge() (+7 more)
 
 ### Community 33 - "Typescript Config"
 Cohesion: 0.10
@@ -298,16 +279,16 @@ Cohesion: 0.14
 Nodes (11): DataGridPagination(), DataGridPaginationProps, Select(), SelectContent(), SelectContext, SelectItem(), SelectTrigger(), SelectTriggerProps (+3 more)
 
 ### Community 36 - "Product Tones"
-Cohesion: 0.06
-Nodes (44): inter, metadata, CI_GAPS, CI_PIPELINES, CODE_HEALTH, COMMIT_PURPOSE, HOT_FILES, PULSE_HEADLINES (+36 more)
+Cohesion: 0.28
+Nodes (11): itemVariants, PrincipleCard(), statusBadge, EASE, Tone, toneCard, toneDot, toneHero (+3 more)
 
 ### Community 37 - "Card Metronic"
 Cohesion: 0.17
 Nodes (14): Card(), CardContent(), cardContentVariants, CardContext, CardContextType, CardFooter(), cardFooterVariants, CardHeader() (+6 more)
 
 ### Community 38 - "Shared UI Badge"
-Cohesion: 0.27
-Nodes (7): Button(), ButtonArrowProps, buttonVariants, Calendar(), Code(), CodeProps, codeVariants
+Cohesion: 0.18
+Nodes (10): CodeBlock(), CopyButton(), TOOL_LINKS, Badge(), BadgeButton(), BadgeButtonProps, badgeButtonVariants, BadgeDotProps (+2 more)
 
 ### Community 39 - "Types Package"
 Cohesion: 0.11
@@ -322,12 +303,12 @@ Cohesion: 0.12
 Nodes (16): compilerOptions, declaration, declarationMap, esModuleInterop, incremental, isolatedModules, lib, module (+8 more)
 
 ### Community 43 - "Product Components"
-Cohesion: 0.11
-Nodes (24): MongodbQueryGeneratorPage(), COLLECTIONS, COUNTRIES, DATABASES, Environment, ENVIRONMENTS, EstimatedScope, EXAMPLE_PROMPTS (+16 more)
+Cohesion: 0.15
+Nodes (13): MongodbQueryGeneratorPage(), COLLECTIONS, DATABASES, ENVIRONMENTS, EXAMPLE_PROMPTS, hasWriteIntent(), SCHEMA_ROWS, ExampleChip() (+5 more)
 
 ### Community 44 - "Helpers Layout"
-Cohesion: 0.16
-Nodes (4): ScreenLoader(), BrandMark(), Team, toAbsoluteUrl()
+Cohesion: 0.14
+Nodes (4): ScreenLoader(), BrandMark(), Layout21(), toAbsoluteUrl()
 
 ### Community 46 - "Tailwind Aliases"
 Cohesion: 0.12
@@ -335,43 +316,43 @@ Nodes (15): aliases, components, ui, utils, iconLibrary, rsc, $schema, style (+7
 
 ### Community 47 - "Types Package"
 Cohesion: 0.19
-Nodes (9): newArchPhases, refactorPhases, roadmapSummary, RoadmapPhase, RoadmapRiskLevel, SegmentTabItem, SegmentTabs(), Timeline() (+1 more)
+Nodes (9): newArchPhases, refactorPhases, roadmapSummary, RoadmapPhase, RoadmapRiskLevel, SegmentTabItem, SegmentTabs(), TimelineItem (+1 more)
 
 ### Community 48 - "Form Components"
-Cohesion: 0.26
-Nodes (7): ANTI_PATTERNS, CRITICAL_BUGS, GOD_OBJECTS, INFRA_METRICS, LAYER_MAP, SCREEN_HEALTH, sevBadge
+Cohesion: 0.22
+Nodes (10): ANTI_PATTERNS, CRITICAL_BUGS, GOD_OBJECTS, INFRA_METRICS, LAYER_MAP, SCREEN_HEALTH, ComparisonTable(), StatCard() (+2 more)
 
 ### Community 49 - "Form Label"
 Cohesion: 0.20
 Nodes (12): FormControl(), FormDescription(), FormFieldContext, FormFieldContextValue, FormItem(), FormItemContext, FormItemContextValue, FormLabel() (+4 more)
 
 ### Community 50 - "Input Datefield"
-Cohesion: 0.15
-Nodes (13): SidebarSearch(), NavGroup, NavItem, DateInput(), DateInputProps, Input(), InputAddon(), inputAddonVariants (+5 more)
+Cohesion: 0.20
+Nodes (10): DateInput(), DateInputProps, Input(), InputAddon(), inputAddonVariants, InputGroup(), inputGroupVariants, inputVariants (+2 more)
 
 ### Community 51 - "Export Group"
-Cohesion: 0.08
-Nodes (29): DocStatusBadge(), SourceLevelBadge(), FlowDiagram(), Lineage(), RailSection, ScreenshotHotspots(), AnalyticsEvent, BackendCallRow (+21 more)
+Cohesion: 0.22
+Nodes (14): getWorkspacePages(), WorkspacePageRef, buildCoverDom(), buildTocDom(), chunk(), createHiddenIframe(), escapeHtml(), exportGroupToPdf() (+6 more)
 
 ### Community 52 - "Tools Mongodb"
-Cohesion: 0.10
-Nodes (17): EXAMPLES, GlobalSearchDialog(), groupByKind(), KIND_ICON, SearchLauncher(), KNOWN_ISSUES, SEARCH_INDEX, SEARCH_KIND_META (+9 more)
+Cohesion: 0.13
+Nodes (14): COUNTRIES, Environment, EstimatedScope, ExamplePrompt, QUERY_TYPES, QueryType, RecentQuery, RecentQueryStatus (+6 more)
 
 ### Community 53 - "Data Grid"
-Cohesion: 0.33
-Nodes (5): Avatar(), AvatarFallback(), AvatarIndicator(), AvatarStatus(), avatarStatusVariants
+Cohesion: 0.25
+Nodes (9): SidebarPrimary(), getVisibleWorkspaces(), canAccessOperations(), useOperationsAccess(), Avatar(), AvatarFallback(), AvatarIndicator(), AvatarStatus() (+1 more)
 
 ### Community 54 - "Carousel Metronic"
 Cohesion: 0.19
 Nodes (12): CarouselApi, CarouselContent(), CarouselContext, CarouselContextProps, CarouselItem(), CarouselNext(), CarouselOptions, CarouselPlugin (+4 more)
 
 ### Community 55 - "Charts"
-Cohesion: 0.20
-Nodes (9): Başlangıç, code:block1 (├── apps/), code:bash (pnpm install), code:bash (pnpm dev          # geliştirme), Komutlar, Navigasyon nasıl çalışır?, Nesy Mobile Cockpit, Yapı (+1 more)
+Cohesion: 0.27
+Nodes (10): CI_GAPS, CI_PIPELINES, CODE_HEALTH, COMMIT_PURPOSE, HOT_FILES, PULSE_HEADLINES, TEAM_DISTRIBUTION, VERSION_COUNTERS (+2 more)
 
 ### Community 56 - "Button Component"
-Cohesion: 0.29
-Nodes (7): domainRailSections(), DomainView(), BackendDomainPage(), BACKEND_DOMAINS, getBackendDomain(), PAYMENT_FISCAL, BackendDomain
+Cohesion: 0.23
+Nodes (8): HeaderToolbar(), Button(), ButtonArrowProps, buttonVariants, Calendar(), Code(), CodeProps, codeVariants
 
 ### Community 57 - "Avatar Group"
 Cohesion: 0.17
@@ -383,7 +364,7 @@ Nodes (10): ToggleIconType, TreeContext, TreeContextValue, TreeDragLine(), TreeI
 
 ### Community 60 - "Hooks Utilities"
 Cohesion: 0.18
-Nodes (10): RightRail(), DELIVERY, DELIVERY_FAILED, getScreen(), Screen, SCREEN_GROUP_META, ScreenGroup, GROUP_ORDER (+2 more)
+Nodes (7): ResultPanel(), ANOMALY_EXAMPLES, EXPECTED_EVENT_SEQUENCE, QUALITY_CHECKS, QUALITY_VERDICT_BROAD, QUALITY_VERDICT_STRONG, QUERY_BREAKDOWN
 
 ### Community 61 - "PM Versions"
 Cohesion: 0.40
@@ -406,20 +387,20 @@ Cohesion: 0.18
 Nodes (5): QueryWorkspace(), ESTIMATED_SCOPE, EXPLANATION_STEPS, GENERATED_QUERY, VALIDATION_CHECKS
 
 ### Community 67 - "Page Shell"
-Cohesion: 0.17
-Nodes (9): NEW_ARCH_PHASES, Phase, PhaseMetric, PLAN_RISKS, PLAN_SUMMARY, REFACTOR_ALTERNATIVE, priorityTone, StatCard() (+1 more)
+Cohesion: 0.29
+Nodes (7): NEW_ARCH_PHASES, Phase, PhaseMetric, PLAN_RISKS, PLAN_SUMMARY, REFACTOR_ALTERNATIVE, priorityTone
 
 ### Community 68 - "Tsconfig Paths"
 Cohesion: 0.20
 Nodes (9): compilerOptions, paths, plugins, exclude, extends, include, @/*, @nesy/metronic/* (+1 more)
 
 ### Community 69 - "Operations Access"
-Cohesion: 0.53
-Nodes (8): border(), boxLine(), c, padVisible(), printStartupBanner(), route(), row(), visibleLength()
+Cohesion: 0.27
+Nodes (5): SidebarHeader(), SidebarSearch(), SidebarSecondary(), Sidebar(), ScrollArea()
 
 ### Community 70 - "Country Matrix"
-Cohesion: 0.25
-Nodes (8): dependencies, dotenv, fastify, @fastify/cors, fastify-type-provider-zod, @nesy/types, socket.io, zod
+Cohesion: 0.33
+Nodes (7): PdfButton, Breadcrumb(), BreadcrumbItem(), BreadcrumbLink(), BreadcrumbList(), BreadcrumbPage(), BreadcrumbSeparator()
 
 ### Community 71 - "User Journeys"
 Cohesion: 0.22
@@ -444,10 +425,6 @@ Nodes (8): CountryPerfReport, PERF_CROSS_FINDINGS, PERF_REPORTS, PERF_TARGETS, P
 ### Community 77 - "Metronic Tsconfig"
 Cohesion: 0.22
 Nodes (8): compilerOptions, baseUrl, jsx, noEmit, paths, extends, include, @nesy/metronic/*
-
-### Community 78 - "Table Metronic"
-Cohesion: 0.11
-Nodes (22): MetaBadgeRow(), TonePill(), EndpointTable(), METHOD_TONE, Endpoint, OFFLINE_META, Accordion(), AccordionContent() (+14 more)
 
 ### Community 79 - "Typescript Config"
 Cohesion: 0.22
@@ -481,10 +458,6 @@ Nodes (4): containerVariants, itemVariants, RevealVariant, TextRevealProps
 Cohesion: 0.40
 Nodes (3): AnimationVariant, cursorVariants, TypingTextProps
 
-### Community 87 - "Input Metronic"
-Cohesion: 0.25
-Nodes (8): devDependencies, eslint, @nesy/eslint-config, @nesy/typescript-config, tsx, @types/node, typescript, vitest
-
 ### Community 89 - "Typescript Config"
 Cohesion: 0.40
 Nodes (4): license, name, private, version
@@ -493,57 +466,29 @@ Nodes (4): license, name, private, version
 Cohesion: 0.40
 Nodes (4): compilerOptions, jsx, extends, $schema
 
-### Community 93 - "Progress Metronic"
-Cohesion: 0.16
-Nodes (10): COVERAGE, CoverageRow, NEEDS_ATTENTION, RecentItem, RECENTLY_UPDATED, CoverageCards(), NeedsAttention(), RecentlyUpdated() (+2 more)
-
 ### Community 94 - "Github Button"
-Cohesion: 0.13
-Nodes (12): SidebarCollapsibleSection(), SidebarHeader(), SidebarPrimaryMenu(), SidebarSecondary(), Sidebar(), SidebarWorkspaceSections(), getActiveWorkspace(), MenuItem (+4 more)
-
-### Community 105 - "Root Claude"
-Cohesion: 0.33
-Nodes (5): description, name, private, type, version
-
-### Community 111 - "Community 111"
-Cohesion: 0.24
-Nodes (7): NavigationFeedback(), NavigationFeedbackContext, NavigationFeedbackProvider(), NavigationFeedbackState, SidebarNavLinkProps, useNavigationFeedback(), Layout21()
-
-### Community 112 - "Community 112"
-Cohesion: 0.33
-Nodes (5): CopyButton(), ExampleChip(), TOOL_LINKS, ToolCard(), ToolHeader()
-
-### Community 113 - "Community 113"
-Cohesion: 0.29
-Nodes (6): code:bash (graphify query "how does navigation work?"), graphify, Keeping the graph current, Querying (prefer over grep), Useful commands, Version control
-
-### Community 117 - "Community 117"
-Cohesion: 0.50
-Nodes (3): healthRoutes(), HealthResponse, healthResponseSchema
-
-### Community 118 - "Community 118"
 Cohesion: 0.67
 Nodes (3): GithubButton(), GithubButtonProps, githubButtonVariants
 
 ## Knowledge Gaps
-- **718 isolated node(s):** `$schema`, `ui`, `dependsOn`, `inputs`, `outputs` (+713 more)
+- **684 isolated node(s):** `$schema`, `ui`, `dependsOn`, `inputs`, `outputs` (+679 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ProductPage()` connect `API Backend` to `Field Tickets`, `Edge Case Map`, `Product Pages`, `Data Locator`, `Graylog Tools`, `PM Releases`, `Engineering Overview`, `Incidents Data`, `Architecture Diagram`, `Crashlytics`, `Navigation Config`, `Product Evidence`, `Product Tones`, `Product Components`, `Types Package`, `Form Components`, `Button Component`, `Hooks Utilities`, `PM Versions`, `Page Shell`, `Feature Library`, `Github Button`?**
+- **Why does `ProductPage()` connect `Product Pages` to `Field Tickets`, `Edge Case Map`, `Data Locator`, `Graylog Tools`, `Page Shell`, `PM Releases`, `Engineering Overview`, `Product Components`, `Feature Library`, `Types Package`, `Architecture Diagram`, `Form Components`, `Incidents Data`, `Crashlytics`, `API Backend`, `Charts`, `Navigation Config`, `PM Versions`?**
+  _High betweenness centrality (0.018) - this node is a cross-community bridge._
+- **Why does `Badge()` connect `Shared UI Badge` to `Field Tickets`, `Edge Case Map`, `Product Pages`, `Data Locator`, `Graylog Tools`, `PM Releases`, `Metronic UI Kit`, `Incidents Data`, `Menu Accordion`, `Crashlytics`, `API Backend`, `Sheet Mongodb`, `Navigation Config`, `Product Tones`, `Form Components`, `Data Grid`, `Charts`, `Hooks Utilities`, `Domain Glossary`, `Page Shell`, `Operations Access`, `Feature Library`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+- **Why does `Button()` connect `Button Component` to `Data Locator`, `Graylog Tools`, `Layout 21 Shell`, `Metronic UI Kit`, `Incidents Data`, `Architecture Diagram`, `Menu Accordion`, `Crashlytics`, `Sheet Mongodb`, `Dropdown Menu`, `Product Evidence`, `Select Metronic`, `Shared UI Badge`, `Product Components`, `Data Grid`, `Carousel Metronic`, `Hooks Utilities`, `PM Versions`, `Domain Glossary`, `Country Matrix`, `User Journeys`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
-- **Why does `Badge()` connect `Product Tones` to `Field Tickets`, `Edge Case Map`, `Product Pages`, `Data Locator`, `Graylog Tools`, `PM Releases`, `Engineering Overview`, `Metronic UI Kit`, `Incidents Data`, `Architecture Diagram`, `Menu Accordion`, `Sheet Mongodb`, `Navigation Config`, `Dropdown Menu`, `Form Components`, `Input Datefield`, `Domain Glossary`, `Page Shell`, `Feature Library`, `Github Button`, `Community 112`?**
-  _High betweenness centrality (0.016) - this node is a cross-community bridge._
-- **Why does `PageSection()` connect `API Backend` to `Field Tickets`, `Edge Case Map`, `Product Pages`, `Data Locator`, `Graylog Tools`, `PM Releases`, `Engineering Overview`, `Incidents Data`, `Architecture Diagram`, `Navigation Config`, `Product Evidence`, `Product Tones`, `Product Components`, `Types Package`, `Form Components`, `Hooks Utilities`, `PM Versions`, `Page Shell`, `Feature Library`, `Table Metronic`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **What connects `$schema`, `ui`, `dependsOn` to the rest of the system?**
-  _718 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _684 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Field Tickets` be split into smaller, more focused modules?**
   _Cohesion score 0.05575065847234416 - nodes in this community are weakly interconnected._
 - **Should `Edge Case Map` be split into smaller, more focused modules?**
   _Cohesion score 0.05658381808566896 - nodes in this community are weakly interconnected._
 - **Should `Product Pages` be split into smaller, more focused modules?**
-  _Cohesion score 0.1282051282051282 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10629251700680271 - nodes in this community are weakly interconnected._

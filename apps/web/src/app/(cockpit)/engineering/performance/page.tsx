@@ -815,6 +815,8 @@ export default function PerformanceIntelligencePage() {
         )}
       </div>
 
+      {/* ─── Slayt 1 · Yönetici özeti (brief + KPI + anlatı) ───────────── */}
+      <div data-pdf-slide className="space-y-8">
       {/* ─── 1 · Executive Brief ───────────────────────────────────────── */}
       <div className="report-section">
         <HeroCallout
@@ -852,9 +854,11 @@ export default function PerformanceIntelligencePage() {
 
       {/* ─── 3 · Yönetici anlatısı ─────────────────────────────────────── */}
       <div className="report-section"><NarrativeRow /></div>
+      </div>
 
-      {/* ─── 4 · Country Health Overview ───────────────────────────────── */}
+      {/* ─── Slayt 2 · Country Health Overview ─────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Country Health"
         title="Ülke sağlık görünümü"
         icon={Globe}
@@ -865,8 +869,9 @@ export default function PerformanceIntelligencePage() {
         <CountryScorecards />
       </PageSection>
 
-      {/* ─── 5 · Performance Trends ────────────────────────────────────── */}
+      {/* ─── Slayt 3 · Performance Trends ──────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Trends"
         title="Performans eğilimleri"
         icon={TrendingUp}
@@ -887,8 +892,9 @@ export default function PerformanceIntelligencePage() {
         </ChartCard>
       </PageSection>
 
-      {/* ─── 6 · Experience Pillars ────────────────────────────────────── */}
+      {/* ─── Slayt 4 · Experience Pillars ──────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Experience Pillars"
         title="Deneyim sütunları"
         icon={Layers}
@@ -899,8 +905,9 @@ export default function PerformanceIntelligencePage() {
         <ExperiencePillars engineering={engineering} />
       </PageSection>
 
-      {/* ─── 7 · Country Comparison ────────────────────────────────────── */}
+      {/* ─── Slayt 5 · Country Comparison ──────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Comparison"
         title="Ülke karşılaştırması"
         icon={Scale}
@@ -911,8 +918,9 @@ export default function PerformanceIntelligencePage() {
         <CountryComparison />
       </PageSection>
 
-      {/* ─── 8 · Endpoint Priority Map ─────────────────────────────────── */}
+      {/* ─── Slayt 6 · Endpoint Priority Map ───────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Priority Map"
         title="Endpoint öncelik haritası"
         icon={Network}
@@ -923,8 +931,9 @@ export default function PerformanceIntelligencePage() {
         <PriorityEndpointTable engineering={engineering} print={print} />
       </PageSection>
 
-      {/* ─── 9 · Metric → Action ───────────────────────────────────────── */}
+      {/* ─── Slayt 7 · Metric → Action ─────────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Metric to Action"
         title="Sinyalden aksiyona"
         icon={Activity}
@@ -935,8 +944,9 @@ export default function PerformanceIntelligencePage() {
         <MetricFlows />
       </PageSection>
 
-      {/* ─── 10 · Key Findings ─────────────────────────────────────────── */}
+      {/* ─── Slayt 8 · Key Findings ────────────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Key Findings"
         title="Öne çıkan bulgular"
         icon={FileSearch}
@@ -947,8 +957,9 @@ export default function PerformanceIntelligencePage() {
         <KeyFindings />
       </PageSection>
 
-      {/* ─── 11 · Action Tracker ───────────────────────────────────────── */}
+      {/* ─── Slayt 9 · Action Tracker ──────────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Action Tracker"
         title="Aksiyon takibi"
         icon={Kanban}
@@ -959,9 +970,10 @@ export default function PerformanceIntelligencePage() {
         <ActionTracker print={print} />
       </PageSection>
 
-      {/* ─── Engineering · ülke detayları ──────────────────────────────── */}
+      {/* ─── Slayt 10 · Engineering · ülke detayları ───────────────────── */}
       {engineering && (
         <PageSection
+          slide
           eyebrow="Engineering"
           title="Ülke detayları"
           icon={Wrench}
@@ -986,8 +998,9 @@ export default function PerformanceIntelligencePage() {
         </PageSection>
       )}
 
-      {/* ─── 12 · Change Timeline ──────────────────────────────────────── */}
+      {/* ─── Slayt 11 · Change Timeline ────────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Timeline"
         title="Değişim zaman çizelgesi"
         icon={CalendarClock}
@@ -1006,8 +1019,9 @@ export default function PerformanceIntelligencePage() {
         />
       </PageSection>
 
-      {/* ─── 13 · Guardrails ───────────────────────────────────────────── */}
+      {/* ─── Slayt 12 · Guardrails ─────────────────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Guardrails"
         title="Rakamlar nasıl okunmalı?"
         icon={ShieldQuestion}
@@ -1023,8 +1037,9 @@ export default function PerformanceIntelligencePage() {
         </div>
       </PageSection>
 
-      {/* ─── 14 · Evidence & Data Quality ──────────────────────────────── */}
+      {/* ─── Slayt 13 · Evidence & Data Quality ────────────────────────── */}
       <PageSection
+        slide
         eyebrow="Evidence & Data Quality"
         title="Kanıt ve veri kalitesi"
         icon={Database}
@@ -1099,13 +1114,15 @@ export default function PerformanceIntelligencePage() {
         )}
       </PageSection>
 
-      {/* ─── Metodoloji / rapor ritmi ──────────────────────────────────── */}
+      {/* ─── Slayt 14 · Metodoloji / rapor ritmi ───────────────────────── */}
+      <div data-pdf-slide>
       <Callout icon={ClipboardList} title="Metodoloji ve rapor ritmi" tone="indigo" className="report-section">
         Kaynak: {PI_META.source} · {PI_META.period}. Tüm değerler {PI_META.percentile}, {PI_META.environment} ortamı.
         Hedefler: app start {PERF_TARGETS.appStart} · başarı {PERF_TARGETS.networkSuccess} · {PERF_TARGETS.latencyThreshold}.
         Raporlar Performans Ekibi tarafından haftalık üretilir; yeni hafta verisi geldiğinde{' '}
         <code>src/data/engineering/performance.ts</code> ve <code>performance-intelligence.ts</code> güncellenir.
       </Callout>
+      </div>
 
       <Callout icon={Info} tone="gray" className="report-section print-hidden">
         Bu sayfa tek sürekli rapordur: Executive görünümü yönetici özetini, Engineering görünümü tüm endpoint ve

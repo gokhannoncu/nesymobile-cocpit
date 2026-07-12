@@ -68,6 +68,8 @@ export function PageSection({
   children,
   className,
   id,
+  slide,
+  slideOrder,
 }: {
   eyebrow?: string
   title: string
@@ -78,10 +80,16 @@ export function PageSection({
   className?: string
   /** Sayfa içi anchor hedefi. */
   id?: string
+  /** Planlı PDF export'ta bu bölümü kendi slaytına (kendi sayfasına) alır. */
+  slide?: boolean
+  /** Planlı PDF export slayt sırası (varsayılan: DOM sırası). */
+  slideOrder?: number
 }) {
   return (
     <motion.section
       id={id}
+      data-pdf-slide={slide ? '' : undefined}
+      data-pdf-slide-order={slide && slideOrder != null ? slideOrder : undefined}
       className={cn('space-y-4', className)}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
