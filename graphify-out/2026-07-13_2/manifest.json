@@ -2288,20 +2288,5 @@
     "mtime": 1783889045.3609662,
     "ast_hash": "7a17637256e6049650aeee989f7c18f9",
     "semantic_hash": ""
-  },
-  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/components/engineering/device-lab/device-lab-context.tsx": {
-    "mtime": 1783891186.7239373,
-    "ast_hash": "ff61f24c5909833c1948d315f0137a68",
-    "semantic_hash": ""
-  },
-  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/engineering/device-lab/mock-devices.ts": {
-    "mtime": 1783891143.1602685,
-    "ast_hash": "4f029fda2f59d69e9568b757d3a3a2dc",
-    "semantic_hash": ""
-  },
-  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/engineering/device-lab/device-lab-types.ts": {
-    "mtime": 1783891089.9667785,
-    "ast_hash": "e6347be211d4b019f75f02d9fdd912a7",
-    "semantic_hash": ""
   }
 }
