@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nesy/web",
+        "dev"
+      ],
+      "port": 3001,
+      "autoPort": true
+    },
+    {
+      "name": "web-3102",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nesy/web",
+        "exec",
+        "next",
+        "dev",
+        "-p",
+        "3102"
+      ],
+      "port": 3102
+    }
+  ]
+}

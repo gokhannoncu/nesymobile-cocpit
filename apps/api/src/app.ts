@@ -1,0 +1,39 @@
+import Fastify from 'fastify'
+import cors from '@fastify/cors'
+import {
+  serializerCompiler,
+  validatorCompiler,
+  type ZodTypeProvider,
+} from 'fastify-type-provider-zod'
+import type { Env } from './env.js'
+import { healthRoutes } from './routes/health.routes.js'
+import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
+
+export type AppContext = {
+  env: Env
+  io: AppSocketServer | null
+}
+
+export async function buildApp(env: Env) {
+  const app = Fastify({
+    logger:
+      env.NODE_ENV === 'test'
+        ? false
+        : env.NODE_ENV === 'development'
+          ? { level: 'warn' }
+          : true,
+  }).withTypeProvider<ZodTypeProvider>()
+
+  app.setValidatorCompiler(validatorCompiler)
+  app.setSerializerCompiler(serializerCompiler)
+
+  await app.register(cors, {
+    origin: env.CORS_ORIGIN,
+  })
+
+  await app.register(healthRoutes)
+
+  const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
+
+  return { app, io }
+}

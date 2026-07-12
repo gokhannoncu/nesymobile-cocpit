@@ -1,0 +1,257 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@source "../../../../packages/metronic/src/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+/** Dark Mode Variant **/
+@custom-variant dark (&:is(.dark *));
+
+/** Colors **/
+:root {
+  --background: var(--color-white);
+  --foreground: var(--color-zinc-950);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-950);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-zinc-950);
+  --primary: var(--color-orange-600);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-zinc-100);
+  --secondary-foreground: var(--color-zinc-900);
+  --muted: var(--color-zinc-100);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-900);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --chart-1: var(--color-orange-500);
+  --chart-2: var(--color-amber-500);
+  --chart-3: var(--color-teal-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-zinc-600);
+  --border: oklch(94% 0.004 286.32);
+  --input: var(--color-zinc-200);
+  --ring: var(--color-orange-400);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: var(--color-zinc-950);
+  --foreground: var(--color-zinc-50);
+  --card: var(--color-zinc-950);
+  --card-foreground: var(--color-zinc-50);
+  --popover: var(--color-zinc-950);
+  --popover-foreground: var(--color-zinc-50);
+  --primary: var(--color-orange-500);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-zinc-800);
+  --secondary-foreground: var(--color-zinc-50);
+  --muted: var(--color-zinc-900);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-zinc-900);
+  --accent-foreground: var(--color-zinc-50);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --chart-1: var(--color-orange-500);
+  --chart-2: var(--color-amber-500);
+  --chart-3: var(--color-teal-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-zinc-400);
+  --border: var(--color-zinc-800);
+  --input: var(--color-zinc-800);
+  --ring: var(--color-orange-700);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  *:focus-visible {
+    @apply outline-ring rounded-xs shadow-none outline-2 outline-offset-3 transition-none!;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--input);
+    border-radius: 5px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes route-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.route-progress-bar {
+  animation: route-progress 1.15s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-progress-bar {
+    animation: none;
+    width: 100%;
+  }
+}
+
+@utility container {
+  @apply mx-auto max-w-none px-4 lg:px-5;
+
+  @media (width >= --theme(--breakpoint-xl)) {
+    @apply max-w-(--breakpoint-xl);
+  }
+}
+
+@utility container-fluid {
+  @apply w-full mx-auto px-4 lg:px-5;
+}
+
+@import '../../../../packages/metronic/src/styles/config.metronic.css';
+
+/* Architecture Report'tan taşınan animasyonlu mimari akışı */
+.arch{--surface:var(--card);--surface2:var(--muted);--text:var(--foreground);--text2:var(--muted-foreground);--text3:var(--muted-foreground);margin-top:4px}
+.arch-nav{display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;padding:5px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;box-shadow:inset 0 1px 2px rgba(15,23,42,.04)}
+.arch-nav-btn{padding:9px 20px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--text2);font-size:13px;font-weight:600;line-height:1.3;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s,border-color .15s}
+.arch-nav-btn:hover{color:var(--text);background:rgba(255,255,255,.85)}
+.arch-nav-btn.active{background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.28)}
+.arch-card{background:linear-gradient(135deg,#fff 0%,#fbfcfe 100%);border:1px solid var(--border);border-radius:18px;padding:26px 28px 30px;box-shadow:0 4px 20px rgba(15,23,42,.05)}
+.arch-head-c{text-align:center;margin-bottom:14px}.arch-eyebrow{display:inline-block;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#ea6a1e}
+.arch-title{font-size:clamp(24px,3vw,34px);font-weight:800;letter-spacing:-.02em;color:#16223c;margin-bottom:6px}.arch-sub{font-size:15px;font-weight:500;line-height:1.5;color:var(--text2)}
+.arch-svg-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.arch-svg{display:block;width:100%;min-width:940px;height:auto}.arch-svg text{font-family:inherit}
+.arch-summary{display:flex;align-items:flex-start;gap:14px;margin-top:16px;padding:16px 20px;background:#f3f7ff;border:1px solid #c4d6f4;border-radius:14px}.arch-summary-icon{flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1f5fe0;color:#fff;font-size:14px;font-weight:800;font-style:italic;font-family:Georgia,serif}.arch-summary p{font-size:13.5px;line-height:1.6;color:#67748a}.arch-summary strong{color:#16315f}
+.arch-ring{animation:archRing 1.7s ease-out infinite}@keyframes archRing{0%{r:13px;opacity:.85}100%{r:34px;opacity:0}}
+.arch-anim-bar{--hc:#16a34a;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--hc);border-radius:12px;transition:border-color .5s}.arch-anim-play{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s}.arch-anim-play:hover{border-color:var(--primary);color:var(--primary)}
+.arch-anim-dot{width:13px;height:13px;border-radius:50%;background:var(--hc);flex-shrink:0;box-shadow:0 0 0 4px color-mix(in srgb,var(--hc) 18%,transparent);transition:background .5s,box-shadow .5s}.arch-anim-label{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}.arch-anim-note{font-size:13px;color:var(--text2);flex:1;min-width:180px}.arch-anim-legend{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);white-space:nowrap}.arch-anim-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:10px}
+@media(max-width:640px){.arch-nav{display:flex;width:100%;border-radius:14px}.arch-nav-btn{flex:1;text-align:center;white-space:normal}.arch-card{padding:18px 14px 22px}}@media(prefers-reduced-motion:reduce){.arch-ring{animation:none}}
+
+/* ─── Print: Performance Intelligence ve rapor sayfaları — A4 portrait ─── */
+@media print {
+  :root {
+    --sidebar-width: 0px;
+    --sidebar-collapsed-width: 0px;
+    --header-height: 0px;
+    --header-height-mobile: 0px;
+    --page-margin: 0px;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Layout kabuğu: header, sidebar, toolbar ve interaktif kontroller gizlenir */
+  body > header,
+  body > aside,
+  aside,
+  .print-hidden,
+  .interactive-only {
+    display: none !important;
+  }
+
+  /* İçerik kapsayıcısı normal akışa döner */
+  [role='content'] {
+    padding: 0 !important;
+  }
+  body [class*='overflow-y-auto'],
+  body [class*='overflow-x-auto'] {
+    overflow: visible !important;
+  }
+
+  /* Animasyon kalıntıları: whileInView opacity/transform sabitlenir */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  [style*='opacity'] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Bölüm ve kartlar ortadan bölünmez */
+  .report-section,
+  .metric-card,
+  .insight-card,
+  table {
+    break-inside: avoid;
+  }
+  .print-page-break {
+    break-before: page;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm;
+  }
+}

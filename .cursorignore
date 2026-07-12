@@ -1,0 +1,56 @@
+# Bağımlılıklar
+node_modules/
+.pnpm-store/
+
+# Build çıktıları
+dist/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# Turborepo cache
+.turbo/
+
+# Lock dosyaları (708KB+, mimari değeri yok)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Ortam değişkenleri
+.env
+.env.*
+
+# Loglar
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Python artifacts
+__pycache__/
+*.pyc
+.venv/
+
+# Binary assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.mp4
+*.mp3
+*.pdf
+
+# Source maps
+*.map
+
+# Generated
+scripts/generated/

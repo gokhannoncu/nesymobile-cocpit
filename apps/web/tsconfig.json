@@ -1,0 +1,14 @@
+{
+  "extends": "../../packages/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@nesy/metronic/layout-21": ["../../packages/metronic/src/components/layouts/layout-21/index.tsx"],
+      "@nesy/metronic/layout-21/*": ["../../packages/metronic/src/components/layouts/layout-21/*"],
+      "@nesy/metronic/*": ["../../packages/metronic/src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,10 @@
+// Product alanı ortak tasarım toolkit'i — tek noktadan export.
+export * from './tones'
+export * from './page-shell'
+export * from './blocks'
+export * from './stats'
+export * from './cards'
+export * from './comparison'
+export * from './timeline'
+export * from './segment-tabs'
+export * from './evidence-ref'

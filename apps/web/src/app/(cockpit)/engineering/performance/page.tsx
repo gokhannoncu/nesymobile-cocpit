@@ -1,0 +1,1116 @@
+'use client'
+
+import { Fragment, useState } from 'react'
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDown,
+  BarChart3,
+  Bug,
+  CalendarClock,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  Database,
+  FileSearch,
+  Gauge,
+  Globe,
+  Info,
+  Kanban,
+  Layers,
+  LineChart as LineChartIcon,
+  ListChecks,
+  Network,
+  Printer,
+  Rocket,
+  ScatterChart as ScatterChartIcon,
+  Scale,
+  ShieldQuestion,
+  Timer,
+  TrendingUp,
+  Wrench,
+} from 'lucide-react'
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from 'recharts'
+import { cn } from '@nesy/metronic/lib/utils'
+import { Badge } from '@nesy/metronic/components/ui/badge'
+import { Button } from '@nesy/metronic/components/ui/button'
+import {
+  Callout,
+  ComparisonTable,
+  EvidenceRef,
+  GuardrailCallout,
+  HeroCallout,
+  PageSection,
+  ProductPage,
+  SegmentTabs,
+  Timeline,
+  toneCard,
+  toneDot,
+  toneText,
+  type Tone,
+} from '@/components/product'
+import { PERF_REPORTS, PERF_TARGETS, type CountryPerfReport } from '@/data/engineering/performance'
+import {
+  HEALTH_LABELS,
+  PI_ACTION_COLUMNS,
+  PI_ACTIONS,
+  PI_APP_START_TARGET,
+  PI_APP_START_TREND,
+  PI_BRIEF,
+  PI_COUNTRIES,
+  PI_DATA_QUALITY,
+  PI_ENDPOINT_IMPACT,
+  PI_EVIDENCE_RULES,
+  PI_FINDINGS,
+  PI_GUARDRAILS,
+  PI_KPIS,
+  PI_META,
+  PI_METRIC_FLOWS,
+  PI_NARRATIVE,
+  PI_NETWORK_TREND,
+  PI_PILLARS,
+  PI_PRIORITY_ENDPOINTS,
+  PI_TIMELINE,
+  PI_TREND_NOTES,
+  type HealthStatus,
+  type KpiTone,
+  type PiAction,
+} from '@/data/engineering/performance-intelligence'
+
+// ═══ Görünüm modları ═════════════════════════════════════════════════════════
+
+type ViewMode = 'executive' | 'engineering' | 'print'
+
+const VIEW_LABELS: Record<ViewMode, string> = {
+  executive: 'Executive',
+  engineering: 'Engineering',
+  print: 'Print',
+}
+
+// ═══ Durum / ton eşlemeleri ══════════════════════════════════════════════════
+
+const healthTone: Record<HealthStatus, Tone> = {
+  'on-target': 'green',
+  'near-target': 'blue',
+  watch: 'amber',
+  action: 'amber',
+  validate: 'blue',
+  nodata: 'gray',
+}
+
+function HealthBadge({ status }: { status: HealthStatus }) {
+  const tone = healthTone[status]
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold',
+        toneCard[tone],
+        toneText[tone],
+      )}
+    >
+      <span className={cn('size-1.5 rounded-full', toneDot[tone])} />
+      {HEALTH_LABELS[status]}
+    </span>
+  )
+}
+
+const kpiBorder: Record<KpiTone, string> = {
+  green: 'border-s-green-500',
+  blue: 'border-s-blue-500',
+  amber: 'border-s-amber-500',
+  gray: 'border-s-muted-foreground/40',
+  red: 'border-s-red-500',
+}
+
+// Ülke çizgi renkleri — grafiklerde ortak.
+const COUNTRY_COLORS: Record<string, string> = {
+  hr: '#3b82f6',
+  ba: '#f59e0b',
+  si: '#8b5cf6',
+  rs: '#14b8a6',
+}
+const COUNTRY_NAMES: Record<string, string> = { hr: 'HR', ba: 'BA', si: 'SI', rs: 'RS' }
+
+const chartTooltipStyle = {
+  backgroundColor: 'var(--background)',
+  border: '1px solid var(--border)',
+  borderRadius: '8px',
+  fontSize: '12px',
+}
+
+// ═══ 2 · KPI Strip ═══════════════════════════════════════════════════════════
+
+function KpiStrip() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 metric-card">
+      {PI_KPIS.map((k) => (
+        <div
+          key={k.label}
+          className={cn('rounded-xl border border-s-4 bg-card p-4 metric-card', kpiBorder[k.tone])}
+        >
+          <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{k.label}</div>
+          <div className="mt-1.5 text-xl font-bold tabular-nums text-foreground">{k.value}</div>
+          <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{k.secondary}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ═══ 3 · Yönetici anlatısı ═══════════════════════════════════════════════════
+
+function NarrativeRow() {
+  const blocks = [
+    { title: 'Bu hafta ne oldu?', icon: Activity, body: PI_NARRATIVE.whatHappened },
+    { title: 'Neden önemli?', icon: Scale, body: PI_NARRATIVE.whyItMatters },
+    { title: 'Ne yapıyoruz?', icon: Wrench, body: PI_NARRATIVE.whatWeAreDoing },
+  ]
+  return (
+    <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+      {blocks.map((b) => (
+        <div key={b.title} className="rounded-xl border border-border bg-card p-4 insight-card">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground">
+            <b.icon className="size-4 text-indigo-500" /> {b.title}
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-foreground/85">{b.body}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ═══ 4 · Country Health Overview ═════════════════════════════════════════════
+
+function CountryScorecards() {
+  return (
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+      {PI_COUNTRIES.map((c) => (
+        <div key={c.id} className="flex flex-col rounded-xl border border-border bg-card p-4 metric-card">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-sm font-bold text-foreground">{c.name}</div>
+              <div className="text-[11px] text-muted-foreground">{c.domain}</div>
+            </div>
+            <HealthBadge status={c.status} />
+          </div>
+          <dl className="mt-3 space-y-1.5 text-xs">
+            {[
+              ['App Start', `${c.appStart} · ${c.appStartDeltaPct > 0 ? '+' : ''}${c.appStartDeltaPct}%`],
+              ['Network', c.network + (c.networkNote ? ` · ${c.networkNote}` : '')],
+              ['Latency', c.latency],
+              ['Crash-free', c.crashFree],
+              ['Örneklem', `${c.samples} · güven: ${c.confidence}`],
+              ['Haftalık yön', c.direction],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3">
+                <dt className="shrink-0 text-muted-foreground">{k}</dt>
+                <dd className="text-end font-medium tabular-nums text-foreground/90">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 border-t border-border/60 pt-2.5 text-xs leading-relaxed text-muted-foreground">
+            {c.sentence}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ═══ 6 · Trend grafikleri ════════════════════════════════════════════════════
+
+function ChartCard({
+  title,
+  foot,
+  icon: Icon,
+  children,
+}: {
+  title: string
+  foot: string
+  icon: typeof LineChartIcon
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 metric-card">
+      <div className="mb-4 flex items-start gap-2">
+        <Icon className="mt-0.5 size-4 shrink-0 text-indigo-500" />
+        <div className="text-sm font-semibold leading-snug text-foreground">{title}</div>
+      </div>
+      {children}
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{foot}</p>
+    </div>
+  )
+}
+
+function AppStartTrendChart() {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <LineChart data={PI_APP_START_TREND} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+        <XAxis dataKey="week" tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} />
+        <YAxis
+          tick={{ fontSize: 12 }}
+          stroke="currentColor"
+          opacity={0.5}
+          domain={[0, 3]}
+          tickFormatter={(v: number) => `${v}s`}
+        />
+        <RTooltip contentStyle={chartTooltipStyle} formatter={(v) => `${v} s`} />
+        <ReferenceLine
+          y={PI_APP_START_TARGET}
+          stroke="#ef4444"
+          strokeDasharray="6 4"
+          label={{ value: 'Hedef 2.0 s', position: 'insideTopRight', fontSize: 11, fill: '#ef4444' }}
+        />
+        {(['hr', 'ba', 'si', 'rs'] as const).map((id) => (
+          <Line
+            key={id}
+            type="monotone"
+            dataKey={id}
+            name={COUNTRY_NAMES[id]}
+            stroke={COUNTRY_COLORS[id]}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+          />
+        ))}
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+function NetworkStabilityChart() {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <ComposedChart data={PI_NETWORK_TREND} margin={{ top: 8, right: 0, left: -18, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+        <XAxis dataKey="week" tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} />
+        <YAxis yAxisId="vol" tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} tickFormatter={(v: number) => `${v}M`} />
+        <YAxis
+          yAxisId="pct"
+          orientation="right"
+          domain={[98, 100]}
+          tick={{ fontSize: 12 }}
+          stroke="currentColor"
+          opacity={0.5}
+          tickFormatter={(v: number) => `%${v}`}
+        />
+        {/* Gecikme kendi görünmez ekseninde — M ve % eksenleriyle örtüşmez */}
+        <YAxis yAxisId="lat" hide domain={[400, 900]} />
+        <RTooltip contentStyle={chartTooltipStyle} />
+        <Bar yAxisId="vol" dataKey="volumeM" name="Hacim (M istek)" fill="#6366f1" fillOpacity={0.25} radius={[4, 4, 0, 0]} />
+        <Line yAxisId="pct" type="monotone" dataKey="successPct" name="Success %" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+        <Line yAxisId="lat" type="monotone" dataKey="latencyMs" name="P90 gecikme (ms)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  )
+}
+
+function EndpointImpactChart() {
+  const data = PI_ENDPOINT_IMPACT.map((e) => ({
+    ...e,
+    absChange: Math.min(Math.abs(e.changePct), 1200),
+  }))
+  const byCountry = (['hr', 'ba', 'si', 'rs'] as const).map((id) => ({
+    id,
+    rows: data.filter((d) => d.country.toLowerCase() === id),
+  }))
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <ScatterChart margin={{ top: 8, right: 12, left: -6, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+        <XAxis
+          type="number"
+          dataKey="p90s"
+          name="P90"
+          tick={{ fontSize: 12 }}
+          stroke="currentColor"
+          opacity={0.5}
+          tickFormatter={(v: number) => `${v}s`}
+          domain={[0, 32]}
+          label={{ value: 'P90 gecikme (s)', position: 'insideBottom', offset: -2, fontSize: 11 }}
+        />
+        <YAxis
+          type="number"
+          dataKey="volume"
+          name="Hacim"
+          scale="log"
+          domain={[100, 1000000]}
+          tick={{ fontSize: 11 }}
+          stroke="currentColor"
+          opacity={0.5}
+          tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}K` : `${v}`)}
+        />
+        <ZAxis type="number" dataKey="absChange" range={[60, 420]} name="Haftalık değişim" />
+        <RTooltip
+          contentStyle={chartTooltipStyle}
+          cursor={{ strokeDasharray: '3 3' }}
+          content={({ payload }) => {
+            const p = payload?.[0]?.payload as (typeof data)[number] | undefined
+            if (!p) return null
+            return (
+              <div className="rounded-lg border border-border bg-background p-2.5 text-xs shadow-sm">
+                <div className="font-semibold text-foreground">{p.name}</div>
+                <div className="mt-1 space-y-0.5 text-muted-foreground">
+                  <div>{p.country} · {p.flow}</div>
+                  <div>P90 {p.p90s} s · hacim {p.volume.toLocaleString('tr-TR')}</div>
+                  <div>Haftalık {p.changePct > 0 ? '+' : ''}{p.changePct}%</div>
+                  <div>Güven: {p.confidence === 'confirmed' ? 'yüksek' : 'doğrulama gerekli'}</div>
+                </div>
+              </div>
+            )
+          }}
+        />
+        {byCountry.map(({ id, rows }) => (
+          <Scatter key={id} name={COUNTRY_NAMES[id]} data={rows} fill={COUNTRY_COLORS[id]} fillOpacity={0.7} />
+        ))}
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+      </ScatterChart>
+    </ResponsiveContainer>
+  )
+}
+
+// ═══ 7 · Experience Pillars ══════════════════════════════════════════════════
+
+const pillarIcons = [Rocket, Network, Timer, Gauge]
+
+function ExperiencePillars({ engineering }: { engineering: boolean }) {
+  return (
+    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-4">
+      {PI_PILLARS.map((p, i) => {
+        const Icon = pillarIcons[i] ?? Gauge
+        const metrics = engineering && p.engineeringMetrics ? [...p.metrics, ...p.engineeringMetrics] : p.metrics
+        return (
+          <div key={p.key} className="flex flex-col rounded-xl border border-border bg-card p-4 metric-card">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Icon className="size-4 text-indigo-500" /> {p.title}
+              </div>
+              <HealthBadge status={p.status} />
+            </div>
+            <dl className="mt-3 flex-1 space-y-1.5 text-xs">
+              {metrics.map((m) => (
+                <div key={m.label} className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-muted-foreground">{m.label}</dt>
+                  <dd className="text-end font-medium text-foreground/90">{m.value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 border-t border-border/60 pt-2.5 text-xs leading-relaxed text-muted-foreground">
+              {p.sentence}
+            </p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ═══ 8 · Country Comparison ══════════════════════════════════════════════════
+
+function CountryComparison() {
+  return (
+    <ComparisonTable
+      headers={[
+        { label: 'Ülke' },
+        { label: 'App Start P90' },
+        { label: 'Haftalık' },
+        { label: 'Network' },
+        { label: 'Latency (>600 ms)' },
+        { label: 'Crash-free' },
+        { label: 'Örneklem' },
+        { label: 'Durum' },
+      ]}
+      rows={PI_COUNTRIES.map((c) => [
+        <span key="n" className="font-semibold">{c.name} ({c.id.toUpperCase()})</span>,
+        <span key="a" className={cn('font-semibold tabular-nums', c.status !== 'on-target' && 'text-amber-600 dark:text-amber-400')}>
+          {c.appStart}
+        </span>,
+        <span key="d" className={cn('tabular-nums text-xs font-medium', c.appStartDeltaPct > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400')}>
+          {c.appStartDeltaPct > 0 ? '+' : ''}{c.appStartDeltaPct}%
+        </span>,
+        c.network,
+        c.latency.replace(' endpoint > 600 ms', ''),
+        c.crashFree,
+        <span key="s" className="inline-flex items-center gap-1.5">
+          {c.samples}
+          {c.confidence === 'Düşük' && (
+            <Badge variant="secondary" appearance="outline" size="xs">low sample</Badge>
+          )}
+        </span>,
+        <HealthBadge key="h" status={c.status} />,
+      ])}
+    />
+  )
+}
+
+// ═══ 9 · Endpoint Priority Map ═══════════════════════════════════════════════
+
+function PriorityEndpointTable({ engineering, print }: { engineering: boolean; print: boolean }) {
+  const [open, setOpen] = useState<number | null>(null)
+  const rows = engineering ? PI_PRIORITY_ENDPOINTS : PI_PRIORITY_ENDPOINTS.slice(0, 3)
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/50">
+            {['Endpoint', 'Flow', 'P90', 'Hacim', 'Değişim', 'İş etkisi', 'Güven', 'Önerilen aksiyon'].map((h, i) => (
+              <th
+                key={h}
+                className={cn(
+                  'px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap',
+                  i === 0 && 'sticky start-0 bg-muted/50 backdrop-blur',
+                )}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((e, i) => {
+            const expanded = print || open === i
+            return (
+              <Fragment key={e.endpoint + e.country}>
+                <tr
+                  className={cn('border-b border-border/60 transition-colors hover:bg-muted/30', !print && 'cursor-pointer')}
+                  onClick={() => !print && setOpen(open === i ? null : i)}
+                >
+                  <td className="sticky start-0 bg-card px-4 py-3 font-medium text-foreground">
+                    <span className="flex items-center gap-1.5">
+                      {!print && (expanded ? <ChevronDown className="size-3.5 text-muted-foreground" /> : <ChevronRight className="size-3.5 text-muted-foreground" />)}
+                      <code className="text-xs">{e.endpoint}</code>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">{e.flow}</td>
+                  <td className="px-4 py-3 font-semibold tabular-nums">{e.p90}</td>
+                  <td className="px-4 py-3 text-xs tabular-nums">{e.volume}</td>
+                  <td className="px-4 py-3 text-xs tabular-nums">{e.change}</td>
+                  <td className="px-4 py-3 text-xs">{e.businessImpact}</td>
+                  <td className="px-4 py-3">
+                    <EvidenceRef
+                      level={e.confidence}
+                      label={e.confidence === 'confirmed' ? 'Yüksek' : 'Orta'}
+                      tooltip={e.detail.notes}
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-xs font-medium">{e.action}</td>
+                </tr>
+                {expanded && (
+                  <tr className="border-b border-border/60 bg-muted/20">
+                    <td colSpan={8} className="px-4 py-3">
+                      <div className="grid grid-cols-1 gap-x-8 gap-y-1.5 text-xs sm:grid-cols-2">
+                        <div><span className="font-semibold text-foreground">Ülke dağılımı:</span> <span className="text-muted-foreground">{e.detail.countries}</span></div>
+                        <div><span className="font-semibold text-foreground">Sürüm:</span> <span className="text-muted-foreground">{e.detail.versions}</span></div>
+                        <div><span className="font-semibold text-foreground">Owner:</span> <span className="text-muted-foreground">{e.detail.owner}</span></div>
+                        <div><span className="font-semibold text-foreground">Aksiyon durumu:</span> <span className="text-muted-foreground">{e.detail.status}</span></div>
+                        <div className="sm:col-span-2"><span className="font-semibold text-foreground">Not:</span> <span className="text-muted-foreground">{e.detail.notes}</span></div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+      {!engineering && (
+        <div className="border-t border-border bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+          İlk 3 öncelik gösteriliyor — tüm liste Engineering görünümünde.
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══ 10 · Metric → Action Flow ═══════════════════════════════════════════════
+
+const FLOW_STEPS = ['Sinyal', 'Doğrulama', 'Muhtemel kullanıcı etkisi', 'Aksiyon', 'Başarı kriteri'] as const
+const flowStepTones: Tone[] = ['indigo', 'blue', 'amber', 'teal', 'green']
+
+function MetricFlows() {
+  return (
+    <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-3">
+      {PI_METRIC_FLOWS.map((f) => {
+        const values = [f.signal, f.validation, f.impact, f.action, f.successCriteria]
+        return (
+          <div key={f.signal} className="rounded-xl border border-border bg-card p-4 insight-card">
+            {FLOW_STEPS.map((step, i) => {
+              const stepTone = flowStepTones[i] ?? 'gray'
+              return (
+              <Fragment key={step}>
+                <div className={cn('rounded-lg border p-2.5', toneCard[stepTone])}>
+                  <div className={cn('text-[10px] font-bold uppercase tracking-[0.15em]', toneText[stepTone])}>
+                    {step}
+                  </div>
+                  <div className="mt-0.5 text-xs leading-relaxed text-foreground/90">{values[i]}</div>
+                </div>
+                {i < FLOW_STEPS.length - 1 && (
+                  <div className="flex justify-center py-0.5">
+                    <ArrowDown className="size-3.5 text-muted-foreground/50" />
+                  </div>
+                )}
+              </Fragment>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ═══ 11 · Key Findings ═══════════════════════════════════════════════════════
+
+function KeyFindings() {
+  return (
+    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+      {PI_FINDINGS.map((f) => (
+        <div key={f.title} className="flex flex-col rounded-xl border border-border bg-card p-4 insight-card">
+          <div className="text-sm font-bold text-foreground">{f.title}</div>
+          <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{f.scope}</div>
+          <p className="mt-2 text-xs leading-relaxed text-foreground/85">{f.body}</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground/80">Yorum:</span> {f.comment}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
+            <EvidenceRef
+              level={f.level}
+              label={f.level === 'confirmed' ? 'High confidence' : 'Validation needed'}
+              tooltip={f.evidence}
+            />
+            <span className="text-[11px] text-muted-foreground">{f.evidence}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ═══ 12 · Action Tracker ═════════════════════════════════════════════════════
+
+const priorityTone: Record<PiAction['priority'], string> = {
+  P1: 'text-red-600 dark:text-red-400',
+  P2: 'text-orange-600 dark:text-orange-400',
+  P3: 'text-muted-foreground',
+}
+
+function ActionCard({ a }: { a: PiAction }) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 insight-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-xs font-semibold leading-snug text-foreground">{a.title}</div>
+        <Badge variant="secondary" appearance="outline" size="xs" className={priorityTone[a.priority]}>
+          {a.priority}
+        </Badge>
+      </div>
+      <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+        <div>{a.owner} · termin {a.due} · {a.countries}</div>
+        <div><span className="font-medium text-foreground/75">Beklenen:</span> {a.expected}</div>
+      </div>
+      <div className="mt-2">
+        <EvidenceRef level={a.level} label={a.evidence} />
+      </div>
+    </div>
+  )
+}
+
+function ActionTracker({ print }: { print: boolean }) {
+  if (print) {
+    return (
+      <ComparisonTable
+        headers={[
+          { label: 'Öncelik' },
+          { label: 'Aksiyon' },
+          { label: 'Owner' },
+          { label: 'Termin' },
+          { label: 'Ülke' },
+          { label: 'Başarı kriteri' },
+          { label: 'Durum' },
+        ]}
+        rows={PI_ACTIONS.map((a) => [
+          <span key="p" className={cn('font-bold', priorityTone[a.priority])}>{a.priority}</span>,
+          a.title,
+          a.owner,
+          a.due,
+          a.countries,
+          <span key="e" className="text-xs">{a.expected}</span>,
+          PI_ACTION_COLUMNS.find((c) => c.key === a.column)?.label ?? a.column,
+        ])}
+      />
+    )
+  }
+  return (
+    <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+      {PI_ACTION_COLUMNS.map((col) => {
+        const items = PI_ACTIONS.filter((a) => a.column === col.key)
+        return (
+          <div key={col.key} className={cn('rounded-xl border p-3', toneCard[col.tone])}>
+            <div className={cn('mb-2.5 flex items-center justify-between text-xs font-bold uppercase tracking-wide', toneText[col.tone])}>
+              {col.label}
+              <span className="rounded-full bg-background/70 px-2 py-0.5 tabular-nums">{items.length}</span>
+            </div>
+            <div className="space-y-2.5">
+              {items.map((a) => <ActionCard key={a.title} a={a} />)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ═══ 13 · Timeline ═══════════════════════════════════════════════════════════
+
+const tagTone: Record<string, Tone> = {
+  Release: 'blue',
+  Config: 'teal',
+  Incident: 'red',
+  'Metric anomaly': 'amber',
+  'Monitoring change': 'gray',
+}
+
+// ═══ Engineering · ülke detayı ═══════════════════════════════════════════════
+
+function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-indigo-600 dark:text-indigo-400">
+          <Globe className="size-4" /> {r.country} · {r.domain}
+          <Badge variant="secondary" appearance="outline" size="xs">{r.window}</Badge>
+          <Badge variant="secondary" appearance="outline" size="xs">{r.period}</Badge>
+        </div>
+        <div className="mt-1.5 text-sm font-semibold text-foreground">{r.headline}</div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          Veri: {r.dataTimestamp} · {r.appStart.dominantVersion} ({r.appStart.versionShare} pay) · {r.appStart.samples} oturum
+          {r.appStart.lowSample && ' · düşük örneklem'}
+        </div>
+        {r.appStart.spikeNote && <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">{r.appStart.spikeNote}</div>}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        {r.customTraces.map((t) => (
+          <div key={t.name} className="rounded-xl border border-border bg-card p-3.5 metric-card">
+            <code className="text-xs text-muted-foreground">{t.name}</code>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-lg font-bold tabular-nums text-foreground">{t.value}</span>
+              <span className="text-xs font-semibold text-muted-foreground">{t.delta}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ComparisonTable
+        headers={[{ label: 'Endpoint' }, { label: 'Yanıt (P90)' }, { label: 'Başarı' }, { label: 'Hacim' }, { label: 'Not' }]}
+        rows={r.topEndpoints.map((e) => [
+          <code key="n" className="text-xs">{e.name}</code>,
+          <span key="r" className="font-semibold tabular-nums">{e.responseP90}</span>,
+          e.success,
+          e.volume ?? '—',
+          <span
+            key="x"
+            className={cn(
+              'text-xs',
+              e.regression === true
+                ? 'text-amber-600 dark:text-amber-400'
+                : e.regression === false
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-muted-foreground',
+            )}
+          >
+            {e.note ?? '—'}
+          </span>,
+        ])}
+      />
+
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card p-4 insight-card">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+            <FileSearch className="size-4 text-indigo-500" /> Gözlemler
+          </div>
+          <ul className="space-y-1.5 text-xs text-foreground/85">
+            {r.findings.map((f) => (
+              <li key={f} className="flex gap-1.5">
+                <span className="mt-[7px] size-1 shrink-0 rounded-full bg-indigo-500" />
+                <span className="leading-relaxed">{f}</span>
+              </li>
+            ))}
+            {r.crashlytics && (
+              <li className="flex gap-1.5">
+                <Bug className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
+                <span className="leading-relaxed">{r.crashlytics}</span>
+              </li>
+            )}
+          </ul>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 insight-card">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+            <ListChecks className="size-4 text-indigo-500" /> Öneriler
+          </div>
+          <ul className="space-y-1.5">
+            {r.recommendations.map((rec) => (
+              <li key={rec.text} className="flex items-start gap-2 text-xs">
+                <Badge variant="secondary" appearance="outline" size="xs" className={priorityTone[rec.priority]}>
+                  {rec.priority}
+                </Badge>
+                <span className="leading-relaxed text-foreground/85">{rec.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══ Sayfa ═══════════════════════════════════════════════════════════════════
+
+export default function PerformanceIntelligencePage() {
+  const [view, setView] = useState<ViewMode>('executive')
+  const engineering = view !== 'executive'
+  const print = view === 'print'
+
+  return (
+    <ProductPage path="/engineering/performance">
+      {/* ─── View toggle ───────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 print-hidden">
+        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+          {(Object.keys(VIEW_LABELS) as ViewMode[]).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={cn(
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                view === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {VIEW_LABELS[v]}
+            </button>
+          ))}
+        </div>
+        {print && (
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Yazdır (A4)
+          </Button>
+        )}
+      </div>
+
+      {/* ─── 1 · Executive Brief ───────────────────────────────────────── */}
+      <div className="report-section">
+        <HeroCallout
+          icon={Gauge}
+          eyebrow="Reliability & Operations"
+          tone="indigo"
+          title={PI_BRIEF.headline}
+          lead={PI_BRIEF.summary}
+          chips={[
+            `Dönem: ${PI_META.periodRange}`,
+            `Environment: ${PI_META.environment}`,
+            PI_META.percentile,
+            `Son veri: ${PI_META.dataTimestamp}`,
+            PI_META.releases,
+            `Veri güveni: ${PI_META.confidence}`,
+          ]}
+        >
+          <div className={cn('rounded-xl border p-4 lg:min-w-72', toneCard[PI_BRIEF.overallTone])}>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Genel durum</div>
+            <div className={cn('mt-1 text-lg font-bold', toneText[PI_BRIEF.overallTone])}>{PI_BRIEF.overallStatus}</div>
+            <ul className="mt-2.5 space-y-1 text-xs text-foreground/85">
+              {PI_BRIEF.statusBullets.map((b) => (
+                <li key={b} className="flex items-start gap-1.5">
+                  <span className={cn('mt-[6px] size-1 shrink-0 rounded-full', toneDot[PI_BRIEF.overallTone])} />
+                  <span className="leading-relaxed">{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </HeroCallout>
+      </div>
+
+      {/* ─── 2 · KPI Strip ─────────────────────────────────────────────── */}
+      <div className="report-section"><KpiStrip /></div>
+
+      {/* ─── 3 · Yönetici anlatısı ─────────────────────────────────────── */}
+      <div className="report-section"><NarrativeRow /></div>
+
+      {/* ─── 4 · Country Health Overview ───────────────────────────────── */}
+      <PageSection
+        eyebrow="Country Health"
+        title="Ülke sağlık görünümü"
+        icon={Globe}
+        tone="indigo"
+        className="report-section"
+        description="Dört ülkenin karşılaştırılabilir scorecard'ları. Durum etiketleri incident dili taşımaz; doğrulanmamış sinyaller ayrıca işaretlenir."
+      >
+        <CountryScorecards />
+      </PageSection>
+
+      {/* ─── 5 · Performance Trends ────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Trends"
+        title="Performans eğilimleri"
+        icon={TrendingUp}
+        tone="indigo"
+        className="report-section print-page-break"
+        description="Haftalık tek değer trendi anlatmaz — son 6 haftanın yönü, hedef çizgisi ve hacim bağlamı birlikte okunmalı."
+      >
+        <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
+          <ChartCard icon={LineChartIcon} title={PI_TREND_NOTES.appStartTitle} foot={PI_TREND_NOTES.appStartFoot}>
+            <AppStartTrendChart />
+          </ChartCard>
+          <ChartCard icon={BarChart3} title={PI_TREND_NOTES.networkTitle} foot={PI_TREND_NOTES.networkFoot}>
+            <NetworkStabilityChart />
+          </ChartCard>
+        </div>
+        <ChartCard icon={ScatterChartIcon} title={PI_TREND_NOTES.scatterTitle} foot={PI_TREND_NOTES.scatterFoot}>
+          <EndpointImpactChart />
+        </ChartCard>
+      </PageSection>
+
+      {/* ─── 6 · Experience Pillars ────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Experience Pillars"
+        title="Deneyim sütunları"
+        icon={Layers}
+        tone="indigo"
+        className="report-section"
+        description="Dört ana performans alanı — her kartta durum, temel metrikler ve doğal dilde yorum."
+      >
+        <ExperiencePillars engineering={engineering} />
+      </PageSection>
+
+      {/* ─── 7 · Country Comparison ────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Comparison"
+        title="Ülke karşılaştırması"
+        icon={Scale}
+        tone="indigo"
+        className="report-section print-page-break"
+        description="HR ve RS başlangıç hedefini karşılıyor. BA ve SI için ölçüm hacmi sınırlı olduğundan değişim yüzdeleri dikkatli yorumlanmalı."
+      >
+        <CountryComparison />
+      </PageSection>
+
+      {/* ─── 8 · Endpoint Priority Map ─────────────────────────────────── */}
+      <PageSection
+        eyebrow="Priority Map"
+        title="Endpoint öncelik haritası"
+        icon={Network}
+        tone="indigo"
+        className="report-section"
+        description="Sıralama salt gecikmeye değil; iş kritikliği, hacim, sapma ve regresyon güveninin bileşimine dayanır. Satıra tıklayınca gerekçe açılır."
+      >
+        <PriorityEndpointTable engineering={engineering} print={print} />
+      </PageSection>
+
+      {/* ─── 9 · Metric → Action ───────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Metric to Action"
+        title="Sinyalden aksiyona"
+        icon={Activity}
+        tone="indigo"
+        className="report-section"
+        description="Her kritik bulgu için: sinyal → doğrulama → muhtemel etki → aksiyon → başarı kriteri."
+      >
+        <MetricFlows />
+      </PageSection>
+
+      {/* ─── 10 · Key Findings ─────────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Key Findings"
+        title="Öne çıkan bulgular"
+        icon={FileSearch}
+        tone="indigo"
+        className="report-section print-page-break"
+        description="Her bulgu kapsam, güven seviyesi ve kanıt referansı ile birlikte sunulur."
+      >
+        <KeyFindings />
+      </PageSection>
+
+      {/* ─── 11 · Action Tracker ───────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Action Tracker"
+        title="Aksiyon takibi"
+        icon={Kanban}
+        tone="indigo"
+        className="report-section"
+        description="Öneri listesi değil, yönetilebilir aksiyon alanı: owner, termin, beklenen sonuç ve kanıt."
+      >
+        <ActionTracker print={print} />
+      </PageSection>
+
+      {/* ─── Engineering · ülke detayları ──────────────────────────────── */}
+      {engineering && (
+        <PageSection
+          eyebrow="Engineering"
+          title="Ülke detayları"
+          icon={Wrench}
+          tone="indigo"
+          className="report-section print-page-break"
+          description="Custom trace'ler, en riskli endpoint'ler, sürüm kırılımı ve ülke bazlı öneriler."
+        >
+          {print ? (
+            <div className="space-y-8">
+              {PERF_REPORTS.map((r) => <CountryEngineeringDetail key={r.id} r={r} />)}
+            </div>
+          ) : (
+            <SegmentTabs
+              items={PERF_REPORTS.map((r) => ({
+                value: r.id,
+                label: `${r.country} · ${r.id.toUpperCase()}`,
+                icon: Activity,
+                content: <CountryEngineeringDetail r={r} />,
+              }))}
+            />
+          )}
+        </PageSection>
+      )}
+
+      {/* ─── 12 · Change Timeline ──────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Timeline"
+        title="Değişim zaman çizelgesi"
+        icon={CalendarClock}
+        tone="indigo"
+        className="report-section"
+        description="Release ve anomali korelasyonu gösterir; nedensellik iddiası taşımaz."
+      >
+        <Timeline
+          items={PI_TIMELINE.map((t) => ({
+            period: t.date,
+            title: t.title,
+            desc: t.desc,
+            tone: tagTone[t.tag] ?? 'blue',
+            badges: [t.tag],
+          }))}
+        />
+      </PageSection>
+
+      {/* ─── 13 · Guardrails ───────────────────────────────────────────── */}
+      <PageSection
+        eyebrow="Guardrails"
+        title="Rakamlar nasıl okunmalı?"
+        icon={ShieldQuestion}
+        tone="indigo"
+        className="report-section"
+      >
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          {PI_GUARDRAILS.map((g) => (
+            <GuardrailCallout key={g.title} title={g.title} tone="amber" icon={AlertTriangle} className="insight-card">
+              {g.body}
+            </GuardrailCallout>
+          ))}
+        </div>
+      </PageSection>
+
+      {/* ─── 14 · Evidence & Data Quality ──────────────────────────────── */}
+      <PageSection
+        eyebrow="Evidence & Data Quality"
+        title="Kanıt ve veri kalitesi"
+        icon={Database}
+        tone="indigo"
+        className="report-section print-page-break"
+        description="Her yorum bir kanıt etiketi taşır. Etiketin rengi kanıtın gücünü, metni doğrulama ihtiyacını gösterir."
+      >
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          <div className={cn('rounded-xl border p-4 insight-card', toneCard.green)}>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-green-600 dark:text-green-400" />
+              <span className={cn('text-xs font-bold uppercase tracking-wide', toneText.green)}>Evidence · High confidence</span>
+            </div>
+            <ul className="mt-2.5 space-y-1 text-xs text-foreground/85">
+              {PI_EVIDENCE_RULES.strong.map((s) => (
+                <li key={s} className="flex items-start gap-1.5">
+                  <span className="mt-[6px] size-1 shrink-0 rounded-full bg-green-600" />
+                  <span className="leading-relaxed">{s}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 rounded-lg bg-background/60 p-2 font-mono text-[11px] text-muted-foreground">
+              Evidence · High confidence<br />Firebase Performance · 31K requests · 4 countries
+            </div>
+          </div>
+          <div className={cn('rounded-xl border p-4 insight-card', toneCard.amber)}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+              <span className={cn('text-xs font-bold uppercase tracking-wide', toneText.amber)}>Evidence · Validation needed</span>
+            </div>
+            <ul className="mt-2.5 space-y-1 text-xs text-foreground/85">
+              {PI_EVIDENCE_RULES.weak.map((s) => (
+                <li key={s} className="flex items-start gap-1.5">
+                  <span className="mt-[6px] size-1 shrink-0 rounded-full bg-amber-500" />
+                  <span className="leading-relaxed">{s}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 rounded-lg bg-background/60 p-2 font-mono text-[11px] text-muted-foreground">
+              Evidence · Validation needed<br />318 app starts · single-week observation
+            </div>
+          </div>
+        </div>
+
+        {engineering && (
+          <ComparisonTable
+            headers={[
+              { label: 'Ülke' },
+              { label: 'App start örneklemi' },
+              { label: 'Network hacmi' },
+              { label: 'Rendering' },
+              { label: 'Crash verisi' },
+              { label: 'Güven' },
+            ]}
+            rows={PI_DATA_QUALITY.map((d) => [
+              d.country,
+              d.appStartSamples,
+              d.networkVolume,
+              d.rendering,
+              d.crash,
+              <Badge
+                key="c"
+                variant="secondary"
+                appearance="outline"
+                size="xs"
+                className={d.confidence === 'Yüksek' ? 'text-green-600 dark:text-green-400' : d.confidence === 'Düşük' ? 'text-amber-600 dark:text-amber-400' : ''}
+              >
+                {d.confidence}
+              </Badge>,
+            ])}
+          />
+        )}
+      </PageSection>
+
+      {/* ─── Metodoloji / rapor ritmi ──────────────────────────────────── */}
+      <Callout icon={ClipboardList} title="Metodoloji ve rapor ritmi" tone="indigo" className="report-section">
+        Kaynak: {PI_META.source} · {PI_META.period}. Tüm değerler {PI_META.percentile}, {PI_META.environment} ortamı.
+        Hedefler: app start {PERF_TARGETS.appStart} · başarı {PERF_TARGETS.networkSuccess} · {PERF_TARGETS.latencyThreshold}.
+        Raporlar Performans Ekibi tarafından haftalık üretilir; yeni hafta verisi geldiğinde{' '}
+        <code>src/data/engineering/performance.ts</code> ve <code>performance-intelligence.ts</code> güncellenir.
+      </Callout>
+
+      <Callout icon={Info} tone="gray" className="report-section print-hidden">
+        Bu sayfa tek sürekli rapordur: Executive görünümü yönetici özetini, Engineering görünümü tüm endpoint ve
+        veri kalitesi detayını gösterir. Print görünümü tüm bölümleri açar ve A4 portrait çıktı için düzenlenir.
+      </Callout>
+    </ProductPage>
+  )
+}

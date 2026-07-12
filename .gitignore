@@ -1,0 +1,21 @@
+node_modules
+.turbo
+.pnpm-store
+dist
+.next
+out
+build
+coverage
+*.tsbuildinfo
+.env
+.env.local
+.env.production
+*.env.local
+*.log
+.DS_Store
+__pycache__
+*.pyc
+.venv
+
+# Presentation Studio local data
+.data
