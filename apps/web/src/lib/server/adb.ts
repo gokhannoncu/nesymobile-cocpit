@@ -24,7 +24,9 @@ import type {
   LiveDeviceRuntime,
   LiveFirebaseSnapshot,
   LivePingSample,
+  LiveScheduleSnapshot,
 } from '@/data/debug-view/live-types'
+import { parseDeviceSchedule } from '@/lib/server/schedule-parser'
 
 const execFileAsync = promisify(execFile)
 
@@ -685,7 +687,7 @@ async function sqlite(databasePath: string, sql: string, json = false): Promise<
   args.push(databasePath, sql)
   const { stdout } = await execFileAsync(bin, args, {
     timeout: 20_000,
-    maxBuffer: 32 * 1024 * 1024,
+    maxBuffer: 128 * 1024 * 1024,
   })
   return stdout.trim()
 }
@@ -992,12 +994,23 @@ async function inspectDatabase(
   }
 }
 
-/** Pulls and inspects the selected device's primary Room DB without modifying it. */
-export async function getDeviceDatabaseSnapshot(
+interface DeviceDatabaseCopy<T> {
+  serial: string
+  packageName: string
+  capturedAt: string
+  databaseName: string
+  databasePath: string
+  sizeBytes: number
+  walSizeBytes: number
+  shmSizeBytes: number
+  value: T
+}
+
+/** Runs an inspector against one consistent host-side copy of the device DB. */
+async function withDeviceDatabaseCopy<T>(
   serial: string,
-  requestedTable: string | null = null,
-  rowLimit = 100,
-): Promise<LiveDatabaseSnapshot> {
+  inspect: (databasePath: string) => Promise<T>,
+): Promise<DeviceDatabaseCopy<T>> {
   const pkg = await findNesyPackage(serial)
   if (!pkg) throw new Error('NesyMobile is not installed on the selected device')
 
@@ -1066,7 +1079,7 @@ export async function getDeviceDatabaseSnapshot(
     // host-side snapshot; the database on the Android device remains untouched.
     await sqliteWritable(localDatabasePath, 'PRAGMA wal_checkpoint(TRUNCATE);')
 
-    const inspected = await inspectDatabase(localDatabasePath, requestedTable, rowLimit)
+    const value = await inspect(localDatabasePath)
     const rootPath = runAsRoot.trim().split('\n')[0] || `/data/user/0/${pkg}`
     return {
       serial,
@@ -1074,17 +1087,109 @@ export async function getDeviceDatabaseSnapshot(
       capturedAt: new Date().toISOString(),
       databaseName: mainDatabase.name,
       databasePath: `${rootPath}/databases/${mainDatabase.name}`,
-      version: inspected.version,
-      journalMode: inspected.journalMode,
       sizeBytes: mainBytes.length,
       walSizeBytes: walBytes.length,
       shmSizeBytes: shmBytes.length,
-      tables: inspected.tables,
-      tableData: inspected.tableData,
-      requestRows: inspected.requestRows,
-      completedRequestCount: inspected.completedRequestCount,
+      value,
     }
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true })
+  }
+}
+
+/** Pulls and inspects the selected device's primary Room DB without modifying it. */
+export async function getDeviceDatabaseSnapshot(
+  serial: string,
+  requestedTable: string | null = null,
+  rowLimit = 100,
+): Promise<LiveDatabaseSnapshot> {
+  const safeRowLimit = Math.min(Math.max(Math.trunc(rowLimit) || 100, 1), 1_000)
+  const { value: inspected, ...copy } = await withDeviceDatabaseCopy(
+    serial,
+    (databasePath) => inspectDatabase(databasePath, requestedTable, safeRowLimit),
+  )
+  return {
+    ...copy,
+    version: inspected.version,
+    journalMode: inspected.journalMode,
+    tables: inspected.tables,
+    tableData: inspected.tableData,
+    requestRows: inspected.requestRows,
+    completedRequestCount: inspected.completedRequestCount,
+  }
+}
+
+interface SqliteNameRow {
+  name: string
+}
+
+interface SqliteOnlyCountRow {
+  rowCount: number
+}
+
+async function inspectScheduleDatabase(databasePath: string): Promise<{
+  scheduleRowCount: number
+  stopChunkCount: number
+  schedule: LiveScheduleSnapshot['schedule']
+  warnings: string[]
+}> {
+  const tableRows = await sqliteJson<SqliteNameRow>(
+    databasePath,
+    `SELECT name
+     FROM sqlite_schema
+     WHERE type = 'table'
+       AND lower(name) IN ('schedule', 'schedulestopchunk');`,
+  )
+  const scheduleTable = tableRows.find((table) => table.name.toLowerCase() === 'schedule')?.name
+  const chunkTable = tableRows.find((table) => table.name.toLowerCase() === 'schedulestopchunk')?.name
+  if (!scheduleTable) {
+    return {
+      scheduleRowCount: 0,
+      stopChunkCount: 0,
+      schedule: null,
+      warnings: ['Schedule table was not found in the Room database.'],
+    }
+  }
+
+  const countRows = await sqliteJson<SqliteOnlyCountRow>(
+    databasePath,
+    `SELECT COUNT(*) AS rowCount FROM ${quoteIdentifier(scheduleTable)};`,
+  )
+  const scheduleRows = await sqliteJson<Record<string, unknown>>(
+    databasePath,
+    `SELECT * FROM ${quoteIdentifier(scheduleTable)} ORDER BY "id" DESC LIMIT 1;`,
+  )
+  const scheduleRow = scheduleRows[0] ?? null
+  const scheduleId = scheduleRow ? asString(scheduleRow.scheduleId) : ''
+  const chunkRows = chunkTable
+    ? await sqliteJson<Record<string, unknown>>(
+        databasePath,
+        `SELECT *
+         FROM ${quoteIdentifier(chunkTable)}
+         ${scheduleId ? `WHERE "scheduleId" = ${quoteSqlString(scheduleId)}` : ''}
+         ORDER BY "stopIndex", "id";`,
+      )
+    : []
+  const parsed = parseDeviceSchedule(scheduleRow, chunkRows)
+  const warnings = [...parsed.warnings]
+  if (!chunkTable) warnings.push('ScheduleStopChunk table was not found in the Room database.')
+
+  return {
+    scheduleRowCount: Number(countRows[0]?.rowCount) || 0,
+    stopChunkCount: chunkRows.length,
+    schedule: parsed.schedule,
+    warnings,
+  }
+}
+
+/** Reads the current Schedule tree from Schedule + ScheduleStopChunk in one snapshot. */
+export async function getDeviceScheduleSnapshot(serial: string): Promise<LiveScheduleSnapshot> {
+  const { value: inspected, ...copy } = await withDeviceDatabaseCopy(serial, inspectScheduleDatabase)
+  return {
+    ...copy,
+    scheduleRowCount: inspected.scheduleRowCount,
+    stopChunkCount: inspected.stopChunkCount,
+    schedule: inspected.schedule,
+    warnings: inspected.warnings,
   }
 }

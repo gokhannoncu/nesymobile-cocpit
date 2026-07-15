@@ -4,23 +4,27 @@
 // Schedule object in the device Room DB and the Stops -> Tasks ->
 // Shipments -> ShipmentItems tree under it, as expandable tables.
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+  AlertTriangle,
   Box,
   ChevronRight,
+  Database,
+  Loader2,
   MapPin,
   Package,
+  RefreshCw,
   Route,
   Truck,
   User,
 } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
+import { Button } from '@nesy/metronic/components/ui/button'
 import { ProductPage, StatCard, StatGrid, EASE, toneCard, toneIcon, toneText } from '@/components/product'
 import { DebugHeader, DebugCrossLinks, InfoRow, TonePill, NoDeviceState } from '@/components/debug-view/shared'
 import { useDebugView } from '@/components/debug-view/debug-context'
-import { MOCK_SCHEDULE } from '@/data/debug-view/mock-schedule'
 import {
   TASK_STATUS,
   TASK_TYPE,
@@ -34,37 +38,102 @@ import {
   enumLabel,
 } from '@/data/debug-view/enums'
 import type { DbgStop, DbgTask, DbgShipment } from '@/data/debug-view/types'
+import type { LiveScheduleSnapshot } from '@/data/debug-view/live-types'
 
 export default function ScheduleExplorerPage() {
   const { selectedDevice } = useDebugView()
-  const schedule = MOCK_SCHEDULE
+  const [snapshot, setSnapshot] = useState<LiveScheduleSnapshot | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestSequence = useRef(0)
+  const serial = selectedDevice?.serial ?? null
 
-  const totalTasks = schedule.stops.reduce((s, st) => s + st.taskList.length, 0)
-  const totalShipments = schedule.stops.reduce(
+  const loadSchedule = useCallback(() => {
+    const sequence = ++requestSequence.current
+    if (!serial) {
+      setSnapshot(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    fetch(`/api/adb/schedule?serial=${encodeURIComponent(serial)}`)
+      .then(async (response) => {
+        const body = (await response.json()) as LiveScheduleSnapshot & { error?: string }
+        if (!response.ok || body.error) throw new Error(body.error ?? `HTTP ${response.status}`)
+        if (sequence !== requestSequence.current) return
+        setSnapshot(body)
+      })
+      .catch((caught: unknown) => {
+        if (sequence !== requestSequence.current) return
+        setSnapshot(null)
+        setError(caught instanceof Error ? caught.message : 'Failed to read Schedule over ADB')
+      })
+      .finally(() => {
+        if (sequence === requestSequence.current) setLoading(false)
+      })
+  }, [serial])
+
+  useEffect(() => {
+    loadSchedule()
+  }, [loadSchedule])
+
+  const schedule = snapshot?.schedule ?? null
+
+  const totalTasks = schedule?.stops.reduce((s, st) => s + st.taskList.length, 0) ?? 0
+  const totalShipments = schedule?.stops.reduce(
     (s, st) => s + st.taskList.reduce((t, tk) => t + tk.shipmentList.length, 0),
     0,
-  )
-  const totalItems = schedule.stops.reduce(
+  ) ?? 0
+  const totalItems = schedule?.stops.reduce(
     (s, st) => s + st.taskList.reduce((t, tk) => t + tk.shipmentList.reduce((sh, s2) => sh + s2.shipmentItemList.length, 0), 0),
     0,
-  )
-  const scheduleStatus = enumLabel(SCHEDULE_STATUS, schedule.status)
+  ) ?? 0
 
   return (
     <ProductPage path="/debug-view/schedule">
       <DebugHeader
         icon={Route}
         title="Schedule Explorer"
-        lead="The Schedule object on the device and the Stops, Tasks, Shipments and ShipmentItems tree under it - matching Room entity fields, in expandable tables."
+        lead="Live Schedule and ScheduleStopChunk data from the selected device, rendered as an expandable Stop, Task, Shipment and ShipmentItem tree."
         tone="teal"
-        badges={[{ label: 'Room: Schedule' }, { label: 'Stop -> Task -> Shipment' }, { label: 'HR route' }]}
-        actions={<DebugCrossLinks currentPath="/debug-view/schedule" />}
+        badges={[
+          { label: snapshot ? `${snapshot.databaseName} · ${snapshot.scheduleRowCount} schedule` : 'Room: Schedule' },
+          { label: snapshot ? `${snapshot.stopChunkCount} stop chunks` : 'ScheduleStopChunk' },
+          { label: 'Live ADB snapshot' },
+        ]}
+        actions={
+          <>
+            <Button size="sm" variant="outline" onClick={loadSchedule} disabled={!serial || loading}>
+              {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+              Refresh
+            </Button>
+            <DebugCrossLinks currentPath="/debug-view/schedule" />
+          </>
+        }
       />
 
       {!selectedDevice ? (
         <NoDeviceState />
+      ) : loading && !snapshot ? (
+        <ScheduleLoadingState deviceName={selectedDevice.name} />
+      ) : error ? (
+        <ScheduleErrorState deviceName={selectedDevice.name} message={error} onRetry={loadSchedule} />
+      ) : !schedule ? (
+        <ScheduleEmptyState databaseName={snapshot?.databaseName ?? 'aras_kurye'} onRetry={loadSchedule} />
       ) : (
         <>
+          {snapshot ? <ScheduleSourceBar snapshot={snapshot} /> : null}
+
+          {snapshot?.warnings.length ? (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50/60 px-4 py-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <div>{snapshot.warnings.join(' ')}</div>
+            </div>
+          ) : null}
+
           {/* Schedule header */}
           <motion.section
             className={cn('rounded-2xl border p-5', toneCard.teal)}
@@ -77,10 +146,10 @@ export default function ScheduleExplorerPage() {
                 <div className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">Schedule</div>
                 <h2 className="font-mono text-lg font-bold text-foreground">{schedule.scheduleId}</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {new Date(schedule.timeStamp).toLocaleString('en-US')} * id={schedule.id}
+                  {formatDeviceDateTime(schedule.timeStamp)} · id={schedule.id}
                 </p>
               </div>
-              <TonePill label={scheduleStatus.label} tone={scheduleStatus.tone} />
+              <TonePill label={enumLabel(SCHEDULE_STATUS, schedule.status).label} tone={enumLabel(SCHEDULE_STATUS, schedule.status).tone} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-x-6 sm:grid-cols-4">
               <InfoRow label="Courier" value={schedule.courierName} />
@@ -102,11 +171,124 @@ export default function ScheduleExplorerPage() {
             {schedule.stops.map((stop) => (
               <StopCard key={stop.stopId} stop={stop} />
             ))}
+            {schedule.stops.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 px-5 py-10 text-center">
+                <Database className="mx-auto size-6 text-muted-foreground" />
+                <h3 className="mt-2 text-sm font-semibold text-foreground">Schedule loaded; no stop chunks yet</h3>
+                <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed text-muted-foreground">
+                  The Schedule row is present, but ScheduleStopChunk has no rows for this schedule. Stops will appear here automatically after the app stores them.
+                </p>
+              </div>
+            ) : null}
           </div>
         </>
       )}
     </ProductPage>
   )
+}
+
+function ScheduleSourceBar({ snapshot }: { snapshot: LiveScheduleSnapshot }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-border bg-card px-4 py-3 text-[11px]">
+      <span className="flex items-center gap-1.5">
+        <Database className="size-3.5 text-teal-500" />
+        <code className="font-semibold text-foreground">{snapshot.databaseName}</code>
+      </span>
+      <span className="text-muted-foreground">
+        Package <code className="text-foreground">{snapshot.packageName}</code>
+      </span>
+      <span className="text-muted-foreground">
+        Source <code className="text-foreground">Schedule + ScheduleStopChunk</code>
+      </span>
+      <span className="text-muted-foreground">
+        Captured <span className="text-foreground">{new Date(snapshot.capturedAt).toLocaleTimeString('en-US')}</span>
+      </span>
+      <code className="ms-auto hidden max-w-sm truncate text-[10px] text-muted-foreground xl:block">{snapshot.databasePath}</code>
+    </div>
+  )
+}
+
+function ScheduleLoadingState({ deviceName }: { deviceName: string }) {
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: EASE }}
+    >
+      <Loader2 className="size-6 animate-spin text-teal-500" />
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Reading {deviceName}&apos;s schedule...</h3>
+        <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
+          Pulling one consistent Room DB, WAL and SHM snapshot and parsing ScheduleStopChunk rows.
+        </p>
+      </div>
+    </motion.div>
+  )
+}
+
+function ScheduleErrorState({
+  deviceName,
+  message,
+  onRetry,
+}: {
+  deviceName: string
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-red-300 bg-red-50/40 py-14 text-center dark:border-red-900 dark:bg-red-950/20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: EASE }}
+    >
+      <AlertTriangle className="size-6 text-red-500" />
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Could not read the schedule on {deviceName}</h3>
+        <p className="mt-1 max-w-lg break-all text-xs leading-relaxed text-muted-foreground">{message}</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onRetry}>
+        <RefreshCw className="size-3.5" />
+        Try again
+      </Button>
+    </motion.div>
+  )
+}
+
+function ScheduleEmptyState({ databaseName, onRetry }: { databaseName: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 py-14 text-center">
+      <Route className="size-6 text-muted-foreground" />
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">No Schedule row found</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          The <code>{databaseName}</code> database is accessible, but its Schedule table is empty.
+        </p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onRetry}>
+        <RefreshCw className="size-3.5" />
+        Refresh
+      </Button>
+    </div>
+  )
+}
+
+function formatDeviceDateTime(value: string): string {
+  if (!value) return '-'
+  const deviceFormat = value.match(/^(\d{2})-(\d{2})-(\d{4})-(\d{2}):(\d{2}):(\d{2})$/)
+  const date = deviceFormat
+    ? new Date(`${deviceFormat[3]}-${deviceFormat[2]}-${deviceFormat[1]}T${deviceFormat[4]}:${deviceFormat[5]}:${deviceFormat[6]}`)
+    : new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('en-US')
+}
+
+function formatDeviceTime(value: string): string {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 function StopCard({ stop }: { stop: DbgStop }) {
@@ -130,7 +312,7 @@ function StopCard({ stop }: { stop: DbgStop }) {
           </div>
           <div className="text-[11px] text-muted-foreground">
             Window {stop.timeWindow.startTime}-{stop.timeWindow.endTime} * ETA{' '}
-            {new Date(stop.estimatedTimeOfArrival).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} *{' '}
+            {formatDeviceTime(stop.estimatedTimeOfArrival)} *{' '}
             {stop.latitude.toFixed(4)}, {stop.longitude.toFixed(4)}
           </div>
         </div>
@@ -198,7 +380,7 @@ function TaskCard({ task }: { task: DbgTask }) {
                 <InfoRow label="dropAtTheDoor" value={task.isDropAtTheDoor ? 'true' : 'false'} />
               </div>
               {task.remarkText && (
-                <div className="mt-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-[11px] italic text-muted-foreground">"{task.remarkText}"</div>
+                <div className="mt-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-[11px] italic text-muted-foreground">&ldquo;{task.remarkText}&rdquo;</div>
               )}
 
               {/* Shipments */}

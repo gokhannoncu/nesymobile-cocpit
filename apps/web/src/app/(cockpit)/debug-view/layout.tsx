@@ -11,7 +11,7 @@ export default function DebugViewLayout({ children }: { children: ReactNode }) {
   return (
     <DebugViewProvider>
       <div className="flex flex-col gap-4">
-        <div className="w-max max-w-full">
+        <div className="container-fluid min-w-0 max-w-full">
           <DebugDeviceBar />
         </div>
         {children}

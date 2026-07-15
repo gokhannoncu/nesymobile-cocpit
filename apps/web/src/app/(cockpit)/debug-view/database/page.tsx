@@ -2,15 +2,21 @@
 
 // Reads a consistent Room DB + WAL snapshot and exposes every table read-only.
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle,
   Ban,
+  ChevronRight,
   Database,
+  HardDrive,
+  Hash,
+  KeyRound,
+  Layers,
   Loader2,
   Lock,
   RefreshCw,
+  Rows3,
   Search,
   ShieldAlert,
   Table2,
@@ -21,10 +27,11 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { Input } from '@nesy/metronic/components/ui/input'
 import { ProductPage, PageSection, StatCard, StatGrid, EASE, toneCard, toneIcon, toneText, type Tone } from '@/components/product'
-import { DebugHeader, DebugCrossLinks, CodeBlock, InfoRow, TonePill, NoDeviceState } from '@/components/debug-view/shared'
+import { DebugHeader, DebugCrossLinks, InfoRow, TonePill, NoDeviceState } from '@/components/debug-view/shared'
+import { DebugCodePanel } from '@/components/debug-view/debug-code-panel'
 import { useDebugView } from '@/components/debug-view/debug-context'
 import { DB_ACCESS_METHODS } from '@/data/debug-view/mock-database'
-import type { DbAccessMethod, RequestRow } from '@/data/debug-view/types'
+import type { DbAccessMethod, DbTableInfo, RequestRow } from '@/data/debug-view/types'
 import type {
   LiveDatabaseSnapshot,
   LiveDatabaseTableData,
@@ -49,14 +56,15 @@ const DIFFICULTY_META: Record<DbAccessMethod['difficulty'], { label: string; ton
 export default function DatabaseAccessPage() {
   const { selectedDevice } = useDebugView()
   const [query, setQuery] = useState('')
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
   const [snapshot, setSnapshot] = useState<LiveDatabaseSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState('Schedule')
+  const [tableCatalogQuery, setTableCatalogQuery] = useState('')
   const [tableQuery, setTableQuery] = useState('')
   const [rowLimit, setRowLimit] = useState(100)
-  const [expandedTableRow, setExpandedTableRow] = useState<number | null>(null)
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null)
   const [tableError, setTableError] = useState<string | null>(null)
   const requestSequence = useRef(0)
   const snapshotRef = useRef<LiveDatabaseSnapshot | null>(null)
@@ -66,7 +74,7 @@ export default function DatabaseAccessPage() {
   const handleTableSelect = useCallback((tableName: string) => {
     if (tableName === selectedTable) return
     setTableQuery('')
-    setExpandedTableRow(null)
+    setSelectedRowIndex(null)
     setTableError(null)
     setSelectedTable(tableName)
   }, [selectedTable])
@@ -100,8 +108,8 @@ export default function DatabaseAccessPage() {
         if (body.tableData) {
           setSelectedTable(body.tableData.tableName)
         }
-        setExpandedRow(null)
-        setExpandedTableRow(null)
+        setSelectedRequestId(null)
+        setSelectedRowIndex(null)
       })
       .catch((err: unknown) => {
         if (sequence !== requestSequence.current) return
@@ -125,7 +133,19 @@ export default function DatabaseAccessPage() {
 
   const liveRows = useMemo(() => snapshot?.requestRows ?? [], [snapshot])
 
-  const rows = useMemo(() => {
+  const filteredTables = useMemo(() => {
+    const tables = snapshot?.tables ?? []
+    const q = tableCatalogQuery.trim().toLowerCase()
+    if (!q) return tables
+    return tables.filter(
+      (table) =>
+        table.name.toLowerCase().includes(q) ||
+        table.description.toLowerCase().includes(q) ||
+        table.primaryKey.toLowerCase().includes(q),
+    )
+  }, [snapshot?.tables, tableCatalogQuery])
+
+  const requestRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return liveRows
     return liveRows.filter(
@@ -133,8 +153,10 @@ export default function DatabaseAccessPage() {
     )
   }, [liveRows, query])
 
+  const selectedRequest = requestRows.find((row) => row.id === selectedRequestId) ?? null
   const deadCount = liveRows.filter((r) => r.derivedState === 'dead').length
   const pendingCount = liveRows.filter((r) => r.derivedState === 'pending' || r.derivedState === 'waiting').length
+  const activeTableData = snapshot?.tableData?.tableName === selectedTable ? snapshot.tableData : null
 
   return (
     <ProductPage path="/debug-view/database">
@@ -144,7 +166,7 @@ export default function DatabaseAccessPage() {
         lead="Read-only live view of every table in the selected device's Room database over ADB."
         tone="teal"
         badges={[
-          { label: snapshot ? `${snapshot.databaseName} * v${snapshot.version}` : 'Room database' },
+          { label: snapshot ? `${snapshot.databaseName} · v${snapshot.version}` : 'Room database' },
           { label: 'Live ADB snapshot' },
           { label: 'Read-only + WAL/SHM' },
         ]}
@@ -169,195 +191,173 @@ export default function DatabaseAccessPage() {
             <DatabaseErrorState deviceName={selectedDevice.name} message={error} onRetry={loadDatabase} />
           ) : snapshot ? (
             <>
-          {/* --- 2. DB summary --- */}
-          <PageSection
-            eyebrow={snapshot.databaseName}
-            title="Database Tables"
-            description={`Read via adb run-as at ${new Date(snapshot.capturedAt).toLocaleTimeString('en-US')}`}
-            icon={Database}
-            tone="indigo"
-          >
-            <div className="mb-3 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card px-4 py-3 text-xs">
-              <InfoRowInline label="File" value={snapshot.databaseName} />
-              <InfoRowInline label="Version" value={`v${snapshot.version}`} />
-              <InfoRowInline label="Journal" value={snapshot.journalMode} />
-              <InfoRowInline label="Package" value={snapshot.packageName} />
-              <InfoRowInline label="DB + WAL + SHM" value={formatBytes(snapshot.sizeBytes + snapshot.walSizeBytes + snapshot.shmSizeBytes)} />
-              <code className="ms-auto hidden truncate font-mono text-[10px] text-muted-foreground xl:block">{snapshot.databasePath}</code>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[560px] text-left">
-                <thead className="border-b border-border bg-muted/40">
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2 font-semibold">Table</th>
-                    <th className="px-3 py-2 font-semibold">Description</th>
-                    <th className="px-3 py-2 font-semibold">PK</th>
-                    <th className="px-3 py-2 text-right font-semibold">Row</th>
-                    <th className="px-3 py-2 text-right font-semibold">Size</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {snapshot.tables.map((t) => {
-                    const selected = selectedTable === t.name
-                    return (
-                    <tr
-                      key={t.name}
-                      role="button"
-                      tabIndex={0}
-                      aria-selected={selected}
-                      aria-label={`Open ${t.name} table`}
-                      onClick={() => handleTableSelect(t.name)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          handleTableSelect(t.name)
-                        }
-                      }}
-                      className={cn(
-                        'cursor-pointer transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset',
-                        selected && 'bg-indigo-500/10',
-                        loading && selected && 'opacity-80',
-                      )}
-                    >
-                      <td className="px-3 py-2">
-                        <code className={cn('text-[11px] font-semibold text-foreground', selected && 'text-indigo-700 dark:text-indigo-300')}>
-                          {t.name}
-                        </code>
-                      </td>
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground">{t.description}</td>
-                      <td className="px-3 py-2"><code className="text-[10px] text-muted-foreground">{t.primaryKey}</code></td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-foreground">{t.rowCount}</td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-muted-foreground">{t.sizeKb} KB</td>
-                    </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </PageSection>
+              <DatabaseMetaStrip snapshot={snapshot} tableCount={snapshot.tables.length} />
 
-          <TableExplorer
-            tableName={selectedTable}
-            data={snapshot.tableData?.tableName === selectedTable ? snapshot.tableData : null}
-            loading={loading}
-            error={tableError}
-            query={tableQuery}
-            onQueryChange={setTableQuery}
-            rowLimit={rowLimit}
-            onRowLimitChange={setRowLimit}
-            expandedRow={expandedTableRow}
-            onExpandedRowChange={setExpandedTableRow}
-          />
-
-          {/* --- Specialized request queue view --- */}
-          <PageSection
-            eyebrow="Offline queue"
-            title="request table"
-            description="Requests waiting to be sent. Status is derived from the combination of isProcessing + isWaitingRequest + tryCount (tryCount >= 3 = exhausted)."
-            icon={Table2}
-            tone="teal"
-          >
-            <StatGrid cols={4}>
-              <StatCard icon={Table2} label="Total rows" value={liveRows.length} tone="blue" />
-              <StatCard icon={Unlock} label="Pending" value={pendingCount} tone="amber" />
-              <StatCard icon={Ban} label="Exhausted (>=3)" value={deadCount} tone={deadCount > 0 ? 'red' : 'green'} />
-              <StatCard icon={Database} label="Archive (Completed)" value={snapshot.completedRequestCount} tone="teal" />
-            </StatGrid>
-
-            <div className="relative mt-3 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search requestName, waybill or uniqueKey..." className="h-8 pl-8 text-xs" />
-            </div>
-
-            <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[820px] text-left">
-                <thead className="border-b border-border bg-muted/40">
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2 font-semibold">id</th>
-                    <th className="px-3 py-2 font-semibold">requestName</th>
-                    <th className="px-3 py-2 font-semibold">waybillNumbers</th>
-                    <th className="px-3 py-2 text-center font-semibold">tryCount</th>
-                    <th className="px-3 py-2 text-center font-semibold">proc</th>
-                    <th className="px-3 py-2 text-center font-semibold">wait</th>
-                    <th className="px-3 py-2 font-semibold">status</th>
-                    <th className="px-3 py-2 font-semibold">timeStamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {rows.map((r) => {
-                    const meta = STATE_META[r.derivedState]
-                    const expanded = expandedRow === r.id
-                    return (
-                      <Fragment key={r.id}>
-                        <tr
-                          onClick={() => setExpandedRow(expanded ? null : r.id)}
-                          className={cn('cursor-pointer hover:bg-muted/30', expanded && 'bg-muted/40')}
-                        >
-                          <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">{r.id}</td>
-                          <td className="px-3 py-2"><code className="text-[11px] font-semibold text-foreground">{r.requestName}</code></td>
-                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{r.waybillNumbers.join(', ') || '-'}</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={cn('font-mono text-[11px]', r.tryCount >= 3 ? 'font-bold text-red-600 dark:text-red-400' : 'text-foreground')}>
-                              {r.tryCount}/3
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-center text-[11px]">{r.isProcessing ? '1' : '0'}</td>
-                          <td className="px-3 py-2 text-center text-[11px]">{r.isWaitingRequest ? '1' : '0'}</td>
-                          <td className="px-3 py-2"><TonePill label={meta.label} tone={meta.tone} /></td>
-                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                            {new Date(r.timeStamp).toLocaleTimeString('en-US')}
-                          </td>
-                        </tr>
-                        <AnimatePresence initial={false}>
-                          {expanded && (
-                            <tr>
-                              <td colSpan={8} className="p-0">
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.22, ease: EASE }}
-                                  className="overflow-hidden bg-muted/20"
-                                >
-                                  <div className="grid grid-cols-1 gap-3 p-3 lg:grid-cols-2">
-                                    <div className="divide-y divide-border/60">
-                                      <InfoRow label="userName" value={r.userName} mono />
-                                      <InfoRow label="uniqueKey" value={r.uniqueKey} mono />
-                                      <InfoRow label="createdAt" value={new Date(r.createdAt).toLocaleString('en-US')} />
-                                      <InfoRow label="sendWithoutWaiting" value={r.sendWithoutWaiting ? 'true' : 'false'} />
-                                      <InfoRow label="fiscalInvoiceId" value={r.fiscalInvoiceId ?? '-'} mono />
-                                    </div>
-                                    <CodeBlock label="requestJson" code={r.requestJson} />
-                                  </div>
-                                </motion.div>
-                              </td>
-                            </tr>
-                          )}
-                        </AnimatePresence>
-                      </Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
-              {rows.length === 0 && (
-                <div className="py-10 text-center text-xs text-muted-foreground">
-                  {query.trim() ? 'No matching rows.' : 'The live request queue is empty.'}
+              <PageSection
+                eyebrow="Schema"
+                title="Tables"
+                description={`${snapshot.tables.length} Room tables captured at ${new Date(snapshot.capturedAt).toLocaleTimeString('en-US')}. Pick one to inspect rows.`}
+                icon={Layers}
+                tone="indigo"
+              >
+                <div className="relative max-w-md">
+                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={tableCatalogQuery}
+                    onChange={(event) => setTableCatalogQuery(event.target.value)}
+                    placeholder="Filter tables by name, description or primary key..."
+                    className="h-9 pl-8 text-xs"
+                  />
                 </div>
-              )}
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Click on a row to see <code className="text-foreground">requestJson</code> and all fields. After a successful
-              shipment, the row is moved to the <code className="text-foreground">CompletedRequest</code> table with{' '}
-              <code className="text-foreground">deleteAndArchive()</code>.
-            </p>
-          </PageSection>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredTables.map((table, index) => (
+                    <TablePickerCard
+                      key={table.name}
+                      table={table}
+                      selected={selectedTable === table.name}
+                      loading={loading && selectedTable === table.name}
+                      onSelect={() => handleTableSelect(table.name)}
+                      index={index}
+                    />
+                  ))}
+                </div>
+                {filteredTables.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">
+                    No tables match this filter.
+                  </div>
+                ) : null}
+              </PageSection>
+
+              <TableExplorer
+                tableName={selectedTable}
+                data={activeTableData}
+                loading={loading}
+                error={tableError}
+                query={tableQuery}
+                onQueryChange={setTableQuery}
+                rowLimit={rowLimit}
+                onRowLimitChange={setRowLimit}
+                selectedRowIndex={selectedRowIndex}
+                onSelectedRowIndexChange={setSelectedRowIndex}
+              />
+
+              <PageSection
+                eyebrow="Offline queue"
+                title="Request Queue"
+                description="Specialized view of the request table. Status is derived from isProcessing, isWaitingRequest and tryCount."
+                icon={Rows3}
+                tone="teal"
+              >
+                <StatGrid cols={4}>
+                  <StatCard icon={Table2} label="Total rows" value={liveRows.length} tone="blue" />
+                  <StatCard icon={Unlock} label="Pending" value={pendingCount} tone="amber" />
+                  <StatCard icon={Ban} label="Exhausted (>=3)" value={deadCount} tone={deadCount > 0 ? 'red' : 'green'} />
+                  <StatCard icon={Database} label="Archive (Completed)" value={snapshot.completedRequestCount} tone="teal" />
+                </StatGrid>
+
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                  <div className="w-full shrink-0 space-y-3 xl:w-[420px]">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="Search requestName, waybill or uniqueKey..."
+                        className="h-9 pl-8 text-xs"
+                      />
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                      <div className="border-b border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {requestRows.length} queue row{requestRows.length === 1 ? '' : 's'}
+                      </div>
+                      <div className="max-h-[420px] overflow-y-auto p-2">
+                        {requestRows.length === 0 ? (
+                          <div className="py-10 text-center text-xs text-muted-foreground">
+                            {query.trim() ? 'No matching rows.' : 'The live request queue is empty.'}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {requestRows.map((row) => {
+                              const meta = STATE_META[row.derivedState]
+                              const selected = selectedRequestId === row.id
+                              return (
+                                <button
+                                  key={row.id}
+                                  type="button"
+                                  onClick={() => setSelectedRequestId(selected ? null : row.id)}
+                                  className={cn(
+                                    'w-full rounded-lg border px-3 py-2.5 text-left transition-all hover:border-teal-500/30 hover:bg-muted/30',
+                                    selected
+                                      ? 'border-teal-500/40 bg-teal-500/5 ring-1 ring-teal-500/20'
+                                      : 'border-border/70 bg-background/60',
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <div className="truncate font-mono text-[11px] font-semibold text-foreground">{row.requestName}</div>
+                                      <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                                        {row.waybillNumbers.join(', ') || 'No waybill'}
+                                      </div>
+                                    </div>
+                                    <TonePill label={meta.label} tone={meta.tone} />
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                                    <span className="font-mono">#{row.id}</span>
+                                    <span className={cn('font-mono', row.tryCount >= 3 && 'font-bold text-red-600 dark:text-red-400')}>
+                                      try {row.tryCount}/3
+                                    </span>
+                                    <span>{new Date(row.timeStamp).toLocaleTimeString('en-US')}</span>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1 rounded-xl border border-border bg-card">
+                    <AnimatePresence mode="wait">
+                      {selectedRequest ? (
+                        <motion.div
+                          key={selectedRequest.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.22, ease: EASE }}
+                          className="p-4"
+                        >
+                          <RequestDetailPanel request={selectedRequest} />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="empty"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex min-h-[280px] flex-col items-center justify-center gap-2 px-6 py-12 text-center"
+                        >
+                          <Rows3 className="size-8 text-muted-foreground/40" />
+                          <p className="text-sm font-medium text-foreground">Select a request</p>
+                          <p className="max-w-sm text-xs text-muted-foreground">
+                            Pick a queue row to inspect metadata and the full requestJson payload in the dark code viewer.
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </PageSection>
             </>
           ) : null}
 
           <PageSection
             eyebrow="Reference"
             title="DB Access Methods Over Release APK"
-            description="In non-debuggable production builds, the device sandbox is protected by the OS - methods are sorted by difficulty and release compatibility."
+            description="In non-debuggable production builds, the device sandbox is protected by the OS — methods are sorted by difficulty and release compatibility."
             icon={Database}
             tone="teal"
           >
@@ -373,6 +373,111 @@ export default function DatabaseAccessPage() {
   )
 }
 
+function DatabaseMetaStrip({ snapshot, tableCount }: { snapshot: LiveDatabaseSnapshot; tableCount: number }) {
+  const items = [
+    { icon: Database, label: 'Database', value: snapshot.databaseName },
+    { icon: Hash, label: 'Version', value: `v${snapshot.version}` },
+    { icon: Layers, label: 'Tables', value: String(tableCount) },
+    { icon: HardDrive, label: 'Snapshot size', value: formatBytes(snapshot.sizeBytes + snapshot.walSizeBytes + snapshot.shmSizeBytes) },
+    { icon: KeyRound, label: 'Journal', value: snapshot.journalMode },
+  ]
+
+  return (
+    <motion.div
+      className="rounded-2xl border border-border bg-card p-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: EASE }}
+    >
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <item.icon className="size-3" />
+              {item.label}
+            </div>
+            <div className="mt-1 truncate font-mono text-sm font-semibold text-foreground">{item.value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3 text-[10px] text-muted-foreground">
+        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
+          {snapshot.packageName}
+        </Badge>
+        <code className="truncate font-mono">{snapshot.databasePath}</code>
+      </div>
+    </motion.div>
+  )
+}
+
+function TablePickerCard({
+  table,
+  selected,
+  loading,
+  onSelect,
+  index,
+}: {
+  table: DbTableInfo
+  selected: boolean
+  loading: boolean
+  onSelect: () => void
+  index: number
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.2), ease: EASE }}
+      className={cn(
+        'group relative flex w-full flex-col rounded-xl border p-4 text-left transition-all',
+        selected
+          ? 'border-indigo-500/50 bg-indigo-500/5 shadow-[0_0_0_1px_rgba(99,102,241,0.25)]'
+          : 'border-border bg-card hover:border-indigo-500/25 hover:bg-muted/20',
+        loading && selected && 'opacity-80',
+      )}
+      aria-pressed={selected}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-lg border',
+                selected ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'border-border bg-muted/40 text-muted-foreground',
+              )}
+            >
+              <Table2 className="size-4" />
+            </span>
+            <code className={cn('truncate text-sm font-bold text-foreground', selected && 'text-indigo-700 dark:text-indigo-300')}>
+              {table.name}
+            </code>
+          </div>
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{table.description}</p>
+        </div>
+        {selected ? (
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
+            {loading ? <Loader2 className="size-3.5 animate-spin" /> : <ChevronRight className="size-3.5" />}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
+          {table.rowCount} rows
+        </Badge>
+        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
+          {table.sizeKb} KB
+        </Badge>
+        <Badge variant="secondary" appearance="outline" size="xs" className="max-w-full truncate font-mono">
+          PK {table.primaryKey}
+        </Badge>
+      </div>
+    </motion.button>
+  )
+}
+
 interface TableExplorerProps {
   tableName: string
   data: LiveDatabaseTableData | null
@@ -382,8 +487,8 @@ interface TableExplorerProps {
   onQueryChange: (value: string) => void
   rowLimit: number
   onRowLimitChange: (value: number) => void
-  expandedRow: number | null
-  onExpandedRowChange: (value: number | null) => void
+  selectedRowIndex: number | null
+  onSelectedRowIndexChange: (value: number | null) => void
 }
 
 function TableExplorer({
@@ -395,8 +500,8 @@ function TableExplorer({
   onQueryChange,
   rowLimit,
   onRowLimitChange,
-  expandedRow,
-  onExpandedRowChange,
+  selectedRowIndex,
+  onSelectedRowIndexChange,
 }: TableExplorerProps) {
   const visibleRows = useMemo(() => {
     if (!data) return []
@@ -407,15 +512,17 @@ function TableExplorer({
     )
   }, [data, query])
 
+  const selectedRow = selectedRowIndex != null ? visibleRows[selectedRowIndex] ?? null : null
   const isPending = loading && data == null
+  const previewColumn = data?.columns.find((column) => column.primaryKeyPosition > 0)?.name ?? data?.columns[0]?.name
 
   return (
     <PageSection
-      eyebrow="Table explorer"
+      eyebrow="Explorer"
       title={tableName}
       description={
         data
-          ? `Showing ${data.rows.length} of ${data.totalRows} rows from the merged device snapshot. Click a row to inspect every field.`
+          ? `${data.rows.length} of ${data.totalRows} rows loaded. Select a row to inspect every column.`
           : isPending
             ? 'Reading this table from the device snapshot...'
             : error
@@ -432,7 +539,7 @@ function TableExplorer({
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder={`Search ${tableName} rows...`}
-            className="h-8 pl-8 text-xs"
+            className="h-9 pl-8 text-xs"
             disabled={!data}
           />
         </div>
@@ -441,7 +548,7 @@ function TableExplorer({
           <select
             value={rowLimit}
             onChange={(event) => onRowLimitChange(Number(event.target.value))}
-            className="h-8 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Table row limit"
           >
             {[25, 50, 100, 200].map((limit) => (
@@ -464,123 +571,198 @@ function TableExplorer({
       ) : null}
 
       {data ? (
-      <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Table schema">
-        {data.columns.map((column) => (
-          <Badge
-            key={column.name}
-            variant="secondary"
-            appearance="outline"
-            size="xs"
-            title={`${column.notNull ? 'NOT NULL · ' : ''}${column.defaultValue == null ? '' : `DEFAULT ${column.defaultValue} · `}${column.primaryKeyPosition ? `PK ${column.primaryKeyPosition}` : ''}`}
-          >
-            <span className="font-mono">{column.name}</span>
-            <span className="ms-1 text-muted-foreground">{column.type}</span>
-            {column.primaryKeyPosition > 0 ? <span className="ms-1 text-blue-600 dark:text-blue-400">PK</span> : null}
-          </Badge>
-        ))}
-      </div>
+        <div className="flex flex-wrap gap-1.5" aria-label="Table schema">
+          {data.columns.map((column) => (
+            <Badge
+              key={column.name}
+              variant="secondary"
+              appearance="outline"
+              size="xs"
+              title={`${column.notNull ? 'NOT NULL · ' : ''}${column.defaultValue == null ? '' : `DEFAULT ${column.defaultValue} · `}${column.primaryKeyPosition ? `PK ${column.primaryKeyPosition}` : ''}`}
+            >
+              <span className="font-mono">{column.name}</span>
+              <span className="ms-1 text-muted-foreground">{column.type}</span>
+              {column.primaryKeyPosition > 0 ? <span className="ms-1 text-blue-600 dark:text-blue-400">PK</span> : null}
+            </Badge>
+          ))}
+        </div>
       ) : null}
 
       {data ? (
-      <div className={cn('mt-3 overflow-x-auto rounded-xl border border-border bg-card transition-opacity', loading && 'opacity-60')}>
-        <table className="w-full text-left">
-          <thead className="border-b border-border bg-muted/40">
-            <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {data.columns.map((column) => (
-                <th key={column.name} className="whitespace-nowrap px-3 py-2 font-semibold">
-                  <span>{column.name}</span>
-                  <span className="ms-1 normal-case tracking-normal text-muted-foreground/60">{column.type}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {visibleRows.map((row, rowIndex) => {
-              const expanded = expandedRow === rowIndex
-              return (
-                <Fragment key={`${data.tableName}-${rowIndex}`}>
-                  <tr
-                    onClick={() => onExpandedRowChange(expanded ? null : rowIndex)}
-                    className={cn('cursor-pointer hover:bg-muted/30', expanded && 'bg-blue-500/5')}
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        onExpandedRowChange(expanded ? null : rowIndex)
-                      }
-                    }}
-                    aria-expanded={expanded}
-                  >
-                    {data.columns.map((column) => {
-                      const value = row[column.name]
+        <div className={cn('flex flex-col gap-4 xl:flex-row xl:items-start', loading && 'opacity-80')}>
+          <div className="w-full shrink-0 xl:w-[380px]">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="border-b border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Rows ({visibleRows.length})
+              </div>
+              <div className="max-h-[480px] overflow-y-auto p-2">
+                {visibleRows.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-muted-foreground">
+                    {query.trim() ? 'No rows match this search.' : `${data.tableName} is empty.`}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {visibleRows.map((row, rowIndex) => {
+                      const selected = selectedRowIndex === rowIndex
+                      const previewValue = previewColumn ? row[previewColumn] : null
                       return (
-                        <td key={column.name} className="max-w-80 whitespace-nowrap px-3 py-2 font-mono text-[10px] text-foreground">
-                          <span
-                            className={cn('block max-w-80 truncate', value == null && 'italic text-muted-foreground')}
-                            title={databaseValueText(value)}
-                          >
-                            {databaseValuePreview(value)}
-                          </span>
-                        </td>
+                        <button
+                          key={`${data.tableName}-${rowIndex}`}
+                          type="button"
+                          onClick={() => onSelectedRowIndexChange(selected ? null : rowIndex)}
+                          className={cn(
+                            'w-full rounded-lg border px-3 py-2 text-left transition-all',
+                            selected
+                              ? 'border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20'
+                              : 'border-border/70 hover:border-blue-500/20 hover:bg-muted/30',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+                              Row {rowIndex + 1}
+                            </span>
+                            {previewColumn ? (
+                              <span className="truncate font-mono text-[10px] text-foreground">
+                                {databaseValuePreview(previewValue)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
                       )
                     })}
-                  </tr>
-                  <AnimatePresence initial={false}>
-                    {expanded ? (
-                      <tr>
-                        <td colSpan={Math.max(data.columns.length, 1)} className="p-0">
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: EASE }}
-                            className="overflow-hidden bg-muted/20"
-                          >
-                            <dl className="grid grid-cols-1 gap-3 p-3 lg:grid-cols-2">
-                              {data.columns.map((column) => (
-                                <div key={column.name} className="min-w-0 rounded-lg border border-border/70 bg-background/70 p-3">
-                                  <dt className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    {column.name}
-                                    <span className="font-mono font-normal normal-case tracking-normal">{column.type}</span>
-                                  </dt>
-                                  <dd>
-                                    <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-foreground">
-                                      {formatExpandedDatabaseValue(row[column.name])}
-                                    </pre>
-                                  </dd>
-                                </div>
-                              ))}
-                            </dl>
-                          </motion.div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </AnimatePresence>
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-        {visibleRows.length === 0 ? (
-          <div className="py-10 text-center text-xs text-muted-foreground">
-            {query.trim() ? 'No rows match this search.' : `${data.tableName} is empty.`}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        ) : null}
-      </div>
+
+          <div className="min-w-0 flex-1 rounded-xl border border-border bg-card">
+            <AnimatePresence mode="wait">
+              {selectedRow ? (
+                <motion.div
+                  key={selectedRowIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.22, ease: EASE }}
+                  className="p-4"
+                >
+                  <RowDetailPanel tableName={data.tableName} row={selectedRow} columns={data.columns} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex min-h-[320px] flex-col items-center justify-center gap-2 px-6 py-12 text-center"
+                >
+                  <Table2 className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm font-medium text-foreground">Select a row</p>
+                  <p className="max-w-sm text-xs text-muted-foreground">
+                    Column values open in a dark IDE-style viewer. JSON fields are auto-formatted and syntax highlighted.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       ) : isPending ? (
-        <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 py-12 text-xs text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 py-16 text-xs text-muted-foreground">
           <Loader2 className="size-4 animate-spin text-blue-500" />
           Loading {tableName} rows...
         </div>
       ) : null}
+
       {data ? (
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        {query.trim() ? `${visibleRows.length} matching rows. ` : ''}
-        {data.truncated ? `The first ${data.limit} rows are shown; increase the row limit to read more.` : 'All rows are shown.'}
-        {' '}BLOB values are rendered as a size plus a hexadecimal preview; text cells over 20,000 characters are marked as truncated.
-      </p>
+        <p className="text-[11px] text-muted-foreground">
+          {query.trim() ? `${visibleRows.length} matching rows. ` : ''}
+          {data.truncated ? `The first ${data.limit} rows are shown; increase the row limit to read more.` : 'All rows are shown.'}
+          {' '}BLOB values are rendered as a size plus a hexadecimal preview; text cells over 20,000 characters are marked as truncated.
+        </p>
       ) : null}
     </PageSection>
+  )
+}
+
+function RowDetailPanel({
+  tableName,
+  row,
+  columns,
+}: {
+  tableName: string
+  row: Record<string, LiveDatabaseValue>
+  columns: LiveDatabaseTableData['columns']
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary" appearance="outline" size="sm" className="font-mono">
+          {tableName}
+        </Badge>
+        <span className="text-xs text-muted-foreground">{columns.length} columns</span>
+      </div>
+
+      <div className="space-y-3">
+        {columns.map((column) => {
+          const value = row[column.name]
+          const formatted = formatExpandedDatabaseValue(value)
+          const isJsonField = looksLikeJson(value)
+          return (
+            <div key={column.name} className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs font-semibold text-foreground">{column.name}</span>
+                <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-muted-foreground">
+                  {column.type}
+                </Badge>
+                {column.primaryKeyPosition > 0 ? (
+                  <Badge variant="secondary" appearance="outline" size="xs" className="text-blue-600 dark:text-blue-400">
+                    PK
+                  </Badge>
+                ) : null}
+              </div>
+              <DebugCodePanel
+                code={formatted}
+                label={column.name}
+                language={isJsonField ? 'json' : value == null ? 'text' : typeof value === 'number' ? 'text' : 'text'}
+                maxHeightClassName="max-h-56"
+              />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function RequestDetailPanel({ request }: { request: RequestRow }) {
+  const meta = STATE_META[request.derivedState]
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="text-sm font-bold text-foreground">{request.requestName}</code>
+        <TonePill label={meta.label} tone={meta.tone} />
+        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
+          #{request.id}
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-border/70 bg-muted/15 p-3 lg:grid-cols-2">
+        <InfoRow label="userName" value={request.userName} mono />
+        <InfoRow label="uniqueKey" value={request.uniqueKey} mono />
+        <InfoRow label="createdAt" value={new Date(request.createdAt).toLocaleString('en-US')} />
+        <InfoRow label="timeStamp" value={new Date(request.timeStamp).toLocaleString('en-US')} />
+        <InfoRow label="tryCount" value={`${request.tryCount}/3`} mono tone={request.tryCount >= 3 ? 'red' : undefined} />
+        <InfoRow label="sendWithoutWaiting" value={request.sendWithoutWaiting ? 'true' : 'false'} />
+        <InfoRow label="isProcessing" value={request.isProcessing ? '1' : '0'} />
+        <InfoRow label="isWaitingRequest" value={request.isWaitingRequest ? '1' : '0'} />
+        <InfoRow label="fiscalInvoiceId" value={request.fiscalInvoiceId ?? '-'} mono />
+        <InfoRow label="waybillNumbers" value={request.waybillNumbers.join(', ') || '-'} mono />
+      </div>
+
+      <DebugCodePanel code={request.requestJson} label="requestJson" language="json" maxHeightClassName="max-h-[28rem]" />
+    </div>
   )
 }
 
@@ -591,7 +773,13 @@ function databaseValueText(value: LiveDatabaseValue | undefined): string {
 
 function databaseValuePreview(value: LiveDatabaseValue | undefined): string {
   const text = databaseValueText(value).replaceAll(/\s+/g, ' ')
-  return text.length > 160 ? `${text.slice(0, 157)}...` : text
+  return text.length > 80 ? `${text.slice(0, 77)}...` : text
+}
+
+function looksLikeJson(value: LiveDatabaseValue | undefined): boolean {
+  if (typeof value !== 'string') return false
+  const trimmed = value.trim()
+  return trimmed.startsWith('{') || trimmed.startsWith('[')
 }
 
 function formatExpandedDatabaseValue(value: LiveDatabaseValue | undefined): string {
@@ -602,7 +790,7 @@ function formatExpandedDatabaseValue(value: LiveDatabaseValue | undefined): stri
     try {
       return JSON.stringify(JSON.parse(trimmed), null, 2)
     } catch {
-      // The value is plain text or a deliberately truncated JSON preview.
+      // Plain text or truncated JSON preview.
     }
   }
   return value
@@ -677,7 +865,7 @@ function AccessMethodCard({ method: m }: { method: DbAccessMethod }) {
           <div className="mt-0.5 flex flex-wrap gap-1.5">
             <Badge variant="secondary" appearance="outline" size="xs">{m.tool}</Badge>
             <Badge variant="secondary" appearance="outline" size="xs" className={m.worksOnRelease ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
-              {m.worksOnRelease ? 'Release v' : 'Release x'}
+              {m.worksOnRelease ? 'Release ✓' : 'Release ✗'}
             </Badge>
             {m.requiresRoot && <Badge variant="secondary" appearance="outline" size="xs" className="text-amber-700 dark:text-amber-400">root required</Badge>}
           </div>
@@ -696,7 +884,11 @@ function AccessMethodCard({ method: m }: { method: DbAccessMethod }) {
         </ol>
       )}
 
-      {m.commands.length > 0 && <CodeBlock className="mt-2.5" code={m.commands.join('\n')} />}
+      {m.commands.length > 0 ? (
+        <div className="mt-2.5">
+          <DebugCodePanel code={m.commands.join('\n')} label="adb" language="shell" maxHeightClassName="max-h-48" lineNumbers={false} />
+        </div>
+      ) : null}
 
       {m.caveats.length > 0 && (
         <ul className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
@@ -709,14 +901,5 @@ function AccessMethodCard({ method: m }: { method: DbAccessMethod }) {
         </ul>
       )}
     </motion.div>
-  )
-}
-
-function InfoRowInline({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-muted-foreground">{label}:</span>
-      <code className="font-mono font-semibold text-foreground">{value}</code>
-    </span>
   )
 }

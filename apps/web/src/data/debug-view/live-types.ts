@@ -8,6 +8,7 @@
 import type {
   CellularInfo,
   DbTableInfo,
+  DbgSchedule,
   NetworkTransport,
   OsInfo,
   RequestRow,
@@ -128,4 +129,20 @@ export interface LiveDatabaseSnapshot {
   tableData: LiveDatabaseTableData | null
   requestRows: RequestRow[]
   completedRequestCount: number
+}
+
+/** Parsed Schedule + ScheduleStopChunk tree from one consistent Room DB copy. */
+export interface LiveScheduleSnapshot {
+  serial: string
+  packageName: string
+  capturedAt: string
+  databaseName: string
+  databasePath: string
+  sizeBytes: number
+  walSizeBytes: number
+  shmSizeBytes: number
+  scheduleRowCount: number
+  stopChunkCount: number
+  schedule: DbgSchedule | null
+  warnings: string[]
 }

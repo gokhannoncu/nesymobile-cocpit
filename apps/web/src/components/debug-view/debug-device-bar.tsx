@@ -160,7 +160,7 @@ export function DebugDeviceBar() {
 
   return (
     <motion.div
-      className="sticky top-0 z-30 inline-flex w-max max-w-full rounded-xl border bg-card/95 backdrop-blur-sm"
+      className="sticky top-0 z-30 inline-flex container-fluid min-w-0 max-w-full rounded-xl border bg-card/95 backdrop-blur-sm"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: EASE }}
