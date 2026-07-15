@@ -1,10 +1,10 @@
-// Data Locator mock verisi — "Where does this data live?"
-// Veri kaynakları kataloğu, arama intent'leri, lineage zincirleri,
-// investigation recipe'leri ve guardrail metinleri tek dosyada.
+// Data Locator mock data — "Where does this data live?"
+// Data sources catalog, search intents, lineage chains,
+// investigation recipes and guardrail texts in a single file.
 
 import type { Tone } from '@/components/product'
 
-// ── Sınıflandırmalar ─────────────────────────────────────────────
+// ── Classifications ─────────────────────────────────────────────
 
 export type SourceType =
   | 'MongoDB Collection'
@@ -41,39 +41,39 @@ export type DataDomain =
 export type SourceEnvironment = 'Mobile local' | 'Backend' | 'Fiscal system' | 'UAT' | 'Production'
 export type SourceCountry = 'HR' | 'BA' | 'SI' | 'RS' | 'General'
 
-/** Sonuç listesindeki kaynağın rolü — kart üst rozeti. */
+/** Role of the source in the result list — card top badge. */
 export type ResultRole = 'primary' | 'supporting' | 'log' | 'cache' | 'external'
 
 export const TRUTH_META: Record<TruthLevel, { label: string; tone: Tone; hint: string }> = {
   authoritative: {
     label: 'Authoritative',
     tone: 'green',
-    hint: 'Bu verinin nihai kaydı burasıdır; uyuşmazlıkta bu kaynak kazanır.',
+    hint: 'This is the final record of this data; in case of discrepancy, this source wins.',
   },
   operational: {
     label: 'Operational',
     tone: 'blue',
-    hint: 'Günlük operasyonun çalıştığı güncel kayıt; iş akışları buradan okur ve yazar.',
+    hint: 'The current record where daily operations run; workflows read and write from here.',
   },
   cached: {
     label: 'Cached copy',
     tone: 'amber',
-    hint: 'Başka bir kaynağın kopyası; sync gecikmesiyle geride kalabilir.',
+    hint: 'Copy of another source; may fall behind due to sync delay.',
   },
   derived: {
     label: 'Derived',
     tone: 'teal',
-    hint: 'Başka kayıtlardan türetilir; kendisi düzeltilmez, kaynağı düzeltilir.',
+    hint: 'Derived from other records; cannot be fixed directly, its source is fixed.',
   },
   temporary: {
     label: 'Temporary state',
     tone: 'orange',
-    hint: 'Process/oturum ömürlü geçici durum; kalıcı kayıt değildir.',
+    hint: 'Process/session scoped temporary state; not a permanent record.',
   },
   audit: {
     label: 'Audit-log only',
     tone: 'gray',
-    hint: 'Ne olduğunu anlamak içindir; operasyonel doğrulama için kullanılmaz.',
+    hint: 'Used to understand what happened; not used for operational validation.',
   },
 }
 
@@ -85,7 +85,7 @@ export const ROLE_META: Record<ResultRole, { label: string; tone: Tone }> = {
   external: { label: 'External system', tone: 'purple' },
 }
 
-// Filtre rail seçenekleri
+// Filter rail options
 export const ALL_DOMAINS: DataDomain[] = [
   'Shipment', 'Delivery', 'Payment', 'Fiscal', 'Schedule', 'Courier',
   'Barcode', 'Offline Queue', 'Notification', 'Location', 'D4Me', 'Authentication',
@@ -99,7 +99,7 @@ export const ALL_ENVIRONMENTS: SourceEnvironment[] = [
 ]
 export const ALL_COUNTRIES: SourceCountry[] = ['HR', 'BA', 'SI', 'RS', 'General']
 
-// ── Veri kaynağı kataloğu ────────────────────────────────────────
+// ── Data source catalog ────────────────────────────────────────
 
 export interface KeyField {
   name: string
@@ -109,9 +109,9 @@ export interface KeyField {
 
 export interface DataSource {
   id: string
-  /** Teknik ad — ör. "shipments". */
+  /** Technical name — e.g. "shipments". */
   name: string
-  /** İnsan-okur sistem adı — ör. "Backend MongoDB". */
+  /** Human-readable system name — e.g. "Backend MongoDB". */
   system: string
   sourceType: SourceType
   domains: DataDomain[]
@@ -123,14 +123,14 @@ export interface DataSource {
   environments: SourceEnvironment[]
   countries: SourceCountry[]
   lastSchemaUpdate: string
-  /** Ne için kullanılır. */
+  /** What it is used for. */
   purpose: string
-  /** Ne için KULLANILMAMALIDIR. */
+  /** What it should NOT be used for. */
   notFor: string
   keyFields: KeyField[]
   commonQuestions: string[]
   exampleQuery: { label: string; code: string }
-  /** id listesi — detay panelinde chip olarak gösterilir. */
+  /** List of ids — displayed as chips in the detail panel. */
   relatedSources: string[]
   caveats: string[]
 }
@@ -144,29 +144,29 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Shipment', 'Delivery', 'Payment'],
     truth: 'operational',
     owner: 'Backend Core Team',
-    freshness: 'Gerçek zamanlı (event-driven yazım)',
-    retention: '18 ay aktif · sonrası soğuk arşiv',
-    updateFrequency: 'Her status/payment event\'inde',
+    freshness: 'Real-time (event-driven write)',
+    retention: '18 months active · cold archive afterwards',
+    updateFrequency: 'On every status/payment event',
     environments: ['Backend', 'Production', 'UAT'],
     countries: ['General'],
     lastSchemaUpdate: '2026-05-28',
     purpose:
-      'Bir shipment\'ın güncel operasyonel durumu: teslimat statüsü, payment durumu, kurye ve schedule ataması. Payment + delivery sorularının ilk bakılacak yeri.',
+      'The current operational state of a shipment: delivery status, payment status, courier and schedule assignment. The first place to look for payment + delivery questions.',
     notFor:
-      'Fiscal uygunluk kanıtı (FiscalInvoiceData\'ya bakılır) ve tarihsel olay sırası analizi (deliveryEvents / Graylog kullanılır).',
+      'Proof of fiscal compliance (check FiscalInvoiceData) and historical event sequence analysis (use deliveryEvents / Graylog).',
     keyFields: [
-      { name: 'shipmentId', type: 'String', meaning: 'Shipment\'ın benzersiz iş kimliği; tüm sistemlerde ortak identifier.' },
-      { name: 'status', type: 'Enum', meaning: 'Operasyonel teslimat durumu (CREATED, IN_DELIVERY, DELIVERED, RETURNED...).' },
-      { name: 'courierId', type: 'String', meaning: 'Shipment\'ın atandığı kurye.' },
-      { name: 'scheduleId', type: 'String', meaning: 'Bağlı olduğu günlük tur/schedule kaydı.' },
-      { name: 'paymentStatus', type: 'Enum', meaning: 'Tahsilat durumu (PENDING, PAID, FAILED, REFUNDED).' },
-      { name: 'updatedAt', type: 'Date', meaning: 'Son event\'in backend\'e işlendiği an.' },
+      { name: 'shipmentId', type: 'String', meaning: 'Unique business ID of the shipment; common identifier across all systems.' },
+      { name: 'status', type: 'Enum', meaning: 'Operational delivery status (CREATED, IN_DELIVERY, DELIVERED, RETURNED...).' },
+      { name: 'courierId', type: 'String', meaning: 'Courier assigned to the shipment.' },
+      { name: 'scheduleId', type: 'String', meaning: 'Daily tour/schedule record it belongs to.' },
+      { name: 'paymentStatus', type: 'Enum', meaning: 'Collection status (PENDING, PAID, FAILED, REFUNDED).' },
+      { name: 'updatedAt', type: 'Date', meaning: 'Moment the last event was processed in the backend.' },
     ],
     commonQuestions: [
-      'Bu shipment şu anda hangi durumda?',
-      'Payment tamamlandı mı, hangi kanaldan?',
-      'Shipment hangi kuryeye ve hangi schedule\'a bağlı?',
-      'Mobil ekrandaki durum backend ile aynı mı?',
+      'What state is this shipment in right now?',
+      'Is the payment completed, and through which channel?',
+      'Which courier and schedule is the shipment assigned to?',
+      'Is the status on the mobile screen identical to the backend?',
     ],
     exampleQuery: {
       label: 'mongodb',
@@ -174,8 +174,8 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['fiscal-invoice-data', 'delivery-events', 'request-sender-queue', 'schedule-stop-chunks', 'paid-shipments'],
     caveats: [
-      'Mobile Room kaydı backend state\'inden geçici olarak geri kalabilir.',
-      'paymentStatus fiscal onayı garanti etmez; fiscal uygunluk için FiscalInvoiceData karşılaştırılmalıdır.',
+      'Mobile Room record might temporarily lag behind the backend state.',
+      'paymentStatus does not guarantee fiscal approval; FiscalInvoiceData must be checked for fiscal compliance.',
     ],
   },
   {
@@ -186,27 +186,27 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Schedule', 'Courier'],
     truth: 'authoritative',
     owner: 'Backend Core Team',
-    freshness: 'Gerçek zamanlı; gün başında toplu üretim',
-    retention: '12 ay',
-    updateFrequency: 'Planlama servisinden; gün içi TOUR event\'lerinde',
+    freshness: 'Real-time; batch generation at the start of the day',
+    retention: '12 months',
+    updateFrequency: 'From planning service; during intraday TOUR events',
     environments: ['Backend', 'Production', 'UAT'],
     countries: ['General'],
     lastSchemaUpdate: '2026-04-14',
     purpose:
-      'Kuryenin günlük turunun (schedule) ana kaydı: stop sırası, atanan shipment\'lar ve tur durumu. Mobil taraftaki schedule verisinin tek gerçek kaynağı.',
+      'The main record of the courier\\'s daily tour (schedule): stop order, assigned shipments and tour status. The single source of truth for the schedule data on the mobile side.',
     notFor:
-      'Kuryenin ekranda o an ne gördüğünü anlamak (mobil Room kopyasına bakılır) veya anlık konum takibi (LiveLocation).',
+      'Understanding what the courier is seeing on the screen right now (look at mobile Room copy) or real-time location tracking (LiveLocation).',
     keyFields: [
-      { name: 'scheduleId', type: 'String', meaning: 'Günlük tur kimliği.' },
-      { name: 'courierId', type: 'String', meaning: 'Turun sahibi kurye.' },
-      { name: 'date', type: 'Date', meaning: 'Turun operasyon günü.' },
-      { name: 'stops', type: 'Array', meaning: 'Sıralı stop listesi; her stop shipment referansları taşır.' },
-      { name: 'state', type: 'Enum', meaning: 'Tur durumu (PLANNED, ACTIVE, COMPLETED).' },
+      { name: 'scheduleId', type: 'String', meaning: 'Daily tour ID.' },
+      { name: 'courierId', type: 'String', meaning: 'Owner courier of the tour.' },
+      { name: 'date', type: 'Date', meaning: 'Operational day of the tour.' },
+      { name: 'stops', type: 'Array', meaning: 'Sequential stop list; each stop carries shipment references.' },
+      { name: 'state', type: 'Enum', meaning: 'Tour status (PLANNED, ACTIVE, COMPLETED).' },
     ],
     commonQuestions: [
-      'Kuryenin bugünkü turunda hangi stop\'lar var?',
-      'Shipment hangi schedule\'a atanmış?',
-      'Tur backend\'de aktif görünüyor mu?',
+      'Which stops are on the courier\\'s tour today?',
+      'Which schedule is the shipment assigned to?',
+      'Is the tour active in the backend?',
     ],
     exampleQuery: {
       label: 'mongodb',
@@ -214,7 +214,7 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['schedule-stop-chunks', 'shipments', 'delivery-events'],
     caveats: [
-      'Gün içi re-planlama sonrası mobil kopya FCM refresh gelene kadar eski sırayı gösterebilir.',
+      'After intraday replanning, the mobile copy might show the old order until FCM refresh arrives.',
     ],
   },
   {
@@ -225,27 +225,27 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Schedule', 'Shipment', 'Delivery'],
     truth: 'cached',
     owner: 'Mobile Team',
-    freshness: 'Son başarılı sync anı; FCM ile tetiklenir',
-    retention: 'Cihazda gün sonuna kadar; logout\'ta temizlenir',
-    updateFrequency: 'Schedule sync + her lokal işlemde',
+    freshness: 'Last successful sync moment; triggered via FCM',
+    retention: 'On device until end of day; cleared on logout',
+    updateFrequency: 'Schedule sync + on every local action',
     environments: ['Mobile local', 'Production', 'UAT'],
     countries: ['General'],
     lastSchemaUpdate: '2026-06-02',
     purpose:
-      'Backend schedule\'ının cihazdaki parça parça (chunk) kopyası; stop listesi ekranı ve offline çalışma buradan beslenir.',
+      'Fragmented (chunk) copy of the backend schedule on the device; powers the stop list screen and offline work.',
     notFor:
-      'Operasyonel doğrulama — backend ile uyuşmazlıkta backend kaydı esas alınır. Payment durumunun nihai okunması.',
+      'Operational validation — in case of discrepancy with the backend, backend record prevails. Final read of the payment status.',
     keyFields: [
-      { name: 'chunkId', type: 'String', meaning: 'Chunk kimliği; schedule + sıra aralığından türetilir.' },
-      { name: 'scheduleId', type: 'String', meaning: 'Bağlı backend schedule kaydı.' },
-      { name: 'stopsJson', type: 'String (JSON)', meaning: 'Stop ve shipment listesinin serileştirilmiş kopyası.' },
-      { name: 'syncedAt', type: 'Long (epoch)', meaning: 'Chunk\'ın en son backend\'den çekildiği an.' },
-      { name: 'dirty', type: 'Boolean', meaning: 'Lokal değişiklik var, backend\'e henüz gönderilmedi.' },
+      { name: 'chunkId', type: 'String', meaning: 'Chunk ID; derived from schedule + sequence range.' },
+      { name: 'scheduleId', type: 'String', meaning: 'Associated backend schedule record.' },
+      { name: 'stopsJson', type: 'String (JSON)', meaning: 'Serialized copy of stop and shipment list.' },
+      { name: 'syncedAt', type: 'Long (epoch)', meaning: 'Moment the chunk was last pulled from the backend.' },
+      { name: 'dirty', type: 'Boolean', meaning: 'Local changes exist, not yet sent to backend.' },
     ],
     commonQuestions: [
-      'Kurye ekranında shipment neden eski durumda görünüyor?',
-      'Cihaz en son ne zaman sync oldu?',
-      'Offline yapılan işlem lokalde kaydedilmiş mi?',
+      'Why does the shipment appear in an old state on the courier screen?',
+      'When was the device last synced?',
+      'Are offline actions saved locally?',
     ],
     exampleQuery: {
       label: 'sql (room)',
@@ -253,8 +253,8 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['schedules', 'shipments', 'request-sender-queue'],
     caveats: [
-      'Mobile Room kaydı backend state\'inden geçici olarak geri kalabilir.',
-      'dirty=true satırlar offline queue boşalana kadar backend\'de görünmez.',
+      'Mobile Room record might temporarily lag behind the backend state.',
+      'Rows with dirty=true will not appear in the backend until offline queue is drained.',
     ],
   },
   {
@@ -265,28 +265,28 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Offline Queue', 'Shipment', 'Delivery', 'Payment'],
     truth: 'temporary',
     owner: 'Mobile Team',
-    freshness: 'Anlık — kuyruk cihazda canlı işlenir',
-    retention: 'Başarılı gönderimde silinir; max 7 gün',
-    updateFrequency: 'Her offline işlemde insert; bağlantıda drain',
+    freshness: 'Instant — queue is processed live on the device',
+    retention: 'Deleted on successful send; max 7 days',
+    updateFrequency: 'Insert on every offline action; drain on connection',
     environments: ['Mobile local', 'Production', 'UAT'],
     countries: ['General'],
     lastSchemaUpdate: '2026-03-19',
     purpose:
-      'Offline yapılan teslimat/tahsilat işlemlerinin backend\'e gönderilmeyi bekleyen kuyruğu. "İşlem yapıldı ama backend\'de yok" sorularının ilk bakılacak yeri.',
+      'The queue waiting to send offline delivery/collection actions to the backend. First place to look for "action performed but not in backend" questions.',
     notFor:
-      'Kalıcı işlem geçmişi — kayıtlar gönderim sonrası silinir. Backend durumunun okunması.',
+      'Permanent action history — records are deleted after sending. Reading backend state.',
     keyFields: [
-      { name: 'requestId', type: 'String', meaning: 'Kuyruk kaydının benzersiz kimliği; idempotency anahtarı.' },
-      { name: 'endpoint', type: 'String', meaning: 'Hedef backend endpoint\'i.' },
-      { name: 'payloadJson', type: 'String (JSON)', meaning: 'Gönderilecek işlem gövdesi (shipmentId dahil).' },
-      { name: 'isProcessing', type: 'Boolean', meaning: 'Kuyruk elemanı şu an gönderim döngüsünde mi.' },
-      { name: 'retryCount', type: 'Int', meaning: 'Deneme sayısı; artıyorsa gönderim başarısız oluyor.' },
-      { name: 'createdAt', type: 'Long (epoch)', meaning: 'İşlemin cihazda yapıldığı an.' },
+      { name: 'requestId', type: 'String', meaning: 'Unique ID of the queue record; idempotency key.' },
+      { name: 'endpoint', type: 'String', meaning: 'Target backend endpoint.' },
+      { name: 'payloadJson', type: 'String (JSON)', meaning: 'Action body to be sent (includes shipmentId).' },
+      { name: 'isProcessing', type: 'Boolean', meaning: 'Is the queue element currently in the send loop.' },
+      { name: 'retryCount', type: 'Int', meaning: 'Retry count; if increasing, sending is failing.' },
+      { name: 'createdAt', type: 'Long (epoch)', meaning: 'Moment the action was performed on the device.' },
     ],
     commonQuestions: [
-      'Kuryenin işlemi backend\'e neden ulaşmadı?',
-      'Kuyrukta bekleyen kaç istek var?',
-      'isProcessing takılı kalmış mı?',
+      'Why did the courier\\'s action not reach the backend?',
+      'How many requests are waiting in the queue?',
+      'Is isProcessing stuck?',
     ],
     exampleQuery: {
       label: 'sql (room)',
@@ -294,8 +294,8 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['schedule-stop-chunks', 'shipments', 'delivery-events'],
     caveats: [
-      'Kuyruk sadece cihazda görülebilir; uzaktan teşhis için Graylog gönderim loglarına bakılır.',
-      'isProcessing=true takılı kalırsa kuyruk drain olmaz — bilinen edge case.',
+      'The queue is only visible on the device; for remote diagnosis, check Graylog sender logs.',
+      'If isProcessing=true gets stuck, queue won\\'t drain — a known edge case.',
     ],
   },
   {
@@ -306,28 +306,28 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Fiscal', 'Payment'],
     truth: 'authoritative',
     owner: 'Fiscal Integration Team',
-    freshness: 'Fiscalization callback anında',
-    retention: 'Yasal saklama — 11 yıl (ülkeye göre değişir)',
-    updateFrequency: 'Her fiscalization denemesinde',
+    freshness: 'At the moment of fiscalization callback',
+    retention: 'Legal retention — 11 years (varies by country)',
+    updateFrequency: 'On every fiscalization attempt',
     environments: ['Fiscal system', 'Backend', 'Production'],
     countries: ['HR', 'BA', 'SI', 'RS'],
     lastSchemaUpdate: '2026-01-30',
     purpose:
-      'Tahsilatın resmi fiscal kaydı: fatura numarası, fiscal onay kodu (JIR/ZKI benzeri) ve fiscalization sonucu. Payment uyuşmazlıklarında karşılaştırma kaynağı.',
+      'Official fiscal record of the collection: invoice number, fiscal approval code (like JIR/ZKI) and fiscalization result. Comparison source for payment discrepancies.',
     notFor:
-      'Operasyonel teslimat durumu okuma. Fiscal kaydın varlığı teslimatın tamamlandığını göstermez.',
+      'Reading operational delivery status. Existence of fiscal record does not mean delivery is complete.',
     keyFields: [
-      { name: 'invoiceNo', type: 'String', meaning: 'Resmi fatura numarası.' },
-      { name: 'shipmentId', type: 'String', meaning: 'Bağlı shipment — shipments ile join anahtarı.' },
-      { name: 'fiscalCode', type: 'String', meaning: 'Vergi otoritesi onay kodu; boşsa fiscalization tamamlanmamış.' },
-      { name: 'amount', type: 'Decimal', meaning: 'Tahsil edilen tutar.' },
-      { name: 'fiscalizedAt', type: 'DateTime', meaning: 'Fiscal onayın alındığı an.' },
-      { name: 'status', type: 'Enum', meaning: 'Fiscal süreç durumu (PENDING, CONFIRMED, FAILED).' },
+      { name: 'invoiceNo', type: 'String', meaning: 'Official invoice number.' },
+      { name: 'shipmentId', type: 'String', meaning: 'Associated shipment — join key with shipments.' },
+      { name: 'fiscalCode', type: 'String', meaning: 'Tax authority approval code; if empty, fiscalization is incomplete.' },
+      { name: 'amount', type: 'Decimal', meaning: 'Collected amount.' },
+      { name: 'fiscalizedAt', type: 'DateTime', meaning: 'Moment fiscal approval was received.' },
+      { name: 'status', type: 'Enum', meaning: 'Fiscal process status (PENDING, CONFIRMED, FAILED).' },
     ],
     commonQuestions: [
-      'Bu tahsilatın fiscal kaydı oluştu mu?',
-      'Fiscal tutar ile shipment paymentStatus tutarlı mı?',
-      'Fiscalization neden FAILED durumda?',
+      'Was the fiscal record created for this collection?',
+      'Is the fiscal amount consistent with shipment paymentStatus?',
+      'Why is fiscalization in FAILED status?',
     ],
     exampleQuery: {
       label: 'sql',
@@ -335,8 +335,8 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['shipments', 'paid-shipments', 'delivery-events'],
     caveats: [
-      'Aynı isimli status alanı burada fiscal state modelini temsil eder; shipments.status ile karıştırılmamalıdır.',
-      'Fiscal callback gecikmesi nedeniyle kayıt shipments\'tan dakikalar sonra oluşabilir.',
+      'The status field with the same name here represents the fiscal state model; not to be confused with shipments.status.',
+      'Due to fiscal callback delay, the record may be created minutes after shipments.',
     ],
   },
   {
@@ -347,26 +347,26 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Notification', 'Schedule', 'Shipment'],
     truth: 'derived',
     owner: 'Mobile Team',
-    freshness: 'FCM mesajı geldiği an',
-    retention: 'Cihazda 14 gün',
-    updateFrequency: 'Her push notification\'da',
+    freshness: 'At the moment FCM message arrives',
+    retention: '14 days on device',
+    updateFrequency: 'On every push notification',
     environments: ['Mobile local', 'Production', 'UAT'],
     countries: ['General'],
     lastSchemaUpdate: '2025-11-08',
     purpose:
-      'Cihaza gelen FCM mesajlarının (schedule refresh, shipment update tetikleri) lokal kaydı. "Push geldi mi, işlendi mi?" sorusuna bakılır.',
+      'Local record of FCM messages (schedule refresh, shipment update triggers) sent to the device. Checked for "Did the push arrive, was it processed?".',
     notFor:
-      'İş verisinin kendisi — payload sadece tetiktir; gerçek veri backend\'den sync ile çekilir.',
+      'Business data itself — payload is just a trigger; actual data is pulled from backend via sync.',
     keyFields: [
-      { name: 'messageId', type: 'String', meaning: 'FCM mesaj kimliği.' },
-      { name: 'type', type: 'Enum', meaning: 'Tetik tipi (SCHEDULE_REFRESH, SHIPMENT_UPDATE, TOUR_CHANGE).' },
-      { name: 'payloadJson', type: 'String (JSON)', meaning: 'Gelen tetik verisi.' },
-      { name: 'receivedAt', type: 'Long (epoch)', meaning: 'Cihaza ulaşma anı.' },
-      { name: 'handled', type: 'Boolean', meaning: 'Sync tetiği çalıştırıldı mı.' },
+      { name: 'messageId', type: 'String', meaning: 'FCM message ID.' },
+      { name: 'type', type: 'Enum', meaning: 'Trigger type (SCHEDULE_REFRESH, SHIPMENT_UPDATE, TOUR_CHANGE).' },
+      { name: 'payloadJson', type: 'String (JSON)', meaning: 'Incoming trigger data.' },
+      { name: 'receivedAt', type: 'Long (epoch)', meaning: 'Moment it reached the device.' },
+      { name: 'handled', type: 'Boolean', meaning: 'Was the sync trigger executed.' },
     ],
     commonQuestions: [
-      'Schedule değişikliği push\'u cihaza ulaştı mı?',
-      'Push geldi ama sync neden çalışmadı?',
+      'Did the schedule change push reach the device?',
+      'Push arrived but why didn\\'t sync work?',
     ],
     exampleQuery: {
       label: 'sql (room)',
@@ -374,37 +374,37 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['schedule-stop-chunks', 'schedules', 'delivery-events'],
     caveats: [
-      'FCM teslimi garanti değildir; push yokluğu backend\'de event olmadığı anlamına gelmez.',
+      'FCM delivery is not guaranteed; absence of push does not mean there is no event in backend.',
     ],
   },
   {
     id: 'live-location',
     name: 'LiveLocation',
-    system: 'Backend API (in-memory + son konum kaydı)',
+    system: 'Backend API (in-memory + last location record)',
     sourceType: 'API Endpoint',
     domains: ['Location', 'Courier'],
     truth: 'derived',
     owner: 'Backend Tracking Team',
-    freshness: '~30 sn — cihaz heartbeat aralığı',
-    retention: 'Sadece son konum; geçmiş 48 saat',
-    updateFrequency: 'Cihazdan periyodik heartbeat',
+    freshness: '~30 sec — device heartbeat interval',
+    retention: 'Only last location; past 48 hours',
+    updateFrequency: 'Periodic heartbeat from device',
     environments: ['Backend', 'Production'],
     countries: ['General'],
     lastSchemaUpdate: '2025-12-12',
     purpose:
-      'Kuryenin son bilinen konumu; dispatcher haritası ve D4Me ETA hesabı buradan okur.',
+      'Courier\\'s last known location; dispatcher map and D4Me ETA calculation read from here.',
     notFor:
-      'Teslimat kanıtı veya rota geçmişi analizi — konum verisi türetilmiş anlık görüntüdür.',
+      'Proof of delivery or route history analysis — location data is a derived snapshot.',
     keyFields: [
-      { name: 'courierId', type: 'String', meaning: 'Konumun sahibi kurye.' },
-      { name: 'lat / lng', type: 'Double', meaning: 'Son bilinen koordinat.' },
-      { name: 'accuracy', type: 'Float', meaning: 'GPS doğruluk yarıçapı (metre).' },
-      { name: 'reportedAt', type: 'DateTime', meaning: 'Cihazın konumu gönderdiği an.' },
+      { name: 'courierId', type: 'String', meaning: 'Courier owning the location.' },
+      { name: 'lat / lng', type: 'Double', meaning: 'Last known coordinate.' },
+      { name: 'accuracy', type: 'Float', meaning: 'GPS accuracy radius (meters).' },
+      { name: 'reportedAt', type: 'DateTime', meaning: 'Moment the device sent the location.' },
     ],
     commonQuestions: [
-      'Kurye şu an nerede görünüyor?',
-      'Konum verisi ne kadar eski?',
-      'Cihaz heartbeat göndermeyi ne zaman kesti?',
+      'Where does the courier appear right now?',
+      'How old is the location data?',
+      'When did the device stop sending heartbeats?',
     ],
     exampleQuery: {
       label: 'http',
@@ -412,7 +412,7 @@ export const DATA_SOURCES: DataSource[] = [
     },
     relatedSources: ['schedules', 'd4me-reservation'],
     caveats: [
-      'Cihaz arka plandayken heartbeat seyrekleşir; "konum donması" çoğunlukla OS kısıtıdır.',
+      'Heartbeats become sparse when the device is in the background; "frozen location" is mostly an OS restriction.',
     ],
   },
   {
@@ -423,33 +423,33 @@ export const DATA_SOURCES: DataSource[] = [
     domains: ['Payment', 'Shipment'],
     truth: 'temporary',
     owner: 'Mobile Team',
-    freshness: 'Anlık — UI oturumu içinde',
-    retention: 'Process ömrü; restart\'ta kaybolur',
-    updateFrequency: 'POS sonucu döndüğünde',
+    freshness: 'Instant — within UI session',
+    retention: 'Process lifetime; lost on restart',
+    updateFrequency: 'When POS result returns',
     environments: ['Mobile local'],
     countries: ['General'],
     lastSchemaUpdate: '2026-02-21',
     purpose:
-      'POS cihazından dönen tahsilat sonucunun ekranlar arası taşındığı geçici in-memory liste; teslimat ekranı "ödendi" rozetini buradan gösterir.',
+      'Temporary in-memory list where the collection result from the POS device is carried between screens; the delivery screen shows the "paid" badge from here.',
     notFor:
-      'Herhangi bir doğrulama veya kalıcı kayıt. Payment gerçekleşti mi sorusunun cevabı backend + fiscal kayıttır.',
+      'Any validation or permanent record. The answer to whether Payment occurred is the backend + fiscal record.',
     keyFields: [
       { name: 'shipmentId', type: 'String', meaning: 'Ödendi işaretlenen shipment.' },
       { name: 'posResultCode', type: 'String', meaning: 'POS sağlayıcısından dönen sonuç kodu.' },
       { name: 'paidAt', type: 'Long (epoch)', meaning: 'POS onayının UI\'a ulaştığı an.' },
     ],
     commonQuestions: [
-      'Ekran "ödendi" gösteriyor ama backend PENDING — neden?',
-      'POS sonucu UI\'a ulaştı mı?',
+      'The screen shows "paid" but the backend is PENDING — why?',
+      'Did the POS result reach the UI?',
     ],
     exampleQuery: {
       label: 'kotlin',
-      code: '// Debug — SharedViewModel içeriği\nsharedViewModel.paidShipments.value\n  ?.firstOrNull { it.shipmentId == shipmentId }',
+      code: '// Debug — SharedViewModel content\nsharedViewModel.paidShipments.value\n  ?.firstOrNull { it.shipmentId == shipmentId }',
     },
     relatedSources: ['shipments', 'fiscal-invoice-data', 'request-sender-queue'],
     caveats: [
-      'paidShipments yalnızca memory\'de tutulduğu için process restart sonrası kaybolabilir.',
-      'UI "ödendi" gösterirken backend event\'i offline queue\'da bekliyor olabilir.',
+      'Because paidShipments is only kept in memory, it can be lost after a process restart.',
+      'While the UI shows "paid", the backend event might be waiting in the offline queue.',
     ],
   },
   {

@@ -298,7 +298,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'crash-anr',
     label: 'Crash / ANR',
-    description: 'Çökme, ANR ve kritik hata logları — stack trace dahil',
+    description: 'Crash, ANR and critical error logs — including stack trace',
     icon: 'Bug',
     sources: ['crash', 'system', 'app'],
     levels: ['warn', 'error', 'fatal'],
@@ -312,8 +312,8 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
     id: 'full-investigation',
     label: 'Full Investigation',
     description:
-      'Tüm kaynakları kapsayan tam araştırma modu — yüksek veri hacmi uyarısı: ' +
-      'saatte 50.000+ olay üretilebilir',
+      'Full investigation mode covering all sources — high data volume warning: ' +
+      'can produce 50,000+ events per hour',
     icon: 'SearchCode',
     sources: [...ALL_SOURCES],
     levels: ['verbose', 'debug', 'info', 'warn', 'error', 'fatal'],
@@ -326,16 +326,16 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
 ]
 
 // ── MOCK_LOG_EVENTS ─────────────────────────────────────────────────
-// Senaryo: Bir teslimat oturumunun 5 dakikalık dilimi (10:58–11:03).
-// Kurye Gökhan, DT50 cihaz, SHP-442 sevkiyatı.
+// Scenario: 5-minute slice of a delivery session (10:58–11:03).
+// Courier Gokhan, DT50 device, SHP-442 shipment.
 
 export const MOCK_LOG_EVENTS: LogEvent[] = [
-  // ── 10:58:00-14 — Teslimat ekranına geçiş, sevkiyat verisi yükleme ──
+  // ── 10:58:00-14 — Transition to delivery screen, loading shipment data ──
   { id: 'evt-001', timestamp: '2026-07-12T10:58:00.120+03:00', source: 'app', level: 'info', tag: 'NesyApp', message: 'Navigating to DeliveryFragment', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:00.120 12847 12847 I NesyApp  : Navigating to DeliveryFragment' },
   { id: 'evt-002', timestamp: '2026-07-12T10:58:00.350+03:00', source: 'app', level: 'debug', tag: 'DeliveryViewModel', message: 'loadShipment(SHP-442) called', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:00.350 12847 12847 D DeliveryViewModel: loadShipment(SHP-442) called' },
   { id: 'evt-003', timestamp: '2026-07-12T10:58:01.010+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'SELECT * FROM shipments WHERE id = "SHP-442"', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', raw: '07-12 10:58:01.010 12847 12912 D RoomDao  : SELECT * FROM shipments WHERE id = "SHP-442"' },
   { id: 'evt-004', timestamp: '2026-07-12T10:58:01.085+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'Query returned 1 row in 75ms', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', raw: '07-12 10:58:01.085 12847 12912 D RoomDao  : Query returned 1 row in 75ms' },
-  { id: 'evt-005', timestamp: '2026-07-12T10:58:01.200+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yılmaz', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:01.200 12847 12847 I DeliveryViewModel: Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yılmaz' },
+  { id: 'evt-005', timestamp: '2026-07-12T10:58:01.200+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yilmaz', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:01.200 12847 12847 I DeliveryViewModel: Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yilmaz' },
   { id: 'evt-006', timestamp: '2026-07-12T10:58:02.500+03:00', source: 'app', level: 'debug', tag: 'DeliveryFragment', message: 'Rendering delivery UI for SHP-442', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:02.500 12847 12847 D DeliveryFragment: Rendering delivery UI for SHP-442' },
   { id: 'evt-007', timestamp: '2026-07-12T10:58:03.100+03:00', source: 'location', level: 'info', tag: 'LocationService', message: 'Current position: 41.0082, 28.9784 accuracy=8.2m', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:58:03.100 12847 12890 I LocationService: Current position: 41.0082, 28.9784 accuracy=8.2m' },
   { id: 'evt-008', timestamp: '2026-07-12T10:58:04.200+03:00', source: 'app', level: 'info', tag: 'NesyApp', message: 'Delivery screen opened', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', raw: '07-12 10:58:04.200 12847 12847 I NesyApp  : Delivery screen opened' },
@@ -346,7 +346,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-013', timestamp: '2026-07-12T10:58:11.200+03:00', source: 'app', level: 'debug', tag: 'DeliveryViewModel', message: 'delivery_started event emitted', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:11.200 12847 12847 D DeliveryViewModel: delivery_started event emitted' },
   { id: 'evt-014', timestamp: '2026-07-12T10:58:14.230+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Signature captured, proceeding to payment', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:14.230 12847 12847 I DeliveryViewModel: Signature captured, proceeding to payment' },
 
-  // ── 10:58:15-20 — Ağ istekleri ile sevkiyat doğrulama ──
+  // ── 10:58:15-20 — Shipment validation via network requests ──
   { id: 'evt-015', timestamp: '2026-07-12T10:58:15.100+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> POST https://api.nesymobile.com/v2/shipments/SHP-442/validate', processId: 12847, threadId: 12890, threadName: 'network-1', shipmentId: 'SHP-442', requestId: 'req-7801', correlationId: 'corr-del-442', raw: '07-12 10:58:15.100 12847 12890 I Retrofit : --> POST https://api.nesymobile.com/v2/shipments/SHP-442/validate' },
   { id: 'evt-016', timestamp: '2026-07-12T10:58:15.120+03:00', source: 'okhttp', level: 'debug', tag: 'OkHttp', message: 'Content-Type: application/json; charset=utf-8', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7801', raw: '07-12 10:58:15.120 12847 12890 D OkHttp   : Content-Type: application/json; charset=utf-8' },
   { id: 'evt-017', timestamp: '2026-07-12T10:58:15.130+03:00', source: 'okhttp', level: 'debug', tag: 'OkHttp', message: 'Authorization: Bearer eyJhbGciOiJSUz...REDACTED', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7801', raw: '07-12 10:58:15.130 12847 12890 D OkHttp   : Authorization: Bearer eyJhbGciOiJSUz...REDACTED' },
@@ -354,7 +354,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-019', timestamp: '2026-07-12T10:58:17.050+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Shipment SHP-442 validated successfully', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:17.050 12847 12847 I DeliveryViewModel: Shipment SHP-442 validated successfully' },
   { id: 'evt-020', timestamp: '2026-07-12T10:58:18.300+03:00', source: 'network', level: 'debug', tag: 'NetworkInterceptor', message: 'Response cached for /v2/shipments/SHP-442/validate', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7801', raw: '07-12 10:58:18.300 12847 12890 D NetworkInterceptor: Response cached for /v2/shipments/SHP-442/validate' },
 
-  // ── 10:58:20-30 — Ödeme başlatma ve sağlayıcı callback ──
+  // ── 10:58:20-30 — Payment initiation and provider callback ──
   { id: 'evt-021', timestamp: '2026-07-12T10:58:20.100+03:00', source: 'payment', level: 'info', tag: 'PaymentManager', message: 'payment_initiated: amount=245.90 TRY, method=CASH, shipment=SHP-442', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:20.100 12847 12847 I PaymentManager: payment_initiated: amount=245.90 TRY, method=CASH, shipment=SHP-442' },
   { id: 'evt-022', timestamp: '2026-07-12T10:58:20.500+03:00', source: 'payment', level: 'debug', tag: 'PaymentManager', message: 'Creating payment record in local DB', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:20.500 12847 12847 D PaymentManager: Creating payment record in local DB' },
   { id: 'evt-023', timestamp: '2026-07-12T10:58:21.200+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'INSERT INTO payments (id, shipment_id, amount, method) VALUES ("PAY-1901", "SHP-442", 245.90, "CASH")', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', raw: '07-12 10:58:21.200 12847 12912 D RoomDao  : INSERT INTO payments (id, shipment_id, amount, method) VALUES ("PAY-1901", "SHP-442", 245.90, "CASH")' },
@@ -364,7 +364,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-027', timestamp: '2026-07-12T10:58:25.000+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> POST https://api.nesymobile.com/v2/payments/PAY-1901/confirm', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7802', correlationId: 'corr-del-442', raw: '07-12 10:58:25.000 12847 12890 I Retrofit : --> POST https://api.nesymobile.com/v2/payments/PAY-1901/confirm' },
   { id: 'evt-028', timestamp: '2026-07-12T10:58:26.800+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '<-- 200 OK https://api.nesymobile.com/v2/payments/PAY-1901/confirm (1800ms)', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7802', correlationId: 'corr-del-442', raw: '07-12 10:58:26.800 12847 12890 I Retrofit : <-- 200 OK https://api.nesymobile.com/v2/payments/PAY-1901/confirm (1800ms)' },
 
-  // ── 10:58:30-40 — Fiskalizasyon işlemi ──
+  // ── 10:58:30-40 — Fiscalization process ──
   { id: 'evt-029', timestamp: '2026-07-12T10:58:30.100+03:00', source: 'fiscal', level: 'info', tag: 'FiscalService', message: 'fiscal_create: starting fiscalization for SHP-442, amount=245.90', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:30.100 12847 12847 I FiscalService: fiscal_create: starting fiscalization for SHP-442, amount=245.90' },
   { id: 'evt-030', timestamp: '2026-07-12T10:58:30.800+03:00', source: 'fiscal', level: 'debug', tag: 'FiscalManager', message: 'Preparing fiscal document: type=E_RECEIPT, vat=18%', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:30.800 12847 12847 D FiscalManager: Preparing fiscal document: type=E_RECEIPT, vat=18%' },
   { id: 'evt-031', timestamp: '2026-07-12T10:58:31.500+03:00', source: 'fiscal', level: 'debug', tag: 'FiscalService', message: 'fiscal_sign: signing document with device certificate', processId: 12847, threadId: 12847, threadName: 'main', correlationId: 'corr-del-442', raw: '07-12 10:58:31.500 12847 12847 D FiscalService: fiscal_sign: signing document with device certificate' },
@@ -374,7 +374,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-035', timestamp: '2026-07-12T10:58:36.200+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'UPDATE shipments SET fiscal_id = "FSC-88201", status = "FISCALIZED" WHERE id = "SHP-442"', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', raw: '07-12 10:58:36.200 12847 12912 D RoomDao  : UPDATE shipments SET fiscal_id = "FSC-88201", status = "FISCALIZED" WHERE id = "SHP-442"' },
   { id: 'evt-036', timestamp: '2026-07-12T10:58:37.500+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Fiscal step completed, proceeding to save delivery', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:37.500 12847 12847 I DeliveryViewModel: Fiscal step completed, proceeding to save delivery' },
 
-  // ── 10:58:40-50 — Teslimat kaydetme ve çevrimdışı kuyruk ──
+  // ── 10:58:40-50 — Saving delivery and offline queue ──
   { id: 'evt-037', timestamp: '2026-07-12T10:58:40.100+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'delivery_saved: SHP-442 marked as DELIVERED locally', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-442', correlationId: 'corr-del-442', raw: '07-12 10:58:40.100 12847 12847 I DeliveryViewModel: delivery_saved: SHP-442 marked as DELIVERED locally' },
   { id: 'evt-038', timestamp: '2026-07-12T10:58:40.500+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'UPDATE shipments SET status = "DELIVERED", delivered_at = "2026-07-12T10:58:40" WHERE id = "SHP-442"', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', raw: '07-12 10:58:40.500 12847 12912 D RoomDao  : UPDATE shipments SET status = "DELIVERED", delivered_at = "2026-07-12T10:58:40" WHERE id = "SHP-442"' },
   { id: 'evt-039', timestamp: '2026-07-12T10:58:41.200+03:00', source: 'offline-queue', level: 'info', tag: 'RequestSenderService', message: 'request_enqueued: POST /v2/deliveries/SHP-442/complete → queue position 1', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-442', requestId: 'req-7804', correlationId: 'corr-del-442', raw: '07-12 10:58:41.200 12847 12912 I RequestSenderService: request_enqueued: POST /v2/deliveries/SHP-442/complete → queue position 1' },
@@ -388,7 +388,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-047', timestamp: '2026-07-12T10:58:48.000+03:00', source: 'firebase', level: 'debug', tag: 'FirebaseMessaging', message: 'Sending delivery completion event to analytics', processId: 12847, threadId: 12890, threadName: 'network-1', shipmentId: 'SHP-442', raw: '07-12 10:58:48.000 12847 12890 D FirebaseMessaging: Sending delivery completion event to analytics' },
   { id: 'evt-048', timestamp: '2026-07-12T10:58:49.200+03:00', source: 'app', level: 'info', tag: 'NesyApp', message: 'Navigating back to route list after delivery', processId: 12847, threadId: 12847, threadName: 'main', raw: '07-12 10:58:49.200 12847 12847 I NesyApp  : Navigating back to route list after delivery' },
 
-  // ── 10:58:50-59:10 — Yavaş ağ uyarıları ──
+  // ── 10:58:50-59:10 — Slow network warnings ──
   { id: 'evt-049', timestamp: '2026-07-12T10:58:50.000+03:00', source: 'network', level: 'warn', tag: 'NetworkInterceptor', message: 'Slow response detected: GET /v2/routes/active took 3200ms (threshold: 2000ms)', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:58:50.000 12847 12890 W NetworkInterceptor: Slow response detected: GET /v2/routes/active took 3200ms (threshold: 2000ms)' },
   { id: 'evt-050', timestamp: '2026-07-12T10:58:52.300+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> GET https://api.nesymobile.com/v2/routes/active', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7805', raw: '07-12 10:58:52.300 12847 12890 I Retrofit : --> GET https://api.nesymobile.com/v2/routes/active' },
   { id: 'evt-051', timestamp: '2026-07-12T10:58:55.500+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '<-- 200 OK https://api.nesymobile.com/v2/routes/active (3200ms)', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7805', raw: '07-12 10:58:55.500 12847 12890 I Retrofit : <-- 200 OK https://api.nesymobile.com/v2/routes/active (3200ms)' },
@@ -400,7 +400,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-057', timestamp: '2026-07-12T10:59:06.200+03:00', source: 'app', level: 'info', tag: 'FCMHandler', message: 'Route update notification received, scheduling refresh', processId: 12847, threadId: 12847, threadName: 'main', raw: '07-12 10:59:06.200 12847 12847 I FCMHandler: Route update notification received, scheduling refresh' },
   { id: 'evt-058', timestamp: '2026-07-12T10:59:08.000+03:00', source: 'network', level: 'debug', tag: 'NetworkInterceptor', message: 'Connection quality recovered: latency=420ms, signal=-62dBm', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:08.000 12847 12890 D NetworkInterceptor: Connection quality recovered: latency=420ms, signal=-62dBm' },
 
-  // ── 10:59:10-30 — İstek yeniden deneme ve tamamlanma ──
+  // ── 10:59:10-30 — Request retry and completion ──
   { id: 'evt-059', timestamp: '2026-07-12T10:59:10.100+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> GET https://api.nesymobile.com/v2/routes/active/refresh', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7806', raw: '07-12 10:59:10.100 12847 12890 I Retrofit : --> GET https://api.nesymobile.com/v2/routes/active/refresh' },
   { id: 'evt-060', timestamp: '2026-07-12T10:59:11.800+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '<-- 200 OK https://api.nesymobile.com/v2/routes/active/refresh (1700ms)', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7806', raw: '07-12 10:59:11.800 12847 12890 I Retrofit : <-- 200 OK https://api.nesymobile.com/v2/routes/active/refresh (1700ms)' },
   { id: 'evt-061', timestamp: '2026-07-12T10:59:12.500+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'BEGIN TRANSACTION — updating 3 route stops', processId: 12847, threadId: 12912, threadName: 'worker-1', raw: '07-12 10:59:12.500 12847 12912 D RoomDao  : BEGIN TRANSACTION — updating 3 route stops' },
@@ -412,7 +412,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-067', timestamp: '2026-07-12T10:59:22.000+03:00', source: 'app', level: 'verbose', tag: 'ViewModel', message: 'GC triggered: freed 2.4MB, 38% free heap', processId: 12847, threadId: 12847, threadName: 'main', raw: '07-12 10:59:22.000 12847 12847 V ViewModel: GC triggered: freed 2.4MB, 38% free heap' },
   { id: 'evt-068', timestamp: '2026-07-12T10:59:25.000+03:00', source: 'system', level: 'debug', tag: 'ActivityManager', message: 'Process com.nesymobile: pss=124MB, rss=186MB', processId: 12847, threadId: 12847, threadName: 'main', raw: '07-12 10:59:25.000 12847 12847 D ActivityManager: Process com.nesymobile: pss=124MB, rss=186MB' },
 
-  // ── 10:59:30-11:00 — Konum güncelleme grubu ──
+  // ── 10:59:30-11:00 — Location update batch ──
   { id: 'evt-069', timestamp: '2026-07-12T10:59:30.100+03:00', source: 'location', level: 'info', tag: 'LocationService', message: 'Location batch update: 5 points collected in last 120s', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:30.100 12847 12890 I LocationService: Location batch update: 5 points collected in last 120s' },
   { id: 'evt-070', timestamp: '2026-07-12T10:59:31.500+03:00', source: 'location', level: 'debug', tag: 'GPSProvider', message: 'Fix acquired: 41.0091, 28.9792, alt=42m, speed=8.3m/s', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:31.500 12847 12890 D GPSProvider: Fix acquired: 41.0091, 28.9792, alt=42m, speed=8.3m/s' },
   { id: 'evt-071', timestamp: '2026-07-12T10:59:33.000+03:00', source: 'location', level: 'debug', tag: 'FusedLocation', message: 'Fused provider: GPS priority, accuracy=6.1m', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:33.000 12847 12890 D FusedLocation: Fused provider: GPS priority, accuracy=6.1m' },
@@ -421,7 +421,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-074', timestamp: '2026-07-12T10:59:40.000+03:00', source: 'location', level: 'info', tag: 'LocationService', message: 'Geofence check: next stop SHP-443 is 1.2km away', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:40.000 12847 12890 I LocationService: Geofence check: next stop SHP-443 is 1.2km away' },
   { id: 'evt-075', timestamp: '2026-07-12T10:59:50.000+03:00', source: 'location', level: 'debug', tag: 'GPSProvider', message: 'Fix acquired: 41.0098, 28.9801, alt=38m, speed=12.1m/s', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 10:59:50.000 12847 12890 D GPSProvider: Fix acquired: 41.0098, 28.9801, alt=38m, speed=12.1m/s' },
 
-  // ── 11:00-11:01 — WorkManager arka plan görevi ──
+  // ── 11:00-11:01 — WorkManager background task ──
   { id: 'evt-076', timestamp: '2026-07-12T11:00:00.200+03:00', source: 'workmanager', level: 'info', tag: 'WorkManager', message: 'Periodic work "SyncScheduleWorker" starting', processId: 12847, threadId: 12912, threadName: 'worker-1', raw: '07-12 11:00:00.200 12847 12912 I WorkManager: Periodic work "SyncScheduleWorker" starting' },
   { id: 'evt-077', timestamp: '2026-07-12T11:00:01.500+03:00', source: 'workmanager', level: 'debug', tag: 'ScheduledWork', message: 'SyncScheduleWorker: checking for pending schedule updates', processId: 12847, threadId: 12912, threadName: 'worker-1', raw: '07-12 11:00:01.500 12847 12912 D ScheduledWork: SyncScheduleWorker: checking for pending schedule updates' },
   { id: 'evt-078', timestamp: '2026-07-12T11:00:03.000+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> GET https://api.nesymobile.com/v2/schedules/pending', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7809', raw: '07-12 11:00:03.000 12847 12890 I Retrofit : --> GET https://api.nesymobile.com/v2/schedules/pending' },
@@ -433,7 +433,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-084', timestamp: '2026-07-12T11:00:28.500+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '<-- 200 OK https://api.nesymobile.com/v2/images/upload (8500ms)', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7810', raw: '07-12 11:00:28.500 12847 12890 I Retrofit : <-- 200 OK https://api.nesymobile.com/v2/images/upload (8500ms)' },
   { id: 'evt-085', timestamp: '2026-07-12T11:00:30.000+03:00', source: 'workmanager', level: 'info', tag: 'WorkManager', message: 'Work "ImageUploadWorker" finished: SUCCESS', processId: 12847, threadId: 12912, threadName: 'worker-1', raw: '07-12 11:00:30.000 12847 12912 I WorkManager: Work "ImageUploadWorker" finished: SUCCESS' },
 
-  // ── 11:01-11:02 — Sonraki teslimat başlangıcı ──
+  // ── 11:01-11:02 — Next delivery start ──
   { id: 'evt-086', timestamp: '2026-07-12T11:01:00.200+03:00', source: 'location', level: 'info', tag: 'LocationService', message: 'Geofence entered: stop SHP-443 radius=200m', processId: 12847, threadId: 12890, threadName: 'network-1', raw: '07-12 11:01:00.200 12847 12890 I LocationService: Geofence entered: stop SHP-443 radius=200m' },
   { id: 'evt-087', timestamp: '2026-07-12T11:01:01.000+03:00', source: 'app', level: 'info', tag: 'NesyApp', message: 'Auto-navigating to next delivery: SHP-443', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-443', raw: '07-12 11:01:01.000 12847 12847 I NesyApp  : Auto-navigating to next delivery: SHP-443' },
   { id: 'evt-088', timestamp: '2026-07-12T11:01:02.500+03:00', source: 'room', level: 'debug', tag: 'RoomDao', message: 'SELECT * FROM shipments WHERE id = "SHP-443"', processId: 12847, threadId: 12912, threadName: 'worker-1', shipmentId: 'SHP-443', raw: '07-12 11:01:02.500 12847 12912 D RoomDao  : SELECT * FROM shipments WHERE id = "SHP-443"' },
@@ -443,7 +443,7 @@ export const MOCK_LOG_EVENTS: LogEvent[] = [
   { id: 'evt-092', timestamp: '2026-07-12T11:01:18.000+03:00', source: 'scanner', level: 'info', tag: 'BarcodeScanner', message: 'Barcode scanned: "PKG-SHP443-001", format=CODE128', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-443', raw: '07-12 11:01:18.000 12847 12847 I BarcodeScanner: Barcode scanned: "PKG-SHP443-001", format=CODE128' },
   { id: 'evt-093', timestamp: '2026-07-12T11:01:19.200+03:00', source: 'app', level: 'info', tag: 'DeliveryViewModel', message: 'Parcel PKG-SHP443-001 verified via barcode', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-443', correlationId: 'corr-del-443', raw: '07-12 11:01:19.200 12847 12847 I DeliveryViewModel: Parcel PKG-SHP443-001 verified via barcode' },
 
-  // ── 11:02-11:03 — Ağ zaman aşımı ve çevrimdışı kuyruk yedekleme ──
+  // ── 11:02-11:03 — Network timeout and offline queue fallback ──
   { id: 'evt-094', timestamp: '2026-07-12T11:02:00.100+03:00', source: 'payment', level: 'info', tag: 'PaymentManager', message: 'payment_initiated: amount=89.50 TRY, method=CASH, shipment=SHP-443', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-443', correlationId: 'corr-del-443', raw: '07-12 11:02:00.100 12847 12847 I PaymentManager: payment_initiated: amount=89.50 TRY, method=CASH, shipment=SHP-443' },
   { id: 'evt-095', timestamp: '2026-07-12T11:02:01.500+03:00', source: 'payment', level: 'info', tag: 'PaymentProvider', message: 'provider_callback received: status=APPROVED, ref=PAY-1902', processId: 12847, threadId: 12847, threadName: 'main', shipmentId: 'SHP-443', correlationId: 'corr-del-443', raw: '07-12 11:02:01.500 12847 12847 I PaymentProvider: provider_callback received: status=APPROVED, ref=PAY-1902' },
   { id: 'evt-096', timestamp: '2026-07-12T11:02:02.800+03:00', source: 'network', level: 'info', tag: 'Retrofit', message: '--> POST https://api.nesymobile.com/v2/deliveries/SHP-443/complete', processId: 12847, threadId: 12890, threadName: 'network-1', requestId: 'req-7811', correlationId: 'corr-del-443', raw: '07-12 11:02:02.800 12847 12890 I Retrofit : --> POST https://api.nesymobile.com/v2/deliveries/SHP-443/complete' },
@@ -460,7 +460,7 @@ export const MOCK_RAW_LOGS = `\
 07-12 10:58:00.350 12847 12847 D DeliveryViewModel: loadShipment(SHP-442) called
 07-12 10:58:01.010 12847 12912 D RoomDao  : SELECT * FROM shipments WHERE id = "SHP-442"
 07-12 10:58:01.085 12847 12912 D RoomDao  : Query returned 1 row in 75ms
-07-12 10:58:01.200 12847 12847 I DeliveryViewModel: Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yılmaz
+07-12 10:58:01.200 12847 12847 I DeliveryViewModel: Shipment SHP-442 loaded: 3 parcels, recipient=Ahmet Yilmaz
 07-12 10:58:02.500 12847 12847 D DeliveryFragment: Rendering delivery UI for SHP-442
 07-12 10:58:03.100 12847 12890 I LocationService: Current position: 41.0082, 28.9784 accuracy=8.2m
 07-12 10:58:04.200 12847 12847 I NesyApp  : Delivery screen opened
@@ -559,11 +559,11 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Urovo DT50 — SN:DT50-A1842',
     presetLabel: 'Delivery Flow',
     presetId: 'delivery-flow',
-    contextNote: 'SHP-442 teslimat akışı testi — ödeme, fiskalizasyon ve offline kuyruk dahil',
+    contextNote: 'SHP-442 delivery flow test — including payment, fiscalization and offline queue',
     startedAt: '2026-07-12T10:58:00+03:00',
     durationMin: 5,
     eventCount: 12482,
-    owner: 'Gökhan',
+    owner: 'Gokhan',
     sharedTo: 'Ticket #TK-2290',
     sources: ['app', 'network', 'payment', 'fiscal', 'offline-queue', 'room'],
   },
@@ -572,7 +572,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Android Emulator — Pixel 7 API 34',
     presetLabel: 'Startup & Login',
     presetId: 'startup-login',
-    contextNote: '401 Unauthorized hatası tekrar — token expire senaryosu',
+    contextNote: '401 Unauthorized error again — token expire scenario',
     startedAt: '2026-07-12T10:12:00+03:00',
     durationMin: 2,
     eventCount: 3200,
@@ -584,7 +584,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Samsung Galaxy A13 — SN:R58W40KXYZM',
     presetLabel: 'Offline Queue',
     presetId: 'offline-queue',
-    contextNote: 'Çevrimdışı kuyruk senkronizasyonu — 48 istek birikimi testi',
+    contextNote: 'Offline queue synchronization — 48 request backlog test',
     startedAt: '2026-07-11T16:30:00+03:00',
     durationMin: 8,
     eventCount: 18500,
@@ -596,7 +596,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Urovo DT50 — SN:DT50-A1790',
     presetLabel: 'Crash / ANR',
     presetId: 'crash-anr',
-    contextNote: 'OOM crash — schedule yükleme sırasında bellek yetersizliği',
+    contextNote: 'OOM crash — out of memory during schedule load',
     startedAt: '2026-07-11T09:00:00+03:00',
     durationMin: 1,
     eventCount: 850,
@@ -609,7 +609,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Android Emulator — Pixel 7 API 34',
     presetLabel: 'Payment & Fiscal',
     presetId: 'payment-fiscal',
-    contextNote: 'Kredi kartı ödeme + e-fatura akışı doğrulama',
+    contextNote: 'Credit card payment + e-invoice flow validation',
     startedAt: '2026-07-10T14:20:00+03:00',
     durationMin: 3,
     eventCount: 5200,
@@ -621,11 +621,11 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Samsung Galaxy A13 — SN:R58W40KXYZM',
     presetLabel: 'Schedule & Stop List',
     presetId: 'schedule-stoplist',
-    contextNote: 'Rut programı güncelleme — FCM tetikleyici ve Room yazma performansı',
+    contextNote: 'Route schedule update — FCM trigger and Room write performance',
     startedAt: '2026-07-10T11:00:00+03:00',
     durationMin: 4,
     eventCount: 7800,
-    owner: 'Gökhan',
+    owner: 'Gokhan',
     sources: ['app', 'network', 'room'],
   },
   {
@@ -633,7 +633,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Urovo DT50 — SN:DT50-A1842',
     presetLabel: 'Full Investigation',
     presetId: 'full-investigation',
-    contextNote: 'Saha testi — tüm kaynaklar açık, tam gün izleme deneyimi',
+    contextNote: 'Field test — all sources on, full day monitoring experience',
     startedAt: '2026-07-09T15:45:00+03:00',
     durationMin: 15,
     eventCount: 45000,
@@ -645,7 +645,7 @@ export const MOCK_SESSIONS: LogSession[] = [
     deviceName: 'Zebra TC21 — SN:TC21-Z4501',
     presetLabel: 'Barcode & Scan',
     presetId: 'barcode-scan',
-    contextNote: 'Barkod okuma performansı — Zebra donanım tarayıcı vs kamera karşılaştırması',
+    contextNote: 'Barcode scan performance — Zebra hardware scanner vs camera comparison',
     startedAt: '2026-07-09T08:30:00+03:00',
     durationMin: 2,
     eventCount: 2100,
@@ -660,7 +660,7 @@ export const CORRELATION_RULES: CorrelationRule[] = [
   {
     id: 'delivery-flow',
     label: 'Delivery Flow',
-    description: 'Teslimat akışının tüm adımlarını korelasyon ile doğrular',
+    description: 'Verifies all steps of delivery flow with correlation',
     expectedEvents: [
       { event: 'delivery_started', required: true },
       { event: 'payment_completed', required: true },
@@ -669,12 +669,12 @@ export const CORRELATION_RULES: CorrelationRule[] = [
       { event: 'request_completed', required: true },
     ],
     analysisTemplate:
-      'Teslimat akışı analizi: {found}/{total} beklenen olay bulundu. {missing_events}',
+      'Delivery flow analysis: {found}/{total} expected events found. {missing_events}',
   },
   {
     id: 'login-flow',
     label: 'Login Flow',
-    description: 'Giriş akışının tüm adımlarını korelasyon ile doğrular',
+    description: 'Verifies all steps of login flow with correlation',
     expectedEvents: [
       { event: 'app_start', required: true },
       { event: 'token_check', required: true },
@@ -683,12 +683,12 @@ export const CORRELATION_RULES: CorrelationRule[] = [
       { event: 'session_created', required: true },
     ],
     analysisTemplate:
-      'Giriş akışı analizi: {found}/{total} beklenen olay bulundu. {missing_events}',
+      'Login flow analysis: {found}/{total} expected events found. {missing_events}',
   },
   {
     id: 'offline-sync',
     label: 'Offline Sync',
-    description: 'Çevrimdışı senkronizasyon döngüsünün tüm adımlarını izler',
+    description: 'Monitors all steps of offline synchronization loop',
     expectedEvents: [
       { event: 'request_enqueued', required: true },
       { event: 'network_available', required: true },
@@ -696,12 +696,12 @@ export const CORRELATION_RULES: CorrelationRule[] = [
       { event: 'request_completed', required: true },
     ],
     analysisTemplate:
-      'Çevrimdışı senkronizasyon analizi: {found}/{total} beklenen olay bulundu. {missing_events}',
+      'Offline synchronization analysis: {found}/{total} expected events found. {missing_events}',
   },
   {
     id: 'payment-flow',
     label: 'Payment Flow',
-    description: 'Ödeme ve fiskalizasyon akışını korelasyon ile doğrular',
+    description: 'Verifies payment and fiscalization flow with correlation',
     expectedEvents: [
       { event: 'payment_initiated', required: true },
       { event: 'provider_callback', required: true },
@@ -709,12 +709,12 @@ export const CORRELATION_RULES: CorrelationRule[] = [
       { event: 'fiscal_create', required: true },
     ],
     analysisTemplate:
-      'Ödeme akışı analizi: {found}/{total} beklenen olay bulundu. {missing_events}',
+      'Payment flow analysis: {found}/{total} expected events found. {missing_events}',
   },
   {
     id: 'schedule-refresh',
     label: 'Schedule Refresh',
-    description: 'Rut programı güncelleme akışının tüm adımlarını izler',
+    description: 'Monitors all steps of route schedule update flow',
     expectedEvents: [
       { event: 'fcm_received', required: true },
       { event: 'schedule_api', required: true },
@@ -722,7 +722,7 @@ export const CORRELATION_RULES: CorrelationRule[] = [
       { event: 'ui_update', required: true },
     ],
     analysisTemplate:
-      'Program güncelleme analizi: {found}/{total} beklenen olay bulundu. {missing_events}',
+      'Schedule update analysis: {found}/{total} expected events found. {missing_events}',
   },
 ]
 
@@ -788,7 +788,7 @@ export const PRIVACY_RULES: PrivacyRule[] = [
   {
     id: 'recipient_name',
     label: 'Recipient Name',
-    pattern: 'recipient=[A-Za-zÀ-ÿçÇğĞıİöÖşŞüÜ]+\\s+[A-Za-zÀ-ÿçÇğĞıİöÖşŞüÜ]+',
+    pattern: 'recipient=[A-Za-zÀ-ÿ]+\\s+[A-Za-zÀ-ÿ]+',
     replacement: 'recipient=***REDACTED***',
     enabled: true,
   },
@@ -828,84 +828,84 @@ export const SYSTEM_DUMP_OPTIONS: {
     id: 'dumpsys-package',
     label: 'Package Info',
     command: 'dumpsys package com.nesymobile',
-    description: 'Uygulama paket bilgisi, izinler ve sürüm detayları',
+    description: 'App package info, permissions and version details',
     heavy: false,
   },
   {
     id: 'dumpsys-activity-stack',
     label: 'Activity Stack',
     command: 'dumpsys activity activities | grep -A 20 com.nesymobile',
-    description: 'Mevcut aktivite yığını ve görev durumu',
+    description: 'Current activity stack and task state',
     heavy: false,
   },
   {
     id: 'dumpsys-meminfo',
     label: 'Memory Info',
     command: 'dumpsys meminfo com.nesymobile',
-    description: 'Bellek kullanım detayları (PSS, private dirty, heap)',
+    description: 'Memory usage details (PSS, private dirty, heap)',
     heavy: false,
   },
   {
     id: 'dumpsys-battery',
     label: 'Battery Stats',
     command: 'dumpsys batterystats --charged com.nesymobile',
-    description: 'Batarya tüketim istatistikleri',
+    description: 'Battery consumption statistics',
     heavy: true,
   },
   {
     id: 'dumpsys-netstats',
     label: 'Network Stats',
     command: 'dumpsys netstats detail | grep -A 10 com.nesymobile',
-    description: 'Ağ kullanım istatistikleri (mobil/Wi-Fi)',
+    description: 'Network usage statistics (mobile/Wi-Fi)',
     heavy: false,
   },
   {
     id: 'dumpsys-jobscheduler',
     label: 'Job Scheduler',
     command: 'dumpsys jobscheduler | grep -A 5 com.nesymobile',
-    description: 'Zamanlanan iş durumları ve kısıtlamalar',
+    description: 'Scheduled job states and constraints',
     heavy: false,
   },
   {
     id: 'dumpsys-alarm',
     label: 'Alarm Manager',
     command: 'dumpsys alarm | grep -A 5 com.nesymobile',
-    description: 'Alarm ve zamanlayıcı kayıtları',
+    description: 'Alarm and timer records',
     heavy: false,
   },
   {
     id: 'dumpsys-connectivity',
     label: 'Connectivity',
     command: 'dumpsys connectivity',
-    description: 'Bağlantı durumu ve ağ yetenekleri',
+    description: 'Connection status and network capabilities',
     heavy: false,
   },
   {
     id: 'dumpsys-location',
     label: 'Location Provider',
     command: 'dumpsys location',
-    description: 'Konum sağlayıcı durumu ve son bilinen konum',
+    description: 'Location provider status and last known location',
     heavy: false,
   },
   {
     id: 'dumpsys-gfxinfo',
     label: 'Graphics Info',
     command: 'dumpsys gfxinfo com.nesymobile framestats',
-    description: 'Kare oluşturma süreleri ve jank istatistikleri',
+    description: 'Frame render times and jank statistics',
     heavy: true,
   },
   {
     id: 'bugreport',
     label: 'Full Bug Report',
     command: 'bugreportz',
-    description: 'Tam sistem hata raporu (ZIP) — ağır, 2-5 dakika sürebilir',
+    description: 'Full system bug report (ZIP) — heavy, may take 2-5 minutes',
     heavy: true,
   },
   {
     id: 'logcat-crash',
     label: 'Crash Buffer',
     command: 'logcat -b crash -d',
-    description: 'Çökme buffer logları (yalnızca crash buffer)',
+    description: 'Crash buffer logs (only crash buffer)',
     heavy: false,
   },
 ]
@@ -918,12 +918,12 @@ export const INVESTIGATION_CONTEXT_FIELDS: {
   placeholder: string
   icon: string
 }[] = [
-  { key: 'shipmentId', label: 'Sevkiyat ID', placeholder: 'SHP-442', icon: 'Package' },
-  { key: 'courierId', label: 'Kurye ID', placeholder: 'CRR-1001', icon: 'User' },
-  { key: 'scheduleId', label: 'Program ID', placeholder: 'SCH-20260712', icon: 'Calendar' },
-  { key: 'requestId', label: 'İstek ID', placeholder: 'req-7801', icon: 'Send' },
-  { key: 'fiscalId', label: 'Fiş ID', placeholder: 'FSC-88201', icon: 'Receipt' },
-  { key: 'errorCode', label: 'Hata Kodu', placeholder: 'ERR_TIMEOUT', icon: 'AlertTriangle' },
+  { key: 'shipmentId', label: 'Shipment ID', placeholder: 'SHP-442', icon: 'Package' },
+  { key: 'courierId', label: 'Courier ID', placeholder: 'CRR-1001', icon: 'User' },
+  { key: 'scheduleId', label: 'Schedule ID', placeholder: 'SCH-20260712', icon: 'Calendar' },
+  { key: 'requestId', label: 'Request ID', placeholder: 'req-7801', icon: 'Send' },
+  { key: 'fiscalId', label: 'Receipt ID', placeholder: 'FSC-88201', icon: 'Receipt' },
+  { key: 'errorCode', label: 'Error Code', placeholder: 'ERR_TIMEOUT', icon: 'AlertTriangle' },
   { key: 'ticketId', label: 'Ticket ID', placeholder: 'TK-2290', icon: 'Ticket' },
   { key: 'incidentId', label: 'Incident ID', placeholder: 'INC-0087', icon: 'Siren' },
 ]

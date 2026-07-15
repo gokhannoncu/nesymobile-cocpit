@@ -1,7 +1,7 @@
 'use client'
 
-// Debug View route group layout — ortak cihaz bağlamını ve üst cihaz
-// çubuğunu tüm debug sayfaları için sağlar.
+// Debug View route group layout - provides common device context and top device
+// bar for all debug pages.
 
 import type { ReactNode } from 'react'
 import { DebugViewProvider } from '@/components/debug-view/debug-context'

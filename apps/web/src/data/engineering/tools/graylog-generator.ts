@@ -297,51 +297,51 @@ export type GraylogField = {
 export const GRAYLOG_FIELDS: GraylogField[] = [
   {
     field: 'shipmentId',
-    meaning: "Gönderinin benzersiz kimliği — delivery, fiscal ve retry loglarını tek zincirde bağlar.",
+    meaning: "Unique identifier of the shipment — connects delivery, fiscal, and retry logs in a single chain.",
     example: '45-40-20251224-1',
     source: 'Mobile · Backend · Fiscal',
   },
   {
     field: 'courierId',
-    meaning: 'Kuryenin kimliği — login, vardiya ve teslimat loglarını kişi bazında filtreler.',
+    meaning: 'Courier identifier — filters login, shift, and delivery logs by person.',
     example: '3021',
     source: 'Mobile · Authentication',
   },
   {
     field: 'scheduleId',
-    meaning: 'Vardiya/rota planının kimliği — aynı vardiyadaki tüm shipment loglarını gruplar.',
+    meaning: 'Shift/route plan identifier — groups all shipment logs in the same shift.',
     example: 'SCH-2025-8841',
     source: 'Backend',
   },
   {
     field: 'requestId',
-    meaning: 'Offline queue request kimliği — retry zincirindeki her denemeyi eşleştirir.',
+    meaning: 'Offline queue request identifier — matches every attempt in the retry chain.',
     example: 'req_9f3c1a72',
     source: 'Offline queue · Backend',
   },
   {
     field: 'fiscalId',
-    meaning: 'Fiscal kaydın kimliği — duplicate fiscal ve timeout araştırmalarının anahtarı.',
+    meaning: 'Fiscal record identifier — key for duplicate fiscal and timeout investigations.',
     example: 'FIS-HR-338291',
     source: 'Fiscal service',
   },
   {
     field: 'errorCode',
-    meaning: 'Standart hata kodu — hata ailesine göre filtreleme sağlar.',
+    meaning: 'Standard error code — provides filtering by error family.',
     example: 'FISCAL_TIMEOUT',
-    source: 'Tüm servisler',
+    source: 'All services',
   },
   {
     field: 'appVersion',
-    meaning: 'Mobil uygulama sürümü — sürüm bazlı regresyon araştırmalarında kullanılır.',
+    meaning: 'Mobile application version — used in version-based regression investigations.',
     example: '4.12.0',
     source: 'Mobile',
   },
   {
     field: 'country',
-    meaning: 'Operasyon ülkesi (ISO kodu) — log hacmini ülke bazında daraltır.',
+    meaning: 'Operation country (ISO code) — narrows log volume by country.',
     example: 'HR',
-    source: 'Tüm servisler',
+    source: 'All services',
   },
 ]
 
@@ -369,14 +369,14 @@ export const SAVED_INVESTIGATIONS: SavedInvestigation[] = [
   {
     id: 'inv-double-fiscal',
     name: 'Double fiscal investigation',
-    purpose: 'Aynı shipment için iki fiscal_created kaydının kaynağını bulmak',
+    purpose: 'Find the source of two fiscal_created records for the same shipment',
     country: 'HR',
     timeRange: 'Last 6 hours',
     relatedIncident: 'INC-2025-114',
-    createdBy: 'M. Kovačić',
-    lastUsed: '2 gün önce',
+    createdBy: 'M. Kovacic',
+    lastUsed: '2 days ago',
     objective:
-      'Retry mekanizmasının idempotency kontrolü olmadan fiscal isteğini tekrar gönderdiği durumları yakalamak. Aynı shipmentId altında birden fazla fiscal_created eventi arıyoruz.',
+      'Catch cases where the retry mechanism resends the fiscal request without idempotency control. We are looking for multiple fiscal_created events under the same shipmentId.',
     query: `application:nesy-fiscal
 AND country:HR
 AND event:fiscal_created
@@ -384,99 +384,99 @@ AND shipmentId:*
 | aggregate count by shipmentId having count > 1`,
     expectedEventChain: ['payment_completed', 'fiscal_requested', 'fiscal_created', 'fiscal_confirmed'],
     knownAnomalies: [
-      'fiscal_created eventi aynı shipmentId için 2+ kez',
-      'İkinci kayıt genelde retry sonrası 30–90 sn içinde',
+      'fiscal_created event 2+ times for the same shipmentId',
+      'Second record usually within 30-90 sec after retry',
     ],
     relatedTickets: ['FT-031', 'CT-10233'],
-    rootCause: 'RequestSenderService retry\'ı fiscal isteğini idempotency key olmadan tekrar gönderiyor.',
-    edgeCase: 'Zayıf sinyalde timeout süresi dolmadan yanıt gelirse hem orijinal hem retry başarılı sayılıyor.',
+    rootCause: 'RequestSenderService retry resends fiscal request without idempotency key.',
+    edgeCase: 'If response arrives before timeout in weak signal, both original and retry are considered successful.',
   },
   {
     id: 'inv-silent-logout',
     name: 'Silent logout during shift',
-    purpose: 'Vardiya ortasında sessiz logout yaşayan kuryeleri tespit etmek',
+    purpose: 'Detect couriers experiencing silent logout during shift',
     country: 'SI',
     timeRange: 'Last 24 hours',
     relatedIncident: 'INC-2025-098',
     createdBy: 'A. Novak',
-    lastUsed: '5 saat önce',
+    lastUsed: '5 hours ago',
     objective:
-      '401 sonrası refresh denemesi olmadan logout\'a düşen oturumları bulmak. Kurye fark etmeden oturum kapandığı için teslimatlar offline kuyruğa yığılıyor.',
+      'Find sessions falling to logout without refresh attempt after 401. Since the session is closed without the courier noticing, deliveries stack up in the offline queue.',
     query: `application:nesy-mobile
 AND country:SI
 AND (statusCode:401 OR event:logout)
 AND courierId:*
 | sort timestamp asc`,
     expectedEventChain: ['token_expired', 'token_refresh_attempted', 'token_refreshed'],
-    knownAnomalies: ['401 sonrası token_refresh_attempted eventi yok', 'logout eventi vardiya saatleri içinde'],
+    knownAnomalies: ['No token_refresh_attempted event after 401', 'logout event within shift hours'],
     relatedTickets: ['FT-018', 'CT-10471'],
-    rootCause: 'Refresh token mekanizması yok; access token süresi dolunca oturum sessizce düşüyor.',
-    edgeCase: 'Cihaz saati kaymışsa token, sunucuya göre erken expire oluyor.',
+    rootCause: 'No refresh token mechanism; when access token expires, session silently drops.',
+    edgeCase: 'If device clock is skewed, token expires early according to server.',
   },
   {
     id: 'inv-zombie-queue',
     name: 'Zombie request queue',
-    purpose: 'Kuyrukta başlamış ama hiç tamamlanmamış request zincirlerini bulmak',
+    purpose: 'Find request chains started in queue but never completed',
     country: 'HR',
     timeRange: 'Last 24 hours',
     relatedIncident: 'INC-2025-121',
-    createdBy: 'G. Öncü',
-    lastUsed: 'Dün',
+    createdBy: 'G. Oncu',
+    lastUsed: 'Yesterday',
     objective:
-      'request_started olup request_completed veya request_failed üretmeyen kayıtları tespit etmek. Bu zincirler kuyruğu sessizce bloklar ve sonraki teslimatlar gecikir.',
+      'Detect records that have request_started but do not produce request_completed or request_failed. These chains silently block the queue and delay subsequent deliveries.',
     query: `service:RequestSenderService
 AND country:HR
 AND event:request_started
 NOT event:request_completed
 | aggregate count by requestId`,
     expectedEventChain: ['request_queued', 'request_started', 'request_completed'],
-    knownAnomalies: ['request_started sonrası 10+ dk sessizlik', 'isProcessing true kalmış kayıtlar'],
+    knownAnomalies: ['10+ min silence after request_started', 'records where isProcessing remained true'],
     relatedTickets: ['FT-027'],
-    rootCause: 'İşlem sırasında crash olduğunda isProcessing bayrağı sıfırlanmıyor; kuyruk kilitleniyor.',
-    edgeCase: 'Uygulama arka plandayken OS process\'i öldürürse finally bloğu hiç çalışmıyor.',
+    rootCause: 'When crash occurs during processing, isProcessing flag is not reset; queue locks.',
+    edgeCase: 'If OS kills process while app is in background, finally block never runs.',
   },
   {
     id: 'inv-barcode-crash',
     name: 'Barcode scan crash',
-    purpose: 'Scan ekranında crash öncesi log desenini çıkarmak',
+    purpose: 'Extract log pattern before crash on scan screen',
     country: 'RS',
     timeRange: 'Last 6 hours',
     relatedIncident: 'INC-2025-107',
-    createdBy: 'D. Petrović',
-    lastUsed: '3 gün önce',
+    createdBy: 'D. Petrovic',
+    lastUsed: '3 days ago',
     objective:
-      'Belirli cihaz modellerinde barcode scan sonrası gelen crash\'lerin öncesindeki son eventleri toplamak; kamera buffer hatası şüphesi doğrulanacak.',
+      'Collect last events before crashes occurring after barcode scan on specific device models; suspicion of camera buffer error to be confirmed.',
     query: `application:nesy-mobile
 AND country:RS
 AND event:barcode_scan
 AND deviceId:NX-2087
 | sort timestamp desc | limit 200`,
     expectedEventChain: ['scan_opened', 'barcode_scan', 'scan_validated', 'shipment_loaded'],
-    knownAnomalies: ['barcode_scan sonrası scan_validated gelmeden log kesiliyor', 'Aynı cihazda tekrarlayan desen'],
+    knownAnomalies: ['Log cuts off after barcode_scan before scan_validated arrives', 'Recurring pattern on the same device'],
     relatedTickets: ['FT-035', 'CT-10518'],
-    rootCause: 'Düşük bellekli cihazlarda kamera buffer\'ı serbest bırakılmadan ikinci scan açılıyor.',
-    edgeCase: 'Arka arkaya hızlı çift scan (double tap) crash olasılığını belirgin artırıyor.',
+    rootCause: 'On low-memory devices, second scan opens before camera buffer is released.',
+    edgeCase: 'Rapid double scan (double tap) in a row significantly increases crash probability.',
   },
   {
     id: 'inv-d4me-mismatch',
     name: 'D4Me callback mismatch',
-    purpose: 'Locker callback\'i ile shipment durumunun uyuşmadığı vakaları bulmak',
+    purpose: 'Find cases where locker callback and shipment status do not match',
     country: 'HR',
     timeRange: 'Last 24 hours',
     relatedIncident: 'INC-2025-119',
-    createdBy: 'M. Kovačić',
-    lastUsed: '1 hafta önce',
+    createdBy: 'M. Kovacic',
+    lastUsed: '1 week ago',
     objective:
-      'D4Me callback_received eventi geldiği halde shipment durumu güncellenmeyen kayıtları yakalamak; callback sıralaması veya duplicate delivery şüphesi var.',
+      'Catch records where D4Me callback_received event arrived but shipment status is not updated; suspicion of callback ordering or duplicate delivery.',
     query: `application:nesy-d4me
 AND country:HR
 AND event:callback_received
 NOT event:callback_processed
 | aggregate count by shipmentId`,
     expectedEventChain: ['locker_reserved', 'parcel_deposited', 'callback_received', 'callback_processed'],
-    knownAnomalies: ['callback_received var, callback_processed yok', 'Aynı shipment için farklı locker kodu'],
+    knownAnomalies: ['callback_received exists, callback_processed does not', 'Different locker code for the same shipment'],
     relatedTickets: ['FT-022', 'CT-10390'],
-    rootCause: 'Callback işleyicisi out-of-order mesajlarda erken return ediyor; durum makinesi güncellenmiyor.',
-    edgeCase: 'Locker ağ bağlantısı koptuğunda callback\'ler toplu ve sırasız geliyor.',
+    rootCause: 'Callback handler returns early on out-of-order messages; state machine is not updated.',
+    edgeCase: 'When locker network connection drops, callbacks arrive in bulk and out-of-order.',
   },
 ]

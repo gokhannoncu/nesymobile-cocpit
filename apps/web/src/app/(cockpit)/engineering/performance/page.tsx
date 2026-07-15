@@ -508,7 +508,7 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
                   <td className="px-4 py-3">
                     <EvidenceRef
                       level={e.confidence}
-                      label={e.confidence === 'confirmed' ? 'Yüksek' : 'Orta'}
+                      label={e.confidence === 'confirmed' ? 'High' : 'Medium'}
                       tooltip={e.detail.notes}
                     />
                   </td>
@@ -518,11 +518,11 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
                   <tr className="border-b border-border/60 bg-muted/20">
                     <td colSpan={8} className="px-4 py-3">
                       <div className="grid grid-cols-1 gap-x-8 gap-y-1.5 text-xs sm:grid-cols-2">
-                        <div><span className="font-semibold text-foreground">Ülke dağılımı:</span> <span className="text-muted-foreground">{e.detail.countries}</span></div>
-                        <div><span className="font-semibold text-foreground">Sürüm:</span> <span className="text-muted-foreground">{e.detail.versions}</span></div>
-                        <div><span className="font-semibold text-foreground">Owner:</span> <span className="text-muted-foreground">{e.detail.owner}</span></div>
-                        <div><span className="font-semibold text-foreground">Aksiyon durumu:</span> <span className="text-muted-foreground">{e.detail.status}</span></div>
-                        <div className="sm:col-span-2"><span className="font-semibold text-foreground">Not:</span> <span className="text-muted-foreground">{e.detail.notes}</span></div>
+                        <div><span className="font-semibold text-foreground">Country distribution:</span> <span className="text-muted-foreground">{e.detail.countries}</span></div>
+                        <div><span className="font-semibold text-foreground">Version:</span> <span className="text-muted-foreground">{e.detail.versions}</span></div>
+                        <div className="my-1.5 h-px w-full bg-border" />
+                        <div><span className="font-semibold text-foreground">Action status:</span> <span className="text-muted-foreground">{e.detail.actionStatus}</span></div>
+                        <div><span className="font-semibold text-foreground">Note:</span> <span className="text-muted-foreground">{e.detail.actionNote}</span></div>
                       </div>
                     </td>
                   </tr>
@@ -534,7 +534,7 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
       </table>
       {!engineering && (
         <div className="border-t border-border bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
-          İlk 3 öncelik gösteriliyor — tüm liste Engineering görünümünde.
+          First 3 priorities shown — full list in Engineering view.
         </div>
       )}
     </div>
@@ -543,7 +543,7 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
 
 // ═══ 10 · Metric → Action Flow ═══════════════════════════════════════════════
 
-const FLOW_STEPS = ['Sinyal', 'Doğrulama', 'Muhtemel kullanıcı etkisi', 'Aksiyon', 'Başarı kriteri'] as const
+const FLOW_STEPS = ['Signal', 'Validation', 'Probable user impact', 'Action', 'Success criteria'] as const
 const flowStepTones: Tone[] = ['indigo', 'blue', 'amber', 'teal', 'green']
 
 function MetricFlows() {
@@ -588,9 +588,9 @@ function KeyFindings() {
           <div className="text-sm font-bold text-foreground">{f.title}</div>
           <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{f.scope}</div>
           <p className="mt-2 text-xs leading-relaxed text-foreground/85">{f.body}</p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            <span className="font-semibold text-foreground/80">Yorum:</span> {f.comment}
-          </p>
+          <div className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground border-l-2 border-indigo-500/30 pl-2 ml-1">
+            <span className="font-semibold text-foreground/80">Comment:</span> {f.analystComment}
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
             <EvidenceRef
               level={f.level}
@@ -623,8 +623,8 @@ function ActionCard({ a }: { a: PiAction }) {
         </Badge>
       </div>
       <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-        <div>{a.owner} · termin {a.due} · {a.countries}</div>
-        <div><span className="font-medium text-foreground/75">Beklenen:</span> {a.expected}</div>
+        <div className="text-[11px] text-muted-foreground">owner: {a.owner} · deadline: {a.deadline}</div>
+        <div className="text-[11px] text-muted-foreground mt-1"><span className="font-medium text-foreground/80">Expected:</span> {a.expectedResult}</div>
       </div>
       <div className="mt-2">
         <EvidenceRef level={a.level} label={a.evidence} />
@@ -638,13 +638,13 @@ function ActionTracker({ print }: { print: boolean }) {
     return (
       <ComparisonTable
         headers={[
-          { label: 'Öncelik' },
-          { label: 'Aksiyon' },
+          { label: 'Priority' },
+          { label: 'Action' },
           { label: 'Owner' },
-          { label: 'Termin' },
-          { label: 'Ülke' },
-          { label: 'Başarı kriteri' },
-          { label: 'Durum' },
+          { label: 'Deadline' },
+          { label: 'Country' },
+          { label: 'Success criteria' },
+          { label: 'Status' },
         ]}
         rows={PI_ACTIONS.map((a) => [
           <span key="p" className={cn('font-bold', priorityTone[a.priority])}>{a.priority}</span>,
@@ -688,7 +688,7 @@ const tagTone: Record<string, Tone> = {
   'Monitoring change': 'gray',
 }
 
-// ═══ Engineering · ülke detayı ═══════════════════════════════════════════════
+// ═══ Engineering · country detail ═══════════════════════════════════════════════
 
 function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
   return (
@@ -700,9 +700,9 @@ function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
           <Badge variant="secondary" appearance="outline" size="xs">{r.period}</Badge>
         </div>
         <div className="mt-1.5 text-sm font-semibold text-foreground">{r.headline}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          Veri: {r.dataTimestamp} · {r.appStart.dominantVersion} ({r.appStart.versionShare} pay) · {r.appStart.samples} oturum
-          {r.appStart.lowSample && ' · düşük örneklem'}
+        <div className="text-xs text-muted-foreground mb-4">
+          Data: {r.stats.volPct} share · {r.stats.userCount} users · {r.stats.sessionCount} sessions
+          {r.appStart.lowSample && ' · low sample'}
         </div>
         {r.appStart.spikeNote && <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">{r.appStart.spikeNote}</div>}
       </div>
@@ -720,7 +720,7 @@ function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
       </div>
 
       <ComparisonTable
-        headers={[{ label: 'Endpoint' }, { label: 'Yanıt (P90)' }, { label: 'Başarı' }, { label: 'Hacim' }, { label: 'Not' }]}
+        headers={[{ label: 'Endpoint' }, { label: 'Response (P90)' }, { label: 'Success' }, { label: 'Volume' }, { label: 'Note' }]}
         rows={r.topEndpoints.map((e) => [
           <code key="n" className="text-xs">{e.name}</code>,
           <span key="r" className="font-semibold tabular-nums">{e.responseP90}</span>,
@@ -745,7 +745,7 @@ function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-4 insight-card">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
-            <FileSearch className="size-4 text-indigo-500" /> Gözlemler
+            <FileSearch className="size-4 text-indigo-500" /> Observations
           </div>
           <ul className="space-y-1.5 text-xs text-foreground/85">
             {r.findings.map((f) => (
@@ -764,7 +764,7 @@ function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
         </div>
         <div className="rounded-xl border border-border bg-card p-4 insight-card">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
-            <ListChecks className="size-4 text-indigo-500" /> Öneriler
+            <ListChecks className="size-4 text-indigo-500" /> Recommendations
           </div>
           <ul className="space-y-1.5">
             {r.recommendations.map((rec) => (
@@ -810,12 +810,12 @@ export default function PerformanceIntelligencePage() {
         </div>
         {print && (
           <Button size="sm" variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Yazdır (A4)
+            <Printer className="size-4" /> Print (A4)
           </Button>
         )}
       </div>
 
-      {/* ─── Slayt 1 · Yönetici özeti (brief + KPI + anlatı) ───────────── */}
+      {/* ─── Slide 1 · Executive summary (brief + KPI + narrative) ───────────── */}
       <div data-pdf-slide className="space-y-8">
       {/* ─── 1 · Executive Brief ───────────────────────────────────────── */}
       <div className="report-section">
@@ -826,16 +826,16 @@ export default function PerformanceIntelligencePage() {
           title={PI_BRIEF.headline}
           lead={PI_BRIEF.summary}
           chips={[
-            `Dönem: ${PI_META.periodRange}`,
+            `Period: ${PI_META.periodRange}`,
+            `Source: ${PI_META.source}`,
+            `Mode: ${view.toUpperCase()}`,
+            `Last data: ${PI_META.dataTimestamp}`,
             `Environment: ${PI_META.environment}`,
-            PI_META.percentile,
-            `Son veri: ${PI_META.dataTimestamp}`,
-            PI_META.releases,
-            `Veri güveni: ${PI_META.confidence}`,
+            `Data confidence: ${PI_META.confidence}`,
           ]}
         >
           <div className={cn('rounded-xl border p-4 lg:min-w-72', toneCard[PI_BRIEF.overallTone])}>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Genel durum</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Overall status</div>
             <div className={cn('mt-1 text-lg font-bold', toneText[PI_BRIEF.overallTone])}>{PI_BRIEF.overallStatus}</div>
             <ul className="mt-2.5 space-y-1 text-xs text-foreground/85">
               {PI_BRIEF.statusBullets.map((b) => (
@@ -852,32 +852,32 @@ export default function PerformanceIntelligencePage() {
       {/* ─── 2 · KPI Strip ─────────────────────────────────────────────── */}
       <div className="report-section"><KpiStrip /></div>
 
-      {/* ─── 3 · Yönetici anlatısı ─────────────────────────────────────── */}
+      {/* ─── 3 · Executive narrative ─────────────────────────────────────── */}
       <div className="report-section"><NarrativeRow /></div>
       </div>
 
-      {/* ─── Slayt 2 · Country Health Overview ─────────────────────────── */}
+      {/* ─── Slide 2 · Country Health Overview ─────────────────────────── */}
       <PageSection
         slide
         eyebrow="Country Health"
-        title="Ülke sağlık görünümü"
-        icon={Globe}
-        tone="indigo"
+        title="Country health overview"
+        icon={MapPin}
+        tone="blue"
         className="report-section"
-        description="Dört ülkenin karşılaştırılabilir scorecard'ları. Durum etiketleri incident dili taşımaz; doğrulanmamış sinyaller ayrıca işaretlenir."
+        description="Comparable scorecards of four countries. Status labels don't carry incident language; unverified signals are marked separately."
       >
         <CountryScorecards />
       </PageSection>
 
-      {/* ─── Slayt 3 · Performance Trends ──────────────────────────────── */}
+      {/* ─── Slide 3 · Performance Trends ──────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Trends"
-        title="Performans eğilimleri"
+        title="Performance trends"
         icon={TrendingUp}
         tone="indigo"
         className="report-section print-page-break"
-        description="Haftalık tek değer trendi anlatmaz — son 6 haftanın yönü, hedef çizgisi ve hacim bağlamı birlikte okunmalı."
+        description="A single weekly value doesn't describe the trend — the 6-week direction, target line and volume context should be read together."
       >
         <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
           <ChartCard icon={LineChartIcon} title={PI_TREND_NOTES.appStartTitle} foot={PI_TREND_NOTES.appStartFoot}>
@@ -892,94 +892,94 @@ export default function PerformanceIntelligencePage() {
         </ChartCard>
       </PageSection>
 
-      {/* ─── Slayt 4 · Experience Pillars ──────────────────────────────── */}
+      {/* ─── Slide 4 · Experience Pillars ──────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Experience Pillars"
-        title="Deneyim sütunları"
-        icon={Layers}
-        tone="indigo"
+        title="Experience pillars"
+        icon={Smartphone}
+        tone="teal"
         className="report-section"
-        description="Dört ana performans alanı — her kartta durum, temel metrikler ve doğal dilde yorum."
+        description="Four main performance areas — status, base metrics and natural language comment in each card."
       >
         <ExperiencePillars engineering={engineering} />
       </PageSection>
 
-      {/* ─── Slayt 5 · Country Comparison ──────────────────────────────── */}
+      {/* ─── Slide 5 · Country Comparison ──────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Comparison"
-        title="Ülke karşılaştırması"
-        icon={Scale}
-        tone="indigo"
+        title="Country comparison"
+        icon={BarChart3}
+        tone="blue"
         className="report-section print-page-break"
-        description="HR ve RS başlangıç hedefini karşılıyor. BA ve SI için ölçüm hacmi sınırlı olduğundan değişim yüzdeleri dikkatli yorumlanmalı."
+        description="HR and RS meet the start target. Since the measurement volume is limited for BA and SI, change percentages should be interpreted carefully."
       >
         <CountryComparison />
       </PageSection>
 
-      {/* ─── Slayt 6 · Endpoint Priority Map ───────────────────────────── */}
+      {/* ─── Slide 6 · Endpoint Priority Map ───────────────────────────── */}
       <PageSection
         slide
         eyebrow="Priority Map"
-        title="Endpoint öncelik haritası"
-        icon={Network}
-        tone="indigo"
+        title="Endpoint priority map"
+        icon={Server}
+        tone="orange"
         className="report-section"
-        description="Sıralama salt gecikmeye değil; iş kritikliği, hacim, sapma ve regresyon güveninin bileşimine dayanır. Satıra tıklayınca gerekçe açılır."
+        description="The order is not based solely on latency; it relies on the combination of business criticality, volume, deviation, and regression confidence. Clicking the row opens the rationale."
       >
         <PriorityEndpointTable engineering={engineering} print={print} />
       </PageSection>
 
-      {/* ─── Slayt 7 · Metric → Action ─────────────────────────────────── */}
+      {/* ─── Slide 7 · Metric → Action ─────────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Metric to Action"
-        title="Sinyalden aksiyona"
+        title="Metric to action"
         icon={Activity}
         tone="indigo"
         className="report-section"
-        description="Her kritik bulgu için: sinyal → doğrulama → muhtemel etki → aksiyon → başarı kriteri."
+        description="For every critical finding: signal → validation → probable user impact → action → success criteria."
       >
         <MetricFlows />
       </PageSection>
 
-      {/* ─── Slayt 8 · Key Findings ────────────────────────────────────── */}
+      {/* ─── Slide 8 · Key Findings ────────────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Key Findings"
-        title="Öne çıkan bulgular"
-        icon={FileSearch}
-        tone="indigo"
+        title="Key findings"
+        icon={Microscope}
+        tone="purple"
         className="report-section print-page-break"
-        description="Her bulgu kapsam, güven seviyesi ve kanıt referansı ile birlikte sunulur."
+        description="Every finding is presented with scope, confidence level and evidence reference."
       >
         <KeyFindings />
       </PageSection>
 
-      {/* ─── Slayt 9 · Action Tracker ──────────────────────────────────── */}
+      {/* ─── Slide 9 · Action Tracker ──────────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Action Tracker"
-        title="Aksiyon takibi"
+        title="Action tracker"
         icon={Kanban}
         tone="indigo"
         className="report-section"
-        description="Öneri listesi değil, yönetilebilir aksiyon alanı: owner, termin, beklenen sonuç ve kanıt."
+        description="Not a recommendation list, a manageable action area: owner, deadline, expected result and evidence."
       >
         <ActionTracker print={print} />
       </PageSection>
 
-      {/* ─── Slayt 10 · Engineering · ülke detayları ───────────────────── */}
+      {/* ─── Slide 10 · Engineering · country details ───────────────────── */}
       {engineering && (
         <PageSection
           slide
           eyebrow="Engineering"
-          title="Ülke detayları"
-          icon={Wrench}
+          title="Country details"
+          icon={Map}
           tone="indigo"
           className="report-section print-page-break"
-          description="Custom trace'ler, en riskli endpoint'ler, sürüm kırılımı ve ülke bazlı öneriler."
+          description="Custom traces, riskiest endpoints, version breakdown and country-based recommendations."
         >
           {print ? (
             <div className="space-y-8">
@@ -998,15 +998,15 @@ export default function PerformanceIntelligencePage() {
         </PageSection>
       )}
 
-      {/* ─── Slayt 11 · Change Timeline ────────────────────────────────── */}
+      {/* ─── Slide 11 · Change Timeline ────────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Timeline"
-        title="Değişim zaman çizelgesi"
-        icon={CalendarClock}
-        tone="indigo"
+        title="Change timeline"
+        icon={GitCommitVertical}
+        tone="gray"
         className="report-section"
-        description="Release ve anomali korelasyonu gösterir; nedensellik iddiası taşımaz."
+        description="Shows release and anomaly correlation; does not claim causality."
       >
         <Timeline
           items={PI_TIMELINE.map((t) => ({
@@ -1019,11 +1019,11 @@ export default function PerformanceIntelligencePage() {
         />
       </PageSection>
 
-      {/* ─── Slayt 12 · Guardrails ─────────────────────────────────────── */}
+      {/* ─── Slide 12 · Guardrails ─────────────────────────────────────── */}
       <PageSection
         slide
         eyebrow="Guardrails"
-        title="Rakamlar nasıl okunmalı?"
+        title="How should the numbers be read?"
         icon={ShieldQuestion}
         tone="indigo"
         className="report-section"
@@ -1037,15 +1037,15 @@ export default function PerformanceIntelligencePage() {
         </div>
       </PageSection>
 
-      {/* ─── Slayt 13 · Evidence & Data Quality ────────────────────────── */}
+      {/* ─── Slide 13 · Evidence & Data Quality ────────────────────────── */}
       <PageSection
         slide
         eyebrow="Evidence & Data Quality"
-        title="Kanıt ve veri kalitesi"
-        icon={Database}
-        tone="indigo"
+        title="Evidence and data quality"
+        icon={ShieldCheck}
+        tone="green"
         className="report-section print-page-break"
-        description="Her yorum bir kanıt etiketi taşır. Etiketin rengi kanıtın gücünü, metni doğrulama ihtiyacını gösterir."
+        description="Every comment carries an evidence label. The label's color shows the strength of the evidence, the text shows the need for validation."
       >
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <div className={cn('rounded-xl border p-4 insight-card', toneCard.green)}>
@@ -1087,12 +1087,12 @@ export default function PerformanceIntelligencePage() {
         {engineering && (
           <ComparisonTable
             headers={[
-              { label: 'Ülke' },
-              { label: 'App start örneklemi' },
-              { label: 'Network hacmi' },
+              { label: 'Country' },
+              { label: 'App start sample' },
+              { label: 'Network volume' },
               { label: 'Rendering' },
-              { label: 'Crash verisi' },
-              { label: 'Güven' },
+              { label: 'Crash data' },
+              { label: 'Confidence' },
             ]}
             rows={PI_DATA_QUALITY.map((d) => [
               d.country,
@@ -1105,7 +1105,7 @@ export default function PerformanceIntelligencePage() {
                 variant="secondary"
                 appearance="outline"
                 size="xs"
-                className={d.confidence === 'Yüksek' ? 'text-green-600 dark:text-green-400' : d.confidence === 'Düşük' ? 'text-amber-600 dark:text-amber-400' : ''}
+                className={d.confidence === 'High' ? 'text-green-600 dark:text-green-400' : d.confidence === 'Low' ? 'text-amber-600 dark:text-amber-400' : ''}
               >
                 {d.confidence}
               </Badge>,
@@ -1117,16 +1117,16 @@ export default function PerformanceIntelligencePage() {
       {/* ─── Slayt 14 · Metodoloji / rapor ritmi ───────────────────────── */}
       <div data-pdf-slide>
       <Callout icon={ClipboardList} title="Metodoloji ve rapor ritmi" tone="indigo" className="report-section">
-        Kaynak: {PI_META.source} · {PI_META.period}. Tüm değerler {PI_META.percentile}, {PI_META.environment} ortamı.
-        Hedefler: app start {PERF_TARGETS.appStart} · başarı {PERF_TARGETS.networkSuccess} · {PERF_TARGETS.latencyThreshold}.
-        Raporlar Performans Ekibi tarafından haftalık üretilir; yeni hafta verisi geldiğinde{' '}
-        <code>src/data/engineering/performance.ts</code> ve <code>performance-intelligence.ts</code> güncellenir.
+        Source: {PI_META.source} · {PI_META.period}. All values {PI_META.percentile}, {PI_META.environment} environment.
+        Targets: app start {PERF_TARGETS.appStart} · success {PERF_TARGETS.networkSuccess} · {PERF_TARGETS.latencyThreshold}.
+        Reports are produced weekly by the Performance Team; when new week data arrives{' '}
+        <code>src/data/engineering/performance.ts</code> and <code>performance-intelligence.ts</code> is updated.
       </Callout>
       </div>
 
       <Callout icon={Info} tone="gray" className="report-section print-hidden">
-        Bu sayfa tek sürekli rapordur: Executive görünümü yönetici özetini, Engineering görünümü tüm endpoint ve
-        veri kalitesi detayını gösterir. Print görünümü tüm bölümleri açar ve A4 portrait çıktı için düzenlenir.
+        This page is a single continuous report: Executive view shows the executive summary, Engineering view shows all endpoint and
+        data quality details. Print view opens all sections and is arranged for A4 portrait output.
       </Callout>
     </ProductPage>
   )

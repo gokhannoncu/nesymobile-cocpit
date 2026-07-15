@@ -1,8 +1,8 @@
 'use client'
 
-// Debug View — Schedule Explorer
-// Cihaz Room DB'sindeki Schedule objesi ve altındaki Stops → Tasks →
-// Shipments → ShipmentItems ağacı, açılır tablolar halinde.
+// Debug View - Schedule Explorer
+// Schedule object in the device Room DB and the Stops -> Tasks ->
+// Shipments -> ShipmentItems tree under it, as expandable tables.
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -55,9 +55,9 @@ export default function ScheduleExplorerPage() {
       <DebugHeader
         icon={Route}
         title="Schedule Explorer"
-        lead="Cihazdaki Schedule objesi ve altındaki Stops, Tasks, Shipments ve ShipmentItems ağacı — Room entity alanlarıyla birebir, açılır tablolar halinde."
+        lead="The Schedule object on the device and the Stops, Tasks, Shipments and ShipmentItems tree under it - matching Room entity fields, in expandable tables."
         tone="teal"
-        badges={[{ label: 'Room: Schedule' }, { label: 'Stop → Task → Shipment' }, { label: 'HR rotası' }]}
+        badges={[{ label: 'Room: Schedule' }, { label: 'Stop -> Task -> Shipment' }, { label: 'HR route' }]}
         actions={<DebugCrossLinks currentPath="/debug-view/schedule" />}
       />
 
@@ -65,7 +65,7 @@ export default function ScheduleExplorerPage() {
         <NoDeviceState />
       ) : (
         <>
-          {/* Schedule başlığı */}
+          {/* Schedule header */}
           <motion.section
             className={cn('rounded-2xl border p-5', toneCard.teal)}
             initial={{ opacity: 0, y: 10 }}
@@ -77,27 +77,27 @@ export default function ScheduleExplorerPage() {
                 <div className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">Schedule</div>
                 <h2 className="font-mono text-lg font-bold text-foreground">{schedule.scheduleId}</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {new Date(schedule.timeStamp).toLocaleString('tr-TR')} · id={schedule.id}
+                  {new Date(schedule.timeStamp).toLocaleString('en-US')} * id={schedule.id}
                 </p>
               </div>
               <TonePill label={scheduleStatus.label} tone={scheduleStatus.tone} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-x-6 sm:grid-cols-4">
-              <InfoRow label="Kurye" value={schedule.courierName} />
-              <InfoRow label="Kurye ID" value={schedule.courierId} mono />
-              <InfoRow label="Plaka" value={schedule.vehiclePlate} mono />
-              <InfoRow label="Şube" value={schedule.branchCode} mono />
+              <InfoRow label="Courier" value={schedule.courierName} />
+              <InfoRow label="Courier ID" value={schedule.courierId} mono />
+              <InfoRow label="License Plate" value={schedule.vehiclePlate} mono />
+              <InfoRow label="Branch" value={schedule.branchCode} mono />
             </div>
           </motion.section>
 
           <StatGrid cols={4}>
-            <StatCard icon={MapPin} label="Duraklar" value={schedule.stops.length} tone="blue" />
-            <StatCard icon={Truck} label="Görevler" value={totalTasks} tone="purple" />
-            <StatCard icon={Package} label="Gönderiler" value={totalShipments} tone="teal" />
-            <StatCard icon={Box} label="Parçalar" value={totalItems} tone="amber" />
+            <StatCard icon={MapPin} label="Stops" value={schedule.stops.length} tone="blue" />
+            <StatCard icon={Truck} label="Tasks" value={totalTasks} tone="purple" />
+            <StatCard icon={Package} label="Shipments" value={totalShipments} tone="teal" />
+            <StatCard icon={Box} label="Items" value={totalItems} tone="amber" />
           </StatGrid>
 
-          {/* Stop ağacı */}
+          {/* Stop tree */}
           <div className="space-y-3">
             {schedule.stops.map((stop) => (
               <StopCard key={stop.stopId} stop={stop} />
@@ -126,15 +126,15 @@ function StopCard({ stop }: { stop: DbgStop }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-semibold text-foreground">{stop.stopId}</span>
-            {stop.orderChanged && <Badge variant="secondary" size="xs" className="text-amber-700 dark:text-amber-400">sıra değişti</Badge>}
+            {stop.orderChanged && <Badge variant="secondary" size="xs" className="text-amber-700 dark:text-amber-400">order changed</Badge>}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Pencere {stop.timeWindow.startTime}–{stop.timeWindow.endTime} · ETA{' '}
-            {new Date(stop.estimatedTimeOfArrival).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+            Window {stop.timeWindow.startTime}-{stop.timeWindow.endTime} * ETA{' '}
+            {new Date(stop.estimatedTimeOfArrival).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} *{' '}
             {stop.latitude.toFixed(4)}, {stop.longitude.toFixed(4)}
           </div>
         </div>
-        <Badge variant="secondary" appearance="outline" size="sm">{taskCount} görev</Badge>
+        <Badge variant="secondary" appearance="outline" size="sm">{taskCount} tasks</Badge>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -188,17 +188,17 @@ function TaskCard({ task }: { task: DbgTask }) {
             className="overflow-hidden"
           >
             <div className="border-t border-border p-3">
-              {/* Task alanları */}
+              {/* Task fields */}
               <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
-                <InfoRow label="lastStopId" value={task.lastStopId ?? '—'} mono />
+                <InfoRow label="lastStopId" value={task.lastStopId ?? '-'} mono />
                 <InfoRow label="waveNumber" value={task.waveNumber} />
-                <InfoRow label="gsm" value={task.gsm ?? '—'} mono />
-                <InfoRow label="streetTag" value={task.streetTag ?? '—'} />
+                <InfoRow label="gsm" value={task.gsm ?? '-'} mono />
+                <InfoRow label="streetTag" value={task.streetTag ?? '-'} />
                 <InfoRow label="consigneeAtAddress" value={task.isConsigneeAtTheAddress ? 'true' : 'false'} />
                 <InfoRow label="dropAtTheDoor" value={task.isDropAtTheDoor ? 'true' : 'false'} />
               </div>
               {task.remarkText && (
-                <div className="mt-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-[11px] italic text-muted-foreground">“{task.remarkText}”</div>
+                <div className="mt-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-[11px] italic text-muted-foreground">"{task.remarkText}"</div>
               )}
 
               {/* Shipments */}
@@ -228,12 +228,12 @@ function ShipmentBlock({ shipment: sh }: { shipment: DbgShipment }) {
         <Badge variant="secondary" size="xs">{PACKAGE_TYPE[sh.packageType] ?? `pkg#${sh.packageType}`}</Badge>
         <TonePill label={status.label} tone={status.tone} />
         {sh.marketPlace && <Badge variant="secondary" appearance="outline" size="xs">{sh.marketPlace}</Badge>}
-        <span className="ms-auto text-[10px] text-muted-foreground">{sh.activeShipmentItemCount}/{sh.shipmentItemCount} aktif parça</span>
+        <span className="ms-auto text-[10px] text-muted-foreground">{sh.activeShipmentItemCount}/{sh.shipmentItemCount} active items</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-6 sm:grid-cols-3">
-        <InfoRow label="sender" value={sh.sender ?? '—'} />
-        <InfoRow label="deliveryCode" value={sh.deliveryCode ?? '—'} mono />
-        <InfoRow label="consigneeGsm" value={sh.consigneeGsm ?? '—'} mono />
+        <InfoRow label="sender" value={sh.sender ?? '-'} />
+        <InfoRow label="deliveryCode" value={sh.deliveryCode ?? '-'} mono />
+        <InfoRow label="consigneeGsm" value={sh.consigneeGsm ?? '-'} mono />
       </div>
 
       {/* Collections */}
@@ -249,7 +249,7 @@ function ShipmentBlock({ shipment: sh }: { shipment: DbgShipment }) {
                 <div key={i} className="rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px]">
                   <span className="font-bold text-foreground">{c.collectionAmount.toFixed(2)} {c.currency}</span>
                   <span className="ms-2 text-muted-foreground">
-                    <span className={toneText[ct.tone]}>{ct.label}</span> · <span className={toneText[cs.tone]}>{cs.label}</span> · <span className={toneText[st.tone]}>{st.label}</span>
+                    <span className={toneText[ct.tone]}>{ct.label}</span> * <span className={toneText[cs.tone]}>{cs.label}</span> * <span className={toneText[st.tone]}>{st.label}</span>
                   </span>
                 </div>
               )
@@ -258,7 +258,7 @@ function ShipmentBlock({ shipment: sh }: { shipment: DbgShipment }) {
         </div>
       )}
 
-      {/* ShipmentItems tablosu */}
+      {/* ShipmentItems table */}
       <div className="mt-2 overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[520px] text-left">
           <thead className="border-b border-border bg-muted/50">

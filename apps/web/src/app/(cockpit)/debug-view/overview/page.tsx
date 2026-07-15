@@ -1,8 +1,8 @@
 'use client'
 
-// Debug View — Device Overview
-// Gerçek ADB üzerinden seçilen cihazın canlı özeti: WiFi, hücresel, ping,
-// işletim sistemi, uygulama süreci ve Firebase kimlikleri (run-as ile).
+// Debug View - Device Overview
+// Live overview of the selected device over real ADB: WiFi, cellular, ping,
+// OS, app process and Firebase credentials (with run-as).
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
@@ -36,7 +36,7 @@ import { useDebugView } from '@/components/debug-view/debug-context'
 import { signalLabel } from '@/data/debug-view/mock-runtime'
 import type { LiveDeviceRuntime } from '@/data/debug-view/live-types'
 
-const DASH = '—'
+const DASH = '-'
 
 function fmt(value: string | number | null | undefined, suffix = ''): string {
   if (value == null || value === '') return DASH
@@ -66,7 +66,7 @@ export default function DeviceOverviewPage() {
       })
       .catch((err: unknown) => {
         setRuntime(null)
-        setError(err instanceof Error ? err.message : 'Snapshot alınamadı')
+        setError(err instanceof Error ? err.message : 'Failed to take snapshot')
       })
       .finally(() => setLoading(false))
   }, [serial])
@@ -80,14 +80,14 @@ export default function DeviceOverviewPage() {
       <DebugHeader
         icon={MonitorSmartphone}
         title="Device Overview"
-        lead="ADB üzerinden seçili cihazın anlık durumu: ağ bağlantısı, ping, işletim sistemi, uygulama süreci ve Firebase kimlikleri tek ekranda."
+        lead="Instant status of the selected device over ADB: network connection, ping, OS, application process and Firebase credentials on a single screen."
         tone="teal"
-        badges={[{ label: 'Canlı snapshot' }, { label: 'ADB + dumpsys' }, { label: 'run-as Firebase' }]}
+        badges={[{ label: 'Live snapshot' }, { label: 'ADB + dumpsys' }, { label: 'run-as Firebase' }]}
         actions={
           <>
             <Button size="sm" variant="outline" onClick={loadRuntime} disabled={!serial || loading}>
               {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-              Yenile
+              Refresh
             </Button>
             <DebugCrossLinks currentPath="/debug-view/overview" />
           </>
@@ -104,55 +104,55 @@ export default function DeviceOverviewPage() {
         <NoDeviceState />
       ) : (
         <>
-          {/* ─── KPI şeridi ─── */}
+          {/* --- KPI bar --- */}
           <StatGrid cols={4}>
             <StatCard
               icon={runtime.network === 'wifi' ? Wifi : runtime.network === 'cellular' ? Radio : WifiOff}
-              label="Bağlantı"
-              value={runtime.network === 'wifi' ? 'Wi-Fi' : runtime.network === 'cellular' ? 'Hücresel' : 'Çevrimdışı'}
+              label="Connection"
+              value={runtime.network === 'wifi' ? 'Wi-Fi' : runtime.network === 'cellular' ? 'Cellular' : 'Offline'}
               hint={runtime.network === 'wifi' ? runtime.wifi.ssid ?? '' : runtime.cellular.carrier ?? ''}
               tone={runtime.network === 'offline' ? 'red' : 'green'}
             />
             <StatCard
               icon={Activity}
-              label="Gecikme (ping)"
+              label="Latency (ping)"
               value={runtime.ping.latencyMs ?? DASH}
               suffix={runtime.ping.latencyMs != null ? 'ms' : ''}
               hint={
                 runtime.ping.latencyMs != null
-                  ? `Jitter ${fmt(runtime.ping.jitterMs, ' ms')} · Kayıp ${fmt(runtime.ping.packetLossPct, '%')}`
-                  : 'Ping ölçülemedi'
+                  ? `Jitter ${fmt(runtime.ping.jitterMs, ' ms')} * Loss ${fmt(runtime.ping.packetLossPct, '%')}`
+                  : 'Ping could not be measured'
               }
               tone="purple"
             />
             <StatCard
               icon={runtime.battery.charging ? BatteryCharging : Battery}
-              label="Batarya"
+              label="Battery"
               value={runtime.battery.level}
               suffix="%"
-              hint={`${runtime.battery.charging ? 'Şarj oluyor' : 'Şarjda değil'}${runtime.battery.temperatureC != null ? ` · ${runtime.battery.temperatureC.toFixed(1)}°C` : ''}`}
+              hint={`${runtime.battery.charging ? 'Charging' : 'Not charging'}${runtime.battery.temperatureC != null ? ` * ${runtime.battery.temperatureC.toFixed(1)}°C` : ''}`}
               tone={runtime.battery.level <= 15 ? 'red' : runtime.battery.level <= 50 ? 'amber' : 'green'}
             />
             <StatCard
               icon={Package}
               label="NesyMobile"
-              value={runtime.app.installed ? runtime.app.versionName ?? '?' : 'Kurulu değil'}
+              value={runtime.app.installed ? runtime.app.versionName ?? '?' : 'Not installed'}
               hint={
                 runtime.app.installed
                   ? runtime.app.processId
-                    ? `PID ${runtime.app.processId} · ${runtime.app.foreground ? 'Ön planda' : 'Arka planda'}`
-                    : 'Süreç çalışmıyor'
+                    ? `PID ${runtime.app.processId} * ${runtime.app.foreground ? 'Foreground' : 'Background'}`
+                    : 'Process is not running'
                   : ''
               }
               tone={runtime.app.installed ? (runtime.app.processId ? 'green' : 'amber') : 'red'}
             />
           </StatGrid>
 
-          {/* ─── Ağ detayı ─── */}
+          {/* --- Network detail --- */}
           <PageSection
-            eyebrow="Ağ"
-            title="Bağlantı & Ping"
-            description={`cmd wifi status + getprop + dumpsys telephony.registry · Snapshot: ${new Date(runtime.capturedAt).toLocaleTimeString('tr-TR')}`}
+            eyebrow="Network"
+            title="Connection & Ping"
+            description={`cmd wifi status + getprop + dumpsys telephony.registry * Snapshot: ${new Date(runtime.capturedAt).toLocaleTimeString('en-US')}`}
             icon={Signal}
             tone="blue"
           >
@@ -163,36 +163,36 @@ export default function DeviceOverviewPage() {
                   <Wifi className={cn('size-4', toneIcon[runtime.wifi.connected ? 'green' : 'gray'])} />
                   <h3 className="text-sm font-bold text-foreground">Wi-Fi</h3>
                   <Badge variant="secondary" size="xs" className="ms-auto">
-                    {runtime.wifi.connected ? signalLabel(runtime.wifi.signalLevel) : 'Bağlı değil'}
+                    {runtime.wifi.connected ? signalLabel(runtime.wifi.signalLevel) : 'Not connected'}
                   </Badge>
                 </div>
                 <div className="mt-2 divide-y divide-border/50">
                   <InfoRow label="SSID" value={fmt(runtime.wifi.ssid)} />
                   <InfoRow label="BSSID" value={fmt(runtime.wifi.bssid)} mono />
-                  <InfoRow label="IP adresi" value={fmt(runtime.wifi.ipAddress)} mono />
+                  <InfoRow label="IP address" value={fmt(runtime.wifi.ipAddress)} mono />
                   <InfoRow label="Gateway" value={fmt(runtime.wifi.gateway)} mono />
-                  <InfoRow label="Link hızı" value={fmt(runtime.wifi.linkSpeedMbps, ' Mbps')} />
-                  <InfoRow label="Frekans" value={fmt(runtime.wifi.frequencyMhz, ' MHz')} />
+                  <InfoRow label="Link speed" value={fmt(runtime.wifi.linkSpeedMbps, ' Mbps')} />
+                  <InfoRow label="Frequency" value={fmt(runtime.wifi.frequencyMhz, ' MHz')} />
                   <InfoRow label="RSSI" value={fmt(runtime.wifi.rssiDbm, ' dBm')} />
-                  <InfoRow label="Güvenlik" value={fmt(runtime.wifi.security)} />
+                  <InfoRow label="Security" value={fmt(runtime.wifi.security)} />
                 </div>
               </div>
 
-              {/* Hücresel */}
+              {/* Cellular */}
               <div className={cn('rounded-xl border p-4', toneCard[runtime.cellular.connected ? 'teal' : 'gray'])}>
                 <div className="flex items-center gap-2">
                   <Radio className={cn('size-4', toneIcon[runtime.cellular.connected ? 'teal' : 'gray'])} />
-                  <h3 className="text-sm font-bold text-foreground">Hücresel</h3>
+                  <h3 className="text-sm font-bold text-foreground">Cellular</h3>
                   {runtime.cellular.generation && (
                     <Badge variant="secondary" size="xs" className="ms-auto">{runtime.cellular.generation}</Badge>
                   )}
                 </div>
                 <div className="mt-2 divide-y divide-border/50">
-                  <InfoRow label="Operatör" value={fmt(runtime.cellular.carrier)} />
-                  <InfoRow label="Nesil" value={fmt(runtime.cellular.generation)} />
-                  <InfoRow label="Sinyal (RSRP)" value={fmt(runtime.cellular.signalDbm, ' dBm')} />
-                  <InfoRow label="Veri durumu" value={runtime.cellular.dataState} />
-                  <InfoRow label="Roaming" value={runtime.cellular.roaming ? 'Evet' : 'Hayır'} tone={runtime.cellular.roaming ? 'amber' : undefined} />
+                  <InfoRow label="Carrier" value={fmt(runtime.cellular.carrier)} />
+                  <InfoRow label="Generation" value={fmt(runtime.cellular.generation)} />
+                  <InfoRow label="Signal (RSRP)" value={fmt(runtime.cellular.signalDbm, ' dBm')} />
+                  <InfoRow label="Data state" value={runtime.cellular.dataState} />
+                  <InfoRow label="Roaming" value={runtime.cellular.roaming ? 'Yes' : 'No'} tone={runtime.cellular.roaming ? 'amber' : undefined} />
                 </div>
               </div>
 
@@ -200,12 +200,12 @@ export default function DeviceOverviewPage() {
               <div className={cn('rounded-xl border p-4', toneCard.purple)}>
                 <div className="flex items-center gap-2">
                   <Gauge className={cn('size-4', toneIcon.purple)} />
-                  <h3 className="text-sm font-bold text-foreground">Ping Ölçümü</h3>
+                  <h3 className="text-sm font-bold text-foreground">Ping Measurement</h3>
                 </div>
                 <div className="mt-3 flex items-end gap-4">
                   <div>
                     <div className="text-2xl font-bold tabular-nums text-foreground">{fmt(runtime.ping.latencyMs)}</div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Gecikme ms</div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Latency ms</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold tabular-nums text-foreground">{fmt(runtime.ping.jitterMs)}</div>
@@ -213,34 +213,34 @@ export default function DeviceOverviewPage() {
                   </div>
                 </div>
                 <div className="mt-3 divide-y divide-border/50">
-                  <InfoRow label="Paket kaybı" value={fmt(runtime.ping.packetLossPct, '%')} />
-                  <InfoRow label="Hedef" value={runtime.ping.endpoint} mono />
-                  <InfoRow label="Ölçüm zamanı" value={new Date(runtime.ping.measuredAt).toLocaleTimeString('tr-TR')} />
+                  <InfoRow label="Packet loss" value={fmt(runtime.ping.packetLossPct, '%')} />
+                  <InfoRow label="Target" value={runtime.ping.endpoint} mono />
+                  <InfoRow label="Measurement time" value={new Date(runtime.ping.measuredAt).toLocaleTimeString('en-US')} />
                 </div>
                 <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                  Ölçüm cihaz üzerinden ICMP ping ile yapılır. Throughput (Mbps) ölçümü için cihazda hız
-                  testi uygulaması gerekir — ADB tek başına sağlayamaz.
+                  The measurement is done via ICMP ping from the device. To measure throughput (Mbps), a speed
+                  test application is required on the device - ADB alone cannot provide it.
                 </div>
               </div>
             </div>
           </PageSection>
 
-          {/* ─── İşletim sistemi & donanım ─── */}
-          <PageSection eyebrow="Sistem" title="İşletim Sistemi & Donanım" icon={Cpu} tone="indigo">
+          {/* --- OS & hardware --- */}
+          <PageSection eyebrow="System" title="Operating System & Hardware" icon={Cpu} tone="indigo">
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               <div className="rounded-xl border bg-card p-4">
                 <div className="flex items-center gap-2">
                   <Smartphone className={cn('size-4', toneIcon.indigo)} />
-                  <h3 className="text-sm font-bold text-foreground">Cihaz & OS</h3>
+                  <h3 className="text-sm font-bold text-foreground">Device & OS</h3>
                 </div>
                 <div className="mt-2 divide-y divide-border/50">
-                  <InfoRow label="Üretici / Model" value={`${runtime.os.manufacturer} ${runtime.os.model}`} />
+                  <InfoRow label="Manufacturer / Model" value={`${runtime.os.manufacturer} ${runtime.os.model}`} />
                   <InfoRow label="Android" value={`${runtime.os.androidVersion} (API ${runtime.os.apiLevel})`} />
-                  <InfoRow label="Güvenlik yaması" value={runtime.os.securityPatch} />
+                  <InfoRow label="Security patch" value={runtime.os.securityPatch} />
                   <InfoRow label="Kernel" value={runtime.os.kernelVersion} mono />
                   <InfoRow label="CPU ABI" value={runtime.os.cpuAbi} mono />
                   <InfoRow label="Fingerprint" value={runtime.os.buildFingerprint} mono />
-                  <InfoRow label="Locale / TZ" value={`${runtime.os.locale} · ${runtime.os.timezone}`} />
+                  <InfoRow label="Locale / TZ" value={`${runtime.os.locale} * ${runtime.os.timezone}`} />
                   <InfoRow label="Uptime" value={runtime.os.uptime} />
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function DeviceOverviewPage() {
                   <div className="mt-2 text-xl font-bold tabular-nums text-foreground">
                     {((runtime.os.totalRamMb - runtime.os.availableRamMb) / 1024).toFixed(1)} / {(runtime.os.totalRamMb / 1024).toFixed(0)} GB
                   </div>
-                  <div className="text-[11px] text-muted-foreground">RAM kullanımı</div>
+                  <div className="text-[11px] text-muted-foreground">RAM usage</div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-blue-500"
@@ -263,7 +263,7 @@ export default function DeviceOverviewPage() {
                   <div className="mt-2 text-xl font-bold tabular-nums text-foreground">
                     {(runtime.os.storageTotalGb - runtime.os.storageFreeGb).toFixed(0)} / {runtime.os.storageTotalGb} GB
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Depolama (/data)</div>
+                  <div className="text-[11px] text-muted-foreground">Storage (/data)</div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-teal-500"
@@ -272,29 +272,29 @@ export default function DeviceOverviewPage() {
                   </div>
                 </div>
                 <div className="rounded-xl border bg-card p-4 sm:col-span-2">
-                  <h4 className="text-xs font-bold text-foreground">Uygulama süreci</h4>
+                  <h4 className="text-xs font-bold text-foreground">Application process</h4>
                   {!runtime.app.installed ? (
-                    <p className="mt-2 text-xs text-muted-foreground">NesyMobile bu cihazda kurulu değil.</p>
+                    <p className="mt-2 text-xs text-muted-foreground">NesyMobile is not installed on this device.</p>
                   ) : (
                     <div className="mt-1 divide-y divide-border/50">
-                      <InfoRow label="Paket" value={fmt(runtime.app.packageName)} mono />
-                      <InfoRow label="Sürüm" value={`${fmt(runtime.app.versionName)} (${fmt(runtime.app.versionCode)})`} />
+                      <InfoRow label="Package" value={fmt(runtime.app.packageName)} mono />
+                      <InfoRow label="Version" value={`${fmt(runtime.app.versionName)} (${fmt(runtime.app.versionCode)})`} />
                       <InfoRow
                         label="Build"
                         value={runtime.app.debuggable ? 'debuggable' : 'release'}
                         tone={runtime.app.debuggable ? 'green' : undefined}
                       />
-                      <InfoRow label="Kurulum" value={runtime.app.firstInstall ? new Date(runtime.app.firstInstall).toLocaleString('tr-TR') : DASH} />
-                      <InfoRow label="Son güncelleme" value={runtime.app.lastUpdate ? new Date(runtime.app.lastUpdate).toLocaleString('tr-TR') : DASH} />
-                      <InfoRow label="Yükleyici" value={fmt(runtime.app.installer) === DASH ? 'adb / sideload' : fmt(runtime.app.installer)} mono />
+                      <InfoRow label="Installation" value={runtime.app.firstInstall ? new Date(runtime.app.firstInstall).toLocaleString('en-US') : DASH} />
+                      <InfoRow label="Last update" value={runtime.app.lastUpdate ? new Date(runtime.app.lastUpdate).toLocaleString('en-US') : DASH} />
+                      <InfoRow label="Installer" value={fmt(runtime.app.installer) === DASH ? 'adb / sideload' : fmt(runtime.app.installer)} mono />
                       <InfoRow
-                        label="PID / Bellek"
-                        value={runtime.app.processId ? `${runtime.app.processId} · ${fmt(runtime.app.memoryUsageMb, ' MB')}` : 'Süreç çalışmıyor'}
+                        label="PID / Memory"
+                        value={runtime.app.processId ? `${runtime.app.processId} * ${fmt(runtime.app.memoryUsageMb, ' MB')}` : 'Process is not running'}
                         tone={runtime.app.processId ? undefined : 'amber'}
                       />
                       <InfoRow
-                        label="Batarya optimizasyonu"
-                        value={runtime.app.batteryOptimized == null ? DASH : runtime.app.batteryOptimized ? 'Açık' : 'Kapalı (whitelist)'}
+                        label="Battery optimization"
+                        value={runtime.app.batteryOptimized == null ? DASH : runtime.app.batteryOptimized ? 'Enabled' : 'Disabled (whitelist)'}
                         tone={runtime.app.batteryOptimized ? 'amber' : 'green'}
                       />
                     </div>
@@ -304,11 +304,11 @@ export default function DeviceOverviewPage() {
             </div>
           </PageSection>
 
-          {/* ─── Firebase ─── */}
+          {/* --- Firebase --- */}
           <PageSection
             eyebrow="Firebase"
             title="Firebase & Analytics"
-            description="run-as ile cihazdaki shared_prefs'ten okunan gerçek kimlikler (yalnızca debuggable build)."
+            description="Real credentials read from shared_prefs on the device with run-as (debuggable build only)."
             icon={Flame}
             tone="orange"
           >
@@ -316,10 +316,10 @@ export default function DeviceOverviewPage() {
               <div className="flex items-start gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-4 dark:border-amber-900 dark:bg-amber-950/20">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Firebase verisi okunamadı</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Failed to read Firebase data</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {runtime.firebase.reason ?? 'Bilinmeyen neden.'} Firebase kimliklerini okumak için cihazda
-                    debuggable bir NesyMobile build'i kurulu olmalıdır.
+                    {runtime.firebase.reason ?? 'Unknown reason.'} A debuggable NesyMobile build must be
+                    installed on the device to read Firebase credentials.
                   </p>
                 </div>
               </div>
@@ -328,15 +328,15 @@ export default function DeviceOverviewPage() {
                 <div className={cn('rounded-xl border p-4', toneCard.orange)}>
                   <div className="flex items-center gap-2">
                     <Flame className={cn('size-4', toneIcon.orange)} />
-                    <h3 className="text-sm font-bold text-foreground">Kimlik & FCM</h3>
+                    <h3 className="text-sm font-bold text-foreground">Credentials & FCM</h3>
                   </div>
                   <div className="mt-2 divide-y divide-border/50">
                     <InfoRow label="App Instance ID" value={fmt(runtime.firebase.appInstanceId)} mono />
                     <InfoRow label="Session ID" value={fmt(runtime.firebase.sessionId)} mono />
                     <InfoRow label="GMP App ID" value={fmt(runtime.firebase.gmpAppId)} mono />
                     <InfoRow
-                      label="Token kaydı"
-                      value={runtime.firebase.fcmTokenStoredAt ? new Date(runtime.firebase.fcmTokenStoredAt).toLocaleString('tr-TR') : DASH}
+                      label="Token record"
+                      value={runtime.firebase.fcmTokenStoredAt ? new Date(runtime.firebase.fcmTokenStoredAt).toLocaleString('en-US') : DASH}
                     />
                     <InfoRow
                       label="Analytics"
@@ -344,8 +344,8 @@ export default function DeviceOverviewPage() {
                         runtime.firebase.analyticsCollectionEnabled == null
                           ? DASH
                           : runtime.firebase.analyticsCollectionEnabled
-                            ? 'Açık'
-                            : 'Kapalı'
+                            ? 'Enabled'
+                            : 'Disabled'
                       }
                       tone={runtime.firebase.analyticsCollectionEnabled ? 'green' : 'gray'}
                     />
@@ -355,15 +355,15 @@ export default function DeviceOverviewPage() {
                 <div className="rounded-xl border bg-card p-4">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className={cn('size-4', toneIcon.red)} />
-                    <h3 className="text-sm font-bold text-foreground">Crashlytics kimlikleri</h3>
+                    <h3 className="text-sm font-bold text-foreground">Crashlytics credentials</h3>
                   </div>
                   <div className="mt-2 divide-y divide-border/50">
                     <InfoRow label="Firebase Installation ID" value={fmt(runtime.firebase.firebaseInstallationId)} mono />
                     <InfoRow label="Crashlytics Installation ID" value={fmt(runtime.firebase.crashlyticsInstallationId)} mono />
                   </div>
                   <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                    Crashlytics user ID ve custom key'ler yalnızca crash raporlarıyla birlikte Firebase
-                    konsoluna gönderilir; cihaz üzerinde kalıcı olarak saklanmaz.
+                    Crashlytics user ID and custom keys are only sent to the Firebase
+                    console along with crash reports; they are not permanently stored on the device.
                   </div>
                 </div>
 
@@ -377,17 +377,17 @@ export default function DeviceOverviewPage() {
                       {runtime.firebase.fcmToken}
                     </code>
                   ) : (
-                    <p className="mt-3 text-xs text-muted-foreground">FCM token bulunamadı.</p>
+                    <p className="mt-3 text-xs text-muted-foreground">FCM token not found.</p>
                   )}
                   <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                    NesyMobile yalnızca iki özel event gönderir: <code className="text-foreground">deletedRequestDao</code> ve{' '}
-                    <code className="text-foreground">requestHttpStatusNot200</code>. Ekran görünümleri Crashlytics breadcrumb olarak loglanır.
+                    NesyMobile only sends two custom events: <code className="text-foreground">deletedRequestDao</code> and{' '}
+                    <code className="text-foreground">requestHttpStatusNot200</code>. Screen views are logged as Crashlytics breadcrumbs.
                   </div>
                 </div>
               </div>
             )}
 
-            {/* İzinler */}
+            {/* Permissions */}
             {runtime.permissions.length > 0 && (
               <motion.div
                 className="rounded-xl border bg-card p-4"
@@ -396,7 +396,7 @@ export default function DeviceOverviewPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, ease: EASE }}
               >
-                <h3 className="text-sm font-bold text-foreground">Çalışma zamanı izinleri</h3>
+                <h3 className="text-sm font-bold text-foreground">Runtime permissions</h3>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {runtime.permissions.map((p) => (
                     <Badge
@@ -406,7 +406,7 @@ export default function DeviceOverviewPage() {
                       size="sm"
                       className={cn('font-mono text-[10px]', p.granted ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400')}
                     >
-                      {p.granted ? '✓' : '✕'} {p.name}
+                      {p.granted ? 'v' : 'x'} {p.name}
                     </Badge>
                   ))}
                 </div>
@@ -419,7 +419,7 @@ export default function DeviceOverviewPage() {
   )
 }
 
-/** Snapshot toplanırken gösterilen bekleme durumu. */
+/** Loading state shown while collecting snapshot. */
 function LoadingState({ deviceName }: { deviceName: string }) {
   return (
     <motion.div
@@ -430,17 +430,17 @@ function LoadingState({ deviceName }: { deviceName: string }) {
     >
       <Loader2 className="size-6 animate-spin text-teal-500" />
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{deviceName} sorgulanıyor…</h3>
+        <h3 className="text-sm font-semibold text-foreground">Querying {deviceName}...</h3>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          ADB üzerinden ağ, sistem, uygulama ve Firebase bilgileri toplanıyor. Ping ölçümü nedeniyle
-          birkaç saniye sürebilir.
+          Gathering network, system, application and Firebase information over ADB. May take a few seconds
+          due to ping measurement.
         </p>
       </div>
     </motion.div>
   )
 }
 
-/** Snapshot alınamadığında gösterilen hata durumu. */
+/** Error state shown when snapshot fails. */
 function ErrorState({ deviceName, message, onRetry }: { deviceName: string; message: string; onRetry: () => void }) {
   return (
     <motion.div
@@ -451,12 +451,12 @@ function ErrorState({ deviceName, message, onRetry }: { deviceName: string; mess
     >
       <AlertTriangle className="size-6 text-red-500" />
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{deviceName} için snapshot alınamadı</h3>
+        <h3 className="text-sm font-semibold text-foreground">Failed to take snapshot for {deviceName}</h3>
         <p className="mt-1 max-w-md break-all text-xs leading-relaxed text-muted-foreground">{message}</p>
       </div>
       <Button size="sm" variant="outline" onClick={onRetry}>
         <RefreshCw className="size-3.5" />
-        Tekrar dene
+        Try again
       </Button>
     </motion.div>
   )

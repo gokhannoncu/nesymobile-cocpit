@@ -1,8 +1,8 @@
 'use client'
 
-// Debug View — Live Screen State
-// O anda ekranda ne var? Aktif fragment (DeliveryFragment), ekran hafızası
-// (state alanları), collectionType ve o ekrandaki son olay geçmişi.
+// Debug View - Live Screen State
+// What is on the screen right now? Active fragment (DeliveryFragment), screen memory
+// (state fields), collectionType and the history of recent events on that screen.
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
@@ -29,11 +29,11 @@ import { COLLECTION_TYPE, enumLabel } from '@/data/debug-view/enums'
 import type { ScreenStateField, ScreenEvent } from '@/data/debug-view/types'
 
 const GROUP_META: Record<ScreenStateField['group'], { label: string; tone: Tone }> = {
-  lifecycle: { label: 'Yaşam döngüsü', tone: 'indigo' },
+  lifecycle: { label: 'Lifecycle', tone: 'indigo' },
   viewmodel: { label: 'SharedViewModel (activity-scoped)', tone: 'purple' },
-  selection: { label: 'Seçim & mevcut bağlam', tone: 'blue' },
-  'ui-state': { label: 'UI durumu', tone: 'teal' },
-  flags: { label: 'Bayraklar', tone: 'amber' },
+  selection: { label: 'Selection & current context', tone: 'blue' },
+  'ui-state': { label: 'UI state', tone: 'teal' },
+  flags: { label: 'Flags', tone: 'amber' },
 }
 
 const EVENT_META: Record<ScreenEvent['type'], { tone: Tone; icon: typeof Clock }> = {
@@ -58,9 +58,9 @@ export default function ScreenStatePage() {
       <DebugHeader
         icon={LayoutDashboard}
         title="Live Screen State"
-        lead="Cihazda o anda hangi ekran açık, ekran hafızasındaki state ne durumda ve o ekranda en son hangi olaylar gerçekleşti — canlı olarak."
+        lead="Which screen is currently open on the device, what is the state in the screen memory, and what recent events occurred on that screen - live."
         tone="teal"
-        badges={[{ label: 'Aktif fragment' }, { label: 'Ekran hafızası' }, { label: 'Olay geçmişi' }]}
+        badges={[{ label: 'Active fragment' }, { label: 'Screen memory' }, { label: 'Event history' }]}
         actions={<DebugCrossLinks currentPath="/debug-view/screen-state" />}
       />
 
@@ -68,7 +68,7 @@ export default function ScreenStatePage() {
         <NoDeviceState />
       ) : (
         <>
-          {/* ─── Aktif ekran kartı ─── */}
+          {/* --- Active screen card --- */}
           <motion.section
             className={cn('rounded-2xl border p-5', toneCard.teal)}
             initial={{ opacity: 0, y: 10 }}
@@ -82,11 +82,11 @@ export default function ScreenStatePage() {
                 </span>
                 <div>
                   <div className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-                    Aktif ekran
+                    Active screen
                   </div>
                   <h2 className="text-xl font-bold text-foreground">{s.fragmentName}</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {s.activityName} · nav: <code className="text-foreground">{s.navGraphDestination}</code> ·{' '}
+                    {s.activityName} * nav: <code className="text-foreground">{s.navGraphDestination}</code> *{' '}
                     {s.viewModelName}
                   </p>
                 </div>
@@ -98,12 +98,12 @@ export default function ScreenStatePage() {
                 </Badge>
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="size-3" />
-                  Ekranda {s.timeOnScreenSec}s · {new Date(s.enteredAt).toLocaleTimeString('tr-TR')}
+                  On screen {s.timeOnScreenSec}s * {new Date(s.enteredAt).toLocaleTimeString('en-US')}
                 </span>
               </div>
             </div>
 
-            {/* collectionType vurgusu */}
+            {/* collectionType emphasis */}
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-background/60 px-4 py-3">
               <CreditCard className={cn('size-5', toneIcon[collection.tone])} />
               <div>
@@ -118,18 +118,18 @@ export default function ScreenStatePage() {
                 </div>
               </div>
               <div className="ms-auto text-right text-[11px] text-muted-foreground">
-                <div>None(0) · Cash(1) · CreditCard(6)</div>
-                <div>VPos(7) · OnInvoice(8)</div>
+                <div>None(0) * Cash(1) * CreditCard(6)</div>
+                <div>VPos(7) * OnInvoice(8)</div>
               </div>
             </div>
           </motion.section>
 
-          {/* ─── State alanları + olay geçmişi ─── */}
+          {/* --- State fields + event history --- */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
             {/* State */}
-            <PageSection eyebrow="Ekran hafızası" title="State Alanları" icon={Layers} tone="purple">
+            <PageSection eyebrow="Screen memory" title="State Fields" icon={Layers} tone="purple">
               <div className="mb-3 flex flex-wrap gap-1.5">
-                <FilterChip label="Tümü" active={activeGroup === 'all'} onClick={() => setActiveGroup('all')} count={s.fields.length} />
+                <FilterChip label="All" active={activeGroup === 'all'} onClick={() => setActiveGroup('all')} count={s.fields.length} />
                 {groups.map((g) => (
                   <FilterChip
                     key={g}
@@ -145,9 +145,9 @@ export default function ScreenStatePage() {
                 <table className="w-full text-left">
                   <thead className="border-b border-border bg-muted/40">
                     <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-3 py-2 font-semibold">Alan</th>
-                      <th className="px-3 py-2 font-semibold">Tür</th>
-                      <th className="px-3 py-2 font-semibold">Değer</th>
+                      <th className="px-3 py-2 font-semibold">Field</th>
+                      <th className="px-3 py-2 font-semibold">Type</th>
+                      <th className="px-3 py-2 font-semibold">Value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -169,8 +169,8 @@ export default function ScreenStatePage() {
               </div>
             </PageSection>
 
-            {/* Olay geçmişi */}
-            <PageSection eyebrow="Bu ekranda" title="Son Olaylar" icon={ScrollText} tone="blue">
+            {/* Event history */}
+            <PageSection eyebrow="On this screen" title="Recent Events" icon={ScrollText} tone="blue">
               <div className="relative space-y-0 rounded-xl border border-border bg-card p-4">
                 <div className="absolute bottom-4 left-[27px] top-4 w-px bg-border" />
                 {[...s.recentEvents].reverse().map((ev, i) => {
@@ -193,7 +193,7 @@ export default function ScreenStatePage() {
                           <TonePill label={ev.type} tone={meta.tone} className="ms-auto shrink-0" />
                         </div>
                         {ev.detail && <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>}
-                        <span className="text-[10px] text-muted-foreground/70">{new Date(ev.timestamp).toLocaleTimeString('tr-TR')}</span>
+                        <span className="text-[10px] text-muted-foreground/70">{new Date(ev.timestamp).toLocaleTimeString('en-US')}</span>
                       </div>
                     </motion.div>
                   )
@@ -202,8 +202,8 @@ export default function ScreenStatePage() {
             </PageSection>
           </div>
 
-          {/* ─── Ekran geçmişi (navigation stack) ─── */}
-          <PageSection eyebrow="Navigasyon" title="Ekran Geçmişi" description="Bu oturumda ziyaret edilen fragment'lar (navigation back stack)." icon={Navigation} tone="indigo">
+          {/* --- Navigation stack --- */}
+          <PageSection eyebrow="Navigation" title="Screen History" description="Fragments visited in this session (navigation back stack)." icon={Navigation} tone="indigo">
             <div className="flex flex-wrap items-center gap-2">
               {SCREEN_HISTORY.map((h, i) => (
                 <div key={h.destination + i} className="flex items-center gap-2">
@@ -215,7 +215,7 @@ export default function ScreenStatePage() {
                   >
                     <div className="text-xs font-semibold text-foreground">{h.fragmentName}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {new Date(h.enteredAt).toLocaleTimeString('tr-TR')} · {h.timeOnScreenSec}s
+                      {new Date(h.enteredAt).toLocaleTimeString('en-US')} * {h.timeOnScreenSec}s
                     </div>
                   </div>
                   {i < SCREEN_HISTORY.length - 1 && <ArrowRight className="size-4 text-muted-foreground" />}

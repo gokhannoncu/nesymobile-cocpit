@@ -1,8 +1,8 @@
 'use client'
 
-// Debug View — User Interaction Timeline
-// Cihazdaki kullanıcı etkileşim geçmişi: app open → login → tıklama → ekran
-// açılışı → tarama → ağ isteği, kronolojik akış.
+// Debug View - User Interaction Timeline
+// User interaction history on the device: app open -> login -> click -> screen
+// open -> scan -> network request, chronological flow.
 
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
@@ -64,9 +64,9 @@ export default function InteractionsPage() {
       <DebugHeader
         icon={MousePointerClick}
         title="User Interaction Timeline"
-        lead="Cihazda kullanıcının attığı her adım: uygulama açılışı, login, buton tıklamaları, ekran geçişleri, barkod taramaları ve tetiklenen ağ istekleri — zaman sırasıyla."
+        lead="Every step taken by the user on the device: application opening, login, button clicks, screen transitions, barcode scans and triggered network requests - in chronological order."
         tone="teal"
-        badges={[{ label: 'Oturum akışı' }, { label: 'Ekran geçişleri' }, { label: 'Analytics event' }]}
+        badges={[{ label: 'Session flow' }, { label: 'Screen transitions' }, { label: 'Analytics event' }]}
         actions={<DebugCrossLinks currentPath="/debug-view/interactions" />}
       />
 
@@ -74,9 +74,9 @@ export default function InteractionsPage() {
         <NoDeviceState />
       ) : (
         <>
-          {/* Filtreler */}
+          {/* Filters */}
           <div className="flex flex-wrap gap-1.5">
-            <FilterChip label="Tümü" active={filter === 'all'} onClick={() => setFilter('all')} count={MOCK_INTERACTIONS.length} />
+            <FilterChip label="All" active={filter === 'all'} onClick={() => setFilter('all')} count={MOCK_INTERACTIONS.length} />
             {kinds.map((k) => (
               <FilterChip
                 key={k}
@@ -90,7 +90,7 @@ export default function InteractionsPage() {
           </div>
 
           {/* Timeline */}
-          <PageSection eyebrow="Oturum" title="Etkileşim Akışı" icon={MousePointerClick} tone="teal">
+          <PageSection eyebrow="Session" title="Interaction Flow" icon={MousePointerClick} tone="teal">
             <div className="relative rounded-xl border border-border bg-card p-5">
               <div className="absolute bottom-5 left-[34px] top-5 w-px bg-border" />
               <div className="space-y-1">
@@ -121,7 +121,7 @@ export default function InteractionsPage() {
                             </Badge>
                           )}
                           <span className="ms-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-                            {new Date(ev.timestamp).toLocaleTimeString('tr-TR')} · {fmtOffset(ev.offsetMs)}
+                            {new Date(ev.timestamp).toLocaleTimeString('en-US')} * {fmtOffset(ev.offsetMs)}
                           </span>
                         </div>
                         {ev.detail && <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>}
@@ -132,8 +132,8 @@ export default function InteractionsPage() {
               </div>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Ekran görünümleri Crashlytics breadcrumb, tıklama/tarama ise cihaz üstü etkileşim kaydından türetilir.
-              Analytics rozetleri gerçek <code className="text-foreground">logEvent</code> çağrılarıdır.
+              Screen views are derived from Crashlytics breadcrumbs, clicks/scans from on-device interaction logs.
+              Analytics badges are actual <code className="text-foreground">logEvent</code> calls.
             </p>
           </PageSection>
         </>

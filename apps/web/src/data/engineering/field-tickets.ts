@@ -426,28 +426,28 @@ export const ROOT_CAUSES: RootCause[] = [
   },
 ]
 
-// ── Kalıcı aksiyon havuzu ────────────────────────────────────────
+// ── Permanent action pool ────────────────────────────────────────
 
 export const ACTIONS: ArchAction[] = [
   {
     id: 'ACT-01',
-    title: 'NESY-ARCH-001 — Normalize shipment şeması (ShipmentItemEntity + barcode index)',
+    title: 'NESY-ARCH-001 — Normalize shipment schema (ShipmentItemEntity + barcode index)',
     type: 'architecture',
     status: 'planned',
     rootCauses: ['RC-01', 'RC-02', 'RC-03', 'RC-15'],
     summary:
-      'JSON chunk → ilişkisel yapı. barcode UNIQUE INDEX ile O(log n) sorgu, shipment.sender ve stop.latitude/longitude normalize kolonları.',
-    verification: 'Büyük schedule (500+ stop) scan benchmark + ANR metriği; alan bazlı sorguların JSON parse içermediğinin kod denetimi.',
+      'JSON chunk → relational structure. O(log n) query with barcode UNIQUE INDEX, normalized columns for shipment.sender and stop.latitude/longitude.',
+    verification: 'Large schedule (500+ stops) scan benchmark + ANR metrics; code audit to verify field-based queries do not contain JSON parsing.',
     ref: 'NESY-ARCH-001',
   },
   {
     id: 'ACT-02',
-    title: 'NESY-ARCH-002 — ScheduleIngestor atomik replace',
+    title: 'NESY-ARCH-002 — ScheduleIngestor atomic replace',
     type: 'architecture',
     status: 'planned',
     rootCauses: ['RC-06'],
-    summary: 'Schedule yazımı tek transaction içinde atomik replace; kısmi yazım ve chunk/SP bayat değer kombinasyonu ortadan kalkar.',
-    verification: 'Rota değişikliği regression testi: eski rotanın hiçbir kaynakta (Room/SP/bellek) kalmadığının doğrulanması.',
+    summary: 'Schedule writing with atomic replace in a single transaction; partial writing and chunk/SP stale value combinations are eliminated.',
+    verification: 'Route change regression test: verification that the old route does not remain in any source (Room/SP/memory).',
     ref: 'NESY-ARCH-002',
   },
   {
@@ -457,8 +457,8 @@ export const ACTIONS: ArchAction[] = [
     status: 'in-progress',
     rootCauses: ['RC-06', 'RC-07', 'RC-12', 'RC-18'],
     summary:
-      "UI tek kaynaktan (DAO Flow<List<T>>) reaktif beslenir; bellek state (currentTask vb.) kaldırılır, reason set/config app_config tablosuna taşınır.",
-    verification: 'DELY sonrası tracking ekranı tutarlılık testi; process-death sonrası state restore testi.',
+      "UI is fed reactively from a single source (DAO Flow<List<T>>); memory state (currentTask etc.) is removed, reason set/config is moved to app_config table.",
+    verification: 'Tracking screen consistency test after DELY; state restore test after process death.',
     ref: 'NESY-ARCH-003',
   },
   {
@@ -468,39 +468,39 @@ export const ACTIONS: ArchAction[] = [
     status: 'planned',
     rootCauses: ['RC-04', 'RC-05', 'RC-08', 'RC-10', 'RC-11', 'RC-17'],
     summary:
-      "Her event UUID idempotency_key ile OutboxEventEntity'ye yazılır; SyncWorker FIFO gönderir. Telefon kapansa da event kaybolmaz, mükerrer gönderim yapısal olarak engellenir.",
-    verification: 'App-kill / airplane-mode testleri: event kaybı 0; duplicate FCM/retry testinde backend tarafında tek event.',
+      "Every event is written to OutboxEventEntity with a UUID idempotency_key; SyncWorker sends FIFO. Events are not lost even if the phone turns off, duplicate submissions are structurally prevented.",
+    verification: 'App-kill / airplane-mode tests: event loss 0; single event on the backend side in duplicate FCM/retry test.',
     ref: 'NESY-ARCH-004',
   },
   {
     id: 'ACT-05',
-    title: 'NESY-ARCH-005 — FCM işleme WorkManager ile serialize',
+    title: 'NESY-ARCH-005 — FCM processing serialized with WorkManager',
     type: 'architecture',
     status: 'planned',
     rootCauses: ['RC-05'],
-    summary: 'FCM refresh işlemleri tek worker kuyruğunda sıralı çalışır; UI mutasyonuyla eş zamanlı yazma çakışması kalkar.',
-    verification: 'Duplicate FCM + eş zamanlı UI aksiyonu race testi; çift TOUR reprodüksiyonunun negatife dönmesi.',
+    summary: 'FCM refresh operations run sequentially in a single worker queue; concurrent write collision with UI mutation is eliminated.',
+    verification: 'Duplicate FCM + concurrent UI action race test; negative reproduction of double TOUR.',
     ref: 'NESY-ARCH-005',
   },
   {
     id: 'ACT-06',
-    title: 'ADR-05 — ScanCoordinator: tek scan giriş noktası',
+    title: 'ADR-05 — ScanCoordinator: single scan entry point',
     type: 'architecture',
     status: 'proposed',
     rootCauses: ['RC-01', 'RC-04'],
     summary:
-      'Tüm barkod eventleri tek coordinator üzerinden screen-scoped BarcodeHandler\'lara dağıtılır; coordinator-scoped in-memory dedup set (ADR-09) ile restart = temiz başlangıç.',
-    verification: 'Ekran geçişi anında scan testi (stop list → delivery); scan kaybı/yanlış ekran dispatch oranı 0.',
+      'All barcode events are distributed to screen-scoped BarcodeHandlers via a single coordinator; restart = clean start with coordinator-scoped in-memory dedup set (ADR-09).',
+    verification: 'Scan test during screen transition (stop list → delivery); scan loss / wrong screen dispatch rate 0.',
     ref: 'ADR-05 / ADR-09',
   },
   {
     id: 'ACT-07',
-    title: 'ADR-07 — Outbox FIFO event zinciri (LCR→DDSP sıra garantisi)',
+    title: 'ADR-07 — Outbox FIFO event chain (LCR→DDSP sequence guarantee)',
     type: 'architecture',
     status: 'proposed',
     rootCauses: ['RC-08', 'RC-09'],
-    summary: 'Bağımlı event çiftleri (LCR→DDSP, CODC→CASH, DELY→fiscal) outbox içinde sıra garantisiyle gönderilir.',
-    verification: 'Paralel event üretim testi: backend\'e varış sırasının her koşulda korunması.',
+    summary: 'Dependent event pairs (LCR→DDSP, CODC→CASH, DELY→fiscal) are sent in the outbox with sequence guarantee.',
+    verification: 'Parallel event generation test: arrival sequence to backend is preserved under all conditions.',
     ref: 'ADR-07',
   },
   {
@@ -510,71 +510,71 @@ export const ACTIONS: ArchAction[] = [
     status: 'proposed',
     rootCauses: ['RC-13'],
     summary:
-      'LockerProviderPolicy (Strategy) + LockerCapacityValidator + ayrık GSM validator: RDOC engeli, multicolli boyut kontrolü ve GSM kuralları tek noktada.',
-    verification: 'Servis kombinasyonu matrisi üzerinde parametrik unit testler (RDOC × multicolli × GSM).',
+      'LockerProviderPolicy (Strategy) + LockerCapacityValidator + separate GSM validator: RDOC block, multicolli size control, and GSM rules in one place.',
+    verification: 'Parametric unit tests over service combination matrix (RDOC × multicolli × GSM).',
     ref: 'ADR-08',
   },
   {
     id: 'ACT-09',
-    title: 'ADR-02 — God Object parçalama: ekran başına ViewModel',
+    title: 'ADR-02 — God Object breakdown: ViewModel per screen',
     type: 'architecture',
     status: 'proposed',
     rootCauses: ['RC-05', 'RC-07', 'RC-13'],
-    summary: 'SharedViewModel/DeliveryFragment sorumlulukları ekran bazlı ViewModel + UseCase katmanına bölünür; UiEffect Channel ile tek seferlik efektler.',
-    verification: 'Bildirim sonrası scan crash reprodüksiyonu negatif; state sızıntısı (stale task) regression suite.',
+    summary: 'SharedViewModel/DeliveryFragment responsibilities are divided into screen-based ViewModel + UseCase layers; one-shot effects via UiEffect Channel.',
+    verification: 'Scan crash reproduction after notification is negative; state leak (stale task) regression suite.',
     ref: 'ADR-02',
   },
   {
     id: 'ACT-10',
-    title: 'Fiscal FSM — teslim → tahsilat → fiscal sıra makinesi',
+    title: 'Fiscal FSM — delivery → collection → fiscal sequence machine',
     type: 'architecture',
     status: 'proposed',
     rootCauses: ['RC-09', 'RC-10'],
     summary:
-      'Fiscal üretimi durum makinesine bağlanır: teslim onaylanmadan fiscal kesilmez, stop bazında gruplanır, her fiş DB kilidi + idempotency ile tek etki üretir. Zaman penceresi kuralları sıralama garantisiyle değiştirilir.',
-    verification: "Kısmi teslim, iptal (cancel fiscal), çoklu pickup ve reprint senaryolarında event log denetimi: 'VPFR var ama DELY yok' tutarsızlığı 0.",
+      'Fiscal generation is bound to a state machine: fiscal is not generated without delivery confirmation, grouped on a stop basis, each receipt produces a single effect with DB lock + idempotency. Time window rules are replaced with a sequence guarantee.',
+    verification: "Event log audit in partial delivery, cancellation (cancel fiscal), multi pickup, and reprint scenarios: 'VPFR exists but no DELY' inconsistency 0.",
     ref: 'NESY-ARCH-004 / RS fiscal',
   },
   {
     id: 'ACT-11',
-    title: 'Payment FSM — POS öncesi persist + recovery',
+    title: 'Payment FSM — pre-POS persist + recovery',
     type: 'architecture',
     status: 'proposed',
     rootCauses: ['RC-11', 'RC-12'],
     summary:
-      "Ödeme POS'a gönderilmeden önce DB'ye yazılır; uygulama açılışında yarım kalan ödemeler tamamlanır. CODC→CASH ikilisi outbox üzerinden sıralı gider; ödeme tipi normalize kaynaktan okunur.",
-    verification: 'POS onayı sonrası app-kill testi: ödeme kaybı 0, çift tahsilat 0; gün sonu mutabakat farkı metriği.',
+      "Payment is written to DB before being sent to POS; incomplete payments are finalized at app startup. CODC→CASH pair goes sequentially via outbox; payment type is read from a normalized source.",
+    verification: 'App-kill test after POS confirmation: payment loss 0, double collection 0; end-of-day reconciliation difference metric.',
     ref: 'NESY-ARCH-004',
   },
   {
     id: 'ACT-12',
-    title: 'Notification içerik UseCase + UiEffect + structured logging',
+    title: 'Notification content UseCase + UiEffect + structured logging',
     type: 'code-fix',
     status: 'proposed',
     rootCauses: ['RC-14'],
     summary:
-      'Bildirim içeriği tek UseCase\'te üretilir, navigasyon tek seferlik UiEffect ile yapılır (stop detayına deep-link), içerik hataları structured log/metrik ile görünür kılınır.',
-    verification: 'İçerik şablonu snapshot testleri + bildirim tıklama → doğru stop detayı E2E testi.',
+      'Notification content is generated in a single UseCase, navigation is done with a one-shot UiEffect (deep-link to stop details), content errors are made visible with structured log/metrics.',
+    verification: 'Content template snapshot tests + notification click → correct stop details E2E test.',
     ref: 'NESY-ARCH-004F',
   },
   {
     id: 'ACT-13',
-    title: 'ADR-10 — Konum OutlierFilter + koordinat normalize',
+    title: 'ADR-10 — Location OutlierFilter + normalize coordinates',
     type: 'code-fix',
     status: 'proposed',
     rootCauses: ['RC-15'],
-    summary: 'Speed+distance+accuracy tabanlı outlier filtresi; 0.0/geçersiz koordinat ayıklanır, stop.latitude/longitude normalize kolondan okunur.',
-    verification: 'Navigasyon intent testlerinde geçersiz koordinat oranı 0; saha GPS log örneklemi denetimi.',
+    summary: 'Speed+distance+accuracy based outlier filter; 0.0/invalid coordinates are filtered out, stop.latitude/longitude is read from normalized column.',
+    verification: 'Invalid coordinate rate 0 in navigation intent tests; field GPS log sampling audit.',
     ref: 'ADR-10',
   },
   {
     id: 'ACT-14',
-    title: 'ADR-13 — PermissionWatcher: runtime izin/servis izleme',
+    title: 'ADR-13 — PermissionWatcher: runtime permission/service monitoring',
     type: 'monitoring',
     status: 'proposed',
     rootCauses: ['RC-16'],
-    summary: 'Konum servisi/izin durumu runtime izlenir; kapalı/revoke durumunda UI uyarısı + yeniden talep akışı.',
-    verification: 'İzin revoke + servis kapatma senaryolarında uyarının göründüğü UI testi.',
+    summary: 'Location service/permission status is monitored at runtime; in case of disabled/revoke, UI warning + re-request flow.',
+    verification: 'UI test showing warning in permission revoke + service disabled scenarios.',
     ref: 'ADR-13',
   },
   {
@@ -584,13 +584,13 @@ export const ACTIONS: ArchAction[] = [
     status: 'proposed',
     rootCauses: ['RC-03', 'RC-17'],
     summary:
-      'TOUR/PTOU/DELY event üretimi ekran kodundan çıkarılıp tek UseCase noktalarına alınır (outbox.enqueue ile); erteleme gibi akışlar event üretiminden ayrışır.',
-    verification: 'Pickup → PTOU, delivery → DELY event tipi unit testleri; postpone senaryosunda TOUR üretilmediğinin doğrulanması.',
+      'TOUR/PTOU/DELY event generation is moved out of screen code to single UseCase points (with outbox.enqueue); flows like postpone are separated from event generation.',
+    verification: 'Pickup → PTOU, delivery → DELY event type unit tests; validation that TOUR is not generated in postpone scenario.',
     ref: 'NESY-ARCH-004',
   },
 ]
 
-// ── Türetilmiş koleksiyonlar ─────────────────────────────────────
+// ── Derived collections ─────────────────────────────────────
 
 export const FIELD_TICKETS: FieldTicket[] = FIELD_TICKET_RECORDS
 
@@ -611,7 +611,7 @@ export function actionTickets(actionId: string): FieldTicket[] {
   return FIELD_TICKETS.filter((t) => act.rootCauses.includes(t.rootCause))
 }
 
-// ── KPI'lar ──────────────────────────────────────────────────────
+// ── KPIs ──────────────────────────────────────────────────────
 
 export function fieldTicketKpis() {
   const total = FIELD_TICKETS.length
@@ -643,7 +643,7 @@ export function fieldTicketKpis() {
   }
 }
 
-// ── Arama (serbest metin + key:value komutları) ──────────────────
+// ── Search (free text + key:value commands) ──────────────────
 
 const SEARCH_KEYS = [
   'severity', 'status', 'country', 'group', 'screen', 'rootcause', 'risk',
@@ -685,7 +685,7 @@ function matchesToken(t: FieldTicket, key: string, value: string): boolean {
 export function searchFieldTickets(query: string, items: FieldTicket[]): FieldTicket[] {
   const q = query.trim()
   if (!q) return items
-  // "key:value" ve "key:\"çok kelime\"" token'larını ayıkla
+  // Extract "key:value" and "key:\"multi word\"" tokens
   const tokenRe = /(\w+):("([^"]*)"|\S+)/g
   const tokens: Array<[string, string]> = []
   let rest = q
@@ -711,7 +711,7 @@ export function searchFieldTickets(query: string, items: FieldTicket[]): FieldTi
   })
 }
 
-// ── Hızlı filtreler & Saved Views ────────────────────────────────
+// ── Quick filters & Saved Views ────────────────────────────────
 
 export interface TicketFilter {
   id: string
@@ -721,50 +721,50 @@ export interface TicketFilter {
 }
 
 export const QUICK_FILTERS: TicketFilter[] = [
-  { id: 'open', label: 'Açık', match: (t) => t.status === 'open' },
-  { id: 'crit', label: 'Kritik / Yüksek', match: (t) => t.severity !== 'medium' },
-  { id: 'repeat', label: 'Yüksek tekrar riski', match: (t) => t.repeatRisk === 'high' },
-  { id: 'wa', label: 'Workaround ile kapalı', match: (t) => t.status === 'closed' && t.fixType === 'workaround' },
-  { id: 'nofix', label: 'Kalıcı çözüm yok', match: (t) => t.fixType !== 'permanent' },
-  { id: 'lowconf', label: 'Kök nedeni belirsiz', match: (t) => t.confidence < 65 },
-  { id: 'finance', label: 'Finans & Ödeme', match: (t) => t.group === 'Finans & Ödeme' },
+  { id: 'open', label: 'Open', match: (t) => t.status === 'open' },
+  { id: 'crit', label: 'Critical / High', match: (t) => t.severity !== 'medium' },
+  { id: 'repeat', label: 'High repeat risk', match: (t) => t.repeatRisk === 'high' },
+  { id: 'wa', label: 'Closed with workaround', match: (t) => t.status === 'closed' && t.fixType === 'workaround' },
+  { id: 'nofix', label: 'No permanent fix', match: (t) => t.fixType !== 'permanent' },
+  { id: 'lowconf', label: 'Unclear root cause', match: (t) => t.confidence < 65 },
+  { id: 'finance', label: 'Finance & Payment', match: (t) => t.group === 'Finance & Payment' },
 ]
 
 export const SAVED_VIEWS: TicketFilter[] = [
   {
     id: 'exec-risk',
     label: 'Executive Risk',
-    desc: 'Kritik/yüksek + yüksek tekrar riski — kalıcı aksiyonu açık kayıtlar',
+    desc: 'Critical/high + high repeat risk — permanent action is open records',
     match: (t) => t.severity !== 'medium' && t.repeatRisk === 'high' && t.fixType !== 'permanent',
   },
   {
     id: 'rc-unknown',
     label: 'Root Cause Unknown',
-    desc: 'Kök neden teşhisi düşük güvenli (confidence < 65)',
+    desc: 'Root cause diagnosis with low confidence (confidence < 65)',
     match: (t) => t.confidence < 65,
   },
   {
     id: 'wa-debt',
     label: 'Workaround Debt',
-    desc: 'Ticket kapalı, workaround var, kalıcı çözüm yok',
+    desc: 'Ticket closed, has workaround, no permanent fix',
     match: (t) => t.status === 'closed' && t.fixType === 'workaround',
   },
   {
     id: 'repeat-offenders',
     label: 'Repeat Offenders',
-    desc: 'Aynı kanonik kök nedene bağlı 3+ ticket',
+    desc: '3+ tickets linked to the same canonical root cause',
     match: (t) => primaryTicketsOf(t.rootCause).length >= 3,
   },
   {
     id: 'financial-safety',
     label: 'Financial Safety',
-    desc: 'Ödeme, fiscal ve mutabakat güvenliğini etkileyen kayıtlar',
-    match: (t) => ['RC-09', 'RC-10', 'RC-11', 'RC-12'].includes(t.rootCause) || t.group === 'Finans & Ödeme',
+    desc: 'Records affecting payment, fiscal, and reconciliation safety',
+    match: (t) => ['RC-09', 'RC-10', 'RC-11', 'RC-12'].includes(t.rootCause) || t.group === 'Finance & Payment',
   },
   {
     id: 'verification-queue',
     label: 'Verification Queue',
-    desc: 'Müdahale uygulanmış ancak doğrulaması yapılmamış kayıtlar',
+    desc: 'Records with intervention applied but verification pending',
     match: (t) => t.pastAttempt !== '' && t.repeatRisk !== 'low',
   },
 ]

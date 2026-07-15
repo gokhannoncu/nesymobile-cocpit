@@ -54,17 +54,17 @@ export default function GithubPulsePage() {
         icon={GitBranch}
         eyebrow="Delivery & Security"
         tone="orange"
-        title="GitHub Pulse: kod tabanının nabzı."
-        lead={`Son 12 ayda ${YEAR_STATS.totalCommits} commit (${YEAR_STATS.period}). Bu sayfa commit amaçlarını, ekip dağılımını, sıcak dosyaları ve CI pipeline'larını izler — sayılar yalnızca aktiviteyi değil, kapasitenin nereye aktığını gösterir.`}
-        chips={[PULSE_PERIOD, `En yoğun ay: ${YEAR_STATS.busiestMonth}`]}
+        title="GitHub Pulse: pulse of the codebase."
+        lead={`Last 12 months ${YEAR_STATS.totalCommits} commits (${YEAR_STATS.period}). This page tracks commit purposes, team distribution, hot files and CI pipelines — numbers show not only activity, but where the capacity flows.`}
+        chips={[PULSE_PERIOD, `Busiest month: ${YEAR_STATS.busiestMonth}`]}
       >
         <StatGrid cols={2}>
-          <StatCard label="Commit (6 ay)" value={516} tone="orange" icon={GitBranch} hint="Önceki 6 ay: 515" />
+          <StatCard label="Commit (6 months)" value={516} tone="orange" icon={GitBranch} hint="Previous 6 months: 515" />
           <StatCard label="PR (6 ay)" value={220} tone="amber" icon={GitPullRequest} hint="−13% · revert %0.6 · hotfix 0" />
         </StatGrid>
       </HeroCallout>
 
-      <PageSection eyebrow="Manşetler" title="Sekiz manşet" icon={Flame} tone="orange">
+      <PageSection eyebrow="Headlines" title="Eight headlines" icon={Flame} tone="orange">
         <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
           {PULSE_HEADLINES.map((h) => (
             <div key={h.text} className={cn('flex items-start gap-2 rounded-xl border p-3', toneCard[headlineTone[h.tone]])}>
@@ -76,11 +76,11 @@ export default function GithubPulsePage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Amaç Dağılımı"
-        title="Commit'ler nereye gidiyor?"
-        icon={GitBranch}
+        eyebrow="Purpose Distribution"
+        title="Commit purposes"
+        icon={GitCommitVertical}
         tone="orange"
-        description="Son 6 ay, önceki 6 ay ile karşılaştırmalı. Bar genişliği mevcut dönemi gösterir."
+        description="Last 6 months, compared to previous 6 months. Bar width shows the current period."
       >
         <div className="space-y-2">
           {COMMIT_PURPOSE.map((p) => (
@@ -109,7 +109,7 @@ export default function GithubPulsePage() {
       </PageSection>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <PageSection eyebrow="Kod Sağlığı" title="Büyüme ve teslimat" icon={Info} tone="amber">
+        <PageSection eyebrow="Code Health" title="Growth and delivery" icon={Info} tone="amber">
           <StatGrid cols={2}>
             {CODE_HEALTH.map((c) => (
               <StatCard key={c.label} label={c.label} value={c.value} tone="gray" hint={c.note} />
@@ -118,14 +118,14 @@ export default function GithubPulsePage() {
         </PageSection>
 
         <PageSection
-          eyebrow="Ekip"
-          title="Katkı dağılımı — bus factor alarmı"
+          eyebrow="Team"
+          title="Contribution distribution — bus factor alarm"
           icon={Users}
-          tone="red"
-          description="Tek geliştirici %93.8 — plan ve bilgi aktarımı için en kritik organizasyonel risk."
+          tone="orange"
+          description="Single developer %93.8 — the most critical organizational risk for plan and knowledge transfer."
         >
           <ComparisonTable
-            headers={[{ label: 'Katkıcı' }, { label: 'Son 6 ay', tone: 'orange' }, { label: 'Önceki' }, { label: 'Pay' }]}
+            headers={[{ label: 'Contributor' }, { label: 'Last 6 months', tone: 'orange' }, { label: 'Previous' }, { label: 'Share' }]}
             rows={TEAM_DISTRIBUTION.map((t) => [t.name, String(t.current), String(t.prev), t.share])}
           />
         </PageSection>
@@ -133,19 +133,19 @@ export default function GithubPulsePage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <PageSection
-          eyebrow="Sıcak Dosyalar"
-          title="En çok değişen dosyalar (12 ay)"
+          eyebrow="Hot Files"
+          title="Most changed files (12 months)"
           icon={Flame}
-          tone="orange"
-          description="Sıcaklık listesi god object listesiyle birebir örtüşüyor — değişiklik riski en büyük dosyalarda birikiyor."
+          tone="red"
+          description="The heat list exactly matches the god object list — change risk accumulates in the largest files."
         >
           <ComparisonTable
-            headers={[{ label: 'Dosya' }, { label: 'Commit', tone: 'orange' }, { label: '+ / −' }]}
+            headers={[{ label: 'File' }, { label: 'Commit', tone: 'orange' }, { label: '+ / −' }]}
             rows={HOT_FILES.map((f) => [<code key="n" className="text-xs">{f.name}</code>, String(f.commits), f.churn])}
           />
         </PageSection>
 
-        <PageSection eyebrow="Ritim" title="Haftalık çalışma deseni" icon={CalendarDays} tone="amber">
+        <PageSection eyebrow="Rhythm" title="Weekly work pattern" icon={CalendarDays} tone="amber">
           <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-4" style={{ height: 180 }}>
             {YEAR_STATS.weekdays.map((w) => (
               <div key={w.day} className="flex flex-1 flex-col items-center justify-end gap-1 self-stretch">
@@ -159,17 +159,17 @@ export default function GithubPulsePage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Salı–Çarşamba zirvesi; hafta sonu commit’leri düşük (Cmt 12). {YEAR_STATS.busiestMonth}; en sakin {YEAR_STATS.quietestMonth}.
+            Tuesday–Wednesday peak; weekend commits are low (Sat 12). {YEAR_STATS.busiestMonth}; quietest {YEAR_STATS.quietestMonth}.
           </p>
         </PageSection>
       </div>
 
       <PageSection
         eyebrow="CI/CD"
-        title="Pipeline'lar ve boşluklar"
-        icon={Workflow}
-        tone="orange"
-        description="Üç workflow (self-hosted, JDK 17). Sürüm sayaçları ülke bazlı tutulur."
+        title="Pipelines and gaps"
+        icon={PlaySquare}
+        tone="amber"
+        description="Three workflows (self-hosted, JDK 17). Release counters are kept on a country basis."
       >
         <div className="space-y-2.5">
           {CI_PIPELINES.map((p) => (
@@ -185,7 +185,7 @@ export default function GithubPulsePage() {
         </div>
         <div className={cn('mt-3.5 rounded-xl border p-4', toneCard.red)}>
           <div className={cn('text-xs font-bold uppercase tracking-wide', toneText.red)}>
-            <AlertTriangle className="me-1 inline size-3.5" /> Boşluklar
+            <AlertTriangle className="me-1 inline size-3.5" /> Gaps
           </div>
           <ul className="mt-2 space-y-1 text-xs text-foreground/85">
             {CI_GAPS.map((g) => (
@@ -198,7 +198,7 @@ export default function GithubPulsePage() {
         </div>
       </PageSection>
 
-      <PageSection eyebrow="Sürümler" title="Ülke bazlı sürüm sayaçları" icon={GitBranch} tone="amber">
+      <PageSection eyebrow="Releases" title="Country-based release counters" icon={GitBranch} tone="amber">
         <ComparisonTable
           headers={[{ label: 'Kanal' }, { label: 'HR' }, { label: 'SI' }, { label: 'RS' }, { label: 'BA' }, { label: 'ME' }]}
           rows={[
@@ -209,10 +209,10 @@ export default function GithubPulsePage() {
         <p className="mt-2 text-xs text-muted-foreground">{VERSION_COUNTERS.note}</p>
       </PageSection>
 
-      <Callout icon={Info} title="Nasıl okumalı?" tone="orange">
-        Version/Dependency (+282%) ve CI/CD (+543%) artışı altyapı yatırımını gösterir — iyi. Ancak
-        aynı dönemde refactor −69% ve yeni feature −51%: kapasite bakım + sürüm yönetimine kilitlenmiş
-        durumda. Bu tablo, Modernization Plan’ın "neden şimdi" gerekçesidir.
+      <Callout icon={Info} title="How to read?" tone="orange">
+        Version/Dependency (+282%) and CI/CD (+543%) increase shows infrastructure investment — good. However
+        in the same period refactor −69% and new feature −51%: capacity is locked to maintenance + release management.
+        This table is the "why now" rationale of the Modernization Plan.
       </Callout>
     </ProductPage>
   )

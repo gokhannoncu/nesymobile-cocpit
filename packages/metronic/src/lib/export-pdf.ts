@@ -80,14 +80,10 @@ const CAPTURE_CSS = `
 .${ROOT_CLASS} main { width: 100% !important; margin: 0 !important; padding: 28px !important; }
 `
 
-const TR_CHAR_MAP: Record<string, string> = {
-  ç: 'c', Ç: 'c', ğ: 'g', Ğ: 'g', ı: 'i', İ: 'i',
-  ö: 'o', Ö: 'o', ş: 's', Ş: 's', ü: 'u', Ü: 'u',
-}
-
 export function slugify(input: string): string {
   const slug = input
-    .replace(/[çÇğĞıİöÖşŞüÜ]/g, (ch) => TR_CHAR_MAP[ch] ?? ch)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')

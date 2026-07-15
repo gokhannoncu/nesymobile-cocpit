@@ -1,8 +1,8 @@
 'use client'
 
-// Debug View — Database Access
-// 1) Release APK üzerinden cihaz Room DB'sine erişim yöntemleri analizi.
-// 2) NesyMobile'daki offline request kuyruğu (`request` tablosu) tablo olarak.
+// Debug View - Database Access
+// 1) Analysis of access methods to device Room DB over Release APK.
+// 2) Offline request queue (`request` table) in NesyMobile as a table.
 
 import { Fragment, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -25,18 +25,18 @@ import { DB_ACCESS_METHODS, MOCK_REQUEST_ROWS, DB_TABLES, DB_META } from '@/data
 import type { DbAccessMethod, RequestRow } from '@/data/debug-view/types'
 
 const STATE_META: Record<RequestRow['derivedState'], { label: string; tone: Tone }> = {
-  pending: { label: 'Beklemede', tone: 'blue' },
-  waiting: { label: 'Gecikmeli', tone: 'amber' },
-  'in-flight': { label: 'Gönderiliyor', tone: 'purple' },
-  retrying: { label: 'Yeniden deneniyor', tone: 'orange' },
-  dead: { label: 'Tükendi (≥3)', tone: 'red' },
+  pending: { label: 'Pending', tone: 'blue' },
+  waiting: { label: 'Delayed', tone: 'amber' },
+  'in-flight': { label: 'Sending', tone: 'purple' },
+  retrying: { label: 'Retrying', tone: 'orange' },
+  dead: { label: 'Exhausted (>=3)', tone: 'red' },
 }
 
 const DIFFICULTY_META: Record<DbAccessMethod['difficulty'], { label: string; tone: Tone }> = {
-  easy: { label: 'Kolay', tone: 'green' },
-  moderate: { label: 'Orta', tone: 'amber' },
-  hard: { label: 'Zor', tone: 'orange' },
-  blocked: { label: 'Engelli', tone: 'red' },
+  easy: { label: 'Easy', tone: 'green' },
+  moderate: { label: 'Moderate', tone: 'amber' },
+  hard: { label: 'Hard', tone: 'orange' },
+  blocked: { label: 'Blocked', tone: 'red' },
 }
 
 export default function DatabaseAccessPage() {
@@ -60,9 +60,9 @@ export default function DatabaseAccessPage() {
       <DebugHeader
         icon={Table2}
         title="Database Access"
-        lead="Release APK üzerinden cihaz veritabanına erişmenin yöntemleri ve NesyMobile'daki offline request kuyruğu tablosunun (AppDatabase v240) canlı görünümü."
+        lead="Methods of accessing the device database over Release APK and the live view of the offline request queue table (AppDatabase v240) in NesyMobile."
         tone="teal"
-        badges={[{ label: 'nesy.db · v240' }, { label: 'Room + WAL' }, { label: 'request tablosu' }]}
+        badges={[{ label: 'nesy.db * v240' }, { label: 'Room + WAL' }, { label: 'request table' }]}
         actions={<DebugCrossLinks currentPath="/debug-view/database" />}
       />
 
@@ -70,11 +70,11 @@ export default function DatabaseAccessPage() {
         <NoDeviceState />
       ) : (
         <>
-          {/* ─── 1. Erişim yöntemleri ─── */}
+          {/* --- 1. Access methods --- */}
           <PageSection
-            eyebrow="Analiz"
-            title="Release APK Üzerinden DB Erişim Yöntemleri"
-            description="Debuggable olmayan production build'de cihaz sandbox'ı OS tarafından korunur — yöntemler zorluk ve release uyumluluğuna göre sıralanır."
+            eyebrow="Analysis"
+            title="DB Access Methods Over Release APK"
+            description="In non-debuggable production builds, the device sandbox is protected by the OS - methods are sorted by difficulty and release compatibility."
             icon={Database}
             tone="teal"
           >
@@ -85,24 +85,24 @@ export default function DatabaseAccessPage() {
             </div>
           </PageSection>
 
-          {/* ─── 2. DB özeti ─── */}
-          <PageSection eyebrow="nesy.db" title="Veritabanı Tabloları" icon={Database} tone="indigo">
+          {/* --- 2. DB summary --- */}
+          <PageSection eyebrow="nesy.db" title="Database Tables" icon={Database} tone="indigo">
             <div className="mb-3 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card px-4 py-3 text-xs">
-              <InfoRowInline label="Dosya" value={DB_META.databaseName} />
-              <InfoRowInline label="Sürüm" value={`v${DB_META.version}`} />
+              <InfoRowInline label="File" value={DB_META.databaseName} />
+              <InfoRowInline label="Version" value={`v${DB_META.version}`} />
               <InfoRowInline label="Journal" value={DB_META.journalMode} />
-              <InfoRowInline label="Boyut" value={`${DB_META.sizeMb} MB`} />
+              <InfoRowInline label="Size" value={`${DB_META.sizeMb} MB`} />
               <code className="ms-auto hidden truncate font-mono text-[10px] text-muted-foreground xl:block">{DB_META.path}</code>
             </div>
             <div className="overflow-x-auto rounded-xl border border-border bg-card">
               <table className="w-full min-w-[560px] text-left">
                 <thead className="border-b border-border bg-muted/40">
                   <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2 font-semibold">Tablo</th>
-                    <th className="px-3 py-2 font-semibold">Açıklama</th>
+                    <th className="px-3 py-2 font-semibold">Table</th>
+                    <th className="px-3 py-2 font-semibold">Description</th>
                     <th className="px-3 py-2 font-semibold">PK</th>
-                    <th className="px-3 py-2 text-right font-semibold">Satır</th>
-                    <th className="px-3 py-2 text-right font-semibold">Boyut</th>
+                    <th className="px-3 py-2 text-right font-semibold">Row</th>
+                    <th className="px-3 py-2 text-right font-semibold">Size</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -120,24 +120,24 @@ export default function DatabaseAccessPage() {
             </div>
           </PageSection>
 
-          {/* ─── 3. request tablosu ─── */}
+          {/* --- 3. request table --- */}
           <PageSection
-            eyebrow="Offline kuyruk"
-            title="request tablosu"
-            description="Gönderilmeyi bekleyen istekler. Durum; isProcessing + isWaitingRequest + tryCount kombinasyonundan türetilir (tryCount ≥ 3 = tükendi)."
+            eyebrow="Offline queue"
+            title="request table"
+            description="Requests waiting to be sent. Status is derived from the combination of isProcessing + isWaitingRequest + tryCount (tryCount >= 3 = exhausted)."
             icon={Table2}
             tone="teal"
           >
             <StatGrid cols={4}>
-              <StatCard icon={Table2} label="Toplam satır" value={MOCK_REQUEST_ROWS.length} tone="blue" />
-              <StatCard icon={Unlock} label="Bekleyen" value={pendingCount} tone="amber" />
-              <StatCard icon={Ban} label="Tükenen (≥3)" value={deadCount} tone={deadCount > 0 ? 'red' : 'green'} />
-              <StatCard icon={Database} label="Arşiv (Completed)" value={128} tone="teal" />
+              <StatCard icon={Table2} label="Total rows" value={MOCK_REQUEST_ROWS.length} tone="blue" />
+              <StatCard icon={Unlock} label="Pending" value={pendingCount} tone="amber" />
+              <StatCard icon={Ban} label="Exhausted (>=3)" value={deadCount} tone={deadCount > 0 ? 'red' : 'green'} />
+              <StatCard icon={Database} label="Archive (Completed)" value={128} tone="teal" />
             </StatGrid>
 
             <div className="relative mt-3 max-w-sm">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="requestName, waybill veya uniqueKey ara…" className="h-8 pl-8 text-xs" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search requestName, waybill or uniqueKey..." className="h-8 pl-8 text-xs" />
             </div>
 
             <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card">
@@ -150,7 +150,7 @@ export default function DatabaseAccessPage() {
                     <th className="px-3 py-2 text-center font-semibold">tryCount</th>
                     <th className="px-3 py-2 text-center font-semibold">proc</th>
                     <th className="px-3 py-2 text-center font-semibold">wait</th>
-                    <th className="px-3 py-2 font-semibold">durum</th>
+                    <th className="px-3 py-2 font-semibold">status</th>
                     <th className="px-3 py-2 font-semibold">timeStamp</th>
                   </tr>
                 </thead>
@@ -166,7 +166,7 @@ export default function DatabaseAccessPage() {
                         >
                           <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">{r.id}</td>
                           <td className="px-3 py-2"><code className="text-[11px] font-semibold text-foreground">{r.requestName}</code></td>
-                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{r.waybillNumbers.join(', ') || '—'}</td>
+                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{r.waybillNumbers.join(', ') || '-'}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={cn('font-mono text-[11px]', r.tryCount >= 3 ? 'font-bold text-red-600 dark:text-red-400' : 'text-foreground')}>
                               {r.tryCount}/3
@@ -176,7 +176,7 @@ export default function DatabaseAccessPage() {
                           <td className="px-3 py-2 text-center text-[11px]">{r.isWaitingRequest ? '1' : '0'}</td>
                           <td className="px-3 py-2"><TonePill label={meta.label} tone={meta.tone} /></td>
                           <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                            {new Date(r.timeStamp).toLocaleTimeString('tr-TR')}
+                            {new Date(r.timeStamp).toLocaleTimeString('en-US')}
                           </td>
                         </tr>
                         <AnimatePresence initial={false}>
@@ -194,9 +194,9 @@ export default function DatabaseAccessPage() {
                                     <div className="divide-y divide-border/60">
                                       <InfoRow label="userName" value={r.userName} mono />
                                       <InfoRow label="uniqueKey" value={r.uniqueKey} mono />
-                                      <InfoRow label="createdAt" value={new Date(r.createdAt).toLocaleString('tr-TR')} />
+                                      <InfoRow label="createdAt" value={new Date(r.createdAt).toLocaleString('en-US')} />
                                       <InfoRow label="sendWithoutWaiting" value={r.sendWithoutWaiting ? 'true' : 'false'} />
-                                      <InfoRow label="fiscalInvoiceId" value={r.fiscalInvoiceId ?? '—'} mono />
+                                      <InfoRow label="fiscalInvoiceId" value={r.fiscalInvoiceId ?? '-'} mono />
                                     </div>
                                     <CodeBlock label="requestJson" code={r.requestJson} />
                                   </div>
@@ -210,12 +210,12 @@ export default function DatabaseAccessPage() {
                   })}
                 </tbody>
               </table>
-              {rows.length === 0 && <div className="py-10 text-center text-xs text-muted-foreground">Eşleşen satır yok.</div>}
+              {rows.length === 0 && <div className="py-10 text-center text-xs text-muted-foreground">No matching rows.</div>}
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Satıra tıklayarak <code className="text-foreground">requestJson</code> ve tüm alanları görebilirsiniz. Başarılı
-              gönderim sonrası satır <code className="text-foreground">deleteAndArchive()</code> ile{' '}
-              <code className="text-foreground">CompletedRequest</code> tablosuna taşınır.
+              Click on a row to see <code className="text-foreground">requestJson</code> and all fields. After a successful
+              shipment, the row is moved to the <code className="text-foreground">CompletedRequest</code> table with{' '}
+              <code className="text-foreground">deleteAndArchive()</code>.
             </p>
           </PageSection>
         </>
@@ -247,9 +247,9 @@ function AccessMethodCard({ method: m }: { method: DbAccessMethod }) {
           <div className="mt-0.5 flex flex-wrap gap-1.5">
             <Badge variant="secondary" appearance="outline" size="xs">{m.tool}</Badge>
             <Badge variant="secondary" appearance="outline" size="xs" className={m.worksOnRelease ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
-              {m.worksOnRelease ? 'Release ✓' : 'Release ✕'}
+              {m.worksOnRelease ? 'Release v' : 'Release x'}
             </Badge>
-            {m.requiresRoot && <Badge variant="secondary" appearance="outline" size="xs" className="text-amber-700 dark:text-amber-400">root gerekli</Badge>}
+            {m.requiresRoot && <Badge variant="secondary" appearance="outline" size="xs" className="text-amber-700 dark:text-amber-400">root required</Badge>}
           </div>
         </div>
       </div>
@@ -272,7 +272,7 @@ function AccessMethodCard({ method: m }: { method: DbAccessMethod }) {
         <ul className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
           {m.caveats.map((c, i) => (
             <li key={i} className="flex gap-1.5">
-              <span className="text-amber-500">⚠</span>
+              <span className="text-amber-500">!</span>
               <span className="leading-relaxed">{c}</span>
             </li>
           ))}
