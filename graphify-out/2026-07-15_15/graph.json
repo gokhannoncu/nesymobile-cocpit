@@ -4806,7 +4806,7 @@
       "source_file": "packages/metronic/src/index.ts",
       "source_location": "L1",
       "id": "packages_metronic_src_index_ts",
-      "community": 28,
+      "community": 44,
       "norm_label": "index.ts"
     },
     {
@@ -4914,7 +4914,7 @@
       "source_file": "packages/metronic/src/config/menu-utils.ts",
       "source_location": "L34",
       "id": "config_menu_utils_findworkspacemenuitem",
-      "community": 125,
+      "community": 19,
       "norm_label": "findworkspacemenuitem()"
     },
     {
@@ -4959,7 +4959,7 @@
       "source_file": "packages/metronic/src/config/menu-utils.ts",
       "source_location": "L145",
       "id": "config_menu_utils_workspacepageref",
-      "community": 27,
+      "community": 115,
       "norm_label": "workspacepageref"
     },
     {
@@ -4968,7 +4968,7 @@
       "source_file": "packages/metronic/src/config/menu-utils.ts",
       "source_location": "L157",
       "id": "config_menu_utils_getworkspacepages",
-      "community": 27,
+      "community": 115,
       "norm_label": "getworkspacepages()"
     },
     {
@@ -5508,7 +5508,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_tabs_tsx",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabs.tsx"
     },
     {
@@ -5517,7 +5517,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L9",
       "id": "ui_tabs_tabslistvariants",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabslistvariants"
     },
     {
@@ -5526,7 +5526,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L81",
       "id": "ui_tabs_tabstriggervariants",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabstriggervariants"
     },
     {
@@ -5535,7 +5535,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L123",
       "id": "ui_tabs_tabscontentvariants",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabscontentvariants"
     },
     {
@@ -5544,7 +5544,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L138",
       "id": "ui_tabs_tabscontexttype",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabscontexttype"
     },
     {
@@ -5553,7 +5553,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L142",
       "id": "ui_tabs_tabscontext",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabscontext"
     },
     {
@@ -5562,7 +5562,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L148",
       "id": "ui_tabs_tabs",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabs()"
     },
     {
@@ -5571,7 +5571,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L152",
       "id": "ui_tabs_tabslist",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabslist()"
     },
     {
@@ -5580,7 +5580,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L170",
       "id": "ui_tabs_tabstrigger",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabstrigger()"
     },
     {
@@ -5589,7 +5589,7 @@
       "source_file": "packages/metronic/src/components/ui/tabs.tsx",
       "source_location": "L182",
       "id": "ui_tabs_tabscontent",
-      "community": 71,
+      "community": 0,
       "norm_label": "tabscontent()"
     },
     {
@@ -5850,7 +5850,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_grid_background_tsx",
-      "community": 135,
+      "community": 132,
       "norm_label": "grid-background.tsx"
     },
     {
@@ -5859,7 +5859,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L7",
       "id": "ui_grid_background_gridsize",
-      "community": 135,
+      "community": 132,
       "norm_label": "gridsize"
     },
     {
@@ -5868,7 +5868,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L9",
       "id": "ui_grid_background_gridbackgroundprops",
-      "community": 135,
+      "community": 132,
       "norm_label": "gridbackgroundprops"
     },
     {
@@ -5877,7 +5877,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L27",
       "id": "ui_grid_background_gridbackground",
-      "community": 135,
+      "community": 132,
       "norm_label": "gridbackground()"
     },
     {
@@ -6021,7 +6021,7 @@
       "source_file": "packages/metronic/src/components/ui/input-otp.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_input_otp_tsx",
-      "community": 115,
+      "community": 135,
       "norm_label": "input-otp.tsx"
     },
     {
@@ -6030,7 +6030,7 @@
       "source_file": "packages/metronic/src/components/ui/input-otp.tsx",
       "source_location": "L8",
       "id": "ui_input_otp_inputotp",
-      "community": 115,
+      "community": 135,
       "norm_label": "inputotp()"
     },
     {
@@ -6039,7 +6039,7 @@
       "source_file": "packages/metronic/src/components/ui/input-otp.tsx",
       "source_location": "L25",
       "id": "ui_input_otp_inputotpgroup",
-      "community": 115,
+      "community": 135,
       "norm_label": "inputotpgroup()"
     },
     {
@@ -6048,7 +6048,7 @@
       "source_file": "packages/metronic/src/components/ui/input-otp.tsx",
       "source_location": "L29",
       "id": "ui_input_otp_inputotpslot",
-      "community": 115,
+      "community": 135,
       "norm_label": "inputotpslot()"
     },
     {
@@ -6057,7 +6057,7 @@
       "source_file": "packages/metronic/src/components/ui/input-otp.tsx",
       "source_location": "L59",
       "id": "ui_input_otp_inputotpseparator",
-      "community": 115,
+      "community": 135,
       "norm_label": "inputotpseparator()"
     },
     {
@@ -6507,7 +6507,7 @@
       "source_file": "packages/metronic/src/components/ui/sheet.tsx",
       "source_location": "L125",
       "id": "ui_sheet_sheetdescription",
-      "community": 47,
+      "community": 131,
       "norm_label": "sheetdescription()"
     },
     {
@@ -6516,7 +6516,7 @@
       "source_file": "packages/metronic/src/components/ui/shimmering-text.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_shimmering_text_tsx",
-      "community": 131,
+      "community": 135,
       "norm_label": "shimmering-text.tsx"
     },
     {
@@ -6525,7 +6525,7 @@
       "source_file": "packages/metronic/src/components/ui/shimmering-text.tsx",
       "source_location": "L7",
       "id": "ui_shimmering_text_shimmeringtextprops",
-      "community": 131,
+      "community": 135,
       "norm_label": "shimmeringtextprops"
     },
     {
@@ -6534,7 +6534,7 @@
       "source_file": "packages/metronic/src/components/ui/shimmering-text.tsx",
       "source_location": "L34",
       "id": "ui_shimmering_text_shimmeringtext",
-      "community": 131,
+      "community": 135,
       "norm_label": "shimmeringtext()"
     },
     {
@@ -6705,7 +6705,7 @@
       "source_file": "packages/metronic/src/components/ui/svg-text.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_svg_text_tsx",
-      "community": 132,
+      "community": 135,
       "norm_label": "svg-text.tsx"
     },
     {
@@ -6714,7 +6714,7 @@
       "source_file": "packages/metronic/src/components/ui/svg-text.tsx",
       "source_location": "L7",
       "id": "ui_svg_text_svgtextprops",
-      "community": 132,
+      "community": 135,
       "norm_label": "svgtextprops"
     },
     {
@@ -6723,7 +6723,7 @@
       "source_file": "packages/metronic/src/components/ui/svg-text.tsx",
       "source_location": "L41",
       "id": "ui_svg_text_svgtext",
-      "community": 132,
+      "community": 135,
       "norm_label": "svgtext()"
     },
     {
@@ -7128,7 +7128,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_alert_tsx",
-      "community": 54,
+      "community": 133,
       "norm_label": "alert.tsx"
     },
     {
@@ -7137,7 +7137,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L7",
       "id": "ui_alert_alertvariants",
-      "community": 54,
+      "community": 133,
       "norm_label": "alertvariants"
     },
     {
@@ -7146,7 +7146,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L189",
       "id": "ui_alert_alertprops",
-      "community": 54,
+      "community": 133,
       "norm_label": "alertprops"
     },
     {
@@ -7155,7 +7155,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L194",
       "id": "ui_alert_alerticonprops",
-      "community": 54,
+      "community": 133,
       "norm_label": "alerticonprops"
     },
     {
@@ -7164,7 +7164,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L196",
       "id": "ui_alert_alert",
-      "community": 54,
+      "community": 133,
       "norm_label": "alert()"
     },
     {
@@ -7173,7 +7173,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L222",
       "id": "ui_alert_alerttitle",
-      "community": 54,
+      "community": 133,
       "norm_label": "alerttitle()"
     },
     {
@@ -7182,7 +7182,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L226",
       "id": "ui_alert_alerticon",
-      "community": 54,
+      "community": 133,
       "norm_label": "alerticon()"
     },
     {
@@ -7191,7 +7191,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L234",
       "id": "ui_alert_alerttoolbar",
-      "community": 54,
+      "community": 133,
       "norm_label": "alerttoolbar()"
     },
     {
@@ -7200,7 +7200,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L242",
       "id": "ui_alert_alertdescription",
-      "community": 54,
+      "community": 133,
       "norm_label": "alertdescription()"
     },
     {
@@ -7209,7 +7209,7 @@
       "source_file": "packages/metronic/src/components/ui/alert.tsx",
       "source_location": "L252",
       "id": "ui_alert_alertcontent",
-      "community": 54,
+      "community": 133,
       "norm_label": "alertcontent()"
     },
     {
@@ -7857,7 +7857,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_avatar_tsx",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatar.tsx"
     },
     {
@@ -7866,7 +7866,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L8",
       "id": "ui_avatar_avatarstatusvariants",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatarstatusvariants"
     },
     {
@@ -7875,7 +7875,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L22",
       "id": "ui_avatar_avatar",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatar()"
     },
     {
@@ -7884,7 +7884,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L28",
       "id": "ui_avatar_avatarimage",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatarimage()"
     },
     {
@@ -7893,7 +7893,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L36",
       "id": "ui_avatar_avatarfallback",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatarfallback()"
     },
     {
@@ -7902,7 +7902,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L49",
       "id": "ui_avatar_avatarindicator",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatarindicator()"
     },
     {
@@ -7911,7 +7911,7 @@
       "source_file": "packages/metronic/src/components/ui/avatar.tsx",
       "source_location": "L59",
       "id": "ui_avatar_avatarstatus",
-      "community": 29,
+      "community": 126,
       "norm_label": "avatarstatus()"
     },
     {
@@ -8073,7 +8073,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_kbd_tsx",
-      "community": 124,
+      "community": 135,
       "norm_label": "kbd.tsx"
     },
     {
@@ -8082,7 +8082,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L7",
       "id": "ui_kbd_kbdvariants",
-      "community": 124,
+      "community": 135,
       "norm_label": "kbdvariants"
     },
     {
@@ -8091,7 +8091,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L25",
       "id": "ui_kbd_kbd",
-      "community": 124,
+      "community": 135,
       "norm_label": "kbd()"
     },
     {
@@ -8289,7 +8289,7 @@
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
       "source_location": "L158",
       "id": "ui_accordion_menu_accordionmenugroup",
-      "community": 18,
+      "community": 19,
       "norm_label": "accordionmenugroup()"
     },
     {
@@ -8307,7 +8307,7 @@
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
       "source_location": "L174",
       "id": "ui_accordion_menu_accordionmenulabel",
-      "community": 18,
+      "community": 19,
       "norm_label": "accordionmenulabel()"
     },
     {
@@ -8406,7 +8406,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_badge_tsx",
-      "community": 94,
+      "community": 3,
       "norm_label": "badge.tsx"
     },
     {
@@ -8415,7 +8415,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L6",
       "id": "ui_badge_badgeprops",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgeprops"
     },
     {
@@ -8424,7 +8424,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L12",
       "id": "ui_badge_badgebuttonprops",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgebuttonprops"
     },
     {
@@ -8433,7 +8433,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L18",
       "id": "ui_badge_badgedotprops",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgedotprops"
     },
     {
@@ -8442,7 +8442,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L20",
       "id": "ui_badge_badgevariants",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgevariants"
     },
     {
@@ -8451,7 +8451,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L168",
       "id": "ui_badge_badgebuttonvariants",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgebuttonvariants"
     },
     {
@@ -8460,7 +8460,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L182",
       "id": "ui_badge_badge",
-      "community": 94,
+      "community": 3,
       "norm_label": "badge()"
     },
     {
@@ -8469,7 +8469,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L203",
       "id": "ui_badge_badgebutton",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgebutton()"
     },
     {
@@ -8478,7 +8478,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L220",
       "id": "ui_badge_badgedot",
-      "community": 94,
+      "community": 3,
       "norm_label": "badgedot()"
     },
     {
@@ -8775,7 +8775,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L360",
       "id": "ui_button_button",
-      "community": 21,
+      "community": 84,
       "norm_label": "button()"
     },
     {
@@ -8829,7 +8829,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_typing_text_tsx",
-      "community": 119,
+      "community": 135,
       "norm_label": "typing-text.tsx"
     },
     {
@@ -8838,7 +8838,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L7",
       "id": "ui_typing_text_animationvariant",
-      "community": 119,
+      "community": 135,
       "norm_label": "animationvariant"
     },
     {
@@ -8847,7 +8847,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L19",
       "id": "ui_typing_text_typingtextprops",
-      "community": 119,
+      "community": 135,
       "norm_label": "typingtextprops"
     },
     {
@@ -8856,7 +8856,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L52",
       "id": "ui_typing_text_cursorvariants",
-      "community": 119,
+      "community": 135,
       "norm_label": "cursorvariants"
     },
     {
@@ -8865,7 +8865,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L65",
       "id": "ui_typing_text_typingtext",
-      "community": 119,
+      "community": 135,
       "norm_label": "typingtext()"
     },
     {
@@ -8874,7 +8874,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_checkbox_tsx",
-      "community": 138,
+      "community": 7,
       "norm_label": "checkbox.tsx"
     },
     {
@@ -8883,7 +8883,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L10",
       "id": "ui_checkbox_checkboxvariants",
-      "community": 138,
+      "community": 7,
       "norm_label": "checkboxvariants"
     },
     {
@@ -8892,7 +8892,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L32",
       "id": "ui_checkbox_checkbox",
-      "community": 138,
+      "community": 7,
       "norm_label": "checkbox()"
     },
     {
@@ -9117,7 +9117,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_collapsible_tsx",
-      "community": 43,
+      "community": 32,
       "norm_label": "collapsible.tsx"
     },
     {
@@ -9126,7 +9126,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L7",
       "id": "ui_collapsible_collapsible",
-      "community": 43,
+      "community": 32,
       "norm_label": "collapsible()"
     },
     {
@@ -9135,7 +9135,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L11",
       "id": "ui_collapsible_collapsibletrigger",
-      "community": 43,
+      "community": 32,
       "norm_label": "collapsibletrigger()"
     },
     {
@@ -9144,7 +9144,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L15",
       "id": "ui_collapsible_collapsiblecontent",
-      "community": 43,
+      "community": 32,
       "norm_label": "collapsiblecontent()"
     },
     {
@@ -9432,7 +9432,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_sliding_number_tsx",
-      "community": 127,
+      "community": 66,
       "norm_label": "sliding-number.tsx"
     },
     {
@@ -9441,7 +9441,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L6",
       "id": "ui_sliding_number_digit",
-      "community": 127,
+      "community": 66,
       "norm_label": "digit()"
     },
     {
@@ -9459,7 +9459,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L56",
       "id": "ui_sliding_number_slidingnumberprops",
-      "community": 127,
+      "community": 66,
       "norm_label": "slidingnumberprops"
     },
     {
@@ -9468,7 +9468,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L68",
       "id": "ui_sliding_number_slidingnumber",
-      "community": 127,
+      "community": 66,
       "norm_label": "slidingnumber()"
     },
     {
@@ -9477,7 +9477,7 @@
       "source_file": "packages/metronic/src/components/ui/textarea.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_textarea_tsx",
-      "community": 3,
+      "community": 43,
       "norm_label": "textarea.tsx"
     },
     {
@@ -9486,7 +9486,7 @@
       "source_file": "packages/metronic/src/components/ui/textarea.tsx",
       "source_location": "L8",
       "id": "ui_textarea_textareavariants",
-      "community": 3,
+      "community": 43,
       "norm_label": "textareavariants"
     },
     {
@@ -9495,7 +9495,7 @@
       "source_file": "packages/metronic/src/components/ui/textarea.tsx",
       "source_location": "L29",
       "id": "ui_textarea_textarea",
-      "community": 3,
+      "community": 43,
       "norm_label": "textarea()"
     },
     {
@@ -10332,7 +10332,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/index.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_index_tsx",
-      "community": 28,
+      "community": 128,
       "norm_label": "index.tsx"
     },
     {
@@ -10341,7 +10341,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/index.tsx",
       "source_location": "L7",
       "id": "layout_21_index_layout21",
-      "community": 28,
+      "community": 128,
       "norm_label": "layout21()"
     },
     {
@@ -10386,7 +10386,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-search.tsx",
       "source_location": "L4",
       "id": "components_sidebar_search_sidebarsearch",
-      "community": 19,
+      "community": 50,
       "norm_label": "sidebarsearch()"
     },
     {
@@ -10422,7 +10422,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-primary.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_primary_tsx",
-      "community": 29,
+      "community": 126,
       "norm_label": "sidebar-primary.tsx"
     },
     {
@@ -10530,7 +10530,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-workspace-sections.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_workspace_sections_tsx",
-      "community": 19,
+      "community": 98,
       "norm_label": "sidebar-workspace-sections.tsx"
     },
     {
@@ -10539,7 +10539,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-workspace-sections.tsx",
       "source_location": "L9",
       "id": "components_sidebar_workspace_sections_tosectionid",
-      "community": 19,
+      "community": 98,
       "norm_label": "tosectionid()"
     },
     {
@@ -10548,7 +10548,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-workspace-sections.tsx",
       "source_location": "L19",
       "id": "components_sidebar_workspace_sections_getcollapsiblegroups",
-      "community": 19,
+      "community": 98,
       "norm_label": "getcollapsiblegroups()"
     },
     {
@@ -10557,7 +10557,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-workspace-sections.tsx",
       "source_location": "L27",
       "id": "components_sidebar_workspace_sections_sidebarworkspacesections",
-      "community": 19,
+      "community": 98,
       "norm_label": "sidebarworkspacesections()"
     },
     {
@@ -10701,7 +10701,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-collapsible-section.tsx",
       "source_location": "L29",
       "id": "components_sidebar_collapsible_section_sidebarcollapsiblesection",
-      "community": 19,
+      "community": 18,
       "norm_label": "sidebarcollapsiblesection()"
     },
     {
@@ -10800,7 +10800,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar-menu.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_toolbar_menu_tsx",
-      "community": 71,
+      "community": 0,
       "norm_label": "toolbar-menu.tsx"
     },
     {
@@ -10809,7 +10809,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar-menu.tsx",
       "source_location": "L3",
       "id": "components_toolbar_menu_toolbarmenu",
-      "community": 71,
+      "community": 0,
       "norm_label": "toolbarmenu()"
     },
     {
@@ -10872,7 +10872,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-header.tsx",
       "source_location": "L40",
       "id": "components_sidebar_header_sidebarheader",
-      "community": 19,
+      "community": 50,
       "norm_label": "sidebarheader()"
     },
     {
@@ -10899,7 +10899,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-secondary.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_secondary_tsx",
-      "community": 19,
+      "community": 50,
       "norm_label": "sidebar-secondary.tsx"
     },
     {
@@ -11259,7 +11259,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L1",
       "id": "packages_metronic_src_lib_export_group_pdf_ts",
-      "community": 27,
+      "community": 115,
       "norm_label": "export-group-pdf.ts"
     },
     {
@@ -11268,7 +11268,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L31",
       "id": "lib_export_group_pdf_groupexportprogress",
-      "community": 27,
+      "community": 115,
       "norm_label": "groupexportprogress"
     },
     {
@@ -11277,7 +11277,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L40",
       "id": "lib_export_group_pdf_groupexportresult",
-      "community": 27,
+      "community": 115,
       "norm_label": "groupexportresult"
     },
     {
@@ -11286,7 +11286,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L48",
       "id": "lib_export_group_pdf_createhiddeniframe",
-      "community": 27,
+      "community": 115,
       "norm_label": "createhiddeniframe()"
     },
     {
@@ -11295,7 +11295,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L60",
       "id": "lib_export_group_pdf_waitforselector",
-      "community": 27,
+      "community": 115,
       "norm_label": "waitforselector()"
     },
     {
@@ -11304,7 +11304,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L80",
       "id": "lib_export_group_pdf_nextframes",
-      "community": 27,
+      "community": 115,
       "norm_label": "nextframes()"
     },
     {
@@ -11313,7 +11313,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L87",
       "id": "lib_export_group_pdf_loadpagecontent",
-      "community": 27,
+      "community": 115,
       "norm_label": "loadpagecontent()"
     },
     {
@@ -11322,7 +11322,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L130",
       "id": "lib_export_group_pdf_buildcoverdom",
-      "community": 27,
+      "community": 115,
       "norm_label": "buildcoverdom()"
     },
     {
@@ -11331,7 +11331,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L152",
       "id": "lib_export_group_pdf_tocentry",
-      "community": 27,
+      "community": 115,
       "norm_label": "tocentry"
     },
     {
@@ -11340,7 +11340,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L158",
       "id": "lib_export_group_pdf_buildtocdom",
-      "community": 27,
+      "community": 115,
       "norm_label": "buildtocdom()"
     },
     {
@@ -11349,7 +11349,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L179",
       "id": "lib_export_group_pdf_escapehtml",
-      "community": 27,
+      "community": 115,
       "norm_label": "escapehtml()"
     },
     {
@@ -11358,7 +11358,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L187",
       "id": "lib_export_group_pdf_chunk",
-      "community": 27,
+      "community": 115,
       "norm_label": "chunk()"
     },
     {
@@ -11376,7 +11376,7 @@
       "source_file": "packages/metronic/src/lib/export-group-pdf.ts",
       "source_location": "L205",
       "id": "lib_export_group_pdf_exportgrouptopdf",
-      "community": 27,
+      "community": 115,
       "norm_label": "exportgrouptopdf()"
     },
     {
@@ -12960,7 +12960,7 @@
       "source_file": "apps/web/src/app/(cockpit)/layout.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_layout_tsx",
-      "community": 28,
+      "community": 128,
       "norm_label": "layout.tsx"
     },
     {
@@ -12969,7 +12969,7 @@
       "source_file": "apps/web/src/app/(cockpit)/layout.tsx",
       "source_location": "L6",
       "id": "cockpit_layout_cockpitlayout",
-      "community": 28,
+      "community": 128,
       "norm_label": "cockpitlayout()"
     },
     {
@@ -13212,7 +13212,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_pm_calendar_page_tsx",
-      "community": 9,
+      "community": 114,
       "norm_label": "page.tsx"
     },
     {
@@ -13221,7 +13221,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L27",
       "id": "calendar_page_months",
-      "community": 9,
+      "community": 114,
       "norm_label": "months"
     },
     {
@@ -13230,7 +13230,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L32",
       "id": "calendar_page_weekdays",
-      "community": 9,
+      "community": 114,
       "norm_label": "weekdays"
     },
     {
@@ -13239,7 +13239,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L34",
       "id": "calendar_page_eventtypecolor",
-      "community": 9,
+      "community": 114,
       "norm_label": "eventtypecolor"
     },
     {
@@ -13248,7 +13248,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L43",
       "id": "calendar_page_eventtypelabel",
-      "community": 9,
+      "community": 114,
       "norm_label": "eventtypelabel"
     },
     {
@@ -13257,7 +13257,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L52",
       "id": "calendar_page_getcalendardays",
-      "community": 9,
+      "community": 114,
       "norm_label": "getcalendardays()"
     },
     {
@@ -13266,7 +13266,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L63",
       "id": "calendar_page_pad",
-      "community": 9,
+      "community": 114,
       "norm_label": "pad()"
     },
     {
@@ -13275,7 +13275,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L67",
       "id": "calendar_page_datestr",
-      "community": 9,
+      "community": 114,
       "norm_label": "datestr()"
     },
     {
@@ -13284,7 +13284,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/calendar/page.tsx",
       "source_location": "L73",
       "id": "calendar_page_calendarpage",
-      "community": 9,
+      "community": 114,
       "norm_label": "calendarpage()"
     },
     {
@@ -13356,7 +13356,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_pm_roadmap_page_tsx",
-      "community": 93,
+      "community": 9,
       "norm_label": "page.tsx"
     },
     {
@@ -13365,7 +13365,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L22",
       "id": "roadmap_page_risktone",
-      "community": 93,
+      "community": 9,
       "norm_label": "risktone"
     },
     {
@@ -13374,7 +13374,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L29",
       "id": "roadmap_page_phasestotimeline",
-      "community": 93,
+      "community": 9,
       "norm_label": "phasestotimeline()"
     },
     {
@@ -13383,7 +13383,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L53",
       "id": "roadmap_page_phasemetricsrows",
-      "community": 93,
+      "community": 9,
       "norm_label": "phasemetricsrows()"
     },
     {
@@ -13392,7 +13392,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L66",
       "id": "roadmap_page_roadmappage",
-      "community": 93,
+      "community": 9,
       "norm_label": "roadmappage()"
     },
     {
@@ -13500,7 +13500,7 @@
       "source_file": "apps/web/src/app/(cockpit)/[...slug]/page.tsx",
       "source_location": "L16",
       "id": "slug_page_notionplaceholderpage",
-      "community": 125,
+      "community": 19,
       "norm_label": "notionplaceholderpage()"
     },
     {
@@ -13509,7 +13509,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/layout.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_debug_view_layout_tsx",
-      "community": 88,
+      "community": 71,
       "norm_label": "layout.tsx"
     },
     {
@@ -13518,7 +13518,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/layout.tsx",
       "source_location": "L10",
       "id": "debug_view_layout_debugviewlayout",
-      "community": 88,
+      "community": 71,
       "norm_label": "debugviewlayout()"
     },
     {
@@ -13608,7 +13608,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_debug_view_interactions_page_tsx",
-      "community": 85,
+      "community": 71,
       "norm_label": "page.tsx"
     },
     {
@@ -13617,7 +13617,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx",
       "source_location": "L28",
       "id": "interactions_page_kind_icon",
-      "community": 85,
+      "community": 71,
       "norm_label": "kind_icon"
     },
     {
@@ -13626,7 +13626,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx",
       "source_location": "L39",
       "id": "interactions_page_fmtoffset",
-      "community": 85,
+      "community": 71,
       "norm_label": "fmtoffset()"
     },
     {
@@ -13635,7 +13635,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx",
       "source_location": "L46",
       "id": "interactions_page_interactionspage",
-      "community": 58,
+      "community": 71,
       "norm_label": "interactionspage()"
     },
     {
@@ -13644,7 +13644,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx",
       "source_location": "L145",
       "id": "interactions_page_filterchip",
-      "community": 85,
+      "community": 71,
       "norm_label": "filterchip()"
     },
     {
@@ -13698,7 +13698,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/screen-state/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_debug_view_screen_state_page_tsx",
-      "community": 111,
+      "community": 127,
       "norm_label": "page.tsx"
     },
     {
@@ -13707,7 +13707,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/screen-state/page.tsx",
       "source_location": "L31",
       "id": "screen_state_page_group_meta",
-      "community": 111,
+      "community": 127,
       "norm_label": "group_meta"
     },
     {
@@ -13716,7 +13716,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/screen-state/page.tsx",
       "source_location": "L39",
       "id": "screen_state_page_event_meta",
-      "community": 111,
+      "community": 127,
       "norm_label": "event_meta"
     },
     {
@@ -13734,7 +13734,7 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/screen-state/page.tsx",
       "source_location": "L232",
       "id": "screen_state_page_filterchip",
-      "community": 111,
+      "community": 127,
       "norm_label": "filterchip()"
     },
     {
@@ -13747,19 +13747,19 @@
       "norm_label": "page.tsx"
     },
     {
-      "label": "NETWORK_LIST_STYLE",
+      "label": "NETWORK_PANEL_STYLE",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L31",
-      "id": "network_inspector_page_network_list_style",
+      "source_location": "L30",
+      "id": "network_inspector_page_network_panel_style",
       "community": 92,
-      "norm_label": "network_list_style"
+      "norm_label": "network_panel_style"
     },
     {
       "label": "AUTH_INTERCEPTOR_HEADERS",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L42",
+      "source_location": "L37",
       "id": "network_inspector_page_auth_interceptor_headers",
       "community": 92,
       "norm_label": "auth_interceptor_headers"
@@ -13768,7 +13768,7 @@
       "label": "StreamState",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L55",
+      "source_location": "L50",
       "id": "network_inspector_page_streamstate",
       "community": 92,
       "norm_label": "streamstate"
@@ -13777,7 +13777,7 @@
       "label": "statusTone()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L57",
+      "source_location": "L52",
       "id": "network_inspector_page_statustone",
       "community": 92,
       "norm_label": "statustone()"
@@ -13786,7 +13786,7 @@
       "label": "methodTone()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L65",
+      "source_location": "L60",
       "id": "network_inspector_page_methodtone",
       "community": 92,
       "norm_label": "methodtone()"
@@ -13795,7 +13795,7 @@
       "label": "TIMING_SEGMENTS",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L69",
+      "source_location": "L64",
       "id": "network_inspector_page_timing_segments",
       "community": 92,
       "norm_label": "timing_segments"
@@ -13804,7 +13804,7 @@
       "label": "useNetworkStream()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L79",
+      "source_location": "L74",
       "id": "network_inspector_page_usenetworkstream",
       "community": 92,
       "norm_label": "usenetworkstream()"
@@ -13813,7 +13813,7 @@
       "label": "NetworkInspectorPage()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L127",
+      "source_location": "L122",
       "id": "network_inspector_page_networkinspectorpage",
       "community": 92,
       "norm_label": "networkinspectorpage()"
@@ -13822,7 +13822,7 @@
       "label": "RequestHeaders()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L324",
+      "source_location": "L317",
       "id": "network_inspector_page_requestheaders",
       "community": 92,
       "norm_label": "requestheaders()"
@@ -13831,7 +13831,7 @@
       "label": "TransactionDetail()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L366",
+      "source_location": "L359",
       "id": "network_inspector_page_transactiondetail",
       "community": 92,
       "norm_label": "transactiondetail()"
@@ -13932,7 +13932,7 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "community": 38,
+      "community": 80,
       "norm_label": "page.tsx"
     },
     {
@@ -13941,7 +13941,7 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L30",
       "id": "feature_library_page_moduleicons",
-      "community": 38,
+      "community": 80,
       "norm_label": "moduleicons"
     },
     {
@@ -13950,7 +13950,7 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L31",
       "id": "feature_library_page_moduletones",
-      "community": 38,
+      "community": 80,
       "norm_label": "moduletones"
     },
     {
@@ -13959,7 +13959,7 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L33",
       "id": "feature_library_page_featurelibrarypage",
-      "community": 38,
+      "community": 80,
       "norm_label": "featurelibrarypage()"
     },
     {
@@ -14751,7 +14751,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/tools/data-locator/catalog.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_tools_data_locator_catalog_tsx",
-      "community": 21,
+      "community": 3,
       "norm_label": "catalog.tsx"
     },
     {
@@ -15093,7 +15093,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/security/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_security_page_tsx",
-      "community": 38,
+      "community": 134,
       "norm_label": "page.tsx"
     },
     {
@@ -15102,7 +15102,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/security/page.tsx",
       "source_location": "L19",
       "id": "security_page_statusmeta",
-      "community": 38,
+      "community": 134,
       "norm_label": "statusmeta"
     },
     {
@@ -15111,7 +15111,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/security/page.tsx",
       "source_location": "L25",
       "id": "security_page_securitypage",
-      "community": 38,
+      "community": 134,
       "norm_label": "securitypage()"
     },
     {
@@ -15264,7 +15264,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/insight-drawer.tsx",
       "source_location": "L88",
       "id": "log_explorer_insight_drawer_insightdrawer",
-      "community": 98,
+      "community": 52,
       "norm_label": "insightdrawer()"
     },
     {
@@ -15633,7 +15633,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_device_lab_adb_scenarios_execution_history_tsx",
-      "community": 137,
+      "community": 119,
       "norm_label": "execution-history.tsx"
     },
     {
@@ -15642,7 +15642,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L30",
       "id": "adb_scenarios_execution_history_status_config",
-      "community": 137,
+      "community": 119,
       "norm_label": "status_config"
     },
     {
@@ -15651,7 +15651,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L49",
       "id": "adb_scenarios_execution_history_statusbadge",
-      "community": 137,
+      "community": 119,
       "norm_label": "statusbadge()"
     },
     {
@@ -15660,7 +15660,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L66",
       "id": "adb_scenarios_execution_history_formattime",
-      "community": 137,
+      "community": 119,
       "norm_label": "formattime()"
     },
     {
@@ -15669,7 +15669,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L71",
       "id": "adb_scenarios_execution_history_formatdate",
-      "community": 137,
+      "community": 119,
       "norm_label": "formatdate()"
     },
     {
@@ -15678,7 +15678,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L76",
       "id": "adb_scenarios_execution_history_formatduration",
-      "community": 137,
+      "community": 119,
       "norm_label": "formatduration()"
     },
     {
@@ -15687,7 +15687,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L85",
       "id": "adb_scenarios_execution_history_executionhistoryprops",
-      "community": 137,
+      "community": 119,
       "norm_label": "executionhistoryprops"
     },
     {
@@ -15696,7 +15696,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/execution-history.tsx",
       "source_location": "L89",
       "id": "adb_scenarios_execution_history_executionhistory",
-      "community": 137,
+      "community": 119,
       "norm_label": "executionhistory()"
     },
     {
@@ -15750,7 +15750,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-pool.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_device_lab_adb_scenarios_scenario_pool_tsx",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenario-pool.tsx"
     },
     {
@@ -15759,7 +15759,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-pool.tsx",
       "source_location": "L26",
       "id": "adb_scenarios_scenario_pool_category_tone",
-      "community": 91,
+      "community": 32,
       "norm_label": "category_tone"
     },
     {
@@ -15768,7 +15768,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-pool.tsx",
       "source_location": "L38",
       "id": "adb_scenarios_scenario_pool_formatduration",
-      "community": 91,
+      "community": 32,
       "norm_label": "formatduration()"
     },
     {
@@ -15777,7 +15777,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-pool.tsx",
       "source_location": "L46",
       "id": "adb_scenarios_scenario_pool_scenariopoolprops",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenariopoolprops"
     },
     {
@@ -15822,7 +15822,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/current-architecture/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_current_architecture_page_tsx",
-      "community": 38,
+      "community": 124,
       "norm_label": "page.tsx"
     },
     {
@@ -15831,7 +15831,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/current-architecture/page.tsx",
       "source_location": "L19",
       "id": "current_architecture_page_currentarchitecturepage",
-      "community": 38,
+      "community": 124,
       "norm_label": "currentarchitecturepage()"
     },
     {
@@ -16560,7 +16560,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/technical-debt/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_technical_debt_page_tsx",
-      "community": 38,
+      "community": 124,
       "norm_label": "page.tsx"
     },
     {
@@ -16569,7 +16569,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/technical-debt/page.tsx",
       "source_location": "L23",
       "id": "technical_debt_page_sevbadge",
-      "community": 38,
+      "community": 124,
       "norm_label": "sevbadge"
     },
     {
@@ -16578,7 +16578,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/technical-debt/page.tsx",
       "source_location": "L25",
       "id": "technical_debt_page_technicaldebtpage",
-      "community": 38,
+      "community": 124,
       "norm_label": "technicaldebtpage()"
     },
     {
@@ -16704,7 +16704,7 @@
       "source_file": "apps/web/src/components/debug-view/shared.tsx",
       "source_location": "L132",
       "id": "debug_view_shared_tonepill",
-      "community": 111,
+      "community": 127,
       "norm_label": "tonepill()"
     },
     {
@@ -16747,7 +16747,7 @@
       "label": "DebugOverviewShimmer()",
       "file_type": "code",
       "source_file": "apps/web/src/components/debug-view/shared.tsx",
-      "source_location": "L227",
+      "source_location": "L226",
       "id": "debug_view_shared_debugoverviewshimmer",
       "community": 85,
       "norm_label": "debugoverviewshimmer()"
@@ -16758,7 +16758,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-context.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_debug_view_debug_context_tsx",
-      "community": 88,
+      "community": 71,
       "norm_label": "debug-context.tsx"
     },
     {
@@ -16767,7 +16767,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-context.tsx",
       "source_location": "L20",
       "id": "debug_view_debug_context_debugviewcontextvalue",
-      "community": 88,
+      "community": 71,
       "norm_label": "debugviewcontextvalue"
     },
     {
@@ -16776,7 +16776,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-context.tsx",
       "source_location": "L35",
       "id": "debug_view_debug_context_debugviewcontext",
-      "community": 88,
+      "community": 71,
       "norm_label": "debugviewcontext"
     },
     {
@@ -16785,7 +16785,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-context.tsx",
       "source_location": "L37",
       "id": "debug_view_debug_context_debugviewprovider",
-      "community": 88,
+      "community": 71,
       "norm_label": "debugviewprovider()"
     },
     {
@@ -16794,7 +16794,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-context.tsx",
       "source_location": "L95",
       "id": "debug_view_debug_context_usedebugview",
-      "community": 58,
+      "community": 71,
       "norm_label": "usedebugview()"
     },
     {
@@ -16830,7 +16830,7 @@
       "source_file": "apps/web/src/components/debug-view/debug-device-bar.tsx",
       "source_location": "L157",
       "id": "debug_view_debug_device_bar_debugdevicebar",
-      "community": 88,
+      "community": 71,
       "norm_label": "debugdevicebar()"
     },
     {
@@ -16893,7 +16893,7 @@
       "source_file": "apps/web/src/components/product/feature-detail-dialog.tsx",
       "source_location": "L72",
       "id": "product_feature_detail_dialog_featuredetaildialog",
-      "community": 20,
+      "community": 80,
       "norm_label": "featuredetaildialog()"
     },
     {
@@ -16920,7 +16920,7 @@
       "source_file": "apps/web/src/components/product/group-pdf-button.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_group_pdf_button_tsx",
-      "community": 27,
+      "community": 115,
       "norm_label": "group-pdf-button.tsx"
     },
     {
@@ -16929,7 +16929,7 @@
       "source_file": "apps/web/src/components/product/group-pdf-button.tsx",
       "source_location": "L15",
       "id": "product_group_pdf_button_grouppdfbutton",
-      "community": 27,
+      "community": 115,
       "norm_label": "grouppdfbutton()"
     },
     {
@@ -16947,7 +16947,7 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L16",
       "id": "product_journey_journeystep",
-      "community": 36,
+      "community": 8,
       "norm_label": "journeystep"
     },
     {
@@ -16983,7 +16983,7 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L53",
       "id": "product_journey_journeymap",
-      "community": 36,
+      "community": 8,
       "norm_label": "journeymap()"
     },
     {
@@ -17064,7 +17064,7 @@
       "source_file": "apps/web/src/components/product/comparison.tsx",
       "source_location": "L13",
       "id": "product_comparison_comparisontable",
-      "community": 38,
+      "community": 124,
       "norm_label": "comparisontable()"
     },
     {
@@ -17073,7 +17073,7 @@
       "source_file": "apps/web/src/components/product/comparison.tsx",
       "source_location": "L82",
       "id": "product_comparison_doesdontgrid",
-      "community": 38,
+      "community": 61,
       "norm_label": "doesdontgrid()"
     },
     {
@@ -17091,7 +17091,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_evidence_ref_tsx",
-      "community": 36,
+      "community": 91,
       "norm_label": "evidence-ref.tsx"
     },
     {
@@ -17100,7 +17100,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L11",
       "id": "product_evidence_ref_evidencelevel",
-      "community": 36,
+      "community": 91,
       "norm_label": "evidencelevel"
     },
     {
@@ -17109,7 +17109,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L13",
       "id": "product_evidence_ref_levelconfig",
-      "community": 36,
+      "community": 91,
       "norm_label": "levelconfig"
     },
     {
@@ -17127,7 +17127,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L65",
       "id": "product_evidence_ref_severitytone",
-      "community": 36,
+      "community": 91,
       "norm_label": "severitytone"
     },
     {
@@ -17136,7 +17136,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L72",
       "id": "product_evidence_ref_severitybadge",
-      "community": 36,
+      "community": 61,
       "norm_label": "severitybadge()"
     },
     {
@@ -17145,7 +17145,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L91",
       "id": "product_evidence_ref_risktone",
-      "community": 36,
+      "community": 91,
       "norm_label": "risktone"
     },
     {
@@ -17154,7 +17154,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L97",
       "id": "product_evidence_ref_risklabel",
-      "community": 36,
+      "community": 91,
       "norm_label": "risklabel"
     },
     {
@@ -17163,7 +17163,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L103",
       "id": "product_evidence_ref_recurrenceriskbadge",
-      "community": 36,
+      "community": 61,
       "norm_label": "recurrenceriskbadge()"
     },
     {
@@ -17172,7 +17172,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L122",
       "id": "product_evidence_ref_statusbadge",
-      "community": 36,
+      "community": 61,
       "norm_label": "statusbadge()"
     },
     {
@@ -17370,7 +17370,7 @@
       "source_file": "apps/web/src/components/product/segment-tabs.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_segment_tabs_tsx",
-      "community": 71,
+      "community": 0,
       "norm_label": "segment-tabs.tsx"
     },
     {
@@ -17379,7 +17379,7 @@
       "source_file": "apps/web/src/components/product/segment-tabs.tsx",
       "source_location": "L7",
       "id": "product_segment_tabs_segmenttabitem",
-      "community": 93,
+      "community": 0,
       "norm_label": "segmenttabitem"
     },
     {
@@ -17388,7 +17388,7 @@
       "source_file": "apps/web/src/components/product/segment-tabs.tsx",
       "source_location": "L18",
       "id": "product_segment_tabs_segmenttabs",
-      "community": 8,
+      "community": 131,
       "norm_label": "segmenttabs()"
     },
     {
@@ -17478,7 +17478,7 @@
       "source_file": "apps/web/src/components/product/index.ts",
       "source_location": "L1",
       "id": "apps_web_src_components_product_index_ts",
-      "community": 60,
+      "community": 38,
       "norm_label": "index.ts"
     },
     {
@@ -17820,7 +17820,7 @@
       "source_file": "apps/web/src/components/engineering/tools/shared.tsx",
       "source_location": "L125",
       "id": "tools_shared_codeblock",
-      "community": 3,
+      "community": 119,
       "norm_label": "codeblock()"
     },
     {
@@ -17991,7 +17991,7 @@
       "source_file": "apps/web/src/components/engineering/device-lab/device-lab-shared.tsx",
       "source_location": "L124",
       "id": "device_lab_device_lab_shared_stepstatusindicator",
-      "community": 137,
+      "community": 119,
       "norm_label": "stepstatusindicator()"
     },
     {
@@ -18126,7 +18126,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L28",
       "id": "server_adb_execfileasync",
-      "community": 56,
+      "community": 123,
       "norm_label": "execfileasync"
     },
     {
@@ -18162,7 +18162,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L68",
       "id": "server_adb_adb",
-      "community": 56,
+      "community": 123,
       "norm_label": "adb()"
     },
     {
@@ -18180,7 +18180,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L97",
       "id": "server_adb_shell",
-      "community": 56,
+      "community": 123,
       "norm_label": "shell()"
     },
     {
@@ -18486,7 +18486,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L658",
       "id": "server_adb_resolvesqlitepath",
-      "community": 56,
+      "community": 140,
       "norm_label": "resolvesqlitepath()"
     },
     {
@@ -18495,7 +18495,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L670",
       "id": "server_adb_sqlite",
-      "community": 56,
+      "community": 140,
       "norm_label": "sqlite()"
     },
     {
@@ -18504,7 +18504,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L683",
       "id": "server_adb_sqlitejson",
-      "community": 56,
+      "community": 140,
       "norm_label": "sqlitejson()"
     },
     {
@@ -18513,7 +18513,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L689",
       "id": "server_adb_quoteidentifier",
-      "community": 56,
+      "community": 140,
       "norm_label": "quoteidentifier()"
     },
     {
@@ -18522,7 +18522,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L693",
       "id": "server_adb_quotesqlstring",
-      "community": 56,
+      "community": 140,
       "norm_label": "quotesqlstring()"
     },
     {
@@ -18603,7 +18603,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L773",
       "id": "server_adb_readrequestrows",
-      "community": 56,
+      "community": 140,
       "norm_label": "readrequestrows()"
     },
     {
@@ -18612,7 +18612,7 @@
       "source_file": "apps/web/src/lib/server/adb.ts",
       "source_location": "L835",
       "id": "server_adb_inspectdatabase",
-      "community": 56,
+      "community": 140,
       "norm_label": "inspectdatabase()"
     },
     {
@@ -18963,7 +18963,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L116",
       "id": "pm_types_calendareventtype",
-      "community": 9,
+      "community": 114,
       "norm_label": "calendareventtype"
     },
     {
@@ -18972,7 +18972,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L118",
       "id": "pm_types_calendarevent",
-      "community": 9,
+      "community": 114,
       "norm_label": "calendarevent"
     },
     {
@@ -18981,7 +18981,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L127",
       "id": "pm_types_sprint",
-      "community": 9,
+      "community": 114,
       "norm_label": "sprint"
     },
     {
@@ -18990,7 +18990,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L139",
       "id": "pm_types_roadmaprisklevel",
-      "community": 93,
+      "community": 9,
       "norm_label": "roadmaprisklevel"
     },
     {
@@ -19044,7 +19044,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L158",
       "id": "pm_types_roadmapphase",
-      "community": 93,
+      "community": 9,
       "norm_label": "roadmapphase"
     },
     {
@@ -19089,7 +19089,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_pm_roadmap_ts",
-      "community": 93,
+      "community": 9,
       "norm_label": "roadmap.ts"
     },
     {
@@ -19098,7 +19098,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L8",
       "id": "pm_roadmap_newarchphases",
-      "community": 93,
+      "community": 9,
       "norm_label": "newarchphases"
     },
     {
@@ -19107,7 +19107,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L160",
       "id": "pm_roadmap_refactorphases",
-      "community": 93,
+      "community": 9,
       "norm_label": "refactorphases"
     },
     {
@@ -19116,7 +19116,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L239",
       "id": "pm_roadmap_roadmapsummary",
-      "community": 93,
+      "community": 9,
       "norm_label": "roadmapsummary"
     },
     {
@@ -19125,7 +19125,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_pm_sprints_ts",
-      "community": 9,
+      "community": 114,
       "norm_label": "sprints.ts"
     },
     {
@@ -19134,7 +19134,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L5",
       "id": "pm_sprints_sprints",
-      "community": 9,
+      "community": 114,
       "norm_label": "sprints"
     },
     {
@@ -19143,7 +19143,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L75",
       "id": "pm_sprints_calendarevents",
-      "community": 9,
+      "community": 114,
       "norm_label": "calendarevents"
     },
     {
@@ -19152,7 +19152,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L106",
       "id": "pm_sprints_getactivesprint",
-      "community": 9,
+      "community": 114,
       "norm_label": "getactivesprint()"
     },
     {
@@ -19161,7 +19161,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L110",
       "id": "pm_sprints_geteventsfordate",
-      "community": 9,
+      "community": 114,
       "norm_label": "geteventsfordate()"
     },
     {
@@ -19170,7 +19170,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L114",
       "id": "pm_sprints_geteventsformonth",
-      "community": 9,
+      "community": 114,
       "norm_label": "geteventsformonth()"
     },
     {
@@ -19179,7 +19179,7 @@
       "source_file": "apps/web/src/data/pm/sprints.ts",
       "source_location": "L119",
       "id": "pm_sprints_getsprintfordate",
-      "community": 9,
+      "community": 114,
       "norm_label": "getsprintfordate()"
     },
     {
@@ -19269,7 +19269,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-screen-state.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_debug_view_mock_screen_state_ts",
-      "community": 111,
+      "community": 127,
       "norm_label": "mock-screen-state.ts"
     },
     {
@@ -19278,7 +19278,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-screen-state.ts",
       "source_location": "L10",
       "id": "debug_view_mock_screen_state_mock_screen_state",
-      "community": 111,
+      "community": 127,
       "norm_label": "mock_screen_state"
     },
     {
@@ -19287,7 +19287,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-screen-state.ts",
       "source_location": "L76",
       "id": "debug_view_mock_screen_state_screen_history",
-      "community": 111,
+      "community": 127,
       "norm_label": "screen_history"
     },
     {
@@ -19296,7 +19296,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-interactions.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_debug_view_mock_interactions_ts",
-      "community": 85,
+      "community": 71,
       "norm_label": "mock-interactions.ts"
     },
     {
@@ -19305,7 +19305,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-interactions.ts",
       "source_location": "L11",
       "id": "debug_view_mock_interactions_mock_interactions",
-      "community": 85,
+      "community": 71,
       "norm_label": "mock_interactions"
     },
     {
@@ -19314,7 +19314,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-interactions.ts",
       "source_location": "L35",
       "id": "debug_view_mock_interactions_interaction_kind_meta",
-      "community": 85,
+      "community": 71,
       "norm_label": "interaction_kind_meta"
     },
     {
@@ -19404,7 +19404,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_debug_view_types_ts",
-      "community": 116,
+      "community": 111,
       "norm_label": "types.ts"
     },
     {
@@ -19413,7 +19413,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L14",
       "id": "debug_view_types_networktransport",
-      "community": 116,
+      "community": 56,
       "norm_label": "networktransport"
     },
     {
@@ -19422,7 +19422,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L15",
       "id": "debug_view_types_cellulargeneration",
-      "community": 116,
+      "community": 111,
       "norm_label": "cellulargeneration"
     },
     {
@@ -19431,7 +19431,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L18",
       "id": "debug_view_types_wifiinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "wifiinfo"
     },
     {
@@ -19440,7 +19440,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L32",
       "id": "debug_view_types_cellularinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "cellularinfo"
     },
     {
@@ -19449,7 +19449,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L42",
       "id": "debug_view_types_throughputsample",
-      "community": 116,
+      "community": 111,
       "norm_label": "throughputsample"
     },
     {
@@ -19458,7 +19458,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L53",
       "id": "debug_view_types_osinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "osinfo"
     },
     {
@@ -19467,7 +19467,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L75",
       "id": "debug_view_types_firebasesnapshot",
-      "community": 116,
+      "community": 111,
       "norm_label": "firebasesnapshot"
     },
     {
@@ -19476,7 +19476,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L91",
       "id": "debug_view_types_appprocessinfo",
-      "community": 116,
+      "community": 111,
       "norm_label": "appprocessinfo"
     },
     {
@@ -19503,7 +19503,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L127",
       "id": "debug_view_types_networktiming",
-      "community": 116,
+      "community": 111,
       "norm_label": "networktiming"
     },
     {
@@ -19521,7 +19521,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L168",
       "id": "debug_view_types_dbaccessdifficulty",
-      "community": 116,
+      "community": 111,
       "norm_label": "dbaccessdifficulty"
     },
     {
@@ -19548,7 +19548,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L208",
       "id": "debug_view_types_dbtableinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "dbtableinfo"
     },
     {
@@ -19557,7 +19557,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L220",
       "id": "debug_view_types_dbgshipmentitem",
-      "community": 116,
+      "community": 111,
       "norm_label": "dbgshipmentitem"
     },
     {
@@ -19566,7 +19566,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L232",
       "id": "debug_view_types_dbgcollection",
-      "community": 116,
+      "community": 111,
       "norm_label": "dbgcollection"
     },
     {
@@ -19575,7 +19575,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L241",
       "id": "debug_view_types_dbgshipment",
-      "community": 58,
+      "community": 111,
       "norm_label": "dbgshipment"
     },
     {
@@ -19584,7 +19584,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L262",
       "id": "debug_view_types_dbgtask",
-      "community": 58,
+      "community": 111,
       "norm_label": "dbgtask"
     },
     {
@@ -19593,7 +19593,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L279",
       "id": "debug_view_types_dbgtimewindow",
-      "community": 116,
+      "community": 111,
       "norm_label": "dbgtimewindow"
     },
     {
@@ -19602,7 +19602,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L284",
       "id": "debug_view_types_dbgstop",
-      "community": 58,
+      "community": 111,
       "norm_label": "dbgstop"
     },
     {
@@ -19611,7 +19611,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L295",
       "id": "debug_view_types_dbgschedule",
-      "community": 58,
+      "community": 111,
       "norm_label": "dbgschedule"
     },
     {
@@ -19620,7 +19620,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L311",
       "id": "debug_view_types_screenstatefield",
-      "community": 111,
+      "community": 127,
       "norm_label": "screenstatefield"
     },
     {
@@ -19629,7 +19629,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L318",
       "id": "debug_view_types_screenevent",
-      "community": 111,
+      "community": 127,
       "norm_label": "screenevent"
     },
     {
@@ -19638,7 +19638,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L326",
       "id": "debug_view_types_screensnapshot",
-      "community": 111,
+      "community": 127,
       "norm_label": "screensnapshot"
     },
     {
@@ -19647,7 +19647,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L344",
       "id": "debug_view_types_interactionkind",
-      "community": 85,
+      "community": 71,
       "norm_label": "interactionkind"
     },
     {
@@ -19656,7 +19656,7 @@
       "source_file": "apps/web/src/data/debug-view/types.ts",
       "source_location": "L354",
       "id": "debug_view_types_interactionevent",
-      "community": 85,
+      "community": 71,
       "norm_label": "interactionevent"
     },
     {
@@ -19692,7 +19692,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_debug_view_live_types_ts",
-      "community": 116,
+      "community": 56,
       "norm_label": "live-types.ts"
     },
     {
@@ -19701,7 +19701,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L18",
       "id": "debug_view_live_types_livepingsample",
-      "community": 116,
+      "community": 56,
       "norm_label": "livepingsample"
     },
     {
@@ -19710,7 +19710,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L27",
       "id": "debug_view_live_types_livebatteryinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "livebatteryinfo"
     },
     {
@@ -19719,7 +19719,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L36",
       "id": "debug_view_live_types_liveappinfo",
-      "community": 116,
+      "community": 56,
       "norm_label": "liveappinfo"
     },
     {
@@ -19728,7 +19728,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L55",
       "id": "debug_view_live_types_livefirebasesnapshot",
-      "community": 116,
+      "community": 56,
       "norm_label": "livefirebasesnapshot"
     },
     {
@@ -19737,7 +19737,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L69",
       "id": "debug_view_live_types_livedeviceruntime",
-      "community": 85,
+      "community": 56,
       "norm_label": "livedeviceruntime"
     },
     {
@@ -19755,7 +19755,7 @@
       "source_file": "apps/web/src/data/debug-view/live-types.ts",
       "source_location": "L96",
       "id": "debug_view_live_types_livedatabasesnapshot",
-      "community": 116,
+      "community": 56,
       "norm_label": "livedatabasesnapshot"
     },
     {
@@ -19863,7 +19863,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-schedule.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_debug_view_mock_schedule_ts",
-      "community": 58,
+      "community": 111,
       "norm_label": "mock-schedule.ts"
     },
     {
@@ -19872,7 +19872,7 @@
       "source_file": "apps/web/src/data/debug-view/mock-schedule.ts",
       "source_location": "L10",
       "id": "debug_view_mock_schedule_mock_schedule",
-      "community": 58,
+      "community": 111,
       "norm_label": "mock_schedule"
     },
     {
@@ -20061,7 +20061,7 @@
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L418",
       "id": "product_nesy_issupported",
-      "community": 38,
+      "community": 80,
       "norm_label": "issupported()"
     },
     {
@@ -20754,7 +20754,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_engineering_architecture_ts",
-      "community": 38,
+      "community": 124,
       "norm_label": "architecture.ts"
     },
     {
@@ -20763,7 +20763,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L4",
       "id": "engineering_architecture_infra_metrics",
-      "community": 38,
+      "community": 124,
       "norm_label": "infra_metrics"
     },
     {
@@ -20772,7 +20772,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L15",
       "id": "engineering_architecture_god_objects",
-      "community": 38,
+      "community": 124,
       "norm_label": "god_objects"
     },
     {
@@ -20781,7 +20781,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L24",
       "id": "engineering_architecture_layer_map",
-      "community": 38,
+      "community": 124,
       "norm_label": "layer_map"
     },
     {
@@ -20790,7 +20790,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L33",
       "id": "engineering_architecture_anti_patterns",
-      "community": 38,
+      "community": 124,
       "norm_label": "anti_patterns"
     },
     {
@@ -20799,7 +20799,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L46",
       "id": "engineering_architecture_critical_bugs",
-      "community": 38,
+      "community": 124,
       "norm_label": "critical_bugs"
     },
     {
@@ -20808,7 +20808,7 @@
       "source_file": "apps/web/src/data/engineering/architecture.ts",
       "source_location": "L59",
       "id": "engineering_architecture_screen_health",
-      "community": 38,
+      "community": 124,
       "norm_label": "screen_health"
     },
     {
@@ -21159,7 +21159,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_engineering_security_ts",
-      "community": 38,
+      "community": 134,
       "norm_label": "security.ts"
     },
     {
@@ -21168,7 +21168,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L4",
       "id": "engineering_security_secstatus",
-      "community": 38,
+      "community": 134,
       "norm_label": "secstatus"
     },
     {
@@ -21177,7 +21177,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L6",
       "id": "engineering_security_securityitem",
-      "community": 38,
+      "community": 134,
       "norm_label": "securityitem"
     },
     {
@@ -21186,7 +21186,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L13",
       "id": "engineering_security_security_posture",
-      "community": 38,
+      "community": 134,
       "norm_label": "security_posture"
     },
     {
@@ -21195,7 +21195,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L62",
       "id": "engineering_security_security_commits",
-      "community": 38,
+      "community": 134,
       "norm_label": "security_commits"
     },
     {
@@ -21204,7 +21204,7 @@
       "source_file": "apps/web/src/data/engineering/security.ts",
       "source_location": "L71",
       "id": "engineering_security_stack_facts",
-      "community": 38,
+      "community": 134,
       "norm_label": "stack_facts"
     },
     {
@@ -22536,7 +22536,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/mock-devices.ts",
       "source_location": "L18",
       "id": "device_lab_mock_devices_mock_devices",
-      "community": 88,
+      "community": 71,
       "norm_label": "mock_devices"
     },
     {
@@ -22662,7 +22662,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L53",
       "id": "device_lab_device_lab_types_scenariocategory",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenariocategory"
     },
     {
@@ -22689,7 +22689,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L92",
       "id": "device_lab_device_lab_types_preflightcheck",
-      "community": 91,
+      "community": 52,
       "norm_label": "preflightcheck"
     },
     {
@@ -22725,7 +22725,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L135",
       "id": "device_lab_device_lab_types_scenariopackage",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenariopackage"
     },
     {
@@ -22734,7 +22734,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L167",
       "id": "device_lab_device_lab_types_categoryinfo",
-      "community": 91,
+      "community": 52,
       "norm_label": "categoryinfo"
     },
     {
@@ -22770,7 +22770,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L199",
       "id": "device_lab_device_lab_types_executionrecord",
-      "community": 137,
+      "community": 119,
       "norm_label": "executionrecord"
     },
     {
@@ -22896,7 +22896,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L20",
       "id": "device_lab_log_presets_log_source_meta",
-      "community": 52,
+      "community": 98,
       "norm_label": "log_source_meta"
     },
     {
@@ -22905,7 +22905,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L106",
       "id": "device_lab_log_presets_log_level_meta",
-      "community": 52,
+      "community": 98,
       "norm_label": "log_level_meta"
     },
     {
@@ -23031,7 +23031,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_engineering_device_lab_adb_scenarios_ts",
-      "community": 91,
+      "community": 32,
       "norm_label": "adb-scenarios.ts"
     },
     {
@@ -23040,7 +23040,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L17",
       "id": "device_lab_adb_scenarios_scenario_categories",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenario_categories"
     },
     {
@@ -23049,7 +23049,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L80",
       "id": "device_lab_adb_scenarios_preflight_checks",
-      "community": 91,
+      "community": 32,
       "norm_label": "preflight_checks"
     },
     {
@@ -23058,7 +23058,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L117",
       "id": "device_lab_adb_scenarios_quick_view_filters",
-      "community": 91,
+      "community": 32,
       "norm_label": "quick_view_filters"
     },
     {
@@ -23067,7 +23067,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L130",
       "id": "device_lab_adb_scenarios_scenario_packages",
-      "community": 91,
+      "community": 32,
       "norm_label": "scenario_packages"
     },
     {
@@ -23085,7 +23085,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L1046",
       "id": "device_lab_adb_scenarios_getscenariosbycategory",
-      "community": 91,
+      "community": 32,
       "norm_label": "getscenariosbycategory()"
     },
     {
@@ -23094,7 +23094,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L1051",
       "id": "device_lab_adb_scenarios_filterscenarios",
-      "community": 91,
+      "community": 32,
       "norm_label": "filterscenarios()"
     },
     {
@@ -23103,7 +23103,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/adb-scenarios.ts",
       "source_location": "L1097",
       "id": "device_lab_adb_scenarios_getscenariobyid",
-      "community": 91,
+      "community": 32,
       "norm_label": "getscenariobyid()"
     },
     {
@@ -23899,15 +23899,6 @@
       "norm_label": "field_tickets"
     },
     {
-      "label": "NETWORK_PANEL_STYLE",
-      "file_type": "code",
-      "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L30",
-      "community": 92,
-      "norm_label": "network_panel_style",
-      "id": "network_inspector_page_network_panel_style"
-    },
-    {
       "label": "LoadingState()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/overview/page.tsx",
@@ -23966,7 +23957,7 @@
       "file_type": "code",
       "source_file": "packages/metronic/src/config/permissions.ts",
       "source_location": "L21",
-      "community": 125,
+      "community": 19,
       "norm_label": "isoperationspath()",
       "id": "config_permissions_isoperationspath"
     },
@@ -24083,7 +24074,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L36",
-      "community": 38,
+      "community": 80,
       "norm_label": "featurelibrarycard()",
       "id": "product_feature_library_card_featurelibrarycard"
     },
@@ -24092,7 +24083,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/page.tsx",
       "source_location": "L1",
-      "community": 60,
+      "community": 94,
       "norm_label": "page.tsx",
       "id": "apps_web_src_app_cockpit_engineering_mobile_knowledge_page_tsx"
     },
@@ -24101,7 +24092,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/page.tsx",
       "source_location": "L19",
-      "community": 60,
+      "community": 94,
       "norm_label": "mobileknowledgeoverviewpage()",
       "id": "mobile_knowledge_page_mobileknowledgeoverviewpage"
     },
@@ -24173,7 +24164,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L1",
-      "community": 60,
+      "community": 38,
       "norm_label": "page.tsx",
       "id": "apps_web_src_app_cockpit_engineering_mobile_knowledge_screens_page_tsx"
     },
@@ -24182,7 +24173,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L10",
-      "community": 60,
+      "community": 38,
       "norm_label": "group_order",
       "id": "screens_page_group_order"
     },
@@ -24191,7 +24182,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L12",
-      "community": 60,
+      "community": 38,
       "norm_label": "screenmanualpage()",
       "id": "screens_page_screenmanualpage"
     },
@@ -24200,7 +24191,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/[screenId]/screen-view.tsx",
       "source_location": "L1",
-      "community": 130,
+      "community": 47,
       "norm_label": "screen-view.tsx",
       "id": "apps_web_src_app_cockpit_engineering_mobile_knowledge_screens_screenid_screen_view_tsx"
     },
@@ -24209,7 +24200,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/[screenId]/screen-view.tsx",
       "source_location": "L36",
-      "community": 130,
+      "community": 47,
       "norm_label": "entrystepper()",
       "id": "screenid_screen_view_entrystepper"
     },
@@ -24218,7 +24209,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/[screenId]/screen-view.tsx",
       "source_location": "L49",
-      "community": 130,
+      "community": 47,
       "norm_label": "usermanual()",
       "id": "screenid_screen_view_usermanual"
     },
@@ -24227,7 +24218,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/[screenId]/screen-view.tsx",
       "source_location": "L149",
-      "community": 130,
+      "community": 47,
       "norm_label": "keyvaluelist()",
       "id": "screenid_screen_view_keyvaluelist"
     },
@@ -24236,7 +24227,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/[screenId]/screen-view.tsx",
       "source_location": "L162",
-      "community": 130,
+      "community": 47,
       "norm_label": "engineeringdetails()",
       "id": "screenid_screen_view_engineeringdetails"
     },
@@ -24290,7 +24281,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L1",
-      "community": 138,
+      "community": 93,
       "norm_label": "global-search.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_global_search_tsx"
     },
@@ -24299,7 +24290,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L24",
-      "community": 138,
+      "community": 93,
       "norm_label": "kind_icon",
       "id": "mobile_knowledge_global_search_kind_icon"
     },
@@ -24308,7 +24299,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L31",
-      "community": 138,
+      "community": 93,
       "norm_label": "examples",
       "id": "mobile_knowledge_global_search_examples"
     },
@@ -24317,7 +24308,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L38",
-      "community": 138,
+      "community": 93,
       "norm_label": "groupbykind()",
       "id": "mobile_knowledge_global_search_groupbykind"
     },
@@ -24326,7 +24317,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L50",
-      "community": 138,
+      "community": 93,
       "norm_label": "globalsearchdialog()",
       "id": "mobile_knowledge_global_search_globalsearchdialog"
     },
@@ -24335,7 +24326,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/global-search.tsx",
       "source_location": "L158",
-      "community": 138,
+      "community": 93,
       "norm_label": "searchlauncher()",
       "id": "mobile_knowledge_global_search_searchlauncher"
     },
@@ -24344,7 +24335,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/overview-widgets.tsx",
       "source_location": "L1",
-      "community": 60,
+      "community": 94,
       "norm_label": "overview-widgets.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_overview_widgets_tsx"
     },
@@ -24353,7 +24344,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/overview-widgets.tsx",
       "source_location": "L12",
-      "community": 60,
+      "community": 94,
       "norm_label": "pcttone()",
       "id": "mobile_knowledge_overview_widgets_pcttone"
     },
@@ -24362,7 +24353,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/overview-widgets.tsx",
       "source_location": "L18",
-      "community": 60,
+      "community": 94,
       "norm_label": "coveragecards()",
       "id": "mobile_knowledge_overview_widgets_coveragecards"
     },
@@ -24371,7 +24362,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/overview-widgets.tsx",
       "source_location": "L39",
-      "community": 60,
+      "community": 94,
       "norm_label": "recentlyupdated()",
       "id": "mobile_knowledge_overview_widgets_recentlyupdated"
     },
@@ -24380,7 +24371,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/overview-widgets.tsx",
       "source_location": "L63",
-      "community": 60,
+      "community": 94,
       "norm_label": "needsattention()",
       "id": "mobile_knowledge_overview_widgets_needsattention"
     },
@@ -24425,7 +24416,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L1",
-      "community": 47,
+      "community": 131,
       "norm_label": "endpoint-table.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_endpoint_table_tsx"
     },
@@ -24434,7 +24425,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L30",
-      "community": 47,
+      "community": 131,
       "norm_label": "method_tone",
       "id": "mobile_knowledge_endpoint_table_method_tone"
     },
@@ -24443,7 +24434,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L38",
-      "community": 47,
+      "community": 131,
       "norm_label": "methodpill()",
       "id": "mobile_knowledge_endpoint_table_methodpill"
     },
@@ -24452,7 +24443,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L52",
-      "community": 47,
+      "community": 131,
       "norm_label": "codeblock()",
       "id": "mobile_knowledge_endpoint_table_codeblock"
     },
@@ -24461,7 +24452,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L61",
-      "community": 47,
+      "community": 131,
       "norm_label": "field()",
       "id": "mobile_knowledge_endpoint_table_field"
     },
@@ -24470,7 +24461,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L71",
-      "community": 47,
+      "community": 131,
       "norm_label": "endpointtable()",
       "id": "mobile_knowledge_endpoint_table_endpointtable"
     },
@@ -24497,7 +24488,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L1",
-      "community": 60,
+      "community": 50,
       "norm_label": "knowledge-nav.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_knowledge_nav_tsx"
     },
@@ -24506,7 +24497,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L12",
-      "community": 60,
+      "community": 50,
       "norm_label": "navitem",
       "id": "mobile_knowledge_knowledge_nav_navitem"
     },
@@ -24515,7 +24506,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L18",
-      "community": 60,
+      "community": 50,
       "norm_label": "navgroup",
       "id": "mobile_knowledge_knowledge_nav_navgroup"
     },
@@ -24533,7 +24524,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/index.ts",
       "source_location": "L1",
-      "community": 60,
+      "community": 142,
       "norm_label": "index.ts",
       "id": "apps_web_src_components_engineering_mobile_knowledge_index_ts"
     },
@@ -24542,7 +24533,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L1",
-      "community": 114,
+      "community": 36,
       "norm_label": "flow.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_flow_tsx"
     },
@@ -24551,7 +24542,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L14",
-      "community": 114,
+      "community": 47,
       "norm_label": "flowdiagram()",
       "id": "mobile_knowledge_flow_flowdiagram"
     },
@@ -24560,7 +24551,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L67",
-      "community": 114,
+      "community": 47,
       "norm_label": "lineage()",
       "id": "mobile_knowledge_flow_lineage"
     },
@@ -24578,7 +24569,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/badges.tsx",
       "source_location": "L20",
-      "community": 130,
+      "community": 51,
       "norm_label": "tonepill()",
       "id": "mobile_knowledge_badges_tonepill"
     },
@@ -24596,7 +24587,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/badges.tsx",
       "source_location": "L53",
-      "community": 114,
+      "community": 51,
       "norm_label": "sourcelevelbadge()",
       "id": "mobile_knowledge_badges_sourcelevelbadge"
     },
@@ -24614,7 +24605,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/badges.tsx",
       "source_location": "L77",
-      "community": 51,
+      "community": 47,
       "norm_label": "metabadgerow()",
       "id": "mobile_knowledge_badges_metabadgerow"
     },
@@ -24623,7 +24614,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L1",
-      "community": 138,
+      "community": 93,
       "norm_label": "search-index.ts",
       "id": "apps_web_src_data_engineering_mobile_knowledge_search_index_ts"
     },
@@ -24632,7 +24623,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L8",
-      "community": 138,
+      "community": 93,
       "norm_label": "known_issues",
       "id": "mobile_knowledge_search_index_known_issues"
     },
@@ -24641,7 +24632,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L15",
-      "community": 138,
+      "community": 93,
       "norm_label": "tools",
       "id": "mobile_knowledge_search_index_tools"
     },
@@ -24650,7 +24641,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L21",
-      "community": 138,
+      "community": 93,
       "norm_label": "backenddocs()",
       "id": "mobile_knowledge_search_index_backenddocs"
     },
@@ -24659,7 +24650,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L36",
-      "community": 138,
+      "community": 93,
       "norm_label": "screendocs()",
       "id": "mobile_knowledge_search_index_screendocs"
     },
@@ -24668,7 +24659,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L47",
-      "community": 138,
+      "community": 93,
       "norm_label": "search_index",
       "id": "mobile_knowledge_search_index_search_index"
     },
@@ -24677,7 +24668,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L54",
-      "community": 138,
+      "community": 93,
       "norm_label": "search_kind_meta",
       "id": "mobile_knowledge_search_index_search_kind_meta"
     },
@@ -24686,7 +24677,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/search-index.ts",
       "source_location": "L62",
-      "community": 138,
+      "community": 93,
       "norm_label": "searchdocs()",
       "id": "mobile_knowledge_search_index_searchdocs"
     },
@@ -24821,7 +24812,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L64",
-      "community": 114,
+      "community": 51,
       "norm_label": "flowstep",
       "id": "mobile_knowledge_types_flowstep"
     },
@@ -24848,7 +24839,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L78",
-      "community": 47,
+      "community": 131,
       "norm_label": "offline_meta",
       "id": "mobile_knowledge_types_offline_meta"
     },
@@ -24857,7 +24848,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L85",
-      "community": 47,
+      "community": 131,
       "norm_label": "endpoint",
       "id": "mobile_knowledge_types_endpoint"
     },
@@ -24875,7 +24866,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L116",
-      "community": 114,
+      "community": 51,
       "norm_label": "lineagenode",
       "id": "mobile_knowledge_types_lineagenode"
     },
@@ -25019,7 +25010,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L267",
-      "community": 138,
+      "community": 93,
       "norm_label": "searchdoc",
       "id": "mobile_knowledge_types_searchdoc"
     },
@@ -25028,7 +25019,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L1",
-      "community": 60,
+      "community": 94,
       "norm_label": "coverage.ts",
       "id": "apps_web_src_data_engineering_mobile_knowledge_coverage_ts"
     },
@@ -25037,7 +25028,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L7",
-      "community": 60,
+      "community": 94,
       "norm_label": "coveragerow",
       "id": "mobile_knowledge_coverage_coveragerow"
     },
@@ -25046,7 +25037,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L13",
-      "community": 60,
+      "community": 94,
       "norm_label": "coverage",
       "id": "mobile_knowledge_coverage_coverage"
     },
@@ -25055,7 +25046,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L22",
-      "community": 60,
+      "community": 94,
       "norm_label": "recentitem",
       "id": "mobile_knowledge_coverage_recentitem"
     },
@@ -25064,7 +25055,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L28",
-      "community": 60,
+      "community": 94,
       "norm_label": "recently_updated",
       "id": "mobile_knowledge_coverage_recently_updated"
     },
@@ -25073,7 +25064,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L36",
-      "community": 60,
+      "community": 94,
       "norm_label": "needs_attention",
       "id": "mobile_knowledge_coverage_needs_attention"
     },
@@ -25082,7 +25073,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/coverage.ts",
       "source_location": "L45",
-      "community": 60,
+      "community": 94,
       "norm_label": "hubcounts()",
       "id": "mobile_knowledge_coverage_hubcounts"
     },
@@ -25163,7 +25154,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L46",
-      "community": 38,
+      "community": 36,
       "norm_label": "feature",
       "id": "product_nesy_feature"
     },
@@ -25172,7 +25163,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L56",
-      "community": 20,
+      "community": 80,
       "norm_label": "module",
       "id": "product_nesy_module"
     },
@@ -41820,9 +41811,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L23",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "packages_metronic_src_components_ui_button_tsx"
+      "target": "packages_metronic_src_components_ui_button_tsx",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -42216,9 +42207,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L23",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "ui_button_button"
+      "target": "ui_button_button",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -52866,9 +52857,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L30",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "apps_web_src_data_debug_view_live_types_ts"
+      "target": "apps_web_src_data_debug_view_live_types_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -52877,9 +52868,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L30",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "debug_view_live_types_livedatabasesnapshot"
+      "target": "debug_view_live_types_livedatabasesnapshot",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -52917,9 +52908,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L294",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "database_page_formatbytes"
+      "target": "database_page_formatbytes",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -52927,9 +52918,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L300",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "database_page_databaseloadingstate"
+      "target": "database_page_databaseloadingstate",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -52937,9 +52928,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L319",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_database_page_tsx",
-      "target": "database_page_databaseerrorstate"
+      "target": "database_page_databaseerrorstate",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -53100,9 +53091,9 @@
       "source_file": "apps/web/src/app/(cockpit)/debug-view/database/page.tsx",
       "source_location": "L155",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "database_page_databaseaccesspage",
-      "target": "database_page_formatbytes"
+      "target": "database_page_formatbytes",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -54273,10 +54264,10 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L31",
+      "source_location": "L30",
       "weight": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_network_inspector_page_tsx",
-      "target": "network_inspector_page_network_list_style",
+      "target": "network_inspector_page_network_panel_style",
       "confidence_score": 1.0
     },
     {
@@ -54434,16 +54425,6 @@
       "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_debug_view_network_inspector_page_tsx",
       "target": "product_tones_tone"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx",
-      "source_location": "L30",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_debug_view_network_inspector_page_tsx",
-      "target": "network_inspector_page_network_panel_style"
     },
     {
       "relation": "imports_from",

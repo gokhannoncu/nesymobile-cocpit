@@ -5,7 +5,14 @@
 // Live equivalent of DeviceRuntime in mock types.ts: fields that cannot be
 // read via ADB can be null (e.g. Firebase prefs in release build).
 
-import type { NetworkTransport, WifiInfo, CellularInfo, OsInfo } from './types'
+import type {
+  CellularInfo,
+  DbTableInfo,
+  NetworkTransport,
+  OsInfo,
+  RequestRow,
+  WifiInfo,
+} from './types'
 
 /** Ping-based live measurement — throughput (Mbps) cannot be measured on device. */
 export interface LivePingSample {
@@ -79,4 +86,46 @@ export interface AdbDevicesResponse {
   adbPath: string | null
   error: string | null
   devices: import('@/data/engineering/device-lab/device-lab-types').ConnectedDevice[]
+}
+
+export type LiveDatabaseValue = string | number | null
+
+export interface LiveDatabaseColumn {
+  cid: number
+  name: string
+  type: string
+  notNull: boolean
+  defaultValue: string | null
+  primaryKeyPosition: number
+}
+
+export interface LiveDatabaseTableData {
+  tableName: string
+  columns: LiveDatabaseColumn[]
+  rows: Record<string, LiveDatabaseValue>[]
+  totalRows: number
+  limit: number
+  truncated: boolean
+}
+
+/**
+ * A read-only Room database snapshot pulled from a debuggable app with adb
+ * run-as. The main database and its WAL sidecars are queried together so the
+ * response includes writes that have not been checkpointed yet.
+ */
+export interface LiveDatabaseSnapshot {
+  serial: string
+  packageName: string
+  capturedAt: string
+  databaseName: string
+  databasePath: string
+  version: number
+  journalMode: string
+  sizeBytes: number
+  walSizeBytes: number
+  shmSizeBytes: number
+  tables: DbTableInfo[]
+  tableData: LiveDatabaseTableData | null
+  requestRows: RequestRow[]
+  completedRequestCount: number
 }

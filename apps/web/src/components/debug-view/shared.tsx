@@ -9,6 +9,7 @@ import { Check, Copy, type LucideIcon } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
+import { Skeleton } from '@nesy/metronic/components/ui/skeleton'
 import { EASE, toneIcon, toneIconBox, toneText, type Tone } from '@/components/product'
 
 /** Single source of truth for Debug View pages — header cross links from here. */
@@ -197,5 +198,133 @@ export function DebugCrossLinks({ currentPath }: { currentPath: string }) {
         </Button>
       ))}
     </>
+  )
+}
+
+/** Shimmer placeholder for the device context bar while adb listing is in flight. */
+export function DebugDeviceBarShimmer() {
+  return (
+    <div className="inline-flex flex-wrap items-center gap-3" role="status" aria-label="Loading devices">
+      <span className="sr-only">Loading devices</span>
+      <Skeleton className="h-8 w-[240px] rounded-lg" />
+      <div className="hidden h-6 w-px bg-border lg:block" />
+      <div className="hidden flex-wrap items-center gap-1.5 lg:flex">
+        <Skeleton className="h-5 w-28 rounded-full" />
+        <Skeleton className="h-5 w-32 rounded-full" />
+      </div>
+      <div className="hidden h-6 w-px bg-border lg:block" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-3.5 rounded" />
+        <Skeleton className="h-3.5 w-8" />
+        <div className="h-6 w-px bg-border" />
+        <Skeleton className="h-3.5 w-28" />
+      </div>
+    </div>
+  )
+}
+
+/** Shimmer skeleton for Device Overview while the ADB runtime snapshot is loading. */
+export function DebugOverviewShimmer() {
+  return (
+    <div className="space-y-8" role="status" aria-label="Loading device overview">
+      <span className="sr-only">Loading device overview</span>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="space-y-3 rounded-xl border p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="size-4 rounded" />
+            </div>
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-6 w-52" />
+          <Skeleton className="h-4 w-full max-w-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="space-y-2 rounded-xl border p-4">
+              <Skeleton className="h-4 w-24" />
+              {Array.from({ length: 6 }, (_, j) => (
+                <div key={j} className="flex items-center justify-between gap-3 py-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-14" />
+          <Skeleton className="h-6 w-56" />
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+          <div className="space-y-2 rounded-xl border p-4">
+            <Skeleton className="h-4 w-28" />
+            {Array.from({ length: 8 }, (_, j) => (
+              <div key={j} className="flex items-center justify-between gap-3 py-1">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-36" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <div className="space-y-2 rounded-xl border p-4">
+              <Skeleton className="size-4 rounded" />
+              <Skeleton className="h-7 w-32" />
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-2 h-1.5 w-full rounded-full" />
+            </div>
+            <div className="space-y-2 rounded-xl border p-4">
+              <Skeleton className="size-4 rounded" />
+              <Skeleton className="h-7 w-32" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-1.5 w-full rounded-full" />
+            </div>
+            <div className="space-y-2 rounded-xl border p-4 sm:col-span-2">
+              <Skeleton className="h-4 w-36" />
+              {Array.from({ length: 5 }, (_, j) => (
+                <div key={j} className="flex items-center justify-between gap-3 py-1">
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-6 w-44" />
+          <Skeleton className="h-4 w-full max-w-lg" />
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="space-y-2 rounded-xl border p-4">
+              <Skeleton className="h-4 w-32" />
+              {Array.from({ length: 4 }, (_, j) => (
+                <div key={j} className="flex items-center justify-between gap-3 py-1">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              ))}
+              <Skeleton className="mt-2 h-16 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

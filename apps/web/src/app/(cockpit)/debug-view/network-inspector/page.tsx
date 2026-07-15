@@ -19,6 +19,21 @@ import type { NetworkTransaction } from '@/data/debug-view/types'
 
 const MAX_TRANSACTIONS = 1000
 
+/** Fixed left list panel: explicit width + search bar + table header + 10 request rows. */
+const NETWORK_LIST_VISIBLE_ROWS = 10
+const NETWORK_LIST_ROW_HEIGHT_PX = 44
+const NETWORK_LIST_TABLE_HEAD_PX = 33
+const NETWORK_LIST_SEARCH_PX = 52
+const NETWORK_LIST_WIDTH_PX = 480
+const NETWORK_LIST_HEIGHT_PX =
+  NETWORK_LIST_SEARCH_PX + NETWORK_LIST_TABLE_HEAD_PX + NETWORK_LIST_VISIBLE_ROWS * NETWORK_LIST_ROW_HEIGHT_PX
+const NETWORK_LIST_CLASS = 'flex shrink-0 flex-col overflow-hidden'
+const NETWORK_LIST_STYLE = { width: NETWORK_LIST_WIDTH_PX, height: NETWORK_LIST_HEIGHT_PX }
+
+/** Right detail panel sizes to its content (wrap_content). */
+const NETWORK_DETAIL_MIN_WIDTH_PX = 448
+const NETWORK_DETAIL_MAX_WIDTH_PX = 672
+
 /**
  * Headers appended by NesyMobile's AuthInterceptor (di/AuthInterceptor.kt).
  * They only appear in the log stream when the logging interceptor runs after
@@ -202,10 +217,10 @@ export default function NetworkInspectorPage() {
           </motion.div>
 
           {/* List + detail */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_1fr]">
-            {/* List */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <div className="border-b border-border p-2.5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+            {/* List — fixed width & height */}
+            <div className={cn('rounded-xl border border-border bg-card', NETWORK_LIST_CLASS)} style={NETWORK_LIST_STYLE}>
+              <div className="shrink-0 border-b border-border p-2.5">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -216,9 +231,9 @@ export default function NetworkInspectorPage() {
                   />
                 </div>
               </div>
-              <div className="max-h-[560px] overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 border-b border-border bg-muted/60 backdrop-blur">
+                  <thead className="sticky top-0 z-10 border-b border-border bg-muted/60 backdrop-blur">
                     <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       <th className="px-2.5 py-2 font-semibold">Method</th>
                       <th className="px-2.5 py-2 font-semibold">Endpoint</th>
@@ -236,7 +251,10 @@ export default function NetworkInspectorPage() {
                           animate={{ opacity: 1, backgroundColor: 'rgba(20,184,166,0)' }}
                           transition={{ duration: 0.6, ease: EASE }}
                           onClick={() => setSelectedId(t.id)}
-                          className={cn('cursor-pointer transition-colors hover:bg-muted/40', selectedId === t.id && 'bg-teal-500/5')}
+                          className={cn(
+                            'h-11 cursor-pointer transition-colors hover:bg-muted/40',
+                            selectedId === t.id && 'bg-teal-500/5',
+                          )}
                         >
                           <td className="px-2.5 py-2">
                             <Badge variant="secondary" appearance="outline" size="xs" className={cn('font-mono', toneText[methodTone(t.method)])}>
@@ -272,8 +290,11 @@ export default function NetworkInspectorPage() {
               </div>
             </div>
 
-            {/* Detail */}
-            <div className="rounded-xl border border-border bg-card">
+            {/* Detail — wrap_content */}
+            <div
+              className="w-fit max-w-full rounded-xl border border-border bg-card"
+              style={{ minWidth: NETWORK_DETAIL_MIN_WIDTH_PX, maxWidth: NETWORK_DETAIL_MAX_WIDTH_PX }}
+            >
               <AnimatePresence mode="wait">
                 {selected ? (
                   <motion.div
@@ -286,7 +307,7 @@ export default function NetworkInspectorPage() {
                     <TransactionDetail txn={selected} />
                   </motion.div>
                 ) : (
-                  <div className="flex h-full items-center justify-center py-20 text-xs text-muted-foreground">
+                  <div className="px-8 py-10 text-xs text-muted-foreground">
                     Select a request to see details.
                   </div>
                 )}
@@ -389,7 +410,7 @@ function TransactionDetail({ txn }: { txn: NetworkTransaction }) {
         ))}
       </div>
 
-      <div className="max-h-[440px] overflow-y-auto p-3">
+      <div className="p-3">
         {tab === 'overview' && (
           <div className="divide-y divide-border/60">
             <InfoRow label="Host" value={txn.host} mono />

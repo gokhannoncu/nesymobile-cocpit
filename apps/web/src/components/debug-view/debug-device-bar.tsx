@@ -18,6 +18,7 @@ import {
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
+import { DebugDeviceBarShimmer } from '@/components/debug-view/shared'
 import { EASE } from '@/components/product'
 import { useDebugView } from '@/components/debug-view/debug-context'
 import {
@@ -50,25 +51,25 @@ function DeviceSelector({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="relative">
+    <div className="relative ms-1.5">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted/60',
+          'flex max-w-[240px] min-w-0 items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted/60',
           open && 'ring-2 ring-teal-500/30',
         )}
       >
         {selected ? (
           <>
-            <DeviceStatusDot status={selected.status} />
-            <span className="max-w-[180px] truncate">{selected.name}</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{selected.serial.slice(-8)}</span>
+            <DeviceStatusDot status={selected.status} className="shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{selected.name}</span>
+            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{selected.serial.slice(-8)}</span>
           </>
         ) : (
-          <span className="text-muted-foreground">Select device…</span>
+          <span className="truncate text-muted-foreground">Select device…</span>
         )}
-        <ChevronDown className={cn('size-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
 
       <AnimatePresence>
@@ -159,54 +160,61 @@ export function DebugDeviceBar() {
 
   return (
     <motion.div
-      className="sticky top-0 z-30 rounded-xl border bg-card/95 backdrop-blur-sm"
+      className="sticky top-0 z-30 inline-flex w-max max-w-full rounded-xl border bg-card/95 backdrop-blur-sm"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: EASE }}
     >
-      <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+      <div className="inline-flex flex-wrap items-center gap-3 px-4 py-2.5">
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
           <Bug className="size-3.5" />
           Debug
         </span>
         <div className="h-6 w-px bg-border" />
 
-        <DeviceSelector
-          devices={devices}
-          selected={selectedDevice}
-          onSelect={setSelectedDevice}
-          onRefresh={refreshDevices}
-          loading={devicesLoading}
-          emptyMessage={bridgeError}
-        />
-
-        {selectedDevice && (
+        {devicesLoading && !selectedDevice ? (
+          <DebugDeviceBarShimmer />
+        ) : (
           <>
-            <div className="hidden h-6 w-px bg-border lg:block" />
-            <div className="hidden flex-wrap items-center gap-1.5 lg:flex">
-              <Badge variant="secondary" size="xs" className="font-mono text-[10px]">
-                Android {selectedDevice.androidVersion} · API {selectedDevice.apiLevel}
-              </Badge>
-              {selectedDevice.appVersion && (
-                <Badge variant="secondary" size="xs" className="text-[10px]">
-                  NesyMobile {selectedDevice.appVersion}
-                </Badge>
-              )}
-              {selectedDevice.country && (
-                <Badge variant="secondary" size="xs" className="text-[10px]">{selectedDevice.country}</Badge>
-              )}
-            </div>
-            <div className="ms-auto flex items-center gap-1.5">
-              <BatteryIcon level={selectedDevice.batteryLevel} className="size-3.5" />
-              <span className="text-[11px] font-medium text-muted-foreground">%{selectedDevice.batteryLevel}</span>
-              <div className="h-6 w-px bg-border" />
-              <span className="flex items-center gap-1.5 text-[11px] font-medium">
-                <span className={cn('size-2 rounded-full', bridgeConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
-                <span className="text-muted-foreground">
-                  Bridge {bridgeConnected ? 'connected' : 'closed'}
-                </span>
-              </span>
-            </div>
+            <DeviceSelector
+              devices={devices}
+              selected={selectedDevice}
+              onSelect={setSelectedDevice}
+              onRefresh={refreshDevices}
+              loading={devicesLoading}
+              emptyMessage={bridgeError}
+            />
+
+            {selectedDevice && (
+              <>
+                <div className="hidden h-6 w-px bg-border lg:block" />
+                <div className="hidden flex-wrap items-center gap-1.5 lg:flex">
+                  <Badge variant="secondary" size="xs" className="font-mono text-[10px]">
+                    Android {selectedDevice.androidVersion} · API {selectedDevice.apiLevel}
+                  </Badge>
+                  {selectedDevice.appVersion && (
+                    <Badge variant="secondary" size="xs" className="text-[10px]">
+                      NesyMobile {selectedDevice.appVersion}
+                    </Badge>
+                  )}
+                  {selectedDevice.country && (
+                    <Badge variant="secondary" size="xs" className="text-[10px]">{selectedDevice.country}</Badge>
+                  )}
+                </div>
+                <div className="hidden h-6 w-px bg-border lg:block" />
+                <div className="flex items-center gap-1.5">
+                  <BatteryIcon level={selectedDevice.batteryLevel} className="size-3.5" />
+                  <span className="text-[11px] font-medium text-muted-foreground">%{selectedDevice.batteryLevel}</span>
+                  <div className="h-6 w-px bg-border" />
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium">
+                    <span className={cn('size-2 rounded-full', bridgeConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+                    <span className="text-muted-foreground">
+                      Bridge {bridgeConnected ? 'connected' : 'closed'}
+                    </span>
+                  </span>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

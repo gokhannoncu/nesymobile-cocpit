@@ -31,7 +31,7 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { ProductPage, PageSection, StatCard, StatGrid, EASE, toneCard, toneIcon } from '@/components/product'
-import { DebugHeader, DebugCrossLinks, InfoRow, NoDeviceState } from '@/components/debug-view/shared'
+import { DebugHeader, DebugCrossLinks, InfoRow, NoDeviceState, DebugOverviewShimmer } from '@/components/debug-view/shared'
 import { useDebugView } from '@/components/debug-view/debug-context'
 import { signalLabel } from '@/data/debug-view/mock-runtime'
 import type { LiveDeviceRuntime } from '@/data/debug-view/live-types'
@@ -97,7 +97,7 @@ export default function DeviceOverviewPage() {
       {!selectedDevice ? (
         <NoDeviceState />
       ) : loading && !runtime ? (
-        <LoadingState deviceName={selectedDevice.name} />
+        <DebugOverviewShimmer />
       ) : error ? (
         <ErrorState deviceName={selectedDevice.name} message={error} onRetry={loadRuntime} />
       ) : !runtime ? (
@@ -416,27 +416,6 @@ export default function DeviceOverviewPage() {
         </>
       )}
     </ProductPage>
-  )
-}
-
-/** Loading state shown while collecting snapshot. */
-function LoadingState({ deviceName }: { deviceName: string }) {
-  return (
-    <motion.div
-      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4, ease: EASE }}
-    >
-      <Loader2 className="size-6 animate-spin text-teal-500" />
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">Querying {deviceName}...</h3>
-        <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          Gathering network, system, application and Firebase information over ADB. May take a few seconds
-          due to ping measurement.
-        </p>
-      </div>
-    </motion.div>
   )
 }
 

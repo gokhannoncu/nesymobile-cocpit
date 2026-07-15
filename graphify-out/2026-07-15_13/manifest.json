@@ -2285,13 +2285,13 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/(cockpit)/debug-view/layout.tsx": {
-    "mtime": 1784127470.4852474,
-    "ast_hash": "cfaf6dfb817a1c41ef5d7784a4ea9176",
+    "mtime": 1784126298.7491455,
+    "ast_hash": "ae572a81275f7efea92f42fffb9bbac3",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/(cockpit)/debug-view/database/page.tsx": {
-    "mtime": 1784127424.187622,
-    "ast_hash": "e502b2b4fdd41cabaa540069e0cc8cbe",
+    "mtime": 1784126296.1042275,
+    "ast_hash": "927fbfce6e06326fc94a76b6a6a67c39",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx": {
@@ -2310,18 +2310,18 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/(cockpit)/debug-view/network-inspector/page.tsx": {
-    "mtime": 1784127521.8347592,
-    "ast_hash": "1d29009fb92dce2705579ec47f850fe5",
+    "mtime": 1784126667.3944213,
+    "ast_hash": "00a2d8e44169a7e0f9892941bba6b616",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/(cockpit)/debug-view/overview/page.tsx": {
-    "mtime": 1784127328.3898482,
-    "ast_hash": "44263af6a5ac38932cdbe837fb56895f",
+    "mtime": 1784126478.5649266,
+    "ast_hash": "3b6e6fcf29aba17ade83c19435b2bf8b",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/components/debug-view/shared.tsx": {
-    "mtime": 1784127466.6439466,
-    "ast_hash": "de6295af13ecae0a131e1bd79d283cdf",
+    "mtime": 1784126035.549677,
+    "ast_hash": "9808c6b3046dadee1191b39305a2df38",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/components/debug-view/debug-context.tsx": {
@@ -2330,8 +2330,8 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/components/debug-view/debug-device-bar.tsx": {
-    "mtime": 1784127464.780395,
-    "ast_hash": "35979007026495afa28a43bfcece617e",
+    "mtime": 1784127257.1172051,
+    "ast_hash": "4a0b72e9d760dc37a09283fa37fdf706",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/debug-view/mock-screen-state.ts": {
@@ -2365,8 +2365,8 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/debug-view/live-types.ts": {
-    "mtime": 1784127341.509971,
-    "ast_hash": "e7513607e881ab812f2bf1609110ac7c",
+    "mtime": 1784126081.057072,
+    "ast_hash": "ce5676bd3060ddd3aed80ba07bbe7ba1",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/debug-view/enums.ts": {
@@ -2390,8 +2390,8 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/lib/server/adb.ts": {
-    "mtime": 1784127442.8110585,
-    "ast_hash": "3d6aca09c6b010424e5d73e14d1dd2fc",
+    "mtime": 1784126074.0769496,
+    "ast_hash": "62ff5db0a0e6887fecd909ff1f9ea1f3",
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/to_translate.json": {
@@ -2417,11 +2417,6 @@
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/data/engineering/update_script.py": {
     "mtime": 1784126835.691713,
     "ast_hash": "a3a1749682590ba17bebd0e49f1c829c",
-    "semantic_hash": ""
-  },
-  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/src/app/api/adb/database/route.ts": {
-    "mtime": 1784127341.5111597,
-    "ast_hash": "4a338af01931be0154211ed729fb2768",
     "semantic_hash": ""
   }
 }

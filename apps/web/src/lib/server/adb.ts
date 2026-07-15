@@ -7,16 +7,20 @@
 
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { existsSync } from 'node:fs'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import type {
   ConnectedDevice,
   DeviceStatus,
 } from '@/data/engineering/device-lab/device-lab-types'
-import type { CellularInfo, OsInfo, WifiInfo } from '@/data/debug-view/types'
+import type { CellularInfo, DbTableInfo, OsInfo, RequestRow, WifiInfo } from '@/data/debug-view/types'
 import type {
   LiveAppInfo,
   LiveBatteryInfo,
+  LiveDatabaseSnapshot,
+  LiveDatabaseTableData,
   LiveDeviceRuntime,
   LiveFirebaseSnapshot,
   LivePingSample,
@@ -26,8 +30,8 @@ const execFileAsync = promisify(execFile)
 
 /** NesyMobile package candidates — first found on device is used. */
 const PACKAGE_CANDIDATES = [
-  'com.arasdigital.nesymobile',
   'com.arasdigital.nesymobile.test',
+  'com.arasdigital.nesymobile',
 ]
 
 /** Runtime permissions shown in Overview (same list as mock). */
@@ -67,6 +71,28 @@ async function adb(args: string[], timeoutMs = 10_000): Promise<string> {
   if (!bin) throw new Error('adb binary not found (can specify via ADB_PATH env)')
   const { stdout } = await execFileAsync(bin, args, { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 })
   return stdout
+}
+
+/** Binary-safe adb execution, used when pulling SQLite files with exec-out. */
+async function adbBuffer(args: string[], timeoutMs = 20_000): Promise<Buffer> {
+  const bin = resolveAdbPath()
+  if (!bin) throw new Error('adb binary not found (can specify via ADB_PATH env)')
+
+  return new Promise((resolve, reject) => {
+    execFile(
+      bin,
+      args,
+      { timeout: timeoutMs, maxBuffer: 128 * 1024 * 1024, encoding: 'buffer' },
+      (error, stdout, stderr) => {
+        if (error) {
+          const detail = Buffer.isBuffer(stderr) ? stderr.toString('utf8').trim() : String(stderr).trim()
+          reject(new Error(detail || error.message))
+          return
+        }
+        resolve(Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout))
+      },
+    )
+  })
 }
 
 function shell(serial: string, cmd: string, timeoutMs = 10_000): Promise<string> {
@@ -579,5 +605,486 @@ export async function getDeviceRuntime(serial: string): Promise<LiveDeviceRuntim
     app,
     firebase,
     permissions,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read-only Room database snapshot
+// ---------------------------------------------------------------------------
+
+interface DeviceDatabaseFile {
+  name: string
+  sizeBytes: number
+}
+
+interface SqliteTableRow {
+  name: string
+  primaryKey: string | null
+}
+
+interface SqliteCountRow {
+  name: string
+  rowCount: number
+}
+
+interface SqliteSizeRow {
+  name: string
+  sizeBytes: number
+}
+
+interface SqliteColumnRow {
+  name: string
+}
+
+interface SqliteDetailedColumnRow {
+  cid: number
+  name: string
+  type: string
+  notNull: number
+  defaultValue: string | null
+  primaryKeyPosition: number
+}
+
+type RawRequestRow = Record<string, unknown>
+
+const DATABASE_NAME_PREFERENCE = ['aras_kurye', 'nesy.db', 'nesy']
+
+const DATABASE_TABLE_DESCRIPTIONS: Record<string, string> = {
+  completedrequest: 'Successfully sent request archive',
+  fiscalinvoicedata: 'Fiscal invoice payloads awaiting or completing processing',
+  livelocation: 'Courier live-location samples',
+  logininfo: 'Current authenticated courier/session details',
+  manuelrouting: 'Locally stored manual routing data',
+  notificationinfo: 'Notification records cached on device',
+  originalshipmentitems: 'Original shipment item snapshots',
+  parcel: 'Locally cached parcel records',
+  request: 'Offline request queue waiting to be sent',
+  schedule: 'Active schedule payload',
+  schedulestopchunk: 'Chunked schedule/stop payloads',
+}
+
+let cachedSqlitePath: string | null | undefined
+
+function resolveSqlitePath(): string | null {
+  if (cachedSqlitePath !== undefined) return cachedSqlitePath
+  const candidates = [
+    process.env.SQLITE3_PATH,
+    '/usr/bin/sqlite3',
+    '/opt/homebrew/bin/sqlite3',
+    '/usr/local/bin/sqlite3',
+  ].filter((p): p is string => Boolean(p))
+  cachedSqlitePath = candidates.find((p) => existsSync(p)) ?? null
+  return cachedSqlitePath
+}
+
+async function sqlite(databasePath: string, sql: string, json = false): Promise<string> {
+  const bin = resolveSqlitePath()
+  if (!bin) throw new Error('sqlite3 binary not found (can specify via SQLITE3_PATH env)')
+  const args = ['-batch', '-readonly']
+  if (json) args.push('-json')
+  args.push(databasePath, sql)
+  const { stdout } = await execFileAsync(bin, args, {
+    timeout: 20_000,
+    maxBuffer: 32 * 1024 * 1024,
+  })
+  return stdout.trim()
+}
+
+async function sqliteWritable(databasePath: string, sql: string): Promise<string> {
+  const bin = resolveSqlitePath()
+  if (!bin) throw new Error('sqlite3 binary not found (can specify via SQLITE3_PATH env)')
+  const { stdout } = await execFileAsync(bin, ['-batch', databasePath, sql], {
+    timeout: 20_000,
+    maxBuffer: 32 * 1024 * 1024,
+  })
+  return stdout.trim()
+}
+
+async function sqliteJson<T>(databasePath: string, sql: string): Promise<T[]> {
+  const out = await sqlite(databasePath, sql, true)
+  if (!out) return []
+  return JSON.parse(out) as T[]
+}
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`
+}
+
+function quoteSqlString(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`
+}
+
+function parseDatabaseListing(raw: string): DeviceDatabaseFile[] {
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('-'))
+    .flatMap((line) => {
+      const parts = line.split(/\s+/)
+      const name = parts.at(-1)
+      const sizeBytes = Number(parts[4])
+      return name && Number.isFinite(sizeBytes) ? [{ name, sizeBytes }] : []
+    })
+}
+
+function selectMainDatabase(files: DeviceDatabaseFile[]): DeviceDatabaseFile | null {
+  const candidates = files.filter(
+    (file) =>
+      !/-(?:wal|shm|journal)$/.test(file.name) &&
+      !file.name.startsWith('com.google.') &&
+      !file.name.startsWith('google_'),
+  )
+  if (candidates.length === 0) return null
+
+  return candidates.sort((a, b) => {
+    const aPreference = DATABASE_NAME_PREFERENCE.indexOf(a.name)
+    const bPreference = DATABASE_NAME_PREFERENCE.indexOf(b.name)
+    if (aPreference >= 0 || bPreference >= 0) {
+      if (aPreference < 0) return 1
+      if (bPreference < 0) return -1
+      return aPreference - bPreference
+    }
+    return b.sizeBytes - a.sizeBytes
+  })[0] ?? null
+}
+
+function tableDescription(name: string): string {
+  return DATABASE_TABLE_DESCRIPTIONS[name.toLowerCase()] ?? 'Room database table'
+}
+
+function asString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : value == null ? fallback : String(value)
+}
+
+function asNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function asBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true'
+}
+
+function parseWaybillNumbers(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => asString(item)).filter(Boolean)
+  const raw = asString(value).trim()
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (Array.isArray(parsed)) return parsed.map((item) => asString(item)).filter(Boolean)
+  } catch {
+    // Older converters may store a comma-separated string instead of JSON.
+  }
+  return raw.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function deriveRequestState(
+  tryCount: number,
+  isProcessing: boolean,
+  isWaitingRequest: boolean,
+): RequestRow['derivedState'] {
+  if (tryCount >= 3) return 'dead'
+  if (isProcessing) return 'in-flight'
+  if (isWaitingRequest) return 'waiting'
+  if (tryCount > 0) return 'retrying'
+  return 'pending'
+}
+
+async function readRequestRows(
+  databasePath: string,
+  tableName: string | null,
+): Promise<RequestRow[]> {
+  if (!tableName) return []
+
+  const columns = await sqliteJson<SqliteColumnRow>(
+    databasePath,
+    `SELECT name FROM pragma_table_info(${quoteSqlString(tableName)});`,
+  )
+  const byLowerName = new Map(columns.map((column) => [column.name.toLowerCase(), column.name]))
+  const selectColumn = (name: string, fallback: string) => {
+    const actual = byLowerName.get(name.toLowerCase())
+    return `${actual ? quoteIdentifier(actual) : fallback} AS ${quoteIdentifier(name)}`
+  }
+
+  const select = [
+    selectColumn('id', '0'),
+    selectColumn('userName', "''"),
+    selectColumn('requestName', "''"),
+    selectColumn('requestJson', "'{}'"),
+    selectColumn('timeStamp', "''"),
+    selectColumn('tryCount', '0'),
+    selectColumn('isProcessing', '0'),
+    selectColumn('isWaitingRequest', '0'),
+    selectColumn('createdAt', '0'),
+    selectColumn('waybillNumbers', "'[]'"),
+    selectColumn('sendWithoutWaiting', '0'),
+    selectColumn('fiscalInvoiceId', 'NULL'),
+    selectColumn('uniqueKey', "''"),
+  ].join(', ')
+  const idColumn = byLowerName.get('id')
+  const orderBy = idColumn ? ` ORDER BY ${quoteIdentifier(idColumn)} DESC` : ''
+  const rawRows = await sqliteJson<RawRequestRow>(
+    databasePath,
+    `SELECT ${select} FROM ${quoteIdentifier(tableName)}${orderBy} LIMIT 500;`,
+  )
+
+  return rawRows.map((raw) => {
+    const tryCount = asNumber(raw.tryCount)
+    const isProcessing = asBoolean(raw.isProcessing)
+    const isWaitingRequest = asBoolean(raw.isWaitingRequest)
+    const fiscalInvoiceId = raw.fiscalInvoiceId == null ? null : asString(raw.fiscalInvoiceId) || null
+    return {
+      id: asNumber(raw.id),
+      userName: asString(raw.userName),
+      requestName: asString(raw.requestName),
+      requestJson: asString(raw.requestJson, '{}'),
+      timeStamp: asString(raw.timeStamp),
+      tryCount,
+      isProcessing,
+      isWaitingRequest,
+      createdAt: asNumber(raw.createdAt),
+      waybillNumbers: parseWaybillNumbers(raw.waybillNumbers),
+      sendWithoutWaiting: asBoolean(raw.sendWithoutWaiting),
+      fiscalInvoiceId,
+      uniqueKey: asString(raw.uniqueKey),
+      derivedState: deriveRequestState(tryCount, isProcessing, isWaitingRequest),
+    }
+  })
+}
+
+async function readTableData(
+  databasePath: string,
+  tableName: string,
+  totalRows: number,
+  limit: number,
+): Promise<LiveDatabaseTableData> {
+  const rawColumns = await sqliteJson<SqliteDetailedColumnRow>(
+    databasePath,
+    `SELECT cid,
+      name,
+      type,
+      "notnull" AS "notNull",
+      dflt_value AS "defaultValue",
+      pk AS "primaryKeyPosition"
+     FROM pragma_table_info(${quoteSqlString(tableName)})
+     ORDER BY cid;`,
+  )
+  const columns = rawColumns.map((column) => ({
+    cid: Number(column.cid),
+    name: column.name,
+    type: column.type || 'ANY',
+    notNull: Boolean(column.notNull),
+    defaultValue: column.defaultValue,
+    primaryKeyPosition: Number(column.primaryKeyPosition),
+  }))
+
+  // Keep arbitrary binary and very large JSON/text fields safe for the JSON API.
+  const select = columns
+    .map((column) => {
+      const identifier = quoteIdentifier(column.name)
+      return `CASE
+        WHEN typeof(${identifier}) = 'blob'
+          THEN '[BLOB ' || length(${identifier}) || ' bytes] ' || substr(hex(${identifier}), 1, 128)
+        WHEN typeof(${identifier}) = 'text' AND length(${identifier}) > 20000
+          THEN substr(${identifier}, 1, 20000) || char(10) || '... [truncated, ' || length(${identifier}) || ' chars total]'
+        ELSE ${identifier}
+      END AS ${identifier}`
+    })
+    .join(', ')
+  const idColumn = columns.find((column) => column.name.toLowerCase() === 'id')
+  const primaryKeyColumns = columns
+    .filter((column) => column.primaryKeyPosition > 0)
+    .sort((a, b) => a.primaryKeyPosition - b.primaryKeyPosition)
+  const orderColumn = idColumn ?? primaryKeyColumns[0]
+  const orderBy = orderColumn ? ` ORDER BY ${quoteIdentifier(orderColumn.name)} DESC` : ''
+  const rows = select
+    ? await sqliteJson<Record<string, string | number | null>>(
+        databasePath,
+        `SELECT ${select} FROM ${quoteIdentifier(tableName)}${orderBy} LIMIT ${limit};`,
+      )
+    : []
+
+  return {
+    tableName,
+    columns,
+    rows,
+    totalRows,
+    limit,
+    truncated: totalRows > rows.length,
+  }
+}
+
+async function inspectDatabase(
+  databasePath: string,
+  requestedTable: string | null,
+  rowLimit: number,
+): Promise<{
+  version: number
+  journalMode: string
+  tables: DbTableInfo[]
+  requestRows: RequestRow[]
+  completedRequestCount: number
+  tableData: LiveDatabaseTableData | null
+}> {
+  const tableRows = await sqliteJson<SqliteTableRow>(
+    databasePath,
+    `SELECT m.name AS name,
+      COALESCE(group_concat(CASE WHEN p.pk > 0 THEN p.name END, ', '), '') AS primaryKey
+     FROM sqlite_schema AS m
+     LEFT JOIN pragma_table_info(m.name) AS p ON true
+     WHERE m.type = 'table'
+       AND m.name NOT LIKE 'sqlite_%'
+       AND m.name NOT IN ('android_metadata', 'room_master_table')
+     GROUP BY m.name
+     ORDER BY m.name;`,
+  )
+
+  const countSql = tableRows
+    .map(
+      (table) =>
+        `SELECT ${quoteSqlString(table.name)} AS name, COUNT(*) AS rowCount FROM ${quoteIdentifier(table.name)}`,
+    )
+    .join(' UNION ALL ')
+  const countRows = countSql ? await sqliteJson<SqliteCountRow>(databasePath, `${countSql};`) : []
+  let sizeRows: SqliteSizeRow[] = []
+  try {
+    sizeRows = await sqliteJson<SqliteSizeRow>(
+      databasePath,
+      'SELECT name, SUM(pgsize) AS sizeBytes FROM dbstat GROUP BY name;',
+    )
+  } catch {
+    // dbstat is optional; row data remains usable when the local sqlite lacks it.
+  }
+
+  const countByName = new Map(countRows.map((row) => [row.name, Number(row.rowCount)]))
+  const sizeByName = new Map(sizeRows.map((row) => [row.name, Number(row.sizeBytes)]))
+  const tables: DbTableInfo[] = tableRows.map((table) => ({
+    name: table.name,
+    rowCount: countByName.get(table.name) ?? 0,
+    sizeKb: Math.ceil((sizeByName.get(table.name) ?? 0) / 1024),
+    description: tableDescription(table.name),
+    primaryKey: table.primaryKey || '-',
+  }))
+
+  const requestTable = tableRows.find((table) => table.name.toLowerCase() === 'request')?.name ?? null
+  const completedRequestCount =
+    tables.find((table) => table.name.toLowerCase() === 'completedrequest')?.rowCount ?? 0
+  const versionRaw = await sqlite(databasePath, 'PRAGMA user_version;')
+  const journalMode = await sqlite(databasePath, 'PRAGMA journal_mode;')
+  const requestRows = await readRequestRows(databasePath, requestTable)
+  const selectedTable = (requestedTable
+    ? tables.find((table) => table.name.toLowerCase() === requestedTable.toLowerCase())
+    : undefined)
+    ?? tables.find((table) => table.name.toLowerCase() === 'schedule')
+    ?? tables.find((table) => table.name.toLowerCase() === 'request')
+    ?? tables[0]
+  const tableData = selectedTable
+    ? await readTableData(databasePath, selectedTable.name, selectedTable.rowCount, rowLimit)
+    : null
+
+  return {
+    version: Number(versionRaw) || 0,
+    journalMode: journalMode.toUpperCase() || 'UNKNOWN',
+    tables,
+    requestRows,
+    completedRequestCount,
+    tableData,
+  }
+}
+
+/** Pulls and inspects the selected device's primary Room DB without modifying it. */
+export async function getDeviceDatabaseSnapshot(
+  serial: string,
+  requestedTable: string | null = null,
+  rowLimit = 100,
+): Promise<LiveDatabaseSnapshot> {
+  const pkg = await findNesyPackage(serial)
+  if (!pkg) throw new Error('NesyMobile is not installed on the selected device')
+
+  const runAsRoot = await tryShell(serial, `run-as ${pkg} pwd`)
+  if (!runAsRoot) {
+    throw new Error(
+      `Cannot access ${pkg} with adb run-as. Install a debuggable build or use an in-app database export.`,
+    )
+  }
+
+  // Stopping the app makes the DB, WAL and SHM files a consistent point-in-time copy.
+  await shell(serial, `am force-stop ${pkg}`)
+
+  const listing = await tryShell(serial, `run-as ${pkg} ls -ln databases`)
+  if (!listing) throw new Error(`Could not list the ${pkg} databases directory via adb run-as`)
+  const files = parseDatabaseListing(listing)
+  const mainDatabase = selectMainDatabase(files)
+  if (!mainDatabase) throw new Error('No NesyMobile Room database file was found on the selected device')
+
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'nesy-adb-db-'))
+  const localDatabasePath = join(temporaryDirectory, 'database.sqlite')
+  let mainBytes = Buffer.alloc(0)
+  let walBytes = Buffer.alloc(0)
+  let shmBytes = Buffer.alloc(0)
+  try {
+    mainBytes = await adbBuffer([
+      '-s',
+      serial,
+      'exec-out',
+      'run-as',
+      pkg,
+      'cat',
+      `databases/${mainDatabase.name}`,
+    ])
+    await writeFile(localDatabasePath, mainBytes, { mode: 0o600 })
+
+    const walName = `${mainDatabase.name}-wal`
+    if (files.some((file) => file.name === walName)) {
+      walBytes = await adbBuffer([
+        '-s',
+        serial,
+        'exec-out',
+        'run-as',
+        pkg,
+        'cat',
+        `databases/${walName}`,
+      ])
+      await writeFile(`${localDatabasePath}-wal`, walBytes, { mode: 0o600 })
+    }
+
+    const shmName = `${mainDatabase.name}-shm`
+    if (files.some((file) => file.name === shmName)) {
+      shmBytes = await adbBuffer([
+        '-s',
+        serial,
+        'exec-out',
+        'run-as',
+        pkg,
+        'cat',
+        `databases/${shmName}`,
+      ])
+      await writeFile(`${localDatabasePath}-shm`, shmBytes, { mode: 0o600 })
+    }
+
+    // Merge the copied WAL into the temporary main file. This mutates only the
+    // host-side snapshot; the database on the Android device remains untouched.
+    await sqliteWritable(localDatabasePath, 'PRAGMA wal_checkpoint(TRUNCATE);')
+
+    const inspected = await inspectDatabase(localDatabasePath, requestedTable, rowLimit)
+    const rootPath = runAsRoot.trim().split('\n')[0] || `/data/user/0/${pkg}`
+    return {
+      serial,
+      packageName: pkg,
+      capturedAt: new Date().toISOString(),
+      databaseName: mainDatabase.name,
+      databasePath: `${rootPath}/databases/${mainDatabase.name}`,
+      version: inspected.version,
+      journalMode: inspected.journalMode,
+      sizeBytes: mainBytes.length,
+      walSizeBytes: walBytes.length,
+      shmSizeBytes: shmBytes.length,
+      tables: inspected.tables,
+      tableData: inspected.tableData,
+      requestRows: inspected.requestRows,
+      completedRequestCount: inspected.completedRequestCount,
+    }
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true })
   }
 }
