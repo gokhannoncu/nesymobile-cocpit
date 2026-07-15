@@ -57,20 +57,34 @@ export default function DatabaseAccessPage() {
   const [tableQuery, setTableQuery] = useState('')
   const [rowLimit, setRowLimit] = useState(100)
   const [expandedTableRow, setExpandedTableRow] = useState<number | null>(null)
+  const [tableError, setTableError] = useState<string | null>(null)
   const requestSequence = useRef(0)
+  const snapshotRef = useRef<LiveDatabaseSnapshot | null>(null)
 
   const serial = selectedDevice?.serial ?? null
+
+  const handleTableSelect = useCallback((tableName: string) => {
+    if (tableName === selectedTable) return
+    setTableQuery('')
+    setExpandedTableRow(null)
+    setTableError(null)
+    setSelectedTable(tableName)
+  }, [selectedTable])
 
   const loadDatabase = useCallback(() => {
     const sequence = ++requestSequence.current
     if (!serial) {
       setSnapshot(null)
+      snapshotRef.current = null
       setError(null)
+      setTableError(null)
       setLoading(false)
       return
     }
+    const preserveSnapshot = snapshotRef.current != null
     setLoading(true)
     setError(null)
+    setTableError(null)
     const params = new URLSearchParams({
       serial,
       table: selectedTable,
@@ -81,8 +95,9 @@ export default function DatabaseAccessPage() {
         const body = (await response.json()) as LiveDatabaseSnapshot & { error?: string }
         if (!response.ok || body.error) throw new Error(body.error ?? `HTTP ${response.status}`)
         if (sequence !== requestSequence.current) return
+        snapshotRef.current = body
         setSnapshot(body)
-        if (body.tableData && body.tableData.tableName !== selectedTable) {
+        if (body.tableData) {
           setSelectedTable(body.tableData.tableName)
         }
         setExpandedRow(null)
@@ -90,8 +105,14 @@ export default function DatabaseAccessPage() {
       })
       .catch((err: unknown) => {
         if (sequence !== requestSequence.current) return
-        setSnapshot(null)
-        setError(err instanceof Error ? err.message : 'Failed to read database over ADB')
+        const message = err instanceof Error ? err.message : 'Failed to read database over ADB'
+        if (preserveSnapshot) {
+          setTableError(message)
+        } else {
+          snapshotRef.current = null
+          setSnapshot(null)
+          setError(message)
+        }
       })
       .finally(() => {
         if (sequence === requestSequence.current) setLoading(false)
@@ -177,21 +198,31 @@ export default function DatabaseAccessPage() {
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {snapshot.tables.map((t) => {
-                    const selected = snapshot.tableData?.tableName === t.name
+                    const selected = selectedTable === t.name
                     return (
-                    <tr key={t.name} className={cn('hover:bg-muted/30', selected && 'bg-indigo-500/10')}>
-                      <td className="px-3 py-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTableQuery('')
-                            setSelectedTable(t.name)
-                          }}
-                          className="rounded px-1 py-0.5 text-left font-mono text-[11px] font-semibold text-foreground hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                          aria-label={`Open ${t.name} table`}
-                        >
+                    <tr
+                      key={t.name}
+                      role="button"
+                      tabIndex={0}
+                      aria-selected={selected}
+                      aria-label={`Open ${t.name} table`}
+                      onClick={() => handleTableSelect(t.name)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          handleTableSelect(t.name)
+                        }
+                      }}
+                      className={cn(
+                        'cursor-pointer transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset',
+                        selected && 'bg-indigo-500/10',
+                        loading && selected && 'opacity-80',
+                      )}
+                    >
+                      <td className="px-3 py-2">
+                        <code className={cn('text-[11px] font-semibold text-foreground', selected && 'text-indigo-700 dark:text-indigo-300')}>
                           {t.name}
-                        </button>
+                        </code>
                       </td>
                       <td className="px-3 py-2 text-[11px] text-muted-foreground">{t.description}</td>
                       <td className="px-3 py-2"><code className="text-[10px] text-muted-foreground">{t.primaryKey}</code></td>
@@ -205,18 +236,18 @@ export default function DatabaseAccessPage() {
             </div>
           </PageSection>
 
-          {snapshot.tableData ? (
-            <TableExplorer
-              data={snapshot.tableData}
-              loading={loading}
-              query={tableQuery}
-              onQueryChange={setTableQuery}
-              rowLimit={rowLimit}
-              onRowLimitChange={setRowLimit}
-              expandedRow={expandedTableRow}
-              onExpandedRowChange={setExpandedTableRow}
-            />
-          ) : null}
+          <TableExplorer
+            tableName={selectedTable}
+            data={snapshot.tableData?.tableName === selectedTable ? snapshot.tableData : null}
+            loading={loading}
+            error={tableError}
+            query={tableQuery}
+            onQueryChange={setTableQuery}
+            rowLimit={rowLimit}
+            onRowLimitChange={setRowLimit}
+            expandedRow={expandedTableRow}
+            onExpandedRowChange={setExpandedTableRow}
+          />
 
           {/* --- Specialized request queue view --- */}
           <PageSection
@@ -343,8 +374,10 @@ export default function DatabaseAccessPage() {
 }
 
 interface TableExplorerProps {
-  data: LiveDatabaseTableData
+  tableName: string
+  data: LiveDatabaseTableData | null
   loading: boolean
+  error: string | null
   query: string
   onQueryChange: (value: string) => void
   rowLimit: number
@@ -354,8 +387,10 @@ interface TableExplorerProps {
 }
 
 function TableExplorer({
+  tableName,
   data,
   loading,
+  error,
   query,
   onQueryChange,
   rowLimit,
@@ -364,18 +399,29 @@ function TableExplorer({
   onExpandedRowChange,
 }: TableExplorerProps) {
   const visibleRows = useMemo(() => {
+    if (!data) return []
     const normalizedQuery = query.trim().toLowerCase()
     if (!normalizedQuery) return data.rows
     return data.rows.filter((row) =>
       Object.values(row).some((value) => databaseValueText(value).toLowerCase().includes(normalizedQuery)),
     )
-  }, [data.rows, query])
+  }, [data, query])
+
+  const isPending = loading && data == null
 
   return (
     <PageSection
       eyebrow="Table explorer"
-      title={data.tableName}
-      description={`Showing ${data.rows.length} of ${data.totalRows} rows from the merged device snapshot. Click a row to inspect every field.`}
+      title={tableName}
+      description={
+        data
+          ? `Showing ${data.rows.length} of ${data.totalRows} rows from the merged device snapshot. Click a row to inspect every field.`
+          : isPending
+            ? 'Reading this table from the device snapshot...'
+            : error
+              ? 'Could not load this table from the device snapshot.'
+              : 'Select a table above to inspect its rows.'
+      }
       icon={Table2}
       tone="blue"
     >
@@ -385,8 +431,9 @@ function TableExplorer({
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={`Search ${data.tableName} rows...`}
+            placeholder={`Search ${tableName} rows...`}
             className="h-8 pl-8 text-xs"
+            disabled={!data}
           />
         </div>
         <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -410,6 +457,13 @@ function TableExplorer({
         ) : null}
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-300 bg-red-50/60 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {error}
+        </div>
+      ) : null}
+
+      {data ? (
       <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Table schema">
         {data.columns.map((column) => (
           <Badge
@@ -425,7 +479,9 @@ function TableExplorer({
           </Badge>
         ))}
       </div>
+      ) : null}
 
+      {data ? (
       <div className={cn('mt-3 overflow-x-auto rounded-xl border border-border bg-card transition-opacity', loading && 'opacity-60')}>
         <table className="w-full text-left">
           <thead className="border-b border-border bg-muted/40">
@@ -511,11 +567,19 @@ function TableExplorer({
           </div>
         ) : null}
       </div>
+      ) : isPending ? (
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 py-12 text-xs text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-blue-500" />
+          Loading {tableName} rows...
+        </div>
+      ) : null}
+      {data ? (
       <p className="mt-2 text-[11px] text-muted-foreground">
         {query.trim() ? `${visibleRows.length} matching rows. ` : ''}
         {data.truncated ? `The first ${data.limit} rows are shown; increase the row limit to read more.` : 'All rows are shown.'}
         {' '}BLOB values are rendered as a size plus a hexadecimal preview; text cells over 20,000 characters are marked as truncated.
       </p>
+      ) : null}
     </PageSection>
   )
 }

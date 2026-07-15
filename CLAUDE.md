@@ -27,12 +27,7 @@ This project has a knowledge graph at `graphify-out/` with god nodes, community 
 
 ### Version control
 
-These files are committed and shared across the team:
-- `graphify-out/graph.json` — raw graph data
-- `graphify-out/GRAPH_REPORT.md` — architecture audit report
-- `graphify-out/manifest.json` — file manifest for incremental `--update`
-
-Not committed (local/generated): `cache/`, `graph.html`, `cost.json`, `.graphify_*` temp files.
+`graphify-out/` is gitignored — local only, not pushed to GitHub. Rebuild after pulling with `graphify update .`.
 
 ### Useful commands
 

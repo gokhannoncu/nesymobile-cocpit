@@ -22,14 +22,9 @@ Run `graphify update .` (AST-only, no API cost) before answering questions about
 
 If `graphify-out/needs_update` exists after doc/markdown changes, semantic re-extraction is stale — run `graphify update .` and mention that docs may need a full `--update` pass.
 
-## Committed graph artifacts
+## Local graph artifacts
 
-These are tracked in git and should stay in sync with the codebase:
-- `graphify-out/graph.json`
-- `graphify-out/GRAPH_REPORT.md`
-- `graphify-out/manifest.json`
-
-After a meaningful code change session, remind the user to commit updated graph files if hooks have not already rebuilt them.
+`graphify-out/` is gitignored and stays local — not pushed to GitHub. Each developer rebuilds with `graphify update .` after pulling code changes.
 
 ## Background automation
 
