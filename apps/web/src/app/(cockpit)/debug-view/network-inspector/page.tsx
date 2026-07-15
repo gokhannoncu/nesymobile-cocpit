@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowDownUp, KeyRound, Pause, Play, Radio, Search, Trash2, Wifi, X } from 'lucide-react'
+import { ArrowDownUp, KeyRound, Pause, Play, Radio, Search, Smartphone, Trash2, Wifi, X, Zap } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
@@ -18,21 +18,6 @@ import { useDebugView } from '@/components/debug-view/debug-context'
 import type { NetworkTransaction } from '@/data/debug-view/types'
 
 const MAX_TRANSACTIONS = 1000
-
-/** Fixed left list panel: explicit width + search bar + table header + 10 request rows. */
-const NETWORK_LIST_VISIBLE_ROWS = 10
-const NETWORK_LIST_ROW_HEIGHT_PX = 44
-const NETWORK_LIST_TABLE_HEAD_PX = 33
-const NETWORK_LIST_SEARCH_PX = 52
-const NETWORK_LIST_WIDTH_PX = 480
-const NETWORK_LIST_HEIGHT_PX =
-  NETWORK_LIST_SEARCH_PX + NETWORK_LIST_TABLE_HEAD_PX + NETWORK_LIST_VISIBLE_ROWS * NETWORK_LIST_ROW_HEIGHT_PX
-const NETWORK_LIST_CLASS = 'flex shrink-0 flex-col overflow-hidden'
-const NETWORK_LIST_STYLE = { width: NETWORK_LIST_WIDTH_PX, height: NETWORK_LIST_HEIGHT_PX }
-
-/** Right detail panel sizes to its content (wrap_content). */
-const NETWORK_DETAIL_MIN_WIDTH_PX = 448
-const NETWORK_DETAIL_MAX_WIDTH_PX = 672
 
 /**
  * Headers appended by NesyMobile's AuthInterceptor (di/AuthInterceptor.kt).
@@ -140,6 +125,17 @@ export default function NetworkInspectorPage() {
   }, [query, transactions])
 
   const selected = transactions.find((t) => t.id === selectedId) ?? null
+  const showCaptureHero = transactions.length === 0 && !query.trim()
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedId != null) setSelectedId(null)
+      return
+    }
+    if (!selectedId || !filtered.some((t) => t.id === selectedId)) {
+      setSelectedId(filtered[0]!.id)
+    }
+  }, [filtered, selectedId])
 
   const stats = useMemo(() => {
     const total = transactions.length
@@ -156,7 +152,7 @@ export default function NetworkInspectorPage() {
         icon={Wifi}
         title="Network Inspector"
         lead="Live OkHttp traffic captured from the device via adb logcat: requests/responses, durations, headers and bodies — like Fiddler, in near real time."
-        tone="teal"
+        tone="orange"
         badges={[{ label: 'OkHttp interceptor' }, { label: 'adb logcat stream' }, { label: 'SSE realtime' }]}
         actions={<DebugCrossLinks currentPath="/debug-view/network-inspector" />}
       />
@@ -166,157 +162,322 @@ export default function NetworkInspectorPage() {
       ) : (
         <>
           <StatGrid cols={4}>
-            <StatCard icon={ArrowDownUp} label="Total requests" value={stats.total} tone="blue" />
+            <StatCard icon={ArrowDownUp} label="Total requests" value={stats.total} tone="orange" />
             <StatCard icon={X} label="Failed / timeout" value={stats.failed} tone={stats.failed > 0 ? 'red' : 'green'} />
-            <StatCard icon={Wifi} label="Avg. duration" value={stats.avg} suffix="ms" tone="purple" />
-            <StatCard icon={ArrowDownUp} label="Downloaded" value={stats.kb} suffix="KB" tone="teal" />
+            <StatCard icon={Wifi} label="Avg. duration" value={stats.avg} suffix="ms" tone="orange" />
+            <StatCard icon={ArrowDownUp} label="Downloaded" value={stats.kb} suffix="KB" tone="orange" />
           </StatGrid>
 
-          {/* Live capture strip */}
-          <motion.div
-            className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: EASE }}
-          >
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <Radio
-                className={cn(
-                  'size-4',
-                  paused
-                    ? 'text-amber-500'
-                    : streamState === 'live'
-                      ? 'animate-pulse text-green-600 dark:text-green-400'
-                      : streamState === 'connecting'
-                        ? 'text-muted-foreground'
-                        : 'text-red-500',
-                )}
-              />
-              {paused
-                ? 'Capture paused'
-                : streamState === 'live'
-                  ? 'Capturing live'
-                  : streamState === 'connecting'
-                    ? 'Connecting to device…'
-                    : 'Stream lost — reconnecting…'}
-            </span>
-            <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-              {selectedDevice.serial}
-            </Badge>
-            <span className="text-[11px] text-muted-foreground">Tag: OkHttpLog · adb logcat</span>
-            <div className="ms-auto flex items-center gap-1.5">
-              <Button size="sm" variant="outline" onClick={togglePause} className="h-7 gap-1 text-[11px]">
-                {paused ? <Play className="size-3" /> : <Pause className="size-3" />}
-                {paused ? 'Resume' : 'Pause'}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={clear} className="h-7 gap-1 text-[11px]">
-                <Trash2 className="size-3" />
-                Clear
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* List + detail */}
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-            {/* List — fixed width & height */}
-            <div className={cn('rounded-xl border border-border bg-card', NETWORK_LIST_CLASS)} style={NETWORK_LIST_STYLE}>
-              <div className="shrink-0 border-b border-border p-2.5">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search path, host or method…"
-                    className="h-8 pl-8 text-xs"
-                  />
+          {showCaptureHero ? (
+            <NetworkCaptureEmptyHero
+              deviceName={selectedDevice.name}
+              serial={selectedDevice.serial}
+              streamState={streamState}
+              paused={paused}
+              onTogglePause={togglePause}
+              onClear={clear}
+            />
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-orange-50/40 px-4 py-3 dark:bg-orange-950/15">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex size-8 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
+                    <Wifi className="size-4 text-orange-600 dark:text-orange-400" />
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">Live capture</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {filtered.length} request{filtered.length === 1 ? '' : 's'}
+                      {query.trim() ? ' matching filter' : ' in buffer'}
+                      {' · '}
+                      <code className="font-mono text-[10px]">OkHttpLog</code>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StreamStatusBadge streamState={streamState} paused={paused} />
+                  <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
+                    {selectedDevice.serial}
+                  </Badge>
+                  <Button size="sm" variant="outline" onClick={togglePause} className="h-8 gap-1 text-[11px]">
+                    {paused ? <Play className="size-3" /> : <Pause className="size-3" />}
+                    {paused ? 'Resume' : 'Pause'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clear} className="h-8 gap-1 text-[11px]">
+                    <Trash2 className="size-3" />
+                    Clear
+                  </Button>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <table className="w-full text-left">
-                  <thead className="sticky top-0 z-10 border-b border-border bg-muted/60 backdrop-blur">
-                    <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-2.5 py-2 font-semibold">Method</th>
-                      <th className="px-2.5 py-2 font-semibold">Endpoint</th>
-                      <th className="px-2.5 py-2 font-semibold">Status</th>
-                      <th className="px-2.5 py-2 text-right font-semibold">Time</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    <AnimatePresence initial={false}>
-                      {filtered.map((t) => (
-                        <motion.tr
-                          key={t.id}
-                          layout="position"
-                          initial={{ opacity: 0, backgroundColor: 'rgba(20,184,166,0.12)' }}
-                          animate={{ opacity: 1, backgroundColor: 'rgba(20,184,166,0)' }}
-                          transition={{ duration: 0.6, ease: EASE }}
-                          onClick={() => setSelectedId(t.id)}
-                          className={cn(
-                            'h-11 cursor-pointer transition-colors hover:bg-muted/40',
-                            selectedId === t.id && 'bg-teal-500/5',
-                          )}
-                        >
-                          <td className="px-2.5 py-2">
-                            <Badge variant="secondary" appearance="outline" size="xs" className={cn('font-mono', toneText[methodTone(t.method)])}>
-                              {t.method}
-                            </Badge>
-                          </td>
-                          <td className="px-2.5 py-2">
-                            <div className="max-w-[240px] truncate text-[11px] font-medium text-foreground">/{t.path}</div>
-                            <div className="max-w-[240px] truncate font-mono text-[10px] text-muted-foreground">{t.host}</div>
-                          </td>
-                          <td className="px-2.5 py-2">
-                            <span className={cn('text-xs font-bold', toneText[statusTone(t.status)])}>
-                              {t.status ?? 'ERR'}
-                            </span>
-                          </td>
-                          <td className="px-2.5 py-2 text-right">
-                            <span className={cn('font-mono text-[11px]', t.timing.totalMs > 5000 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')}>
-                              {t.timing.totalMs >= 1000 ? `${(t.timing.totalMs / 1000).toFixed(1)}s` : `${t.timing.totalMs}ms`}
-                            </span>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-                {filtered.length === 0 && (
-                  <div className="py-10 text-center text-xs text-muted-foreground">
-                    {transactions.length === 0
-                      ? 'No traffic captured yet. Use the app on the device — requests appear here instantly.'
-                      : 'No matching requests.'}
+
+              <div className="flex min-h-[min(72vh,640px)] flex-col xl:flex-row">
+                <div className="flex w-full shrink-0 flex-col border-b border-border/70 xl:w-[min(42%,420px)] xl:border-b-0 xl:border-e">
+                  <div className="shrink-0 border-b border-border/60 p-3">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search path, host or method…"
+                        className="h-9 border-border/80 bg-background pl-8 text-xs"
+                      />
+                    </div>
                   </div>
-                )}
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                    {filtered.length === 0 ? (
+                      <NetworkListEmptyState
+                        query={query}
+                        onClearSearch={() => setQuery('')}
+                      />
+                    ) : (
+                      <table className="w-full text-left">
+                        <thead className="sticky top-0 z-10 border-b border-border bg-muted/60 backdrop-blur">
+                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <th className="w-[4.5rem] px-2.5 py-2 font-semibold">Method</th>
+                            <th className="px-2.5 py-2 font-semibold">Endpoint</th>
+                            <th className="w-14 px-2.5 py-2 font-semibold">Status</th>
+                            <th className="w-16 px-2.5 py-2 text-right font-semibold">Time</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          <AnimatePresence initial={false}>
+                            {filtered.map((t) => (
+                              <motion.tr
+                                key={t.id}
+                                layout="position"
+                                initial={{ opacity: 0, backgroundColor: 'rgba(249,115,22,0.12)' }}
+                                animate={{ opacity: 1, backgroundColor: 'rgba(249,115,22,0)' }}
+                                transition={{ duration: 0.6, ease: EASE }}
+                                onClick={() => setSelectedId(t.id)}
+                                className={cn(
+                                  'cursor-pointer transition-colors hover:bg-muted/40',
+                                  selectedId === t.id && 'bg-orange-500/8 shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
+                                )}
+                              >
+                                <td className="px-2.5 py-2.5">
+                                  <Badge variant="secondary" appearance="outline" size="xs" className={cn('font-mono', toneText[methodTone(t.method)])}>
+                                    {t.method}
+                                  </Badge>
+                                </td>
+                                <td className="px-2.5 py-2.5">
+                                  <div className="truncate text-[11px] font-medium text-foreground">/{t.path}</div>
+                                  <div className="truncate font-mono text-[10px] text-muted-foreground">{t.host}</div>
+                                </td>
+                                <td className="px-2.5 py-2.5">
+                                  <span className={cn('text-xs font-bold', toneText[statusTone(t.status)])}>
+                                    {t.status ?? 'ERR'}
+                                  </span>
+                                </td>
+                                <td className="px-2.5 py-2.5 text-right">
+                                  <span className={cn('font-mono text-[11px]', t.timing.totalMs > 5000 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')}>
+                                    {t.timing.totalMs >= 1000 ? `${(t.timing.totalMs / 1000).toFixed(1)}s` : `${t.timing.totalMs}ms`}
+                                  </span>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </AnimatePresence>
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+                <div className="min-w-0 flex-1 bg-muted/10">
+                  <AnimatePresence mode="wait">
+                    {selected ? (
+                      <motion.div
+                        key={selected.id}
+                        className="h-full"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25, ease: EASE }}
+                      >
+                        <TransactionDetail txn={selected} />
+                      </motion.div>
+                    ) : (
+                      <NetworkDetailEmptyState />
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
-
-            {/* Detail — wrap_content */}
-            <div
-              className="w-fit max-w-full rounded-xl border border-border bg-card"
-              style={{ minWidth: NETWORK_DETAIL_MIN_WIDTH_PX, maxWidth: NETWORK_DETAIL_MAX_WIDTH_PX }}
-            >
-              <AnimatePresence mode="wait">
-                {selected ? (
-                  <motion.div
-                    key={selected.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                  >
-                    <TransactionDetail txn={selected} />
-                  </motion.div>
-                ) : (
-                  <div className="px-8 py-10 text-xs text-muted-foreground">
-                    Select a request to see details.
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+          )}
         </>
       )}
     </ProductPage>
+  )
+}
+
+function StreamStatusBadge({ streamState, paused }: { streamState: StreamState; paused: boolean }) {
+  const label = paused
+    ? 'Paused'
+    : streamState === 'live'
+      ? 'Live'
+      : streamState === 'connecting'
+        ? 'Connecting'
+        : 'Reconnecting'
+
+  const tone: Tone = paused ? 'amber' : streamState === 'live' ? 'green' : streamState === 'connecting' ? 'gray' : 'red'
+
+  return (
+    <Badge variant="secondary" appearance="outline" size="xs" className={cn('gap-1.5', toneText[tone])}>
+      <Radio className={cn('size-3', !paused && streamState === 'live' && 'animate-pulse')} />
+      {label}
+    </Badge>
+  )
+}
+
+function NetworkCaptureEmptyHero({
+  deviceName,
+  serial,
+  streamState,
+  paused,
+  onTogglePause,
+  onClear,
+}: {
+  deviceName: string
+  serial: string
+  streamState: StreamState
+  paused: boolean
+  onTogglePause: () => void
+  onClear: () => void
+}) {
+  const steps = [
+    {
+      step: '1',
+      icon: Radio,
+      title: 'Stream is ready',
+      desc: 'OkHttp logs flow from the device via adb logcat (tag: OkHttpLog).',
+    },
+    {
+      step: '2',
+      icon: Smartphone,
+      title: 'Use NesyMobile',
+      desc: `Open the app on ${deviceName} and trigger any API call.`,
+    },
+    {
+      step: '3',
+      icon: Zap,
+      title: 'Inspect instantly',
+      desc: 'Requests appear here in near real time with headers, body and timing.',
+    },
+  ]
+
+  return (
+    <motion.div
+      className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: EASE }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-orange-50/40 px-4 py-3 dark:bg-orange-950/15">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
+            <Wifi className="size-4 text-orange-600 dark:text-orange-400" />
+          </span>
+          <div>
+            <div className="text-sm font-semibold text-foreground">Waiting for traffic</div>
+            <div className="font-mono text-[11px] text-muted-foreground">{serial}</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StreamStatusBadge streamState={streamState} paused={paused} />
+          <Button size="sm" variant="outline" onClick={onTogglePause} className="h-8 gap-1 text-[11px]">
+            {paused ? <Play className="size-3" /> : <Pause className="size-3" />}
+            {paused ? 'Resume' : 'Pause'}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onClear} className="h-8 gap-1 text-[11px]">
+            <Trash2 className="size-3" />
+            Clear
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center px-6 py-14 text-center lg:py-16">
+        <div className="relative">
+          <div className="flex size-16 items-center justify-center rounded-3xl border border-orange-500/25 bg-orange-500/8">
+            <Wifi className="size-8 text-orange-600 dark:text-orange-400" />
+          </div>
+          {!paused && streamState === 'live' ? (
+            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-green-500 ring-2 ring-card">
+              <span className="size-2 animate-pulse rounded-full bg-white" />
+            </span>
+          ) : null}
+        </div>
+
+        <h3 className="mt-5 text-lg font-bold text-foreground">No traffic captured yet</h3>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
+          The inspector is connected to your device. Use NesyMobile on the phone — every HTTP request will show up here automatically.
+        </p>
+
+        <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+          {steps.map((item) => (
+            <div key={item.step} className="rounded-xl border border-border/70 bg-muted/15 px-4 py-3.5">
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-md bg-orange-500/10 font-mono text-[11px] font-bold text-orange-700 dark:text-orange-300">
+                  {item.step}
+                </span>
+                <item.icon className="size-4 text-orange-600 dark:text-orange-400" />
+                <span className="text-sm font-semibold text-foreground">{item.title}</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function NetworkListEmptyState({
+  query,
+  onClearSearch,
+}: {
+  query: string
+  onClearSearch: () => void
+}) {
+  return (
+    <motion.div
+      className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-14 text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      <div className="flex size-11 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/25">
+        <Search className="size-5 text-muted-foreground/70" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">No matching requests</p>
+        <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted-foreground">
+          Nothing matches <code className="font-mono text-foreground">{query.trim()}</code>. Try path, host or HTTP method.
+        </p>
+      </div>
+      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onClearSearch}>
+        Clear search
+      </Button>
+    </motion.div>
+  )
+}
+
+function NetworkDetailEmptyState() {
+  return (
+    <motion.div
+      className="flex h-full min-h-[min(72vh,640px)] flex-col items-center justify-center gap-3 px-8 py-12 text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-dashed border-orange-500/30 bg-orange-500/5">
+        <ArrowDownUp className="size-6 text-orange-500/70" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">Select a request</p>
+        <p className="mx-auto mt-1 max-w-[16rem] text-xs leading-relaxed text-muted-foreground">
+          Pick any captured call from the list to inspect URL, headers, bodies and duration.
+        </p>
+      </div>
+    </motion.div>
   )
 }
 
@@ -402,7 +563,9 @@ function TransactionDetail({ txn }: { txn: NetworkTransaction }) {
             onClick={() => setTab(t.key)}
             className={cn(
               'rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors',
-              tab === t.key ? 'bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground',
+              tab === t.key
+                ? 'border-b-2 border-orange-500 bg-orange-500/5 text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {t.label}

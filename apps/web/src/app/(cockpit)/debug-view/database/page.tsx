@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Ban,
   ChevronRight,
+  Columns3,
   Database,
   HardDrive,
   Hash,
@@ -164,7 +165,7 @@ export default function DatabaseAccessPage() {
         icon={Table2}
         title="Database Access"
         lead="Read-only live view of every table in the selected device's Room database over ADB."
-        tone="teal"
+        tone="orange"
         badges={[
           { label: snapshot ? `${snapshot.databaseName} · v${snapshot.version}` : 'Room database' },
           { label: 'Live ADB snapshot' },
@@ -198,7 +199,7 @@ export default function DatabaseAccessPage() {
                 title="Tables"
                 description={`${snapshot.tables.length} Room tables captured at ${new Date(snapshot.capturedAt).toLocaleTimeString('en-US')}. Pick one to inspect rows.`}
                 icon={Layers}
-                tone="indigo"
+                tone="orange"
               >
                 <div className="relative max-w-md">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -247,13 +248,13 @@ export default function DatabaseAccessPage() {
                 title="Request Queue"
                 description="Specialized view of the request table. Status is derived from isProcessing, isWaitingRequest and tryCount."
                 icon={Rows3}
-                tone="teal"
+                tone="orange"
               >
                 <StatGrid cols={4}>
-                  <StatCard icon={Table2} label="Total rows" value={liveRows.length} tone="blue" />
+                  <StatCard icon={Table2} label="Total rows" value={liveRows.length} tone="orange" />
                   <StatCard icon={Unlock} label="Pending" value={pendingCount} tone="amber" />
                   <StatCard icon={Ban} label="Exhausted (>=3)" value={deadCount} tone={deadCount > 0 ? 'red' : 'green'} />
-                  <StatCard icon={Database} label="Archive (Completed)" value={snapshot.completedRequestCount} tone="teal" />
+                  <StatCard icon={Database} label="Archive (Completed)" value={snapshot.completedRequestCount} tone="orange" />
                 </StatGrid>
 
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
@@ -288,9 +289,9 @@ export default function DatabaseAccessPage() {
                                   type="button"
                                   onClick={() => setSelectedRequestId(selected ? null : row.id)}
                                   className={cn(
-                                    'w-full rounded-lg border px-3 py-2.5 text-left transition-all hover:border-teal-500/30 hover:bg-muted/30',
+                                    'w-full rounded-lg border px-3 py-2.5 text-left transition-all hover:border-orange-500/30 hover:bg-muted/30',
                                     selected
-                                      ? 'border-teal-500/40 bg-teal-500/5 ring-1 ring-teal-500/20'
+                                      ? 'border-orange-500/40 bg-orange-500/5 ring-1 ring-orange-500/20'
                                       : 'border-border/70 bg-background/60',
                                   )}
                                 >
@@ -359,7 +360,7 @@ export default function DatabaseAccessPage() {
             title="DB Access Methods Over Release APK"
             description="In non-debuggable production builds, the device sandbox is protected by the OS — methods are sorted by difficulty and release compatibility."
             icon={Database}
-            tone="teal"
+            tone="orange"
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               {DB_ACCESS_METHODS.map((m) => (
@@ -433,8 +434,8 @@ function TablePickerCard({
       className={cn(
         'group relative flex w-full flex-col rounded-xl border p-4 text-left transition-all',
         selected
-          ? 'border-indigo-500/50 bg-indigo-500/5 shadow-[0_0_0_1px_rgba(99,102,241,0.25)]'
-          : 'border-border bg-card hover:border-indigo-500/25 hover:bg-muted/20',
+          ? 'border-orange-500/50 bg-orange-500/5 shadow-[0_0_0_1px_rgba(249,115,22,0.25)]'
+          : 'border-border bg-card hover:border-orange-500/25 hover:bg-muted/20',
         loading && selected && 'opacity-80',
       )}
       aria-pressed={selected}
@@ -445,19 +446,19 @@ function TablePickerCard({
             <span
               className={cn(
                 'flex size-8 shrink-0 items-center justify-center rounded-lg border',
-                selected ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'border-border bg-muted/40 text-muted-foreground',
+                selected ? 'border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-300' : 'border-border bg-muted/40 text-muted-foreground',
               )}
             >
               <Table2 className="size-4" />
             </span>
-            <code className={cn('truncate text-sm font-bold text-foreground', selected && 'text-indigo-700 dark:text-indigo-300')}>
+            <code className={cn('truncate text-sm font-bold text-foreground', selected && 'text-orange-700 dark:text-orange-300')}>
               {table.name}
             </code>
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{table.description}</p>
         </div>
         {selected ? (
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
             {loading ? <Loader2 className="size-3.5 animate-spin" /> : <ChevronRight className="size-3.5" />}
           </span>
         ) : null}
@@ -503,6 +504,8 @@ function TableExplorer({
   selectedRowIndex,
   onSelectedRowIndexChange,
 }: TableExplorerProps) {
+  const [schemaOpen, setSchemaOpen] = useState(true)
+
   const visibleRows = useMemo(() => {
     if (!data) return []
     const normalizedQuery = query.trim().toLowerCase()
@@ -512,9 +515,28 @@ function TableExplorer({
     )
   }, [data, query])
 
-  const selectedRow = selectedRowIndex != null ? visibleRows[selectedRowIndex] ?? null : null
+  const primaryKeyColumn = useMemo(
+    () =>
+      data?.columns.find((column) => column.primaryKeyPosition > 0) ??
+      data?.columns[0] ??
+      null,
+    [data?.columns],
+  )
+
   const isPending = loading && data == null
-  const previewColumn = data?.columns.find((column) => column.primaryKeyPosition > 0)?.name ?? data?.columns[0]?.name
+
+  const toggleRow = useCallback(
+    (rowIndex: number) => {
+      onSelectedRowIndexChange(selectedRowIndex === rowIndex ? null : rowIndex)
+    },
+    [onSelectedRowIndexChange, selectedRowIndex],
+  )
+
+  useEffect(() => {
+    if (selectedRowIndex != null && selectedRowIndex >= visibleRows.length) {
+      onSelectedRowIndexChange(null)
+    }
+  }, [visibleRows.length, selectedRowIndex, onSelectedRowIndexChange])
 
   return (
     <PageSection
@@ -522,7 +544,7 @@ function TableExplorer({
       title={tableName}
       description={
         data
-          ? `${data.rows.length} of ${data.totalRows} rows loaded. Select a row to inspect every column.`
+          ? `${data.rows.length} of ${data.totalRows} rows loaded · ${data.columns.length} columns`
           : isPending
             ? 'Reading this table from the device snapshot...'
             : error
@@ -530,201 +552,289 @@ function TableExplorer({
               : 'Select a table above to inspect its rows.'
       }
       icon={Table2}
-      tone="blue"
+      tone="orange"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 max-w-sm flex-1">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={`Search ${tableName} rows...`}
-            className="h-9 pl-8 text-xs"
-            disabled={!data}
-          />
-        </div>
-        <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          Row limit
-          <select
-            value={rowLimit}
-            onChange={(event) => onRowLimitChange(Number(event.target.value))}
-            className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Table row limit"
-          >
-            {[25, 50, 100, 200].map((limit) => (
-              <option key={limit} value={limit}>{limit}</option>
-            ))}
-          </select>
-        </label>
-        {loading ? (
-          <span className="flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400">
-            <Loader2 className="size-3.5 animate-spin" />
-            Reading device
-          </span>
-        ) : null}
-      </div>
-
       {error ? (
         <div className="rounded-lg border border-red-300 bg-red-50/60 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </div>
       ) : null}
 
-      {data ? (
-        <div className="flex flex-wrap gap-1.5" aria-label="Table schema">
-          {data.columns.map((column) => (
-            <Badge
-              key={column.name}
-              variant="secondary"
-              appearance="outline"
-              size="xs"
-              title={`${column.notNull ? 'NOT NULL · ' : ''}${column.defaultValue == null ? '' : `DEFAULT ${column.defaultValue} · `}${column.primaryKeyPosition ? `PK ${column.primaryKeyPosition}` : ''}`}
-            >
-              <span className="font-mono">{column.name}</span>
-              <span className="ms-1 text-muted-foreground">{column.type}</span>
-              {column.primaryKeyPosition > 0 ? <span className="ms-1 text-blue-600 dark:text-blue-400">PK</span> : null}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-
-      {data ? (
-        <div className={cn('flex flex-col gap-4 xl:flex-row xl:items-start', loading && 'opacity-80')}>
-          <div className="w-full shrink-0 xl:w-[380px]">
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <div className="border-b border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Rows ({visibleRows.length})
-              </div>
-              <div className="max-h-[480px] overflow-y-auto p-2">
-                {visibleRows.length === 0 ? (
-                  <div className="py-10 text-center text-xs text-muted-foreground">
-                    {query.trim() ? 'No rows match this search.' : `${data.tableName} is empty.`}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {visibleRows.map((row, rowIndex) => {
-                      const selected = selectedRowIndex === rowIndex
-                      const previewValue = previewColumn ? row[previewColumn] : null
-                      return (
-                        <button
-                          key={`${data.tableName}-${rowIndex}`}
-                          type="button"
-                          onClick={() => onSelectedRowIndexChange(selected ? null : rowIndex)}
-                          className={cn(
-                            'w-full rounded-lg border px-3 py-2 text-left transition-all',
-                            selected
-                              ? 'border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20'
-                              : 'border-border/70 hover:border-blue-500/20 hover:bg-muted/30',
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[10px] font-semibold text-muted-foreground">
-                              Row {rowIndex + 1}
-                            </span>
-                            {previewColumn ? (
-                              <span className="truncate font-mono text-[10px] text-foreground">
-                                {databaseValuePreview(previewValue)}
-                              </span>
-                            ) : null}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="min-w-0 flex-1 rounded-xl border border-border bg-card">
-            <AnimatePresence mode="wait">
-              {selectedRow ? (
-                <motion.div
-                  key={selectedRowIndex}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.22, ease: EASE }}
-                  className="p-4"
-                >
-                  <RowDetailPanel tableName={data.tableName} row={selectedRow} columns={data.columns} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex min-h-[320px] flex-col items-center justify-center gap-2 px-6 py-12 text-center"
-                >
-                  <Table2 className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm font-medium text-foreground">Select a row</p>
-                  <p className="max-w-sm text-xs text-muted-foreground">
-                    Column values open in a dark IDE-style viewer. JSON fields are auto-formatted and syntax highlighted.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      ) : isPending ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 py-16 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin text-blue-500" />
+      {isPending ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/20 py-16 text-xs text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-orange-500" />
           Loading {tableName} rows...
         </div>
       ) : null}
 
       {data ? (
-        <p className="text-[11px] text-muted-foreground">
-          {query.trim() ? `${visibleRows.length} matching rows. ` : ''}
-          {data.truncated ? `The first ${data.limit} rows are shown; increase the row limit to read more.` : 'All rows are shown.'}
-          {' '}BLOB values are rendered as a size plus a hexadecimal preview; text cells over 20,000 characters are marked as truncated.
-        </p>
+        <div className={cn('overflow-hidden rounded-2xl border border-border bg-card shadow-sm', loading && 'opacity-80')}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-orange-50/40 px-4 py-3 dark:bg-orange-950/15">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
+                <Table2 className="size-4 text-orange-600 dark:text-orange-400" />
+              </span>
+              <div>
+                <div className="font-mono text-sm font-bold text-foreground">{data.tableName}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {data.columns.length} columns · {visibleRows.length} visible row{visibleRows.length === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {data.truncated ? (
+                <Badge variant="secondary" appearance="outline" size="xs" className="text-amber-700 dark:text-amber-400">
+                  First {data.limit} rows
+                </Badge>
+              ) : (
+                <Badge variant="secondary" appearance="outline" size="xs" className="text-green-700 dark:text-green-400">
+                  All rows loaded
+                </Badge>
+              )}
+              {primaryKeyColumn ? (
+                <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-orange-700 dark:text-orange-300">
+                  PK {primaryKeyColumn.name}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 border-b border-border/70 px-4 py-3 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder={`Search ${tableName} rows...`}
+                className="h-9 border-border/80 bg-background pl-8 text-xs"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                Limit
+                <select
+                  value={rowLimit}
+                  onChange={(event) => onRowLimitChange(Number(event.target.value))}
+                  className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
+                  aria-label="Table row limit"
+                >
+                  {[25, 50, 100, 200].map((limit) => (
+                    <option key={limit} value={limit}>{limit}</option>
+                  ))}
+                </select>
+              </label>
+              {loading ? (
+                <span className="flex items-center gap-1.5 text-[11px] text-orange-600 dark:text-orange-400">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Reading
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="border-b border-border/70">
+            <button
+              type="button"
+              onClick={() => setSchemaOpen(!schemaOpen)}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30"
+            >
+              <Columns3 className="size-3.5 text-orange-600 dark:text-orange-400" />
+              Schema ({data.columns.length})
+              <ChevronRight className={cn('size-3.5 transition-transform', schemaOpen && 'rotate-90')} />
+            </button>
+            <AnimatePresence initial={false}>
+              {schemaOpen ? (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                  className="overflow-hidden"
+                >
+                  <div className="overflow-x-auto px-4 pb-3">
+                    <div className="inline-flex min-w-full gap-2">
+                      {data.columns.map((column) => (
+                        <div
+                          key={column.name}
+                          className={cn(
+                            'shrink-0 rounded-lg border px-3 py-2',
+                            column.primaryKeyPosition > 0
+                              ? 'border-orange-500/25 bg-orange-500/5'
+                              : 'border-border/70 bg-muted/20',
+                          )}
+                          title={`${column.notNull ? 'NOT NULL · ' : ''}${column.defaultValue == null ? '' : `DEFAULT ${column.defaultValue} · `}${column.primaryKeyPosition ? `PK ${column.primaryKeyPosition}` : ''}`}
+                        >
+                          <div className="font-mono text-xs font-semibold text-foreground">{column.name}</div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <span>{column.type}</span>
+                            {column.primaryKeyPosition > 0 ? (
+                              <span className="font-semibold text-orange-600 dark:text-orange-400">PK</span>
+                            ) : null}
+                            {column.notNull ? <span>NOT NULL</span> : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          <div className="overflow-x-auto">
+            {visibleRows.length === 0 ? (
+              <div className="px-4 py-14 text-center text-xs text-muted-foreground">
+                {query.trim() ? 'No rows match this search.' : `${data.tableName} is empty.`}
+              </div>
+            ) : (
+              <table className="w-full min-w-[640px] text-left">
+                <thead className="border-b border-border bg-muted/40">
+                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="w-10 px-2 py-2.5 font-semibold" aria-label="Expand" />
+                    <th className="w-12 px-2 py-2.5 font-semibold">#</th>
+                    {data.columns.map((column) => (
+                      <th key={column.name} className="px-3 py-2.5 font-semibold">
+                        <span className="font-mono text-foreground">{column.name}</span>
+                        <span className="ms-1.5 font-normal text-muted-foreground">{column.type}</span>
+                        {column.primaryKeyPosition > 0 ? (
+                          <span className="ms-1 text-orange-600 dark:text-orange-400">PK</span>
+                        ) : null}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {visibleRows.map((row, rowIndex) => {
+                    const expanded = selectedRowIndex === rowIndex
+                    return (
+                      <RowTableGroup
+                        key={`${data.tableName}-row-${rowIndex}`}
+                        row={row}
+                        rowIndex={rowIndex}
+                        columns={data.columns}
+                        expanded={expanded}
+                        onToggle={() => toggleRow(rowIndex)}
+                      />
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="border-t border-border/70 bg-muted/20 px-4 py-2.5 text-[11px] text-muted-foreground">
+            {query.trim() ? `${visibleRows.length} matching rows. ` : ''}
+            {data.truncated ? `Showing the first ${data.limit} rows — increase the limit to read more. ` : 'All rows are shown. '}
+            BLOB values show size plus hex preview; text over 20,000 characters is marked truncated.
+          </div>
+        </div>
       ) : null}
     </PageSection>
   )
 }
 
-function RowDetailPanel({
-  tableName,
+function RowTableGroup({
   row,
+  rowIndex,
+  columns,
+  expanded,
+  onToggle,
+}: {
+  row: Record<string, LiveDatabaseValue>
+  rowIndex: number
+  columns: LiveDatabaseTableData['columns']
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <>
+      <tr
+        onClick={onToggle}
+        className={cn(
+          'cursor-pointer transition-colors hover:bg-muted/30',
+          expanded && 'bg-orange-500/6 shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
+        )}
+        aria-expanded={expanded}
+      >
+        <td className="px-2 py-2.5 text-center">
+          <ChevronRight className={cn('mx-auto size-4 text-muted-foreground transition-transform', expanded && 'rotate-90 text-orange-600 dark:text-orange-400')} />
+        </td>
+        <td className="px-2 py-2.5 font-mono text-[10px] font-bold text-muted-foreground">
+          {rowIndex + 1}
+        </td>
+        {columns.map((column) => (
+          <td key={column.name} className="max-w-[220px] px-3 py-2.5">
+            <span className="block truncate font-mono text-[11px] text-foreground" title={databaseValueText(row[column.name])}>
+              {databaseValuePreview(row[column.name])}
+            </span>
+          </td>
+        ))}
+      </tr>
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <tr>
+            <td colSpan={columns.length + 2} className="border-t border-orange-500/15 bg-orange-500/[0.03] p-0">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: EASE }}
+                className="overflow-hidden"
+              >
+                <RowExpandedDetail row={row} rowIndex={rowIndex} columns={columns} />
+              </motion.div>
+            </td>
+          </tr>
+        ) : null}
+      </AnimatePresence>
+    </>
+  )
+}
+
+function RowExpandedDetail({
+  row,
+  rowIndex,
   columns,
 }: {
-  tableName: string
   row: Record<string, LiveDatabaseValue>
+  rowIndex: number
   columns: LiveDatabaseTableData['columns']
 }) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" appearance="outline" size="sm" className="font-mono">
-          {tableName}
-        </Badge>
-        <span className="text-xs text-muted-foreground">{columns.length} columns</span>
+    <div className="space-y-0 border-t border-orange-500/10">
+      <div className="flex items-center justify-between border-b border-border/60 bg-muted/25 px-4 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Row {rowIndex + 1} · {columns.length} columns
+        </span>
+        <span className="text-[10px] text-muted-foreground">JSON fields are auto-formatted</span>
       </div>
-
-      <div className="space-y-3">
+      <div className="divide-y divide-border/50">
         {columns.map((column) => {
           const value = row[column.name]
           const formatted = formatExpandedDatabaseValue(value)
           const isJsonField = looksLikeJson(value)
           return (
-            <div key={column.name} className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
+            <div key={column.name} className="px-4 py-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs font-semibold text-foreground">{column.name}</span>
                 <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-muted-foreground">
                   {column.type}
                 </Badge>
                 {column.primaryKeyPosition > 0 ? (
-                  <Badge variant="secondary" appearance="outline" size="xs" className="text-blue-600 dark:text-blue-400">
+                  <Badge variant="secondary" appearance="outline" size="xs" className="text-orange-600 dark:text-orange-400">
                     PK
+                  </Badge>
+                ) : null}
+                {isJsonField ? (
+                  <Badge variant="secondary" appearance="outline" size="xs" className="text-sky-600 dark:text-sky-400">
+                    JSON
                   </Badge>
                 ) : null}
               </div>
               <DebugCodePanel
                 code={formatted}
                 label={column.name}
-                language={isJsonField ? 'json' : value == null ? 'text' : typeof value === 'number' ? 'text' : 'text'}
+                language={isJsonField ? 'json' : 'text'}
                 maxHeightClassName="max-h-56"
               />
             </div>
@@ -810,7 +920,7 @@ function DatabaseLoadingState({ deviceName }: { deviceName: string }) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: EASE }}
     >
-      <Loader2 className="size-6 animate-spin text-teal-500" />
+      <Loader2 className="size-6 animate-spin text-orange-500" />
       <div>
         <h3 className="text-sm font-semibold text-foreground">{`Reading ${deviceName}'s Room database...`}</h3>
         <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">

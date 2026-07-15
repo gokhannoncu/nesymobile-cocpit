@@ -51,23 +51,26 @@ function DeviceSelector({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="relative ms-1.5">
+    <div className="relative ms-1.5 min-w-0">
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        title={selected ? `${selected.name} · ${selected.serial}` : undefined}
         className={cn(
-          'flex max-w-[240px] min-w-0 items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted/60',
+          'flex w-full min-w-[11.5rem] max-w-[min(100%,18rem)] items-center gap-2 rounded-lg border bg-background px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-muted/60 sm:max-w-[20rem]',
           open && 'ring-2 ring-teal-500/30',
         )}
       >
         {selected ? (
           <>
             <DeviceStatusDot status={selected.status} className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate">{selected.name}</span>
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{selected.serial.slice(-8)}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium leading-tight">{selected.name}</div>
+              <div className="truncate font-mono text-[10px] leading-tight text-muted-foreground">{selected.serial}</div>
+            </div>
           </>
         ) : (
-          <span className="truncate text-muted-foreground">Select device…</span>
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">Select device…</span>
         )}
         <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
