@@ -35,8 +35,7 @@ import { useTheme } from 'next-themes';
 import { ScrollArea } from '@nesy/metronic/components/ui/scroll-area';
 import { cn } from '@nesy/metronic/lib/utils';
 import { SidebarNavLink } from './navigation-feedback';
-import { getVisibleWorkspaces } from '@nesy/metronic/config/menu-utils';
-import { useOperationsAccess } from '@nesy/metronic/hooks/use-operations-access';
+import { WORKSPACES } from '@nesy/metronic/config/layout-21.config';
 
 export function SidebarPrimary() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -47,8 +46,7 @@ export function SidebarPrimary() {
   
   const isDarkMode = resolvedTheme === 'dark';
   
-  const hasOperationsAccess = useOperationsAccess();
-  const workspaces = getVisibleWorkspaces(hasOperationsAccess);
+  const workspaces = WORKSPACES;
 
   return (
     <div className="flex flex-col items-center justify-between shrink-0 py-2.5 gap-5 w-[70px] lg:w-(--sidebar-collapsed-width) bg-background">

@@ -114,6 +114,16 @@
     "ast_hash": "9a399258ce5df5b92421a8f14c2ccd2a",
     "semantic_hash": "9a399258ce5df5b92421a8f14c2ccd2a"
   },
+  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/config/operations.config.ts": {
+    "mtime": 1783810583.7432091,
+    "ast_hash": "5ccd4544d0615ed3ea9ff09030cda838",
+    "semantic_hash": "5ccd4544d0615ed3ea9ff09030cda838"
+  },
+  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/config/permissions.ts": {
+    "mtime": 1783810624.8667963,
+    "ast_hash": "5746fd62e0a146c44184a370850f4d05",
+    "semantic_hash": "5746fd62e0a146c44184a370850f4d05"
+  },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/config/types.ts": {
     "mtime": 1783810425.9335215,
     "ast_hash": "d58e25f244a4cf47146cf5ab6310b715",
@@ -125,9 +135,9 @@
     "semantic_hash": ""
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/config/menu-utils.ts": {
-    "mtime": 1784122114.0589066,
-    "ast_hash": "6eafcbd2eb05edfcafa73689563cd04a",
-    "semantic_hash": ""
+    "mtime": 1783810425.9345534,
+    "ast_hash": "7b309bfe347f511a20bb0856bd40df8b",
+    "semantic_hash": "7b309bfe347f511a20bb0856bd40df8b"
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/components/screen-loader.tsx": {
     "mtime": 1783812365.3613915,
@@ -540,9 +550,9 @@
     "semantic_hash": "59f23bbfce9a3a1ceb5c716c0c2ac35c"
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/components/layouts/layout-21/components/sidebar-primary.tsx": {
-    "mtime": 1784122114.7256548,
-    "ast_hash": "f7b21d759719d97756b474609c722754",
-    "semantic_hash": ""
+    "mtime": 1783810425.9683394,
+    "ast_hash": "1f8e4b54c8b6352c8fe6e41ee66fab1f",
+    "semantic_hash": "1f8e4b54c8b6352c8fe6e41ee66fab1f"
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx": {
     "mtime": 1783810425.968623,
@@ -633,6 +643,11 @@
     "mtime": 1783810425.9357345,
     "ast_hash": "c368bd2b50df232d9b19d7896b7ae8d1",
     "semantic_hash": "c368bd2b50df232d9b19d7896b7ae8d1"
+  },
+  "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/hooks/use-operations-access.ts": {
+    "mtime": 1783810624.8672042,
+    "ast_hash": "cc188eac7360516d9e14e10fbe1b747c",
+    "semantic_hash": "cc188eac7360516d9e14e10fbe1b747c"
   },
   "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/packages/metronic/src/lib/helpers.ts": {
     "mtime": 1783810425.9362164,

@@ -1,13 +1,5 @@
 import { MenuConfig, MenuItem, Workspace } from '@nesy/metronic/config/types';
 import { WORKSPACES } from '@nesy/metronic/config/layout-21.config';
-import { OPERATIONS_MENU, OPERATIONS_WORKSPACE } from '@nesy/metronic/config/operations.config';
-import { isOperationsPath } from '@nesy/metronic/config/permissions';
-
-const ALL_WORKSPACES: Workspace[] = [...WORKSPACES, OPERATIONS_WORKSPACE];
-
-export function getVisibleWorkspaces(hasOperationsAccess: boolean): Workspace[] {
-  return hasOperationsAccess ? ALL_WORKSPACES : WORKSPACES;
-}
 
 export interface BreadcrumbCrumb {
   title: string;
@@ -40,10 +32,6 @@ export function findMenuItemByPath(config: MenuConfig, path: string): MenuItem |
  * Dinamik placeholder sayfası ([...slug]) başlık + notionUrl için bunu kullanır.
  */
 export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
-  if (isOperationsPath(path)) {
-    return findMenuItemByPath(OPERATIONS_MENU, path);
-  }
-
   for (const ws of WORKSPACES) {
     if (ws.path === path) {
       const group = ws.menu[0];
@@ -66,7 +54,7 @@ export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
  * Eşleşme yoksa ilk workspace'e (Home) düşer.
  */
 export function getActiveWorkspace(pathname: string): Workspace {
-  for (const ws of ALL_WORKSPACES) {
+  for (const ws of WORKSPACES) {
     for (const base of ws.basePaths) {
       const matches =
         base === '/' ? pathname === '/' : pathname === base || pathname.startsWith(base + '/');
@@ -126,16 +114,6 @@ function toBreadcrumbCrumb(
  * Aktif pathname için breadcrumb zincirini workspace menüsünden üretir.
  */
 export function getBreadcrumbs(pathname: string): BreadcrumbCrumb[] {
-  if (isOperationsPath(pathname)) {
-    const item = findMenuItemByPath(OPERATIONS_MENU, pathname);
-
-    if (item) {
-      return [{ title: 'Operations' }, { title: item.title! }];
-    }
-
-    return [{ title: 'Operations' }];
-  }
-
   const workspace = getActiveWorkspace(pathname);
 
   for (const group of workspace.menu) {
