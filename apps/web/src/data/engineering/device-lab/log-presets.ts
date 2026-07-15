@@ -1,5 +1,5 @@
-// Device Lab — Log yakalama ön ayarları, mock veriler ve yardımcı fonksiyonlar.
-// Referans release: 8.4.60 · Tarih: 2026-07-12
+// Device Lab — Log capture presets, mock data and helper functions.
+// Reference release: 8.4.60 · Date: 2026-07-12
 
 import type {
   CapturePreset,
@@ -24,79 +24,79 @@ export const LOG_SOURCE_META: Record<
   app: {
     label: 'App Process',
     tone: 'blue',
-    description: 'NesyMobile ana uygulama logları',
+    description: 'NesyMobile main app logs',
     tags: ['NesyApp', 'MainActivity', 'ViewModel'],
   },
   system: {
     label: 'System',
     tone: 'gray',
-    description: 'Android sistem logları',
+    description: 'Android system logs',
     tags: ['System', 'ActivityManager', 'WindowManager'],
   },
   network: {
     label: 'Network',
     tone: 'teal',
-    description: 'Ağ istekleri ve yanıtları',
+    description: 'Network requests and responses',
     tags: ['Retrofit', 'NetworkInterceptor'],
   },
   okhttp: {
     label: 'OkHttp',
     tone: 'teal',
-    description: 'HTTP istemci logları',
+    description: 'HTTP client logs',
     tags: ['OkHttp', 'HttpLogging'],
   },
   'offline-queue': {
     label: 'Offline Queue',
     tone: 'amber',
-    description: 'Çevrimdışı kuyruk işlemleri',
+    description: 'Offline queue operations',
     tags: ['RequestSender', 'QueueManager', 'OfflineSync'],
   },
   fiscal: {
     label: 'Fiscal',
     tone: 'purple',
-    description: 'Fiskalizasyon işlemleri',
+    description: 'Fiscalization operations',
     tags: ['FiscalService', 'FiscalManager'],
   },
   scanner: {
     label: 'Scanner',
     tone: 'indigo',
-    description: 'Barkod okuyucu olayları',
+    description: 'Barcode scanner events',
     tags: ['BarcodeScanner', 'CameraScanner'],
   },
   location: {
     label: 'Location',
     tone: 'green',
-    description: 'Konum servisi logları',
+    description: 'Location service logs',
     tags: ['LocationService', 'GPSProvider'],
   },
   payment: {
     label: 'Payment',
     tone: 'orange',
-    description: 'Ödeme işlemi logları',
+    description: 'Payment operation logs',
     tags: ['PaymentManager', 'PaymentProvider'],
   },
   crash: {
     label: 'Crash',
     tone: 'red',
-    description: 'Çökme ve ANR logları',
+    description: 'Crash and ANR logs',
     tags: ['AndroidRuntime', 'FATAL', 'ANR'],
   },
   workmanager: {
     label: 'WorkManager',
     tone: 'blue',
-    description: 'Arka plan iş yöneticisi',
+    description: 'Background work manager',
     tags: ['WorkManager', 'ScheduledWork'],
   },
   firebase: {
     label: 'Firebase',
     tone: 'amber',
-    description: 'Firebase ve FCM logları',
+    description: 'Firebase and FCM logs',
     tags: ['FirebaseMessaging', 'FCM'],
   },
   room: {
     label: 'Room DB',
     tone: 'purple',
-    description: 'Veritabanı işlem logları',
+    description: 'Database operation logs',
     tags: ['RoomDatabase', 'SQLite'],
   },
 }
@@ -128,37 +128,37 @@ export const CAPTURE_MODE_META: Record<
 > = {
   quick: {
     label: 'Quick Diagnostic',
-    description: 'Hızlı tanılama — ana uygulama ve hata logları',
+    description: 'Quick diagnostic — main app and error logs',
     icon: 'Zap',
     defaultSources: ['app', 'crash'],
   },
   'app-session': {
     label: 'App Session',
-    description: 'Tam uygulama oturumu yakalama',
+    description: 'Full app session capture',
     icon: 'AppWindow',
     defaultSources: ['app', 'network', 'okhttp', 'room'],
   },
   'specific-flow': {
     label: 'Specific Flow',
-    description: 'Belirli bir iş akışı izleme',
+    description: 'Monitor specific workflow',
     icon: 'GitBranch',
     defaultSources: ['app', 'network'],
   },
   'crash-anr': {
     label: 'Crash & ANR',
-    description: 'Çökme ve yanıt vermiyor analizi',
+    description: 'Crash and unresponsive analysis',
     icon: 'Bug',
     defaultSources: ['crash', 'system', 'app'],
   },
   'full-diagnostic': {
     label: 'Full Device Diagnostic',
-    description: 'Tüm kaynakları kapsayan tam tanılama',
+    description: 'Full diagnostic covering all sources',
     icon: 'Scan',
     defaultSources: [...ALL_SOURCES],
   },
   custom: {
     label: 'Custom',
-    description: 'Özel kaynak ve filtre seçimi',
+    description: 'Custom source and filter selection',
     icon: 'Settings',
     defaultSources: [],
   },
@@ -167,12 +167,12 @@ export const CAPTURE_MODE_META: Record<
 // ── TIME_RANGE_OPTIONS ──────────────────────────────────────────────
 
 export const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
-  { value: 'now', label: 'Şu an (canlı)' },
-  { value: 'last-5m', label: 'Son 5 dakika' },
-  { value: 'last-15m', label: 'Son 15 dakika' },
-  { value: 'last-30m', label: 'Son 30 dakika' },
-  { value: 'last-1h', label: 'Son 1 saat' },
-  { value: 'custom', label: 'Özel aralık…' },
+  { value: 'now', label: 'Now (live)' },
+  { value: 'last-5m', label: 'Last 5 minutes' },
+  { value: 'last-15m', label: 'Last 15 minutes' },
+  { value: 'last-30m', label: 'Last 30 minutes' },
+  { value: 'last-1h', label: 'Last 1 hour' },
+  { value: 'custom', label: 'Custom range…' },
 ]
 
 // ── CAPTURE_PRESETS ─────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'startup-login',
     label: 'Startup & Login',
-    description: 'Uygulama başlatma, token doğrulama ve giriş akışı logları',
+    description: 'App startup, token verification and login flow logs',
     icon: 'LogIn',
     sources: ['app', 'network', 'okhttp'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -194,7 +194,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'schedule-stoplist',
     label: 'Schedule & Stop List',
-    description: 'Rut programı indirme, durak listesi ve FCM tetikleyici logları',
+    description: 'Route schedule download, stop list and FCM trigger logs',
     icon: 'CalendarDays',
     sources: ['app', 'network', 'room'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -207,7 +207,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'delivery-flow',
     label: 'Delivery Flow',
-    description: 'Teslimat akışının tamamı — ödeme, fiskalizasyon, çevrimdışı kuyruk dahil',
+    description: 'Complete delivery flow — including payment, fiscalization, offline queue',
     icon: 'Truck',
     sources: ['app', 'network', 'payment', 'fiscal', 'offline-queue', 'room'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -227,7 +227,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'payment-fiscal',
     label: 'Payment & Fiscal',
-    description: 'Ödeme sağlayıcı ve fiskalizasyon entegrasyonu logları',
+    description: 'Payment provider and fiscalization integration logs',
     icon: 'CreditCard',
     sources: ['payment', 'fiscal', 'network'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -243,7 +243,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'offline-queue',
     label: 'Offline Queue',
-    description: 'Çevrimdışı istek kuyruğu, ağ geçişi ve senkronizasyon logları',
+    description: 'Offline request queue, network transition and synchronization logs',
     icon: 'CloudOff',
     sources: ['offline-queue', 'network', 'room'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -259,7 +259,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'barcode-scan',
     label: 'Barcode & Scan',
-    description: 'Barkod okuyucu donanım olayları ve uygulama yanıtı logları',
+    description: 'Barcode scanner hardware events and app response logs',
     icon: 'ScanBarcode',
     sources: ['scanner', 'app'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -272,7 +272,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'd4me-locker',
     label: 'D4Me / Locker',
-    description: 'D4Me dolap entegrasyonu ve BLE iletişim logları',
+    description: 'D4Me locker integration and BLE communication logs',
     icon: 'Lock',
     sources: ['app', 'network'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],
@@ -285,7 +285,7 @@ export const CAPTURE_PRESETS: CapturePreset[] = [
   {
     id: 'location',
     label: 'Location',
-    description: 'Konum servisi, GPS sağlayıcı ve geofence logları',
+    description: 'Location service, GPS provider and geofence logs',
     icon: 'MapPin',
     sources: ['location', 'system'],
     levels: ['debug', 'info', 'warn', 'error', 'fatal'],

@@ -276,12 +276,9 @@ const TURKISH_ALIAS_WORDS = new Set([
 ])
 
 function displayAliases(entity: DomainEntity) {
-  const turkishName = entity.turkishName.toLocaleLowerCase('tr')
   return entity.aliases
     .filter((alias) => /^[\x20-\x7E]+$/.test(alias))
-    .filter((alias) => !/[ğüşöçıİĞÜŞÖÇ]/.test(alias))
     .filter((alias) => alias !== entity.name)
-    .filter((alias) => alias.toLocaleLowerCase('tr') !== turkishName)
     .filter((alias) => {
       const words = alias.toLocaleLowerCase('en').split(/[\s\-/]+/)
       return words.every((word) => {
@@ -297,7 +294,7 @@ function relationFor(entity: DomainEntity) {
 }
 
 function normalize(value: string) {
-  return value.toLocaleLowerCase('tr').replace(/ı/g, 'i')
+  return value.toLocaleLowerCase('en')
 }
 
 function searchableEntity(entity: DomainEntity) {
@@ -305,7 +302,6 @@ function searchableEntity(entity: DomainEntity) {
   const category = categoryMeta(entityCategory(entity)).label
   return normalize([
     entity.name,
-    entity.turkishName,
     entity.id,
     category,
     ...entity.aliases,
@@ -331,9 +327,7 @@ function ruleMatches(rule: PropagationRule, query: string) {
     rule.example,
     rule.direction,
     from?.name,
-    from?.turkishName,
     to?.name,
-    to?.turkishName,
   ].join(' ')).includes(normalize(query))
 }
 

@@ -135,45 +135,45 @@ export const DEVICE_STATUS_META: Record<
   { label: string; tone: Tone; dotClass: string; description: string }
 > = {
   connected: {
-    label: 'Bağlı',
+    label: 'Connected',
     tone: 'green',
     dotClass: 'bg-green-500 animate-pulse',
-    description: 'Cihaz bağlı ve ADB üzerinden erişilebilir durumda.',
+    description: 'Device is connected and accessible via ADB.',
   },
   unauthorized: {
-    label: 'Yetki Bekliyor',
+    label: 'Pending Authorization',
     tone: 'amber',
     dotClass: 'bg-amber-500 animate-pulse',
     description:
-      'Cihazda USB hata ayıklama izni henüz verilmedi. Cihaz ekranındaki izin iletişim kutusunu onaylayın.',
+      'USB debugging permission has not yet been granted on the device. Confirm the permission dialog on the device screen.',
   },
   offline: {
-    label: 'Çevrimdışı',
+    label: 'Offline',
     tone: 'gray',
     dotClass: 'bg-gray-400',
     description:
-      'Cihaz algılanıyor ancak ADB bağlantısı kurulamıyor. Kabloyu kontrol edin veya USB modunu değiştirin.',
+      'Device is detected but ADB connection cannot be established. Check the cable or change the USB mode.',
   },
   'app-not-installed': {
-    label: 'Uygulama Yüklü Değil',
+    label: 'App Not Installed',
     tone: 'orange',
     dotClass: 'bg-orange-500',
     description:
-      'Cihaz bağlı ancak NesyMobile uygulaması yüklü değil. Önce uygulamayı yükleyin.',
+      'Device is connected but NesyMobile app is not installed. Install the app first.',
   },
   'incompatible-build': {
-    label: 'Uyumsuz Build',
+    label: 'Incompatible Build',
     tone: 'red',
     dotClass: 'bg-red-500',
     description:
-      'Cihazda yüklü build, seçilen senaryo ile uyumsuz. Doğru build türüne geçiş yapın.',
+      'The build installed on the device is incompatible with the selected scenario. Switch to the correct build type.',
   },
   busy: {
-    label: 'Meşgul',
+    label: 'Busy',
     tone: 'purple',
     dotClass: 'bg-purple-500 animate-pulse',
     description:
-      'Cihazda şu anda başka bir senaryo çalıştırılıyor. Tamamlanmasını bekleyin veya iptal edin.',
+      'Another scenario is currently running on the device. Wait for it to complete or cancel it.',
   },
 }
 
@@ -186,22 +186,22 @@ export const RISK_LEVEL_META: Record<
   { label: string; tone: Tone; description: string }
 > = {
   safe: {
-    label: 'Güvenli',
+    label: 'Safe',
     tone: 'green',
     description:
-      'Bu senaryo salt-okunur sorgular veya geri alınabilir değişiklikler içerir. Veri kaybı riski yoktur.',
+      'This scenario contains read-only queries or reversible changes. There is no risk of data loss.',
   },
   caution: {
-    label: 'Dikkat',
+    label: 'Caution',
     tone: 'amber',
     description:
-      'Bu senaryo cihaz üzerinde değişiklik yapar ancak geri alınabilir. Parametreleri doğruladıktan sonra çalıştırın.',
+      'This scenario makes changes on the device but is reversible. Run it after verifying the parameters.',
   },
   destructive: {
-    label: 'Yıkıcı',
+    label: 'Destructive',
     tone: 'red',
     description:
-      'Bu senaryo geri alınamaz değişiklikler yapabilir (örn. veritabanı silme, fabrika ayarlarına sıfırlama). Son derece dikkatli olun.',
+      'This scenario may make irreversible changes (e.g. database deletion, factory reset). Be extremely careful.',
   },
 }
 
@@ -217,25 +217,25 @@ export const BUILD_COMPATIBILITY_META: Record<
     label: 'Debug',
     tone: 'blue',
     description:
-      'Sadece debug build yüklü cihazlarda çalışır. Debuggable flag\'inin aktif olması gerekir.',
+      'Only runs on devices with a debug build installed. The debuggable flag must be active.',
   },
   internal: {
     label: 'Internal',
     tone: 'purple',
     description:
-      'Internal veya debug build gerektirir. Production build\'lerde çalışmaz.',
+      'Requires an internal or debug build. Does not run on production builds.',
   },
   any: {
-    label: 'Tüm Build\'ler',
+    label: 'All Builds',
     tone: 'green',
     description:
-      'Build türünden bağımsız olarak tüm cihazlarda çalıştırılabilir.',
+      'Can be run on all devices regardless of the build type.',
   },
   root: {
-    label: 'Root Gerekli',
+    label: 'Root Required',
     tone: 'red',
     description:
-      'Root erişimi olan cihazlarda çalışır. Genellikle emülatörler veya özel yapılandırılmış test cihazları ile kullanılır.',
+      'Runs on devices with root access. Typically used with emulators or specially configured test devices.',
   },
 }
 

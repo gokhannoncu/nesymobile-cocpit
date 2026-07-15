@@ -36,32 +36,32 @@ interface ShareBundleDialogProps {
 /* ──────────────────── Step definitions ───────────────────────────── */
 
 const STEPS = [
-  { num: 1, label: 'İçerik Seçimi', icon: Package },
-  { num: 2, label: 'Gizlilik İnceleme', icon: Shield },
+  { num: 1, label: 'Content Selection', icon: Package },
+  { num: 2, label: 'Privacy Review', icon: Shield },
   { num: 3, label: 'Format', icon: FileArchive },
-  { num: 4, label: 'Erişim Kontrolü', icon: Lock },
+  { num: 4, label: 'Access Control', icon: Lock },
 ]
 
 /* ──────────────────── Content options ────────────────────────────── */
 
 const CONTENT_OPTIONS = [
-  { id: 'timeline', label: 'Timeline olayları', description: 'Filtrelenmiş timeline görünümündeki tüm olaylar', checked: true },
-  { id: 'raw-logcat', label: 'Raw logcat çıktısı', description: 'İşlenmemiş ham logcat buffer metni', checked: true },
-  { id: 'app-logs', label: 'Uygulama log dosyaları', description: 'NesyMobile uygulama log dosyaları', checked: false },
-  { id: 'device-info', label: 'Cihaz bilgisi', description: 'Model, Android sürümü, build tipi, batarya vb.', checked: true },
-  { id: 'network', label: 'Network trace', description: 'HTTP istek/yanıt özetleri ve zamanlama', checked: false },
-  { id: 'screenshots', label: 'Ekran görüntüleri', description: 'Yakalama sırasında alınan ekran görüntüleri', checked: false },
-  { id: 'adb-report', label: 'ADB senaryo raporu', description: 'İlişkili ADB senaryo çalıştırma sonuçları', checked: false },
+  { id: 'timeline', label: 'Timeline events', description: 'All events in the filtered timeline view', checked: true },
+  { id: 'raw-logcat', label: 'Raw logcat output', description: 'Unprocessed raw logcat buffer text', checked: true },
+  { id: 'app-logs', label: 'Application log files', description: 'NesyMobile application log files', checked: false },
+  { id: 'device-info', label: 'Device info', description: 'Model, Android version, build type, battery etc.', checked: true },
+  { id: 'network', label: 'Network trace', description: 'HTTP request/response summaries and timing', checked: false },
+  { id: 'screenshots', label: 'Screenshots', description: 'Screenshots taken during capture', checked: false },
+  { id: 'adb-report', label: 'ADB scenario report', description: 'Related ADB scenario run results', checked: false },
 ]
 
 /* ──────────────────── Format options ─────────────────────────────── */
 
 const FORMAT_OPTIONS = [
-  { id: 'link', label: 'Paylaşılabilir Link', description: 'Cockpit üzerinden erişilebilir güvenli link' },
-  { id: 'zip', label: 'ZIP Bundle', description: 'İndirilebilir sıkıştırılmış teşhis paketi' },
-  { id: 'plaintext', label: 'Plain Text', description: 'Düz metin formatında log çıktısı' },
-  { id: 'ticket', label: 'Ticket', description: 'Doğrudan ticket sistemine gönder' },
-  { id: 'incident', label: 'Incident', description: 'Incident yönetim sistemine ekle' },
+  { id: 'link', label: 'Shareable Link', description: 'Secure link accessible via Cockpit' },
+  { id: 'zip', label: 'ZIP Bundle', description: 'Downloadable compressed diagnostic package' },
+  { id: 'plaintext', label: 'Plain Text', description: 'Log output in plain text format' },
+  { id: 'ticket', label: 'Ticket', description: 'Send directly to the ticket system' },
+  { id: 'incident', label: 'Incident', description: 'Add to Incident management system' },
 ]
 
 /* ──────────────────── Main Component ─────────────────────────────── */
@@ -110,7 +110,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <FileArchive className="size-4 text-purple-500" />
-            Teşhis Paketi Oluştur
+            Create Diagnostic Package
             {sessionId && (
               <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
                 {sessionId}
@@ -186,7 +186,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
               {step === 1 && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Teşhis paketine dahil edilecek içerikleri seçin.
+                    Select contents to be included in the diagnostic package.
                   </p>
                   {CONTENT_OPTIONS.map((opt) => (
                     <label
@@ -220,7 +220,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
               {step === 2 && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Hassas verilerin maskeleme kurallarını gözden geçirin. Aktif kurallar paylaşılan verilerde uygulanacaktır.
+                    Review masking rules for sensitive data. Active rules will be applied to shared data.
                   </p>
                   {PRIVACY_RULES.map((rule) => (
                     <div
@@ -255,7 +255,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
                       {privacyToggles[rule.id] && (
                         <Badge variant="secondary" appearance="outline" size="xs" className="text-green-700 dark:text-green-400">
                           <Eye className="size-3 mr-0.5" />
-                          Aktif
+                          Active
                         </Badge>
                       )}
                     </div>
@@ -267,7 +267,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
               {step === 3 && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Teşhis paketinin çıktı formatını seçin.
+                    Select output format for the diagnostic package.
                   </p>
                   {FORMAT_OPTIONS.map((fmt) => (
                     <button
@@ -309,18 +309,18 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
               {step === 4 && (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Teşhis paketinin erişim ve denetim ayarlarını yapılandırın.
+                    Configure access and audit settings for the diagnostic package.
                   </p>
 
                   {/* Access level */}
                   <div>
                     <label className="text-[11px] font-semibold text-foreground/80 block mb-2">
-                      Erişim Seviyesi
+                      Access Level
                     </label>
                     <div className="flex gap-2">
                       {([
-                        { id: 'internal' as const, label: 'Internal', icon: Lock, desc: 'Sadece ekip üyeleri' },
-                        { id: 'team' as const, label: 'Team', icon: Users, desc: 'Tüm organizasyon' },
+                        { id: 'internal' as const, label: 'Internal', icon: Lock, desc: 'Team members only' },
+                        { id: 'team' as const, label: 'Team', icon: Users, desc: 'Whole organization' },
                       ]).map((opt) => {
                         const Icon = opt.icon
                         return (
@@ -359,13 +359,13 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
                   {/* Expiry */}
                   <div>
                     <label className="text-[11px] font-semibold text-foreground/80 block mb-2">
-                      Geçerlilik Süresi
+                      Validity Period
                     </label>
                     <div className="flex gap-2">
                       {([
-                        { id: '7d' as const, label: '7 gün' },
-                        { id: '30d' as const, label: '30 gün' },
-                        { id: 'none' as const, label: 'Süresiz' },
+                        { id: '7d' as const, label: '7 days' },
+                        { id: '30d' as const, label: '30 days' },
+                        { id: 'none' as const, label: 'Indefinite' },
                       ]).map((opt) => (
                         <button
                           key={opt.id}
@@ -387,10 +387,10 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div>
                       <p className="text-xs font-semibold text-foreground">
-                        Denetim Kaydı
+                        Audit Log
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Kim ne zaman erişti bilgisini kaydet
+                        Log who accessed and when
                       </p>
                     </div>
                     <Switch
@@ -416,12 +416,12 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
             className="gap-1"
           >
             <ChevronLeft className="size-3.5" />
-            Geri
+            Back
           </Button>
 
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={onClose}>
-              İptal
+              Cancel
             </Button>
             {canGoNext ? (
               <Button
@@ -429,7 +429,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
                 onClick={handleNext}
                 className="gap-1 bg-purple-600 hover:bg-purple-700 text-white"
               >
-                İleri
+                Next
                 <ChevronRight className="size-3.5" />
               </Button>
             ) : (
@@ -439,7 +439,7 @@ export function ShareBundleDialog({ open, onClose, sessionId }: ShareBundleDialo
                 className="gap-1 bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <Package className="size-3.5" />
-                Teşhis Paketini Oluştur
+                Create Diagnostic Package
               </Button>
             )}
           </div>

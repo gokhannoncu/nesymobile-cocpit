@@ -1,12 +1,12 @@
 // ============================================================================
 // Debug View — Device Runtime (Overview) mock data
 // ============================================================================
-// Seçili cihazdan ADB / Nesy Device Bridge üzerinden okunmuş gibi modellenmiş
-// anlık çalışma zamanı bilgisi. Değerler NesyMobile HR staging ortamına göre.
+// Instant runtime information modeled as if read from the selected device via ADB / Nesy Device Bridge.
+// Values are according to NesyMobile HR staging environment.
 
 import type { DeviceRuntime } from './types'
 
-/** Cihaz kimliği → runtime snapshot eşlemesi (MOCK_DEVICES.id ile aynı anahtar). */
+/** Device ID → runtime snapshot mapping (same key as MOCK_DEVICES.id). */
 export const MOCK_RUNTIME: Record<string, DeviceRuntime> = {
   'dev-urovo-dt50-001': {
     deviceId: 'dev-urovo-dt50-001',
@@ -172,7 +172,7 @@ export const MOCK_RUNTIME: Record<string, DeviceRuntime> = {
       crashlyticsCustomKeys: [
         { key: 'username', value: 'test.kurye' },
         { key: 'fullName', value: 'Test Kurye' },
-        { key: 'unitName', value: 'İstanbul Test Hub' },
+        { key: 'unitName', value: 'Istanbul Test Hub' },
         { key: 'schedule', value: 'SCH-TR-2026-07-15-1180' },
         { key: 'courierId', value: 'D4M-TR-0007' },
         { key: 'route', value: 'IST-TST-01' },
@@ -308,7 +308,7 @@ export const MOCK_RUNTIME: Record<string, DeviceRuntime> = {
   },
 }
 
-/** Sinyal seviyesini insan-okur etikete çevirir. */
+/** Converts signal level to human-readable label. */
 export function signalLabel(level: number): string {
-  return ['Yok', 'Zayıf', 'Orta', 'İyi', 'Mükemmel'][level] ?? 'Bilinmiyor'
+  return ['None', 'Weak', 'Moderate', 'Good', 'Excellent'][level] ?? 'Unknown'
 }

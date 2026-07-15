@@ -1,8 +1,8 @@
 'use client'
 
-// Senaryo Havuzu — sol panel.
-// Aranabilir, filtrelenebilir senaryo listesi. Kategori gruplaması
-// ve hızlı-görünüm filtreleri ile birlikte gelir.
+// Scenario Pool — left panel.
+// Searchable, filterable scenario list. Comes with category grouping
+// and quick-view filters.
 
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -22,7 +22,7 @@ import {
 } from '@/data/engineering/device-lab/adb-scenarios'
 import type { ScenarioPackage, ScenarioCategory } from '@/data/engineering/device-lab/device-lab-types'
 
-/* ─── Kategori renklerinin tonu ─── */
+/* ─── Category color tones ─── */
 const CATEGORY_TONE: Record<ScenarioCategory, string> = {
   schedule: 'bg-blue-500',
   auth: 'bg-purple-500',
@@ -34,7 +34,7 @@ const CATEGORY_TONE: Record<ScenarioCategory, string> = {
   diagnostic: 'bg-red-500',
 }
 
-/* ─── Süre formatla ─── */
+/* ─── Format duration ─── */
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `~${seconds}s`
   const m = Math.floor(seconds / 60)
@@ -42,7 +42,7 @@ function formatDuration(seconds: number): string {
   return s > 0 ? `~${m}m ${s}s` : `~${m}m`
 }
 
-/* ─── Bileşen Props ─── */
+/* ─── Component Props ─── */
 interface ScenarioPoolProps {
   selectedId: string | null
   onSelect: (scenario: ScenarioPackage) => void
@@ -53,7 +53,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | null>(null)
 
-  // Filtrelenmiş senaryolar
+  // Filtered scenarios
   const filtered = useMemo(
     () => filterScenarios(search, activeFilter, selectedCategory),
     [search, activeFilter, selectedCategory],
@@ -71,13 +71,13 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-foreground">Scenario Pool</h2>
           <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-[10px]">
-            {SCENARIO_PACKAGES.length} senaryo
+            {SCENARIO_PACKAGES.length} scenarios
           </Badge>
         </div>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Senaryo ara..."
+            placeholder="Search scenario..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 pl-8 text-xs"
@@ -85,7 +85,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
         </div>
       </div>
 
-      {/* ─── Hızlı filtreler ─── */}
+      {/* ─── Quick filters ─── */}
       <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
         {QUICK_VIEW_FILTERS.map((f) => (
           <button
@@ -104,7 +104,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
         ))}
       </div>
 
-      {/* ─── Kategori filtreleri ─── */}
+      {/* ─── Category filters ─── */}
       <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
         <button
           type="button"
@@ -116,7 +116,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
               : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
-          Tümü
+          All
         </button>
         {SCENARIO_CATEGORIES.map((cat) => (
           <button
@@ -136,7 +136,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
         ))}
       </div>
 
-      {/* ─── Senaryo listesi ─── */}
+      {/* ─── Scenario list ─── */}
       <ScrollArea className="h-[520px]">
         <div className="divide-y divide-border/60">
           <AnimatePresence mode="popLayout">
@@ -148,7 +148,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
                 exit={{ opacity: 0 }}
               >
                 <Search className="size-5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Eşleşen senaryo bulunamadı</p>
+                <p className="text-xs text-muted-foreground">No matching scenario found</p>
               </motion.div>
             )}
             {filtered.map((scenario, i) => (
@@ -168,7 +168,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
                     : 'border-l-transparent hover:bg-muted/50',
                 )}
               >
-                {/* Üst satır: isim + favori */}
+                {/* Top row: name + favorite */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className={cn('mt-0.5 inline-block size-2 shrink-0 rounded-full', CATEGORY_TONE[scenario.category])} />
@@ -181,12 +181,12 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
                   )}
                 </div>
 
-                {/* Açıklama */}
+                {/* Description */}
                 <p className="line-clamp-1 text-[11px] leading-relaxed text-muted-foreground">
                   {scenario.description}
                 </p>
 
-                {/* Alt satır: rozetler */}
+                {/* Bottom row: badges */}
                 <div className="flex flex-wrap items-center gap-1">
                   <RiskBadge risk={scenario.riskLevel} size="xs" />
                   <BuildCompatBadge build={scenario.buildCompatibility} size="xs" />
@@ -199,7 +199,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-xs">
-                        Tahmini süre: {formatDuration(scenario.estimatedDuration)}
+                        Estimated duration: {formatDuration(scenario.estimatedDuration)}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -210,7 +210,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
                   )}
                 </div>
 
-                {/* Seçili göstergesi */}
+                {/* Selected indicator */}
                 {selectedId === scenario.id && (
                   <motion.div
                     className="absolute inset-y-0 left-0 w-[3px] rounded-r bg-blue-500"
@@ -227,7 +227,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
       {/* ─── Footer ─── */}
       <div className="flex items-center justify-between border-t border-border px-3 py-2">
         <span className="text-[10.5px] text-muted-foreground">
-          {filtered.length} / {SCENARIO_PACKAGES.length} senaryo gösteriliyor
+          Showing {filtered.length} / {SCENARIO_PACKAGES.length} scenarios
         </span>
         {selectedCategory && (
           <button
@@ -235,7 +235,7 @@ export function ScenarioPool({ selectedId, onSelect }: ScenarioPoolProps) {
             onClick={() => setSelectedCategory(null)}
             className="text-[10.5px] font-medium text-blue-600 hover:underline dark:text-blue-400"
           >
-            Filtreyi temizle
+            Clear filter
           </button>
         )}
       </div>

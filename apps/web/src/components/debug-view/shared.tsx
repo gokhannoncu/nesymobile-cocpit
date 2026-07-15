@@ -1,6 +1,6 @@
 'use client'
 
-// Debug View ortak görsel parçaları — tüm debug sayfaları aynı dili buradan alır.
+// Debug View shared visual parts — all debug pages get the same language from here.
 
 import { ReactNode, useState } from 'react'
 import Link from 'next/link'
@@ -11,7 +11,7 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { EASE, toneIcon, toneIconBox, toneText, type Tone } from '@/components/product'
 
-/** Debug View sayfalarının tek gerçek link kaynağı — header çapraz linkleri buradan. */
+/** Single source of truth for Debug View pages — header cross links from here. */
 export const DEBUG_LINKS: { path: string; title: string; icon: string }[] = [
   { path: '/debug-view/overview', title: 'Device Overview', icon: 'MonitorSmartphone' },
   { path: '/debug-view/screen-state', title: 'Screen State', icon: 'LayoutDashboard' },
@@ -22,7 +22,7 @@ export const DEBUG_LINKS: { path: string; title: string; icon: string }[] = [
 ]
 
 /**
- * Kompakt debug sayfa başlığı — ikon + başlık + tek cümle amaç + rozetler.
+ * Compact debug page header — icon + title + single sentence purpose + badges.
  */
 export function DebugHeader({
   icon: Icon,
@@ -74,7 +74,7 @@ export function DebugHeader({
   )
 }
 
-/** Kopyalanabilir kod / JSON bloğu. */
+/** Copyable code / JSON block. */
 export function CodeBlock({ code, label, className }: { code: string; label?: string; className?: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -94,7 +94,7 @@ export function CodeBlock({ code, label, className }: { code: string; label?: st
             }}
           >
             {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-            {copied ? 'Kopyalandı' : 'Kopyala'}
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
       )}
@@ -105,7 +105,7 @@ export function CodeBlock({ code, label, className }: { code: string; label?: st
   )
 }
 
-/** Küçük etiket-değer satırı. */
+/** Small label-value row. */
 export function InfoRow({
   label,
   value,
@@ -127,7 +127,7 @@ export function InfoRow({
   )
 }
 
-/** Tonlu durum rozeti (enum etiketleri için). */
+/** Toned status badge (for enum labels). */
 export function TonePill({ label, tone, className }: { label: string; tone: Tone; className?: string }) {
   return (
     <span
@@ -143,7 +143,7 @@ export function TonePill({ label, tone, className }: { label: string; tone: Tone
   )
 }
 
-/** Cihaz seçilmediğinde gösterilen boş durum. */
+/** Empty state shown when no device is selected. */
 export function NoDeviceState({ className }: { className?: string }) {
   return (
     <motion.div
@@ -156,16 +156,16 @@ export function NoDeviceState({ className }: { className?: string }) {
         <span className="text-2xl">📱</span>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-foreground">Cihaz Seçilmedi</h3>
+        <h3 className="text-sm font-semibold text-foreground">No Device Selected</h3>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          Debug verilerini görüntülemek için üstteki çubuktan bağlı bir cihaz seçin.
+          Select a connected device from the top bar to view debug data.
         </p>
       </div>
     </motion.div>
   )
 }
 
-/** Runtime snapshot'ı olmayan cihaz seçildiğinde. */
+/** When a device without a runtime snapshot is selected. */
 export function NoRuntimeState({ deviceName, className }: { deviceName: string; className?: string }) {
   return (
     <motion.div
@@ -176,17 +176,17 @@ export function NoRuntimeState({ deviceName, className }: { deviceName: string; 
     >
       <span className="text-2xl">⚠️</span>
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{deviceName} için canlı veri yok</h3>
+        <h3 className="text-sm font-semibold text-foreground">No live data for {deviceName}</h3>
         <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-          Bu cihaz bağlı değil veya NesyMobile debug/internal build yüklü değil. Bağlı bir debuggable
-          cihaz seçtiğinizde snapshot otomatik yüklenir.
+          This device is not connected or NesyMobile debug/internal build is not installed. When you select a connected debuggable
+          device, the snapshot will be loaded automatically.
         </p>
       </div>
     </motion.div>
   )
 }
 
-/** Diğer debug sayfalarına hızlı geçiş kartları (header sağ tarafı). */
+/** Quick access cards to other debug pages (header right side). */
 export function DebugCrossLinks({ currentPath }: { currentPath: string }) {
   const others = DEBUG_LINKS.filter((l) => l.path !== currentPath).slice(0, 3)
   return (

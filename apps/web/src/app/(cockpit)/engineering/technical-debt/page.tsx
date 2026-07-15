@@ -20,7 +20,7 @@ import {
   SCREEN_HEALTH,
 } from '@/data/engineering/architecture'
 
-const sevBadge = { critical: 'Kritik', high: 'Yüksek', medium: 'Orta' } as const
+const sevBadge = { critical: 'Critical', high: 'High', medium: 'Medium' } as const
 
 export default function TechnicalDebtPage() {
   return (
@@ -29,22 +29,22 @@ export default function TechnicalDebtPage() {
         icon={ListTodo}
         eyebrow="Architecture & Modernization"
         tone="orange"
-        title="Teknik borç: envanter, kanıt ve geri ödeme sırası."
-        lead="Teknik borç burada söylenti değil envanterdir: 10 anti-pattern, satır numarasıyla 9 doğrulanmış kritik bug ve 46 ekranın 15 kategoride sağlık skorları. Geri ödeme sırası Modernization Plan fazlarına bağlıdır; refactor commit'leri son 6 ayda −69% düştüğü için bu envanter aktif olarak büyüyor."
-        chips={['10 anti-pattern', '9 kritik bug', '46 ekran skorlandı', 'Refactor trendi: −69%']}
+        title="Technical debt: inventory, evidence and payback order."
+        lead="Technical debt here is an inventory, not a rumor: 10 anti-patterns, 9 verified critical bugs with line numbers, and health scores of 46 screens in 15 categories. The payback order depends on the Modernization Plan phases; since refactor commits dropped −69% in the last 6 months, this inventory is actively growing."
+        chips={['10 anti-patterns', '9 critical bugs', '46 screens scored', 'Refactor trend: −69%']}
       >
         <StatGrid cols={2}>
-          <StatCard label="Refactor Commit" value="4" tone="red" icon={Gauge} hint="Önceki 6 ay: 13 (−69%) — borç ödemesi durdu" />
-          <StatCard label="Net Kod Büyümesi" value="+109K" tone="orange" icon={AlertTriangle} hint="6 ayda +33% — silme azalıyor" />
+          <StatCard label="Refactor Commit" value="4" tone="red" icon={Gauge} hint="Previous 6 months: 13 (−69%) — debt payment stopped" />
+          <StatCard label="Net Code Growth" value="+109K" tone="orange" icon={AlertTriangle} hint="+33% in 6 months — deletions are decreasing" />
         </StatGrid>
       </HeroCallout>
 
       <PageSection
-        eyebrow="Desenler"
-        title="10 anti-pattern"
+        eyebrow="Patterns"
+        title="10 anti-patterns"
         icon={AlertTriangle}
         tone="red"
-        description="Tekil hatalar değil, sistematik desenler — her biri birden çok ekranı etkiler."
+        description="Not single errors, but systematic patterns — each affects multiple screens."
       >
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           {ANTI_PATTERNS.map((a) => (
@@ -66,14 +66,14 @@ export default function TechnicalDebtPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Doğrulanmış"
-        title="Kritik bug listesi — satır numarasıyla"
+        eyebrow="Verified"
+        title="Critical bug list — with line numbers"
         icon={Bug}
         tone="red"
-        description="Kod incelemesinde doğrulanmış, davranışı bilinen buglar. Faz 0'ın (Acil Müdahale) doğrudan girdisidir."
+        description="Bugs verified in code review, with known behaviors. This is the direct input for Phase 0 (Emergency Intervention)."
       >
         <ComparisonTable
-          headers={[{ label: '#' }, { label: 'Konum' }, { label: 'Bulgu' }, { label: 'Önem', tone: 'red' }]}
+          headers={[{ label: '#' }, { label: 'Location' }, { label: 'Finding' }, { label: 'Severity', tone: 'red' }]}
           rows={CRITICAL_BUGS.map((b) => [
             b.id,
             <code key="w" className="text-xs">{b.where}</code>,
@@ -84,18 +84,18 @@ export default function TechnicalDebtPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Ekran Sağlığı"
-        title="En riskli ekranlar (sağlık skoru 10 üzerinden)"
+        eyebrow="Screen Health"
+        title="Most risky screens (health score out of 10)"
         icon={Microscope}
         tone="orange"
         description={HEALTH_SCORE_NOTE}
       >
         <ComparisonTable
           headers={[
-            { label: 'Ekran' },
-            { label: 'Satır', tone: 'orange' },
-            { label: 'Skor', tone: 'red' },
-            { label: 'Öne çıkan bulgu' },
+            { label: 'Screen' },
+            { label: 'Lines', tone: 'orange' },
+            { label: 'Score', tone: 'red' },
+            { label: 'Prominent finding' },
           ]}
           rows={SCREEN_HEALTH.map((s) => [
             <code key="n" className="text-xs font-semibold">{s.name}</code>,
@@ -108,11 +108,11 @@ export default function TechnicalDebtPage() {
         />
       </PageSection>
 
-      <Callout icon={Info} title="Borç nasıl kapanır?" tone="orange">
-        Bu envanterdeki her madde Modernization Plan’da bir faza eşlenir: kritik buglar + güvenlik →{' '}
-        <b>Faz 0</b>; sıfır test → <b>Faz 1</b>; duplication + ülke dallanması → <b>Faz 2</b>; god
-        object’ler → <b>Faz 3</b>; deprecated API + polling → <b>Faz 4</b>; UI borcu → <b>Faz 5</b>.
-        Envantere eklenen her yeni madde bir faza bağlanmadan "kabul edilmiş" sayılmaz.
+      <Callout icon={Info} title="How is the debt paid off?" tone="orange">
+        Every item in this inventory is mapped to a phase in the Modernization Plan: critical bugs + security →{' '}
+        <b>Phase 0</b>; zero tests → <b>Phase 1</b>; duplication + country branching → <b>Phase 2</b>; god
+        objects → <b>Phase 3</b>; deprecated API + polling → <b>Phase 4</b>; UI debt → <b>Phase 5</b>.
+        Any new item added to the inventory is not considered "accepted" without being linked to a phase.
       </Callout>
     </ProductPage>
   )

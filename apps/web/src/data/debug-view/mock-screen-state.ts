@@ -1,9 +1,9 @@
 // ============================================================================
-// Debug View — Screen State (canlı ekran durumu) mock data
+// Debug View — Screen State (live screen state) mock data
 // ============================================================================
-// O anda ekranda ne var? DeliveryFragment örneği. Alan adları gerçek
-// DeliveryFragment property'leri ve activity-scoped SharedViewModel
-// state'leriyle birebir. collectionType = CollectionType enum.
+// What is on the screen right now? DeliveryFragment example. Field names are real
+// DeliveryFragment properties and activity-scoped SharedViewModel
+// exact matches with states. collectionType = CollectionType enum.
 
 import type { ScreenSnapshot } from './types'
 
@@ -72,7 +72,7 @@ export const MOCK_SCREEN_STATE: ScreenSnapshot = {
   ],
 }
 
-/** İkincil ekran örnekleri — Screen State sayfasında "geçmiş ekranlar" seçimi için. */
+/** Secondary screen examples — for "past screens" selection on the Screen State page. */
 export const SCREEN_HISTORY: { fragmentName: string; enteredAt: string; timeOnScreenSec: number; destination: string }[] = [
   { fragmentName: 'StopsFragment', enteredAt: '2026-07-15T09:12:04+02:00', timeOnScreenSec: 41, destination: 'stopsFragment' },
   { fragmentName: 'TaskFragment', enteredAt: '2026-07-15T09:12:45+02:00', timeOnScreenSec: 56, destination: 'tasksFragment' },

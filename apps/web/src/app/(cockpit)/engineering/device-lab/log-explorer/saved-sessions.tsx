@@ -70,13 +70,13 @@ interface SavedSessionsProps {
 
 const COLUMNS = [
   { key: 'id', label: 'Session ID', width: 'w-44' },
-  { key: 'device', label: 'Cihaz', width: 'w-48' },
+  { key: 'device', label: 'Device', width: 'w-48' },
   { key: 'preset', label: 'Preset', width: 'w-28' },
-  { key: 'context', label: 'Bağlam', width: 'flex-1 min-w-0' },
-  { key: 'duration', label: 'Süre', width: 'w-16' },
-  { key: 'events', label: 'Olaylar', width: 'w-16' },
-  { key: 'owner', label: 'Oluşturan', width: 'w-20' },
-  { key: 'shared', label: 'Paylaşım', width: 'w-32' },
+  { key: 'context', label: 'Context', width: 'flex-1 min-w-0' },
+  { key: 'duration', label: 'Duration', width: 'w-16' },
+  { key: 'events', label: 'Events', width: 'w-16' },
+  { key: 'owner', label: 'Owner', width: 'w-20' },
+  { key: 'shared', label: 'Share', width: 'w-32' },
 ]
 
 /* ──────────────────── Main Component ─────────────────────────────── */
@@ -96,8 +96,8 @@ export function SavedSessions({ sessions }: SavedSessionsProps) {
 
   return (
     <PageSection
-      title="Kayıtlı Oturumlar"
-      description="Daha önce kaydedilmiş log yakalama oturumları. Bir satıra tıklayarak detayları görüntüleyin."
+      title="Saved Sessions"
+      description="Previously saved log capture sessions. Click a row to view details."
     >
       <motion.div
         className="rounded-xl border bg-card overflow-hidden"
@@ -222,7 +222,7 @@ export function SavedSessions({ sessions }: SavedSessionsProps) {
                       </Badge>
                     ) : (
                       <span className="text-[10px] text-muted-foreground">
-                        Paylaşılmadı
+                        Not Shared
                       </span>
                     )}
                   </span>
@@ -233,7 +233,7 @@ export function SavedSessions({ sessions }: SavedSessionsProps) {
 
           {sorted.length === 0 && (
             <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
-              Kayıtlı oturum bulunamadı.
+              No saved sessions found.
             </div>
           )}
         </ScrollArea>
@@ -241,10 +241,10 @@ export function SavedSessions({ sessions }: SavedSessionsProps) {
         {/* ── Footer ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-2">
           <span className="text-[10px] text-muted-foreground">
-            Toplam {sorted.length} oturum
+            Total {sorted.length} sessions
           </span>
           <span className="text-[10px] text-muted-foreground">
-            {sortAsc ? 'Eski → Yeni' : 'Yeni → Eski'}
+            {sortAsc ? 'Old → New' : 'New → Old'}
           </span>
         </div>
       </motion.div>

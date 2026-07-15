@@ -1,7 +1,7 @@
 'use client'
 
-// Execution History — alt bölüm.
-// Geçmiş çalıştırmaları tablo ve detay drawer ile listeler.
+// Execution History — bottom section.
+// Lists past executions with table and detail drawer.
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
@@ -26,24 +26,24 @@ import { RunIdBadge, StepStatusIndicator } from '@/components/engineering/device
 import { CodeBlock } from '@/components/engineering/tools/shared'
 import type { ExecutionRecord, RunStatus } from '@/data/engineering/device-lab/device-lab-types'
 
-/* ─── Durum rozeti ─── */
+/* ─── Status badge ─── */
 const STATUS_CONFIG: Record<
   RunStatus,
   { label: string; icon: typeof CheckCircle2; className: string }
 > = {
-  pending: { label: 'Bekliyor', icon: Clock, className: 'text-muted-foreground' },
-  running: { label: 'Çalışıyor', icon: Loader2, className: 'text-blue-600 dark:text-blue-400' },
+  pending: { label: 'Pending', icon: Clock, className: 'text-muted-foreground' },
+  running: { label: 'Running', icon: Loader2, className: 'text-blue-600 dark:text-blue-400' },
   success: {
-    label: 'Başarılı',
+    label: 'Success',
     icon: CheckCircle2,
     className: 'text-green-600 dark:text-green-400',
   },
   partial: {
-    label: 'Kısmi',
+    label: 'Partial',
     icon: AlertTriangle,
     className: 'text-amber-600 dark:text-amber-400',
   },
-  failed: { label: 'Başarısız', icon: XCircle, className: 'text-red-600 dark:text-red-400' },
+  failed: { label: 'Failed', icon: XCircle, className: 'text-red-600 dark:text-red-400' },
 }
 
 function StatusBadge({ status }: { status: RunStatus }) {
@@ -62,15 +62,15 @@ function StatusBadge({ status }: { status: RunStatus }) {
   )
 }
 
-/* ─── Zaman formatla ─── */
+/* ─── Format time ─── */
 function formatTime(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function formatDuration(startIso: string, endIso: string | null): string {
@@ -89,20 +89,20 @@ interface ExecutionHistoryProps {
 export function ExecutionHistory({ records }: ExecutionHistoryProps) {
   const [selectedRecord, setSelectedRecord] = useState<ExecutionRecord | null>(null)
 
-  // En son 15 kayıt, zamana göre sıralı
+  // Latest 15 records, ordered by time
   const sorted = [...records]
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
     .slice(0, 15)
 
   return (
     <PageSection
-      eyebrow="Geçmiş"
+      eyebrow="History"
       title="Execution History"
-      description="Son çalıştırılan ADB senaryolarının detaylı kayıtları. Bir satıra tıklayarak detayları görüntüleyebilirsiniz."
+      description="Detailed records of recently executed ADB scenarios. Click a row to view details."
       icon={History}
       tone="gray"
     >
-      {/* ─── Tablo ─── */}
+      {/* ─── Table ─── */}
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -112,22 +112,22 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                   Run ID
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Senaryo
+                  Scenario
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Cihaz
+                  Device
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Kullanıcı
+                  User
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Zaman
+                  Time
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Süre
+                  Duration
                 </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                  Sonuç
+                  Result
                 </th>
                 <th className="px-3 py-2.5 text-center font-semibold text-muted-foreground">
                   Rollback
@@ -171,7 +171,7 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                         className="gap-0.5 text-green-600 dark:text-green-400"
                       >
                         <Undo2 className="size-2.5" />
-                        Mevcut
+                        Available
                       </Badge>
                     ) : (
                       <span className="text-[10px] text-muted-foreground">—</span>
@@ -184,7 +184,7 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
         </div>
       </div>
 
-      {/* ─── Detay Drawer ─── */}
+      {/* ─── Detail Drawer ─── */}
       <Dialog
         open={!!selectedRecord}
         onOpenChange={(open) => !open && setSelectedRecord(null)}
@@ -206,21 +206,21 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                   <span>
-                    Cihaz:{' '}
+                    Device:{' '}
                     <strong className="text-foreground">{selectedRecord.deviceName}</strong>
                   </span>
                   <span>
-                    Kullanıcı:{' '}
+                    User:{' '}
                     <strong className="text-foreground">{selectedRecord.user}</strong>
                   </span>
                   <span>
-                    Başlangıç:{' '}
+                    Start:{' '}
                     <strong className="text-foreground">
                       {formatTime(selectedRecord.startedAt)}
                     </strong>
                   </span>
                   <span>
-                    Süre:{' '}
+                    Duration:{' '}
                     <strong className="text-foreground">
                       {formatDuration(selectedRecord.startedAt, selectedRecord.completedAt)}
                     </strong>
@@ -230,10 +230,10 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
 
               <ScrollArea className="max-h-[60vh] px-5 py-4">
                 <div className="space-y-5">
-                  {/* Adımlar */}
+                  {/* Steps */}
                   <div>
                     <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Adımlar
+                      Steps
                     </h4>
                     <div className="space-y-1">
                       {selectedRecord.steps.map((step) => (
@@ -248,11 +248,11 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                     </div>
                   </div>
 
-                  {/* Parametreler */}
+                  {/* Parameters */}
                   {Object.keys(selectedRecord.parameters).length > 0 && (
                     <div>
                       <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Parametreler
+                        Parameters
                       </h4>
                       <div className="rounded-lg border border-border bg-muted/20 p-3">
                         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -269,17 +269,17 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                     </div>
                   )}
 
-                  {/* Önceki / Yeni değerler */}
+                  {/* Previous / New values */}
                   {(Object.keys(selectedRecord.previousValues).length > 0 ||
                     Object.keys(selectedRecord.newValues).length > 0) && (
                     <div>
                       <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Değer Değişiklikleri
+                        Value Changes
                       </h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-lg border border-red-200 bg-red-50/30 p-3 dark:border-red-900 dark:bg-red-950/20">
                           <div className="mb-1.5 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">
-                            Önceki
+                            Previous
                           </div>
                           {Object.entries(selectedRecord.previousValues).map(([key, value]) => (
                             <div key={key} className="text-xs">
@@ -292,7 +292,7 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                         </div>
                         <div className="rounded-lg border border-green-200 bg-green-50/30 p-3 dark:border-green-900 dark:bg-green-950/20">
                           <div className="mb-1.5 text-[10px] font-bold uppercase text-green-600 dark:text-green-400">
-                            Yeni
+                            New
                           </div>
                           {Object.entries(selectedRecord.newValues).map(([key, value]) => (
                             <div key={key} className="text-xs">
@@ -307,10 +307,10 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                     </div>
                   )}
 
-                  {/* Terminal çıktısı */}
+                  {/* Terminal output */}
                   <div>
                     <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Terminal Çıktısı
+                      Terminal Output
                     </h4>
                     <CodeBlock
                       code={selectedRecord.terminalOutput}
@@ -319,12 +319,12 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                     />
                   </div>
 
-                  {/* Bağlı oturum */}
+                  {/* Linked session */}
                   {selectedRecord.linkedSessionId && (
                     <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
                       <ExternalLink className="size-3 text-blue-600 dark:text-blue-400" />
                       <span className="text-xs text-muted-foreground">
-                        Bağlı log oturumu:
+                        Linked log session:
                       </span>
                       <Badge
                         variant="secondary"
@@ -339,12 +339,12 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                 </div>
               </ScrollArea>
 
-              {/* Footer aksiyonları */}
+              {/* Footer actions */}
               <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
                 {selectedRecord.rollbackAvailable && (
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs">
                     <Undo2 className="size-3" />
-                    Geri Al
+                    Rollback
                   </Button>
                 )}
                 <Button
@@ -354,7 +354,7 @@ export function ExecutionHistory({ records }: ExecutionHistoryProps) {
                   className="gap-1.5 text-xs"
                 >
                   <X className="size-3" />
-                  Kapat
+                  Close
                 </Button>
               </div>
             </>

@@ -1,10 +1,10 @@
-// MongoDB Query Generator — mock veri ve sabitler.
-// Sayfa tamamen simülasyon: üretilen sorgu, açıklama, validasyon ve
-// recent query kayıtları bu dosyadan beslenir.
+// MongoDB Query Generator — mock data and constants.
+// Page is completely simulated: generated query, explanation, validation and
+// recent query records are fed from this file.
 
 import type { Tone } from '@/components/product'
 
-// ── Form seçenekleri ─────────────────────────────────────────────
+// ── Form options ─────────────────────────────────────────────
 
 export const ENVIRONMENTS = ['Development', 'Test', 'UAT', 'Production'] as const
 export type Environment = (typeof ENVIRONMENTS)[number]
@@ -22,38 +22,38 @@ export const COLLECTIONS = [
 export const QUERY_TYPES = ['Find', 'Aggregate', 'Count', 'Distinct'] as const
 export type QueryType = (typeof QUERY_TYPES)[number]
 
-export const COUNTRIES = ['HR', 'SI', 'RS', 'BA', 'MK', 'Tümü'] as const
+export const COUNTRIES = ['HR', 'SI', 'RS', 'BA', 'MK', 'All'] as const
 
-export const TIME_RANGES = ['Son 1 saat', 'Son 24 saat', 'Son 7 gün', 'Son 30 gün', 'Özel'] as const
+export const TIME_RANGES = ['Last 1 hour', 'Last 24 hours', 'Last 7 days', 'Last 30 days', 'Custom'] as const
 
-// ── Örnek istekler (chip'ler) ────────────────────────────────────
+// ── Example requests (chips) ────────────────────────────────────
 
 export type ExamplePrompt = { label: string; text: string }
 
 export const EXAMPLE_PROMPTS: ExamplePrompt[] = [
   {
-    label: 'Son başarısız teslimatlar',
-    text: 'Son 24 saatte HR ülkesinde başarısız olan ve henüz retry edilmemiş delivery request\'lerini göster.',
+    label: 'Recent failed deliveries',
+    text: 'Show delivery requests that failed in the HR country in the last 24 hours and have not yet been retried.',
   },
   {
-    label: 'Belirli shipment geçmişi',
-    text: 'SHP-2026-118442 numaralı shipment\'ın tüm durum geçişlerini ve son güncelleme zamanlarını kronolojik sırayla getir.',
+    label: 'Specific shipment history',
+    text: 'Get all status transitions and last update times of shipment SHP-2026-118442 in chronological order.',
   },
   {
-    label: 'Bekleyen offline request\'ler',
-    text: 'Offline kuyrukta 2 saatten uzun süredir bekleyen, senkronize edilmemiş request\'leri courier bilgisiyle listele.',
+    label: 'Pending offline requests',
+    text: 'List offline requests waiting in the queue for more than 2 hours that are unsynchronized, with courier info.',
   },
   {
-    label: 'Fiscal kaydı oluşmayan teslimatlar',
-    text: 'Son 7 günde tamamlanmış ama karşılığında fiscal kaydı oluşmamış teslimatları ülke bazında getir.',
+    label: 'Deliveries without fiscal record',
+    text: 'Get completed deliveries in the last 7 days that do not have a corresponding fiscal record, grouped by country.',
   },
   {
-    label: 'Bir courier\'ın son schedule kaydı',
-    text: 'COU-4471 numaralı courier\'ın en güncel schedule kaydını ve atanmış rota bilgisini göster.',
+    label: 'Last schedule record of a courier',
+    text: 'Show the most up-to-date schedule record and assigned route information for courier COU-4471.',
   },
 ]
 
-// ── Şema bilgisi (mock satırlar) ─────────────────────────────────
+// ── Schema info (mock rows) ─────────────────────────────────
 
 export type SchemaRow = { field: string; type: string; description: string; example: string }
 
@@ -61,51 +61,51 @@ export const SCHEMA_ROWS: SchemaRow[] = [
   {
     field: 'countryCode',
     type: 'string',
-    description: 'ISO ülke kodu — sorgular ülke bazında ayrışır',
+    description: 'ISO country code — queries are separated by country',
     example: '"HR"',
   },
   {
     field: 'status',
     type: 'string (enum)',
-    description: 'Request durumu: PENDING · SENT · FAILED · COMPLETED',
+    description: 'Request status: PENDING · SENT · FAILED · COMPLETED',
     example: '"FAILED"',
   },
   {
     field: 'updatedAt',
     type: 'ISODate',
-    description: 'Son durum değişikliği zamanı — index\'in son alanı',
+    description: 'Last status change time — the last field of the index',
     example: 'ISODate("2026-07-11T14:32:05Z")',
   },
 ]
 
-// ── Güvenlik toggle'ları ─────────────────────────────────────────
+// ── Security toggles ─────────────────────────────────────────
 
 export type SafetyToggle = { id: string; label: string; description: string }
 
 export const SAFETY_TOGGLES: SafetyToggle[] = [
   {
     id: 'limit',
-    label: 'Sonuç limitini otomatik ekle',
-    description: 'Her sorguya .limit(100) eklenir — büyük collection taraması engellenir.',
+    label: 'Automatically add result limit',
+    description: '.limit(100) is added to every query — prevents large collection scans.',
   },
   {
     id: 'mask',
-    label: 'Hassas alanları maskele',
-    description: 'PII alanları (telefon, adres) projection\'dan otomatik çıkarılır.',
+    label: 'Mask sensitive fields',
+    description: 'PII fields (phone, address) are automatically removed from projection.',
   },
   {
     id: 'timeRange',
-    label: 'Tarih aralığını zorunlu tut',
-    description: 'Zaman filtresi olmayan sorgular son 24 saate daraltılır.',
+    label: 'Force time range',
+    description: 'Queries without time filter are narrowed down to the last 24 hours.',
   },
   {
     id: 'explain',
-    label: 'Query explanation oluştur',
-    description: 'Sorgunun ne yaptığı adım adım doğal dille açıklanır.',
+    label: 'Generate query explanation',
+    description: 'Explains step by step what the query does in natural language.',
   },
 ]
 
-// ── Üretilen sorgu (mock sonuç) ──────────────────────────────────
+// ── Generated query (mock result) ──────────────────────────────────
 
 export const GENERATED_QUERY = {
   code: `db.deliveryRequests.find({
@@ -122,15 +122,15 @@ export const GENERATED_QUERY = {
 }
 
 export const EXPLANATION_STEPS: string[] = [
-  'deliveryRequests collection\'ında yalnızca HR ülkesine ait kayıtlara bakılır (countryCode: "HR").',
-  'Durumu FAILED olan request\'ler filtrelenir — başarılı veya bekleyen kayıtlar sonuç dışıdır.',
-  'isWaiting: false koşuluyla retry kuyruğunda bekleyen kayıtlar hariç tutulur; yalnızca henüz retry edilmemiş olanlar kalır.',
-  'updatedAt alanı son 24 saate daraltılır (>= 11 Jul 2026 00:00 UTC) — tarih aralığı guardrail\'i uygulandı.',
-  'Sonuçlar updatedAt alanına göre azalan sıralanır: en yeni başarısızlık en üstte görünür.',
-  'Sorgu en fazla 100 doküman döndürür — sonuç limiti guardrail\'i uygulandı.',
+  'In the deliveryRequests collection, only records belonging to the HR country are checked (countryCode: "HR").',
+  'Requests with status FAILED are filtered — successful or pending records are excluded.',
+  'Records waiting in the retry queue are excluded with the isWaiting: false condition; only those not yet retried remain.',
+  'The updatedAt field is narrowed to the last 24 hours (>= 11 Jul 2026 00:00 UTC) — time range guardrail is applied.',
+  'Results are sorted descending by the updatedAt field: the newest failure appears at the top.',
+  'The query returns a maximum of 100 documents — result limit guardrail is applied.',
 ]
 
-// ── Validasyon kontrolleri ───────────────────────────────────────
+// ── Validation checks ───────────────────────────────────────
 
 export type ValidationStatus = 'pass' | 'warn'
 
@@ -145,38 +145,38 @@ export const VALIDATION_CHECKS: ValidationCheck[] = [
   {
     id: 'syntax',
     label: 'Syntax valid',
-    detail: 'Sorgu MongoDB 6.x sözdizimiyle uyumlu; parse hatası yok.',
+    detail: 'Query is compatible with MongoDB 6.x syntax; no parse error.',
     status: 'pass',
   },
   {
     id: 'collection',
     label: 'Collection found',
-    detail: 'deliveryRequests, nesy-delivery database\'inde mevcut (son şema senkronu: 12 Jul 2026).',
+    detail: 'deliveryRequests exists in nesy-delivery database (last schema sync: 12 Jul 2026).',
     status: 'pass',
   },
   {
     id: 'fields',
     label: 'Fields matched',
     detail:
-      'isWaiting alanı collection kayıtlarının yalnızca %62\'sinde bulunuyor. Eksik alanlar sorgu dışında kalabilir.',
+      'isWaiting field is present in only 62% of collection records. Missing fields might be excluded from the query.',
     status: 'warn',
   },
   {
     id: 'readonly',
     label: 'Read-only',
-    detail: 'Sorgu veri değiştirmez; write operatörü içermiyor.',
+    detail: 'Query does not modify data; no write operator included.',
     status: 'pass',
   },
   {
     id: 'timeRange',
     label: 'Time range applied',
-    detail: 'updatedAt filtresi son 24 saat ile sınırlandı.',
+    detail: 'updatedAt filter is limited to the last 24 hours.',
     status: 'pass',
   },
   {
     id: 'limit',
     label: 'Limit applied',
-    detail: '.limit(100) eklendi — sonuç kümesi sınırlı.',
+    detail: '.limit(100) added — result set is limited.',
     status: 'pass',
   },
 ]
@@ -187,7 +187,7 @@ export type EstimatedScope = {
   documents: string
   index: string | null
   response: string
-  /** Index bulunamadığında gösterilecek amber mesaj. */
+  /** Amber message to display when no index is found. */
   noIndexWarning: string
 }
 
@@ -195,21 +195,21 @@ export const ESTIMATED_SCOPE: EstimatedScope = {
   documents: '12.4K',
   index: 'countryCode_1_status_1_updatedAt_-1',
   response: '< 800 ms',
-  noIndexWarning: 'Bu filtre kombinasyonu için uygun index bulunamadı.',
+  noIndexWarning: 'No suitable index found for this filter combination.',
 }
 
-// ── Guardrail mesajları ──────────────────────────────────────────
+// ── Guardrail messages ──────────────────────────────────────────
 
 export const PRODUCTION_NOTICE =
-  'Production sorguları read-only oluşturulur. Sonuç limiti ve zaman aralığı otomatik uygulanır.'
+  'Production queries are generated read-only. Result limit and time range are automatically applied.'
 
 export const WRITE_INTENT_NOTICE =
-  'Bu araç yalnızca read-only sorgular üretir. Update ve delete işlemleri için onaylı database operasyon süreci kullanılmalıdır.'
+  'This tool only generates read-only queries. The approved database operations process must be used for update and delete operations.'
 
-/** Doğal dil metninde write niyeti (update/delete/sil/güncelle vb.) var mı? */
+/** Is there write intent (update/delete/etc) in the natural language text? */
 export function hasWriteIntent(text: string): boolean {
-  return /(update|delete|remove|drop\b|güncelle|\bsil(in|me|mek|ip)?\b)/i.test(
-    text.toLocaleLowerCase('tr-TR'),
+  return /(update|delete|remove|drop\\b)/i.test(
+    text.toLocaleLowerCase('en-US'),
   )
 }
 
@@ -251,18 +251,18 @@ export const RECENT_QUERIES: RecentQuery[] = [
     lastUsed: '12 Jul 2026 · 09:41',
     status: 'validated',
     naturalLanguage:
-      'Son 24 saatte HR ülkesinde başarısız olan ve henüz retry edilmemiş delivery request\'lerini göster.',
+      'Show delivery requests that failed in the HR country in the last 24 hours and have not yet been retried.',
     query: GENERATED_QUERY.code,
     explanation: [
-      'HR ülkesindeki FAILED durumundaki request\'ler filtrelenir.',
-      'Retry kuyruğunda bekleyenler (isWaiting: true) hariç tutulur.',
-      'Son 24 saat penceresi ve 100 kayıt limiti otomatik uygulanır.',
+      'Requests in FAILED status in HR country are filtered.',
+      'Those waiting in the retry queue (isWaiting: true) are excluded.',
+      'Last 24 hours window and 100 record limit are automatically applied.',
     ],
     validationHistory: [
-      { date: '12 Jul 2026', result: '6/6 kontrol geçti — isWaiting kapsam uyarısı ile', status: 'validated' },
-      { date: '08 Jul 2026', result: 'Index önerisi güncellendi (updatedAt eklendi)', status: 'validated' },
+      { date: '12 Jul 2026', result: '6/6 checks passed — with isWaiting scope warning', status: 'validated' },
+      { date: '08 Jul 2026', result: 'Index suggestion updated (updatedAt added)', status: 'validated' },
     ],
-    relatedTicket: 'FT-0142 · HR teslimat retry döngüsü',
+    relatedTicket: 'FT-0142 · HR delivery retry loop',
     relatedIncident: 'INC-2036 · HR delivery backlog',
     owner: 'Delivery Ops',
   },
@@ -272,11 +272,11 @@ export const RECENT_QUERIES: RecentQuery[] = [
     collection: 'offlineQueue',
     environment: 'Production',
     queryType: 'Find',
-    createdBy: 'G. Öncü',
+    createdBy: 'G. Oncu',
     lastUsed: '11 Jul 2026 · 17:05',
     status: 'warning',
     naturalLanguage:
-      'Offline kuyrukta 2 saatten uzun süredir bekleyen, senkronize edilmemiş request\'leri courier bilgisiyle listele.',
+      'List offline requests waiting in the queue for more than 2 hours that are unsynchronized, with courier info.',
     query: `db.offlineQueue.find({
   syncStatus: "PENDING",
   enqueuedAt: {
@@ -286,18 +286,18 @@ export const RECENT_QUERIES: RecentQuery[] = [
 .sort({ enqueuedAt: 1 })
 .limit(100)`,
     explanation: [
-      'Senkron durumu PENDING olan kuyruğa alınmış kayıtlar filtrelenir.',
-      '2 saatlik eşik enqueuedAt üzerinden hesaplanır; en eski bekleyen en üstte.',
-      'Courier bilgisi ayrı lookup gerektirir — Find sürümünde yalnızca courierId döner.',
+      'Enqueued records with sync status PENDING are filtered.',
+      '2-hour threshold is calculated over enqueuedAt; oldest waiting at the top.',
+      'Courier info requires separate lookup — only courierId returns in Find version.',
     ],
     validationHistory: [
       {
         date: '11 Jul 2026',
-        result: 'enqueuedAt için index yok — COLLSCAN uyarısı verildi',
+        result: 'No index for enqueuedAt — COLLSCAN warning given',
         status: 'warning',
       },
     ],
-    relatedTicket: 'FT-0137 · Offline kuyruk şişmesi',
+    relatedTicket: 'FT-0137 · Offline queue swelling',
     relatedIncident: null,
     owner: 'Sync Platform',
   },
@@ -311,7 +311,7 @@ export const RECENT_QUERIES: RecentQuery[] = [
     lastUsed: '10 Jul 2026 · 14:22',
     status: 'validated',
     naturalLanguage:
-      'Son 7 günde tamamlanmış ama karşılığında fiscal kaydı oluşmamış teslimatları ülke bazında getir.',
+      'Get completed deliveries in the last 7 days that do not have a corresponding fiscal record, grouped by country.',
     query: `db.shipments.aggregate([
   { $match: {
       status: "COMPLETED",
@@ -329,15 +329,15 @@ export const RECENT_QUERIES: RecentQuery[] = [
   { $limit: 100 }
 ])`,
     explanation: [
-      'Son 7 günde tamamlanan shipment\'lar fiscalRecords ile eşleştirilir.',
-      'Fiscal karşılığı olmayanlar ($size: 0) ülke bazında gruplanır.',
-      'En çok eksik kaydı olan ülke en üstte listelenir.',
+      'Shipments completed in the last 7 days are matched with fiscalRecords.',
+      'Those without fiscal equivalent ($size: 0) are grouped by country.',
+      'The country with the most missing records is listed at the top.',
     ],
     validationHistory: [
-      { date: '10 Jul 2026', result: '6/6 kontrol geçti — lookup maliyeti kabul edilebilir', status: 'validated' },
+      { date: '10 Jul 2026', result: '6/6 checks passed — lookup cost is acceptable', status: 'validated' },
     ],
-    relatedTicket: 'FT-0129 · Fiscal kaydı sessiz atlanıyor',
-    relatedIncident: 'INC-2031 · SI fiscal mutabakat farkı',
+    relatedTicket: 'FT-0129 · Fiscal record silently skipped',
+    relatedIncident: 'INC-2031 · SI fiscal reconciliation difference',
     owner: 'Fiscal Integrations',
   },
   {
@@ -349,18 +349,18 @@ export const RECENT_QUERIES: RecentQuery[] = [
     createdBy: 'A. Petrović',
     lastUsed: '09 Jul 2026 · 08:55',
     status: 'validated',
-    naturalLanguage: 'COU-4471 numaralı courier\'ın en güncel schedule kaydını ve atanmış rota bilgisini göster.',
+    naturalLanguage: 'Show the most up-to-date schedule record and assigned route information for courier COU-4471.',
     query: `db.courierSchedules.find({
   courierId: "COU-4471"
 })
 .sort({ effectiveFrom: -1 })
 .limit(1)`,
     explanation: [
-      'courierId eşleşmesiyle tek courier\'a daraltılır.',
-      'effectiveFrom azalan sıralanır; .limit(1) ile yalnızca en güncel kayıt döner.',
+      'Narrowed down to a single courier with courierId match.',
+      'effectiveFrom sorted descending; only the most up-to-date record returns with .limit(1).',
     ],
     validationHistory: [
-      { date: '09 Jul 2026', result: '6/6 kontrol geçti — covered query', status: 'validated' },
+      { date: '09 Jul 2026', result: '6/6 checks passed — covered query', status: 'validated' },
     ],
     relatedTicket: null,
     relatedIncident: null,

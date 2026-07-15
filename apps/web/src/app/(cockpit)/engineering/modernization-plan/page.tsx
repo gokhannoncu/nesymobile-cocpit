@@ -36,26 +36,26 @@ export default function ModernizationPlanPage() {
         icon={Route}
         eyebrow="Architecture & Modernization"
         tone="orange"
-        title="Yeni mimari planı: 6 faz, ~12 ay."
-        lead="Hedef: Compose+MVI, Domain UseCase katmanı, normalize Room (tek gerçek kaynak) ve Outbox/WorkManager senkronizasyonu. Plan operasyonu koruyarak ilerler — her faz ölçülebilir çıkış kriteriyle biter ve kritik yol Faz 0→1→2→3'tür."
-        chips={[PLAN_SUMMARY.totalDuration, PLAN_SUMMARY.team, 'Kritik yol: Faz 0→1→2→3']}
+        title="New architecture plan: 6 phases, ~12 months."
+        lead="Goal: Compose+MVI, Domain UseCase layer, normalized Room (single source of truth) and Outbox/WorkManager synchronization. The plan proceeds while preserving operation — each phase ends with measurable exit criteria and the critical path is Phase 0→1→2→3."
+        chips={[PLAN_SUMMARY.totalDuration, PLAN_SUMMARY.team, 'Critical path: Phase 0→1→2→3']}
       >
         <StatGrid cols={2}>
-          <StatCard label="Faz" value={NEW_ARCH_PHASES.length} tone="orange" icon={Flag} hint="Faz 4 ve 5 paralel koşabilir" />
-          <StatCard label="Plan Riski" value={PLAN_RISKS.length} tone="red" icon={AlertTriangle} hint="2'si kritik: bus factor + testsiz bölme" />
+          <StatCard label="Phase" value={NEW_ARCH_PHASES.length} tone="orange" icon={Flag} hint="Phase 4 and 5 can run in parallel" />
+          <StatCard label="Plan Risk" value={PLAN_RISKS.length} tone="red" icon={AlertTriangle} hint="2 are critical: bus factor + split without tests" />
         </StatGrid>
       </HeroCallout>
 
       <PageSection
-        eyebrow="Fazlar"
-        title="Yol haritası"
+        eyebrow="Phases"
+        title="Roadmap"
         icon={Route}
         tone="orange"
-        description="Her fazın metrik tablosu çıkış kriteridir: hedef değere ulaşmadan sonraki faz başlamaz."
+        description="Each phase's metric table is the exit criteria: the next phase does not start until the target value is reached."
       >
         <Timeline
           items={NEW_ARCH_PHASES.map((p, i) => ({
-            period: `Faz ${i} · ${p.duration} · ${p.team}`,
+            period: `Phase ${i} · ${p.duration} · ${p.team}`,
             title: p.name,
             tone: priorityTone[p.priority],
             status: p.status,
@@ -66,11 +66,11 @@ export default function ModernizationPlanPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Riskler"
-        title="Planı tehdit eden 6 risk"
+        eyebrow="Risks"
+        title="6 risks threatening the plan"
         icon={AlertTriangle}
         tone="red"
-        description="Riskler faz planına gömülüdür: her risk bir faz kuralına dönüştürülmüştür (ör. 'test olmadan bölme yok')."
+        description="Risks are embedded in the phase plan: each risk is converted into a phase rule (e.g. 'no splitting without tests')."
       >
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           {PLAN_RISKS.map((r) => (
@@ -78,7 +78,7 @@ export default function ModernizationPlanPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-bold text-foreground">{r.title}</div>
                 <Badge variant="secondary" appearance="outline" size="xs">
-                  {r.severity === 'critical' ? 'Kritik' : r.severity === 'high' ? 'Yüksek' : 'Orta'}
+                  {r.severity === 'critical' ? 'Critical' : r.severity === 'high' ? 'High' : 'Medium'}
                 </Badge>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-foreground/85">{r.detail}</p>
@@ -88,7 +88,7 @@ export default function ModernizationPlanPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Alternatif"
+        eyebrow="Alternative"
         title={REFACTOR_ALTERNATIVE.name}
         icon={GitCompareArrows}
         tone="gray"
@@ -104,21 +104,21 @@ export default function ModernizationPlanPage() {
             ))}
           </ul>
           <div className={cn('rounded-xl border p-4', toneCard.amber)}>
-            <div className={cn('text-xs font-bold uppercase tracking-wide', toneText.amber)}>Değerlendirme</div>
+            <div className={cn('text-xs font-bold uppercase tracking-wide', toneText.amber)}>Verdict</div>
             <p className="mt-2 text-sm leading-relaxed text-foreground/90">{REFACTOR_ALTERNATIVE.verdict}</p>
           </div>
         </div>
       </PageSection>
 
-      <Callout icon={Target} title="Anahtar karar" tone="red">
-        {PLAN_SUMMARY.keyDecision} Testsiz decomposition, 68K satırlık üretim uygulamasında kontrolsüz
-        regresyon demektir — bu kural pazarlık konusu değildir.
+      <Callout icon={Target} title="Key decision" tone="red">
+        {PLAN_SUMMARY.keyDecision} Decomposition without tests means uncontrolled
+        regression in a 68K line production application — this rule is non-negotiable.
       </Callout>
 
-      <Callout icon={Users} title="Bus factor önlemi" tone="orange">
-        Commit’lerin %94’ü tek geliştiricide. Faz 0’dan itibaren her faz en az iki kişiyle yürütülür,
-        kritik akışlar (ödeme, offline sync, scan) için mimari kayıt (ADR) yazılır ve bu cockpit
-        güncel tutulur — bilgi kişide değil, sistemde birikir.
+      <Callout icon={Users} title="Bus factor precaution" tone="orange">
+        94% of commits are by a single developer. From Phase 0 onwards, each phase is executed by at least two people,
+        architectural decision records (ADR) are written for critical flows (payment, offline sync, scan) and this cockpit
+        is kept up to date — knowledge accumulates in the system, not in the person.
       </Callout>
     </ProductPage>
   )

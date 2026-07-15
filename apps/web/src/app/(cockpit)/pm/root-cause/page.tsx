@@ -27,13 +27,13 @@ import { tickets, ALL_GROUPS, ALL_SCREENS } from '@/data/pm/tickets'
 
 // ═══ Group icon map ══════════════════════════════════════════════════════
 const groupIcons: Record<string, typeof Search> = {
-  'Finans & Ödeme': ShieldCheck,
+  'Finance & Payment': ShieldCheck,
   'Barcode & Scan': Search,
-  'Tour & Teslimat': AlertTriangle,
-  'Bildirim': Lightbulb,
+  'Tour & Delivery': AlertTriangle,
+  'Notification': Lightbulb,
   'State & Race': AlertTriangle,
   'D4Me & Locker': ShieldCheck,
-  'Konum & GPS': Search,
+  'Location & GPS': Search,
   'UI & Crash': AlertTriangle,
 }
 
@@ -171,7 +171,7 @@ export default function RootCausePage() {
       <SegmentTabs
         items={[
           {
-            value: 'grup',
+            value: 'group',
             label: 'By Group',
             content: (
               <CardGrid cols={2}>

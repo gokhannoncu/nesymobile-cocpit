@@ -17,8 +17,8 @@ import {
 import { SECURITY_COMMITS, SECURITY_POSTURE, STACK_FACTS, type SecStatus } from '@/data/engineering/security'
 
 const statusMeta: Record<SecStatus, { label: string; tone: Tone; icon: typeof CheckCircle2 }> = {
-  ok: { label: 'Sağlam', tone: 'green', icon: CheckCircle2 },
-  warn: { label: 'İzle', tone: 'amber', icon: AlertTriangle },
+  ok: { label: 'Solid', tone: 'green', icon: CheckCircle2 },
+  warn: { label: 'Monitor', tone: 'amber', icon: AlertTriangle },
   risk: { label: 'Risk', tone: 'red', icon: AlertTriangle },
 }
 
@@ -32,22 +32,22 @@ export default function SecurityPage() {
         icon={ShieldCheck}
         eyebrow="Delivery & Security"
         tone="orange"
-        title="Güvenlik durumu: sağlam temel, dört açık risk."
-        lead="Repo analizi ile mimari taramanın birleşik görünümü. Kod sertleştirme (ProGuard, imza, cleartext yasağı) ve cihaz güvenliği yerinde; ancak TLS yapılandırması, token yönetimi, host yönlendirme ve release konfigürasyonunda üretim riski taşıyan dört bulgu var. Bu sayfa her bulguyu aksiyona bağlar."
-        chips={['8 alan değerlendirildi', `${risks} risk · ${oks} sağlam`, 'Kaynak: repo + mimari tarama']}
+        title="Security posture: solid foundation, four open risks."
+        lead="Combined view of repo analysis and architectural scan. Code hardening (ProGuard, signature, cleartext ban) and device security are in place; but there are four findings with production risk in TLS configuration, token management, host routing, and release configuration. This page connects each finding to an action."
+        chips={['8 areas evaluated', `${risks} risks · ${oks} solid`, 'Source: repo + arch scan']}
       >
         <StatGrid cols={2}>
-          <StatCard label="Açık Risk" value={risks} tone="red" icon={AlertTriangle} hint="TLS · token · host · release config" />
-          <StatCard label="Sağlam Alan" value={oks} tone="green" icon={Lock} hint="Sertleştirme · cihaz · ağ temelleri" />
+          <StatCard label="Open Risk" value={risks} tone="red" icon={AlertTriangle} hint="TLS · token · host · release config" />
+          <StatCard label="Solid Area" value={oks} tone="green" icon={Lock} hint="Hardening · device · network basics" />
         </StatGrid>
       </HeroCallout>
 
       <PageSection
-        eyebrow="Durum"
-        title="Alan alan güvenlik değerlendirmesi"
+        eyebrow="Status"
+        title="Security evaluation by area"
         icon={ShieldCheck}
         tone="orange"
-        description="Her risk kartındaki aksiyon, Modernization Plan Faz 0 kapsamına girer."
+        description="The action in each risk card falls within the scope of Modernization Plan Phase 0."
       >
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           {SECURITY_POSTURE.map((s) => {
@@ -65,7 +65,7 @@ export default function SecurityPage() {
                 {s.action && (
                   <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
                     <Wrench className="mt-0.5 size-3.5 shrink-0" />
-                    <span><b>Aksiyon:</b> {s.action}</span>
+                    <span><b>Action:</b> {s.action}</span>
                   </p>
                 )}
               </div>
@@ -77,31 +77,31 @@ export default function SecurityPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <PageSection
           eyebrow="Trend"
-          title="Güvenlik commit'leri (son 6 ay)"
+          title="Security commits (last 6 months)"
           icon={CheckCircle2}
           tone="green"
-          description="Güvenlik yatırımı +100% (3 → 6 commit) — doğru yönde ama açık risklere kıyasla yavaş."
+          description="Security investment +100% (3 → 6 commits) — right direction but slow compared to open risks."
         >
           <ComparisonTable
-            headers={[{ label: 'Alan' }, { label: 'Commit', tone: 'green' }, { label: 'Örnekler' }]}
+            headers={[{ label: 'Area' }, { label: 'Commit', tone: 'green' }, { label: 'Examples' }]}
             rows={SECURITY_COMMITS.map((c) => [c.area, String(c.count), <span key="e" className="text-xs">{c.examples}</span>])}
           />
         </PageSection>
 
-        <PageSection eyebrow="Zemin" title="Stack ve sürümler" icon={Info} tone="gray">
+        <PageSection eyebrow="Context" title="Stack and versions" icon={Info} tone="gray">
           <ComparisonTable
-            headers={[{ label: 'Bileşen' }, { label: 'Değer' }]}
+            headers={[{ label: 'Component' }, { label: 'Value' }]}
             rows={STACK_FACTS.map((f) => [f.label, <span key="v" className="text-xs">{f.value}</span>])}
           />
         </PageSection>
       </div>
 
-      <Callout icon={AlertTriangle} title="Önceliklendirme" tone="red">
-        Dört riskin ilk üçü (TrustAllCerts + pin uyuşmazlığı, refresh token yokluğu, host allowlist)
-        birlikte ele alındığında API katmanının güven zinciri kurulmuş olur; Chucker’ın release’ten
-        çıkarılması tek satırlık kazançtır ve ilk sprintte yapılmalıdır. Vardiya ortası sessiz logout
-        (E20) bu sayfadaki token riskinin sahadaki yüzüdür — güvenlik ve operasyon aynı düzeltmeyi
-        bekliyor.
+      <Callout icon={AlertTriangle} title="Prioritization" tone="red">
+        The first three of the four risks (TrustAllCerts + pin mismatch, lack of refresh token, host allowlist)
+        establish the trust chain of the API layer when addressed together; removing Chucker from the release
+        is a single-line fix and should be done in the first sprint. Silent mid-shift logouts
+        (E20) are the field manifestation of the token risk on this page — security and operations are waiting
+        for the same fix.
       </Callout>
     </ProductPage>
   )

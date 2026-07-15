@@ -45,10 +45,10 @@ interface InsightDrawerProps {
 /* ──────────────────────── Tab definitions ────────────────────────── */
 
 const TABS = [
-  { key: 'details' as const, label: 'Detaylar', icon: Info },
-  { key: 'context' as const, label: 'Bağlam', icon: Layers },
-  { key: 'related' as const, label: 'İlişkili', icon: Link2 },
-  { key: 'investigation' as const, label: 'Araştırma', icon: Search },
+  { key: 'details' as const, label: 'Details', icon: Info },
+  { key: 'context' as const, label: 'Context', icon: Layers },
+  { key: 'related' as const, label: 'Related', icon: Link2 },
+  { key: 'investigation' as const, label: 'Investigation', icon: Search },
 ]
 
 type TabKey = (typeof TABS)[number]['key']
@@ -102,11 +102,10 @@ export function InsightDrawer({ event, events, onClose }: InsightDrawerProps) {
         </div>
         <div>
           <h4 className="text-sm font-semibold text-foreground">
-            Olay Seçilmedi
+            No Event Selected
           </h4>
           <p className="mt-1 max-w-[200px] text-xs leading-relaxed text-muted-foreground">
-            Timeline&apos;dan bir olay satırına tıklayarak detayları
-            görüntüleyin.
+            Click an event row from the Timeline to view details.
           </p>
         </div>
       </motion.aside>
@@ -218,7 +217,7 @@ function DetailsTab({
       {/* Message */}
       <div>
         <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Mesaj
+          Message
         </label>
         <div className="relative mt-1 rounded-lg bg-muted/40 p-3">
           <pre className="font-mono text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap break-all">
@@ -342,16 +341,16 @@ function ContextTab({
     <div className="space-y-4">
       {/* Previous events */}
       <ContextGroup
-        title={`Önceki ${prevEvents.length} Olay`}
+        title={`Previous ${prevEvents.length} Events`}
         events={prevEvents}
-        emptyText="Öncesinde olay yok."
+        emptyText="No previous events."
       />
 
       {/* Next events */}
       <ContextGroup
-        title={`Sonraki ${nextEvents.length} Olay`}
+        title={`Next ${nextEvents.length} Events`}
         events={nextEvents}
-        emptyText="Sonrasında olay yok."
+        emptyText="No subsequent events."
       />
 
       {/* Correlated */}
@@ -361,7 +360,7 @@ function ContextTab({
           <ContextGroup
             title={`Correlation: ${event.correlationId}`}
             events={correlatedEvents}
-            emptyText="Aynı correlation ID ile olay bulunamadı."
+            emptyText="No event found with the same correlation ID."
           />
         </>
       )}
@@ -373,7 +372,7 @@ function ContextTab({
           <ContextGroup
             title={`Shipment: ${event.shipmentId}`}
             events={shipmentEvents.slice(0, 20)}
-            emptyText="Aynı shipment ID ile olay bulunamadı."
+            emptyText="No event found with the same shipment ID."
           />
         </>
       )}
@@ -447,7 +446,7 @@ function RelatedTab({
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <Link2 className="size-5 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            Bu olayla ilişkili başka olay bulunamadı.
+            No other events related to this event found.
           </p>
         </div>
       )}
@@ -480,29 +479,29 @@ function InvestigationTab({ event }: { event: LogEvent }) {
       {/* External links */}
       <div>
         <h4 className="text-[11px] font-semibold text-foreground/80 mb-2">
-          Harici Araçlar
+          External Tools
         </h4>
         <div className="space-y-1.5">
           <InvestigationLink
             icon={Terminal}
-            label="Graylog'da Aç"
-            description={`"${event.tag}" tag filtreleri ile Graylog sorgusunu aç`}
+            label="Open in Graylog"
+            description={`Open Graylog query with "${event.tag}" tag filters`}
             href="#"
           />
           <InvestigationLink
             icon={Database}
-            label="Data Locator'da Bul"
+            label="Find in Data Locator"
             description={
               event.shipmentId
-                ? `${event.shipmentId} için Data Locator sorgusunu oluştur`
-                : 'İlgili veri noktalarını bul'
+                ? `Create Data Locator query for ${event.shipmentId}`
+                : 'Find related data points'
             }
             href="#"
           />
           <InvestigationLink
             icon={FileCode}
-            label="MongoDB Query Generator'da Ara"
-            description="Bu olay için MongoDB sorgusu oluştur"
+            label="Search in MongoDB Query Generator"
+            description="Create MongoDB query for this event"
             href="#"
           />
         </div>
@@ -513,7 +512,7 @@ function InvestigationTab({ event }: { event: LogEvent }) {
       {/* Action buttons */}
       <div>
         <h4 className="text-[11px] font-semibold text-foreground/80 mb-2">
-          Aksiyonlar
+          Actions
         </h4>
         <div className="space-y-1.5">
           <Button
@@ -522,7 +521,7 @@ function InvestigationTab({ event }: { event: LogEvent }) {
             className="w-full justify-start gap-2 text-xs"
           >
             <Ticket className="size-3.5 text-blue-500" />
-            {"Ticket'a Ekle"}
+            Add to Ticket
           </Button>
           <Button
             size="sm"
@@ -530,7 +529,7 @@ function InvestigationTab({ event }: { event: LogEvent }) {
             className="w-full justify-start gap-2 text-xs"
           >
             <Siren className="size-3.5 text-red-500" />
-            {"Incident'e Ekle"}
+            Add to Incident
           </Button>
         </div>
       </div>
@@ -540,7 +539,7 @@ function InvestigationTab({ event }: { event: LogEvent }) {
       {/* Event identifiers for copy */}
       <div>
         <h4 className="text-[11px] font-semibold text-foreground/80 mb-2">
-          Olay Kimlikleri
+          Event Identifiers
         </h4>
         <div className="space-y-1">
           <CopyableField label="Event ID" value={event.id} />

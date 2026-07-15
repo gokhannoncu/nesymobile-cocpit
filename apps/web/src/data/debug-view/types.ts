@@ -1,9 +1,9 @@
 // ============================================================================
 // Debug View — Shared Types
 // ============================================================================
-// Bu tipler, seçili cihazdan (ADB / Nesy Device Bridge üzerinden) okunmuş
-// gibi modellenen anlık hata ayıklama verisini temsil eder. Alan adları
-// NesyMobile (Kotlin) kaynak modelleriyle bire bir uyumludur.
+// These types represent instant debugging data modeled as if read
+// from the selected device (via ADB / Nesy Device Bridge). Field names
+// are exactly compatible with NesyMobile (Kotlin) source models.
 
 import type { Tone } from '@/components/product'
 
@@ -14,7 +14,7 @@ import type { Tone } from '@/components/product'
 export type NetworkTransport = 'wifi' | 'cellular' | 'ethernet' | 'offline'
 export type CellularGeneration = '5G' | '4G/LTE' | '3G' | '2G' | null
 
-/** WiFi bağlantı anlık durumu (dumpsys wifi + ConnectivityManager). */
+/** WiFi connection instant state (dumpsys wifi + ConnectivityManager). */
 export interface WifiInfo {
   connected: boolean
   ssid: string | null
@@ -28,7 +28,7 @@ export interface WifiInfo {
   security: string | null
 }
 
-/** Hücresel/mobil veri durumu (TelephonyManager). */
+/** Cellular/mobile data state (TelephonyManager). */
 export interface CellularInfo {
   connected: boolean
   carrier: string | null
@@ -38,7 +38,7 @@ export interface CellularInfo {
   dataState: 'connected' | 'disconnected' | 'suspended'
 }
 
-/** İnternet hız/bant genişliği ölçümü (bridge tarafında ping + throughput). */
+/** Internet speed/bandwidth measurement (ping + throughput on bridge side). */
 export interface ThroughputSample {
   downloadMbps: number
   uploadMbps: number
@@ -49,7 +49,7 @@ export interface ThroughputSample {
   endpoint: string
 }
 
-/** İşletim sistemi ve donanım kimliği (Build.* + dumpsys). */
+/** Operating system and hardware ID (Build.* + dumpsys). */
 export interface OsInfo {
   manufacturer: string
   model: string
@@ -69,8 +69,8 @@ export interface OsInfo {
 }
 
 /**
- * Firebase durumu — NesyMobile'da kullanılan servisler: Analytics, Crashlytics, FCM.
- * (Remote Config entegre DEĞİL — bilinçli olarak durumu ayrı gösterilir.)
+ * Firebase state — services used in NesyMobile: Analytics, Crashlytics, FCM.
+ * (Remote Config is NOT integrated — state is shown separately on purpose.)
  */
 export interface FirebaseSnapshot {
   appInstanceId: string
@@ -87,7 +87,7 @@ export interface FirebaseSnapshot {
   remoteConfigIntegrated: boolean
 }
 
-/** Uygulama süreç durumu (dumpsys package + activity). */
+/** Application process state (dumpsys package + activity). */
 export interface AppProcessInfo {
   packageName: string
   versionName: string
@@ -104,7 +104,7 @@ export interface AppProcessInfo {
   foreground: boolean
 }
 
-/** Overview ekranının tümünü besleyen kök nesne. */
+/** Root object feeding the entire Overview screen. */
 export interface DeviceRuntime {
   deviceId: string
   capturedAt: string
@@ -119,7 +119,7 @@ export interface DeviceRuntime {
 }
 
 // ---------------------------------------------------------------------------
-// Network Inspector (Fiddler benzeri)
+// Network Inspector (Fiddler-like)
 // ---------------------------------------------------------------------------
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -167,7 +167,7 @@ export interface NetworkTransaction {
 
 export type DbAccessDifficulty = 'easy' | 'moderate' | 'hard' | 'blocked'
 
-/** Release APK üzerinden cihaz veritabanına erişim yöntemi analizi. */
+/** Device database access method analysis over Release APK. */
 export interface DbAccessMethod {
   id: string
   name: string
@@ -183,9 +183,9 @@ export interface DbAccessMethod {
 }
 
 /**
- * NesyMobile Room `request` tablosunun (entity: Request) bir satırı.
- * Alan adları AppDatabase v240'taki gerçek @ColumnInfo isimleriyle birebir.
- * Kuyruk durumu (isProcessing / isWaitingRequest / tryCount) kombinasyonundan türetilir.
+ * A row of NesyMobile Room `request` table (entity: Request).
+ * Field names match the real @ColumnInfo names in AppDatabase v240 exactly.
+ * Derived from queue state (isProcessing / isWaitingRequest / tryCount) combination.
  */
 export interface RequestRow {
   id: number
@@ -201,7 +201,7 @@ export interface RequestRow {
   sendWithoutWaiting: boolean
   fiscalInvoiceId: string | null
   uniqueKey: string
-  /** UI türevi: kuyruk durumu — üç bayraktan hesaplanır. */
+  /** UI derived: queue state — calculated from three flags. */
   derivedState: 'pending' | 'waiting' | 'in-flight' | 'retrying' | 'dead'
 }
 

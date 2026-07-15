@@ -37,39 +37,39 @@ export default function EngineeringOverviewPage() {
         icon={Cpu}
         eyebrow="Engineering"
         tone="orange"
-        title="Nesy Mobile mühendislik komuta merkezi."
-        lead="Bu alan; incident müdahalesinden edge-case haritasına, mimari plandan ülke bazlı performans raporlarına kadar mühendislik operasyonunun tamamını tek yerde toplar. Her sayfa gerçek repo, ticket ve Firebase verisinden beslenir — eğitici (neden böyle?) ve takip edici (şu an ne durumda?) olacak şekilde yazılmıştır."
-        chips={['515 Kotlin dosyası · ~68K LOC', '5 ülke · 11 flavor', 'Room v240 · 527 endpoint']}
+        title="Nesy Mobile engineering command center."
+        lead="This space aggregates the entire engineering operation in one place; from incident response to edge-case maps, architectural plans, and country-based performance reports. Each page is fed by real repo, ticket, and Firebase data — written to be educational (why is it like this?) and tracking (what is the current status?)."
+        chips={['515 Kotlin files · ~68K LOC', '5 countries · 11 flavors', 'Room v240 · 527 endpoints']}
       >
         <StatGrid cols={2}>
-          <StatCard label="Açık Ticket" value={INCIDENT_STATS.openTickets} tone="orange" icon={Siren} hint={`${INCIDENT_STATS.totalTickets} ticket analiz edildi`} />
-          <StatCard label="Edge Case" value={EDGE_STATS.total} tone="red" icon={Radar} hint={`${EDGE_STATS.critical} kritik`} />
+          <StatCard label="Open Ticket" value={INCIDENT_STATS.openTickets} tone="orange" icon={Siren} hint={`${INCIDENT_STATS.totalTickets} tickets analyzed`} />
+          <StatCard label="Edge Case" value={EDGE_STATS.total} tone="red" icon={Radar} hint={`${EDGE_STATS.critical} critical`} />
         </StatGrid>
       </HeroCallout>
 
       <PageSection
-        eyebrow="Sağlık Özeti"
-        title="Bugünkü durum — tek bakış"
+        eyebrow="Health Summary"
+        title="Today's status — at a glance"
         icon={Activity}
         tone="orange"
-        description="Kırmızı olan her kutu bu alandaki bir sayfaya açılır; sayı değil, gidilecek yer gösterir."
+        description="Every red box opens a page in this area; it shows the destination, not the number."
       >
         <StatGrid cols={4}>
-          <StatCard label="Test Coverage" value="%0" tone="red" icon={Bug} hint="0 test dosyası · 140 bug-fix/6 ay" />
-          <StatCard label="Bus Factor" value={1} tone="red" icon={GitBranch} hint="Commit'lerin %94'ü tek kişide" />
-          <StatCard label="Perf Hedef Üstü" value={perfAboveTarget} suffix=" / 4 ülke" tone="amber" icon={Gauge} hint="App start > 2.0 s: BA, SI" />
-          <StatCard label="Güvenlik Riski" value={4} tone="red" icon={ShieldCheck} hint="TLS, token, host, release config" />
+          <StatCard label="Test Coverage" value="%0" tone="red" icon={Bug} hint="0 test files · 140 bug-fixes/6 months" />
+          <StatCard label="Bus Factor" value={1} tone="red" icon={GitBranch} hint="94% of commits are by one person" />
+          <StatCard label="Perf Above Target" value={perfAboveTarget} suffix=" / 4 countries" tone="amber" icon={Gauge} hint="App start > 2.0 s: BA, SI" />
+          <StatCard label="Security Risk" value={4} tone="red" icon={ShieldCheck} hint="TLS, token, host, release config" />
         </StatGrid>
       </PageSection>
 
-      <PageSection eyebrow="Bu Alan" title="Engineering haritası" icon={Layers} tone="amber">
+      <PageSection eyebrow="This Area" title="Engineering map" icon={Layers} tone="amber">
         <CardGrid cols={3}>
           <InfoCard
             icon={Siren}
             tone="red"
             eyebrow="Reliability"
             title="Incident Command Center"
-            desc="Detect → Declare → Contain → Diagnose → Recover → Learn: incident doğrulama, severity, roller, containment ve grup playbook'ları."
+            desc="Detect → Declare → Contain → Diagnose → Recover → Learn: incident validation, severity, roles, containment and group playbooks."
             href="/engineering/incident-playbook"
           />
           <InfoCard
@@ -77,7 +77,7 @@ export default function EngineeringOverviewPage() {
             tone="orange"
             eyebrow="Reliability"
             title="Edge Case Map"
-            desc="E1–E33: tetikleyici → etki → hafifletme. 9 kategoride bilinen tüm uç durumlar."
+            desc="E1–E33: trigger → impact → mitigation. All known edge cases in 9 categories."
             href="/engineering/edge-case-map"
           />
           <InfoCard
@@ -85,7 +85,7 @@ export default function EngineeringOverviewPage() {
             tone="amber"
             eyebrow="Reliability"
             title="Crashlytics"
-            desc="Ülke bazlı crash-free oranları ve crash raporlama altyapısının durumu."
+            desc="Country-based crash-free rates and status of the crash reporting infrastructure."
             href="/engineering/crashlytics"
           />
           <InfoCard
@@ -93,7 +93,7 @@ export default function EngineeringOverviewPage() {
             tone="teal"
             eyebrow="Reliability"
             title="Performance Reports"
-            desc="Firebase Performance CW27 — HR, BA, SI, RS için sunum formatında rapor."
+            desc="Firebase Performance CW27 — Report in presentation format for HR, BA, SI, RS."
             href="/engineering/performance"
           />
           <InfoCard
@@ -101,7 +101,7 @@ export default function EngineeringOverviewPage() {
             tone="blue"
             eyebrow="Architecture"
             title="Current Architecture"
-            desc="6 katman haritası, god object'ler ve 'neden sürdürülebilir değil' analizi."
+            desc="6 layer map, god objects and 'why it is not sustainable' analysis."
             href="/engineering/current-architecture"
           />
           <InfoCard
@@ -109,7 +109,7 @@ export default function EngineeringOverviewPage() {
             tone="indigo"
             eyebrow="Architecture"
             title="Modernization Plan"
-            desc="6 faz / ~12 ay yeni mimari planı + 6 aylık refactor alternatifi ve riskler."
+            desc="6 phases / ~12 months new architecture plan + 6 months refactor alternative and risks."
             href="/engineering/modernization-plan"
           />
           <InfoCard
@@ -117,7 +117,7 @@ export default function EngineeringOverviewPage() {
             tone="purple"
             eyebrow="Architecture"
             title="Technical Debt"
-            desc="10 anti-pattern, 9 kritik bug ve ekran sağlık skorları (46 ekran × 15 kategori)."
+            desc="10 anti-patterns, 9 critical bugs and screen health scores (46 screens × 15 categories)."
             href="/engineering/technical-debt"
           />
           <InfoCard
@@ -125,7 +125,7 @@ export default function EngineeringOverviewPage() {
             tone="green"
             eyebrow="Delivery"
             title="GitHub Pulse"
-            desc="Commit amaç dağılımı, bus factor, CI pipeline'ları ve sürüm sayaçları."
+            desc="Commit purpose distribution, bus factor, CI pipelines and release counters."
             href="/engineering/github-pulse"
           />
           <InfoCard
@@ -133,17 +133,17 @@ export default function EngineeringOverviewPage() {
             tone="gray"
             eyebrow="Delivery"
             title="Security Posture"
-            desc="TLS/pinning, token, host yönlendirme, release config — durum ve aksiyonlar."
+            desc="TLS/pinning, token, host routing, release config — status and actions."
             href="/engineering/security"
           />
         </CardGrid>
       </PageSection>
 
-      <Callout icon={AlertTriangle} title="Bu alan nasıl okunur?" tone="orange">
-        <b>Takip için:</b> Overview + Performance + GitHub Pulse haftalık ritimde güncellenir.{' '}
-        <b>Eğitim için:</b> Edge Case Map ve Current Architecture, yeni gelen her mühendisin ilk
-        haftasında okuması gereken iki sayfadır. <b>Kriz anında:</b> doğrudan Incident
-        Playbook’a gidin — ilk 15 dakika protokolü oradadır.
+      <Callout icon={AlertTriangle} title="How to read this area?" tone="orange">
+        <b>For tracking:</b> Overview + Performance + GitHub Pulse are updated on a weekly rhythm.{' '}
+        <b>For education:</b> Edge Case Map and Current Architecture are two pages that every new engineer should read in their first
+        week. <b>In a crisis:</b> go directly to Incident
+        Playbook — the first 15 minutes protocol is there.
       </Callout>
     </ProductPage>
   )

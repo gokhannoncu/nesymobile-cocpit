@@ -19,9 +19,9 @@ export type BuildType = 'debug' | 'internal' | 'release' | 'production'
 export type ConfigType = 'production' | 'staging' | 'development'
 
 /**
- * ADB üzerinden bağlı olan veya geçmişte bağlanmış bir Android cihazın
- * anlık durum bilgisini temsil eder. Fiziksel cihazlar ve emülatörler
- * aynı yapı ile ifade edilir.
+ * Represents the current status information of an Android device
+ * connected via ADB or previously connected. Physical devices and emulators
+ * are represented with the same structure.
  */
 export interface ConnectedDevice {
   id: string
@@ -70,9 +70,9 @@ export type ParamType =
   | 'multiselect'
 
 /**
- * Senaryo çalıştırılmadan önce kullanıcıdan alınacak bir parametre
- * tanımını temsil eder. `select` ve `multiselect` türleri için
- * `options` alanı zorunludur.
+ * Represents a parameter definition to be obtained from the user before
+ * running the scenario. The `options` field is required for `select` and
+ * `multiselect` types.
  */
 export interface ScenarioParam {
   key: string
@@ -85,9 +85,9 @@ export interface ScenarioParam {
 }
 
 /**
- * Senaryo çalıştırılmadan önce gerçekleştirilecek ön kontrol adımı.
- * Örneğin "cihazda uygulama yüklü mü?" veya "debug build mi?" gibi
- * koşulları temsil eder.
+ * Pre-check step to be performed before running the scenario.
+ * Represents conditions such as "is the app installed on the device?" or
+ * "is it a debug build?".
  */
 export interface PreflightCheck {
   id: string
@@ -97,8 +97,8 @@ export interface PreflightCheck {
 }
 
 /**
- * ADB veya shell üzerinden çalıştırılacak tek bir komut adımı.
- * `command` alanı gerçek terminal komutunu içerir.
+ * A single command step to be executed via ADB or shell.
+ * The `command` field contains the actual terminal command.
  */
 export interface ScenarioCommand {
   step: number
@@ -108,8 +108,8 @@ export interface ScenarioCommand {
 }
 
 /**
- * Senaryo tamamlandıktan sonra değişikliğin doğrulanması için
- * yapılacak kontrol adımı. İsteğe bağlı olarak bir sorgu içerebilir.
+ * Verification step to check the change after the scenario is completed.
+ * It can optionally include a query.
  */
 export interface VerificationStep {
   step: number
@@ -119,8 +119,8 @@ export interface VerificationStep {
 }
 
 /**
- * Yapılan değişikliği geri almak için kullanılacak adım.
- * Her senaryo en az bir rollback adımı içermelidir.
+ * Step to be used to revert the change made.
+ * Every scenario must include at least one rollback step.
  */
 export interface RollbackStep {
   label: string
@@ -129,9 +129,8 @@ export interface RollbackStep {
 }
 
 /**
- * Tek bir ADB senaryosunun tüm tanımını kapsayan ana yapı.
- * Parametreler, komutlar, doğrulama adımları ve geri alma
- * talimatlarını bir arada barındırır.
+ * Main structure that covers the entire definition of a single ADB scenario.
+ * It contains parameters, commands, verification steps, and rollback instructions together.
  */
 export interface ScenarioPackage {
   id: string
@@ -149,7 +148,7 @@ export interface ScenarioPackage {
   commands: ScenarioCommand[]
   verificationSteps: VerificationStep[]
   rollbackSteps: RollbackStep[]
-  /** Tahmini çalışma süresi (saniye) */
+  /** Estimated execution time (seconds) */
   estimatedDuration: number
   lastVerifiedVersion: string
   lastVerifiedAt: string
@@ -162,8 +161,8 @@ export interface ScenarioPackage {
 }
 
 /**
- * Senaryo kategorisinin UI'da görüntülenmesi için gereken
- * meta bilgileri (ikon, etiket, açıklama, senaryo sayısı).
+ * Meta information required for displaying the scenario category in the UI
+ * (icon, label, description, scenario count).
  */
 export interface CategoryInfo {
   id: ScenarioCategory
@@ -180,8 +179,8 @@ export type RunStatus = 'pending' | 'running' | 'success' | 'partial' | 'failed'
 export type StepStatus = 'waiting' | 'running' | 'completed' | 'failed' | 'skipped'
 
 /**
- * Senaryo çalıştırılırken her bir komut adımının anlık durumunu
- * ve çıktısını takip etmek için kullanılır.
+ * Used to track the current status and output of each command step
+ * while the scenario is running.
  */
 export interface RunStep {
   step: number
@@ -193,9 +192,9 @@ export interface RunStep {
 }
 
 /**
- * Tamamlanmış veya devam eden bir senaryo çalıştırmasının
- * tüm kayıt bilgisini tutar. Parametre değerleri, önceki/yeni
- * değerler, terminal çıktısı ve geri alma durumu dahildir.
+ * Holds all record information of a completed or ongoing scenario run.
+ * Includes parameter values, previous/new values, terminal output,
+ * and rollback status.
  */
 export interface ExecutionRecord {
   id: string
@@ -248,9 +247,8 @@ export type SessionStatus = 'capturing' | 'paused' | 'stopped' | 'saved'
 export type TimeRange = 'now' | '5min' | '15min' | '1hour' | 'app-start' | 'custom'
 
 /**
- * Logcat'ten yakalanan tek bir log satırını temsil eder.
- * Süreç/thread bilgisi, korelasyon ID'leri ve ham metin
- * dahildir.
+ * Represents a single log line captured from Logcat.
+ * Includes process/thread info, correlation IDs, and raw text.
  */
 export interface LogEvent {
   id: string
@@ -271,9 +269,8 @@ export interface LogEvent {
 }
 
 /**
- * Log akışı içerisine eklenen zaman işareti. Kullanıcı
- * tarafından veya otomatik olarak eklenebilir; bir ADB
- * çalıştırmasıyla ilişkilendirilebilir.
+ * Timestamp marker added to the log stream. Can be added by the user
+ * or automatically; can be associated with an ADB run.
  */
 export interface LogMarker {
   id: string
@@ -284,9 +281,8 @@ export interface LogMarker {
 }
 
 /**
- * Belirli bir akış veya hata tipi için önceden tanımlanmış
- * log yakalama şablonu. Kaynak filtreleri, beklenen olaylar
- * ve anomali ipuçları içerir.
+ * Predefined log capture preset for a specific flow or error type.
+ * Includes source filters, expected events, and anomaly hints.
  */
 export interface CapturePreset {
   id: string
@@ -302,9 +298,8 @@ export interface CapturePreset {
 }
 
 /**
- * Bir cihazdan başlatılan log yakalama oturumu. Başlangıç/bitiş
- * zamanları, olay sayısı, işaretçiler ve paylaşım bilgilerini
- * kapsar.
+ * Log capture session started from a device.
+ * Covers start/end times, event count, markers, and sharing info.
  */
 export interface LogSession {
   id: string
@@ -315,7 +310,7 @@ export interface LogSession {
   status: SessionStatus
   startedAt: string
   stoppedAt: string | null
-  /** Oturum süresi (saniye) */
+  /** Session duration (seconds) */
   duration: number
   eventCount: number
   createdBy: string
@@ -325,9 +320,8 @@ export interface LogSession {
 }
 
 /**
- * Birden fazla log olayını bir iş akışı içinde ilişkilendirmek
- * için kullanılan kural tanımı. Beklenen olaylar ve analiz
- * şablonu içerir.
+ * Rule definition used to correlate multiple log events within a workflow.
+ * Includes expected events and analysis template.
  */
 export interface CorrelationRule {
   id: string
@@ -338,8 +332,7 @@ export interface CorrelationRule {
 }
 
 /**
- * Log paylaşımı sırasında hassas verilerin maskelenmesi için
- * kullanılan gizlilik kuralı.
+ * Privacy rule used for masking sensitive data during log sharing.
  */
 export interface PrivacyRule {
   id: string
@@ -350,8 +343,8 @@ export interface PrivacyRule {
 }
 
 /**
- * Log oturumunun dışa aktarma ve paylaşım yapılandırması.
- * Format, erişim seviyesi ve süre sınırı gibi ayarları içerir.
+ * Export and sharing configuration of the log session.
+ * Includes settings like format, access level, and time limit.
  */
 export interface ShareConfig {
   contents: string[]

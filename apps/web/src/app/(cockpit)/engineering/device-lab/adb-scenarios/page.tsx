@@ -1,8 +1,8 @@
 'use client'
 
-// ADB Scenario Runner — ana sayfa bileşeni.
-// Senaryo havuzu, yapılandırma paneli ve çalıştırma panelini
-// üç sütunlu düzende bir araya getirir.
+// ADB Scenario Runner — main page component.
+// Brings together the scenario pool, configuration panel, and run panel
+// in a three-column layout.
 
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
@@ -21,18 +21,18 @@ import { MOCK_EXECUTION_HISTORY } from '@/data/engineering/device-lab/adb-scenar
 export default function AdbScenariosPage() {
   const { selectedDevice } = useDeviceLab()
 
-  // Seçili senaryo ve parametre durumu
+  // Selected scenario and parameter state
   const [selectedScenario, setSelectedScenario] = useState<ScenarioPackage | null>(null)
   const [paramValues, setParamValues] = useState<Record<string, any>>({})
   const [activeTab, setActiveTab] = useState<'summary' | 'commands' | 'verification' | 'rollback'>('summary')
 
-  // Çalıştırma durumu
+  // Run state
   const [runStatus, setRunStatus] = useState<RunStatus | null>(null)
   const [runSteps, setRunSteps] = useState<RunStep[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const [runStartedAt, setRunStartedAt] = useState<string | null>(null)
 
-  // Senaryo değiştiğinde parametreleri sıfırla
+  // Reset parameters when scenario changes
   const handleSelectScenario = (scenario: ScenarioPackage) => {
     setSelectedScenario(scenario)
     const defaults: Record<string, any> = {}
@@ -47,7 +47,7 @@ export default function AdbScenariosPage() {
     setActiveTab('summary')
   }
 
-  // Ön kontrol sonuçlarını hesapla
+  // Calculate preflight check results
   const preflightResults = useMemo(() => {
     if (!selectedScenario || !selectedDevice) return []
     return selectedScenario.preflightChecks.map((checkId) => {
@@ -55,32 +55,32 @@ export default function AdbScenariosPage() {
         case 'device-connected':
           return {
             id: checkId,
-            label: 'Cihaz bağlı ve ADB erişimi mevcut',
+            label: 'Device connected and ADB access available',
             status: selectedDevice.status === 'connected' ? ('pass' as const) : ('fail' as const),
           }
         case 'app-installed':
           return {
             id: checkId,
-            label: 'NesyMobile uygulaması yüklü',
+            label: 'NesyMobile app installed',
             status: selectedDevice.appInstalled ? ('pass' as const) : ('fail' as const),
           }
         case 'debuggable':
           return {
             id: checkId,
-            label: 'Debug build yüklü (debuggable flag aktif)',
+            label: 'Debug build installed (debuggable flag active)',
             status: selectedDevice.isDebuggable ? ('pass' as const) : ('fail' as const),
           }
         case 'battery-ok':
           return {
             id: checkId,
-            label: 'Batarya seviyesi yeterli (>%20)',
+            label: 'Battery level sufficient (>20%)',
             status: selectedDevice.batteryLevel > 20 ? ('pass' as const) : ('warn' as const),
             message: selectedDevice.batteryLevel <= 20 ? `%${selectedDevice.batteryLevel}` : undefined,
           }
         case 'no-active-run':
           return {
             id: checkId,
-            label: 'Devam eden başka bir senaryo yok',
+            label: 'No other ongoing scenario',
             status: runStatus !== 'running' ? ('pass' as const) : ('fail' as const),
           }
         default:
@@ -89,10 +89,10 @@ export default function AdbScenariosPage() {
     })
   }, [selectedScenario, selectedDevice, runStatus])
 
-  // Tüm ön kontroller geçti mi?
+  // Did all preflight checks pass?
   const allPreflightsPassed = preflightResults.every((r) => r.status !== 'fail')
 
-  // Mock çalıştırma
+  // Mock execution
   const handleRun = () => {
     if (!selectedScenario || !selectedDevice) return
     const now = new Date()
@@ -101,7 +101,7 @@ export default function AdbScenariosPage() {
     setRunStatus('running')
     setRunStartedAt(now.toISOString())
 
-    // Adımları oluştur
+    // Create steps
     const steps: RunStep[] = [
       { step: 1, label: 'Device validation', status: 'completed' },
       ...selectedScenario.commands.map((cmd, i) => ({
@@ -117,7 +117,7 @@ export default function AdbScenariosPage() {
     ]
     setRunSteps(steps)
 
-    // Adımları sırayla ilerlet
+    // Advance steps sequentially
     let currentStep = 1
     const interval = setInterval(() => {
       currentStep++
@@ -143,7 +143,7 @@ export default function AdbScenariosPage() {
         path="/engineering/device-lab/adb-scenarios"
         icon={Play}
         title="ADB Scenario Runner"
-        lead="Onaylı cihaz senaryolarını seç, parametrelerini gir, uygulanacak komutları doğrula ve kontrollü biçimde çalıştır."
+        lead="Select approved device scenarios, enter their parameters, verify the commands to be applied, and execute them in a controlled manner."
         tone="blue"
         badges={[
           { label: 'Controlled execution' },
@@ -160,10 +160,10 @@ export default function AdbScenariosPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1, ease: EASE }}
       >
-        {/* Sol: Senaryo Havuzu */}
+        {/* Left: Scenario Pool */}
         <ScenarioPool selectedId={selectedScenario?.id ?? null} onSelect={handleSelectScenario} />
 
-        {/* Orta: Yapılandırma */}
+        {/* Middle: Configuration */}
         <ScenarioConfig
           scenario={selectedScenario}
           paramValues={paramValues}
@@ -180,7 +180,7 @@ export default function AdbScenariosPage() {
           isRunning={runStatus === 'running'}
         />
 
-        {/* Sağ: Çalıştırma Paneli */}
+        {/* Right: Run Panel */}
         <RunPanel
           runId={runId}
           status={runStatus}

@@ -1,8 +1,8 @@
 'use client'
 
-// Senaryo Yapılandırma — orta panel.
-// Seçili senaryonun parametreleri, komut önizlemesi, doğrulama ve
-// geri alma adımlarını barındırır. Preflight kontrollerini yürütür.
+// Scenario Configuration — middle panel.
+// Parameters of the selected scenario, command preview, verification and
+// rollback steps. Executes preflight checks.
 
 import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -49,7 +49,7 @@ import { CodeBlock } from '@/components/engineering/tools/shared'
 import { RISK_LEVEL_META } from '@/data/engineering/device-lab/mock-devices'
 import type { ScenarioPackage, ConfigType } from '@/data/engineering/device-lab/device-lab-types'
 
-/* ─── Komut interpolasyonu ─── */
+/* ─── Command interpolation ─── */
 function interpolateCommand(cmd: string, serial: string, params: Record<string, any>): string {
   let result = cmd.replace(/{serial}/g, serial)
   Object.entries(params).forEach(([key, value]) => {
@@ -58,12 +58,12 @@ function interpolateCommand(cmd: string, serial: string, params: Record<string, 
   return result
 }
 
-/* ─── Süre formatla ─── */
+/* ─── Format duration ─── */
 function formatDuration(seconds: number): string {
-  if (seconds < 60) return `~${seconds} saniye`
+  if (seconds < 60) return `~${seconds} seconds`
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
-  return s > 0 ? `~${m} dk ${s} sn` : `~${m} dk`
+  return s > 0 ? `~${m} min ${s} sec` : `~${m} min`
 }
 
 /* ─── Preflight check result type ─── */
@@ -106,7 +106,7 @@ export function ScenarioConfig({
   configType,
   isRunning,
 }: ScenarioConfigProps) {
-  // İnterpolasyonlu komutlar
+  // Interpolated commands
   const interpolatedCommands = useMemo(() => {
     if (!scenario) return []
     return scenario.commands.map((cmd) => ({
@@ -115,13 +115,13 @@ export function ScenarioConfig({
     }))
   }, [scenario, deviceSerial, paramValues])
 
-  // Tüm komutları tek string olarak birleştir
+  // Combine all commands into a single string
   const allCommandsText = useMemo(
     () => interpolatedCommands.map((c) => `# ${c.label}\n${c.command}`).join('\n\n'),
     [interpolatedCommands],
   )
 
-  // Rollback komutlarını birleştir
+  // Combine rollback commands
   const rollbackCommandsText = useMemo(() => {
     if (!scenario) return ''
     return scenario.rollbackSteps
@@ -129,17 +129,17 @@ export function ScenarioConfig({
       .join('\n\n')
   }, [scenario, deviceSerial, paramValues])
 
-  // Yıkıcı senaryo mu?
+  // Is it a destructive scenario?
   const isDestructive = scenario?.riskLevel === 'destructive'
 
-  // Production config ile destructive senaryo
+  // Destructive scenario with production config
   const isProductionBlocked = configType === 'production' && isDestructive
 
-  // Debug gerekli ama cihaz debug değil
+  // Debug required but device is not debuggable
   const isDebugRequired =
     scenario?.buildCompatibility === 'debug' && !isDebuggable
 
-  // CTA butonu devre dışı mı?
+  // Is CTA button disabled?
   const isCtaDisabled =
     !isConnected ||
     !allPreflightsPassed ||
@@ -147,7 +147,7 @@ export function ScenarioConfig({
     isDebugRequired ||
     isRunning
 
-  // Boş durum
+  // Empty state
   if (!scenario) {
     return (
       <motion.section
@@ -158,8 +158,8 @@ export function ScenarioConfig({
       >
         <EmptyPanelState
           icon={Settings2}
-          title="Senaryo Seçin"
-          description="Sol panelden bir senaryo seçtiğinizde yapılandırma ve komut detayları burada görüntülenecek."
+          title="Select Scenario"
+          description="When you select a scenario from the left panel, configuration and command details will be displayed here."
         />
       </motion.section>
     )
@@ -173,7 +173,7 @@ export function ScenarioConfig({
       transition={{ duration: 0.4, ease: EASE }}
       key={scenario.id}
     >
-      {/* ─── Senaryo başlığı ─── */}
+      {/* ─── Scenario header ─── */}
       <div className="space-y-3 border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -188,20 +188,20 @@ export function ScenarioConfig({
           </div>
         </div>
 
-        {/* Meta bilgiler */}
+        {/* Meta information */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-          <span>Süre: <strong className="text-foreground">{formatDuration(scenario.estimatedDuration)}</strong></span>
-          <span>Versiyon: <strong className="text-foreground">v{scenario.version}</strong></span>
-          <span>Sahip: <strong className="text-foreground">{scenario.owner}</strong></span>
-          <span>Son doğrulama: <strong className="text-foreground">{scenario.lastVerifiedAt}</strong></span>
-          <span>Kullanım: <strong className="text-foreground">{scenario.executionCount}x</strong></span>
+          <span>Duration: <strong className="text-foreground">{formatDuration(scenario.estimatedDuration)}</strong></span>
+          <span>Version: <strong className="text-foreground">v{scenario.version}</strong></span>
+          <span>Owner: <strong className="text-foreground">{scenario.owner}</strong></span>
+          <span>Last verified: <strong className="text-foreground">{scenario.lastVerifiedAt}</strong></span>
+          <span>Usage: <strong className="text-foreground">{scenario.executionCount}x</strong></span>
         </div>
 
-        {/* Ne değişecek? */}
+        {/* What will change? */}
         <div className={cn('rounded-lg border p-3', toneCard[RISK_LEVEL_META[scenario.riskLevel].tone])}>
           <div className="flex items-center gap-1.5 text-xs font-bold">
             <Info className={cn('size-3.5', toneIcon[RISK_LEVEL_META[scenario.riskLevel].tone])} />
-            <span className={toneText[RISK_LEVEL_META[scenario.riskLevel].tone]}>Ne değişecek?</span>
+            <span className={toneText[RISK_LEVEL_META[scenario.riskLevel].tone]}>What will change?</span>
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
             {RISK_LEVEL_META[scenario.riskLevel].description}
@@ -209,16 +209,16 @@ export function ScenarioConfig({
         </div>
       </div>
 
-      {/* ─── Uyarılar ─── */}
+      {/* ─── Warnings ─── */}
       {isDebugRequired && <DebugOnlyWarning className="mx-4 mt-3" />}
       {isProductionBlocked && <ProductionProtectionBadge className="mx-4 mt-3" />}
 
-      {/* ─── Parametre formu ─── */}
+      {/* ─── Parameter form ─── */}
       {scenario.parameters.length > 0 && (
         <div className="space-y-3 border-b border-border p-4">
           <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Settings2 className="size-3" />
-            Parametreler
+            Parameters
           </h3>
           <div className="space-y-3">
             {scenario.parameters.map((param) => (
@@ -236,7 +236,7 @@ export function ScenarioConfig({
                       onCheckedChange={(checked) => onParamChange(param.key, checked)}
                     />
                     <span className="text-[11px] text-muted-foreground">
-                      {paramValues[param.key] ? 'Aktif' : 'Pasif'}
+                      {paramValues[param.key] ? 'Active' : 'Passive'}
                     </span>
                   </div>
                 )}
@@ -248,7 +248,7 @@ export function ScenarioConfig({
                     onValueChange={(v) => onParamChange(param.key, v)}
                   >
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Seçin..." />
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       {param.options.map((opt) => (
@@ -345,7 +345,7 @@ export function ScenarioConfig({
         </div>
       )}
 
-      {/* ─── Sekmeler ─── */}
+      {/* ─── Tabs ─── */}
       <div className="flex-1">
         <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as any)}>
           <div className="border-b border-border px-4">
@@ -355,39 +355,39 @@ export function ScenarioConfig({
                 className="rounded-none border-b-2 border-transparent px-3 py-2 text-[11px] data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
               >
                 <BookOpen className="mr-1 size-3" />
-                Özet
+                Summary
               </TabsTrigger>
               <TabsTrigger
                 value="commands"
                 className="rounded-none border-b-2 border-transparent px-3 py-2 text-[11px] data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
               >
                 <Code2 className="mr-1 size-3" />
-                Komutlar
+                Commands
               </TabsTrigger>
               <TabsTrigger
                 value="verification"
                 className="rounded-none border-b-2 border-transparent px-3 py-2 text-[11px] data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
               >
                 <ShieldCheck className="mr-1 size-3" />
-                Doğrulama
+                Verification
               </TabsTrigger>
               <TabsTrigger
                 value="rollback"
                 className="rounded-none border-b-2 border-transparent px-3 py-2 text-[11px] data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
               >
                 <Undo2 className="mr-1 size-3" />
-                Geri Alma
+                Rollback
               </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Özet */}
+          {/* Summary */}
           <TabsContent value="summary" className="p-4">
             <div className="space-y-4">
-              {/* Komut adımları */}
+              {/* Command steps */}
               <div>
                 <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Yürütülecek Adımlar
+                  Steps to Execute
                 </h4>
                 <div className="space-y-2">
                   {scenario.commands.map((cmd) => (
@@ -409,10 +409,10 @@ export function ScenarioConfig({
                 </div>
               </div>
 
-              {/* Desteklenen paketler */}
+              {/* Supported packages */}
               <div>
                 <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Desteklenen Paketler
+                  Supported Packages
                 </h4>
                 <div className="flex flex-wrap gap-1">
                   {scenario.supportedPackages.map((pkg) => (
@@ -423,10 +423,10 @@ export function ScenarioConfig({
                 </div>
               </div>
 
-              {/* Etiketler */}
+              {/* Tags */}
               <div>
                 <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Etiketler
+                  Tags
                 </h4>
                 <div className="flex flex-wrap gap-1">
                   {scenario.tags.map((tag) => (
@@ -439,18 +439,18 @@ export function ScenarioConfig({
             </div>
           </TabsContent>
 
-          {/* Komutlar */}
+          {/* Commands */}
           <TabsContent value="commands" className="p-4">
             <CodeBlock
               code={allCommandsText}
               label="adb"
               labelTone="blue"
               lineNumbers
-              summary={`${interpolatedCommands.length} komut · Cihaz: ${deviceSerial || '—'}`}
+              summary={`${interpolatedCommands.length} commands · Device: ${deviceSerial || '—'}`}
             />
           </TabsContent>
 
-          {/* Doğrulama */}
+          {/* Verification */}
           <TabsContent value="verification" className="p-4">
             <div className="space-y-3">
               {scenario.verificationSteps.map((step) => (
@@ -477,7 +477,7 @@ export function ScenarioConfig({
             </div>
           </TabsContent>
 
-          {/* Geri Alma */}
+          {/* Rollback */}
           <TabsContent value="rollback" className="p-4">
             <div className="space-y-3">
               {scenario.rollbackSteps.map((step, i) => (
@@ -507,11 +507,11 @@ export function ScenarioConfig({
         </Tabs>
       </div>
 
-      {/* ─── Preflight kontroller ─── */}
+      {/* ─── Preflight checks ─── */}
       {preflightResults.length > 0 && (
         <div className="border-t border-border p-4">
           <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Ön Kontroller
+            Preflight Checks
           </h3>
           <PreflightCheckList checks={preflightResults} />
         </div>
@@ -539,18 +539,18 @@ export function ScenarioConfig({
               >
                 <RotateCcw className="size-3.5" />
               </motion.span>
-              Çalışıyor...
+              Running...
             </>
           ) : (
             <>
               <Play className="size-3.5" />
-              {isDestructive ? 'Değişiklikleri Onayla ve Çalıştır' : 'Senaryoyu Çalıştır'}
+              {isDestructive ? 'Confirm Changes and Run' : 'Run Scenario'}
             </>
           )}
         </Button>
         {!isConnected && (
           <p className="mt-2 text-center text-[10px] text-red-600 dark:text-red-400">
-            Cihaz bağlı değil — önce bir cihaz seçin.
+            Device not connected — select a device first.
           </p>
         )}
       </div>

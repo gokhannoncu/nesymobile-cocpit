@@ -1,5 +1,5 @@
 // ============================================================================
-// Debug View — NesyMobile enum eşlemeleri (schedule/model/*.kt ile birebir)
+// Debug View — NesyMobile enum mappings (exact matches with schedule/model/*.kt)
 // ============================================================================
 
 import type { Tone } from '@/components/product'
@@ -79,7 +79,7 @@ export const SCHEDULE_STATUS: Record<number, { label: string; tone: Tone }> = {
   3: { label: 'EndOfDayRequested', tone: 'amber' },
 }
 
-/** Yardımcı — bilinmeyen int için güvenli etiket. */
+/** Helper — safe label for unknown int. */
 export function enumLabel(
   map: Record<number, { label: string; tone: Tone }>,
   value: number,

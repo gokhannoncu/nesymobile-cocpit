@@ -93,7 +93,7 @@ import {
   type PiAction,
 } from '@/data/engineering/performance-intelligence'
 
-// ═══ Görünüm modları ═════════════════════════════════════════════════════════
+// ═══ View modes ═════════════════════════════════════════════════════════
 
 type ViewMode = 'executive' | 'engineering' | 'print'
 
@@ -103,7 +103,7 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   print: 'Print',
 }
 
-// ═══ Durum / ton eşlemeleri ══════════════════════════════════════════════════
+// ═══ Status / tone mappings ══════════════════════════════════════════════════
 
 const healthTone: Record<HealthStatus, Tone> = {
   'on-target': 'green',
@@ -138,7 +138,7 @@ const kpiBorder: Record<KpiTone, string> = {
   red: 'border-s-red-500',
 }
 
-// Ülke çizgi renkleri — grafiklerde ortak.
+// Country line colors — shared across charts.
 const COUNTRY_COLORS: Record<string, string> = {
   hr: '#3b82f6',
   ba: '#f59e0b',
@@ -173,13 +173,13 @@ function KpiStrip() {
   )
 }
 
-// ═══ 3 · Yönetici anlatısı ═══════════════════════════════════════════════════
+// ═══ 3 · Executive narrative ═══════════════════════════════════════════════════
 
 function NarrativeRow() {
   const blocks = [
-    { title: 'Bu hafta ne oldu?', icon: Activity, body: PI_NARRATIVE.whatHappened },
-    { title: 'Neden önemli?', icon: Scale, body: PI_NARRATIVE.whyItMatters },
-    { title: 'Ne yapıyoruz?', icon: Wrench, body: PI_NARRATIVE.whatWeAreDoing },
+    { title: 'What happened this week?', icon: Activity, body: PI_NARRATIVE.whatHappened },
+    { title: 'Why does it matter?', icon: Scale, body: PI_NARRATIVE.whyItMatters },
+    { title: 'What are we doing?', icon: Wrench, body: PI_NARRATIVE.whatWeAreDoing },
   ]
   return (
     <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
@@ -215,8 +215,8 @@ function CountryScorecards() {
               ['Network', c.network + (c.networkNote ? ` · ${c.networkNote}` : '')],
               ['Latency', c.latency],
               ['Crash-free', c.crashFree],
-              ['Örneklem', `${c.samples} · güven: ${c.confidence}`],
-              ['Haftalık yön', c.direction],
+              ['Sample', `${c.samples} · confidence: ${c.confidence}`],
+              ['Weekly direction', c.direction],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-3">
                 <dt className="shrink-0 text-muted-foreground">{k}</dt>
@@ -276,7 +276,7 @@ function AppStartTrendChart() {
           y={PI_APP_START_TARGET}
           stroke="#ef4444"
           strokeDasharray="6 4"
-          label={{ value: 'Hedef 2.0 s', position: 'insideTopRight', fontSize: 11, fill: '#ef4444' }}
+          label={{ value: 'Target 2.0 s', position: 'insideTopRight', fontSize: 11, fill: '#ef4444' }}
         />
         {(['hr', 'ba', 'si', 'rs'] as const).map((id) => (
           <Line
@@ -311,12 +311,12 @@ function NetworkStabilityChart() {
           opacity={0.5}
           tickFormatter={(v: number) => `%${v}`}
         />
-        {/* Gecikme kendi görünmez ekseninde — M ve % eksenleriyle örtüşmez */}
+        {/* Latency in its own invisible axis — doesn't overlap with M and % axes */}
         <YAxis yAxisId="lat" hide domain={[400, 900]} />
         <RTooltip contentStyle={chartTooltipStyle} />
-        <Bar yAxisId="vol" dataKey="volumeM" name="Hacim (M istek)" fill="#6366f1" fillOpacity={0.25} radius={[4, 4, 0, 0]} />
+        <Bar yAxisId="vol" dataKey="volumeM" name="Volume (M requests)" fill="#6366f1" fillOpacity={0.25} radius={[4, 4, 0, 0]} />
         <Line yAxisId="pct" type="monotone" dataKey="successPct" name="Success %" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
-        <Line yAxisId="lat" type="monotone" dataKey="latencyMs" name="P90 gecikme (ms)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+        <Line yAxisId="lat" type="monotone" dataKey="latencyMs" name="P90 latency (ms)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
       </ComposedChart>
     </ResponsiveContainer>
@@ -345,12 +345,12 @@ function EndpointImpactChart() {
           opacity={0.5}
           tickFormatter={(v: number) => `${v}s`}
           domain={[0, 32]}
-          label={{ value: 'P90 gecikme (s)', position: 'insideBottom', offset: -2, fontSize: 11 }}
+          label={{ value: 'P90 latency (s)', position: 'insideBottom', offset: -2, fontSize: 11 }}
         />
         <YAxis
           type="number"
           dataKey="volume"
-          name="Hacim"
+          name="Volume"
           scale="log"
           domain={[100, 1000000]}
           tick={{ fontSize: 11 }}
@@ -358,7 +358,7 @@ function EndpointImpactChart() {
           opacity={0.5}
           tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}K` : `${v}`)}
         />
-        <ZAxis type="number" dataKey="absChange" range={[60, 420]} name="Haftalık değişim" />
+        <ZAxis type="number" dataKey="absChange" range={[60, 420]} name="Weekly change" />
         <RTooltip
           contentStyle={chartTooltipStyle}
           cursor={{ strokeDasharray: '3 3' }}
@@ -370,9 +370,9 @@ function EndpointImpactChart() {
                 <div className="font-semibold text-foreground">{p.name}</div>
                 <div className="mt-1 space-y-0.5 text-muted-foreground">
                   <div>{p.country} · {p.flow}</div>
-                  <div>P90 {p.p90s} s · hacim {p.volume.toLocaleString('tr-TR')}</div>
-                  <div>Haftalık {p.changePct > 0 ? '+' : ''}{p.changePct}%</div>
-                  <div>Güven: {p.confidence === 'confirmed' ? 'yüksek' : 'doğrulama gerekli'}</div>
+                  <div>P90 {p.p90s} s · volume {p.volume.toLocaleString('en-US')}</div>
+                  <div>Weekly {p.changePct > 0 ? '+' : ''}{p.changePct}%</div>
+                  <div>Confidence: {p.confidence === 'confirmed' ? 'high' : 'validation required'}</div>
                 </div>
               </div>
             )
@@ -429,14 +429,14 @@ function CountryComparison() {
   return (
     <ComparisonTable
       headers={[
-        { label: 'Ülke' },
+        { label: 'Country' },
         { label: 'App Start P90' },
-        { label: 'Haftalık' },
+        { label: 'Weekly' },
         { label: 'Network' },
         { label: 'Latency (>600 ms)' },
         { label: 'Crash-free' },
-        { label: 'Örneklem' },
-        { label: 'Durum' },
+        { label: 'Sample' },
+        { label: 'Status' },
       ]}
       rows={PI_COUNTRIES.map((c) => [
         <span key="n" className="font-semibold">{c.name} ({c.id.toUpperCase()})</span>,
@@ -451,7 +451,7 @@ function CountryComparison() {
         c.crashFree,
         <span key="s" className="inline-flex items-center gap-1.5">
           {c.samples}
-          {c.confidence === 'Düşük' && (
+          {c.confidence === 'Low' && (
             <Badge variant="secondary" appearance="outline" size="xs">low sample</Badge>
           )}
         </span>,
@@ -472,7 +472,7 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-muted/50">
-            {['Endpoint', 'Flow', 'P90', 'Hacim', 'Değişim', 'İş etkisi', 'Güven', 'Önerilen aksiyon'].map((h, i) => (
+            {['Endpoint', 'Flow', 'P90', 'Volume', 'Change', 'Business impact', 'Confidence', 'Recommended action'].map((h, i) => (
               <th
                 key={h}
                 className={cn(

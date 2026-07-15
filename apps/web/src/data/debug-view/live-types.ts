@@ -1,13 +1,13 @@
 // ============================================================================
 // Debug View — Live ADB Types
 // ============================================================================
-// /api/adb/* route handler'larının döndürdüğü gerçek cihaz verisi tipleri.
-// mock types.ts'teki DeviceRuntime'ın canlı karşılığı: ADB üzerinden
-// okunamayan alanlar null olabilir (ör. release build'de Firebase prefs).
+// Real device data types returned by /api/adb/* route handlers.
+// Live equivalent of DeviceRuntime in mock types.ts: fields that cannot be
+// read via ADB can be null (e.g. Firebase prefs in release build).
 
 import type { NetworkTransport, WifiInfo, CellularInfo, OsInfo } from './types'
 
-/** Ping tabanlı canlı ölçüm — throughput (Mbps) cihaz üzerinden ölçülemez. */
+/** Ping-based live measurement — throughput (Mbps) cannot be measured on device. */
 export interface LivePingSample {
   latencyMs: number | null
   jitterMs: number | null
@@ -16,7 +16,7 @@ export interface LivePingSample {
   endpoint: string
 }
 
-/** dumpsys battery çıktısından okunan anlık batarya durumu. */
+/** Instant battery state read from dumpsys battery output. */
 export interface LiveBatteryInfo {
   level: number
   charging: boolean
@@ -25,7 +25,7 @@ export interface LiveBatteryInfo {
   technology: string | null
 }
 
-/** dumpsys package + pidof + /proc üzerinden uygulama süreci. */
+/** Application process via dumpsys package + pidof + /proc. */
 export interface LiveAppInfo {
   installed: boolean
   packageName: string | null
@@ -42,8 +42,8 @@ export interface LiveAppInfo {
 }
 
 /**
- * run-as ile shared_prefs'ten okunan Firebase kimlikleri.
- * Yalnızca debuggable build'lerde erişilebilir; değilse available=false.
+ * Firebase IDs read from shared_prefs with run-as.
+ * Only accessible in debuggable builds; otherwise available=false.
  */
 export interface LiveFirebaseSnapshot {
   available: boolean
@@ -58,7 +58,7 @@ export interface LiveFirebaseSnapshot {
   crashlyticsInstallationId: string | null
 }
 
-/** /api/adb/runtime yanıtı — Overview ekranını besleyen canlı kök nesne. */
+/** /api/adb/runtime response — live root object feeding the Overview screen. */
 export interface LiveDeviceRuntime {
   serial: string
   capturedAt: string
@@ -73,7 +73,7 @@ export interface LiveDeviceRuntime {
   permissions: { name: string; granted: boolean }[]
 }
 
-/** /api/adb/devices yanıt zarfı. */
+/** /api/adb/devices response envelope. */
 export interface AdbDevicesResponse {
   adbAvailable: boolean
   adbPath: string | null

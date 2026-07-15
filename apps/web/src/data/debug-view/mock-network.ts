@@ -1,9 +1,9 @@
 // ============================================================================
-// Debug View — Network Inspector mock data (Fiddler benzeri)
+// Debug View — Network Inspector mock data (Fiddler-like)
 // ============================================================================
-// NesyMobile OkHttp trafiğinin canlı yakalanmış hali gibi. Endpoint'ler,
-// header'lar ve host'lar gerçek NetworkModule / AuthInterceptor / APIService
-// tanımlarından türetilmiştir. Host: nesy-staging-mobile-api.overseas.hr (HR).
+// Like live captured NesyMobile OkHttp traffic. Endpoints,
+// headers and hosts are derived from real NetworkModule / AuthInterceptor / APIService
+// definitions. Host: nesy-staging-mobile-api.overseas.hr (HR).
 
 import type { NetworkTransaction } from './types'
 
@@ -14,7 +14,7 @@ const CDN_IP = '185.62.11.51'
 const WSPAY_HOST = 'tstoverseas.wspay.info'
 const WSPAY_IP = '193.198.209.20'
 
-/** Her istekte AuthInterceptor tarafından eklenen ortak header'lar. */
+/** Common headers added by AuthInterceptor in every request. */
 const commonHeaders = (bearer = true): Record<string, string> => ({
   'X-DeviceId': '9774d56d682e549c',
   'X-Client-Request-Time': '2026-07-15T09:41:58.221+02:00',
@@ -235,7 +235,7 @@ export const MOCK_TRANSACTIONS: NetworkTransaction[] = [
     responseBody: '{"isSuccess":false,"message":"Object reference not set to an instance of an object."}',
     correlationId: 'b8c9d0e1',
     initiator: 'DeliveryFailedFragment → SharedViewModel.saveRequest',
-    error: 'HTTP 500 — kuyruğa alındı (offline retry)',
+    error: 'HTTP 500 — added to queue (offline retry)',
     retryOf: null,
   },
   {
@@ -313,7 +313,7 @@ export const MOCK_TRANSACTIONS: NetworkTransaction[] = [
     responseBody: '{"isSuccess":false,"message":"Token expired"}',
     correlationId: 'e1f2a3b4',
     initiator: 'DeliveryFragment → SharedViewModel.createFiscalInvoice',
-    error: 'HTTP 401 — token yenileme tetiklendi',
+    error: 'HTTP 401 — token refresh triggered',
     retryOf: null,
   },
   {
@@ -365,7 +365,7 @@ export const MOCK_TRANSACTIONS: NetworkTransaction[] = [
     responseBody: null,
     correlationId: 'a3b4c5d6',
     initiator: 'VehicleLoadingFragment → SharedViewModel.saveRequest',
-    error: 'SocketTimeoutException — read timed out (60s) → kuyruğa alındı',
+    error: 'SocketTimeoutException — read timed out (60s) → added to queue',
     retryOf: null,
   },
   {
@@ -396,7 +396,7 @@ export const MOCK_TRANSACTIONS: NetworkTransaction[] = [
   },
 ]
 
-/** Cert-pinning ve bağlantı güvenliği özeti (Network Inspector kartı). */
+/** Cert-pinning and connection security summary (Network Inspector card). */
 export const CONNECTION_SECURITY = {
   certificatePinning: true,
   pinnedHost: 'www.araskargo.com.tr',

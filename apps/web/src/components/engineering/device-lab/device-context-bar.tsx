@@ -1,7 +1,7 @@
 'use client'
 
-// Cihaz bağlam çubuğu — Device Lab sayfalarının üstünde sticky olarak
-// seçili cihaz bilgilerini, selector dropdown'unu ve ortak aksiyonları gösterir.
+// Device context bar — sticky at the top of Device Lab pages
+// showing selected device info, selector dropdown, and shared actions.
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -86,7 +86,7 @@ function DeviceSelector({
             <span className="font-mono text-[10px] text-muted-foreground">{selected.serial.slice(-8)}</span>
           </>
         ) : (
-          <span className="text-muted-foreground">Cihaz seçin…</span>
+          <span className="text-muted-foreground">Select device…</span>
         )}
         <ChevronDown className={cn('size-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
@@ -106,10 +106,10 @@ function DeviceSelector({
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-                <span className="text-xs font-semibold text-foreground">Bağlı Cihazlar</span>
+                <span className="text-xs font-semibold text-foreground">Connected Devices</span>
                 <Button size="xs" variant="ghost" onClick={onRefresh} className="h-6 gap-1 px-1.5 text-[10px]">
                   <RefreshCw className="size-3" />
-                  Yenile
+                  Refresh
                 </Button>
               </div>
 
@@ -164,7 +164,7 @@ function DeviceSelector({
 
               {/* Footer */}
               <div className="border-t bg-muted/30 px-3 py-2 text-[10px] text-muted-foreground">
-                {devices.filter((d) => d.status === 'connected').length} / {devices.length} cihaz bağlı
+                {devices.filter((d) => d.status === 'connected').length} / {devices.length} devices connected
               </div>
             </motion.div>
           </>
@@ -207,7 +207,7 @@ function CopyDeviceInfoButton({ device }: { device: ConnectedDevice }) {
       }}
     >
       {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-      {copied ? 'Kopyalandı' : 'Cihaz Bilgisi'}
+      {copied ? 'Copied' : 'Device Info'}
     </Button>
   )
 }
@@ -217,7 +217,7 @@ function CopyDeviceInfoButton({ device }: { device: ConnectedDevice }) {
 export function DeviceContextBar() {
   const { selectedDevice, setSelectedDevice, devices, refreshDevices, bridgeConnected, navigateToLogs } = useDeviceLab()
 
-  // Bridge bağlı değilse kısa bar göster
+  // Show short bar if Bridge is not connected
   if (!bridgeConnected) {
     return (
       <motion.div
@@ -228,11 +228,11 @@ export function DeviceContextBar() {
       >
         <MonitorSmartphone className="size-4 text-amber-600 dark:text-amber-400" />
         <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
-          Nesy Device Bridge bağlı değil — yerel bilgisayarınızda bridge servisini başlatın
+          Nesy Device Bridge is not connected — start the bridge service on your local machine
         </span>
         <Button size="xs" variant="outline" className="ms-auto h-6 text-[10px]">
           <RefreshCw className="size-3" />
-          Yeniden Dene
+          Retry
         </Button>
       </motion.div>
     )
@@ -249,7 +249,7 @@ export function DeviceContextBar() {
         {/* Device selector */}
         <DeviceSelector devices={devices} selected={selectedDevice} onSelect={setSelectedDevice} onRefresh={refreshDevices} />
 
-        {/* Seçili cihaz bilgileri */}
+        {/* Selected device info */}
         {selectedDevice && (
           <>
             {/* Separator */}
@@ -320,16 +320,16 @@ export function DeviceContextBar() {
         {/* No device selected */}
         {!selectedDevice && (
           <span className="text-xs text-muted-foreground">
-            Başlamak için bir cihaz seçin
+            Select a device to start
           </span>
         )}
       </div>
 
-      {/* Debuggable warning — seçili cihaz debug değilse */}
+      {/* Debuggable warning — if selected device is not debuggable */}
       {selectedDevice && !selectedDevice.isDebuggable && selectedDevice.appInstalled && (
         <div className="border-t border-amber-200/50 bg-amber-50/40 px-4 py-1.5 dark:border-amber-900/50 dark:bg-amber-950/20">
           <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
-            ⚠ Seçili build debuggable değil — bazı senaryolar (run-as gerektiren) kullanılamaz
+            ⚠ Selected build is not debuggable — some scenarios (requiring run-as) cannot be used
           </span>
         </div>
       )}

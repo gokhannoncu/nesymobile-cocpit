@@ -20,77 +20,77 @@ export default function CrashlyticsPage() {
         icon={Bug}
         eyebrow="Reliability & Operations"
         tone="orange"
-        title="Crash görünürlüğü: neredeyiz, neyi göremiyoruz?"
-        lead="Firebase Crashlytics tüm flavor'larda aktif ve release mapping upload açık — stack trace'ler okunabilir. Ancak crash raporlama merkezî değil: recordException çağrıları ~30 dosyaya dağılmış durumda ve iki ekranda yanlış Crashlytics sabiti kullanılıyor. Bu sayfa hem mevcut sayıları hem altyapı borcunu izler."
-        chips={['Firebase BOM 32.7.4', 'Mapping upload: açık', 'CW27 verisi']}
+        title="Crash visibility: where are we, what can't we see?"
+        lead="Firebase Crashlytics is active in all flavors and release mapping upload is enabled — stack traces are readable. However, crash reporting is not centralized: recordException calls are scattered across ~30 files and the wrong Crashlytics constant is used on two screens. This page tracks both current numbers and infrastructure debt."
+        chips={['Firebase BOM 32.7.4', 'Mapping upload: enabled', 'CW27 data']}
       />
 
       <PageSection
-        eyebrow="Güncel Durum"
-        title="Ülke bazlı crash görünümü (CW27)"
+        eyebrow="Current Status"
+        title="Country-based crash view (CW27)"
         icon={Bug}
         tone="orange"
-        description="Crashlytics verisi performans bülteninde yalnızca HR ve SI için raporlandı; BA ve RS için haftalık crash raporu henüz bültene dahil değil — ilk kapatılacak görünürlük boşluğu."
+        description="Crashlytics data was reported in the performance bulletin only for HR and SI; the weekly crash report for BA and RS is not yet included in the bulletin — the first visibility gap to be closed."
       >
         <StatGrid cols={4}>
-          <StatCard label="HR · Crash-free" value="%95.99" tone="red" icon={Bug} hint="24 crash / 23 kullanıcı (7 gün) · −2.6 puan · 29 Haziran'da 9 crash" />
-          <StatCard label="SI · Crash-free" value="%100" tone="green" icon={CheckCircle2} hint="7 günde tek crash (24 Haziran)" />
-          <StatCard label="BA · Crash-free" value="—" tone="gray" icon={Info} hint="Bültende raporlanmıyor" />
-          <StatCard label="RS · Crash-free" value="—" tone="gray" icon={Info} hint="Bültende raporlanmıyor" />
+          <StatCard label="HR · Crash-free" value="95.99%" tone="red" icon={Bug} hint="24 crashes / 23 users (7 days) · −2.6 points · 9 crashes on June 29" />
+          <StatCard label="SI · Crash-free" value="100%" tone="green" icon={CheckCircle2} hint="Single crash in 7 days (June 24)" />
+          <StatCard label="BA · Crash-free" value="—" tone="gray" icon={Info} hint="Not reported in bulletin" />
+          <StatCard label="RS · Crash-free" value="—" tone="gray" icon={Info} hint="Not reported in bulletin" />
         </StatGrid>
       </PageSection>
 
       <PageSection
-        eyebrow="Altyapı"
-        title="Crash raporlama altyapısının durumu"
+        eyebrow="Infrastructure"
+        title="Status of crash reporting infrastructure"
         icon={Wrench}
         tone="amber"
       >
         <ComparisonTable
-          headers={[{ label: 'Bileşen' }, { label: 'Durum' }, { label: 'Not' }]}
+          headers={[{ label: 'Component' }, { label: 'Status' }, { label: 'Note' }]}
           rows={[
-            ['Crashlytics SDK', '✅ Aktif', 'firebase-crashlytics-ktx · tüm flavor’larda, flavor başına google-services.json (13 dosya)'],
-            ['Mapping upload', '✅ Açık', 'firebaseCrashlytics.mappingFileUploadEnabled true — release stack trace’leri deobfuscate edilir'],
-            ['Performance Monitoring', '✅ Aktif', 'firebase-perf — haftalık bültenin veri kaynağı'],
-            ['Merkezî crash wrapper', '❌ Yok', 'recordException(e) ~30 dosyada elle çağrılıyor; standart bağlam anahtarı yok'],
-            ['Custom keys', '⚠️ Kısmi', 'LoginFragment username/fullName/unitName set ediyor — diğer ekranlarda yok'],
-            ['Doğru ekran etiketi', '❌ 2 hata', 'CreateKTF ve LeanLocker yanlış Crashlytics sabiti kullanıyor → loglar başka ekrana yazılıyor'],
-            ['ANR görünürlüğü', '⚠️ Riskli', 'allowMainThreadQueries + Gson parse (E4) ANR üretir; ANR’ler crash sayısına yansımaz, ayrı izlenmeli'],
+            ['Crashlytics SDK', '✅ Active', 'firebase-crashlytics-ktx · in all flavors, google-services.json per flavor (13 files)'],
+            ['Mapping upload', '✅ Enabled', 'firebaseCrashlytics.mappingFileUploadEnabled true — release stack traces are deobfuscated'],
+            ['Performance Monitoring', '✅ Active', 'firebase-perf — data source of weekly bulletin'],
+            ['Central crash wrapper', '❌ None', 'recordException(e) manually called in ~30 files; no standard context key'],
+            ['Custom keys', '⚠️ Partial', 'LoginFragment sets username/fullName/unitName — not in other screens'],
+            ['Correct screen tag', '❌ 2 errors', 'CreateKTF and LeanLocker use wrong Crashlytics constant → logs written to another screen'],
+            ['ANR visibility', '⚠️ Risky', 'allowMainThreadQueries + Gson parse (E4) produces ANR; ANRs are not reflected in crash count, must be tracked separately'],
           ]}
         />
       </PageSection>
 
-      <PageSection eyebrow="Bilinen Kaynaklar" title="Crash üreten bilinen desenler" icon={AlertTriangle} tone="red">
+      <PageSection eyebrow="Known Sources" title="Known patterns producing crashes" icon={AlertTriangle} tone="red">
         <CardGrid cols={3}>
           <InfoCard
             icon={Bug}
             tone="red"
-            title="@AndroidEntryPoint eksik"
-            desc="QuestionFragment ve AskQuestionFragment @Inject kullanıyor ama anotasyon yok → açılışta runtime crash."
-            badges={[{ label: 'Faz 0 hedefi' }]}
+            title="Missing @AndroidEntryPoint"
+            desc="QuestionFragment and AskQuestionFragment use @Inject but have no annotation → runtime crash at startup."
+            badges={[{ label: 'Phase 0 target' }]}
           />
           <InfoCard
             icon={Bug}
             tone="orange"
-            title="observeForever sızıntıları"
-            desc="Camera (L735), Damage (L124/L214), CaseDetection, PudoLocker — uzun oturumda bellek şişmesi ve crash."
-            badges={[{ label: 'Faz 0 hedefi' }]}
+            title="observeForever leaks"
+            desc="Camera (L735), Damage (L124/L214), CaseDetection, PudoLocker — memory bloat and crash in long sessions."
+            badges={[{ label: 'Phase 0 target' }]}
           />
           <InfoCard
             icon={Bug}
             tone="amber"
-            title="Bildirim + scan yarışı"
-            desc="Ticket 4484: bildirim sonrası barkod tarama sırasında çökme — E15/E31 desenleriyle ilişkili, repro adımı playbook'ta."
-            badges={[{ label: 'Açık ticket' }]}
+            title="Notification + scan race"
+            desc="Ticket 4484: crash during barcode scan after notification — related to E15/E31 patterns, repro steps in playbook."
+            badges={[{ label: 'Open ticket' }]}
           />
         </CardGrid>
       </PageSection>
 
-      <Callout icon={Wrench} title="İyileştirme sırası" tone="orange">
-        (1) BA ve RS crash-free oranları haftalık bültene eklenir — dört ülke tek tabloda izlenir.
-        (2) Merkezî CrashReporter wrapper’ı: ekran adı + shipment/schedule ID custom key olarak
-        standartlaşır. (3) Yanlış sabit kullanan 2 ekran düzeltilir. (4) ANR izleme (Firebase
-        vitals) bülten kapsamına alınır.
+      <Callout icon={Wrench} title="Improvement order" tone="orange">
+        (1) BA and RS crash-free rates are added to the weekly bulletin — four countries tracked in a single table.
+        (2) Central CrashReporter wrapper: screen name + shipment/schedule ID standardized as custom key.
+        (3) 2 screens using wrong constant are fixed. (4) ANR tracking (Firebase
+        vitals) is included in bulletin scope.
       </Callout>
     </ProductPage>
   )

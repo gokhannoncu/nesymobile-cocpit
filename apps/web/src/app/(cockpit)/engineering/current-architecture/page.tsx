@@ -23,17 +23,17 @@ export default function CurrentArchitecturePage() {
         icon={Layers}
         eyebrow="Architecture & Modernization"
         tone="orange"
-        title="Mevcut mimari: tek modül, her şey her şeyi görüyor."
-        lead="Nesy Mobile tek modüllü bir Android uygulamasıdır (Kotlin, single-activity + 53 fragment). Katmanlar kavramsal olarak var ama fiziksel sınır yok: iş kuralları fragment/adapter/dialog'a dağılmış, veri katmanı JSON chunk'lar üzerinde manuel state yönetimi yapıyor. Bu sayfa 'neden böyle' ve 'neden sürdürülemez' sorularını kanıtla cevaplar."
-        chips={['1 modül', '~68K LOC', 'Room v240 · 11 tablo', '527 endpoint / 1 interface']}
+        title="Current architecture: single module, everything sees everything."
+        lead="Nesy Mobile is a single module Android application (Kotlin, single-activity + 53 fragments). Layers conceptually exist but no physical boundaries: business rules are scattered to fragment/adapter/dialog, data layer does manual state management over JSON chunks. This page answers 'why is it like this' and 'why is it unsustainable' with evidence."
+        chips={['1 module', '~68K LOC', 'Room v240 · 11 tables', '527 endpoints / 1 interface']}
       />
 
       <PageSection
-        eyebrow="Kanıtlarla"
-        title="Mevcut durum metrikleri"
+        eyebrow="With Evidence"
+        title="Current status metrics"
         icon={Database}
         tone="orange"
-        description="Her metrik, mimari sağlık taramasından doğrudan alınmıştır."
+        description="Every metric is directly fetched from the architecture health scan."
       >
         <StatGrid cols={4}>
           {INFRA_METRICS.map((m) => (
@@ -43,27 +43,27 @@ export default function CurrentArchitecturePage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Mimari Akış"
-        title="Mevcut ve hedef mimari"
+        eyebrow="Architecture Flow"
+        title="Current and target architecture"
         icon={Workflow}
         tone="orange"
-        description="Event kaynağından backend yanıtının UI'a dönüşüne kadar senkronizasyon hattı. Hareketli nokta, akış boyunca sağlıklı, dikkat ve kritik durakları gösterir."
+        description="Synchronization pipeline from event source until backend response returns to UI. The moving point shows healthy, warning, and critical stops along the flow."
       >
         <ArchitectureDiagram />
       </PageSection>
 
       <PageSection
-        eyebrow="Katman Haritası"
-        title="Altı katman — kavramsal olarak ayrı, fiziksel olarak tek"
+        eyebrow="Layer Map"
+        title="Six layers — conceptually separate, physically single"
         icon={Network}
         tone="amber"
-        description="Bağımlılık yönü yukarıdan aşağıya; ancak modül sınırı olmadığı için her katman her katmana erişebiliyor."
+        description="Dependency direction is top-down; but since there are no module boundaries, every layer can access every layer."
       >
         <div className="space-y-2">
           {LAYER_MAP.map((l, i) => (
             <div key={l.name} className={cn('flex items-start gap-3 rounded-xl border p-3.5', toneCard[l.tone])}>
               <span className={cn('mt-0.5 text-[11px] font-bold uppercase tracking-wide', toneText[l.tone])}>
-                Katman {i + 1}
+                Layer {i + 1}
               </span>
               <div className="min-w-0">
                 <div className="text-sm font-bold text-foreground">{l.name}</div>
@@ -75,14 +75,14 @@ export default function CurrentArchitecturePage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Yoğunlaşma"
-        title="God object'ler — uygulama mantığının %41'i 14 dosyada"
+        eyebrow="Concentration"
+        title="God objects — 41% of app logic in 14 files"
         icon={AlertTriangle}
         tone="red"
-        description="533 Kotlin dosyasının 14'ü 1.000+ satır; kritik iş akışları bu dosyalarda toplandıkça her değişikliğin etki alanı ve regresyon riski büyür."
+        description="14 of 533 Kotlin files have 1,000+ lines; as critical workflows accumulate in these files, the impact area and regression risk of each change grows."
       >
         <ComparisonTable
-          headers={[{ label: 'Dosya' }, { label: 'Satır', tone: 'red' }, { label: 'Sorun' }]}
+          headers={[{ label: 'File' }, { label: 'Lines', tone: 'red' }, { label: 'Issue' }]}
           rows={GOD_OBJECTS.map((g) => [
             <code key="n" className="text-xs font-semibold">{g.name}</code>,
             <span key="l" className="font-bold tabular-nums text-red-600 dark:text-red-400">{g.lines.toLocaleString('tr-TR')}</span>,
@@ -92,59 +92,58 @@ export default function CurrentArchitecturePage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Veri Katmanı"
-        title="JSON chunk riski ve state kopyaları"
+        eyebrow="Data Layer"
+        title="JSON chunk risk and state copies"
         icon={Database}
         tone="red"
       >
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
           <div className={cn('rounded-xl border p-4', toneCard.red)}>
-            <div className="text-sm font-bold text-foreground">Room = JSON chunk deposu</div>
+            <div className="text-sm font-bold text-foreground">Room = JSON chunk store</div>
             <p className="mt-2 text-xs leading-relaxed text-foreground/85">
-              Schedule verisi ilişkisel model yerine JSON chunk’lar üzerinde taşınıyor
-              (ScheduleStopChunk.stopJson). Her güncelleme <b>oku → parse et → memory’de değiştir →
-              yeniden serialize et → yaz</b> döngüsüdür: satır bazlı update yok, index/query/transaction
-              avantajı kullanılamıyor, offline senaryolar kırılganlaşıyor. Üstüne
-              fallbackToDestructiveMigration() açık — migration hatasında saha verisi silinir (E3).
+              Schedule data is carried over JSON chunks instead of a relational model
+              (ScheduleStopChunk.stopJson). Every update is a <b>read → parse → modify in memory →
+              re-serialize → write</b> cycle: no row-based updates, index/query/transaction
+              advantages cannot be used, offline scenarios become fragile. On top of that,
+              fallbackToDestructiveMigration() is enabled — field data is deleted on migration failure (E3).
             </p>
           </div>
           <div className={cn('rounded-xl border p-4', toneCard.red)}>
-            <div className="text-sm font-bold text-foreground">Tek gerçek veri kaynağı yok</div>
+            <div className="text-sm font-bold text-foreground">No single source of truth</div>
             <p className="mt-2 text-xs leading-relaxed text-foreground/85">
-              Aynı operasyonel gerçek üç yerde yaşayabiliyor: <b>Room chunk’ları</b> (lokal DB),{' '}
-              <b>SharedViewModel memory state’i</b> (currentTask, paidShipments…) ve{' '}
-              <b>SharedPreferences</b> (scheduleId, isOfflineMode…). "Doğru değer hangisi?" sorusu
-              çağrı sırasına bağlı hale geliyor — E5/E6/E7 bu ayrışmanın doğrudan sonuçları.
+              The same operational truth can live in three places: <b>Room chunks</b> (local DB),{' '}
+              <b>SharedViewModel memory state</b> (currentTask, paidShipments…) and{' '}
+              <b>SharedPreferences</b> (scheduleId, isOfflineMode…). The question "Which is the correct value?"
+              becomes dependent on the call order — E5/E6/E7 are direct results of this separation.
             </p>
           </div>
         </div>
       </PageSection>
 
       <PageSection
-        eyebrow="Senkronizasyon"
-        title="Offline gönderim: RequestSenderService"
+        eyebrow="Synchronization"
+        title="Offline transmission: RequestSenderService"
         icon={Workflow}
         tone="amber"
-        description="1.190 satırlık foreground service; 3 sn polling ile kuyruğu işler. Happy-path'e bağlıdır."
+        description="1,190-line foreground service; processes the queue with 3 sec polling. Relies on happy-path."
       >
         <ComparisonTable
-          headers={[{ label: 'Boyut' }, { label: 'Mevcut' }, { label: 'Sonuç' }]}
+          headers={[{ label: 'Dimension' }, { label: 'Current' }, { label: 'Result' }]}
           rows={[
-            ['Polling', '3 sn ana döngü + 1 sn bekleyenler', 'Tüm cihazlar senkron yüklenir; FGS/Doze kısıtlarıyla kırılgan'],
-            ['Retry', '3 deneme · backoff/jitter yok', 'tryCount<3 sonrası istek sessizce CompletedRequest’e taşınır (E11)'],
-            ['Idempotency', 'Yalnız lokal uniqueKey', 'Sunucuda dedup yok → çift gönderim penceresi (E9)'],
-            ['Sıralama', 'Aggregate bazlı ordering yok', 'Teslim, iptalden önce işlenebilir (E10)'],
-            ['Recovery', 'isProcessing=true kilidi kalıcı olabilir', 'Zombi istekler kuyruğu tıkar (E8)'],
-            ['Hata sınıflandırma', '400/500/timeout aynı ele alınıyor', 'Teşhis zorlaşır, retry davranışı yanlışlaşır'],
+            ['Polling', '3 sec main loop + 1 sec pending', 'All devices loaded synchronously; fragile with FGS/Doze constraints'],
+            ['Retry', '3 attempts · no backoff/jitter', 'After tryCount<3, request is silently moved to CompletedRequest (E11)'],
+            ['Idempotency', 'Only local uniqueKey', 'No dedup on server → double dispatch window (E9)'],
+            ['Ordering', 'No aggregate-based ordering', 'Delivery can be processed before cancellation (E10)'],
+            ['Recovery', 'isProcessing=true lock can be permanent', 'Zombie requests clog the queue (E8)'],
+            ['Error classification', '400/500/timeout handled the same', 'Diagnosis becomes harder, retry behavior becomes incorrect'],
           ]}
         />
       </PageSection>
 
-      <Callout icon={Route} title="Buradan nereye?" tone="orange">
-        Hedef mimari: <b>Compose+MVI · Domain UseCase · normalize Room (SSoT) · Outbox/WorkManager</b>{' '}
-        (idempotencyKey + backoff + jitter). Fazlara bölünmüş geçiş planı ve riskleri{' '}
-        <b>Modernization Plan</b> sayfasındadır; bu sayfadaki her kırmızı kutu orada bir faza
-        bağlanır.
+      <Callout icon={Route} title="Where to from here?" tone="orange">
+        Target architecture: <b>Compose+MVI · Domain UseCase · normalize Room (SSoT) · Outbox/WorkManager</b>{' '}
+        (idempotencyKey + backoff + jitter). The phased transition plan and risks are on the{' '}
+        <b>Modernization Plan</b> page; every red box on this page maps to a phase there.
       </Callout>
     </ProductPage>
   )

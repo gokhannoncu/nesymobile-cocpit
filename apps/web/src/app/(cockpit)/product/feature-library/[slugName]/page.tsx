@@ -47,10 +47,10 @@ const featureRecords = MODULES.flatMap((module, moduleIndex) =>
 )
 
 const scoreLabels: Record<string, string> = {
-  bugProneness: 'Bug Riski',
+  bugProneness: 'Bug Risk',
   boilerplate: 'Boilerplate',
-  complexity: 'Karmaşıklık',
-  testCoverage: 'Test Kapsamı',
+  complexity: 'Complexity',
+  testCoverage: 'Test Coverage',
 }
 
 const scoreColors: Record<number, string> = {
@@ -62,9 +62,9 @@ const scoreColors: Record<number, string> = {
 }
 
 const ticketStatus = {
-  open: { label: 'Açık', tone: 'amber' as const },
-  closed: { label: 'Kapalı', tone: 'green' as const },
-  'in-progress': { label: 'Devam Ediyor', tone: 'blue' as const },
+  open: { label: 'Open', tone: 'amber' as const },
+  closed: { label: 'Closed', tone: 'green' as const },
+  'in-progress': { label: 'In Progress', tone: 'blue' as const },
 }
 
 export default function FeatureDetailPage() {
@@ -77,13 +77,13 @@ export default function FeatureDetailPage() {
   if (!record) {
     return (
       <ProductPage path="/product/feature-library">
-        <Callout icon={AlertTriangle} title="Feature bulunamadı" tone="red">
-          <p>Bu slug ile eşleşen bir feature kaydı yok.</p>
+        <Callout icon={AlertTriangle} title="Feature not found" tone="red">
+          <p>No feature record matching this slug found.</p>
           <Link
             href="/product/feature-library"
             className="mt-2 inline-flex font-semibold underline underline-offset-4"
           >
-            Feature Library’ye dön
+            Return to Feature Library
           </Link>
         </Callout>
       </ProductPage>
@@ -104,7 +104,7 @@ export default function FeatureDetailPage() {
   const countryRows = COUNTRIES.map((country) => {
     const value = feature.values[country.id]
     const isCore = country.id === 'core'
-    const status = value === '—' ? 'Yok' : value === 'N/A' ? 'Kapsam dışı' : 'Aktif'
+    const status = value === '—' ? 'None' : value === 'N/A' ? 'Out of scope' : 'Active'
     const statusTone = value === '—' ? 'red' : value === 'N/A' ? 'gray' : 'green'
 
     return {
@@ -114,11 +114,11 @@ export default function FeatureDetailPage() {
           <div className="mt-0.5 text-xs text-muted-foreground">{country.subtitle}</div>
         </div>
       ),
-      type: <TagBadge label={isCore ? 'Standart' : 'Ülke'} tone={isCore ? 'indigo' : 'gray'} />,
+      type: <TagBadge label={isCore ? 'Standard' : 'Country'} tone={isCore ? 'indigo' : 'gray'} />,
       status: <TagBadge label={status} tone={statusTone} />,
       behavior: (
         <p className="max-w-2xl whitespace-pre-line text-xs leading-relaxed text-foreground/80">
-          {value === '—' ? 'Henüz mevcut değil.' : value === 'N/A' ? 'Bu ülke için kapsam dışı.' : value}
+          {value === '—' ? 'Not available yet.' : value === 'N/A' ? 'Out of scope for this country.' : value}
         </p>
       ),
     }
@@ -146,13 +146,13 @@ export default function FeatureDetailPage() {
         lead={feature.desc}
         chips={[
           feature.id,
-          isSupported(feature.values.core) ? 'CORE standardı mevcut' : 'CORE standardı yok',
-          `${supportedCountryCount}/${activeCountries.length} ülkede aktif`,
-          detail ? 'Detay dokümanı hazır' : 'Detay bekleniyor',
+          isSupported(feature.values.core) ? 'CORE standard available' : 'CORE standard missing',
+          `Active in ${supportedCountryCount}/${activeCountries.length} countries`,
+          detail ? 'Detail document ready' : 'Detail pending',
         ]}
       >
         <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/70 bg-background/75 p-3 shadow-sm backdrop-blur-sm">
-          <HeroMetric label="Ülke" value={`${supportedCountryCount}/${activeCountries.length}`} />
+          <HeroMetric label="Country" value={`${supportedCountryCount}/${activeCountries.length}`} />
           <HeroMetric label="Risk" value={detail ? `${detail.score.bugProneness}/5` : '—'} />
           <HeroMetric label="Ticket" value={String(detail?.tickets.length ?? 0)} />
         </div>
@@ -163,12 +163,12 @@ export default function FeatureDetailPage() {
         items={[
           {
             value: 'overview',
-            label: 'Genel Bakış',
+            label: 'Overview',
             icon: Info,
             content: detail ? (
               <div className="grid gap-4 lg:grid-cols-12">
                 <DetailPanel
-                  title="Nedir?"
+                  title="What is it?"
                   icon={Info}
                   tone={tone}
                   className="lg:col-span-7"
@@ -177,7 +177,7 @@ export default function FeatureDetailPage() {
                 </DetailPanel>
 
                 <DetailPanel
-                  title="Çalıştığı Ekranlar"
+                  title="Screens Used"
                   icon={MonitorSmartphone}
                   tone={tone}
                   className="lg:col-span-5"
@@ -196,7 +196,7 @@ export default function FeatureDetailPage() {
                 </DetailPanel>
 
                 <DetailPanel
-                  title="Nasıl Çalışır?"
+                  title="How it Works?"
                   icon={GitBranch}
                   tone={tone}
                   className="lg:col-span-12"
@@ -222,20 +222,20 @@ export default function FeatureDetailPage() {
                 </DetailPanel>
               </div>
             ) : (
-              <EmptyPanel message="Bu feature için detay içeriği henüz hazırlanmadı." />
+              <EmptyPanel message="Detail content is not prepared yet for this feature." />
             ),
           },
           {
             value: 'countries',
-            label: 'Ülke Kapsamı',
+            label: 'Country Scope',
             icon: Globe,
             content: (
               <DataTable
                 columns={[
-                  { key: 'country', label: 'Ülke', className: 'min-w-36' },
-                  { key: 'type', label: 'Tip' },
-                  { key: 'status', label: 'Durum' },
-                  { key: 'behavior', label: 'Davranış', className: 'min-w-80' },
+                  { key: 'country', label: 'Country', className: 'min-w-36' },
+                  { key: 'type', label: 'Type' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'behavior', label: 'Behavior', className: 'min-w-80' },
                 ]}
                 rows={countryRows}
               />
@@ -243,27 +243,27 @@ export default function FeatureDetailPage() {
           },
           {
             value: 'flow',
-            label: 'Akış Diyagramı',
+            label: 'Flow Diagram',
             icon: GitBranch,
             content:
               detail?.diagram && detail.diagram.length > 0 ? (
                 <div className={cn('rounded-2xl border p-5 sm:p-8', toneCard[tone])}>
                   <div className={cn('mb-6 text-xs font-bold uppercase tracking-[0.16em]', toneText[tone])}>
-                    {feature.title} · Operasyon Akışı
+                    {feature.title} · Operation Flow
                   </div>
                   <FlowDiagram elements={detail.diagram} tone={tone} />
                 </div>
               ) : (
-                <EmptyPanel message="Bu feature için akış diyagramı henüz hazırlanmadı." />
+                <EmptyPanel message="Flow diagram is not prepared yet for this feature." />
               ),
           },
           {
             value: 'technical',
-            label: 'Parametreler & API',
+            label: 'Parameters & API',
             icon: Settings,
             content: detail ? (
               <div className="grid gap-5 xl:grid-cols-2">
-                <DetailPanel title="Bağlı Parametreler" icon={Settings} tone={tone}>
+                <DetailPanel title="Linked Parameters" icon={Settings} tone={tone}>
                   {detail.parameters.length > 0 ? (
                     <div className="space-y-2">
                       {detail.parameters.map((parameter) => (
@@ -277,11 +277,11 @@ export default function FeatureDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <InlineEmpty label="Bağlı parametre bulunmuyor." />
+                    <InlineEmpty label="No linked parameters." />
                   )}
                 </DetailPanel>
 
-                <DetailPanel title="API Endpoint’leri" icon={Code2} tone={tone}>
+                <DetailPanel title="API Endpoints" icon={Code2} tone={tone}>
                   {detail.apis && detail.apis.length > 0 ? (
                     <div className="space-y-2">
                       {detail.apis.map((api) => (
@@ -295,21 +295,21 @@ export default function FeatureDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <InlineEmpty label="Bağlı API endpoint’i bulunmuyor." />
+                    <InlineEmpty label="No linked API endpoints." />
                   )}
                 </DetailPanel>
               </div>
             ) : (
-              <EmptyPanel message="Teknik detaylar henüz hazırlanmadı." />
+              <EmptyPanel message="Technical details are not prepared yet." />
             ),
           },
           {
             value: 'operations',
-            label: 'Know-how & Skor',
+            label: 'Know-how & Score',
             icon: Lightbulb,
             content: detail ? (
               <div className="grid gap-5 lg:grid-cols-12">
-                <DetailPanel title="Bilgi & Trickler" icon={Lightbulb} tone={tone} className="lg:col-span-7">
+                <DetailPanel title="Info & Tricks" icon={Lightbulb} tone={tone} className="lg:col-span-7">
                   {detail.tips.length > 0 ? (
                     <ul className="space-y-2">
                       {detail.tips.map((tip) => (
@@ -320,11 +320,11 @@ export default function FeatureDetailPage() {
                       ))}
                     </ul>
                   ) : (
-                    <InlineEmpty label="Kayıtlı ipucu bulunmuyor." />
+                    <InlineEmpty label="No saved tips." />
                   )}
                 </DetailPanel>
 
-                <DetailPanel title="Feature Skoru" icon={Bug} tone={tone} className="lg:col-span-5">
+                <DetailPanel title="Feature Score" icon={Bug} tone={tone} className="lg:col-span-5">
                   <div className="space-y-3">
                     {Object.entries(detail.score).map(([key, value]) => (
                       <ScoreBar key={key} label={scoreLabels[key] ?? key} value={value} />
@@ -332,7 +332,7 @@ export default function FeatureDetailPage() {
                   </div>
                 </DetailPanel>
 
-                <DetailPanel title="Ticket’lar" icon={Ticket} tone={tone} className="lg:col-span-7">
+                <DetailPanel title="Tickets" icon={Ticket} tone={tone} className="lg:col-span-7">
                   {detail.tickets.length > 0 ? (
                     <div className="space-y-2">
                       {detail.tickets.map((ticket) => (
@@ -349,11 +349,11 @@ export default function FeatureDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <InlineEmpty label="Bu feature için ticket bulunmuyor." />
+                    <InlineEmpty label="No tickets for this feature." />
                   )}
                 </DetailPanel>
 
-                <DetailPanel title="Know-how Sahipleri" icon={Users} tone={tone} className="lg:col-span-5">
+                <DetailPanel title="Know-how Owners" icon={Users} tone={tone} className="lg:col-span-5">
                   {detail.experts.length > 0 ? (
                     <div className="space-y-2">
                       {detail.experts.map((expert) => (
@@ -369,25 +369,25 @@ export default function FeatureDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <InlineEmpty label="Know-how sahibi tanımlanmamış." />
+                    <InlineEmpty label="No know-how owner defined." />
                   )}
                 </DetailPanel>
               </div>
             ) : (
-              <EmptyPanel message="Operasyonel know-how henüz hazırlanmadı." />
+              <EmptyPanel message="Operational know-how is not prepared yet." />
             ),
           },
         ]}
       />
 
-      <nav className="grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2" aria-label="Feature gezinme">
+      <nav className="grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2" aria-label="Feature navigation">
         {previousFeature ? (
           <Link
             href={`/product/feature-library/${toFeatureSlug(previousFeature.id)}`}
             className="group rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
           >
             <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              <ArrowLeft className="size-3" /> Önceki feature
+              <ArrowLeft className="size-3" /> Previous feature
             </div>
             <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{previousFeature.title}</div>
           </Link>
@@ -400,7 +400,7 @@ export default function FeatureDetailPage() {
             className="group rounded-xl border bg-card p-4 text-right transition-colors hover:bg-muted/40"
           >
             <div className="flex items-center justify-end gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Sonraki feature <ArrowRight className="size-3" />
+              Next feature <ArrowRight className="size-3" />
             </div>
             <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{nextFeature.title}</div>
           </Link>

@@ -1,7 +1,7 @@
 'use client'
 
-// Debug View cihaz bağlam çubuğu — tüm debug sayfalarının üstünde sticky.
-// Seçili cihaz + selector dropdown + hızlı bilgi çipleri + bridge durumu.
+// Debug View device context bar — sticky at the top of all debug pages.
+// Selected device + selector dropdown + quick info chips + bridge status.
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -38,11 +38,15 @@ function DeviceSelector({
   selected,
   onSelect,
   onRefresh,
+  loading,
+  emptyMessage,
 }: {
   devices: ConnectedDevice[]
   selected: ConnectedDevice | null
   onSelect: (d: ConnectedDevice) => void
   onRefresh: () => void
+  loading?: boolean
+  emptyMessage?: string | null
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -62,7 +66,7 @@ function DeviceSelector({
             <span className="font-mono text-[10px] text-muted-foreground">{selected.serial.slice(-8)}</span>
           </>
         ) : (
-          <span className="text-muted-foreground">Cihaz seçin…</span>
+          <span className="text-muted-foreground">Select device…</span>
         )}
         <ChevronDown className={cn('size-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
@@ -79,13 +83,20 @@ function DeviceSelector({
               transition={{ duration: 0.2, ease: EASE }}
             >
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-                <span className="text-xs font-semibold text-foreground">Bağlı Cihazlar</span>
+                <span className="text-xs font-semibold text-foreground">Connected Devices</span>
                 <Button size="sm" variant="ghost" onClick={onRefresh} className="h-6 gap-1 px-1.5 text-[10px]">
-                  <RefreshCw className="size-3" />
-                  Yenile
+                  <RefreshCw className={cn('size-3', loading && 'animate-spin')} />
+                  Refresh
                 </Button>
               </div>
               <div className="max-h-[320px] overflow-y-auto p-1.5">
+                {devices.length === 0 && (
+                  <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                    {loading
+                      ? 'Querying adb…'
+                      : emptyMessage ?? 'No connected devices found. Connect a device via USB and press "Refresh".'}
+                  </div>
+                )}
                 {devices.map((device) => (
                   <button
                     key={device.id}
@@ -132,7 +143,7 @@ function DeviceSelector({
                 ))}
               </div>
               <div className="border-t bg-muted/30 px-3 py-2 text-[10px] text-muted-foreground">
-                {devices.filter((d) => d.status === 'connected').length} / {devices.length} cihaz bağlı
+                {devices.filter((d) => d.status === 'connected').length} / {devices.length} devices connected
               </div>
             </motion.div>
           </>
@@ -143,7 +154,8 @@ function DeviceSelector({
 }
 
 export function DebugDeviceBar() {
-  const { selectedDevice, setSelectedDevice, devices, refreshDevices, bridgeConnected } = useDebugView()
+  const { selectedDevice, setSelectedDevice, devices, refreshDevices, bridgeConnected, bridgeError, devicesLoading } =
+    useDebugView()
 
   return (
     <motion.div
@@ -159,7 +171,14 @@ export function DebugDeviceBar() {
         </span>
         <div className="h-6 w-px bg-border" />
 
-        <DeviceSelector devices={devices} selected={selectedDevice} onSelect={setSelectedDevice} onRefresh={refreshDevices} />
+        <DeviceSelector
+          devices={devices}
+          selected={selectedDevice}
+          onSelect={setSelectedDevice}
+          onRefresh={refreshDevices}
+          loading={devicesLoading}
+          emptyMessage={bridgeError}
+        />
 
         {selectedDevice && (
           <>
@@ -184,7 +203,7 @@ export function DebugDeviceBar() {
               <span className="flex items-center gap-1.5 text-[11px] font-medium">
                 <span className={cn('size-2 rounded-full', bridgeConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
                 <span className="text-muted-foreground">
-                  Bridge {bridgeConnected ? 'bağlı' : 'kapalı'}
+                  Bridge {bridgeConnected ? 'connected' : 'closed'}
                 </span>
               </span>
             </div>

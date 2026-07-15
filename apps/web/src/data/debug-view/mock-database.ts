@@ -1,15 +1,15 @@
 // ============================================================================
 // Debug View — Database Access + Request table mock data
 // ============================================================================
-// 1) Release APK üzerinden cihaz Room DB'sine erişim yöntemleri analizi.
-// 2) NesyMobile `request` tablosunun (offline kuyruk, AppDatabase v240) satırları.
-//    Alan adları database.Request entity'siyle birebir; requestName değerleri
-//    util/Constants.kt'teki gerçek sabitlerden.
+// 1) Device Room DB access methods analysis over Release APK.
+// 2) NesyMobile `request` table (offline queue, AppDatabase v240) rows.
+//    Field names match database.Request entity exactly; requestName values
+//    from real constants in util/Constants.kt.
 
 import type { DbAccessMethod, RequestRow, DbTableInfo } from './types'
 
 // ---------------------------------------------------------------------------
-// 1. Release APK üzerinden veritabanına erişim yöntemleri
+// 1. Database access methods via Release APK
 // ---------------------------------------------------------------------------
 
 export const DB_ACCESS_METHODS: DbAccessMethod[] = [
@@ -21,12 +21,12 @@ export const DB_ACCESS_METHODS: DbAccessMethod[] = [
     worksOnRelease: false,
     difficulty: 'easy',
     summary:
-      'Uygulama debuggable=true ise, root olmadan uygulama sandbox\'ındaki nesy Room DB dosyalarına doğrudan erişilir. Release (debuggable=false) build\'lerde çalışmaz.',
+      'If application is debuggable=true, access nesy Room DB files directly in the application sandbox without root. Does not work on Release (debuggable=false) builds.',
     steps: [
-      'Cihazda debug/internal build yüklü olduğundan emin olun (isDebuggable=true).',
-      'run-as ile uygulama veri dizinine geçin.',
-      'databases/ altındaki nesy .db + -wal + -shm dosyalarını çekin.',
-      'SQLite tarayıcıda (DB Browser for SQLite) açın.',
+      'Ensure debug/internal build is installed on device (isDebuggable=true).',
+      'Switch to application data directory using run-as.',
+      'Pull nesy .db + -wal + -shm files under databases/.',
+      'Open in SQLite browser (DB Browser for SQLite).',
     ],
     commands: [
       'adb shell run-as com.arasdigital.nesymobile ls databases/',
@@ -34,48 +34,48 @@ export const DB_ACCESS_METHODS: DbAccessMethod[] = [
       'adb exec-out run-as com.arasdigital.nesymobile cat databases/nesy.db-wal > nesy.db-wal',
     ],
     caveats: [
-      'Release build\'de "run-as: package not debuggable" hatası döner.',
-      'WAL modu aktifse -wal ve -shm dosyaları da alınmalı, yoksa son yazılanlar görünmez.',
+      'Returns "run-as: package not debuggable" error on Release build.',
+      'If WAL mode is active, -wal and -shm files must also be pulled, otherwise last written ones won\'t be visible.',
     ],
     tone: 'green',
   },
   {
     id: 'in-app-export',
-    name: 'Uygulama içi DB snapshot (önerilen)',
+    name: 'In-app DB snapshot (recommended)',
     tool: 'History/SaveTerminalRequestDbSnapshot',
     requiresRoot: false,
     worksOnRelease: true,
     difficulty: 'easy',
     summary:
-      'Uygulama zaten request tablosunun gzip\'lenmiş anlık görüntüsünü backend\'e gönderiyor (RequestSenderService → SaveTerminalRequestDbSnapshot). Release cihazlardan veri almanın en güvenli yolu budur.',
+      'The app already sends gzipped snapshot of the request table to the backend (RequestSenderService → SaveTerminalRequestDbSnapshot). This is the safest way to get data from Release devices.',
     steps: [
-      'Backend\'de ilgili scheduleId / username için son snapshot kaydını bulun.',
-      'gzip+base64 payload\'ı çözün.',
-      'request tablosu satırlarını JSON olarak inceleyin.',
+      'Find the latest snapshot record for the relevant scheduleId / username on the backend.',
+      'Extract gzip+base64 payload.',
+      'Examine request table rows as JSON.',
     ],
     commands: [
       '# Graylog / backend log: requestName=SaveTerminalRequestDbSnapshot',
       "# veya Nesy Device Bridge: bridge pull-request-snapshot --schedule SCH-HR-...",
     ],
     caveats: [
-      'Yalnızca request tablosunu kapsar — diğer tablolar (schedule, stop) dahil değil.',
-      'Snapshot periyodik gönderilir; en güncel satırlar birkaç dakika gecikmeli olabilir.',
+      'Only covers the request table — other tables (schedule, stop) are not included.',
+      'Snapshot is sent periodically; the most current rows may be delayed by a few minutes.',
     ],
     tone: 'teal',
   },
   {
     id: 'root-pull',
-    name: 'Root ile doğrudan dosya çekme',
+    name: 'Direct file pull with Root',
     tool: 'adb root / su',
     requiresRoot: true,
     worksOnRelease: true,
     difficulty: 'moderate',
     summary:
-      'Root\'lu cihaz veya emülatörde /data/data altındaki DB dosyalarına doğrudan erişilir. Release build\'de bile çalışır ama saha cihazları genelde root\'suzdur.',
+      'Directly access DB files under /data/data on rooted device or emulator. Works even on Release build, but field devices are usually unrooted.',
     steps: [
-      'adb root (emülatör) veya su (root\'lu cihaz).',
-      '/data/data/com.arasdigital.nesymobile/databases/ dizinini kopyalayın.',
-      'SQLite ile açın.',
+      'adb root (emulator) or su (rooted device).',
+      'Copy /data/data/com.arasdigital.nesymobile/databases/ directory.',
+      'Open with SQLite.',
     ],
     commands: [
       'adb root',
@@ -83,8 +83,8 @@ export const DB_ACCESS_METHODS: DbAccessMethod[] = [
       'adb pull /sdcard/nesy-db/',
     ],
     caveats: [
-      'Saha üretim cihazları (Urovo/Zebra) root\'suz gelir.',
-      'Root işlemi cihaz garantisini/uyumluluğunu etkileyebilir.',
+      'Field production devices (Urovo/Zebra) come unrooted.',
+      'Rooting may affect device warranty/compatibility.',
     ],
     tone: 'amber',
   },
@@ -96,43 +96,43 @@ export const DB_ACCESS_METHODS: DbAccessMethod[] = [
     worksOnRelease: false,
     difficulty: 'easy',
     summary:
-      'Debuggable süreç için canlı, salt-okunur olmayan SQL sorgu arayüzü. Cihaz USB ile bağlıyken tabloları gerçek zamanlı izler. Release süreçlere attach olmaz.',
+      'Live, non-read-only SQL query interface for debuggable process. Monitors tables in real time while device is connected via USB. Does not attach to Release processes.',
     steps: [
-      'Cihazı USB ile bağlayın, uygulamayı debuggable build ile çalıştırın.',
+      'Connect device via USB, run application with debuggable build.',
       'View → Tool Windows → App Inspection → Database Inspector.',
-      'nesy DB\'yi seçip request tablosuna canlı SQL sorgusu çalıştırın.',
+      'Select nesy DB and run live SQL query on the request table.',
     ],
     commands: ["SELECT * FROM request WHERE isProcessing = 1 ORDER BY timeStamp;"],
     caveats: [
-      'Yalnızca debuggable süreçlere bağlanır.',
-      'API 26+ gerektirir.',
+      'Only attaches to debuggable processes.',
+      'Requires API 26+.',
     ],
     tone: 'blue',
   },
   {
     id: 'release-blocked',
-    name: 'Release APK — doğrudan erişim',
+    name: 'Release APK — direct access',
     tool: '—',
     requiresRoot: false,
     worksOnRelease: false,
     difficulty: 'blocked',
     summary:
-      'Root\'suz, debuggable olmayan production cihazda sandbox\'a doğrudan erişim işletim sistemi tarafından engellenir. Bu durumda tek yol uygulama içi snapshot veya backend kayıtlarıdır.',
+      'Direct access to sandbox on an unrooted, non-debuggable production device is blocked by the OS. In this case, the only way is in-app snapshot or backend records.',
     steps: [
-      'Uygulama içi snapshot (SaveTerminalRequestDbSnapshot) kullanın.',
-      'Veya backend Graylog kayıtlarından requestName bazlı sorgulayın.',
-      'Veya cihazı geçici olarak internal build ile flash\'layın.',
+      'Use in-app snapshot (SaveTerminalRequestDbSnapshot).',
+      'Or query from backend Graylog records based on requestName.',
+      'Or temporarily flash the device with internal build.',
     ],
-    commands: ['# adb run-as → "package not debuggable" (engelli)'],
+    commands: ['# adb run-as → "package not debuggable" (blocked)'],
     caveats: [
-      'APK\'yi yeniden imzalayıp debuggable yapmak imza doğrulamasını bozar ve sertifika pinnini geçersiz kılar.',
+      'Resigning the APK and making it debuggable breaks signature verification and invalidates certificate pinning.',
     ],
     tone: 'red',
   },
 ]
 
 // ---------------------------------------------------------------------------
-// 2. request tablosu satırları (offline kuyruk anlık görüntüsü)
+// 2. request table rows (offline queue snapshot)
 // ---------------------------------------------------------------------------
 
 export const MOCK_REQUEST_ROWS: RequestRow[] = [
@@ -251,15 +251,15 @@ export const MOCK_REQUEST_ROWS: RequestRow[] = [
 ]
 
 // ---------------------------------------------------------------------------
-// 3. nesy Room DB tablo özeti (AppDatabase v240)
+// 3. nesy Room DB table summary (AppDatabase v240)
 // ---------------------------------------------------------------------------
 
 export const DB_TABLES: DbTableInfo[] = [
-  { name: 'request', rowCount: 7, sizeKb: 34, description: 'Offline istek kuyruğu (gönderilmeyi bekleyen)', primaryKey: 'id (autoGenerate)' },
-  { name: 'CompletedRequest', rowCount: 128, sizeKb: 512, description: 'Başarıyla gönderilmiş istek arşivi', primaryKey: 'id' },
-  { name: 'Schedule', rowCount: 1, sizeKb: 96, description: 'Aktif günlük çizelge (body JSON)', primaryKey: 'id' },
-  { name: 'Stop', rowCount: 18, sizeKb: 72, description: 'Çizelgedeki duraklar', primaryKey: 'stopId' },
-  { name: 'Task', rowCount: 54, sizeKb: 210, description: 'Duraklardaki görevler', primaryKey: 'taskId' },
+  { name: 'request', rowCount: 7, sizeKb: 34, description: 'Offline request queue (waiting to be sent)', primaryKey: 'id (autoGenerate)' },
+  { name: 'CompletedRequest', rowCount: 128, sizeKb: 512, description: 'Successfully sent request archive', primaryKey: 'id' },
+  { name: 'Schedule', rowCount: 1, sizeKb: 96, description: 'Active daily schedule (body JSON)', primaryKey: 'id' },
+  { name: 'Stop', rowCount: 18, sizeKb: 72, description: 'Stops in schedule', primaryKey: 'stopId' },
+  { name: 'Task', rowCount: 54, sizeKb: 210, description: 'Tasks at stops', primaryKey: 'taskId' },
 ]
 
 export const DB_META = {

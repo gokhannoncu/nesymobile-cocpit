@@ -224,10 +224,10 @@ export function CaptureSetup({
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-purple-800 dark:text-purple-200">
-              {captureState === 'paused' ? 'Duraklatıldı' : 'Yakalama Aktif'}
+              {captureState === 'paused' ? 'Paused' : 'Capture Active'}
             </p>
             <p className="text-[10px] text-purple-600 dark:text-purple-400">
-              Geçen süre: {elapsed}
+              Elapsed time: {elapsed}
             </p>
           </div>
           <Timer className="size-4 text-purple-500" />
@@ -239,7 +239,7 @@ export function CaptureSetup({
         <ScrollArea className="h-[calc(100vh-220px)]">
           <div className="space-y-4 p-4">
             {/* ── Capture Mode ───────────────────────────────────── */}
-            <CollapsibleSection title="Yakalama Modu">
+            <CollapsibleSection title="Capture Mode">
               <div className="grid grid-cols-2 gap-1.5">
                 {(Object.keys(CAPTURE_MODE_META) as CaptureMode[]).map(
                   (mode) => {
@@ -290,7 +290,7 @@ export function CaptureSetup({
             <Separator />
 
             {/* ── Time Range ─────────────────────────────────────── */}
-            <CollapsibleSection title="Zaman Aralığı" defaultOpen={false}>
+            <CollapsibleSection title="Time Range" defaultOpen={false}>
               <div className="flex flex-wrap gap-1.5">
                 {TIME_RANGE_OPTIONS.map((opt) => (
                   <Badge
@@ -309,7 +309,7 @@ export function CaptureSetup({
             <Separator />
 
             {/* ── Source Selection ────────────────────────────────── */}
-            <CollapsibleSection title="Log Kaynakları">
+            <CollapsibleSection title="Log Sources">
               <div className="space-y-1">
                 {allSources.map((source) => {
                   const meta = LOG_SOURCE_META[source]
@@ -364,7 +364,7 @@ export function CaptureSetup({
             <Separator />
 
             {/* ── Log Level Filter ───────────────────────────────── */}
-            <CollapsibleSection title="Log Seviyesi">
+            <CollapsibleSection title="Log Level">
               <div className="flex flex-wrap gap-1.5">
                 {allLevels.map((level) => {
                   const meta = LOG_LEVEL_META[level]
@@ -395,7 +395,7 @@ export function CaptureSetup({
             <Separator />
 
             {/* ── Capture Presets ─────────────────────────────────── */}
-            <CollapsibleSection title="Yakalama Şablonları">
+            <CollapsibleSection title="Capture Presets">
               <div className="space-y-1.5">
                 {CAPTURE_PRESETS.map((preset) => {
                   const active = selectedPreset?.id === preset.id
@@ -490,7 +490,7 @@ export function CaptureSetup({
 
             {/* ── Investigation Context ──────────────────────────── */}
             <CollapsibleSection
-              title="Araştırma Bağlamı"
+              title="Investigation Context"
               defaultOpen={false}
             >
               <div className="space-y-2">
@@ -530,7 +530,7 @@ export function CaptureSetup({
               onClick={onStopCapture}
             >
               <Square className="size-3.5" />
-              Yakalamayı Durdur
+              Stop Capture
             </Button>
           ) : (
             <Button
@@ -539,7 +539,7 @@ export function CaptureSetup({
               onClick={onStartCapture}
             >
               <Play className="size-3.5" />
-              Log Yakalamayı Başlat
+              Start Log Capture
             </Button>
           )}
           <Button
@@ -549,7 +549,7 @@ export function CaptureSetup({
             disabled={isCapturing}
           >
             <HardDriveDownload className="size-3.5" />
-            {"Device Buffer'ı Getir"}
+            Fetch Device Buffer
           </Button>
         </div>
       </div>

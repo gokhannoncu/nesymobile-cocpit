@@ -1,61 +1,61 @@
-// Graylog Query Generator — tüm mock veri ve sabitler.
-// UI metinleri Türkçe, teknik terimler İngilizce; sorgu içerikleri Graylog syntax'ında.
+// Graylog Query Generator — all mock data and constants.
+// UI texts and technical terms are in English; query contents are in Graylog syntax.
 
 import type { Tone } from '@/components/product'
 
-// ── Senaryo chip'leri ────────────────────────────────────────────
+// ── Scenario chips ────────────────────────────────────────────
 
 export type ScenarioChip = {
   id: string
   label: string
-  /** Chip tıklanınca textarea'ya yerleşen doğal dil isteği. */
+  /** Natural language request placed in textarea when chip is clicked. */
   text: string
 }
 
 export const SCENARIO_CHIPS: ScenarioChip[] = [
   {
     id: 'shipment-flow',
-    label: 'Shipment akışını takip et',
-    text: 'Shipment 45-40-20251224-1 için son 2 saatte oluşan delivery, fiscal ve retry loglarını göster.',
+    label: 'Track shipment flow',
+    text: 'Show delivery, fiscal, and retry logs generated in the last 2 hours for Shipment 45-40-20251224-1.',
   },
   {
     id: 'courier-login',
-    label: 'Courier login problemi',
-    text: 'Courier 3021 için bu sabahki login denemelerini ve authentication hatalarını listele; token refresh loglarını da dahil et.',
+    label: 'Courier login problem',
+    text: 'List this morning\'s login attempts and authentication errors for Courier 3021; include token refresh logs.',
   },
   {
+    label: 'Search fiscal error code',
     id: 'fiscal-error',
-    label: 'Fiscal hata kodu ara',
-    text: 'Son 6 saatte FISCAL_TIMEOUT veya FISCAL_DUPLICATE hata kodu üreten fiscal service loglarını Hırvatistan için göster.',
+    text: 'Show fiscal service logs generating FISCAL_TIMEOUT or FISCAL_DUPLICATE error code in the last 6 hours for Croatia.',
   },
   {
     id: 'offline-queue',
-    label: 'Offline queue request\'leri',
-    text: 'RequestSenderService kuyruğunda bekleyen veya retry durumuna düşen offline request loglarını son 1 saat için getir.',
+    label: 'Offline queue requests',
+    text: 'Get offline request logs waiting or falling into retry status in RequestSenderService queue for the last 1 hour.',
   },
   {
     id: 'barcode-scan',
-    label: 'Barcode scan logları',
-    text: 'Device NX-4412 üzerinde barcode scan eventlerini ve scan sonrası oluşan hataları son 15 dakika için göster.',
+    label: 'Barcode scan logs',
+    text: 'Show barcode scan events and errors occurring after scan on Device NX-4412 for the last 15 minutes.',
   },
   {
     id: 'd4me-callback',
-    label: 'D4Me callback zinciri',
-    text: 'Shipment 45-40-20251218-7 için D4Me locker callback zincirini göster; callback_received ve callback_processed eventlerini eşleştir.',
+    label: 'D4Me callback chain',
+    text: 'Show D4Me locker callback chain for Shipment 45-40-20251218-7; match callback_received and callback_processed events.',
   },
   {
     id: 'device-crash',
-    label: 'Belirli cihazdaki crash öncesi loglar',
-    text: 'Device NX-2087 üzerinde son crash öncesindeki 10 dakikalık tüm application loglarını kronolojik sırayla getir.',
+    label: 'Pre-crash logs on specific device',
+    text: 'Get all application logs in chronological order for the 10 minutes before the last crash on Device NX-2087.',
   },
   {
     id: 'api-401',
-    label: 'API 401 ve logout akışı',
-    text: 'Son 1 saatte 401 dönen API çağrılarını ve hemen ardından gelen logout eventlerini courier bazında grupla.',
+    label: 'API 401 and logout flow',
+    text: 'Group API calls returning 401 and immediately following logout events by courier in the last 1 hour.',
   },
 ]
 
-// ── Query context seçenekleri ────────────────────────────────────
+// ── Query context options ────────────────────────────────────
 
 export type SelectOption = { value: string; label: string }
 
@@ -65,11 +65,11 @@ export const ENVIRONMENTS: SelectOption[] = [
 ]
 
 export const COUNTRIES: SelectOption[] = [
-  { value: 'HR', label: 'HR — Hırvatistan' },
-  { value: 'SI', label: 'SI — Slovenya' },
-  { value: 'RS', label: 'RS — Sırbistan' },
-  { value: 'BA', label: 'BA — Bosna Hersek' },
-  { value: 'ME', label: 'ME — Karadağ' },
+  { value: 'HR', label: 'HR — Croatia' },
+  { value: 'SI', label: 'SI — Slovenia' },
+  { value: 'RS', label: 'RS — Serbia' },
+  { value: 'BA', label: 'BA — Bosnia and Herzegovina' },
+  { value: 'ME', label: 'ME — Montenegro' },
 ]
 
 export const APPLICATIONS: SelectOption[] = [
@@ -80,7 +80,7 @@ export const APPLICATIONS: SelectOption[] = [
 ]
 
 export const SERVICES: SelectOption[] = [
-  { value: 'any', label: 'Tümü' },
+  { value: 'any', label: 'All' },
   { value: 'RequestSenderService', label: 'RequestSenderService' },
   { value: 'DeliveryService', label: 'DeliveryService' },
   { value: 'FiscalService', label: 'FiscalService' },
@@ -90,7 +90,7 @@ export const SERVICES: SelectOption[] = [
 ]
 
 export const LOG_LEVELS: SelectOption[] = [
-  { value: 'any', label: 'Tümü' },
+  { value: 'any', label: 'All' },
   { value: 'error', label: 'ERROR' },
   { value: 'warn', label: 'WARN' },
   { value: 'info', label: 'INFO' },
@@ -105,18 +105,18 @@ export const TIME_RANGES: SelectOption[] = [
   { value: 'custom', label: 'Custom' },
 ]
 
-/** Production'da varsayılan zaman aralığı — geniş arama maliyetini sınırlar. */
+/** Default time range in Production — limits broad search costs. */
 export const PRODUCTION_DEFAULT_TIME_RANGE = '1h'
 
 export const DEVICES: SelectOption[] = [
-  { value: 'any', label: 'Tümü' },
+  { value: 'any', label: 'All' },
   { value: 'NX-4412', label: 'NX-4412' },
   { value: 'NX-2087', label: 'NX-2087' },
   { value: 'NX-3155', label: 'NX-3155' },
 ]
 
 export const APP_VERSIONS: SelectOption[] = [
-  { value: 'any', label: 'Tümü' },
+  { value: 'any', label: 'All' },
   { value: '4.12.0', label: '4.12.0' },
   { value: '4.11.2', label: '4.11.2' },
   { value: '4.10.5', label: '4.10.5' },
@@ -141,7 +141,7 @@ export const IDENTIFIER_FIELDS: IdentifierField[] = [
   { key: 'customerTicketId', label: 'Customer ticket ID', placeholder: 'CT-10592' },
 ]
 
-// ── Log kaynakları ───────────────────────────────────────────────
+// ── Log sources ───────────────────────────────────────────────
 
 export type LogSource = { id: string; label: string }
 
@@ -156,17 +156,17 @@ export const LOG_SOURCES: LogSource[] = [
   { id: 'auth', label: 'Authentication' },
 ]
 
-// ── Guardrail mesajları ──────────────────────────────────────────
+// ── Guardrail messages ──────────────────────────────────────────
 
 export const GUARDRAIL_BROAD_SCOPE =
-  'Bu arama çok geniş bir log hacmi oluşturabilir. Servis, ülke veya identifier ekleyerek kapsamı daralt.'
+  'This search can generate a very broad log volume. Narrow the scope by adding a service, country, or identifier.'
 
 export const GUARDRAIL_SOFT_HINTS = [
-  'Sorgu çalışabilir, ancak çok geniş kapsamlı görünüyor.',
-  'Daha hızlı sonuç için shipmentId, requestId veya service alanlarından birini ekle.',
+  'The query can work, but it looks very broad.',
+  'For faster results, add one of the shipmentId, requestId, or service fields.',
 ]
 
-// ── Üretilen sorgu (mock) ────────────────────────────────────────
+// ── Generated query (mock) ────────────────────────────────────────
 
 export const GENERATED_QUERY = `application:nesy-mobile
 AND country:HR
@@ -186,22 +186,22 @@ export type QueryBreakdownRow = {
 export const QUERY_BREAKDOWN: QueryBreakdownRow[] = [
   {
     part: 'application:nesy-mobile',
-    explanation: 'Nesy Mobile uygulamasından gelen loglarla sınırlar.',
+    explanation: 'Limits to logs coming from Nesy Mobile application.',
     tone: 'blue',
   },
   {
     part: 'country:HR',
-    explanation: 'Yalnızca Hırvatistan kayıtlarını getirir.',
+    explanation: 'Returns only Croatia records.',
     tone: 'teal',
   },
   {
     part: 'shipmentId:"45-40-20251224-1"',
-    explanation: "Belirli shipment'ın tüm ilişkilendirilmiş loglarını arar.",
+    explanation: 'Searches all associated logs of a specific shipment.',
     tone: 'indigo',
   },
   {
     part: '(event:delivery OR event:fiscal OR service:RequestSenderService)',
-    explanation: 'Delivery, fiscal ve offline retry zincirini birlikte gösterir.',
+    explanation: 'Shows the delivery, fiscal, and offline retry chain together.',
     tone: 'orange',
   },
 ]
@@ -223,29 +223,29 @@ export type AnomalyExample = {
 
 export const ANOMALY_EXAMPLES: AnomalyExample[] = [
   {
-    title: 'payment_completed var, delivery_saved yok',
+    title: 'payment_completed exists, delivery_saved does not',
     description:
-      'Ödeme tamamlanmış ama teslimat kaydı oluşmamış — offline queue veya isProcessing kilitlenmesi ihtimalini kontrol et.',
+      'Payment completed but delivery record not created — check the possibility of offline queue or isProcessing lock.',
   },
   {
-    title: 'request_started var, request_completed yok',
+    title: 'request_started exists, request_completed does not',
     description:
-      'Request zinciri yarıda kalmış; RequestSenderService retry loglarında aynı requestId aranmalı.',
+      'Request chain left half-way; same requestId should be searched in RequestSenderService retry logs.',
   },
   {
-    title: 'Aynı fiscal_created iki kez',
+    title: 'Same fiscal_created twice',
     description:
-      'Duplicate fiscal kaydı — retry mekanizmasının idempotency olmadan tekrar denemesi tipik nedendir.',
+      'Duplicate fiscal record — retry mechanism trying again without idempotency is typical reason.',
   },
   {
-    title: '401 sonrası logout',
+    title: 'Logout after 401',
     description:
-      'Token süresi dolduğunda kullanıcı sessizce oturumdan düşüyor; AuthService refresh loglarıyla eşleştir.',
+      'When token expires, user silently drops from session; match with AuthService refresh logs.',
   },
   {
-    title: 'isProcessing true kalmış',
+    title: 'isProcessing remained true',
     description:
-      'İşlem bayrağı sıfırlanmamış; sonraki tüm işlemler sessizce bloklanıyor olabilir — crash öncesi son event\'e bak.',
+      'Transaction flag not reset; all subsequent transactions might be silently blocked — check the last event before crash.',
   },
 ]
 
@@ -258,12 +258,12 @@ export type QualityCheck = {
 }
 
 export const QUALITY_CHECKS: QualityCheck[] = [
-  { label: 'Syntax valid', value: 'Graylog syntax doğrulandı', tone: 'green' },
-  { label: 'Time range valid', value: 'Last 1 hour — kabul edilebilir', tone: 'green' },
-  { label: 'Search scope', value: 'Tek uygulama · tek ülke', tone: 'green' },
-  { label: 'Identifier strength', value: 'shipmentId — güçlü daraltıcı', tone: 'green' },
-  { label: 'Expected volume', value: '~150–400 satır', tone: 'blue' },
-  { label: 'Sensitive data', value: 'PII alanları maskelendi', tone: 'gray' },
+  { label: 'Syntax valid', value: 'Graylog syntax verified', tone: 'green' },
+  { label: 'Time range valid', value: 'Last 1 hour — acceptable', tone: 'green' },
+  { label: 'Search scope', value: 'Single application · single country', tone: 'green' },
+  { label: 'Identifier strength', value: 'shipmentId — strong narrower', tone: 'green' },
+  { label: 'Expected volume', value: '~150-400 rows', tone: 'blue' },
+  { label: 'Sensitive data', value: 'PII fields masked', tone: 'gray' },
 ]
 
 export type QualityVerdict = {
@@ -276,13 +276,13 @@ export const QUALITY_VERDICT_STRONG: QualityVerdict = {
   label: 'Query quality: Strong',
   tone: 'green',
   explanation:
-    'Shipment ID, country ve zaman aralığı birlikte kullanıldığı için arama kapsamı yeterince dar.',
+    'Search scope is narrow enough because Shipment ID, country, and time range are used together.',
 }
 
 export const QUALITY_VERDICT_BROAD: QualityVerdict = {
   label: 'Query quality: Broad',
   tone: 'amber',
-  explanation: "Yalnızca 'error' kelimesi aranıyor. Servis veya identifier eklenmesi önerilir.",
+  explanation: "Only 'error' word is searched. Adding a service or identifier is recommended.",
 }
 
 // ── Common Graylog fields ────────────────────────────────────────

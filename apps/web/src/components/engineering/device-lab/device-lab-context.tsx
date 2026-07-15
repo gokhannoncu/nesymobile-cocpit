@@ -1,58 +1,58 @@
 'use client'
 
-// Device Lab ortak state yönetimi — iki sayfa arasında cihaz seçimi,
-// bridge bağlantı durumu ve çapraz navigasyon fonksiyonlarını paylaşır.
+// Device Lab shared state management — shares device selection,
+// bridge connection status, and cross-navigation functions between two pages.
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ConnectedDevice } from '@/data/engineering/device-lab/device-lab-types'
 import { MOCK_DEVICES } from '@/data/engineering/device-lab/mock-devices'
 
-/** İki sayfa arasında paylaşılan cihaz ve oturum bağlamı. */
+/** Device and session context shared between two pages. */
 interface DeviceLabContextValue {
-  /** Seçili cihaz */
+  /** Selected device */
   selectedDevice: ConnectedDevice | null
-  /** Cihaz seç */
+  /** Select device */
   setSelectedDevice: (device: ConnectedDevice | null) => void
-  /** Tüm bağlı cihazlar */
+  /** All connected devices */
   devices: ConnectedDevice[]
-  /** Cihaz listesini yenile */
+  /** Refresh device list */
   refreshDevices: () => void
-  /** Nesy Device Bridge bağlı mı */
+  /** Is Nesy Device Bridge connected */
   bridgeConnected: boolean
-  /** Aktif ADB çalışma kimliği */
+  /** Active ADB run ID */
   activeRunId: string | null
   setActiveRunId: (id: string | null) => void
-  /** Aktif log oturum kimliği */
+  /** Active log session ID */
   activeSessionId: string | null
   setActiveSessionId: (id: string | null) => void
-  /** Log Explorer'a yönlendir — opsiyonel run ID ile ilişkilendir */
+  /** Redirect to Log Explorer — associate with optional run ID */
   navigateToLogs: (runId?: string) => void
-  /** ADB Scenario Runner'a yönlendir — opsiyonel senaryo ID ve bağlam ile */
+  /** Redirect to ADB Scenario Runner — with optional scenario ID and context */
   navigateToScenario: (scenarioId?: string, context?: Record<string, string>) => void
 }
 
 const DeviceLabContext = createContext<DeviceLabContextValue | null>(null)
 
-/** Device Lab layout'unda sarmalayıcı olarak kullanılır. */
+/** Used as wrapper in Device Lab layout. */
 export function DeviceLabProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
-  // Cihaz durumu
+  // Device status
   const [devices, setDevices] = useState<ConnectedDevice[]>(MOCK_DEVICES)
   const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(
     MOCK_DEVICES.find((d) => d.status === 'connected') ?? null,
   )
 
-  // Bridge durumu (mock: her zaman bağlı)
+  // Bridge status (mock: always connected)
   const [bridgeConnected] = useState(true)
 
-  // Aktif çalışma ve oturum kimlikleri
+  // Active run and session IDs
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
   const refreshDevices = useCallback(() => {
-    // Mock: cihaz listesini yeniden yükle
+    // Mock: reload device list
     setDevices([...MOCK_DEVICES])
   }, [])
 
@@ -92,7 +92,7 @@ export function DeviceLabProvider({ children }: { children: ReactNode }) {
   return <DeviceLabContext.Provider value={value}>{children}</DeviceLabContext.Provider>
 }
 
-/** Device Lab context hook'u — layout dışında çağrılırsa hata fırlatır. */
+/** Device Lab context hook — throws error if called outside layout. */
 export function useDeviceLab(): DeviceLabContextValue {
   const ctx = useContext(DeviceLabContext)
   if (!ctx) throw new Error('useDeviceLab must be used within DeviceLabProvider')

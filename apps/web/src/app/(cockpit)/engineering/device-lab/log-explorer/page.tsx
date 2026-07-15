@@ -166,7 +166,7 @@ export default function LogExplorerPage() {
         path="/engineering/device-lab/log-explorer"
         icon={ScrollText}
         title="Device Log Explorer"
-        lead="Uygulama, network, offline queue, process ve cihaz loglarını tek oturumda yakala, ilişkilendir ve paylaşılabilir teşhis paketi oluştur."
+        lead="Capture, correlate, and create a shareable diagnostic package of application, network, offline queue, process, and device logs in a single session."
         tone="purple"
         badges={[
           { label: 'Live capture' },
@@ -288,8 +288,8 @@ export default function LogExplorerPage() {
             }
             description={
               mainTab === 'history'
-                ? "Cihaz logcat buffer'ı ve uygulama log dosyaları burada görüntülenir."
-                : "Ticket veya incident'a gönderilmiş teşhis paketleri burada listelenir."
+                ? "Device logcat buffer and application log files are displayed here."
+                : "Diagnostic packages sent to ticket or incident are listed here."
             }
           />
         </motion.div>

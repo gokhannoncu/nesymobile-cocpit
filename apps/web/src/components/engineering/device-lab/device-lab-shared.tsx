@@ -1,7 +1,7 @@
 'use client'
 
-// Device Lab ortak küçük bileşenler — iki sayfada tekrar kullanılan
-// rozetler, uyarılar ve durum göstergeleri.
+// Device Lab shared small components — reusable badges,
+// warnings, and status indicators across two pages.
 
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
@@ -161,8 +161,8 @@ export function DebugOnlyWarning({ className }: { className?: string }) {
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="min-w-0 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-        <span className="font-semibold">Bu senaryo yalnızca debug veya internal test build üzerinde çalıştırılabilir.</span>{' '}
-        Release build veya root erişimi olmayan production cihazlarda bazı senaryolar kullanılamaz.
+        <span className="font-semibold">This scenario can only be run on a debug or internal test build.</span>{' '}
+        Some scenarios cannot be used on release builds or production devices without root access.
       </div>
     </motion.div>
   )
@@ -182,10 +182,10 @@ export function ConnectionRequiredState({ className }: { className?: string }) {
         <Unplug className="size-6 text-muted-foreground" />
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-foreground">Nesy Device Bridge Bağlı Değil</h3>
+        <h3 className="text-sm font-semibold text-foreground">Nesy Device Bridge Not Connected</h3>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          Cihaz işlemleri için Nesy Device Bridge uygulamasının çalışıyor olması gerekir.
-          Yerel bilgisayarınızda bridge servisini başlatın.
+          Nesy Device Bridge application must be running for device operations.
+          Start the bridge service on your local machine.
         </p>
       </div>
     </motion.div>
@@ -271,7 +271,7 @@ export function ProductionProtectionBadge({ className }: { className?: string })
     )}>
       <ShieldAlert className="size-3.5 text-red-600 dark:text-red-400" />
       <span className="text-[11px] font-medium text-red-700 dark:text-red-300">
-        Production config — destructive senaryolar devre dışı
+        Production config — destructive scenarios disabled
       </span>
     </div>
   )
@@ -288,7 +288,7 @@ export function BatteryWarning({ level, className }: { level: number; className?
     )}>
       <BatteryLow className="size-3.5 text-amber-600 dark:text-amber-400" />
       <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
-        Düşük batarya (%{level}) — bazı işlemler kesintiye uğrayabilir
+        Low battery ({level}%) — some operations may be interrupted
       </span>
     </div>
   )

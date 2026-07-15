@@ -1,49 +1,92 @@
 'use client'
 
-// Debug View ortak state yönetimi — tüm debug sayfaları arasında seçili
-// cihazı ve bridge bağlantı durumunu paylaşır. Cihaz modeli device-lab ile
-// ortaktır (ConnectedDevice + MOCK_DEVICES yeniden kullanılır).
+// Debug View shared state management — selected device and bridge connection status
+// shared across all debug pages. Device list is read from real adb via
+// /api/adb/devices; device model is shared with device-lab.
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import type { ConnectedDevice } from '@/data/engineering/device-lab/device-lab-types'
-import { MOCK_DEVICES } from '@/data/engineering/device-lab/mock-devices'
+import type { AdbDevicesResponse } from '@/data/debug-view/live-types'
 
 interface DebugViewContextValue {
   selectedDevice: ConnectedDevice | null
   setSelectedDevice: (device: ConnectedDevice | null) => void
   devices: ConnectedDevice[]
   refreshDevices: () => void
+  /** Device list is loading for the first time or via refresh. */
+  devicesLoading: boolean
+  /** adb is accessible and last listing was successful. */
   bridgeConnected: boolean
-  /** Overview / runtime verisi olan cihaz kimlikleri (mock-runtime anahtarları). */
+  /** adb not found / listing error — message to be shown to the user. */
+  bridgeError: string | null
+  /** Live runtime can only be obtained on connected (adb state=device) devices. */
   runtimeAvailable: (deviceId: string) => boolean
 }
 
 const DebugViewContext = createContext<DebugViewContextValue | null>(null)
 
-/** Runtime snapshot'ı olan cihazlar (mock-runtime.ts anahtarları). */
-const RUNTIME_DEVICE_IDS = new Set([
-  'dev-urovo-dt50-001',
-  'dev-samsung-a13-002',
-  'dev-pixel7-emu-003',
-])
-
 export function DebugViewProvider({ children }: { children: ReactNode }) {
-  const [devices, setDevices] = useState<ConnectedDevice[]>(MOCK_DEVICES)
-  const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(
-    MOCK_DEVICES.find((d) => d.status === 'connected') ?? null,
-  )
-  const [bridgeConnected] = useState(true)
+  const [devices, setDevices] = useState<ConnectedDevice[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(null)
+  const [devicesLoading, setDevicesLoading] = useState(true)
+  const [bridgeConnected, setBridgeConnected] = useState(false)
+  const [bridgeError, setBridgeError] = useState<string | null>(null)
+  const selectedRef = useRef<ConnectedDevice | null>(null)
+  selectedRef.current = selectedDevice
+
+  const refreshDevices = useCallback(() => {
+    setDevicesLoading(true)
+    fetch('/api/adb/devices')
+      .then((r) => r.json() as Promise<AdbDevicesResponse>)
+      .then((data) => {
+        setDevices(data.devices)
+        setBridgeConnected(data.adbAvailable && !data.error)
+        setBridgeError(data.error)
+        const current = selectedRef.current
+        const stillPresent = current && data.devices.find((d) => d.serial === current.serial)
+        if (stillPresent) {
+          setSelectedDevice(stillPresent)
+        } else if (!current) {
+          setSelectedDevice(
+            data.devices.find((d) => d.status === 'connected') ?? data.devices[0] ?? null,
+          )
+        } else {
+          setSelectedDevice(null)
+        }
+      })
+      .catch((err: unknown) => {
+        setBridgeConnected(false)
+        setBridgeError(err instanceof Error ? err.message : 'adb query failed')
+      })
+      .finally(() => setDevicesLoading(false))
+  }, [])
+
+  useEffect(() => {
+    refreshDevices()
+  }, [refreshDevices])
 
   const value = useMemo<DebugViewContextValue>(
     () => ({
       selectedDevice,
       setSelectedDevice,
       devices,
-      refreshDevices: () => setDevices([...MOCK_DEVICES]),
+      refreshDevices,
+      devicesLoading,
       bridgeConnected,
-      runtimeAvailable: (id: string) => RUNTIME_DEVICE_IDS.has(id),
+      bridgeError,
+      runtimeAvailable: (id: string) =>
+        devices.some((d) => d.id === id && (d.status === 'connected' || d.status === 'app-not-installed')),
     }),
-    [selectedDevice, devices, bridgeConnected],
+    [selectedDevice, devices, refreshDevices, devicesLoading, bridgeConnected, bridgeError],
   )
 
   return <DebugViewContext.Provider value={value}>{children}</DebugViewContext.Provider>

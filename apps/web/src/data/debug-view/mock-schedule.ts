@@ -1,9 +1,9 @@
 // ============================================================================
 // Debug View — Schedule Explorer mock data
 // ============================================================================
-// Cihaz Room DB'sindeki Schedule → Stop → Task → Shipment → ShipmentItem
-// ağacı. Alan adları NesyMobile database.schedule / database.stop
-// entity'leriyle birebir. HR (Zagreb) rotası örneği.
+// Schedule → Stop → Task → Shipment → ShipmentItem tree in Device Room DB.
+// Field names exactly match NesyMobile database.schedule / database.stop
+// entities. HR (Zagreb) route example.
 
 import type { DbgSchedule } from './types'
 

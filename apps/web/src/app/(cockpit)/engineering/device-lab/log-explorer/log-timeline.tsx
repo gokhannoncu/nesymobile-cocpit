@@ -208,11 +208,10 @@ export function LogTimeline({
         </div>
         <div>
           <h3 className="text-sm font-semibold text-foreground">
-            Log Akışı Bekleniyor
+            Waiting for Log Stream
           </h3>
           <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Sol panelden yakalama modunu ve kaynaklarını seçin, ardından &ldquo;Log
-            Yakalamayı Başlat&rdquo; butonuna tıklayın.
+            Select capture mode and sources from the left panel, then click &ldquo;Start Log Capture&rdquo;.
           </p>
         </div>
       </motion.div>
@@ -262,7 +261,7 @@ export function LogTimeline({
             className="gap-1 font-mono"
           >
             <Hash className="size-3" />
-            {events.length.toLocaleString('tr-TR')} olay
+            {events.length.toLocaleString('en-US')} events
           </Badge>
 
           {/* Elapsed */}
@@ -287,7 +286,7 @@ export function LogTimeline({
                 className="size-7"
                 onClick={onPause}
                 title={
-                  captureState === 'paused' ? 'Devam Et' : 'Duraklat'
+                  captureState === 'paused' ? 'Resume' : 'Pause'
                 }
               >
                 {captureState === 'paused' ? (
@@ -301,7 +300,7 @@ export function LogTimeline({
                 variant="ghost"
                 className="size-7"
                 onClick={onStop}
-                title="Durdur"
+                title="Stop"
               >
                 <Square className="size-3.5 text-red-600" />
               </Button>
@@ -317,7 +316,7 @@ export function LogTimeline({
               value={markerInput}
               onChange={(e) => setMarkerInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddMarkerSubmit()}
-              placeholder="Marker etiketi…"
+              placeholder="Marker label…"
               className="h-6 flex-1 text-xs border-0 bg-transparent shadow-none focus-visible:ring-0"
             />
             <Button
@@ -327,7 +326,7 @@ export function LogTimeline({
               onClick={handleAddMarkerSubmit}
               disabled={!markerInput.trim()}
             >
-              Marker Ekle
+              Add Marker
             </Button>
           </div>
         )}
@@ -368,7 +367,7 @@ export function LogTimeline({
             <Input
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Arama…"
+              placeholder="Search…"
               className="h-6 w-48 pl-7 text-xs"
             />
             {searchQuery && (
@@ -386,7 +385,7 @@ export function LogTimeline({
         {activeFilters.length > 0 && activeFilters.length <= 8 && (
           <div className="flex flex-wrap items-center gap-1 border-t px-4 py-1.5">
             <span className="text-[10px] text-muted-foreground mr-1">
-              Filtreler:
+              Filters:
             </span>
             {activeFilters.slice(0, 8).map((f, i) => (
               <Badge
@@ -417,7 +416,7 @@ export function LogTimeline({
           <div className="divide-y divide-border/50">
             {timelineItems.length === 0 && (
               <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
-                Filtreye uyan olay bulunamadı.
+                No events match the filter.
               </div>
             )}
             {timelineItems.map((item, idx) => {
@@ -613,7 +612,7 @@ function CorrelationSection({
         )}
         Event Correlation
         <Badge variant="secondary" appearance="outline" size="xs" className="ml-1">
-          {results.length} kural
+          {results.length} rules
         </Badge>
       </button>
 
@@ -690,7 +689,7 @@ function CorrelationSection({
                       </p>
                       <div className="mt-1.5 flex items-center gap-2">
                         <span className="text-[10px] text-muted-foreground">
-                          Güven:
+                          Confidence:
                         </span>
                         <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
                           <div
