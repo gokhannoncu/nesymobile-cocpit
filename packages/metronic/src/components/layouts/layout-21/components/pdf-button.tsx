@@ -9,8 +9,8 @@ import { getBreadcrumbs } from '@nesy/metronic/config/menu-utils'
 import { cn } from '@nesy/metronic/lib/utils'
 
 /**
- * Sayfa içeriğini A4 PDF olarak doğrudan indiren buton.
- * Önizleme açılmaz; render tamamen ekran dışında yapılır.
+ * Button that directly downloads the page content as an A4 PDF.
+ * No preview is shown; rendering is done entirely off-screen.
  */
 export function PdfButton({ className }: { className?: string }) {
   const pathname = usePathname()
@@ -25,7 +25,7 @@ export function PdfButton({ className }: { className?: string }) {
       const { exportPageToPdf } = await import('@nesy/metronic/lib/export-pdf')
       await exportPageToPdf({ title })
     } catch (error) {
-      console.error('PDF dışa aktarma başarısız:', error)
+      console.error('PDF export failed:', error)
     } finally {
       setExporting(false)
     }
@@ -39,14 +39,14 @@ export function PdfButton({ className }: { className?: string }) {
           mode="icon"
           onClick={handleExport}
           disabled={exporting}
-          aria-label="Sayfayı PDF olarak indir"
+          aria-label="Download page as PDF"
           className={cn('text-muted-foreground hover:text-foreground', className)}
         >
           {exporting ? <LoaderCircle className="animate-spin" /> : <FileDown />}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {exporting ? 'PDF hazırlanıyor…' : 'PDF olarak indir'}
+        {exporting ? 'Preparing PDF…' : 'Download as PDF'}
       </TooltipContent>
     </Tooltip>
   )

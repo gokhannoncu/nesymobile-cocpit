@@ -46,11 +46,11 @@ import {
   Zap,
 } from 'lucide-react'
 
-// Cockpit navigasyonunun tek gerçek kaynağı.
-// Sol ikon rayı (SidebarPrimary), ikincil menü (SidebarPrimaryMenu) ve
-// (cockpit)/[...slug] placeholder sayfaları buradan türetilir.
-// Yeni bir workspace eklemek için bu diziye yeni bir kayıt ekleyin;
-// path'i olan her menü öğesi otomatik olarak placeholder sayfası alır.
+// Single source of truth for the cockpit navigation.
+// The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
+// (cockpit)/[...slug] placeholder pages are all derived from this array.
+// To add a new workspace, simply add a new entry to this array;
+// every menu item with a path automatically receives a placeholder page.
 export const WORKSPACES: Workspace[] = [
   {
     id: 'home',
@@ -400,7 +400,7 @@ export const WORKSPACES: Workspace[] = [
 
 export const MENU_SIDEBAR_RESOURCES: MenuConfig = [
   {
-    title: 'Kaynaklar',
+    title: 'Resources',
     children: [
       {
         title: 'Metronic Layout 21',

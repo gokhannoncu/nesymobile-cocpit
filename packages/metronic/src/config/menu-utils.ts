@@ -7,8 +7,8 @@ export interface BreadcrumbCrumb {
 }
 
 /**
- * Verilen path'e (örn. "/core/model-architecture") karşılık gelen menü öğesini
- * bir menü ağacında özyinelemeli olarak arar.
+ * Recursively searches a menu tree for the menu item matching the given path
+ * (e.g. "/core/model-architecture").
  */
 export function findMenuItemByPath(config: MenuConfig, path: string): MenuItem | undefined {
   for (const item of config) {
@@ -26,10 +26,10 @@ export function findMenuItemByPath(config: MenuConfig, path: string): MenuItem |
 }
 
 /**
- * Tüm workspace menülerinde verilen path'e karşılık gelen öğeyi arar.
- * Workspace kök route'ları (/modules, /design vb.) menüde ayrı bir öğe olarak
- * bulunmadığından, onlar için grup başlığından sentetik bir öğe üretilir.
- * Dinamik placeholder sayfası ([...slug]) başlık + notionUrl için bunu kullanır.
+ * Searches all workspace menus for the item matching the given path.
+ * Since workspace root routes (/modules, /design, etc.) do not appear as
+ * separate menu items, a synthetic item is generated from the group title.
+ * The dynamic placeholder page ([...slug]) uses this for title + notionUrl.
  */
 export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
   for (const ws of WORKSPACES) {
@@ -50,8 +50,8 @@ export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
 }
 
 /**
- * Aktif pathname'e göre hangi workspace'in seçili olduğunu döndürür.
- * Eşleşme yoksa ilk workspace'e (Home) düşer.
+ * Returns the active workspace based on the current pathname.
+ * Falls back to the first workspace (Home) if no match is found.
  */
 export function getActiveWorkspace(pathname: string): Workspace {
   for (const ws of WORKSPACES) {
@@ -111,7 +111,7 @@ function toBreadcrumbCrumb(
 }
 
 /**
- * Aktif pathname için breadcrumb zincirini workspace menüsünden üretir.
+ * Generates the breadcrumb chain for the active pathname from the workspace menu.
  */
 export function getBreadcrumbs(pathname: string): BreadcrumbCrumb[] {
   const workspace = getActiveWorkspace(pathname);
@@ -141,18 +141,18 @@ export function getBreadcrumbs(pathname: string): BreadcrumbCrumb[] {
   return [{ title: workspace.label }];
 }
 
-/** Toplu PDF export için düzleştirilmiş sayfa referansı. */
+/** Flattened page reference used for bulk PDF export. */
 export interface WorkspacePageRef {
   path: string;
   title: string;
 }
 
 /**
- * Bir workspace'in menü ağacını sidebar sırasıyla düz bir sayfa listesine çevirir.
- * Yalnızca path'i olan, disabled olmayan ve workspace'in basePaths kapsamındaki
- * öğeler alınır (workspace dışına / harici linkler elenir). İlk görülme sırası
- * korunur ve tekrar eden path'ler ayıklanır (overview hem ws.path hem menü
- * öğesi olarak geçebildiğinden dedupe şarttır).
+ * Flattens a workspace's menu tree into a page list in sidebar order.
+ * Only items that have a path, are not disabled, and fall within the workspace's
+ * basePaths are included (external links and out-of-scope items are filtered out).
+ * Insertion order is preserved and duplicate paths are deduplicated (necessary
+ * because overview can appear as both ws.path and a separate menu item).
  */
 export function getWorkspacePages(ws: Workspace): WorkspacePageRef[] {
   const seen = new Set<string>();

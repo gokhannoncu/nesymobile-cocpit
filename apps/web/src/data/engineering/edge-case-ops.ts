@@ -1,11 +1,11 @@
-// Edge Case Intelligence — operasyonel katman.
-// EDGE_CASES kataloğunun (edge-cases.ts) üzerine test durumu, incident geçmişi,
-// mitigation durumu, yaşam döngüsü ve risk metriklerini ekler.
-// Referans release: 8.4.60 · Bugün kabulü: 2026-07-12 · Stale eşiği: 90 gün.
+// Edge Case Intelligence — operational layer.
+// Adds test status, incident history, mitigation status, lifecycle,
+// and risk metrics on top of the EDGE_CASES catalog (edge-cases.ts).
+// Reference release: 8.4.60 · Acceptance date: 2026-07-12 · Stale threshold: 90 days.
 
 import { EDGE_CASES, type EdgeCase, type Severity } from './edge-cases'
 
-// ── Tipler ───────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────
 
 export type Likelihood = 'frequent' | 'likely' | 'rare'
 
@@ -40,67 +40,67 @@ export interface EdgeOps {
   /** Flow pool — Login, Delivery, Fiscal, End of Day... */
   flow: string
   likelihood: Likelihood
-  /** Kaç kullanıcı/ülke etkilenebilir? */
+  /** How many users/countries could be affected? */
   exposure: string
   status: Lifecycle
   testStatus: TestStatus
-  /** Boş dizi = otomasyon yok. */
+  /** Empty array = no automation. */
   automation: AutomationLevel[]
   mitigationStatus: MitigationStatus
-  /** Bağlı incident sayısı. */
+  /** Number of linked incidents. */
   incidents: number
-  /** Son doğrulama tarihi (ISO) — null = hiç doğrulanmadı. */
+  /** Last verification date (ISO) — null = never verified. */
   lastVerified: string | null
   owner: string | null
-  /** 8.4.60 release değişikliklerinden etkilendi mi? */
+  /** Affected by 8.4.60 release changes? */
   releaseRisk: boolean
-  /** 1 = çok zor tespit edilir · 5 = anında görünür. */
+  /** 1 = very hard to detect · 5 = immediately visible. */
   detectability: 1 | 2 | 3 | 4 | 5
-  /** 1 = geri döndürülemez · 5 = kolay recover. */
+  /** 1 = irreversible · 5 = easy recovery. */
   recoverability: 1 | 2 | 3 | 4 | 5
-  /** Failure mechanism pool üyelikleri. */
+  /** Failure mechanism pool memberships. */
   mechanisms: string[]
-  /** Environment pool üyelikleri. */
+  /** Environment pool memberships. */
   environments: string[]
-  /** Ortam bazlı coverage matrisi — belirtilmeyen ortam 'none' sayılır. */
+  /** Environment-based coverage matrix — unspecified environments default to 'none'. */
   envCoverage?: Partial<Record<EnvKey, EnvCoverage>>
-  /** Expected vs Actual ayrımı — kritik kayıtlarda zorunlu. */
+  /** Expected vs Actual distinction — required for critical entries. */
   expected?: string
   actual?: string
-  /** Reproduce güvenilirliği 1–5 (race condition'lar her denemede oluşmaz). */
+  /** Reproduce reliability 1-5 (race conditions do not occur on every attempt). */
   reproduceReliability?: number
   reproduceSteps?: string[]
-  /** Mitigation'dan ayrı: etkilenen kayıt/cihaz nasıl iyileştirilir? */
+  /** Separate from mitigation: how to recover affected records/devices? */
   recovery?: string
-  /** Kalıcı çözüm notu / hedef. */
+  /** Permanent fix note / target. */
   permanentFix?: string
 }
 
-// ── Operasyonel veri (E1–E33) ────────────────────────────────────
+// ── Operational data (E1-E33) ────────────────────────────────────
 
 export const EDGE_OPS: Record<string, EdgeOps> = {
   E1: {
-    flow: 'Schedule Download', likelihood: 'likely', exposure: 'Tüm ülkeler',
+    flow: 'Schedule Download', likelihood: 'likely', exposure: 'All countries',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 2,
     mechanisms: ['Race condition', 'Lost state'], environments: ['Flaky network'],
     envCoverage: { online: 'none', offline: 'none', flaky: 'none' },
-    expected: 'FCM refresh ile lokal teslim yazımı çakıştığında iki değişiklik de korunmalı.',
-    actual: 'Son yazan kazanır; teslim kaydı sessizce kaybolabilir.',
+    expected: 'When FCM refresh and local delivery write conflict on the same chunk, both changes should be preserved.',
+    actual: 'Last writer wins; delivery record may silently disappear.',
     reproduceReliability: 2,
-    recovery: 'CompletedRequest kayıtları ile schedule chunk’ı diff’lenerek kayıp teslimler geri yazılır.',
-    permanentFix: 'Chunk → ilişkisel satır modeli (Modernizasyon Faz 1).',
+    recovery: 'Lost deliveries are restored by diffing CompletedRequest records against the schedule chunk.',
+    permanentFix: 'Chunk to relational row model (Modernization Phase 1).',
   },
   E2: {
-    flow: 'Schedule Download', likelihood: 'rare', exposure: 'Tüm ülkeler',
+    flow: 'Schedule Download', likelihood: 'rare', exposure: 'All countries',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 0, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 3, recoverability: 2,
     mechanisms: ['Data corruption', 'Partial success'], environments: ['Process killed', 'Low memory'],
   },
   E3: {
-    flow: 'Schedule Download', likelihood: 'rare', exposure: 'Upgrade alan tüm cihazlar',
+    flow: 'Schedule Download', likelihood: 'rare', exposure: 'All devices receiving upgrades',
     status: 'test-ready', testStatus: 'failed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 1, lastVerified: '2026-05-19', owner: 'Data & Sync', releaseRisk: true,
     detectability: 4, recoverability: 1,
@@ -126,7 +126,7 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', offline: 'pass' },
   },
   E5: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'POS kullanan tüm ülkeler',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries using POS',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 2, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 1, recoverability: 2,
@@ -139,14 +139,14 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     permanentFix: 'Ödeme state makinesi Room’a taşınır (E30 ile birlikte).',
   },
   E6: {
-    flow: 'Schedule Download', likelihood: 'likely', exposure: 'Tüm ülkeler',
+    flow: 'Schedule Download', likelihood: 'likely', exposure: 'All countries',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 2, recoverability: 3,
     mechanisms: ['Stale state'], environments: ['Restart'],
   },
   E7: {
-    flow: 'End of Day', likelihood: 'likely', exposure: 'Zayıf şebeke bölgeleri',
+    flow: 'End of Day', likelihood: 'likely', exposure: 'Weak coverage areas',
     status: 'validated', testStatus: 'passed', automation: ['integration'], mitigationStatus: 'yes',
     incidents: 3, lastVerified: '2026-06-30', owner: 'Data & Sync', releaseRisk: true,
     detectability: 3, recoverability: 4,
@@ -154,16 +154,16 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', offline: 'pass', flaky: 'warn' },
   },
   E8: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries',
     status: 'test-ready', testStatus: 'failed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 4, lastVerified: '2026-06-14', owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 3,
     mechanisms: ['Lost state', 'Process death', 'Retry failure'], environments: ['Process killed', 'Doze'],
     envCoverage: { online: 'pass', restart: 'fail', background: 'warn' },
-    expected: 'Servis ölse bile işlenmekte olan kayıt kilitli kalmaz; kuyruk kendini toparlar.',
-    actual: 'isProcessing=true kalır; kuyruk kalıcı olarak tıkanır.',
+    expected: 'Even if the service dies, a record being processed should not remain locked; the queue self-recovers.',
+    actual: 'isProcessing=true persists; the queue is permanently stuck.',
     reproduceReliability: 4,
-    recovery: 'Cihazda stale isProcessing kayıtları elle sıfırlanır (destek prosedürü SOP-12).',
+    recovery: 'Stale isProcessing records are manually reset on the device (support procedure SOP-12).',
   },
   E9: {
     flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler · finansal event’ler',
@@ -184,7 +184,7 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     permanentFix: 'Uçtan uca idempotency anahtarı (backend ortak çalışması, Faz 1).',
   },
   E10: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 3,

@@ -187,8 +187,8 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      // forceMount: pasif paneller DOM'da kalır (PDF dışa aktarım tüm
-      // sekmeleri yakalayabilsin diye); ekranda data-state ile gizlenir.
+      // forceMount: inactive panels remain in the DOM (so that PDF export can
+      // capture all tabs); they are hidden on screen via data-state.
       forceMount
       className={cn(
         tabsContentVariants({ variant }),

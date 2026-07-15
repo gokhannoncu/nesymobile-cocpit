@@ -1,7 +1,7 @@
 'use client'
 
 // Data Locator — "Where does this data live?"
-// İş sorusu → doğru kaynak → önemli alanlar → ilişkili kaynaklar → örnek sorgu.
+// Business question → correct source → key fields → related sources → example query.
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -69,7 +69,7 @@ const HEADER_BADGES = [
   { label: 'Schema map synced', icon: Sparkles, tone: 'green' as const },
 ]
 
-/** Sol filtre rail — mock checkbox filtreleri, accordion yapısında. */
+/** Left filter rail — mock checkbox filters in accordion layout. */
 function FilterRail() {
   const groups: { id: string; title: string; options: readonly string[] }[] = [
     { id: 'domain', title: 'Domain', options: ALL_DOMAINS },
@@ -111,7 +111,7 @@ function FilterRail() {
   )
 }
 
-/** Yatay data lineage mini graph — node'lar tıklanabilir. */
+/** Horizontal data lineage mini graph — nodes are clickable. */
 function LineageGraph({ onSelect }: { onSelect: (sourceId: string) => void }) {
   const chain = LINEAGE_CHAINS[0]
   if (!chain) return null
@@ -173,15 +173,15 @@ export default function DataLocatorPage() {
         path="/engineering/tools/data-locator"
         icon={Compass}
         title="Data Locator"
-        lead="Aradığın iş verisini doğal dille tanımla; doğru database, collection, tablo, log alanı ve ilişki yolunu bul."
+        lead="Describe the business data you need in natural language; find the right database, collection, table, log field, and relationship path."
         tone="orange"
         badges={HEADER_BADGES}
       />
 
-      {/* Ana arama alanı */}
+      {/* Main search area */}
       <section className="rounded-xl border bg-card p-5">
         <div className="flex items-center gap-2">
-          <h2 className="text-[15px] font-bold text-foreground">Hangi veriyi arıyorsun?</h2>
+          <h2 className="text-[15px] font-bold text-foreground">What data are you looking for?</h2>
           <Badge variant="secondary" appearance="outline" size="xs" className="gap-1">
             <Sparkles className="size-3 text-orange-500" />
             Semantic search
@@ -191,7 +191,7 @@ export default function DataLocatorPage() {
           <Textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Örneğin: Bir shipment'ın payment ve delivery durumlarını birlikte görmek istiyorum."
+            placeholder="E.g.: I want to see a shipment's payment and delivery statuses together."
             className="min-h-[64px] flex-1 resize-none text-sm"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -202,7 +202,7 @@ export default function DataLocatorPage() {
           />
           <Button variant="primary" className="shrink-0" onClick={() => runSearch(query)}>
             <Search className="size-4" />
-            Veri Kaynağını Bul
+            Find Data Source
           </Button>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -212,16 +212,16 @@ export default function DataLocatorPage() {
         </div>
       </section>
 
-      {/* Sonuç alanı */}
+      {/* Results area */}
       {!searched ? (
         <section className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 py-16 text-center">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-muted">
             <Compass className="size-6 text-muted-foreground" />
           </span>
-          <div className="mt-4 text-sm font-bold text-foreground">Aradığın veri kavramını yaz</div>
+          <div className="mt-4 text-sm font-bold text-foreground">Describe the data concept you need</div>
           <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-            Teknik tablo veya collection adını bilmek zorunda değilsin. İş sorusunu doğal dilde
-            tanımlaman yeterli.
+            You don't need to know the technical table or collection name. Simply describe your
+            business question in natural language.
           </p>
         </section>
       ) : !intent ? (
@@ -253,7 +253,7 @@ export default function DataLocatorPage() {
             <p className="mt-1 text-xs leading-relaxed text-foreground/80">{intent.guidance.detail}</p>
           </Callout>
 
-          {/* Üç kolon: filtre rail / sonuç kartları / detay paneli */}
+          {/* Three columns: filter rail / result cards / detail panel */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)_430px]">
             <aside className="hidden xl:block">
               <FilterRail />
@@ -326,11 +326,11 @@ export default function DataLocatorPage() {
 
       {/* Investigation recipes */}
       <PageSection
-        eyebrow="Hazır tarifler"
+        eyebrow="Ready-made recipes"
         title="Common investigation recipes"
         icon={BookOpen}
         tone="orange"
-        description="Sahada en sık karşılaşılan üç araştırma senaryosu — kontrol sırası ve ana identifier ile."
+        description="The three most common field investigation scenarios — with check order and primary identifier."
       >
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
           {INVESTIGATION_RECIPES.map((r) => (
@@ -363,11 +363,11 @@ export default function DataLocatorPage() {
 
       {/* Data catalog */}
       <PageSection
-        eyebrow="Katalog"
+        eyebrow="Catalog"
         title="All Data Sources"
         icon={Table2}
         tone="gray"
-        description="Nesy ekosistemindeki tüm veri kaynakları — satıra tıklayınca detay açılır."
+        description="All data sources in the Nesy ecosystem — click a row to open details."
       >
         <div className="space-y-3">
           <DataCatalog />

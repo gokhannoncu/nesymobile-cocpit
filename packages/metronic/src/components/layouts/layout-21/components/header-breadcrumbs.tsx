@@ -28,7 +28,7 @@ export function HeaderBreadcrumbs() {
   const crumbs = getBreadcrumbs(pathname)
 
   return (
-    // data-pdf-exclude: mobilde main içinde render edildiğinden PDF yakalamasına girmesin
+    // data-pdf-exclude: rendered inside main on mobile, so exclude it from PDF capture
     <div
       data-pdf-exclude
       className="grow flex flex-row items-center flex-wrap gap-1 mb-5 lg:mb-0 px-4 pt-3.5 lg:pt-0 lg:px-0"

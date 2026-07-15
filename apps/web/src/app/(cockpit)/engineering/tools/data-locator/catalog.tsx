@@ -1,6 +1,6 @@
 'use client'
 
-// All Data Sources — aranabilir katalog tablosu + detay Sheet drawer'ı.
+// All Data Sources — searchable catalog table + detail Sheet drawer.
 
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
@@ -45,7 +45,7 @@ export function DataCatalog() {
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Kaynak, sistem veya domain ara…"
+          placeholder="Search source, system, or domain…"
           className="ps-9"
         />
       </div>
@@ -101,7 +101,7 @@ export function DataCatalog() {
             {rows.length === 0 && (
               <tr>
                 <td className={cn(td, 'py-8 text-center text-muted-foreground')} colSpan={10}>
-                  Filtreyle eşleşen kaynak yok.
+                   No sources match the filter.
                 </td>
               </tr>
             )}

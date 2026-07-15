@@ -1,18 +1,18 @@
 // ─── Project Management — Ticket Data ────────────────────────────────────────
-// NesyArchitectureReport projesindeki 48 ticket verisinin cockpit entegrasyonu.
+// Cockpit integration of 48 ticket data from the NesyArchitectureReport project.
 
 import type { Ticket } from './types'
 
-// ═══ Grup ve Ekran Sabitleri ═════════════════════════════════════════════════
+// ═══ Group and Screen Constants ═════════════════════════════════════════════
 
 export const ALL_GROUPS = [
-  'Finans & Ödeme',
+  'Finance & Payment',
   'Barcode & Scan',
-  'Tour & Teslimat',
-  'Bildirim',
+  'Tour & Delivery',
+  'Notification',
   'State & Race',
   'D4Me & Locker',
-  'Konum & GPS',
+  'Location & GPS',
   'UI & Crash',
 ] as const
 
@@ -32,13 +32,13 @@ export const ALL_SCREENS = [
   'Shipment Detail',
 ] as const
 
-// ═══ Ticket Verileri ═════════════════════════════════════════════════════════
+// ═══ Ticket Data ═════════════════════════════════════════════════════════
 
 export const tickets: Ticket[] = [
-  // ─── Finans & Ödeme (15 ticket) ────────────────────────────────────────────
+  // ─── Finance & Payment (15 tickets) ────────────────────────────────────────
   {
     id: 437,
-    title: 'Fiskalizasyon timeout — ödeme onayı gecikiyor',
+    title: 'Fiscalization timeout — payment confirmation delayed',
     type: 'Bug',
     severity: 'Critical',
     status: 'open',
@@ -46,33 +46,33 @@ export const tickets: Ticket[] = [
     date: '2026-05-12',
     labels: ['Team:telefunken', 'Epic: Mobile'],
     topics: ['Fiscalization', 'Payment'],
-    summary: 'Fiskalizasyon servisine yapılan çağrı 30 saniye üzeri sürüyor. Kullanıcı ödeme onayı alamıyor, teslimat tamamlanamıyor.',
+    summary: 'Call to fiscalization service takes over 30 seconds. User cannot receive payment confirmation, delivery cannot be completed.',
     customer_refs: [{ repo: 'NESY_CEE', num: '437', url: 'https://github.com/nesyCEE/issues/437' }],
     customer_ticket: 'NESY_CEE#437',
     gh_url: 'https://github.com/nesyCEE/issues/437',
     screen: 'Delivery',
-    group: 'Finans & Ödeme',
+    group: 'Finance & Payment',
     analysis: {
-      report: 'Fiskalizasyon çağrısı senkron yapılıyor; ağ gecikmelerinde UI thread bloklanıyor.',
+      report: 'Fiscalization call is synchronous; UI thread is blocked during network delays.',
       recurrenceRisk: 'high',
       edgeCases: ['E31', 'E34'],
       story: [
-        { k: 'symptom', text: 'Kurye ödeme al ekranında 30+ saniye bekliyor.' },
-        { k: 'cause', text: 'FiscalizationService.sendReceipt() main thread üzerinde senkron HTTP çağrısı yapıyor.' },
-        { k: 'fix', text: 'Coroutine ile Dispatchers.IO üzerine taşınmalı, timeout policy eklenmeli.' },
-        { k: 'why', text: 'İlk implementasyonda async pattern kullanılmamış; test ortamında ağ hızlı olduğu için fark edilmemiş.' },
-        { k: 'state', text: 'Hâlâ senkron çağrı aktif. HR ve RS\'de yoğun saatlerde 5-10 kez/gün yaşanıyor.', confidence: 85 },
-        { k: 'todo', text: 'Sprint 24 planına alınacak — P0 seviyesinde.' },
+        { k: 'symptom', text: 'Courier waits 30+ seconds on the payment collection screen.' },
+        { k: 'cause', text: 'FiscalizationService.sendReceipt() makes a synchronous HTTP call on the main thread.' },
+        { k: 'fix', text: 'Should be moved to Dispatchers.IO with Coroutine, timeout policy should be added.' },
+        { k: 'why', text: 'Async pattern was not used in the initial implementation; not noticed because the network was fast in the test environment.' },
+        { k: 'state', text: 'Synchronous call is still active. Occurs 5-10 times/day during peak hours in HR and RS.', confidence: 85 },
+        { k: 'todo', text: 'To be included in Sprint 24 plan — P0 priority.' },
       ],
     },
     testCases: [
-      { id: 'TC-437-01', title: 'Fiskalizasyon timeout testi (>30s)', status: 'failed', type: 'integration' },
-      { id: 'TC-437-02', title: 'Ağ kesintisinde fallback davranışı', status: 'pending', type: 'integration' },
+      { id: 'TC-437-01', title: 'Fiscalization timeout test (>30s)', status: 'failed', type: 'integration' },
+      { id: 'TC-437-02', title: 'Fallback behavior on network interruption', status: 'pending', type: 'integration' },
     ],
   },
   {
     id: 438,
-    title: 'Çift ödeme kaydı — concurrent access sorunu',
+    title: 'Double payment record — concurrent access issue',
     type: 'Bug',
     severity: 'Critical',
     status: 'open',
@@ -80,27 +80,27 @@ export const tickets: Ticket[] = [
     date: '2026-05-14',
     labels: ['Team:telefunken', 'Bug: Critical'],
     topics: ['Payment', 'Race Condition'],
-    summary: 'Kullanıcı hızlı çift tıklamada iki ayrı ödeme kaydı oluşuyor. Muhasebe raporlarında tutarsızlık.',
+    summary: 'Two separate payment records are created on rapid double-tap. Inconsistency in accounting reports.',
     customer_refs: [{ repo: 'UAT-RS', num: '215', url: 'https://github.com/UAT-RS/issues/215' }],
     customer_ticket: 'UAT-RS#215',
     gh_url: 'https://github.com/UAT-RS/issues/438',
     screen: 'Delivery',
-    group: 'Finans & Ödeme',
+    group: 'Finance & Payment',
     analysis: {
-      report: 'Ödeme butonuna debounce / mutex yok. Ağ gecikmesinde çift POST atılıyor.',
+      report: 'No debounce/mutex on the payment button. Double POST is sent during network delay.',
       recurrenceRisk: 'high',
       edgeCases: ['E12', 'E15'],
       story: [
-        { k: 'symptom', text: 'Müşteri bakiyesinden çift tahsilat yapılıyor.' },
-        { k: 'cause', text: 'PaymentFragment.submitPayment() idempotent değil; buton tıklamada UI disable edilmiyor.' },
-        { k: 'fix', text: 'Buton disable + idempotency key + backend deduplicate.' },
-        { k: 'why', text: 'Ödeme akışı single-threaded varsayımla yazılmış.' },
-        { k: 'state', text: 'Açık. RS de son 1 ayda 12 vaka raporlandı.', confidence: 90 },
-        { k: 'todo', text: 'Acil hotfix gerekiyor. Sprint 23 scope.' },
+        { k: 'symptom', text: 'Double charge is being made from customer balance.' },
+        { k: 'cause', text: 'PaymentFragment.submitPayment() is not idempotent; UI is not disabled on button tap.' },
+        { k: 'fix', text: 'Button disable + idempotency key + backend deduplicate.' },
+        { k: 'why', text: 'Payment flow was written with single-threaded assumption.' },
+        { k: 'state', text: 'Open. 12 cases reported in RS in the last month.', confidence: 90 },
+        { k: 'todo', text: 'Urgent hotfix needed. Sprint 23 scope.' },
       ],
     },
     testCases: [
-      { id: 'TC-438-01', title: 'Çift tıklama guard testi', status: 'failed', type: 'e2e' },
+      { id: 'TC-438-01', title: 'Double-tap guard test', status: 'failed', type: 'e2e' },
     ],
   },
   {

@@ -1,8 +1,8 @@
-// ─── Domain Entity Sözlüğü (Ubiquitous Language) ────────────────────────────
-// Nesy Mobile uygulamasının domain varlıkları, hiyerarşik ilişkileri,
-// statü geçişleri ve statü yayılım kuralları.
+// ─── Domain Entity Glossary (Ubiquitous Language) ────────────────────────────
+// Nesy Mobile application's domain entities, hierarchical relationships,
+// status transitions, and status propagation rules.
 
-// ═══ Temel Tipler ══════════════════════════════════════════════════════════
+// ═══ Core Types ══════════════════════════════════════════════════════════
 
 export type EntityLevel = 0 | 1 | 2 | 3 | 4 | 5
 
@@ -117,51 +117,51 @@ export interface EntityRelation {
   description: string
 }
 
-// ═══ Domain Entity Tanımları ═══════════════════════════════════════════════
+// ═══ Domain Entity Definitions ═══════════════════════════════════════════════
 
 export const entities: DomainEntity[] = [
-  // ─── Level 0: Schedule (En üst) ────────────────────────────────────────
+  // ─── Level 0: Schedule (Top-level) ────────────────────────────────────────
   {
     id: 'schedule',
     name: 'Schedule',
-    turkishName: 'Çizelge',
-    aliases: ['Günlük Plan', 'Gün Planı', 'Daily Schedule'],
+    turkishName: 'Schedule',
+    aliases: ['Daily Plan', 'Day Plan', 'Daily Schedule'],
     level: 0,
     parentId: null,
     childIds: ['route'],
     icon: 'Calendar',
     color: 'purple',
-    definition: 'Bir kuryenin belirli bir gün için aldığı tüm iş yükünü kapsayan en üst düzey varlık. Schedule, kuryenin sabah hub\'dan çıkıp akşam hub\'a dönene kadarki tüm operasyonun kapsayıcısıdır.',
-    businessContext: 'Her kurye her gün tek bir Schedule alır. Schedule LOADED olduğunda kurye güne başlayabilir; tüm işler bittiğinde COMPLETED olarak kapatılır. Schedule kapatılmadan End of Day raporu oluşturulamaz.',
-    technicalContext: 'StopListFragment içinde yüklenir. SharedViewModel.loadSchedule() çağrısıyla backend\'den çekilir. Offline mode\'da Room DB\'den okunur. 7059 satırlık monster fragment bu entity\'nin orchestration\'ını yapıyor.',
+    definition: 'The top-level entity encompassing a courier\'s entire workload for a specific day. Schedule covers all operations from the moment the courier leaves the hub in the morning until returning to the hub in the evening.',
+    businessContext: 'Each courier receives a single Schedule per day. When the Schedule is LOADED, the courier can start the day; when all work is completed, it is closed as COMPLETED. The End of Day report cannot be generated until the Schedule is closed.',
+    technicalContext: 'Loaded within StopListFragment. Retrieved from the backend via SharedViewModel.loadSchedule() call. Read from Room DB in offline mode. The 7059-line monster fragment handles this entity\'s orchestration.',
     cardinality: '1:N',
     cardinalityDesc: '1 Schedule → N Route',
     screens: ['Stop List', 'End of Day'],
     antiPatterns: [
-      '❌ Schedule = Route değildir. Bir Schedule birden fazla Route içerebilir.',
-      '❌ Schedule kapatılmadan yeni Schedule yüklenemez.',
-      '❌ Schedule sadece teslimat değildir, pickup ve collection\'ları da kapsar.',
+      '❌ Schedule ≠ Route. A Schedule can contain multiple Routes.',
+      '❌ A new Schedule cannot be loaded until the current one is closed.',
+      '❌ Schedule is not just delivery — it also covers pickups and collections.',
     ],
     statuses: [
-      { code: 'NOT_LOADED', label: 'NOT_LOADED', color: 'gray', description: 'Schedule henüz backend\'den çekilmedi.', isTerminal: false },
-      { code: 'LOADED', label: 'LOADED', color: 'blue', description: 'Schedule indirildi, Stop List gösteriliyor.', isTerminal: false },
-      { code: 'IN_PROGRESS', label: 'IN_PROGRESS', color: 'amber', description: 'En az bir Stop/Task üzerinde işlem başladı.', isTerminal: false },
-      { code: 'COMPLETED', label: 'COMPLETED', color: 'green', description: 'Tüm Route, Stop ve Task terminal durumda.', isTerminal: true },
-      { code: 'FORCE_CLOSED', label: 'FORCE_CLOSED', color: 'red', description: 'Operasyon yöneticisi tarafından manuel kapatıldı.', isTerminal: true },
+      { code: 'NOT_LOADED', label: 'NOT_LOADED', color: 'gray', description: 'Schedule has not yet been retrieved from the backend.', isTerminal: false },
+      { code: 'LOADED', label: 'LOADED', color: 'blue', description: 'Schedule downloaded, Stop List is being displayed.', isTerminal: false },
+      { code: 'IN_PROGRESS', label: 'IN_PROGRESS', color: 'amber', description: 'At least one Stop/Task has started processing.', isTerminal: false },
+      { code: 'COMPLETED', label: 'COMPLETED', color: 'green', description: 'All Routes, Stops, and Tasks are in terminal state.', isTerminal: true },
+      { code: 'FORCE_CLOSED', label: 'FORCE_CLOSED', color: 'red', description: 'Manually closed by the operations manager.', isTerminal: true },
     ],
     transitions: [
-      { from: 'NOT_LOADED', to: 'LOADED', trigger: 'loadSchedule()', condition: 'Backend bağlantısı veya offline cache mevcut' },
-      { from: 'LOADED', to: 'IN_PROGRESS', trigger: 'İlk Stop/Task başlatıldığında', propagation: '⬆ İlk child IN_PROGRESS olunca otomatik' },
-      { from: 'IN_PROGRESS', to: 'COMPLETED', trigger: 'Tüm child Route\'lar COMPLETED', propagation: '⬆ Tüm child\'lar COMPLETED olunca otomatik' },
-      { from: 'IN_PROGRESS', to: 'FORCE_CLOSED', trigger: 'Yönetici müdahalesi', condition: 'Supervisor override yetkisi gerekli' },
+      { from: 'NOT_LOADED', to: 'LOADED', trigger: 'loadSchedule()', condition: 'Backend connection or offline cache available' },
+      { from: 'LOADED', to: 'IN_PROGRESS', trigger: 'When the first Stop/Task is started', propagation: '⬆ Automatic when first child becomes IN_PROGRESS' },
+      { from: 'IN_PROGRESS', to: 'COMPLETED', trigger: 'All child Routes are COMPLETED', propagation: '⬆ Automatic when all children become COMPLETED' },
+      { from: 'IN_PROGRESS', to: 'FORCE_CLOSED', trigger: 'Manager intervention', condition: 'Supervisor override permission required' },
     ],
     keyAttributes: [
-      { name: 'scheduleId', type: 'String', description: 'Backend tarafından atanan unique ID' },
+      { name: 'scheduleId', type: 'String', description: 'Unique ID assigned by the backend' },
       { name: 'date', type: 'LocalDate', description: 'Schedule date (YYYY-MM-DD)' },
-      { name: 'courierId', type: 'String', description: 'Atanan kuryenin ID\'si' },
-      { name: 'hubId', type: 'String', description: 'Başlangıç hub\'ının ID\'si' },
-      { name: 'totalStops', type: 'Int', description: 'Toplam durak sayısı' },
-      { name: 'completedStops', type: 'Int', description: 'Tamamlanan durak sayısı' },
+      { name: 'courierId', type: 'String', description: 'ID of the assigned courier' },
+      { name: 'hubId', type: 'String', description: 'ID of the starting hub' },
+      { name: 'totalStops', type: 'Int', description: 'Total number of stops' },
+      { name: 'completedStops', type: 'Int', description: 'Number of completed stops' },
     ],
     relatedEntities: ['route', 'stop'],
     prerequisiteIds: [],
@@ -171,40 +171,40 @@ export const entities: DomainEntity[] = [
   {
     id: 'route',
     name: 'Route',
-    turkishName: 'Rota',
-    aliases: ['Tur', 'Güzergâh', 'Tour'],
+    turkishName: 'Route',
+    aliases: ['Tour', 'Path', 'Tour'],
     level: 1,
     parentId: 'schedule',
     childIds: ['stop'],
     icon: 'Route',
     color: 'blue',
-    definition: 'Schedule içindeki coğrafi olarak gruplandırılmış durak (Stop) dizisi. Bir Route, kuryenin belirli bir bölgedeki teslimat/toplama rotasını temsil eder.',
-    businessContext: 'Route\'lar genellikle posta kodu veya bölge bazlı oluşturulur. Kurye, Route Selection ekranında aktif Route\'u seçer. Bir Schedule birden fazla Route içerebilir (örn. sabah teslimat rotası + öğleden sonra pickup rotası).',
-    technicalContext: 'Route Selection ekranında gösterilir. Route optimizasyonu backend\'de yapılır ama sıralama mobile\'a iletilmediği için kurye manuel sıralama yapıyor (Ticket #601). GPS bazlı re-routing henüz implemente değil.',
+    definition: 'A geographically grouped sequence of stops (Stops) within a Schedule. A Route represents the courier\'s delivery/pickup route in a specific area.',
+    businessContext: 'Routes are typically created based on postal codes or regions. The courier selects the active Route on the Route Selection screen. A Schedule can contain multiple Routes (e.g., morning delivery route + afternoon pickup route).',
+    technicalContext: 'Displayed on the Route Selection screen. Route optimization is done on the backend, but since the ordering is not transmitted to mobile, the courier sorts manually (Ticket #601). GPS-based re-routing is not yet implemented.',
     cardinality: '1:N',
     cardinalityDesc: '1 Route → N Stop',
     screens: ['Route Selection', 'Stop List', 'Map/Navigation'],
     antiPatterns: [
-      '❌ Route = Schedule değildir. Schedule güne, Route coğrafyaya bağlıdır.',
-      '❌ Route sıralaması GPS optimize DEĞİLDİR — manuel sıralamaya güvenilmemelidir.',
-      '❌ Route boş olamaz — en az 1 Stop içermelidir.',
+      '❌ Route ≠ Schedule. Schedule is day-based; Route is geography-based.',
+      '❌ Route ordering is NOT GPS-optimized — manual ordering should not be relied upon.',
+      '❌ A Route cannot be empty — it must contain at least 1 Stop.',
     ],
     statuses: [
-      { code: 'PENDING', label: 'PENDING', color: 'gray', description: 'Route henüz başlatılmadı.', isTerminal: false },
-      { code: 'SELECTED', label: 'SELECTED', color: 'blue', description: 'Kurye bu Route\'u aktif Route olarak seçti.', isTerminal: false },
-      { code: 'IN_PROGRESS', label: 'IN_PROGRESS', color: 'amber', description: 'Route\'taki en az bir Stop üzerinde işlem var.', isTerminal: false },
-      { code: 'COMPLETED', label: 'COMPLETED', color: 'green', description: 'Tüm Stop terminal durumda (DELIVERED veya FAILED).', isTerminal: true },
+      { code: 'PENDING', label: 'PENDING', color: 'gray', description: 'Route has not yet been started.', isTerminal: false },
+      { code: 'SELECTED', label: 'SELECTED', color: 'blue', description: 'Courier selected this Route as the active Route.', isTerminal: false },
+      { code: 'IN_PROGRESS', label: 'IN_PROGRESS', color: 'amber', description: 'At least one Stop in the Route is being processed.', isTerminal: false },
+      { code: 'COMPLETED', label: 'COMPLETED', color: 'green', description: 'All Stops are in terminal state (DELIVERED or FAILED).', isTerminal: true },
     ],
     transitions: [
-      { from: 'PENDING', to: 'SELECTED', trigger: 'Kurye Route Selection\'da seçim yapar' },
-      { from: 'SELECTED', to: 'IN_PROGRESS', trigger: 'İlk Stop üzerinde işlem başladığında', propagation: '⬆ Schedule → IN_PROGRESS' },
-      { from: 'IN_PROGRESS', to: 'COMPLETED', trigger: 'Tüm Stop\'lar terminal durumda', propagation: '⬆ Tüm Route\'lar COMPLETED olunca Schedule → COMPLETED' },
+      { from: 'PENDING', to: 'SELECTED', trigger: 'Courier makes a selection on Route Selection' },
+      { from: 'SELECTED', to: 'IN_PROGRESS', trigger: 'When the first Stop starts processing', propagation: '⬆ Schedule → IN_PROGRESS' },
+      { from: 'IN_PROGRESS', to: 'COMPLETED', trigger: 'All Stops are in terminal state', propagation: '⬆ When all Routes are COMPLETED, Schedule → COMPLETED' },
     ],
     keyAttributes: [
       { name: 'routeId', type: 'String', description: 'Route unique ID' },
-      { name: 'routeCode', type: 'String', description: 'Bölge/posta kodu bazlı Route kodu' },
-      { name: 'sequence', type: 'Int', description: 'Schedule içindeki sıra numarası' },
-      { name: 'optimizedOrder', type: 'List<Int>', description: 'GPS bazlı önerilen sıralama (henüz aktif değil)' },
+      { name: 'routeCode', type: 'String', description: 'Region/postal code-based Route code' },
+      { name: 'sequence', type: 'Int', description: 'Sequence number within the Schedule' },
+      { name: 'optimizedOrder', type: 'List<Int>', description: 'GPS-based suggested ordering (not yet active)' },
     ],
     relatedEntities: ['schedule', 'stop'],
     prerequisiteIds: ['schedule'],

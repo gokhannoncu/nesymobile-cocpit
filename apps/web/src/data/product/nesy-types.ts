@@ -1,4 +1,4 @@
-// Nesy Mobile ürün tipi tanımları — circular dependency'yi önlemek için ayrıştırılmıştır.
+// Nesy Mobile product type definitions — separated to avoid circular dependency.
 
 export type CountryId = 'core' | 'hr' | 'si' | 'rs' | 'ba' | 'me' | 'sk'
 
@@ -7,21 +7,21 @@ export interface Country {
   name: string
   subtitle: string
   price: string
-  status: 'Küresel' | 'Aktif' | 'Gelişmiş' | 'Kısıtlı'
+  status: 'Global' | 'Active' | 'Advanced' | 'Limited'
   isPopular?: boolean
 }
 
 /* ═══════════════════════════════════════════════════════
- * Flow Diagram tipleri — görsel akış diyagramı için
+ * Flow Diagram types — for visual flow diagrams
  * ═══════════════════════════════════════════════════════ */
 
 export type DiagramNodeVariant =
-  | 'start'    // Başlangıç — yeşil/teal, play ikonu
-  | 'process'  // İşlem adımı — mavi, dişli ikonu
-  | 'decision' // Karar noktası — amber, soru ikonu
-  | 'end'      // Son — yeşil, onay ikonu
-  | 'error'    // Hata/başarısız — kırmızı, X ikonu
-  | 'external' // Harici sistem — mor, bağlantı ikonu
+  | 'start'    // Start — green/teal, play icon
+  | 'process'  // Process step — blue, gear icon
+  | 'decision' // Decision point — amber, question icon
+  | 'end'      // End — green, check icon
+  | 'error'    // Error/failed — red, X icon
+  | 'external' // External system — purple, link icon
 
 export type DiagramElement =
   | { type: 'node'; label: string; variant: DiagramNodeVariant; desc?: string }
@@ -35,30 +35,30 @@ export type DiagramElement =
 /* ═══════════════════════════════════════════════════════ */
 
 export interface FeatureDetail {
-  /** Özellik hakkında detaylı açıklama — "Nedir?" */
+  /** Detailed description of the feature — "What is it?" */
   whatIs: string
-  /** Nasıl çalışır — adım adım akış */
+  /** How it works — step-by-step flow */
   howItWorks: string[]
-  /** Hangi ekranda çalışıyor — mobil uygulama ekran/fragment bilgisi */
+  /** Which screen it runs on — mobile app screen/fragment info */
   screens: string[]
-  /** Hangi parametrelere/config'lere bağlı */
+  /** Which parameters/configs it depends on */
   parameters: { name: string; desc: string; type: string }[]
-  /** Görsel akış diyagramı — DiagramElement[] olarak yapılandırılmış */
+  /** Visual flow diagram — structured as DiagramElement[] */
   diagram?: DiagramElement[]
-  /** Bilinmesi gereken trickler, dikkat edilecek noktalar */
+  /** Tips, tricks, and important points to be aware of */
   tips: string[]
-  /** Bu özellik hakkında açılmış ticket'lar */
+  /** Tickets filed about this feature */
   tickets: { id: string; title: string; status: 'open' | 'closed' | 'in-progress'; url?: string }[]
-  /** En çok know-how sahibi olan kişiler */
+  /** People with the most know-how about this feature */
   experts: { name: string; role: string }[]
-  /** Özellik skoru — bug proneness, boilerplate, hata riski */
+  /** Feature score — bug proneness, boilerplate, error risk */
   score: {
     bugProneness: 1 | 2 | 3 | 4 | 5
     boilerplate: 1 | 2 | 3 | 4 | 5
     complexity: 1 | 2 | 3 | 4 | 5
     testCoverage: 1 | 2 | 3 | 4 | 5
   }
-  /** Hangi API endpoint'lerini kullanıyor */
+  /** Which API endpoints it uses */
   apis?: { method: string; endpoint: string; desc: string }[]
 }
 
@@ -66,9 +66,9 @@ export interface Feature {
   id: string
   title: string
   desc: string
-  /** Ülke bazlı davranış — '—' henüz yok, 'N/A' kapsam dışı, diğer her şey açıklama. */
+  /** Country-specific behavior — '—' means not yet available, 'N/A' means out of scope, anything else is a description. */
   values: Record<CountryId, string>
-  /** Detaylı bilgiler — popup'ta gösterilecek */
+  /** Detailed information — displayed in popup */
   detail?: FeatureDetail
 }
 

@@ -4,18 +4,18 @@ import type { CountryVersion, VersionEntry } from './types'
 
 export const COUNTRY_LABELS: Record<string, string> = {
   core: 'CORE',
-  hr: 'Hırvatistan',
-  si: 'Slovenya',
-  rs: 'Sırbistan',
-  ba: 'Bosna-Hersek',
-  me: 'Karadağ',
-  sk: 'Slovakya',
+  hr: 'Croatia',
+  si: 'Slovenia',
+  rs: 'Serbia',
+  ba: 'Bosnia-Herzegovina',
+  me: 'Montenegro',
+  sk: 'Slovakia',
 }
 
 export const countryVersions: CountryVersion[] = [
   {
     countryId: 'hr',
-    countryName: 'Hırvatistan (HR)',
+    countryName: 'Croatia (HR)',
     production: '4.3.0',
     staging: '4.3.1-rc.2',
     lastDeployDate: '2026-07-01',
@@ -23,7 +23,7 @@ export const countryVersions: CountryVersion[] = [
   },
   {
     countryId: 'rs',
-    countryName: 'Sırbistan (RS)',
+    countryName: 'Serbia (RS)',
     production: '4.3.0',
     staging: '4.3.1-rc.2',
     lastDeployDate: '2026-07-01',
@@ -31,7 +31,7 @@ export const countryVersions: CountryVersion[] = [
   },
   {
     countryId: 'si',
-    countryName: 'Slovenya (SI)',
+    countryName: 'Slovenia (SI)',
     production: '4.3.0',
     staging: '4.3.1-rc.2',
     lastDeployDate: '2026-07-01',
@@ -39,7 +39,7 @@ export const countryVersions: CountryVersion[] = [
   },
   {
     countryId: 'ba',
-    countryName: 'Bosna-Hersek (BA)',
+    countryName: 'Bosnia-Herzegovina (BA)',
     production: '4.2.1',
     staging: '4.3.0-rc.1',
     lastDeployDate: '2026-06-15',
@@ -47,7 +47,7 @@ export const countryVersions: CountryVersion[] = [
   },
   {
     countryId: 'me',
-    countryName: 'Karadağ (ME)',
+    countryName: 'Montenegro (ME)',
     production: '4.2.1',
     staging: '4.3.0-rc.1',
     lastDeployDate: '2026-06-15',
@@ -55,7 +55,7 @@ export const countryVersions: CountryVersion[] = [
   },
   {
     countryId: 'sk',
-    countryName: 'Slovakya (SK)',
+    countryName: 'Slovakia (SK)',
     production: '4.2.0',
     staging: '4.3.0-beta.1',
     lastDeployDate: '2026-05-20',
@@ -69,10 +69,10 @@ export const versionHistory: VersionEntry[] = [
     releaseDate: '2026-07-01',
     ticketsResolved: 6,
     highlights: [
-      'D4Me otomatik flaş QR okuma',
-      'Bildirim kanalı ayrımı',
-      'Dark mode WCAG AA uyum',
-      'Vergi BigDecimal geçişi',
+      'D4Me automatic flash QR scanning',
+      'Notification channel separation',
+      'Dark mode WCAG AA compliance',
+      'Tax BigDecimal migration',
     ],
   },
   {
@@ -80,9 +80,9 @@ export const versionHistory: VersionEntry[] = [
     releaseDate: '2026-06-15',
     ticketsResolved: 3,
     highlights: [
-      'PDF encoding düzeltmesi',
-      'Barkod karakter limiti artışı',
-      'Bildirim kanal yapılandırması',
+      'PDF encoding fix',
+      'Barcode character limit increase',
+      'Notification channel configuration',
     ],
   },
   {
@@ -90,9 +90,9 @@ export const versionHistory: VersionEntry[] = [
     releaseDate: '2026-05-20',
     ticketsResolved: 1,
     highlights: [
-      'Yeni End of Day rapor ekranı',
-      'Shipment Tracking iyileştirmesi',
-      'Dark mode temel destek',
+      'New End of Day report screen',
+      'Shipment Tracking enhancement',
+      'Dark mode basic support',
     ],
   },
   {
@@ -100,8 +100,8 @@ export const versionHistory: VersionEntry[] = [
     releaseDate: '2026-04-28',
     ticketsResolved: 0,
     highlights: [
-      'HR fiskalizasyon sertifika yenileme',
-      'RS POS bağlantı stabilitesi',
+      'HR fiscalization certificate renewal',
+      'RS POS connection stability',
     ],
   },
   {
@@ -109,9 +109,9 @@ export const versionHistory: VersionEntry[] = [
     releaseDate: '2026-03-15',
     ticketsResolved: 0,
     highlights: [
-      'Hub Companion modülü',
-      'Shipment Detail gelişmiş görünüm',
-      'Task List yeni filtreler',
+      'Hub Companion module',
+      'Shipment Detail advanced view',
+      'Task List new filters',
     ],
   },
   {
@@ -120,8 +120,8 @@ export const versionHistory: VersionEntry[] = [
     endOfLife: '2026-06-01',
     ticketsResolved: 0,
     highlights: [
-      'İlk multi-country release',
-      'CORE + 4 ülke desteği',
+      'First multi-country release',
+      'CORE + 4 country support',
     ],
   },
   {
@@ -130,8 +130,8 @@ export const versionHistory: VersionEntry[] = [
     endOfLife: '2026-03-15',
     ticketsResolved: 0,
     highlights: [
-      'Son legacy architecture release',
-      'Sadece HR desteği',
+      'Last legacy architecture release',
+      'HR only support',
     ],
   },
 ]

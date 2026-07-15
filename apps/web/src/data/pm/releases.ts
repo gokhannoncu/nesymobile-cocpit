@@ -12,17 +12,17 @@ export const releases: Release[] = [
     countries: ['hr', 'rs', 'si'],
     ticketIds: [445, 505, 605, 903, 1002, 1105],
     features: [
-      'D4Me düşük ışık QR okuma — otomatik flaş',
-      'Bildirim kanalı ayrımı (tur/ödeme/genel)',
-      'Dark mode WCAG AA kontrast iyileştirmesi',
+      'D4Me low-light QR scanning — automatic flash',
+      'Notification channel separation (route/payment/general)',
+      'Dark mode WCAG AA contrast improvement',
     ],
     fixes: [
-      'Vergi hesaplama yuvarlama farkı (SI) — BigDecimal geçişi',
-      'Kamera izni reddedildiğinde crash düzeltmesi',
-      'Teslimat başarısız neden kodları güncellemesi',
-      'Harita marker flicker sorunu çözümü',
+      'Tax calculation rounding difference (SI) — BigDecimal migration',
+      'Crash fix when camera permission is denied',
+      'Delivery failure reason codes update',
+      'Map marker flicker issue resolution',
     ],
-    notes: 'İlk üç ülkeye roll-out. BA/ME sonraki hafta planlanıyor.',
+    notes: 'Roll-out to first three countries. BA/ME planned for next week.',
   },
   {
     id: 'rel-4.2.1',
@@ -34,11 +34,11 @@ export const releases: Release[] = [
     ticketIds: [447, 510, 703],
     features: [],
     fixes: [
-      'Fatura PDF encoding sorunu — UTF-8 font embed',
-      'Manuel barkod giriş karakter limiti 20→40',
-      'Bildirim ses/vibrasyon kanal ayrımı',
+      'Invoice PDF encoding issue — UTF-8 font embed',
+      'Manual barcode entry character limit 20→40',
+      'Notification sound/vibration channel separation',
     ],
-    notes: 'Hotfix release — sadece bug fix\'ler.',
+    notes: 'Hotfix release — bug fixes only.',
   },
   {
     id: 'rel-4.2.0',
@@ -49,14 +49,14 @@ export const releases: Release[] = [
     countries: ['hr', 'rs', 'si', 'ba', 'me', 'sk'],
     ticketIds: [1105],
     features: [
-      'Yeni End of Day rapor ekranı',
-      'Shipment Tracking iyileştirmesi',
-      'Dark mode temel destek',
+      'New End of Day report screen',
+      'Shipment Tracking improvement',
+      'Dark mode basic support',
     ],
     fixes: [
-      'Dark mode renk kontrastı düzeltmeleri',
+      'Dark mode color contrast fixes',
     ],
-    notes: 'Tüm ülkelere aynı anda deploy.',
+    notes: 'Deployed to all countries simultaneously.',
   },
   {
     id: 'rel-4.1.2',
@@ -67,10 +67,10 @@ export const releases: Release[] = [
     ticketIds: [],
     features: [],
     fixes: [
-      'HR fiskalizasyon sertifika yenileme',
-      'RS POS cihazı bağlantı stabilitesi',
+      'HR fiscalization certificate renewal',
+      'RS POS device connection stability',
     ],
-    notes: 'Ülke-spesifik hotfix.',
+    notes: 'Country-specific hotfix.',
   },
   {
     id: 'rel-4.1.0',
@@ -81,13 +81,13 @@ export const releases: Release[] = [
     countries: ['hr', 'rs', 'si', 'ba', 'me', 'sk'],
     ticketIds: [],
     features: [
-      'Hub Companion modülü',
-      'Shipment Detail gelişmiş görünüm',
-      'Task List yeni filtre seçenekleri',
+      'Hub Companion module',
+      'Shipment Detail enhanced view',
+      'Task List new filter options',
     ],
     fixes: [
-      'Route Selection performans iyileştirmesi',
-      'Pick Up akışı stabilizasyonu',
+      'Route Selection performance improvement',
+      'Pick Up flow stabilization',
     ],
   },
   {
@@ -99,13 +99,13 @@ export const releases: Release[] = [
     ticketIds: [438, 1101],
     features: [],
     fixes: [
-      'Çift ödeme kaydı — idempotency key + debounce',
+      'Double payment record — idempotency key + debounce',
       'Memory leak — observeForever → observe(viewLifecycleOwner)',
     ],
     breakingChanges: [
-      'PaymentFragment API değişikliği — submitPayment() async oldu',
+      'PaymentFragment API change — submitPayment() is now async',
     ],
-    notes: 'Kritik hotfix. Staging\'de test ediliyor.',
+    notes: 'Critical hotfix. Being tested in staging.',
   },
   {
     id: 'rel-4.4.0',
@@ -116,19 +116,19 @@ export const releases: Release[] = [
     countries: ['hr', 'rs', 'si', 'ba', 'me', 'sk'],
     ticketIds: [437, 501, 801, 1001],
     features: [
-      'ScanCoordinator — merkezi barkod dispatcher',
+      'ScanCoordinator — centralized barcode dispatcher',
       'SharedViewModel decomposition (Phase 1)',
       'GPS null-safe location handling',
     ],
     fixes: [
-      'Fiskalizasyon async geçişi',
-      'Barkod tarama O(n⁴) → O(1) DB index',
+      'Fiscalization async migration',
+      'Barcode scanning O(n⁴) → O(1) DB index',
     ],
     breakingChanges: [
-      'SharedViewModel → feature-based ViewModel\'ler',
+      'SharedViewModel → feature-based ViewModels',
       'Barcode JSON blob → normalized table',
     ],
-    notes: 'Büyük mimari geçiş release\'i. Faz 0+1 deliverable\'ları.',
+    notes: 'Major architectural migration release. Phase 0+1 deliverables.',
   },
   {
     id: 'rel-5.0.0',
@@ -140,15 +140,15 @@ export const releases: Release[] = [
     ticketIds: [803],
     features: [
       'Jetpack Compose UI migration',
-      'Clean Architecture module yapısı',
+      'Clean Architecture module structure',
       'Feature-based navigation',
     ],
     fixes: [],
     breakingChanges: [
-      'Tüm Fragment\'lar Compose\'a taşınacak',
-      'Yeni modül yapısı — backward compat yok',
+      'All Fragments will be migrated to Compose',
+      'New module structure — no backward compat',
     ],
-    notes: 'Major version. Yeni mimari geçişin tamamlanması.',
+    notes: 'Major version. Completion of the new architectural migration.',
   },
 ]
 

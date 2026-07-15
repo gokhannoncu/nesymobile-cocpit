@@ -13,12 +13,12 @@ export const metadata: Metadata = {
     template: '%s | Nesy Mobile Cockpit',
     default: 'Nesy Mobile Cockpit',
   },
-  description: 'Nesy Mobile platform yönetim arayüzü',
+  description: 'Nesy Mobile platform management interface',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="tr" className="h-full bg-background" suppressHydrationWarning>
+    <html lang="en" className="h-full bg-background" suppressHydrationWarning>
       <body
         className={cn(
           'flex min-h-dvh w-full bg-background text-base text-foreground antialiased',

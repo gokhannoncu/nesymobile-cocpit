@@ -1,5 +1,5 @@
 // ─── Project Management — Central Types ──────────────────────────────────────
-// NesyArchitectureReport veri modelinden uyarlanan tip tanımları.
+// Type definitions adapted from the NesyArchitectureReport data model.
 
 // ═══ Ticket ═══════════════════════════════════════════════════════════════════
 

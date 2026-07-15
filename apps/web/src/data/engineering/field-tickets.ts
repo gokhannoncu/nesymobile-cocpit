@@ -1,13 +1,13 @@
-// Field Ticket Intelligence — veri katmanı.
-// Ticket'lar kendi kök neden metnini üretmez: her ticket kanonik bir ROOT_CAUSE
-// kaydına, root cause'lar da kalıcı ACTION kayıtlarına bağlanır (Ticket → Belirti →
-// Ekran → Kök Neden → Müdahale → Kalıcı Çözüm → Doğrulama → Tekrar Riski zinciri).
-// Ticket kayıtları NesyArchitectureReport/tickets.json'dan üretilir (field-ticket-records.ts).
+// Field Ticket Intelligence — data layer.
+// Tickets do not generate their own root cause text: each ticket links to a canonical
+// ROOT_CAUSE record, and root causes link to permanent ACTION records (Ticket → Symptom →
+// Screen → Root Cause → Intervention → Permanent Fix → Verification → Recurrence Risk chain).
+// Ticket records are generated from NesyArchitectureReport/tickets.json (field-ticket-records.ts).
 
 import type { Tone } from '@/components/product'
 import { FIELD_TICKET_RECORDS } from './field-ticket-records'
 
-// ── Tipler ───────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────
 
 export type TicketSeverity = 'critical' | 'high' | 'medium'
 export type TicketStatus = 'open' | 'closed'
@@ -24,20 +24,20 @@ export interface FieldTicket {
   status: TicketStatus
   country: string // HR | RS | CEE | General
   date: string
-  group: string // Finans & Ödeme, Barcode & Scan…
+  group: string // Finance & Payment, Barcode & Scan…
   screen: string
-  symptom: string // kullanıcının/operasyonun gördüğü davranış
-  location: string // kod içi konum
-  rootCause: string // kanonik RC-xx
-  contributing: string[] // katkı veren diğer RC'ler
-  rootNote: string // bu ticket'a özgü kök neden notu
-  confidence: number // 0-100 — kök neden teşhisine güven
+  symptom: string // behavior observed by the user/operations
+  location: string // in-code location
+  rootCause: string // canonical RC-xx
+  contributing: string[] // other contributing RCs
+  rootNote: string // root cause note specific to this ticket
+  confidence: number // 0-100 — confidence in root cause diagnosis
   repeatRisk: RepeatRisk
-  pastAttempt: string // ne denendi (workaround / geçmiş fix)
-  whyInsufficient: string // neden yeterli olmadı / mevcut durum
-  fix: string // önerilen kalıcı çözüm
-  fixType: FixType // ticket kapanış şekli
-  detectability: string | null // low | medium | high (story'den)
+  pastAttempt: string // what was tried (workaround / past fix)
+  whyInsufficient: string // why it was insufficient / current state
+  fix: string // proposed permanent fix
+  fixType: FixType // ticket closure type
+  detectability: string | null // low | medium | high (from story)
   edgeCases: string[]
   ghUrl: string
 }
@@ -55,16 +55,16 @@ export type RootCauseStatus =
 export interface RootCause {
   id: string // RC-01
   title: string
-  family: string // State & Race, Finans & Ödeme…
-  mechanism: string // failure mechanism kısa etiketi
+  family: string // State & Race, Finance & Payment…
+  mechanism: string // failure mechanism short label
   status: RootCauseStatus
   confidence: 'low' | 'medium' | 'high' | 'verified'
   repeatRisk: RepeatRisk
-  summary: string // kanonik teknik açıklama
-  amplifiedBy: string[] // contributing factor'lar (metin)
+  summary: string // canonical technical description
+  amplifiedBy: string[] // contributing factors (text)
   actions: string[] // ACT-xx
   edgeCases: string[]
-  adrRefs: string[] // ADR / NESY-ARCH doküman referansları
+  adrRefs: string[] // ADR / NESY-ARCH document references
 }
 
 export type ActionStatus =
@@ -88,11 +88,11 @@ export interface ArchAction {
   status: ActionStatus
   rootCauses: string[] // RC-xx
   summary: string
-  verification: string // doğrulama kriteri
-  ref: string // ADR / NESY-ARCH referansı
+  verification: string // verification criteria
+  ref: string // ADR / NESY-ARCH reference
 }
 
-// ── Meta haritalar ───────────────────────────────────────────────
+// ── Meta maps ───────────────────────────────────────────────────────
 
 export const SEVERITY_META: Record<TicketSeverity, { label: string; tone: Tone; rank: number }> = {
   critical: { label: 'Critical', tone: 'red', rank: 0 },
@@ -101,15 +101,15 @@ export const SEVERITY_META: Record<TicketSeverity, { label: string; tone: Tone; 
 }
 
 export const RISK_META: Record<RepeatRisk, { label: string; tone: Tone; rank: number }> = {
-  high: { label: 'Yüksek', tone: 'red', rank: 0 },
-  medium: { label: 'Orta', tone: 'amber', rank: 1 },
-  low: { label: 'Düşük', tone: 'green', rank: 2 },
+  high: { label: 'High', tone: 'red', rank: 0 },
+  medium: { label: 'Medium', tone: 'amber', rank: 1 },
+  low: { label: 'Low', tone: 'green', rank: 2 },
 }
 
 export const FIX_TYPE_META: Record<FixType, { label: string; tone: Tone }> = {
-  none: { label: 'Çözüm yok', tone: 'red' },
+  none: { label: 'No fix', tone: 'red' },
   workaround: { label: 'Workaround', tone: 'amber' },
-  permanent: { label: 'Kalıcı', tone: 'green' },
+  permanent: { label: 'Permanent', tone: 'green' },
 }
 
 export const RC_STATUS_META: Record<RootCauseStatus, { label: string; tone: Tone }> = {

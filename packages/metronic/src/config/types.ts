@@ -21,14 +21,14 @@ export interface MenuItem {
 
 export type MenuConfig = MenuItem[];
 
-// Sol ikon rayındaki (SidebarPrimary) workspace'ler. Her workspace kendi
-// ikonuna, rengine, kök route'una ve ikincil menüsüne (SidebarPrimaryMenu) sahiptir.
+// Workspaces in the left icon rail (SidebarPrimary). Each workspace has its own
+// icon, color, root route, and secondary menu (SidebarPrimaryMenu).
 export interface Workspace {
   id: string;
   label: string;
   icon: LucideIcon;
-  className: string; // ikon butonunun renk sınıfları
-  path: string; // ikona tıklanınca gidilecek kök route
-  basePaths: string[]; // bu workspace'in sahip olduğu URL önekleri (aktiflik tespiti)
-  menu: MenuConfig; // workspace aktifken gösterilen ikincil menü
+  className: string; // color classes for the icon button
+  path: string; // root route to navigate to when the icon is clicked
+  basePaths: string[]; // URL prefixes owned by this workspace (used for active state detection)
+  menu: MenuConfig; // secondary menu displayed when this workspace is active
 }

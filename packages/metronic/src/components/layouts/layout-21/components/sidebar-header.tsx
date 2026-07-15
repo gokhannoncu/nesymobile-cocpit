@@ -14,7 +14,7 @@ interface Team {
   isPrimary?: boolean;
 }
 
-/** Nesy Mobile uygulama ikonu (Android launcher asset'i). */
+/** Nesy Mobile app icon (Android launcher asset). */
 function BrandMark({ className }: { className?: string }) {
   return (
     <img
@@ -25,7 +25,7 @@ function BrandMark({ className }: { className?: string }) {
   );
 }
 
-// Marka logosu — uygulama ikonu + yazı.
+// Brand logo — app icon + wordmark.
 function BrandLogo() {
   return (
     <span className="inline-flex items-center gap-2" aria-label="Nesy Mobile Cockpit">

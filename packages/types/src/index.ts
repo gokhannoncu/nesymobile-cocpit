@@ -1,12 +1,12 @@
 export type DashboardTab =
-  | 'anasayfa'
-  | 'dokumanlar'
-  | 'mimari'
-  | 'kararlar'
+  | 'home'
+  | 'documents'
+  | 'architecture'
+  | 'decisions'
 
 export const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
-  { id: 'anasayfa', label: 'Anasayfa' },
-  { id: 'dokumanlar', label: 'Dokümanlar' },
-  { id: 'mimari', label: 'Mimari' },
-  { id: 'kararlar', label: 'Kararlar' },
+  { id: 'home', label: 'Home' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'architecture', label: 'Architecture' },
+  { id: 'decisions', label: 'Decisions' },
 ]
