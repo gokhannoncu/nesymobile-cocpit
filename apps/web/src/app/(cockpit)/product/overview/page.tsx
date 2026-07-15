@@ -14,7 +14,6 @@ import {
   Smartphone,
   Table2,
   Truck,
-  Users,
 } from 'lucide-react'
 import {
   Callout,
@@ -26,7 +25,7 @@ import {
   StatCard,
   StatGrid,
 } from '@/components/product'
-import { COUNTRIES, MODULES, TOTAL_FEATURES, supportedCount } from '@/data/product/nesy'
+import { COUNTRIES, MODULES, TOTAL_FEATURES } from '@/data/product/nesy'
 
 const moduleIcons = [PackageCheck, PackageSearch, Route, Truck, Globe, Boxes] as const
 const moduleTones = ['orange', 'amber', 'teal', 'blue', 'purple', 'indigo'] as const
@@ -73,28 +72,6 @@ export default function ProductOverviewPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Ülke Kapsamı"
-        title="Ülke bazında kapsam"
-        icon={Globe}
-        tone="orange"
-        description="Her ülke paketi CORE'un bir alt kümesini + yerel farklılıkları (ödeme sağlayıcı, fiskalizasyon, event listesi) taşır."
-      >
-        <StatGrid cols={4}>
-          {activeCountries.map((c) => (
-            <StatCard
-              key={c.id}
-              label={`${c.name} · ${c.subtitle}`}
-              value={supportedCount(c.id)}
-              suffix={` / ${TOTAL_FEATURES}`}
-              tone={c.status === 'Gelişmiş' ? 'purple' : c.status === 'Aktif' ? 'green' : 'gray'}
-              icon={MapPin}
-              hint={`${c.status} · ${c.price}`}
-            />
-          ))}
-        </StatGrid>
-      </PageSection>
-
-      <PageSection
         eyebrow="Bu Alan"
         title="Product alanının haritası"
         icon={Package}
@@ -123,25 +100,11 @@ export default function ProductOverviewPage() {
             href="/product/country-profiles"
           />
           <InfoCard
-            icon={Users}
-            tone="purple"
-            title="Who We Serve"
-            desc="Kurye, dispatcher, alıcı, gönderici ve backoffice profilleri."
-            href="/product/who-we-serve"
-          />
-          <InfoCard
             icon={Route}
             tone="blue"
             title="User Journeys"
             desc="Teslimat, toplama, tur başlangıcı ve locker akışları adım adım."
             href="/product/user-journeys"
-          />
-          <InfoCard
-            icon={Layers}
-            tone="amber"
-            title="Solution Overview"
-            desc="Ürünün çözüm yaklaşımı: CORE + ülke konfigürasyonu modeli."
-            href="/product/solution-overview"
           />
         </CardGrid>
       </PageSection>

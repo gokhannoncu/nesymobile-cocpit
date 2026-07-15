@@ -1,55 +1,99 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
-  BookOpen,
-  Calendar,
-  Route,
-  MapPin,
-  ClipboardCheck,
-  Package,
-  Box,
-  Wallet,
-  DoorOpen,
-  ChevronDown,
-  ChevronRight,
+  Fragment,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
   ArrowDown,
-  ArrowUp,
   ArrowLeftRight,
-  AlertTriangle,
-  Info,
-  Zap,
-  Lock,
-  Eye,
-  EyeOff,
-  Layers,
+  ArrowUp,
+  Archive,
+  Bell,
+  BookOpen,
+  Box,
+  Building,
+  Building2,
+  Calendar,
+  Car,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
+  Code2,
+  Container,
+  DoorOpen,
+  Euro,
   GitBranch,
+  Globe,
+  GraduationCap,
+  Headphones,
+  Info,
+  Landmark,
+  Lightbulb,
+  MapPin,
+  MapPinned,
+  Monitor,
+  Navigation,
+  Network,
+  Package,
+  PackageCheck,
+  Receipt,
+  Route,
+  Search,
+  Store,
+  Truck,
+  User,
+  UserCheck,
+  Wallet,
+  Warehouse,
+  Webhook,
+  X,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
+import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal } from '@nesy/metronic/components/ui/dialog'
+import { ScrollArea } from '@nesy/metronic/components/ui/scroll-area'
+import { Input } from '@nesy/metronic/components/ui/input'
 import {
+  EASE,
   ProductPage,
-  HeroCallout,
-  PageSection,
-  StatCard,
-  StatGrid,
-  Callout,
+  type Tone,
+  toneCard,
+  toneDot,
+  toneHero,
+  toneIcon,
+  toneIconBox,
+  toneText,
 } from '@/components/product'
 import {
   entities,
-  relations,
-  propagationRules,
+  ENTITY_CATEGORIES,
+  ENTITY_CATEGORY,
   learningPath,
+  propagationRules,
+  relations,
   type DomainEntity,
-  type StatusDef,
-  type StatusTransition,
+  type EntityCategory,
+  type PropagationRule,
 } from '@/data/product/domain-glossary'
 
-// ═══ Icon Map ═══════════════════════════════════════════════════════════════
+type GlossaryView = 'dictionary' | 'hierarchy' | 'rules'
+type CategoryFilter = 'all' | EntityCategory
+type DirectionFilter = 'all' | 'up' | 'down' | 'horizontal'
 
-const ICON_MAP: Record<string, LucideIcon> = {
+const ICONS: Record<string, LucideIcon> = {
   Calendar,
   Route,
   MapPin,
@@ -58,999 +102,1306 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Box,
   Wallet,
   DoorOpen,
+  // New entity icons
+  Warehouse,
+  Building2,
+  Container,
+  Truck,
+  Navigation,
+  Zap,
+  Globe,
+  Monitor,
+  Bell,
+  Webhook,
+  UserCheck,
+  Building,
+  User,
+  Car,
+  Headphones,
+  Store,
+  MapPinned,
+  Receipt,
+  Landmark,
+  Euro,
+  PackageCheck,
+  Archive,
 }
 
-const TONE_BG: Record<string, string> = {
-  purple: 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/50',
-  blue: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/50',
-  teal: 'bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800/50',
-  indigo: 'bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-800/50',
-  orange: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800/50',
-  amber: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/50',
-  green: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800/50',
-  red: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800/50',
-  gray: 'bg-muted/50 border-border',
+const VIEWS: { id: GlossaryView; label: string; icon: LucideIcon; tone: Tone }[] = [
+  { id: 'dictionary', label: 'Sözlük', icon: BookOpen, tone: 'indigo' },
+  { id: 'hierarchy', label: 'Hiyerarşi', icon: GitBranch, tone: 'teal' },
+  { id: 'rules', label: 'Durum Kuralları', icon: ArrowLeftRight, tone: 'amber' },
+]
+
+const CATEGORY_TONE: Record<EntityCategory, Tone> = {
+  planning: 'purple',
+  tour: 'blue',
+  delivery: 'orange',
+  finance: 'green',
+  locker: 'red',
+  transfer: 'purple',
+  integration: 'amber',
+  organization: 'teal',
+  fiscal: 'green',
+}
+const ENTITY_TONE: Record<string, Tone> = {
+  schedule: 'purple',
+  route: 'blue',
+  stop: 'teal',
+  task: 'indigo',
+  shipment: 'orange',
+  'shipment-item': 'amber',
+  collection: 'green',
+  locker: 'red',
+  // Transfer & Linehaul
+  hub: 'blue',
+  branch: 'teal',
+  'transfer-center': 'gray',
+  linehaul: 'purple',
+  trip: 'indigo',
+  // Integration & Notification
+  'event-tower': 'amber',
+  eurodis: 'green',
+  ebranch: 'teal',
+  notification: 'red',
+  webhook: 'orange',
+  // Organization & Infrastructure
+  courier: 'blue',
+  customer: 'green',
+  consignee: 'teal',
+  vehicle: 'gray',
+  dispatcher: 'indigo',
+  'parcel-shop': 'orange',
+  'counter-location': 'red',
+  // Fiscal & Payment
+  'fiscal-invoice': 'green',
+  'cash-desk': 'amber',
+  sepa: 'blue',
+  commissioning: 'teal',
+  inventory: 'gray',
 }
 
-const TONE_ICON: Record<string, string> = {
-  purple: 'text-purple-600 dark:text-purple-400',
-  blue: 'text-blue-600 dark:text-blue-400',
-  teal: 'text-teal-600 dark:text-teal-400',
-  indigo: 'text-indigo-600 dark:text-indigo-400',
-  orange: 'text-orange-600 dark:text-orange-400',
-  amber: 'text-amber-600 dark:text-amber-400',
-  green: 'text-green-600 dark:text-green-400',
-  red: 'text-red-600 dark:text-red-400',
-  gray: 'text-muted-foreground',
+function entityCategory(entity: DomainEntity): EntityCategory {
+  return ENTITY_CATEGORY[entity.id] ?? 'delivery'
 }
 
-const TONE_TEXT: Record<string, string> = {
-  purple: 'text-purple-700 dark:text-purple-300',
-  blue: 'text-blue-700 dark:text-blue-300',
-  teal: 'text-teal-700 dark:text-teal-300',
-  indigo: 'text-indigo-700 dark:text-indigo-300',
-  orange: 'text-orange-700 dark:text-orange-300',
-  amber: 'text-amber-700 dark:text-amber-300',
-  green: 'text-green-700 dark:text-green-300',
-  red: 'text-red-700 dark:text-red-300',
-  gray: 'text-foreground',
+function categoryMeta(category: EntityCategory) {
+  const label = ENTITY_CATEGORIES.find((item) => item.id === category)?.label ?? category
+  const tone = CATEGORY_TONE[category]
+  return { label, tone }
 }
 
-const STATUS_DOT: Record<string, string> = {
-  gray: 'bg-gray-400',
-  blue: 'bg-blue-500',
-  amber: 'bg-amber-500',
-  green: 'bg-green-500',
-  orange: 'bg-orange-500',
-  red: 'bg-red-500',
-  indigo: 'bg-indigo-500',
+const STATUS_CHIP: Record<string, string> = {
+  gray: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  blue: 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+  green: 'border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-300',
+  amber: 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
+  orange: 'border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-300',
+  red: 'border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300',
+  indigo: 'border-indigo-200 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300',
 }
 
-const EASE = [0.25, 0.1, 0.25, 1] as const
+const TONE_RING: Record<Tone, string> = {
+  purple: 'ring-purple-400/70',
+  blue: 'ring-blue-400/70',
+  green: 'ring-green-400/70',
+  orange: 'ring-orange-400/70',
+  red: 'ring-red-400/70',
+  amber: 'ring-amber-400/70',
+  teal: 'ring-teal-400/70',
+  indigo: 'ring-indigo-400/70',
+  gray: 'ring-border',
+}
 
-// ═══ Sub-Components ═════════════════════════════════════════════════════════
+const TECHNICAL_MAP: Record<string, { model: string; database: string; viewModel: string; api: string }> = {
+  schedule: { model: 'ScheduleEntity', database: 'schedule', viewModel: 'ScheduleViewModel', api: '/schedules' },
+  route: { model: 'RouteEntity', database: 'route', viewModel: 'RouteViewModel', api: '/routes' },
+  stop: { model: 'StopEntity', database: 'stop', viewModel: 'StopListViewModel', api: '/stops' },
+  task: { model: 'TaskEntity', database: 'task', viewModel: 'TaskListViewModel', api: '/tasks' },
+  shipment: { model: 'ShipmentEntity', database: 'shipment', viewModel: 'DeliveryViewModel', api: '/shipments' },
+  'shipment-item': { model: 'ShipmentItemEntity', database: 'shipment_item', viewModel: 'DeliveryViewModel', api: '/shipment-items' },
+  collection: { model: 'CollectionEntity', database: 'collection', viewModel: 'CollectionViewModel', api: '/collections' },
+  locker: { model: 'LockerEntity', database: 'locker', viewModel: 'LockerViewModel', api: '/lockers' },
+  // New entities — WebAPI microservice models
+  hub: { model: 'UnitModel', database: 'unit', viewModel: '—', api: '/geocode/units' },
+  branch: { model: 'UnitModel', database: 'unit', viewModel: '—', api: '/geocode/units' },
+  'transfer-center': { model: 'TransferCenterModel', database: 'transfer_center', viewModel: '—', api: '/transfer-center' },
+  linehaul: { model: 'LinehaulTour', database: 'linehaul', viewModel: '—', api: '/shipments/linehaul' },
+  trip: { model: 'TripModel', database: 'trip', viewModel: '—', api: '/transfer-center/trips' },
+  'event-tower': { model: 'EventModel', database: 'event', viewModel: '—', api: '/events' },
+  eurodis: { model: 'EurodisShipment', database: 'eurodis_shipment', viewModel: '—', api: '/eurodis' },
+  ebranch: { model: 'EBranchModel', database: 'ebranch', viewModel: '—', api: '/tracking/ebranch' },
+  notification: { model: 'NotificationModel', database: 'notification', viewModel: '—', api: '/notifications' },
+  webhook: { model: 'WebhookModel', database: 'webhook', viewModel: '—', api: '/notifications/webhooks' },
+  courier: { model: 'CourierModel', database: 'courier', viewModel: '—', api: '/tasks/couriers' },
+  customer: { model: 'CustomerModel', database: 'customer', viewModel: '—', api: '/customers' },
+  consignee: { model: 'ConsigneeModel', database: 'consignee', viewModel: '—', api: '/tracking/consignee' },
+  vehicle: { model: 'VehicleModel', database: 'vehicle', viewModel: '—', api: '/transfer-center/vehicles' },
+  dispatcher: { model: 'DispatcherModel', database: 'dispatcher', viewModel: '—', api: '/dispatchers' },
+  'parcel-shop': { model: 'CounterLocationModel', database: 'counter_location', viewModel: '—', api: '/lockers/counter-locations' },
+  'counter-location': { model: 'CounterLocationModel', database: 'counter_location', viewModel: '—', api: '/lockers/counter-locations' },
+  'fiscal-invoice': { model: 'FiscalInvoiceDocument', database: 'fiscal_invoice', viewModel: '—', api: '/shipments/fiscal-invoice' },
+  'cash-desk': { model: 'CashDeskModel', database: 'cash_desk', viewModel: '—', api: '/cash-desk' },
+  sepa: { model: 'SepaConverterModel', database: 'sepa', viewModel: '—', api: '/sepa' },
+  commissioning: { model: 'CommissioningModel', database: 'commissioning', viewModel: '—', api: '/commissioning' },
+  inventory: { model: 'InventoryModel', database: 'inventory', viewModel: '—', api: '/inventory' },
+}
 
-/* ─── Hierarchy Path (Breadcrumb Bar) ───────────────────────────────────── */
-function HierarchyPath({
-  entity,
-  onSelect,
+const CHAIN = entities.filter((entity) => entity.parentId !== null || entity.childIds.length > 0)
+const CROSS_CUTTING = entities.filter((entity) => entity.parentId === null && entity.childIds.length === 0)
+
+function entityTone(entity: DomainEntity): Tone {
+  return ENTITY_TONE[entity.id] ?? 'indigo'
+}
+
+function entitySurface(entity: DomainEntity) {
+  return toneCard[entityTone(entity)]
+}
+
+function directionMeta(direction: PropagationRule['direction']) {
+  if (direction === 'up') return { label: 'Yukarı', icon: ArrowUp, className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900' }
+  if (direction === 'down') return { label: 'Aşağı', icon: ArrowDown, className: 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900' }
+  return { label: 'Yatay', icon: ArrowLeftRight, className: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900' }
+}
+
+function entityById(id: string | null) {
+  return entities.find((entity) => entity.id === id)
+}
+
+const TURKISH_ALIAS_WORDS = new Set([
+  'nakit', 'teslim', 'tur', 'rota', 'durak', 'gorev', 'gonderi', 'kurye', 'sube',
+  'alici', 'musteri', 'sefer', 'kasaya', 'guzergah', 'adres', 'teslimat', 'kargo',
+  'paket', 'parca', 'tahsilat', 'odeme', 'dolap', 'kasa', 'gonderen', 'subeden',
+  'dagitim', 'aktarma', 'sube', 'gunluk', 'plan', 'islem', 'emri', 'noktasi',
+])
+
+function displayAliases(entity: DomainEntity) {
+  const turkishName = entity.turkishName.toLocaleLowerCase('tr')
+  return entity.aliases
+    .filter((alias) => /^[\x20-\x7E]+$/.test(alias))
+    .filter((alias) => !/[ğüşöçıİĞÜŞÖÇ]/.test(alias))
+    .filter((alias) => alias !== entity.name)
+    .filter((alias) => alias.toLocaleLowerCase('tr') !== turkishName)
+    .filter((alias) => {
+      const words = alias.toLocaleLowerCase('en').split(/[\s\-/]+/)
+      return words.every((word) => {
+        const normalized = word.replace(/[^a-z]/g, '')
+        return normalized.length === 0 || !TURKISH_ALIAS_WORDS.has(normalized)
+      })
+    })
+    .slice(0, 4)
+}
+
+function relationFor(entity: DomainEntity) {
+  return relations.find((relation) => relation.from === entity.id)
+}
+
+function normalize(value: string) {
+  return value.toLocaleLowerCase('tr').replace(/ı/g, 'i')
+}
+
+function searchableEntity(entity: DomainEntity) {
+  const entityRelations = relations.filter((relation) => relation.from === entity.id || relation.to === entity.id)
+  const category = categoryMeta(entityCategory(entity)).label
+  return normalize([
+    entity.name,
+    entity.turkishName,
+    entity.id,
+    category,
+    ...entity.aliases,
+    entity.definition,
+    entity.businessContext,
+    entity.technicalContext,
+    ...entity.statuses.flatMap((status) => [status.code, status.label, status.description]),
+    ...entity.antiPatterns,
+    ...entityRelations.flatMap((relation) => [relation.label, relation.description, relation.cardinality]),
+  ].join(' '))
+}
+
+function entityMatches(entity: DomainEntity, query: string) {
+  return !query || searchableEntity(entity).includes(normalize(query))
+}
+
+function ruleMatches(rule: PropagationRule, query: string) {
+  const from = entityById(rule.fromEntity)
+  const to = entityById(rule.toEntity)
+  return !query || normalize([
+    rule.title,
+    rule.description,
+    rule.example,
+    rule.direction,
+    from?.name,
+    from?.turkishName,
+    to?.name,
+    to?.turkishName,
+  ].join(' ')).includes(normalize(query))
+}
+
+function relationshipRows(entity: DomainEntity) {
+  const parent = entityById(entity.parentId)
+  const children = entity.childIds.map((id) => entityById(id)).filter(Boolean) as DomainEntity[]
+  const related = relations
+    .filter((relation) => relation.from === entity.id || relation.to === entity.id)
+    .filter((relation) => relation.from !== parent?.id && !children.some((child) => child.id === relation.to))
+  return { parent, children, related }
+}
+
+function GlossaryChrome({
+  query,
+  onQueryChange,
+  view,
+  onViewChange,
 }: {
-  entity: DomainEntity
-  onSelect: (id: string) => void
+  query: string
+  onQueryChange: (query: string) => void
+  view: GlossaryView
+  onViewChange: (view: GlossaryView) => void
 }) {
-  const chain = useMemo(() => {
-    const path: DomainEntity[] = []
-    let current: DomainEntity | undefined = entity
-    while (current) {
-      path.unshift(current)
-      current = current.parentId
-        ? entities.find((e) => e.id === current!.parentId)
-        : undefined
-    }
-    return path
-  }, [entity])
+  const activeTone = VIEWS.find((item) => item.id === view)?.tone ?? 'indigo'
+  const chainLevels = new Set(CHAIN.map((entity) => entity.level)).size
 
   return (
-    <div className="flex items-center gap-1 flex-wrap text-xs">
-      {chain.map((e, i) => {
-        const Icon = ICON_MAP[e.icon] ?? Package
-        const isLast = i === chain.length - 1
-        return (
-          <span key={e.id} className="flex items-center gap-1">
-            {i > 0 && (
-              <ChevronRight className="size-3 text-muted-foreground/50" />
+    <motion.section
+      className={cn('sticky top-0 z-20 overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm', toneHero.indigo)}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: EASE }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.28] dark:opacity-15 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:18px_18px] text-foreground/10"
+      />
+
+      <div className="relative space-y-3 p-3.5 sm:p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm', toneIconBox.indigo)}>
+              <BookOpen className={cn('size-5', toneIcon.indigo)} />
+            </span>
+            <div className="min-w-0">
+              <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.indigo)}>Ürün omurgası</p>
+              <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Alan sözlüğü</h1>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
+                Nesy Mobile&apos;da herkesin aynı dili konuşması için kavramlar, hiyerarşi ve durum yayılım kuralları tek yerde.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { icon: Package, label: `${entities.length} kavram`, tone: 'indigo' as Tone },
+              { icon: GitBranch, label: `${chainLevels} seviye`, tone: 'teal' as Tone },
+              { icon: Network, label: `${propagationRules.length} yayılım kuralı`, tone: 'amber' as Tone },
+              { icon: Clock, label: '13 Tem 2026', tone: 'gray' as Tone },
+            ].map(({ icon: Icon, label, tone }) => (
+              <span
+                key={label}
+                className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold', toneCard[tone], toneText[tone])}
+              >
+                <Icon className="size-3" />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-lg border border-indigo-200/50 bg-background/80 p-1.5 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-background/70 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-indigo-500 dark:text-indigo-400" />
+            <Input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Kavram adı, Türkçe karşılık, durum kodu veya açıklama…"
+              aria-label="Alan sözlüğünde ara"
+              className="h-9 rounded-lg border-indigo-100/80 bg-indigo-50/40 ps-9 pe-9 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-indigo-500/50 dark:border-indigo-900/40 dark:bg-indigo-950/25"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => onQueryChange('')}
+                className="absolute end-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                aria-label="Aramayı temizle"
+              >
+                <X className="size-3.5" />
+              </button>
             )}
-            <button
-              onClick={() => onSelect(e.id)}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors',
-                isLast
-                  ? cn('font-semibold', TONE_BG[e.color], TONE_TEXT[e.color])
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          </div>
+
+          <div
+            className="relative grid shrink-0 grid-cols-3 rounded-lg border border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-violet-50/30 to-amber-50/40 p-0.5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-violet-950/15 dark:to-amber-950/15 sm:w-[min(100%,24rem)]"
+            role="tablist"
+            aria-label="Görünüm seçici"
+          >
+            <motion.span
+              aria-hidden
+              layoutId="glossary-tab-indicator"
+              className={cn('absolute inset-y-0.5 rounded-md shadow-sm ring-1 ring-black/5 dark:ring-white/10', toneCard[activeTone])}
+              style={{ left: `calc(${VIEWS.findIndex((item) => item.id === view) * (100 / 3)}% + 2px)`, width: 'calc(33.333% - 4px)' }}
+              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            />
+            {VIEWS.map(({ id, label, icon: Icon, tone }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={view === id}
+                onClick={() => onViewChange(id)}
+                className={cn(
+                  'relative z-10 flex min-w-0 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors',
+                  view === id ? toneText[tone] : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Icon className={cn('size-3.5 shrink-0', view === id ? toneIcon[tone] : 'opacity-55')} />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  )
+}
+
+function FilterButton({ active, tone = 'indigo', children, onClick }: { active: boolean; tone?: Tone; children: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+        active
+          ? cn(toneCard[tone], toneText[tone], 'shadow-sm ring-1 ring-black/5 dark:ring-white/10')
+          : 'border-border/70 bg-background text-muted-foreground hover:border-indigo-300/60 hover:bg-indigo-50/40 hover:text-foreground dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function learningContext(entityId: string) {
+  const index = learningPath.findIndex((item) => item.entityId === entityId)
+  if (index < 0) return null
+  const current = learningPath[index]!
+  const previous = index > 0 ? learningPath[index - 1] : null
+  const next = index < learningPath.length - 1 ? learningPath[index + 1] : null
+  return { current, previous, next, index, total: learningPath.length }
+}
+
+function EntityDetailDialog({
+  entity,
+  open,
+  onOpenChange,
+  onNavigate,
+}: {
+  entity: DomainEntity | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onNavigate?: (id: string) => void
+}) {
+  if (!entity) return null
+
+  const Icon = ICONS[entity.icon] ?? Package
+  const ctx = learningContext(entity.id)
+  const { label: categoryLabel } = categoryMeta(entityCategory(entity))
+  const chainIndex = CHAIN.findIndex((item) => item.id === entity.id)
+  const hasNav = onNavigate && ctx && (ctx.previous || ctx.next)
+  const aliases = displayAliases(entity)
+
+  const metaItems = [
+    categoryLabel,
+    ctx ? `Step ${ctx.current.step} of ${ctx.total}` : null,
+    chainIndex >= 0 ? `Level ${entity.level}` : null,
+  ].filter(Boolean) as string[]
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPortal>
+        <DialogOverlay className="bg-slate-900/50 backdrop-blur-[1px]" />
+      </DialogPortal>
+      <DialogContent
+        overlay={false}
+        showCloseButton={false}
+        className="fixed top-1/2 left-1/2 z-50 flex max-h-[min(88vh,680px)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+      >
+        <div className="relative shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-5 dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                Domain term
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  <Icon className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[22px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
+                    {entity.name}
+                  </h2>
+                  {metaItems.length > 0 && (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {metaItems.join(' · ')}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {aliases.length > 0 && (
+                <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Also known as</span>
+                  {' '}
+                  {aliases.join(' · ')}
+                </p>
               )}
+            </div>
+            <DialogClose
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 outline-none transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label="Close"
             >
-              <Icon className="size-3" />
-              {e.name}
-            </button>
+              <X className="size-4" />
+            </DialogClose>
+          </div>
+        </div>
+
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <section className="px-6 py-5">
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Definition
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300">{entity.definition}</p>
+            </section>
+
+            <section className="px-6 py-5">
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Operational context
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300">{entity.businessContext}</p>
+            </section>
+
+            {entity.antiPatterns.length > 0 && (
+              <section className="px-6 py-5">
+                <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Common misconceptions
+                </h3>
+                <ol className="mt-3 space-y-3">
+                  {entity.antiPatterns.slice(0, 3).map((item, index) => (
+                    <li key={item} className="flex gap-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                      <span className="mt-0.5 w-5 shrink-0 text-right text-xs font-medium tabular-nums text-slate-400">
+                        {index + 1}.
+                      </span>
+                      <span>{item.replace(/^[^\p{L}\p{N}]+/u, '').trim()}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </div>
+        </ScrollArea>
+
+        {hasNav && (
+          <div className="flex shrink-0 items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+            {ctx!.previous ? (
+              <button
+                type="button"
+                onClick={() => onNavigate!(ctx!.previous!.entityId)}
+                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              >
+                <ChevronLeft className="size-3.5 shrink-0" />
+                <span className="truncate">{entityById(ctx!.previous!.entityId)?.name}</span>
+              </button>
+            ) : (
+              <span />
+            )}
+            {ctx!.next ? (
+              <button
+                type="button"
+                onClick={() => onNavigate!(ctx!.next!.entityId)}
+                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              >
+                <span className="truncate">{entityById(ctx!.next!.entityId)?.name}</span>
+                <ChevronRight className="size-3.5 shrink-0" />
+              </button>
+            ) : (
+              <span />
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EntityDictionaryTable({
+  entities: rows,
+  onRowClick,
+}: {
+  entities: DomainEntity[]
+  onRowClick: (id: string) => void
+}) {
+  const th = 'border border-indigo-200/60 bg-indigo-50/70 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wide text-indigo-900/80 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-200'
+  const td = 'h-9 max-h-9 max-w-0 border border-indigo-200/50 px-2.5 py-0 align-middle dark:border-indigo-900/40'
+  const clip = 'block min-w-0 truncate whitespace-nowrap text-xs'
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-indigo-200/50 bg-card shadow-sm dark:border-indigo-900/40">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px] table-fixed border-collapse text-left">
+          <thead>
+            <tr>
+              <th className={cn(th, 'w-9 text-center')}>#</th>
+              <th className={cn(th, 'w-[30%]')}>Concept</th>
+              <th className={cn(th, 'w-[20%]')}>Category</th>
+              <th className={cn(th, 'w-[46%]')}>Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((entity, index) => {
+              const tone = entityTone(entity)
+              const Icon = ICONS[entity.icon] ?? Package
+              const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
+
+              return (
+                <tr
+                  key={entity.id}
+                  onClick={() => onRowClick(entity.id)}
+                  title={entity.name}
+                  className="group cursor-pointer transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-950/25"
+                >
+                  <td className={cn(td, 'w-9 text-center')}>
+                    <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
+                  </td>
+                  <td className={td}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Icon className={cn('size-3.5 shrink-0', toneIcon[tone])} />
+                      <span className={cn(clip, 'font-semibold text-foreground')}>{entity.name}</span>
+                    </div>
+                  </td>
+                  <td className={td}>
+                    <span className={cn(clip, 'font-semibold', toneText[categoryTone])} title={categoryLabel}>
+                      {categoryLabel}
+                    </span>
+                  </td>
+                  <td className={td}>
+                    <span className={cn(clip, 'text-muted-foreground')} title={entity.definition}>
+                      {entity.definition}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="border-t border-indigo-200/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground dark:border-indigo-900/40">
+        {rows.length} kavram · detay için satıra tıklayın
+      </div>
+    </div>
+  )
+}
+
+function DetailSection({
+  title,
+  hint,
+  tone = 'indigo',
+  children,
+}: {
+  title: string
+  hint?: string
+  tone?: Tone
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-2 border-t border-border/50 pt-4 first:border-0 first:pt-0">
+      <div>
+        <h3 className={cn('flex items-center gap-2 text-xs font-bold', toneText[tone])}>
+          <span aria-hidden className={cn('h-3.5 w-1 rounded-full', toneDot[tone])} />
+          {title}
+        </h3>
+        {hint && <p className="mt-1 ps-3 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function LearningPathBanner({ entity }: { entity: DomainEntity }) {
+  const ctx = learningContext(entity.id)
+  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
+  if (!ctx) {
+    return (
+      <div className={cn('rounded-xl border p-3', toneCard[categoryTone])}>
+        <p className={cn('text-[10px] font-bold uppercase tracking-wider', toneText[categoryTone])}>{categoryLabel}</p>
+        <p className="mt-1 text-xs leading-relaxed text-foreground/85">Bu kavram yatay bir bağlamda çalışır; ana zinciri belirli operasyonlarda keser.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('rounded-xl border bg-gradient-to-r p-3.5', toneHero.indigo)}>
+      <div className="flex items-start gap-3">
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', toneIconBox.indigo)}>
+          <GraduationCap className={cn('size-4', toneIcon.indigo)} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', toneCard.indigo, toneText.indigo)}>
+              Adım {ctx.current.step}/{ctx.total}
+            </span>
+            <span className="text-xs font-bold text-foreground">{ctx.current.title}</span>
+            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', toneCard[categoryTone], toneText[categoryTone])}>
+              {categoryLabel}
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">{ctx.current.hint}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChainBreadcrumb({ entity }: { entity: DomainEntity }) {
+  const chainIndex = CHAIN.findIndex((item) => item.id === entity.id)
+  if (chainIndex < 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-2 dark:border-teal-900/50 dark:bg-teal-950/20">
+      <GitBranch className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
+      {CHAIN.map((item, index) => (
+        <Fragment key={item.id}>
+          {index > 0 && <ChevronRight className="size-3 text-muted-foreground/50" />}
+          <span
+            className={cn(
+              'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
+              item.id === entity.id
+                ? 'bg-teal-600 text-white dark:bg-teal-500'
+                : 'text-muted-foreground',
+            )}
+          >
+            {item.name}
           </span>
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+function EntityNavChip({
+  entityId,
+  onNavigate,
+}: {
+  entityId: string
+  onNavigate?: (id: string) => void
+}) {
+  const target = entityById(entityId)
+  if (!target) return null
+  const tone = entityTone(target)
+  const content = <span className="font-semibold">{target.name}</span>
+
+  if (!onNavigate) {
+    return (
+      <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px]', toneCard[tone], toneText[tone])}>
+        {content}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(entityId)}
+      className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px] transition-colors hover:shadow-sm', toneCard[tone], toneText[tone])}
+    >
+      {content}
+    </button>
+  )
+}
+
+function EntityDetailPanel({
+  entity,
+  onNavigate,
+}: {
+  entity: DomainEntity
+  onNavigate?: (id: string) => void
+}) {
+  const Icon = ICONS[entity.icon] ?? Package
+  const tone = entityTone(entity)
+  const [technicalOpen, setTechnicalOpen] = useState(false)
+  const { parent, children, related } = relationshipRows(entity)
+  const technical = TECHNICAL_MAP[entity.id]
+  const relevantRules = propagationRules.filter((rule) => rule.fromEntity === entity.id || rule.toEntity === entity.id)
+  const isCross = CROSS_CUTTING.some((item) => item.id === entity.id)
+  const ctx = learningContext(entity.id)
+  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
+  const hasRulesTab = entity.prerequisiteIds.length > 0 || relevantRules.length > 0
+
+  const headerBlock = (
+    <header className="flex items-start gap-3">
+      <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
+        <Icon className={cn('size-5', toneIcon[tone])} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">{entity.name}</h2>
+          <Badge variant="secondary" appearance="outline" size="sm" className={cn(toneCard[categoryTone], toneText[categoryTone])}>
+            {categoryLabel}
+          </Badge>
+          {!isCross && (
+            <Badge variant="secondary" appearance="outline" size="xs" className={cn(toneCard[tone], toneText[tone])}>
+              L{entity.level}
+            </Badge>
+          )}
+        </div>
+        {entity.aliases.length > 0 && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Sahada şöyle de duyabilirsin: {entity.aliases.slice(0, 3).join(', ')}
+          </p>
+        )}
+      </div>
+    </header>
+  )
+
+  const definitionBlock = (
+    <>
+      <DetailSection title="Bu kavram ne?" hint="Tek cümlelik tanım — toplantıda bu cümleyi kullan." tone={tone}>
+        <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-6 text-foreground/90">
+          {entity.definition}
+        </p>
+      </DetailSection>
+
+      <DetailSection title="Sahada ne demek?" hint="Kurye operasyonunda pratikte ne işe yarar?" tone="blue">
+        <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-950/20">
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <p className="text-sm leading-6 text-foreground/90">{entity.businessContext}</p>
+        </div>
+      </DetailSection>
+
+      <DetailSection title="Sık karıştırılanlar" hint="Yanlış anlamayı önlemek için bunları aklında tut." tone="amber">
+        <ul className="space-y-2">
+          {entity.antiPatterns.slice(0, 3).map((item) => (
+            <li key={item} className="flex gap-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
+              <span>{item.replace(/^[^\p{L}\p{N}]+/u, '').trim()}</span>
+            </li>
+          ))}
+        </ul>
+      </DetailSection>
+    </>
+  )
+
+  const structureBlock = (
+    <>
+      <DetailSection title="Zincirdeki yeri" hint="Üst ve alt kavramlarla nasıl bağlanır?" tone="teal">
+        <ChainBreadcrumb entity={entity} />
+        <dl className="mt-2 grid gap-2 rounded-lg border border-teal-200/60 bg-teal-50/40 p-3 text-sm dark:border-teal-900/50 dark:bg-teal-950/20 sm:grid-cols-1">
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Üst kavram</dt>
+            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Kök — üst yok'}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Alt kavramlar</dt>
+            <dd className="mt-0.5 font-semibold">
+              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Yaprak — alt yok'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">İlişki türü</dt>
+            <dd className="mt-0.5 font-semibold">{entity.cardinalityDesc}</dd>
+          </div>
+        </dl>
+        {related.length > 0 && (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Yatay bağlantı: {related.map((relation) => relation.description).join(' ')}
+          </p>
+        )}
+      </DetailSection>
+    </>
+  )
+
+  const statusesBlock = (
+    <DetailSection title="Olası durumlar" hint="Bunlar sistem enum değerleri — Türkçe karşılık değil, kod olarak kullan." tone="purple">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {entity.statuses.map((status) => (
+          <div
+            key={status.code}
+            className={cn('rounded-lg border px-2.5 py-2', STATUS_CHIP[status.color] ?? STATUS_CHIP.gray)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <code className="text-xs font-bold">{status.code}</code>
+              {status.isTerminal && (
+                <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">Son durum</span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed opacity-90">{status.description}</p>
+          </div>
+        ))}
+      </div>
+    </DetailSection>
+  )
+
+  const rulesBlock = (
+    <>
+      {entity.prerequisiteIds.length > 0 && (
+        <DetailSection title="Önce bunları öğren" hint="Bu kavrama geçmeden önce bilmen gerekenler." tone="indigo">
+          <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+            Aşağıdaki kavramları anlamadan {entity.name} bağlamını tam oturtmak zor olur. Önce onlara göz at.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {entity.prerequisiteIds.map((id) => (
+              <EntityNavChip key={id} entityId={id} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </DetailSection>
+      )}
+
+      {relevantRules.length > 0 && (
+        <DetailSection title="Otomatik kurallar" hint="Bir durum değişince sistem ne yapar?" tone="green">
+          <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+            Bu kurallar kurye aksiyonu gerektirmeden arka planda çalışır — statü yayılımını anlamak için kritik.
+          </p>
+          <ul className="space-y-2">
+            {relevantRules.map((rule) => (
+              <li key={rule.id} className="flex gap-2 rounded-lg border border-green-200/70 bg-green-50/40 px-3 py-2 text-sm leading-6 dark:border-green-900/50 dark:bg-green-950/20">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" />
+                <span>{rule.description}</span>
+              </li>
+            ))}
+          </ul>
+        </DetailSection>
+      )}
+
+      {!hasRulesTab && (
+        <p className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
+          Bu kavram için özel önkoşul veya yayılım kuralı tanımlı değil.
+        </p>
+      )}
+    </>
+  )
+
+  const continueBlock = (
+    <>
+      {ctx?.next && (
+        <div className={cn('rounded-xl border p-3', toneCard.teal)}>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Sıradaki kavram</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Öğrenme yolunda bir sonraki adım — bağlamı tamamlamak için devam et.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-foreground">{entityById(ctx.next.entityId)?.name ?? ctx.next.entityId}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{ctx.next.hint}</p>
+            </div>
+            {onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate(ctx.next!.entityId)}
+                className="inline-flex items-center gap-1 rounded-lg border border-teal-300/70 bg-background px-3 py-1.5 text-xs font-semibold text-teal-700 shadow-sm hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-950/30"
+              >
+                Devam et
+                <ChevronRight className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!ctx?.next && (
+        <p className="rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-3 text-xs leading-relaxed text-foreground/85 dark:border-teal-900/50 dark:bg-teal-950/20">
+          Bu kavram öğrenme yolunun son adımlarından biri — veya yatay bir bağlamda çalışıyor. Ana zinciri tamamladıysan diğer cross-cutting kavramlara göz at.
+        </p>
+      )}
+
+      <DetailSection title="Geliştirici notu" hint="Kodda karşılığı — merak edenler için." tone="gray">
+        <button
+          type="button"
+          onClick={() => setTechnicalOpen((open) => !open)}
+          className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-muted/25 px-3 py-2.5 text-left text-sm font-semibold hover:bg-muted/40"
+          aria-expanded={technicalOpen}
+        >
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Code2 className="size-4" />
+            Teknik karşılığı {technicalOpen ? 'gizle' : 'göster'}
+          </span>
+          <ChevronDown className={cn('size-4 transition-transform', technicalOpen && 'rotate-180')} />
+        </button>
+        {technicalOpen && technical && (
+          <dl className="mt-2 grid gap-x-5 gap-y-3 rounded-lg bg-slate-950 p-4 font-mono text-xs text-slate-300 sm:grid-cols-2">
+            <div><dt className="text-slate-500">Model</dt><dd className="mt-0.5 text-slate-100">{technical.model}</dd></div>
+            <div><dt className="text-slate-500">Database</dt><dd className="mt-0.5 text-slate-100">{technical.database}</dd></div>
+            <div><dt className="text-slate-500">ViewModel</dt><dd className="mt-0.5 text-slate-100">{technical.viewModel}</dd></div>
+            <div><dt className="text-slate-500">API</dt><dd className="mt-0.5 text-slate-100">{technical.api}</dd></div>
+          </dl>
+        )}
+        {technicalOpen && (
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{entity.technicalContext}</p>
+        )}
+      </DetailSection>
+    </>
+  )
+
+  const stackedContent = (
+    <div className="space-y-4">
+      {definitionBlock}
+      {structureBlock}
+      {statusesBlock}
+      {rulesBlock}
+      {continueBlock}
+    </div>
+  )
+
+  return (
+    <article className="relative overflow-hidden rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+      <div aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent opacity-70', toneHero[tone])} />
+      <span aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
+
+      <div className="relative space-y-4">
+        <LearningPathBanner entity={entity} />
+        {headerBlock}
+        {stackedContent}
+      </div>
+    </article>
+  )
+}
+
+function EmptyState({ query }: { query: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-indigo-300/60 bg-gradient-to-br from-indigo-50/60 via-background to-violet-50/40 px-6 py-14 text-center dark:border-indigo-800 dark:from-indigo-950/30 dark:to-violet-950/20">
+      <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950/50">
+        <Search className="size-7 text-indigo-600 dark:text-indigo-400" />
+      </span>
+      <p className="mt-4 text-sm font-bold text-foreground">“{query}” için eşleşme bulunamadı</p>
+      <p className="mt-1 text-xs text-muted-foreground">Farklı bir anahtar kelime veya filtre deneyin.</p>
+    </div>
+  )
+}
+
+function DictionaryView({ query }: { query: string }) {
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+  const [detailId, setDetailId] = useState<string | null>(null)
+
+  const filtered = useMemo(() => entities.filter((entity) => {
+    const category = entityCategory(entity)
+    const categoryMatches = categoryFilter === 'all' || category === categoryFilter
+    return categoryMatches && entityMatches(entity, query)
+  }), [categoryFilter, query])
+
+  const detailEntity = entityById(detailId)
+
+  return (
+    <section aria-labelledby="dictionary-title" className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="dictionary-title" className="flex items-center gap-1.5 text-sm font-bold">
+          <BookOpen className="size-4 text-indigo-600 dark:text-indigo-400" />
+          Tüm kavramlar
+          <span className="text-xs font-medium text-muted-foreground">({filtered.length})</span>
+        </h2>
+      </div>
+
+      <div className="rounded-lg border border-indigo-200/50 bg-gradient-to-r from-indigo-50/30 via-background to-violet-50/20 p-2 dark:border-indigo-900/40 dark:from-indigo-950/15 dark:to-violet-950/10">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn('mr-1 text-[11px] font-bold uppercase tracking-wider', toneText.indigo)}>Category</span>
+          <FilterButton active={categoryFilter === 'all'} tone="indigo" onClick={() => setCategoryFilter('all')}>Tümü</FilterButton>
+          {ENTITY_CATEGORIES.map(({ id, label }) => (
+            <FilterButton key={id} active={categoryFilter === id} tone={CATEGORY_TONE[id]} onClick={() => setCategoryFilter(id)}>
+              {label}
+            </FilterButton>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState query={query || 'seçili filtreler'} />
+      ) : (
+        <EntityDictionaryTable entities={filtered} onRowClick={setDetailId} />
+      )}
+
+      <EntityDetailDialog
+        entity={detailEntity ?? null}
+        open={detailId !== null}
+        onOpenChange={(open) => !open && setDetailId(null)}
+        onNavigate={setDetailId}
+      />
+    </section>
+  )
+}
+
+function HierarchyNode({ entity, selectedId, onSelect }: { entity: DomainEntity; selectedId: string; onSelect: (id: string) => void }) {
+  const Icon = ICONS[entity.icon] ?? Package
+  const tone = entityTone(entity)
+  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
+  const selectedIndex = CHAIN.findIndex((item) => item.id === selectedId)
+  const index = CHAIN.findIndex((item) => item.id === entity.id)
+  const distance = selectedIndex < 0 ? 0 : Math.abs(selectedIndex - index)
+  const isSelected = selectedId === entity.id
+  const relation = relationFor(entity)
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(entity.id)}
+      className={cn(
+        'w-full rounded-lg border p-2.5 text-left transition-all hover:shadow-md lg:min-h-28',
+        entitySurface(entity),
+        isSelected && cn('shadow-lg ring-2 ring-offset-2 ring-offset-background', TONE_RING[tone]),
+        selectedIndex >= 0 && distance > 1 && 'opacity-45',
+      )}
+    >
+      <span className={cn('text-[10px] font-bold uppercase tracking-widest', toneText[tone])}>L{entity.level}</span>
+      <span className={cn('mt-3 flex size-9 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
+        <Icon className={cn('size-4', toneIcon[tone])} />
+      </span>
+      <span className="mt-2 block text-sm font-bold">{entity.name}</span>
+      <span className={cn('block text-xs font-medium', toneText[categoryTone])}>{categoryLabel}</span>
+      <span className="mt-2 block text-[11px] leading-4 text-muted-foreground line-clamp-2">{relation?.description ?? entity.definition}</span>
+    </button>
+  )
+}
+
+function HierarchyConnector({ highlighted }: { highlighted: boolean }) {
+  return (
+    <div className={cn('flex shrink-0 items-center justify-center transition-colors', highlighted ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground/50')}>
+      <div className="hidden flex-col items-center lg:flex">
+        <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold font-mono', highlighted ? 'bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300' : 'bg-muted text-muted-foreground')}>1:N</span>
+        <ChevronRight className={cn('size-4', highlighted && 'animate-pulse')} />
+      </div>
+      <div className="flex items-center gap-2 py-1 lg:hidden">
+        <ArrowDown className={cn('size-4', highlighted && 'text-teal-600')} />
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono">1:N</span>
+      </div>
+    </div>
+  )
+}
+
+function HierarchyView({ query, selectedId, onSelect }: { query: string; selectedId: string; onSelect: (id: string) => void }) {
+  const selected = entityById(selectedId) ?? CHAIN[0]!
+  const selectedIndex = CHAIN.findIndex((entity) => entity.id === selected.id)
+  const visibleChain = query ? CHAIN.filter((entity) => entityMatches(entity, query)) : CHAIN
+
+  return (
+    <section aria-labelledby="hierarchy-title" className="space-y-3">
+      <h2 id="hierarchy-title" className="flex items-center gap-1.5 text-sm font-bold">
+        <GitBranch className="size-4 text-teal-600 dark:text-teal-400" />
+        Varlık zinciri
+      </h2>
+      {visibleChain.length === 0 ? <EmptyState query={query} /> : (
+        <>
+          <div className="rounded-xl border border-teal-200/60 bg-gradient-to-br from-teal-50/50 via-background to-indigo-50/30 p-3 shadow-sm dark:border-teal-900/50 dark:from-teal-950/20 dark:to-indigo-950/15 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className={cn('text-xs font-bold uppercase tracking-wider', toneText.teal)}>Ana zincir</p>
+              <p className="hidden rounded-full border border-teal-200/70 bg-teal-50/60 px-2.5 py-1 text-xs font-medium text-teal-800 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-300 sm:block">
+                {entityById('schedule')?.name} → {entityById('shipment-item')?.name}
+              </p>
+            </div>
+            <div className="flex flex-col lg:grid lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr] lg:items-center lg:gap-1.5">
+              {CHAIN.map((entity, index) => (
+                <Fragment key={entity.id}>
+                  {index > 0 && <HierarchyConnector highlighted={selectedIndex >= 0 && (index === selectedIndex || index - 1 === selectedIndex)} />}
+                  <HierarchyNode entity={entity} selectedId={selected.id} onSelect={onSelect} />
+                </Fragment>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-dashed border-amber-300/60 bg-gradient-to-br from-amber-50/40 via-background to-green-50/30 p-4 dark:border-amber-800/50 dark:from-amber-950/20 dark:to-green-950/15 sm:p-5">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              <ArrowLeftRight className="size-4 text-amber-600" />
+              Yatay kesen varlıklar
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">Tahsilat ve akıllı dolap gibi varlıklar, operasyon sırasında ana zinciri yatay olarak keser.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {CROSS_CUTTING.map((entity) => {
+                const rel = relations.find((relation) => relation.from === entity.id || relation.to === entity.id)
+                const peer = entityById(rel?.from === entity.id ? rel.to : rel?.from ?? null)
+                const tone = entityTone(entity)
+                return (
+                  <button
+                    key={entity.id}
+                    type="button"
+                    onClick={() => onSelect(entity.id)}
+                    className={cn('rounded-xl border p-4 text-left transition-all hover:shadow-md', entitySurface(entity), selected.id === entity.id && cn('shadow-lg ring-2', TONE_RING[tone]))}
+                  >
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <ArrowLeftRight className={cn('size-4', toneIcon[tone])} />
+                      {entity.name} <span className="text-muted-foreground">— {peer?.name}</span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{rel?.description}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <EntityDetailPanel key={`hierarchy-${selected.id}`} entity={selected} />
+        </>
+      )}
+    </section>
+  )
+}
+
+function ruleEntities(rule: PropagationRule) {
+  const from = entityById(rule.fromEntity)
+  const to = entityById(rule.toEntity)
+  const source = rule.id === 'prop-up-completed' || rule.id === 'prop-cancel' ? `Tüm ${from?.name ?? rule.fromEntity}'lar` : from?.name ?? rule.fromEntity
+  const trigger = rule.id === 'prop-up-completed' ? 'Final durum' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'PENDING'
+  const affected = rule.id.startsWith('prop-up') ? 'Stop, Route, Schedule' : rule.id === 'prop-down-delivered' || rule.id === 'prop-down-failed' ? 'Shipment, ShipmentItem' : to?.name ?? rule.toEntity
+  const result = rule.id === 'prop-up-completed' ? 'COMPLETED' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'DELIVERED engellenir'
+  return { source, trigger, affected, result }
+}
+
+function RuleFlow({ rule }: { rule: PropagationRule }) {
+  const ids = rule.direction === 'up'
+    ? CHAIN.slice(CHAIN.findIndex((entity) => entity.id === rule.toEntity), CHAIN.findIndex((entity) => entity.id === rule.fromEntity) + 1).reverse()
+    : rule.direction === 'down'
+      ? CHAIN.slice(CHAIN.findIndex((entity) => entity.id === rule.fromEntity), CHAIN.findIndex((entity) => entity.id === rule.toEntity) + 1)
+      : [entityById(rule.fromEntity), entityById(rule.toEntity)].filter(Boolean) as DomainEntity[]
+  const meta = directionMeta(rule.direction)
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      {ids.map((entity, index) => {
+        const tone = entityTone(entity)
+        return (
+          <Fragment key={entity.id}>
+            {index > 0 && <meta.icon className={cn('size-4', toneIcon[tone])} />}
+            <span className={cn('rounded-lg border px-3 py-2 text-xs shadow-sm', toneCard[tone])}>
+              <strong className={toneText[tone]}>{entity.name}</strong>
+              <span className="ml-1 text-muted-foreground">{ruleEntities(rule).result}</span>
+            </span>
+          </Fragment>
         )
       })}
     </div>
   )
 }
 
-/* ─── Status Flow Visualization ─────────────────────────────────────────── */
-function StatusFlow({
-  statuses,
-  transitions,
-}: {
-  statuses: StatusDef[]
-  transitions: StatusTransition[]
-}) {
-  const [hoveredStatus, setHoveredStatus] = useState<string | null>(null)
-
-  const outgoing = useMemo(() => {
-    const map: Record<string, StatusTransition[]> = {}
-    transitions.forEach((t) => {
-      if (!map[t.from]) map[t.from] = []
-      map[t.from]!.push(t)
-    })
-    return map
-  }, [transitions])
-
+function RuleDetail({ rule }: { rule: PropagationRule }) {
+  const detailBg =
+    rule.direction === 'up'
+      ? 'border-t border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20'
+      : rule.direction === 'down'
+        ? 'border-t border-rose-200/60 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20'
+        : 'border-t border-amber-200/60 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20'
   return (
-    <div className="space-y-4">
-      {/* Status nodes */}
-      <div className="flex flex-wrap gap-2">
-        {statuses.map((s) => {
-          const isHovered = hoveredStatus === s.code
-          const isTarget = transitions.some(
-            (t) => t.from === hoveredStatus && t.to === s.code,
-          )
-          const isSource = transitions.some(
-            (t) => t.to === hoveredStatus && t.from === s.code,
-          )
-
-          return (
-            <motion.button
-              key={s.code}
-              onMouseEnter={() => setHoveredStatus(s.code)}
-              onMouseLeave={() => setHoveredStatus(null)}
-              className={cn(
-                'relative flex items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-xs font-semibold transition-all cursor-default',
-                isHovered
-                  ? 'ring-2 ring-offset-1 scale-105 shadow-md'
-                  : '',
-                isTarget
-                  ? 'ring-2 ring-green-400 ring-offset-1 scale-102 shadow-sm'
-                  : '',
-                isSource
-                  ? 'ring-2 ring-blue-400 ring-offset-1 scale-102 shadow-sm'
-                  : '',
-                s.isTerminal
-                  ? 'border-dashed'
-                  : 'border-solid',
-                `border-${s.color}-300 dark:border-${s.color}-700`,
-              )}
-              style={{
-                backgroundColor: isHovered
-                  ? `var(--color-${s.color}-100, hsl(var(--muted)))`
-                  : undefined,
-              }}
-              layout
-            >
-              <span
-                className={cn(
-                  'size-2 rounded-full',
-                  STATUS_DOT[s.color] ?? 'bg-gray-400',
-                  !s.isTerminal && 'animate-pulse',
-                )}
-              />
-              <span>{s.label}</span>
-              {s.isTerminal && (
-                <Lock className="size-3 text-muted-foreground/60" />
-              )}
-            </motion.button>
-          )
-        })}
-      </div>
-
-      {/* Transition list */}
-      <AnimatePresence mode="wait">
-        {hoveredStatus && outgoing[hoveredStatus] && (
-          <motion.div
-            key={hoveredStatus}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Geçişler ({hoveredStatus})
-              </span>
-              {outgoing[hoveredStatus].map((t, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-2 text-xs leading-relaxed"
-                >
-                  <ChevronRight className="size-3 mt-0.5 text-muted-foreground/60 shrink-0" />
-                  <div>
-                    <span className="font-semibold">
-                      → {t.to}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {' '}— {t.trigger}
-                    </span>
-                    {t.condition && (
-                      <span className="text-amber-600 dark:text-amber-400">
-                        {' '}⚠ {t.condition}
-                      </span>
-                    )}
-                    {t.propagation && (
-                      <span className="text-purple-600 dark:text-purple-400">
-                        {' '}📡 {t.propagation}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className={cn('p-4 sm:p-5', detailBg)}>
+      <h3 className="text-sm font-bold">{rule.title.replace(/\s*\([^)]*\)$/, '')}</h3>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground/85">{rule.description}</p>
+      <p className="mt-2 text-xs text-muted-foreground">Bu işlem kullanıcı aksiyonu gerektirmeden otomatik gerçekleşir.</p>
+      <RuleFlow rule={rule} />
     </div>
   )
 }
 
-/* ─── Entity Detail Card ────────────────────────────────────────────────── */
-function EntityDetail({
-  entity,
-  isExpanded,
-  onToggle,
-  onSelectEntity,
-  unlockedIds,
-}: {
-  entity: DomainEntity
-  isExpanded: boolean
-  onToggle: () => void
-  onSelectEntity: (id: string) => void
-  unlockedIds: Set<string>
-}) {
-  const Icon = ICON_MAP[entity.icon] ?? Package
-  const [activeTab, setActiveTab] = useState<'overview' | 'statuses' | 'attributes' | 'warnings'>('overview')
-  const isLocked = !unlockedIds.has(entity.id)
-
-  const childEntities = useMemo(
-    () => entities.filter((e) => entity.childIds.includes(e.id)),
-    [entity.childIds],
-  )
+function StateRulesView({ query }: { query: string }) {
+  const [direction, setDirection] = useState<DirectionFilter>('all')
+  const [openId, setOpenId] = useState<string | null>(propagationRules[1]?.id ?? null)
+  const filtered = propagationRules.filter((rule) => {
+    const normalizedDirection = rule.direction === 'up' ? 'up' : rule.direction === 'down' ? 'down' : 'horizontal'
+    return (direction === 'all' || direction === normalizedDirection) && ruleMatches(rule, query)
+  })
 
   return (
-    <motion.div
-      id={`entity-${entity.id}`}
-      className={cn(
-        'rounded-2xl border-2 overflow-hidden transition-shadow',
-        isExpanded ? 'shadow-lg' : 'shadow-sm hover:shadow-md',
-        TONE_BG[entity.color],
-        isLocked && 'opacity-60 pointer-events-none select-none',
-      )}
-      layout
-    >
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        disabled={isLocked}
-        className={cn(
-          'w-full flex items-center gap-3 p-4 text-left transition-colors',
-          !isLocked && 'hover:bg-black/[0.03] dark:hover:bg-white/[0.03]',
-        )}
-      >
-        {/* Level indicator */}
-        <div
-          className={cn(
-            'flex items-center justify-center size-10 rounded-xl shrink-0',
-            isExpanded
-              ? `bg-${entity.color}-500 text-white shadow-md`
-              : `bg-${entity.color}-100 dark:bg-${entity.color}-900/40`,
-          )}
-          style={
-            isExpanded
-              ? {
-                  backgroundColor: `var(--color-${entity.color}-500, #8b5cf6)`,
-                  color: 'white',
-                }
-              : undefined
-          }
-        >
-          {isLocked ? (
-            <Lock className="size-5" />
-          ) : (
-            <Icon
-              className={cn(
-                'size-5',
-                isExpanded ? 'text-white' : TONE_ICON[entity.color],
-              )}
-            />
-          )}
-        </div>
-
-        {/* Title area */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider', TONE_TEXT[entity.color])}>
-              Level {entity.level}
-              {entity.parentId === null && entity.level > 0 && ' · Cross-cutting'}
-            </span>
-            {isLocked && (
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                🔒 Önce {entity.prerequisiteIds[entity.prerequisiteIds.length - 1]} öğrenin
-              </Badge>
-            )}
-          </div>
-          <h3 className="text-base font-bold leading-snug">
-            {entity.name}{' '}
-            <span className="text-muted-foreground font-normal text-sm">
-              ({entity.turkishName})
-            </span>
-          </h3>
-          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-            {entity.definition}
-          </p>
-        </div>
-
-        {/* Expand icon */}
-        {!isLocked && (
-          <motion.div
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ChevronDown className="size-5 text-muted-foreground" />
-          </motion.div>
-        )}
-      </button>
-
-      {/* Expanded content */}
-      <AnimatePresence>
-        {isExpanded && !isLocked && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-5 space-y-5 border-t border-current/5">
-              {/* Hierarchy breadcrumb */}
-              <div className="pt-3">
-                <HierarchyPath entity={entity} onSelect={onSelectEntity} />
-              </div>
-
-              {/* Aliases */}
-              <div className="flex flex-wrap gap-1.5">
-                {entity.aliases.map((a) => (
-                  <Badge key={a} variant="secondary" className="text-[10px]">
-                    {a}
-                  </Badge>
-                ))}
-                <Badge variant="outline" className="text-[10px]">
-                  {entity.cardinality} — {entity.cardinalityDesc}
-                </Badge>
-              </div>
-
-              {/* Tab navigation */}
-              <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
-                {(
-                  [
-                    { key: 'overview' as const, label: 'Tanım', icon: Info },
-                    { key: 'statuses' as const, label: 'Statüler', icon: GitBranch },
-                    { key: 'attributes' as const, label: 'Alanlar', icon: Layers },
-                    { key: 'warnings' as const, label: 'Uyarılar', icon: AlertTriangle },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                      activeTab === tab.key
-                        ? 'bg-background shadow-sm text-foreground'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    <tab.icon className="size-3.5" />
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab content */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {activeTab === 'overview' && (
-                    <div className="space-y-4">
-                      <div className="rounded-xl border bg-background/60 p-4 space-y-3">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Tanım
-                          </span>
-                          <p className="text-sm leading-relaxed mt-1">
-                            {entity.definition}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            İş Bağlamı
-                          </span>
-                          <p className="text-sm leading-relaxed text-muted-foreground mt-1">
-                            {entity.businessContext}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Teknik Bağlam
-                          </span>
-                          <p className="text-sm leading-relaxed text-muted-foreground mt-1 font-mono text-xs">
-                            {entity.technicalContext}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Related screens */}
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          İlgili Ekranlar
-                        </span>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {entity.screens.map((s) => (
-                            <Badge
-                              key={s}
-                              variant="outline"
-                              className="text-[10px]"
-                            >
-                              📱 {s}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Children links */}
-                      {childEntities.length > 0 && (
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Alt Varlıklar
-                          </span>
-                          <div className="flex flex-wrap gap-2 mt-1.5">
-                            {childEntities.map((c) => {
-                              const CIcon = ICON_MAP[c.icon] ?? Package
-                              return (
-                                <button
-                                  key={c.id}
-                                  onClick={() => onSelectEntity(c.id)}
-                                  className={cn(
-                                    'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                                    TONE_BG[c.color],
-                                    'hover:shadow-sm',
-                                  )}
-                                >
-                                  <CIcon
-                                    className={cn(
-                                      'size-3.5',
-                                      TONE_ICON[c.color],
-                                    )}
-                                  />
-                                  <span className={TONE_TEXT[c.color]}>
-                                    {c.name}
-                                  </span>
-                                  <ChevronRight className="size-3 text-muted-foreground/50" />
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'statuses' && (
-                    <div className="space-y-4">
-                      <StatusFlow
-                        statuses={entity.statuses}
-                        transitions={entity.transitions}
-                      />
-                      <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                        <Lock className="size-3" />
-                        <span>Kesik çizgi = terminal durum (geri dönüşü yok)</span>
-                        <span className="mx-1">·</span>
-                        <span className="size-2 rounded-full bg-blue-500 animate-pulse inline-block" />
-                        <span>Yanıp sönen = geçiş durumu</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'attributes' && (
-                    <div className="rounded-xl border bg-background/60 overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-muted/30">
-                            <th className="text-left px-3 py-2 font-bold text-muted-foreground">
-                              Alan
-                            </th>
-                            <th className="text-left px-3 py-2 font-bold text-muted-foreground">
-                              Tip
-                            </th>
-                            <th className="text-left px-3 py-2 font-bold text-muted-foreground">
-                              Açıklama
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {entity.keyAttributes.map((attr, i) => (
-                            <tr
-                              key={attr.name}
-                              className={cn(
-                                'border-b last:border-0',
-                                i % 2 === 0 ? '' : 'bg-muted/10',
-                              )}
-                            >
-                              <td className="px-3 py-2 font-mono font-medium text-foreground">
-                                {attr.name}
-                              </td>
-                              <td className="px-3 py-2 font-mono text-muted-foreground">
-                                {attr.type}
-                              </td>
-                              <td className="px-3 py-2 text-muted-foreground">
-                                {attr.description}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {activeTab === 'warnings' && (
-                    <div className="space-y-2">
-                      {entity.antiPatterns.map((ap, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05, duration: 0.2 }}
-                          className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 p-3 text-xs leading-relaxed"
-                        >
-                          <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-red-500" />
-                          <span className="text-red-800 dark:text-red-300">
-                            {ap}
-                          </span>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-/* ─── Hierarchy Visualizer ──────────────────────────────────────────────── */
-function HierarchyTree({
-  onSelectEntity,
-}: {
-  onSelectEntity: (id: string) => void
-}) {
-  const hierarchyEntities = entities.filter(
-    (e) => e.parentId !== null || e.childIds.length > 0,
-  )
-  const roots = hierarchyEntities.filter((e) => e.parentId === null)
-
-  function renderNode(entity: DomainEntity, depth: number = 0) {
-    const Icon = ICON_MAP[entity.icon] ?? Package
-    const children = entities.filter((e) => entity.childIds.includes(e.id))
-
-    return (
-      <div key={entity.id} style={{ marginLeft: depth * 24 }}>
-        <button
-          onClick={() => onSelectEntity(entity.id)}
-          className={cn(
-            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all hover:shadow-sm',
-            TONE_BG[entity.color],
-          )}
-        >
-          <Icon className={cn('size-4', TONE_ICON[entity.color])} />
-          <span className={cn('font-bold', TONE_TEXT[entity.color])}>
-            {entity.name}
-          </span>
-          <span className="text-muted-foreground">
-            ({entity.turkishName})
-          </span>
-        </button>
-        {children.length > 0 && (
-          <div className="ml-5 mt-1 space-y-1 border-l-2 border-dashed border-muted-foreground/20 pl-3">
-            {children.map((c) => renderNode(c, 0))}
-          </div>
-        )}
+    <section aria-labelledby="rules-title" className="space-y-3">
+      <h2 id="rules-title" className="flex items-center gap-1.5 text-sm font-bold">
+        <ArrowLeftRight className="size-4 text-amber-600 dark:text-amber-400" />
+        Statü yayılımı
+      </h2>
+      <div className="flex flex-wrap gap-1.5 rounded-lg border border-amber-200/50 bg-gradient-to-r from-amber-50/40 via-background to-emerald-50/30 p-2 dark:border-amber-900/40 dark:from-amber-950/15 dark:to-emerald-950/10">
+        <FilterButton active={direction === 'all'} tone="amber" onClick={() => setDirection('all')}>Tümü</FilterButton>
+        <FilterButton active={direction === 'up'} tone="green" onClick={() => setDirection('up')}>↑ Yukarı</FilterButton>
+        <FilterButton active={direction === 'down'} tone="red" onClick={() => setDirection('down')}>↓ Aşağı</FilterButton>
+        <FilterButton active={direction === 'horizontal'} tone="purple" onClick={() => setDirection('horizontal')}>↔ Yatay</FilterButton>
       </div>
-    )
-  }
+      {filtered.length === 0 ? <EmptyState query={query || 'seçili yön'} /> : (
+        <div className="overflow-hidden rounded-2xl border border-amber-200/50 bg-card shadow-md dark:border-amber-900/40">
+          <table className="hidden w-full table-fixed text-left text-sm md:table">
+            <thead className="border-b border-amber-200/50 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-emerald-50/50 text-[11px] uppercase tracking-wide dark:border-amber-900/40 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-emerald-950/20">
+              <tr>
+                <th className="w-[19%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Kaynak varlık</th>
+                <th className="w-[18%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Tetikleyici durum</th>
+                <th className="w-[13%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Yön</th>
+                <th className="w-[27%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Etkilenen varlık</th>
+                <th className="px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Sonuç</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {filtered.map((rule) => {
+                const cells = ruleEntities(rule)
+                const meta = directionMeta(rule.direction)
+                const Icon = meta.icon
+                const open = openId === rule.id
+                return (
+                  <Fragment key={rule.id}>
+                    <tr onClick={() => setOpenId(open ? null : rule.id)} className={cn('cursor-pointer transition-colors hover:bg-amber-50/30 dark:hover:bg-amber-950/15', open && 'bg-amber-50/40 dark:bg-amber-950/20')}>
+                      <td className="px-4 py-3 font-semibold">{cells.source}</td>
+                      <td className="px-4 py-3"><code className="rounded-md border border-blue-200/70 bg-blue-50/60 px-1.5 py-0.5 text-xs font-bold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">{cells.trigger}</code></td>
+                      <td className="px-4 py-3"><span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold', meta.className)}><Icon className="size-3" />{meta.label}</span></td>
+                      <td className="px-4 py-3 text-muted-foreground">{cells.affected}</td>
+                      <td className="px-4 py-3"><span className="flex items-center justify-between gap-2"><code className="rounded-md border border-green-200/70 bg-green-50/60 px-1.5 py-0.5 text-xs font-bold text-green-800 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">{cells.result}</code><ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} /></span></td>
+                    </tr>
+                    {open && <tr><td colSpan={5} className="p-0"><RuleDetail rule={rule} /></td></tr>}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
 
-  // Cross-cutting entities
-  const crossCutting = entities.filter(
-    (e) => e.parentId === null && e.childIds.length === 0,
-  )
-
-  return (
-    <div className="space-y-6">
-      {/* Main hierarchy */}
-      <div className="space-y-1">{roots.map((r) => renderNode(r))}</div>
-
-      {/* Cross-cutting concerns */}
-      {crossCutting.length > 0 && (
-        <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <ArrowLeftRight className="size-3" />
-            Cross-cutting Varlıklar
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {crossCutting.map((e) => {
-              const Icon = ICON_MAP[e.icon] ?? Package
+          <div className="divide-y md:hidden">
+            {filtered.map((rule) => {
+              const cells = ruleEntities(rule)
+              const meta = directionMeta(rule.direction)
+              const Icon = meta.icon
+              const open = openId === rule.id
               return (
-                <button
-                  key={e.id}
-                  onClick={() => onSelectEntity(e.id)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all hover:shadow-sm',
-                    TONE_BG[e.color],
-                  )}
-                >
-                  <Icon className={cn('size-4', TONE_ICON[e.color])} />
-                  <span className={cn('font-bold', TONE_TEXT[e.color])}>
-                    {e.name}
-                  </span>
-                  <span className="text-muted-foreground">
-                    ({e.turkishName})
-                  </span>
-                </button>
+                <div key={rule.id}>
+                  <button type="button" onClick={() => setOpenId(open ? null : rule.id)} className="w-full p-4 text-left">
+                    <div className="flex items-center justify-between gap-3"><strong className="text-sm">{cells.source} → {cells.trigger}</strong><ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} /></div>
+                    <span className={cn('mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium', meta.className)}><Icon className="size-3" />{meta.label} yayılım</span>
+                    <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-muted-foreground">Etkilenenler</dt><dd className="mt-0.5 font-medium">{cells.affected}</dd></div><div><dt className="text-muted-foreground">Sonuç</dt><dd className="mt-0.5 font-mono font-medium">{cells.result}</dd></div></dl>
+                  </button>
+                  {open && <RuleDetail rule={rule} />}
+                </div>
               )
             })}
           </div>
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
-/* ─── Propagation Rules Card ────────────────────────────────────────────── */
-function PropagationRulesSection() {
-  const directionIcon: Record<string, LucideIcon> = {
-    up: ArrowUp,
-    down: ArrowDown,
-    both: ArrowLeftRight,
-    none: ArrowLeftRight,
-  }
-  const directionTone: Record<string, string> = {
-    up: 'green',
-    down: 'red',
-    both: 'purple',
-    none: 'amber',
-  }
+function DomainGlossaryContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedView = searchParams.get('view')
+  const initialView: GlossaryView = requestedView === 'hierarchy' || requestedView === 'rules' ? requestedView : 'dictionary'
+  const [view, setView] = useState<GlossaryView>(initialView)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState('schedule')
 
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {propagationRules.map((rule, i) => {
-        const Icon = directionIcon[rule.direction] ?? ArrowLeftRight
-        const tone = directionTone[rule.direction] ?? 'gray'
-        return (
-          <motion.div
-            key={rule.id}
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.05, duration: 0.3, ease: EASE }}
-            className={cn(
-              'rounded-xl border-2 p-4 space-y-2',
-              TONE_BG[tone],
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  'flex items-center justify-center size-7 rounded-lg',
-                  `bg-${tone}-100 dark:bg-${tone}-900/40`,
-                )}
-              >
-                <Icon className={cn('size-4', TONE_ICON[tone])} />
-              </div>
-              <span
-                className={cn(
-                  'text-xs font-bold',
-                  TONE_TEXT[tone],
-                )}
-              >
-                {rule.title}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {rule.description}
-            </p>
-            <div className="rounded-md bg-background/60 border px-3 py-2 text-[11px] font-mono text-muted-foreground">
-              💡 {rule.example}
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
+  useEffect(() => {
+    const next = searchParams.get('view')
+    setView(next === 'hierarchy' || next === 'rules' ? next : 'dictionary')
+  }, [searchParams])
 
-// ═══ Main Page ═══════════════════════════════════════════════════════════════
-
-export default function DomainGlossaryPage() {
-  const [expandedId, setExpandedId] = useState<string | null>('schedule')
-  const [unlockedStep, setUnlockedStep] = useState(1)
-  const [guidedMode, setGuidedMode] = useState(true)
-
-  const unlockedIds = useMemo(() => {
-    if (!guidedMode) return new Set(entities.map((e) => e.id))
-    const set = new Set<string>()
-    learningPath.forEach((step) => {
-      if (step.step <= unlockedStep) set.add(step.entityId)
-    })
-    return set
-  }, [unlockedStep, guidedMode])
-
-  const handleSelectEntity = useCallback(
-    (id: string) => {
-      const target = entities.find((e) => e.id === id)
-      if (!target) return
-
-      // Auto-unlock if guided
-      if (guidedMode) {
-        const step = learningPath.find((s) => s.entityId === id)
-        if (step && step.step > unlockedStep) {
-          // Only unlock next step
-          if (step.step === unlockedStep + 1) {
-            setUnlockedStep(step.step)
-          } else {
-            return // Don't allow skipping
-          }
-        }
-      }
-
-      setExpandedId((prev) => (prev === id ? null : id))
-
-      // Scroll to element
-      setTimeout(() => {
-        document
-          .getElementById(`entity-${id}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 100)
-    },
-    [guidedMode, unlockedStep],
-  )
-
-  const handleUnlockNext = useCallback(() => {
-    if (unlockedStep < learningPath.length) {
-      const nextStep = unlockedStep + 1
-      setUnlockedStep(nextStep)
-      const nextEntity = learningPath.find((s) => s.step === nextStep)
-      if (nextEntity) {
-        setExpandedId(nextEntity.entityId)
-        setTimeout(() => {
-          document
-            .getElementById(`entity-${nextEntity.entityId}`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 200)
-      }
-    }
-  }, [unlockedStep])
-
-  // Stats
-  const totalEntities = entities.length
-  const totalStatuses = entities.reduce((s, e) => s + e.statuses.length, 0)
-  const totalTransitions = entities.reduce(
-    (s, e) => s + e.transitions.length,
-    0,
-  )
-
-  // Current learning step
-  const currentStep = learningPath.find((s) => s.step === unlockedStep)
-
-  // Group entities: hierarchical + cross-cutting
-  const hierarchicalEntities = entities.filter(
-    (e) => e.parentId !== null || e.childIds.length > 0,
-  )
-  const crossCuttingEntities = entities.filter(
-    (e) => e.parentId === null && e.childIds.length === 0,
-  )
+  const changeView = useCallback((nextView: GlossaryView) => {
+    setView(nextView)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('view', nextView)
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
 
   return (
     <ProductPage path="/product/domain-glossary">
-      {/* ─── Hero ────────────────────────────────────────────────────── */}
-      <HeroCallout
-        icon={BookOpen}
-        eyebrow="Product Foundation"
-        tone="amber"
-        title="Domain Entity Sözlüğü"
-        lead="NeSy Mobile'ın ubiquitous language'i — ekipteki herkesin aynı dili konuşması için. Hiyerarşik entity yapısı, statü geçişleri ve yayılım kuralları."
-        chips={[
-          'Ubiquitous Language',
-          'Hiyerarşik Yapı',
-          'Statü Propagation',
-          `${totalEntities} Entity`,
-        ]}
-      >
-        <StatGrid cols={4}>
-          <StatCard
-            label="Domain Entity"
-            value={totalEntities}
-            tone="amber"
-            icon={Layers}
-          />
-          <StatCard
-            label="Statü Tanımı"
-            value={totalStatuses}
-            tone="blue"
-            icon={GitBranch}
-          />
-          <StatCard
-            label="Geçiş Kuralı"
-            value={totalTransitions}
-            tone="purple"
-            icon={Zap}
-          />
-          <StatCard
-            label="Yayılım Kuralı"
-            value={propagationRules.length}
-            tone="green"
-            icon={ArrowDown}
-          />
-        </StatGrid>
-      </HeroCallout>
-
-      {/* ─── Guided Mode Toggle ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-dashed border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-4">
-        <div className="flex items-center gap-3">
-          {guidedMode ? (
-            <Eye className="size-5 text-amber-600 dark:text-amber-400" />
-          ) : (
-            <EyeOff className="size-5 text-muted-foreground" />
-          )}
-          <div>
-            <p className="text-sm font-bold">
-              {guidedMode
-                ? '🎓 Rehberli Öğrenme Modu'
-                : '📖 Serbest Gezinme Modu'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {guidedMode
-                ? `Adım ${unlockedStep}/${learningPath.length} — ${currentStep?.hint ?? ''}`
-                : 'Tüm entity\'ler açık. Hiyerarşik sıra takip edilmiyor.'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {guidedMode && unlockedStep < learningPath.length && (
-            <button
-              onClick={handleUnlockNext}
-              className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-1.5 transition-colors shadow-sm"
-            >
-              Sonraki →
-            </button>
-          )}
-          <button
-            onClick={() => setGuidedMode(!guidedMode)}
-            className="rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {guidedMode ? 'Serbest Mod' : 'Rehberli Mod'}
-          </button>
-        </div>
-      </div>
-
-      {/* ─── Learning Progress (Guided Mode) ────────────────────────── */}
-      {guidedMode && (
-        <div className="flex items-center gap-1">
-          {learningPath.map((step) => {
-            const entity = entities.find((e) => e.id === step.entityId)
-            if (!entity) return null
-            const Icon = ICON_MAP[entity.icon] ?? Package
-            const isUnlocked = step.step <= unlockedStep
-            const isCurrent = step.step === unlockedStep
-
-            return (
-              <button
-                key={step.entityId}
-                onClick={() => isUnlocked && handleSelectEntity(step.entityId)}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all',
-                  isUnlocked
-                    ? cn(
-                        TONE_BG[entity.color],
-                        TONE_TEXT[entity.color],
-                        isCurrent && 'ring-2 ring-offset-1 ring-amber-400 shadow-sm',
-                      )
-                    : 'bg-muted/30 text-muted-foreground/40 cursor-not-allowed',
-                )}
-              >
-                {isUnlocked ? (
-                  <Icon className="size-3" />
-                ) : (
-                  <Lock className="size-3" />
-                )}
-                <span className="hidden sm:inline">{entity.name}</span>
-                <span className="sm:hidden">{step.step}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ─── Hierarchy Overview ─────────────────────────────────────── */}
-      <PageSection
-        eyebrow="Hiyerarşi"
-        title="Entity İlişki Haritası"
-        description="Ana hiyerarşi: Schedule → Route → Stop → Task → Shipment → ShipmentItem. Cross-cutting: Collection, D4Me/Locker."
-        icon={GitBranch}
-        tone="amber"
-      >
-        <div className="rounded-xl border bg-card p-5">
-          <HierarchyTree onSelectEntity={handleSelectEntity} />
-        </div>
-      </PageSection>
-
-      {/* ─── Entity Cards (Hierarchical) ────────────────────────────── */}
-      <PageSection
-        eyebrow="Domain Entity'ler"
-        title="Hiyerarşik Varlıklar"
-        description="Ana hiyerarşi zinciri — her entity bir öncekini bilmeden anlaşılamaz."
-        icon={Layers}
-        tone="amber"
-      >
-        <div className="space-y-3">
-          {hierarchicalEntities.map((entity) => (
-            <EntityDetail
-              key={entity.id}
-              entity={entity}
-              isExpanded={expandedId === entity.id}
-              onToggle={() => handleSelectEntity(entity.id)}
-              onSelectEntity={handleSelectEntity}
-              unlockedIds={unlockedIds}
-            />
-          ))}
-        </div>
-      </PageSection>
-
-      {/* ─── Cross-cutting Entities ─────────────────────────────────── */}
-      <PageSection
-        eyebrow="Cross-cutting"
-        title="Yatay Kesişen Varlıklar"
-        description="Ana hiyerarşi dışında, birden fazla entity ile etkileşen varlıklar."
-        icon={ArrowLeftRight}
-        tone="green"
-      >
-        <div className="space-y-3">
-          {crossCuttingEntities.map((entity) => (
-            <EntityDetail
-              key={entity.id}
-              entity={entity}
-              isExpanded={expandedId === entity.id}
-              onToggle={() => handleSelectEntity(entity.id)}
-              onSelectEntity={handleSelectEntity}
-              unlockedIds={unlockedIds}
-            />
-          ))}
-        </div>
-      </PageSection>
-
-      {/* ─── Propagation Rules ──────────────────────────────────────── */}
-      <PageSection
-        eyebrow="Statü Yayılımı"
-        title="Propagation Kuralları"
-        description="Bir entity'nin statüsü değiştiğinde, ilişkili entity'lere nasıl yayılır?"
-        icon={Zap}
-        tone="purple"
-      >
-        <PropagationRulesSection />
-      </PageSection>
-
-      {/* ─── Guardrail ──────────────────────────────────────────────── */}
-      <Callout icon={BookOpen} title="Ubiquitous Language Sözleşmesi" tone="amber">
-        Bu sözlük yaşayan bir dokümandır. Yeni bir terim eklendiğinde veya mevcut
-        bir terimin anlamı değiştiğinde bu sayfa güncellenmelidir. Ekipteki
-        herkes — geliştirici, ürün yöneticisi, tasarımcı, QA — aynı terimleri
-        aynı anlamda kullanmalıdır.
-      </Callout>
+      <GlossaryChrome query={query} onQueryChange={setQuery} view={view} onViewChange={changeView} />
+      <main className="pt-3">
+        {view === 'dictionary' && <DictionaryView query={query} />}
+        {view === 'hierarchy' && <HierarchyView query={query} selectedId={selectedId} onSelect={setSelectedId} />}
+        {view === 'rules' && <StateRulesView query={query} />}
+      </main>
     </ProductPage>
+  )
+}
+
+export default function DomainGlossaryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] animate-pulse rounded-2xl bg-muted/30" />}>
+      <DomainGlossaryContent />
+    </Suspense>
   )
 }

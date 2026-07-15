@@ -12,6 +12,8 @@ import {
   Compass,
   Copy,
   Database,
+  Play,
+  ScrollText,
   Terminal,
   type LucideIcon,
 } from 'lucide-react'
@@ -20,11 +22,13 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { EASE, toneIcon, toneIconBox, type Tone } from '@/components/product'
 
-/** Üç aracın tek gerçek kaynağı — header çapraz linkleri buradan türetilir. */
+/** Araçların tek gerçek kaynağı — header çapraz linkleri buradan türetilir. */
 export const TOOL_LINKS: { path: string; title: string; icon: LucideIcon }[] = [
   { path: '/engineering/tools/data-locator', title: 'Data Locator', icon: Compass },
   { path: '/engineering/tools/mongodb-query-generator', title: 'MongoDB Query Generator', icon: Database },
   { path: '/engineering/tools/graylog-query-generator', title: 'Graylog Query Generator', icon: Terminal },
+  { path: '/engineering/device-lab/adb-scenarios', title: 'ADB Scenario Runner', icon: Play },
+  { path: '/engineering/device-lab/log-explorer', title: 'Device Log Explorer', icon: ScrollText },
 ]
 
 /**

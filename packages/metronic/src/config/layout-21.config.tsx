@@ -7,13 +7,11 @@ import {
   Bug,
   Calendar,
   CalendarDays,
-  CircleHelp,
   Compass,
   Cpu,
   Database,
   FileText,
   Flag,
-  FlaskConical,
   Gauge,
   GitBranch,
   Globe,
@@ -23,12 +21,10 @@ import {
   KanbanSquare,
   Layers,
   LayoutDashboard,
-  Lightbulb,
   LineChart,
   ListTodo,
   Map,
   MapPin,
-  MessageSquare,
   MonitorSmartphone,
   Network,
   Package,
@@ -46,7 +42,6 @@ import {
   Terminal,
   Target,
   Ticket,
-  UserRound,
   Users,
   Zap,
 } from 'lucide-react'
@@ -161,21 +156,6 @@ export const WORKSPACES: Workspace[] = [
             icon: Layers,
             children: [
               {
-                title: 'Problem Space',
-                path: '/product/problem-space',
-                icon: CircleHelp,
-              },
-              {
-                title: 'Solution Overview',
-                path: '/product/solution-overview',
-                icon: Lightbulb,
-              },
-              {
-                title: 'Product Principles',
-                path: '/product/product-principles',
-                icon: Compass,
-              },
-              {
                 title: 'Domain Glossary',
                 path: '/product/domain-glossary',
                 icon: BookOpen,
@@ -186,11 +166,6 @@ export const WORKSPACES: Workspace[] = [
             title: 'Users & Experience',
             icon: Users,
             children: [
-              {
-                title: 'Who We Serve',
-                path: '/product/who-we-serve',
-                icon: UserRound,
-              },
               {
                 title: 'User Journeys',
                 path: '/product/user-journeys',
@@ -219,48 +194,6 @@ export const WORKSPACES: Workspace[] = [
               },
             ],
           },
-          {
-            title: 'Strategy & Scope',
-            icon: Target,
-            children: [
-              {
-                title: 'Product Roadmap',
-                path: '/product/product-roadmap',
-                icon: Map,
-              },
-              {
-                title: 'Product Requirements',
-                path: '/product/product-requirements',
-                icon: FileText,
-              },
-              {
-                title: 'Product Metrics',
-                path: '/product/product-metrics',
-                icon: LineChart,
-              },
-            ],
-          },
-          {
-            title: 'Discovery & Learning',
-            icon: Search,
-            children: [
-              {
-                title: 'User Research & Insights',
-                path: '/product/user-research-and-insights',
-                icon: Search,
-              },
-              {
-                title: 'Experiments',
-                path: '/product/experiments',
-                icon: FlaskConical,
-              },
-              {
-                title: 'Feedback Repository',
-                path: '/product/feedback-repository',
-                icon: MessageSquare,
-              },
-            ],
-          },
         ],
       },
     ],
@@ -280,27 +213,6 @@ export const WORKSPACES: Workspace[] = [
             title: 'Overview',
             path: '/engineering/overview',
             icon: LayoutDashboard,
-          },
-          {
-            title: 'Mobile Knowledge Hub',
-            icon: BookOpen,
-            children: [
-              {
-                title: 'Hub Overview',
-                path: '/engineering/mobile-knowledge',
-                icon: LayoutDashboard,
-              },
-              {
-                title: 'Backend Handbook',
-                path: '/engineering/mobile-knowledge/backend',
-                icon: Network,
-              },
-              {
-                title: 'Screen Manual',
-                path: '/engineering/mobile-knowledge/screens',
-                icon: Smartphone,
-              },
-            ],
           },
           {
             title: 'Reliability & Operations',

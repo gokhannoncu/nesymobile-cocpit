@@ -38,46 +38,46 @@ export default function UserJourneysPage() {
         icon={Route}
         eyebrow="Users & Experience"
         tone="orange"
-        title="Kuryenin günü: beş temel akış."
-        lead="Tur başlangıcından locker teslimatına, sahadaki her akışın adımları ve ürettiği event'ler. Ülkeye göre değişen adımlar notlarla işaretlidir; kesin davranış Country Matrix'tedir."
-        chips={['5 akış', 'Event tabanlı', 'Ülke notlarıyla']}
+        title="Kuryenin günü: beş temel flow."
+        lead="Tour Start'tan Locker Delivery'ye, sahadaki her flow'un adımları ve ürettiği event'ler. Ülkeye göre değişen adımlar notlarla işaretlidir; kesin davranış Country Matrix'tedir."
+        chips={['5 flow', 'Event-driven', 'Country notes']}
       />
 
-      <PageSection eyebrow="Akışlar" title="Uçtan uca yolculuklar" icon={Truck} tone="orange">
+      <PageSection eyebrow="Flows" title="End-to-End Journeys" icon={Truck} tone="orange">
         <SegmentTabs
           items={[
             {
               value: 'tour-start',
-              label: 'Tur Başlangıcı',
+              label: 'Tour Start',
               icon: ScanLine,
               content: (
                 <Timeline
                   items={[
                     {
-                      period: 'Gün başı · Adım 1',
-                      title: 'Rota seçimi',
+                      period: 'Day start · Step 1',
+                      title: 'Route Selection',
                       desc: 'Kurye uygulamada kendi rotasını seçer.',
                       icon: MapPin,
                       tone: 'blue',
                     },
                     {
-                      period: 'Adım 2',
-                      title: 'Koli okutma',
+                      period: 'Step 2',
+                      title: 'Parcel Scan',
                       desc: 'Araca yüklenen tüm koliler barkodla okutulur.',
                       icon: ScanLine,
                       tone: 'blue',
                     },
                     {
-                      period: 'Adım 3',
-                      title: 'Onay talebi',
+                      period: 'Step 3',
+                      title: 'Approval Request',
                       desc: 'Kurye tur başlangıç onayı ister; onay her durumda zorunludur.',
                       icon: Send,
                       tone: 'indigo',
                       bullets: ['HR & SI: ilk tur onayından sonra ek okutulan koliler otomatik onaylanır'],
                     },
                     {
-                      period: 'Gün içi',
-                      title: 'Durak yönetimi',
+                      period: 'During day',
+                      title: 'Stop Management',
                       desc: 'Aynı ad+adres otomatik birleşir; onay öncesi kurye durakları manuel de birleştirebilir.',
                       icon: Boxes,
                       tone: 'teal',
@@ -93,50 +93,50 @@ export default function UserJourneysPage() {
             },
             {
               value: 'delivery',
-              label: 'Teslimat',
+              label: 'Delivery',
               icon: PackageCheck,
               content: (
                 <Timeline
                   items={[
                     {
-                      period: 'Kapıda · Adım 1',
-                      title: 'Durağa varış ve alıcı doğrulama',
+                      period: 'At door · Step 1',
+                      title: 'Stop Arrival & Receiver Verification',
                       desc: 'Alıcı adı CORE\'da ön-doludur ve düzenlenebilir (HR\'de ön-dolu gelmez).',
                       icon: DoorOpen,
                       tone: 'teal',
                     },
                     {
-                      period: 'Adım 2',
-                      title: 'Tahsilat (COD/ExW)',
+                      period: 'Step 2',
+                      title: 'Collection (COD/ExW)',
                       desc: 'Nakit her ülkede; kart HR\'de Raipay, SI\'da Softpos ile. BA/ME yalnızca nakit.',
                       icon: Banknote,
                       tone: 'green',
                     },
                     {
-                      period: 'Adım 3',
-                      title: 'Fiskalizasyon (yalnızca RS + CORE)',
+                      period: 'Step 3',
+                      title: 'Fiscalization (RS + CORE only)',
                       desc: 'VPFR tetiklenir, fiskal fiş kapıda yazdırılır; iptal durumunda SSC tetiklenir.',
                       icon: Receipt,
                       tone: 'purple',
                     },
                     {
-                      period: 'Adım 4',
-                      title: 'İmza',
+                      period: 'Step 4',
+                      title: 'Signature',
                       desc: 'CORE\'da dijital imza zorunlu; RS/BA/ME\'de opsiyonel. Fiziksel belge indirilebilir.',
                       icon: PenLine,
                       tone: 'indigo',
                     },
                     {
-                      period: 'Başarılıysa',
-                      title: 'DELY — görev kapanır',
+                      period: 'On success',
+                      title: 'DELY — Task Closed',
                       desc: 'Teslimat event\'i üretilir, takip ekranı ve Ebranch güncellenir.',
                       icon: CheckCircle2,
                       tone: 'green',
                       status: 'done',
                     },
                     {
-                      period: 'Başarısızsa',
-                      title: 'Failed reason + fotoğraf',
+                      period: 'On failure',
+                      title: 'Failed Reason + Photo',
                       desc: 'Neden listeden seçilir; bazı durumlarda fotoğraf zorunludur (BA\'da fotoğraf çekilemez, RS/ME\'de opsiyonel).',
                       icon: Camera,
                       tone: 'red',
@@ -147,42 +147,42 @@ export default function UserJourneysPage() {
             },
             {
               value: 'pickup',
-              label: 'Toplama',
+              label: 'Pickup',
               icon: PackageSearch,
               content: (
                 <Timeline
                   items={[
                     {
-                      period: 'Atama',
-                      title: 'Görev kuryeye düşer',
+                      period: 'Assignment',
+                      title: 'Task Assignment',
                       desc: 'CORE/SI/ME: her 3 dakikada otomatik job. HR/RS/BA: dispatcher manuel atar.',
                       icon: ClipboardList,
                       tone: 'blue',
                     },
                     {
-                      period: 'Sahada',
-                      title: 'Toplama ve tahsilat (CPP)',
+                      period: 'In field',
+                      title: 'Pickup & Collection (CPP)',
                       desc: 'Gönderici bilgileri uygulamada gösterilir (BA\'da alıcı bilgisi de). CPP tahsilatı yalnızca CORE/HR/RS\'de.',
                       icon: Banknote,
                       tone: 'green',
                     },
                     {
-                      period: 'Başarısızsa',
-                      title: 'Failed reason kodu',
+                      period: 'On failure',
+                      title: 'Failed Reason Code',
                       desc: 'NOPC, NPNP, NRDY, NSYS, PABS, PADU, PTIM — RDOC görevlerde yalnızca NOPC.',
                       icon: Undo2,
                       tone: 'red',
                     },
                     {
-                      period: 'Ertesi gün',
-                      title: 'Otomatik yeniden atama',
+                      period: 'Next day',
+                      title: 'Auto Re-assignment',
                       desc: 'Belirli kodlardan sonra görev ertesi iş gününe otomatik taşınır; tetikleyici kod seti ülkeye göre değişir (BA/ME\'de yok).',
                       icon: Route,
                       tone: 'indigo',
                     },
                     {
-                      period: 'Gün sonu',
-                      title: 'PAC kuralı',
+                      period: 'End of day',
+                      title: 'PAC Rule',
                       desc: 'Aksiyonsuz "pickup at customer" görevi gün sonunu engeller (SI hariç).',
                       icon: CheckCircle2,
                       tone: 'amber',
@@ -199,36 +199,36 @@ export default function UserJourneysPage() {
                 <Timeline
                   items={[
                     {
-                      period: 'Adım 1',
-                      title: 'Pickup at customer görevi oluşur',
+                      period: 'Step 1',
+                      title: 'Pickup at Customer task oluşur',
                       desc: 'Sistemde henüz gönderi kaydı olmayan koli için görev açılır.',
                       icon: ClipboardList,
                       tone: 'blue',
                     },
                     {
-                      period: 'Adım 2',
-                      title: 'Kurye koliyi toplar',
+                      period: 'Step 2',
+                      title: 'Parcel Pickup',
                       desc: 'Red label koli mobil uygulama üzerinden teslim alınır.',
                       icon: PackageSearch,
                       tone: 'teal',
                     },
                     {
-                      period: 'Adım 3',
-                      title: 'Npoint\'te indirme',
+                      period: 'Step 3',
+                      title: 'Npoint Drop-off',
                       desc: 'Koli dağıtım noktasında (Npoint) araçtan indirilir.',
                       icon: Boxes,
                       tone: 'indigo',
                     },
                     {
-                      period: 'Adım 4',
-                      title: 'Gönderi oluşturulur',
+                      period: 'Step 4',
+                      title: 'Shipment Creation',
                       desc: 'Koli için sistemde gönderi kaydı açılır.',
                       icon: Package,
                       tone: 'purple',
                     },
                     {
-                      period: 'Adım 5',
-                      title: 'Backoffice tamamlar',
+                      period: 'Step 5',
+                      title: 'Backoffice Completion',
                       desc: 'Eksik veri backoffice tarafından tamamlanır. Akış SI ve ME\'de kapsam dışıdır.',
                       icon: CheckCircle2,
                       tone: 'green',
@@ -246,31 +246,31 @@ export default function UserJourneysPage() {
                 <Timeline
                   items={[
                     {
-                      period: 'Rezervasyon',
-                      title: 'LCR oluşturulur',
+                      period: 'Reservation',
+                      title: 'LCR Creation',
                       desc: 'Kurye Nesy Mobile\'dan ya da alıcı Ebranch\'tan (LCR + DDP) dolap rezervasyonu yapar; legacy ID D4Me\'ye gönderilir.',
                       icon: QrCode,
                       tone: 'blue',
                       bullets: ['RS: tam ID yerine Legacy ID\'nin ilk 14 hanesi kullanılır'],
                     },
                     {
-                      period: 'Bırakma',
-                      title: 'DEPT event\'i',
+                      period: 'Drop-off',
+                      title: 'DEPT Event',
                       desc: 'Kurye koliyi dolaba bırakır; DEPT, D4MeCallback ile sisteme düşer.',
                       icon: Lock,
                       tone: 'teal',
                     },
                     {
-                      period: 'Zamanında alınırsa',
-                      title: 'DELY callback',
+                      period: 'Picked up on time',
+                      title: 'DELY Callback',
                       desc: 'Alıcı koliyi süresinde alır; teslimat callback ile kapanır.',
                       icon: CheckCircle2,
                       tone: 'green',
                       status: 'done',
                     },
                     {
-                      period: 'Alınmazsa',
-                      title: 'Locker Pickup görevi',
+                      period: 'Not picked up',
+                      title: 'Locker Pickup Task',
                       desc: 'Süresi dolan koli için toplama görevi oluşur; kurye alırsa COPT event\'i atanır.',
                       icon: Undo2,
                       tone: 'orange',
@@ -283,7 +283,7 @@ export default function UserJourneysPage() {
         />
       </PageSection>
 
-      <Callout icon={Info} title="Akışlar ve matris" tone="orange">
+      <Callout icon={Info} title="Flows & Matrix" tone="orange">
         Buradaki adımlar anlatı düzeyindedir; bir adımın belirli bir ülkedeki kesin davranışı{' '}
         <b>Country Matrix</b>&apos;teki ilgili feature satırından okunur. Çelişki durumunda matris
         kazanır.

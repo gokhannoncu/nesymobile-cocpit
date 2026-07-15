@@ -2,31 +2,12 @@
 // Kaynak: NesyMobileTBD ülke-bazlı özellik matrisi (kurye uygulaması).
 // Country id'leri Feature kayıtlarındaki alan adlarıyla eşleşir.
 
-export type CountryId = 'core' | 'hr' | 'si' | 'rs' | 'ba' | 'me' | 'sk'
+import { FEATURE_DETAILS } from './feature-details'
 
-export interface Country {
-  id: CountryId
-  name: string
-  subtitle: string
-  price: string
-  status: 'Küresel' | 'Aktif' | 'Gelişmiş' | 'Kısıtlı'
-  isPopular?: boolean
-}
+// Tip tanımları nesy-types.ts'den gelir — circular dependency'yi önler.
+export type { CountryId, Country, FeatureDetail, Feature, Module } from './nesy-types'
+import type { Country, Feature, Module, CountryId } from './nesy-types'
 
-export interface Feature {
-  id: string
-  title: string
-  desc: string
-  /** Ülke bazlı davranış — '—' henüz yok, 'N/A' kapsam dışı, diğer her şey açıklama. */
-  values: Record<CountryId, string>
-}
-
-export interface Module {
-  id: string
-  title: string
-  desc: string
-  features: Feature[]
-}
 
 export const COUNTRIES: Country[] = [
   { id: 'core', name: 'CORE', subtitle: 'Standart Altyapı', price: 'Varsayılan', status: 'Küresel' },
@@ -444,3 +425,13 @@ export function supportedCount(countryId: CountryId): number {
 }
 
 export const TOTAL_FEATURES = MODULES.reduce((acc, m) => acc + m.features.length, 0)
+
+// Feature detail verilerini bağla — feature id'lerine göre otomatik eşleştir.
+for (const mod of MODULES) {
+  for (const feat of mod.features) {
+    if (!feat.detail && FEATURE_DETAILS[feat.id]) {
+      feat.detail = FEATURE_DETAILS[feat.id]
+    }
+  }
+}
+

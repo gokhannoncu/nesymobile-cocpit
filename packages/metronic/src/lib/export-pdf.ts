@@ -378,10 +378,18 @@ export interface ExportPageToPdfOptions {
 }
 
 /**
- * Planlı (slayt) export: her `[data-pdf-slide]` bölümü kendi sayfasında başlar —
- * sürekli tek akış yerine PowerPoint benzeri "bölüm başına slayt" çıktı.
- * Yön (dikey/yatay) her slayt için ayrı çözülür; geniş tablo/grafik içeren
- * bölüm tek başına yatay olabilir. Bölümler DOM sırasında işlenir; istenirse
+ * PowerPoint 16:9 geniş ekran slayt kanvası (mm) — 13.333 in × 7.5 in.
+ * A4 kâğıt değil; sunum kanvası boyutu. 960 × 540 pt'ye denk gelir.
+ */
+const SLIDE_W_MM = 338.667
+const SLIDE_H_MM = 190.5
+const SLIDE_MARGIN = 10
+
+/**
+ * Planlı (slayt) export: her `[data-pdf-slide]` bölümü kendi 16:9 sunum
+ * slaytına yerleştirilir — A4 kâğıdı değil, PowerPoint kanvas boyutu. Her bölüm
+ * tam olarak tek slayta sığdırılır (contain-fit + ortalanmış); içerik hiçbir
+ * zaman kırpılmaz. Bölümler DOM sırasında işlenir; istenirse
  * `data-pdf-slide-order` ile sıra bozulmadan yeniden düzenlenebilir.
  */
 export async function exportSlidesToPdf({
@@ -394,19 +402,32 @@ export async function exportSlidesToPdf({
   if (slides.length === 0) throw new Error('Yakalanacak slayt bulunamadı')
 
   const JsPDF = await loadJsPDF()
+  const format: [number, number] = [SLIDE_W_MM, SLIDE_H_MM]
+  const areaW = SLIDE_W_MM - SLIDE_MARGIN * 2
+  const areaH = SLIDE_H_MM - SLIDE_MARGIN * 2
   let pdf: jsPDF | null = null
 
   for (const slide of slides) {
-    const { canvas, orientation } = await captureElementToCanvas(slide, { pad: true })
+    // Yön (dikey/yatay) yakalamada içerik kırpılmasını önlemek için çözülür;
+    // slayta yerleştirme her koşulda 16:9 kanvasa contain-fit yapılır.
+    const { canvas } = await captureElementToCanvas(slide)
+
+    // Bölümün tamamını slayta sığdır (en/boy oranını koru), sonra ortala.
+    const fit = Math.min(areaW / canvas.width, areaH / canvas.height)
+    const wMm = canvas.width * fit
+    const hMm = canvas.height * fit
+    const x = (SLIDE_W_MM - wMm) / 2
+    const y = (SLIDE_H_MM - hMm) / 2
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+
     if (!pdf) {
       // İlk slayt dokümanın kurucu sayfasına yazılır (fazladan boş sayfa olmaz).
-      pdf = new JsPDF({ orientation, unit: 'mm', format: 'a4', compress: true })
+      pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format, compress: true })
       pdf.setProperties({ title })
-      appendCanvasToPdf(pdf, canvas, orientation, { skipFirstAddPage: true })
     } else {
-      // Sonraki her slayt yeni sayfada başlar.
-      appendCanvasToPdf(pdf, canvas, orientation)
+      pdf.addPage(format, 'landscape')
     }
+    pdf.addImage(dataUrl, 'JPEG', x, y, wMm, hMm)
   }
 
   const date = new Date().toISOString().slice(0, 10)

@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, CreditCard, Globe, Info, MapPin, Receipt, Zap } from 'lucide-react'
+import { Building2, CreditCard, Globe, MapPin, Zap } from 'lucide-react'
 import {
   Callout,
   CardGrid,
@@ -124,13 +124,6 @@ export default function CountryProfilesPage() {
         Yeni bir ülke, önce Country Matrix&apos;te bir sütun olarak tanımlanır (Scale SK örneğindeki
         gibi). Davranışlar feature feature netleştikçe matris doldurulur; paket ancak matris
         tamamlandığında &quot;Aktif&quot; statüsüne geçer.
-      </Callout>
-
-      <Callout icon={Receipt} title="Fiyatlandırma notu" tone="gray">
-        <span className="inline-flex items-center gap-1">
-          <Info className="size-3.5" /> Paket fiyatları aylık abonelik referans değerleridir; sözleşme
-          bazlı değişebilir. Ticari detaylar Business &amp; Growth alanında izlenir.
-        </span>
       </Callout>
     </ProductPage>
   )
