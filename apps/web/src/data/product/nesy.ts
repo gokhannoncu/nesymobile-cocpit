@@ -1,67 +1,67 @@
-// Nesy Mobile ürün verisi — tek gerçek kaynak.
-// Kaynak: NesyMobileTBD ülke-bazlı özellik matrisi (kurye uygulaması).
-// Country id'leri Feature kayıtlarındaki alan adlarıyla eşleşir.
+// Nesy Mobile product data — single source of truth.
+// Source: NesyMobileTBD country-based feature matrix (courier app).
+// Country IDs match field names in Feature records.
 
 import { FEATURE_DETAILS } from './feature-details'
 
-// Tip tanımları nesy-types.ts'den gelir — circular dependency'yi önler.
+// Type definitions come from nesy-types.ts — avoids circular dependency.
 export type { CountryId, Country, FeatureDetail, Feature, Module } from './nesy-types'
 import type { Country, Feature, Module, CountryId } from './nesy-types'
 
 
 export const COUNTRIES: Country[] = [
-  { id: 'core', name: 'CORE', subtitle: 'Standart Altyapı', price: 'Varsayılan', status: 'Küresel' },
-  { id: 'hr', name: 'Scale HR', subtitle: 'Hırvatistan', price: '€299/ay', status: 'Aktif', isPopular: true },
-  { id: 'si', name: 'Scale SI', subtitle: 'Slovenya', price: '€249/ay', status: 'Aktif' },
-  { id: 'rs', name: 'Scale Plus RS', subtitle: 'Sırbistan', price: '€399/ay', status: 'Gelişmiş' },
-  { id: 'ba', name: 'Start BA', subtitle: 'Bosna', price: '€149/ay', status: 'Kısıtlı' },
-  { id: 'me', name: 'Start ME', subtitle: 'Karadağ', price: '€149/ay', status: 'Kısıtlı' },
-  { id: 'sk', name: 'Scale SK', subtitle: 'Slovakya', price: '€249/ay', status: 'Kısıtlı' },
+  { id: 'core', name: 'CORE', subtitle: 'Standard Infrastructure', price: 'Default', status: 'Global' },
+  { id: 'hr', name: 'Scale HR', subtitle: 'Croatia', price: '€299/mo', status: 'Active', isPopular: true },
+  { id: 'si', name: 'Scale SI', subtitle: 'Slovenia', price: '€249/mo', status: 'Active' },
+  { id: 'rs', name: 'Scale Plus RS', subtitle: 'Serbia', price: '€399/mo', status: 'Advanced' },
+  { id: 'ba', name: 'Start BA', subtitle: 'Bosnia', price: '€149/mo', status: 'Limited' },
+  { id: 'me', name: 'Start ME', subtitle: 'Montenegro', price: '€149/mo', status: 'Limited' },
+  { id: 'sk', name: 'Scale SK', subtitle: 'Slovakia', price: '€249/mo', status: 'Limited' },
 ]
 
 export const MODULES: Module[] = [
   {
     id: 'delivery-process',
     title: 'Delivery Process',
-    desc: 'Kapıda teslimat akışı: tahsilat, fiskalizasyon, imza, başarısız teslimat ve alternatif teslim noktaları.',
+    desc: 'Doorstep delivery flow: collection, fiscalization, signature, failed delivery, and alternative delivery points.',
     features: [
       {
         id: 'collect_cod',
         title: 'Collect COD',
-        desc: 'Kapıda nakit ve kredi kartı tahsilatı (cash on delivery).',
+        desc: 'Cash and credit card collection at the door (cash on delivery).',
         values: {
-          core: 'Nakit ve kredi kartı ödemeleri desteklenir',
-          hr: 'Nakit mevcut\nKredi kartı Raipay üzerinden',
-          si: 'Nakit mevcut\nKredi kartı Softpos üzerinden',
-          rs: 'Nakit mevcut\nKredi kartı Softpos üzerinden (entegre edilecek)',
-          ba: 'Yalnızca nakit tahsilat',
-          me: 'Yalnızca nakit tahsilat',
+          core: 'Cash and credit card payments supported',
+          hr: 'Cash available\nCredit card via Raipay',
+          si: 'Cash available\nCredit card via Softpos',
+          rs: 'Cash available\nCredit card via Softpos (to be integrated)',
+          ba: 'Cash only collection',
+          me: 'Cash only collection',
           sk: '—',
         },
       },
       {
         id: 'collect_exw',
         title: 'Collect ExW',
-        desc: 'Pickup noktasında ex-works tahsilatı.',
+        desc: 'Ex-works collection at the pickup point.',
         values: {
-          core: 'Nakit ve kredi kartı ödemeleri desteklenir',
-          hr: 'Nakit mevcut\nKredi kartı Raipay üzerinden',
-          si: 'Nakit mevcut\nKredi kartı Softpos üzerinden',
-          rs: 'Nakit mevcut\nKredi kartı Softpos üzerinden (entegre edilecek)',
-          ba: 'Yalnızca nakit tahsilat',
-          me: 'Yalnızca nakit tahsilat',
+          core: 'Cash and credit card payments supported',
+          hr: 'Cash available\nCredit card via Raipay',
+          si: 'Cash available\nCredit card via Softpos',
+          rs: 'Cash available\nCredit card via Softpos (to be integrated)',
+          ba: 'Cash only collection',
+          me: 'Cash only collection',
           sk: '—',
         },
       },
       {
         id: 'skip_exwork',
         title: 'Skip Exwork',
-        desc: 'Kurye beklenen exwork tutarını atlayabilir.',
+        desc: 'Courier can skip the expected exwork amount.',
         values: {
-          core: 'Beklenen exwork tutarı kurye tarafından atlanabilir; gönderi güncellenir ve müşteriye faturalanır.',
+          core: 'Expected exwork amount can be skipped by courier; shipment is updated and invoiced to customer.',
           hr: 'N/A',
           si: 'N/A',
-          rs: 'Core ile aynı',
+          rs: 'Same as Core',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -70,12 +70,12 @@ export const MODULES: Module[] = [
       {
         id: 'fiscalization_dp',
         title: 'Fiscalization',
-        desc: 'Teslimatta fiskal fiş tetiklenir ve yazdırılır.',
+        desc: 'Fiscal receipt is triggered and printed on delivery.',
         values: {
-          core: 'Teslimatta VPFR tetiklenir ve fiş yazdırılır',
+          core: 'VPFR is triggered on delivery and receipt is printed',
           hr: 'N/A',
           si: 'N/A',
-          rs: 'Core ile aynı',
+          rs: 'Same as Core',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -84,54 +84,54 @@ export const MODULES: Module[] = [
       {
         id: 'failed_reasons',
         title: 'Delivery Failed Reasons / Photo',
-        desc: 'Başarısız teslimat nedeni seçimi ve zorunlu fotoğraf kanıtı.',
+        desc: 'Failed delivery reason selection and mandatory photo evidence.',
         values: {
-          core: 'Tam başarısız neden listesi + bazı durumlarda zorunlu fotoğraf',
-          hr: 'Core ile aynı',
-          si: 'Sınırlı liste (fotoğraf Core ile aynı)',
-          rs: 'Core ile aynı, fotoğraf opsiyonel',
-          ba: 'Core ile aynı, fotoğraf çekilemez',
-          me: 'Core ile aynı, fotoğraf opsiyonel',
+          core: 'Full failed reason list + mandatory photo in some cases',
+          hr: 'Same as Core',
+          si: 'Limited list (photo same as Core)',
+          rs: 'Same as Core, photo optional',
+          ba: 'Same as Core, photo not available',
+          me: 'Same as Core, photo optional',
           sk: '—',
         },
       },
       {
         id: 'consignee_info',
         title: 'Consignee Information',
-        desc: 'Teslimatta alıcı adının ön-dolumu ve düzenlenme davranışı.',
+        desc: 'Pre-fill and edit behavior of consignee name on delivery.',
         values: {
-          core: 'Ad ön-dolu, düzenlenebilir',
-          hr: 'Ad ön-dolu değil, harici olarak manuel gönderilir',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          core: 'Name pre-filled, editable',
+          hr: 'Name not pre-filled, sent manually externally',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'signature_dp',
         title: 'Signature',
-        desc: 'Teslimatta dijital ve fiziksel imza toplama.',
+        desc: 'Digital and physical signature collection on delivery.',
         values: {
-          core: 'Dijital imza zorunlu\nFiziksel belge indirilebilir ve imzalanır',
-          hr: 'Dijital imza Core ile aynı\nDely list Core ile aynı (kod merge sonrası)',
-          si: 'Core ile aynı',
-          rs: 'Dijital imza opsiyonel\nDely list Core ile aynı',
-          ba: 'Dijital imza opsiyonel\nDely list Core ile aynı',
-          me: 'Dijital imza opsiyonel\nDely list Core ile aynı',
+          core: 'Digital signature mandatory\nPhysical document downloadable and signed',
+          hr: 'Digital signature same as Core\nDely list same as Core (after code merge)',
+          si: 'Same as Core',
+          rs: 'Digital signature optional\nDely list same as Core',
+          ba: 'Digital signature optional\nDely list same as Core',
+          me: 'Digital signature optional\nDely list same as Core',
           sk: '—',
         },
       },
       {
         id: 'delivery_parcelshop',
         title: 'Delivery to Parcelshop',
-        desc: 'Gönderilerin parcel shop / pick-up noktasına teslimi.',
+        desc: 'Delivery of shipments to parcel shop / pick-up point.',
         values: {
-          core: 'RDOC ve OVSZ gönderiler teslim edilemez',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
+          core: 'RDOC and OVSZ shipments cannot be delivered',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -140,12 +140,12 @@ export const MODULES: Module[] = [
       {
         id: 'delivery_locker',
         title: 'Delivery to Locker',
-        desc: 'Akıllı dolap teslimatları için D4ME entegrasyonu.',
+        desc: 'D4ME integration for smart locker deliveries.',
         values: {
-          core: 'D4ME entegrasyonu\nRDOC ve OVSZ gönderiler teslim edilemez',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
+          core: 'D4ME integration\nRDOC and OVSZ shipments cannot be delivered',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -156,31 +156,31 @@ export const MODULES: Module[] = [
   {
     id: 'pickup-process',
     title: 'Pickup Process',
-    desc: 'Toplama akışı: görev atama, CPP tahsilatı, başarısız toplama nedenleri ve otomatik yeniden atama.',
+    desc: 'Pickup flow: task assignment, CPP collection, failed pickup reasons, and auto re-assignment.',
     features: [
       {
         id: 'pickup_assignment',
         title: 'Pickup Assignment',
-        desc: 'Toplama görevlerinin kuryelere atanma biçimi.',
+        desc: 'How pickup tasks are assigned to couriers.',
         values: {
-          core: 'Toplama görevleri job ile otomatik atanır (her 3 dakikada)',
-          hr: 'Dispatcher tarafından manuel atanır',
-          si: 'Core ile aynı',
-          rs: 'Dispatcher tarafından manuel atanır',
-          ba: 'Dispatcher tarafından manuel atanır',
-          me: 'Core ile aynı',
+          core: 'Pickup tasks auto-assigned via job (every 3 minutes)',
+          hr: 'Manually assigned by dispatcher',
+          si: 'Same as Core',
+          rs: 'Manually assigned by dispatcher',
+          ba: 'Manually assigned by dispatcher',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'collect_cpp',
         title: 'Collect CPP',
-        desc: 'Toplama noktasında nakit ve kredi kartı tahsilatı.',
+        desc: 'Cash and credit card collection at the pickup point.',
         values: {
-          core: 'Nakit ve kredi kartı ödemeleri desteklenir',
-          hr: 'Nakit mevcut\nKredi kartı Raipay üzerinden',
+          core: 'Cash and credit card payments supported',
+          hr: 'Cash available\nCredit card via Raipay',
           si: 'N/A',
-          rs: 'Nakit mevcut\nKredi kartı Softpos üzerinden (entegre edilecek)',
+          rs: 'Cash available\nCredit card via Softpos (to be integrated)',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -189,9 +189,9 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_fiscalization',
         title: 'Pickup Fiscalization (Print Fiscal)',
-        desc: 'CPP gönderiler için toplamada fiskal fiş tetiklenir ve yazdırılır.',
+        desc: 'Fiscal receipt is triggered and printed on pickup for CPP shipments.',
         values: {
-          core: 'CPP gönderiler için toplamada VPFR tetiklenir ve fiş yazdırılır',
+          core: 'VPFR is triggered on pickup for CPP shipments and receipt is printed',
           hr: 'N/A',
           si: 'N/A',
           rs: 'N/A',
@@ -203,41 +203,41 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_at_customer',
         title: 'Pickup at Customer',
-        desc: 'PAC görev davranışı ve gün sonu engelleme kuralları.',
+        desc: 'PAC task behavior and end-of-day blocking rules.',
         values: {
-          core: 'Aksiyonsuz PAC görevi gün sonunu engeller',
-          hr: 'Core ile aynı',
-          si: 'Aksiyonsuz PAC görevi gün sonunu ENGELLEMEZ',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          core: 'Unactioned PAC task blocks end of day',
+          hr: 'Same as Core',
+          si: 'Unactioned PAC task does NOT block end of day',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'remote_pickup',
         title: 'Remote Pickup',
-        desc: 'Mobil uygulamada gönderici ve alıcı bilgilerinin gösterimi.',
+        desc: 'Display of sender and receiver information in the mobile app.',
         values: {
-          core: 'Gönderici bilgileri mobil uygulamada gösterilir',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Alıcı bilgileri de gönderici ile birlikte gösterilir',
-          me: 'Core ile aynı',
+          core: 'Sender information displayed in mobile app',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Receiver information also displayed alongside sender',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'red_label',
         title: 'Red Label',
-        desc: 'Red label gönderilerin mobil uygulama üzerinden toplanma akışı.',
+        desc: 'Red label shipment pickup flow via mobile app.',
         values: {
-          core: 'Redlabel gönderiler mobil uygulama ile toplanır\n\nSüreç akışı:\n- Pickup at customer görevi oluşur\n- Kurye koliyi toplar\n- Koli Npoint’te indirilir\n- Gönderi oluşturulur\n- Backoffice eksik veriyi tamamlar',
-          hr: 'Core ile aynı',
+          core: 'Red label shipments are picked up via mobile app\n\nProcess flow:\n- Pickup at Customer task is created\n- Courier picks up the parcel\n- Parcel is dropped off at Npoint\n- Shipment is created\n- Backoffice completes missing data',
+          hr: 'Same as Core',
           si: 'N/A',
-          rs: 'Core ile aynı akış',
-          ba: 'Core ile aynı',
+          rs: 'Same as Core flow',
+          ba: 'Same as Core',
           me: 'N/A',
           sk: '—',
         },
@@ -245,38 +245,38 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_failed_non_rdoc',
         title: 'Pickup Failed Reason (Non-RDOC)',
-        desc: 'RDOC olmayan toplama görevleri için başarısız neden kodları.',
+        desc: 'Failed reason codes for non-RDOC pickup tasks.',
         values: {
           core: 'NOPC, NPNP, NRDY, NSYS, PABS, PADU, PTIM',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'rdoc_failed_reasons',
         title: 'RDOC Failed Reasons',
-        desc: 'RDOC toplama görevleri için başarısız neden kodları.',
+        desc: 'Failed reason codes for RDOC pickup tasks.',
         values: {
           core: 'NOPC',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'auto_reassignment',
         title: 'Auto Reassignment to Next Working Day',
-        desc: 'Başarısız toplama sonrası otomatik yeniden atama tetikleyici kodları.',
+        desc: 'Trigger codes for auto re-assignment after failed pickup.',
         values: {
-          core: 'Başarısız nedenlerden sonra (NPNP, NRDY, PABS, PTIM)',
-          hr: 'Core ile aynı',
+          core: 'After failed reasons (NPNP, NRDY, PABS, PTIM)',
+          hr: 'Same as Core',
           si: 'NPNP, NRDY, PABS, PADU, PTIM',
           rs: 'NPNP, NRDY, NSYS, PABS, PADU, PTIM',
           ba: '—',
@@ -289,61 +289,61 @@ export const MODULES: Module[] = [
   {
     id: 'tour-stop-management',
     title: 'Tour & Stop Management',
-    desc: 'Tur ve durak yönetimi: durak oluşturma/birleştirme kuralları, gün başı tur onayı ve event listesi.',
+    desc: 'Tour and stop management: stop creation/merge rules, beginning-of-day tour approval, and event list.',
     features: [
       {
         id: 'creation_of_stops',
         title: 'Creation of Stops (Merge Shipments)',
-        desc: 'Otomatik ve manuel durak oluşturma ile gönderi birleştirme kuralları.',
+        desc: 'Automatic and manual stop creation with shipment merge rules.',
         values: {
-          core: '- Alıcı adı ve adresi aynıysa → gönderiler aynı durak altında otomatik birleşir (dely)\n- Gönderici adı ve adresi aynıysa → otomatik birleşir (pickup)\n- Tur onayından sonra yeni gönderiler, eşleşen durak yoksa yeni durak olarak eklenir\n- Tur başlangıç onayından önce kurye durakları manuel birleştirebilir',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          core: '- If receiver name and address match → shipments auto-merge under same stop (dely)\n- If sender name and address match → auto-merge (pickup)\n- After tour approval, new shipments are added as new stops if no matching stop exists\n- Before tour start approval, courier can manually merge stops',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'merge_stops_manual',
         title: 'Merge Stops (Manual)',
-        desc: 'Ana durak seçip alt durakları altında manuel birleştirme.',
+        desc: 'Select a main stop and manually merge sub-stops under it.',
         values: {
-          core: 'Kullanıcı bir ana durak seçer ve alt durakları seçerek farklı durakları onun altında birleştirir',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          core: 'User selects a main stop and merges different stops under it by selecting sub-stops',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'tour_start_approval',
         title: 'Tour Start Approval (Beginning of Day)',
-        desc: 'Gün başında koli okutma ve tur onay akışı.',
+        desc: 'Beginning-of-day parcel scan and tour approval flow.',
         values: {
-          core: 'Kurye rota seçer, kolileri okutur ve onay talebi gönderir\nTur başlangıç onayı her durumda zorunlu',
-          hr: 'İlk tur başlangıcından sonra ek okutulan koliler otomatik onaylanır',
-          si: 'İlk tur başlangıcından sonra ek okutulan koliler otomatik onaylanır',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı',
-          me: 'Core ile aynı',
+          core: 'Courier selects route, scans parcels, and sends approval request\nTour start approval is mandatory in all cases',
+          hr: 'After first tour start, additionally scanned parcels are auto-approved',
+          si: 'After first tour start, additionally scanned parcels are auto-approved',
+          rs: 'Same as Core',
+          ba: 'Same as Core',
+          me: 'Same as Core',
           sk: '—',
         },
       },
       {
         id: 'app_hc_event_list',
         title: 'Application HC – Event List',
-        desc: 'Mobil uygulama event listesindeki mevcut event’ler.',
+        desc: 'Available events in the mobile app event list.',
         values: {
-          core: 'Core event listesi',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: 'Core ile aynı',
-          ba: 'Core event’leri + PICK event',
-          me: 'Core event’leri + RETS (Return to Sender)',
+          core: 'Core event list',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: 'Same as Core',
+          ba: 'Core events + PICK event',
+          me: 'Core events + RETS (Return to Sender)',
           sk: '—',
         },
       },
@@ -352,19 +352,19 @@ export const MODULES: Module[] = [
   {
     id: 'shipment-tracking',
     title: 'Shipment Tracking',
-    desc: 'Gönderi takip ekranı: kimlik, konum, son event, taraf bilgileri ve fiskal detaylar.',
+    desc: 'Shipment tracking screen: ID, location, last event, party information, and fiscal details.',
     features: [
       {
         id: 'shipment_tracking_screen',
         title: 'Shipment Tracking Screen',
-        desc: 'Gönderi takip ekranında gösterilen bilgiler ve fiskal detaylar.',
+        desc: 'Information displayed on the shipment tracking screen and fiscal details.',
         values: {
-          core: 'Takip ekranı ShipmentID, Güncel Konum, Son Event, Gönderici ve Alıcıyı gösterir\n\nExW / CPP gönderilerde fiskal detaylar görünür. Fiskal iptal edilirse SSC tetiklenir',
-          hr: 'Core ile aynı (fiskalizasyon hariç)',
-          si: 'Core ile aynı (fiskalizasyon hariç)',
-          rs: 'Core ile aynı',
-          ba: 'Core ile aynı (fiskalizasyon hariç)',
-          me: 'Core ile aynı (fiskalizasyon hariç)',
+          core: 'Tracking screen shows ShipmentID, Current Location, Last Event, Sender and Receiver\n\nFiscal details visible on ExW / CPP shipments. If fiscal is cancelled, SSC is triggered',
+          hr: 'Same as Core (except fiscalization)',
+          si: 'Same as Core (except fiscalization)',
+          rs: 'Same as Core',
+          ba: 'Same as Core (except fiscalization)',
+          me: 'Same as Core (except fiscalization)',
           sk: '—',
         },
       },
@@ -373,16 +373,16 @@ export const MODULES: Module[] = [
   {
     id: 'ebranch-delivery-options',
     title: 'Ebranch & Delivery Options',
-    desc: 'Alıcıya giden takip linki ve tur öncesi/sonrası self-servis teslimat seçenekleri.',
+    desc: 'Tracking link sent to receiver and pre/post-tour self-service delivery options.',
     features: [
       {
         id: 'ebranch_tracking_link',
         title: 'Ebranch Tracking Link & Delivery Options',
-        desc: 'Takip linki üretimi ve tur öncesi/sonrası teslimat seçenekleri.',
+        desc: 'Tracking link generation and pre/post-tour delivery options.',
         values: {
-          core: '• Gönderi oluşturulduktan sonra branch linki üretilir\n\nTUR öncesi:\n• Parcel Shop’a teslim\n• D4Me Locker’a teslim\n• D4Me Private Locker’a teslim\n\nGönderi otomatik yönlendirilmişse (DSSA):\n• Şubeden al\n• Teslimatı reddet\n\nTUR sonrası:\n• Evde\n• Teslimat tarihini değiştir\n• Adres değiştir\n• Şubeden al\n• Teslimatı reddet\n• Parcel Shop / D4Me Locker / Private Locker’a teslim\n\n• COD/ExW ise → INIT sonrası "Pay with Link" görünür\n• Branch linki DELY / RETS / STOR / DELR sonrası geçersizleşir',
-          hr: '"D4Me Private Locker’a teslim" TUR öncesi görünmez\nCOD/ExW TUR öncesi ödendiyse → Cashdesk’te "CC Overseas" altında görünür',
-          si: 'Ebranch’ta şu seçenekler görünmez:\n• Şubeden al\n• Teslimatı reddet\n\nCOD/ExW TUR öncesi ödendiyse → Cashdesk’te "CC ExpressOne" altında görünür',
+          core: '• Branch link is generated after shipment creation\n\nPre-TOUR:\n• Deliver to Parcel Shop\n• Deliver to D4Me Locker\n• Deliver to D4Me Private Locker\n\nIf shipment is auto-redirected (DSSA):\n• Pick up from branch\n• Reject delivery\n\nPost-TOUR:\n• At home\n• Change delivery date\n• Change address\n• Pick up from branch\n• Reject delivery\n• Deliver to Parcel Shop / D4Me Locker / Private Locker\n\n• If COD/ExW → "Pay with Link" appears after INIT\n• Branch link expires after DELY / RETS / STOR / DELR',
+          hr: '"Deliver to D4Me Private Locker" not visible pre-TOUR\nIf COD/ExW paid pre-TOUR → appears in Cashdesk under "CC Overseas"',
+          si: 'Following options not visible in Ebranch:\n• Pick up from branch\n• Reject delivery\n\nIf COD/ExW paid pre-TOUR → appears in Cashdesk under "CC ExpressOne"',
           rs: 'N/A',
           ba: 'N/A',
           me: 'N/A',
@@ -394,17 +394,17 @@ export const MODULES: Module[] = [
   {
     id: 'd4me-locker',
     title: 'D4Me Locker',
-    desc: 'D4Me entegrasyonu ile dolap rezervasyonu, teslim ve süre aşımı yönetimi.',
+    desc: 'D4Me integration for locker reservation, delivery, and timeout management.',
     features: [
       {
         id: 'd4me_locker_delivery',
         title: 'D4Me Locker Delivery Process',
-        desc: 'D4Me entegrasyonu üzerinden dolap rezervasyonu, teslim ve süre aşımı yönetimi.',
+        desc: 'Locker reservation, delivery, and timeout management via D4Me integration.',
         values: {
-          core: '• Kurye Nesy Mobile üzerinden D4Me Locker rezervasyonu (LCR) oluşturabilir\n• VEYA alıcı Ebranch üzerinden rezervasyon oluşturabilir (LCR + DDP)\n• Rezervasyon adımında legacy ID D4Me’ye gönderilir\n• Kurye koliyi dolaba bırakır → DEPT event’i D4MeCallback ile gönderilir\n• Alıcı zamanında alırsa → callback ile DELY alınır\n• Alınmazsa → Locker Pickup görevi oluşturulur\n• Kurye süresi geçen koliyi alırsa → COPT event’i atanır',
-          hr: 'Core ile aynı',
-          si: 'Core ile aynı',
-          rs: '• Entegrasyon Legacy ID’nin ilk 14 hanesi ile yönetilir\n• Tam Legacy ID yerine 14 haneli ID gönderilir\n• DEPT 14 haneli eşleme ile işlenir\n• Callback ile gelen DELY saklanan tam Legacy ID’ye eşlenir',
+          core: '• Courier can create D4Me Locker reservation (LCR) via Nesy Mobile\n• OR receiver can create reservation via Ebranch (LCR + DDP)\n• Legacy ID is sent to D4Me at the reservation step\n• Courier drops parcel into locker → DEPT event is sent via D4MeCallback\n• If receiver picks up on time → DELY is received via callback\n• If not picked up → Locker Pickup task is created\n• If courier picks up expired parcel → COPT event is assigned',
+          hr: 'Same as Core',
+          si: 'Same as Core',
+          rs: '• Integration managed via first 14 digits of Legacy ID\n• 14-digit ID sent instead of full Legacy ID\n• DEPT processed with 14-digit matching\n• DELY from callback matched to stored full Legacy ID',
           ba: 'N/A',
           me: 'N/A',
           sk: '—',
@@ -414,19 +414,19 @@ export const MODULES: Module[] = [
   },
 ]
 
-/** Bir feature değeri o ülkede "destekleniyor" mu? */
+/** Is a feature value "supported" in that country? */
 export function isSupported(value: string): boolean {
   return value !== '—' && value !== 'N/A'
 }
 
-/** Ülke bazında desteklenen feature sayısı. */
+/** Supported feature count per country. */
 export function supportedCount(countryId: CountryId): number {
   return MODULES.flatMap((m) => m.features).filter((f) => isSupported(f.values[countryId])).length
 }
 
 export const TOTAL_FEATURES = MODULES.reduce((acc, m) => acc + m.features.length, 0)
 
-// Feature detail verilerini bağla — feature id'lerine göre otomatik eşleştir.
+// Bind feature detail data — auto-match by feature IDs.
 for (const mod of MODULES) {
   for (const feat of mod.features) {
     if (!feat.detail && FEATURE_DETAILS[feat.id]) {

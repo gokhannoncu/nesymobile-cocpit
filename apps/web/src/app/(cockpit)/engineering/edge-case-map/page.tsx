@@ -14,9 +14,7 @@ import {
   Lightbulb,
   Radar,
   Search,
-  ShieldOff,
   Table2,
-  Timer,
   X,
   Zap,
 } from 'lucide-react'
@@ -112,14 +110,6 @@ export default function EdgeCaseIntelligencePage() {
           <StatCard label="Kritik" value={kpi.critical} tone="red" icon={AlertTriangle} />
         </StatGrid>
       </HeroCallout>
-
-      {/* ── KPI satırı ── */}
-      <StatGrid cols={4}>
-        <StatCard label="Test Edilmemiş" value={kpi.untested} tone="red" icon={FlaskConical} hint="Hiç doğrulanmamış kayıt" />
-        <StatCard label="Otomasyonsuz" value={kpi.noAutomation} tone="orange" icon={Timer} hint="Regression testi bulunmayan" />
-        <StatCard label="Incident Üretmiş" value={kpi.incidentLinked} tone="amber" icon={Bug} hint="En az bir incidente bağlı" />
-        <StatCard label="Mitigation Yok (Kritik)" value={kpi.noMitigationCritical} tone="red" icon={ShieldOff} hint="Geçici koruması olmayan kritik kayıt" />
-      </StatGrid>
 
       {/* ── Sticky aksiyon & filtre barı ── */}
       <div className="sticky top-2 z-20 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">

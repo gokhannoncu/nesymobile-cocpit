@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle,
@@ -27,7 +27,7 @@ import {
 } from '@nesy/metronic/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nesy/metronic/components/ui/tabs'
 
-import type { Feature, CountryId, FeatureDetail } from '@/data/product/nesy-types'
+import type { Feature } from '@/data/product/nesy-types'
 import { COUNTRIES, isSupported } from '@/data/product/nesy'
 import type { Tone } from './tones'
 import { toneCard, toneIcon, toneIconBox, toneText, toneDot, EASE } from './tones'
@@ -84,6 +84,10 @@ export function FeatureDetailDialog({
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
 
+  useEffect(() => {
+    setActiveTab('overview')
+  }, [feature?.id])
+
   if (!feature) return null
 
   const detail = feature.detail
@@ -92,29 +96,30 @@ export function FeatureDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        variant="fullscreen"
-        className="flex flex-col overflow-hidden"
+        className="h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-4xl overflow-hidden p-0 sm:h-[min(82vh,48rem)] sm:w-[calc(100vw-3rem)] sm:rounded-2xl"
       >
         {/* ─── Header ─── */}
-        <DialogHeader className="shrink-0 border-b border-border/50 pb-4">
-          <div className="flex items-start gap-4">
+        <DialogHeader className="mb-0 shrink-0 border-b border-border/60 bg-muted/15 px-4 py-4 pr-12 sm:px-6 sm:py-5 sm:pr-14">
+          <div className="flex items-start gap-3.5">
             <span
               className={cn(
-                'flex size-11 shrink-0 items-center justify-center rounded-xl',
+                'flex size-10 shrink-0 items-center justify-center rounded-xl',
                 toneIconBox[tone],
               )}
             >
-              <Code2 className={cn('size-5', toneIcon[tone])} />
+              <Code2 className={cn('size-4.5', toneIcon[tone])} />
             </span>
             <div className="min-w-0 flex-1">
               {module && (
-                <div className={cn('text-[10px] font-bold uppercase tracking-[0.15em] mb-0.5', toneText[tone])}>
+                <div className={cn('mb-0.5 text-[10px] font-bold uppercase tracking-[0.16em]', toneText[tone])}>
                   {module.title}
                 </div>
               )}
-              <DialogTitle className="text-xl font-bold">{feature.title}</DialogTitle>
-              <p className="mt-1 text-sm text-muted-foreground">{feature.desc}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <DialogTitle className="text-lg font-bold sm:text-xl">{feature.title}</DialogTitle>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                {feature.desc}
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
                 <Badge variant="secondary" appearance="outline" size="sm">
                   {feature.id}
                 </Badge>
@@ -144,22 +149,28 @@ export function FeatureDetailDialog({
         </DialogHeader>
 
         {/* ─── Tabs ─── */}
-        <DialogBody className="grow overflow-hidden flex flex-col min-h-0">
+        <DialogBody className="flex min-h-0 grow flex-col overflow-hidden">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabId)}
-            className="flex flex-col h-full"
+            className="flex h-full flex-col"
           >
-            <TabsList variant="line" size="sm" className="shrink-0 overflow-x-auto">
-              {TABS.map((t) => (
-                <TabsTrigger key={t.id} value={t.id}>
-                  <t.icon className="size-3.5" />
-                  <span className="hidden sm:inline">{t.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <div className="shrink-0 border-b border-border/60 bg-background px-3 sm:px-5">
+              <TabsList
+                variant="line"
+                size="sm"
+                className="w-full justify-start overflow-x-auto"
+              >
+                {TABS.map((t) => (
+                  <TabsTrigger key={t.id} value={t.id} className="shrink-0">
+                    <t.icon className="size-3.5" />
+                    <span className="hidden md:inline">{t.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
-            <div className="grow overflow-y-auto mt-0 min-h-0">
+            <div className="mt-0 min-h-0 grow overflow-y-auto px-4 pb-5 sm:px-6">
               {/* ─── 1. Genel Bakış ─── */}
               <TabsContent value="overview">
                 <AnimatePresence mode="wait">
@@ -168,20 +179,30 @@ export function FeatureDetailDialog({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, ease: EASE }}
-                    className="space-y-6 py-2"
+                    className="grid gap-4 py-4 lg:grid-cols-2 lg:items-start"
                   >
                     {detail ? (
                       <>
                         {/* Nedir */}
-                        <Section title="Nedir?" icon={Info} tone={tone}>
-                          <p className="text-sm leading-relaxed text-foreground/85">
+                        <Section
+                          title="Nedir?"
+                          icon={Info}
+                          tone={tone}
+                          className="rounded-xl border border-border/60 bg-muted/20 p-4 lg:col-span-2"
+                        >
+                          <p className="max-w-4xl text-sm leading-relaxed text-foreground/85">
                             {detail.whatIs}
                           </p>
                         </Section>
 
                         {/* Nasıl Çalışır */}
-                        <Section title="Nasıl Çalışır?" icon={GitBranch} tone={tone}>
-                          <ol className="space-y-2 text-sm">
+                        <Section
+                          title="Nasıl Çalışır?"
+                          icon={GitBranch}
+                          tone={tone}
+                          className="rounded-xl border border-border/60 bg-muted/20 p-4"
+                        >
+                          <ol className="space-y-2.5 text-sm">
                             {detail.howItWorks.map((step, i) => (
                               <li key={i} className="flex gap-2.5">
                                 <span
@@ -199,8 +220,13 @@ export function FeatureDetailDialog({
                         </Section>
 
                         {/* Ekranlar */}
-                        <Section title="Hangi Ekranda Çalışıyor?" icon={Code2} tone={tone}>
-                          <div className="grid gap-2 sm:grid-cols-2">
+                        <Section
+                          title="Hangi Ekranda Çalışıyor?"
+                          icon={Code2}
+                          tone={tone}
+                          className="rounded-xl border border-border/60 bg-muted/20 p-4"
+                        >
+                          <div className="grid gap-2">
                             {detail.screens.map((screen) => (
                               <div
                                 key={screen}
@@ -245,7 +271,6 @@ export function FeatureDetailDialog({
                       <tbody>
                         {COUNTRIES.map((c) => {
                           const val = feature.values[c.id]
-                          const supported = isSupported(val)
                           return (
                             <tr
                               key={c.id}
@@ -577,20 +602,22 @@ function Section({
   icon: Icon,
   tone = 'orange',
   children,
+  className,
 }: {
   title: string
   icon: LucideIcon
   tone?: Tone
   children: React.ReactNode
+  className?: string
 }) {
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-2.5">
+    <section className={className}>
+      <div className="mb-2.5 flex items-center gap-2">
         <Icon className={cn('size-4', toneIcon[tone])} />
         <h3 className={cn('text-sm font-bold', toneText[tone])}>{title}</h3>
       </div>
       {children}
-    </div>
+    </section>
   )
 }
 

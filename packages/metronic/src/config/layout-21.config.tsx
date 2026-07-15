@@ -140,17 +140,12 @@ export const WORKSPACES: Workspace[] = [
     label: 'Product',
     icon: Package,
     className: 'border-white bg-amber-500 hover:bg-amber-600 text-white hover:text-white',
-    path: '/product/overview',
+    path: '/product/domain-glossary',
     basePaths: ['/product'],
     menu: [
       {
         title: 'Product',
         children: [
-          {
-            title: 'Overview',
-            path: '/product/overview',
-            icon: LayoutDashboard,
-          },
           {
             title: 'Product Foundation',
             icon: Layers,

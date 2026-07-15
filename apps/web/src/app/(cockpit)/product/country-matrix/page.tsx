@@ -9,15 +9,11 @@ import {
   HeroCallout,
   PageSection,
   ProductPage,
-  StatCard,
-  StatGrid,
 } from '@/components/product'
 import {
   COUNTRIES,
   MODULES,
   TOTAL_FEATURES,
-  isSupported,
-  supportedCount,
   type Feature,
 } from '@/data/product/nesy'
 
@@ -25,21 +21,21 @@ function ValueCell({ value }: { value: string }) {
   if (value === '—') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground/60">
-        <Minus className="size-3.5" /> Henüz yok
+        <Minus className="size-3.5" /> Not yet available
       </span>
     )
   }
   if (value === 'N/A') {
     return (
       <span className="inline-flex items-center gap-1 text-red-600/80 dark:text-red-400/80">
-        <X className="size-3.5" /> Kapsam dışı
+        <X className="size-3.5" /> Out of scope
       </span>
     )
   }
-  if (value === 'Core ile aynı' || value === 'Core ile aynı akış') {
+  if (value === 'Same as Core' || value === 'Same as Core flow') {
     return (
       <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
-        <Check className="size-3.5" /> Core ile aynı
+        <Check className="size-3.5" /> Same as Core
       </span>
     )
   }
@@ -75,28 +71,15 @@ export default function CountryMatrixPage() {
         icon={Table2}
         eyebrow="Capabilities & Countries"
         tone="orange"
-        title="Feature × ülke matrisi — tek gerçek kaynak."
-        lead="Nesy Mobile'ın her feature'ının ülke bazlı davranışı bu matriste tutulur. CORE sütunu standart altyapının varsayılan davranışıdır; ülke sütunları yalnızca farklılıkları anlatır."
-        chips={[`${TOTAL_FEATURES} feature`, `${MODULES.length} modül`, `${COUNTRIES.length - 1} ülke + CORE`]}
+        title="Feature × Country Matrix — single source of truth."
+        lead="Every feature's country-specific behavior is maintained in this matrix. The CORE column represents the default behavior of the standard infrastructure; country columns describe only the differences."
+        chips={[`${TOTAL_FEATURES} features`, `${MODULES.length} modules`, `${COUNTRIES.length - 1} countries + CORE`]}
       />
-
-      <StatGrid cols={4}>
-        {COUNTRIES.filter((c) => c.id !== 'core').map((c) => (
-          <StatCard
-            key={c.id}
-            label={c.name}
-            value={supportedCount(c.id)}
-            suffix={` / ${TOTAL_FEATURES}`}
-            tone={c.status === 'Gelişmiş' ? 'purple' : c.status === 'Aktif' ? 'green' : 'gray'}
-            hint={c.subtitle}
-          />
-        ))}
-      </StatGrid>
 
       {MODULES.map((m) => (
         <PageSection
           key={m.id}
-          eyebrow="Modül"
+          eyebrow="Module"
           title={m.title}
           description={m.desc}
           icon={Table2}
@@ -121,7 +104,7 @@ export default function CountryMatrixPage() {
                         {c.name}
                         {c.isPopular && (
                           <Badge variant="secondary" appearance="outline" size="xs" className="ms-1.5">
-                            Popüler
+                            Popular
                           </Badge>
                         )}
                       </div>
@@ -144,10 +127,10 @@ export default function CountryMatrixPage() {
         </PageSection>
       ))}
 
-      <Callout icon={Info} title="Okuma rehberi" tone="orange">
-        <b>Core ile aynı</b> = ülke, CORE davranışını değiştirmeden kullanır. <b>Kapsam dışı (N/A)</b> ={' '}
-        feature o ülke paketinde bilinçli olarak kapalıdır. <b>Henüz yok (—)</b> = ülke (ör. Scale SK)
-        devreye alınma aşamasındadır ve davranış henüz tanımlanmamıştır.
+      <Callout icon={Info} title="Reading guide" tone="orange">
+        <b>Same as Core</b> = the country uses CORE behavior without modification. <b>Out of scope (N/A)</b> ={' '}
+        the feature is intentionally disabled in that country's package. <b>Not yet available (—)</b> = the country (e.g. Scale SK)
+        is in the onboarding phase and behavior has not been defined yet.
       </Callout>
     </ProductPage>
   )

@@ -1953,7 +1953,7 @@
       "source_file": "packages/metronic/src/config/permissions.ts",
       "source_location": "L7",
       "id": "config_permissions_canaccessoperations",
-      "community": 116,
+      "community": 19,
       "norm_label": "canaccessoperations()"
     },
     {
@@ -1980,7 +1980,7 @@
       "source_file": "packages/metronic/src/config/types.ts",
       "source_location": "L3",
       "id": "config_types_menuitem",
-      "community": 92,
+      "community": 19,
       "norm_label": "menuitem"
     },
     {
@@ -2007,7 +2007,7 @@
       "source_file": "packages/metronic/src/config/layout-21.config.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_config_layout_21_config_tsx",
-      "community": 18,
+      "community": 19,
       "norm_label": "layout-21.config.tsx"
     },
     {
@@ -2016,7 +2016,7 @@
       "source_file": "packages/metronic/src/config/layout-21.config.tsx",
       "source_location": "L54",
       "id": "config_layout_21_config_workspaces",
-      "community": 18,
+      "community": 19,
       "norm_label": "workspaces"
     },
     {
@@ -2025,7 +2025,7 @@
       "source_file": "packages/metronic/src/config/layout-21.config.tsx",
       "source_location": "L401",
       "id": "config_layout_21_config_menu_sidebar_resources",
-      "community": 18,
+      "community": 19,
       "norm_label": "menu_sidebar_resources"
     },
     {
@@ -2034,7 +2034,7 @@
       "source_file": "packages/metronic/src/config/layout-21.config.tsx",
       "source_location": "L414",
       "id": "config_layout_21_config_menu_sidebar_workspaces",
-      "community": 18,
+      "community": 19,
       "norm_label": "menu_sidebar_workspaces"
     },
     {
@@ -2061,7 +2061,7 @@
       "source_file": "packages/metronic/src/config/menu-utils.ts",
       "source_location": "L8",
       "id": "config_menu_utils_getvisibleworkspaces",
-      "community": 116,
+      "community": 19,
       "norm_label": "getvisibleworkspaces()"
     },
     {
@@ -2637,7 +2637,7 @@
       "source_file": "packages/metronic/src/components/ui/pagination.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_pagination_tsx",
-      "community": 135,
+      "community": 125,
       "norm_label": "pagination.tsx"
     },
     {
@@ -2646,7 +2646,7 @@
       "source_file": "packages/metronic/src/components/ui/pagination.tsx",
       "source_location": "L7",
       "id": "ui_pagination_pagination",
-      "community": 135,
+      "community": 125,
       "norm_label": "pagination()"
     },
     {
@@ -2655,7 +2655,7 @@
       "source_file": "packages/metronic/src/components/ui/pagination.tsx",
       "source_location": "L17",
       "id": "ui_pagination_paginationcontent",
-      "community": 135,
+      "community": 125,
       "norm_label": "paginationcontent()"
     },
     {
@@ -2664,7 +2664,7 @@
       "source_file": "packages/metronic/src/components/ui/pagination.tsx",
       "source_location": "L21",
       "id": "ui_pagination_paginationitem",
-      "community": 135,
+      "community": 125,
       "norm_label": "paginationitem()"
     },
     {
@@ -2673,7 +2673,7 @@
       "source_file": "packages/metronic/src/components/ui/pagination.tsx",
       "source_location": "L25",
       "id": "ui_pagination_paginationellipsis",
-      "community": 135,
+      "community": 125,
       "norm_label": "paginationellipsis()"
     },
     {
@@ -2934,7 +2934,7 @@
       "source_file": "packages/metronic/src/components/ui/slider.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_slider_tsx",
-      "community": 135,
+      "community": 130,
       "norm_label": "slider.tsx"
     },
     {
@@ -2943,7 +2943,7 @@
       "source_file": "packages/metronic/src/components/ui/slider.tsx",
       "source_location": "L7",
       "id": "ui_slider_slider",
-      "community": 135,
+      "community": 130,
       "norm_label": "slider()"
     },
     {
@@ -2952,7 +2952,7 @@
       "source_file": "packages/metronic/src/components/ui/slider.tsx",
       "source_location": "L22",
       "id": "ui_slider_sliderthumb",
-      "community": 135,
+      "community": 130,
       "norm_label": "sliderthumb()"
     },
     {
@@ -3024,7 +3024,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_grid_background_tsx",
-      "community": 135,
+      "community": 118,
       "norm_label": "grid-background.tsx"
     },
     {
@@ -3033,7 +3033,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L7",
       "id": "ui_grid_background_gridsize",
-      "community": 135,
+      "community": 118,
       "norm_label": "gridsize"
     },
     {
@@ -3042,7 +3042,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L9",
       "id": "ui_grid_background_gridbackgroundprops",
-      "community": 135,
+      "community": 118,
       "norm_label": "gridbackgroundprops"
     },
     {
@@ -3051,7 +3051,7 @@
       "source_file": "packages/metronic/src/components/ui/grid-background.tsx",
       "source_location": "L27",
       "id": "ui_grid_background_gridbackground",
-      "community": 135,
+      "community": 118,
       "norm_label": "gridbackground()"
     },
     {
@@ -3132,7 +3132,7 @@
       "source_file": "packages/metronic/src/components/ui/code.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_code_tsx",
-      "community": 58,
+      "community": 84,
       "norm_label": "code.tsx"
     },
     {
@@ -3141,7 +3141,7 @@
       "source_file": "packages/metronic/src/components/ui/code.tsx",
       "source_location": "L9",
       "id": "ui_code_codeprops",
-      "community": 58,
+      "community": 84,
       "norm_label": "codeprops"
     },
     {
@@ -3150,7 +3150,7 @@
       "source_file": "packages/metronic/src/components/ui/code.tsx",
       "source_location": "L15",
       "id": "ui_code_codevariants",
-      "community": 58,
+      "community": 84,
       "norm_label": "codevariants"
     },
     {
@@ -3159,7 +3159,7 @@
       "source_file": "packages/metronic/src/components/ui/code.tsx",
       "source_location": "L34",
       "id": "ui_code_code",
-      "community": 58,
+      "community": 84,
       "norm_label": "code()"
     },
     {
@@ -3735,7 +3735,7 @@
       "source_file": "packages/metronic/src/components/ui/data-grid-column-header.tsx",
       "source_location": "L41",
       "id": "ui_data_grid_column_header_datagridcolumnheader",
-      "community": 7,
+      "community": 29,
       "norm_label": "datagridcolumnheader()"
     },
     {
@@ -3744,7 +3744,7 @@
       "source_file": "packages/metronic/src/components/ui/word-rotate.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_word_rotate_tsx",
-      "community": 135,
+      "community": 132,
       "norm_label": "word-rotate.tsx"
     },
     {
@@ -3753,7 +3753,7 @@
       "source_file": "packages/metronic/src/components/ui/word-rotate.tsx",
       "source_location": "L7",
       "id": "ui_word_rotate_wordrotateprops",
-      "community": 135,
+      "community": 132,
       "norm_label": "wordrotateprops"
     },
     {
@@ -3762,7 +3762,7 @@
       "source_file": "packages/metronic/src/components/ui/word-rotate.tsx",
       "source_location": "L20",
       "id": "ui_word_rotate_wordrotate",
-      "community": 135,
+      "community": 132,
       "norm_label": "wordrotate()"
     },
     {
@@ -4248,7 +4248,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_tooltip_tsx",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltip.tsx"
     },
     {
@@ -4257,7 +4257,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L8",
       "id": "ui_tooltip_tooltipprovider",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltipprovider()"
     },
     {
@@ -4266,7 +4266,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L12",
       "id": "ui_tooltip_tooltip",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltip()"
     },
     {
@@ -4275,7 +4275,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L20",
       "id": "ui_tooltip_tooltiptrigger",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltiptrigger()"
     },
     {
@@ -4284,7 +4284,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L24",
       "id": "ui_tooltip_tooltipvariants",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltipvariants"
     },
     {
@@ -4293,7 +4293,7 @@
       "source_file": "packages/metronic/src/components/ui/tooltip.tsx",
       "source_location": "L39",
       "id": "ui_tooltip_tooltipcontent",
-      "community": 32,
+      "community": 58,
       "norm_label": "tooltipcontent()"
     },
     {
@@ -4608,7 +4608,7 @@
       "source_file": "packages/metronic/src/components/ui/calendar.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_calendar_tsx",
-      "community": 58,
+      "community": 84,
       "norm_label": "calendar.tsx"
     },
     {
@@ -4617,7 +4617,7 @@
       "source_file": "packages/metronic/src/components/ui/calendar.tsx",
       "source_location": "L9",
       "id": "ui_calendar_calendar",
-      "community": 58,
+      "community": 84,
       "norm_label": "calendar()"
     },
     {
@@ -4734,7 +4734,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_breadcrumb_tsx",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumb.tsx"
     },
     {
@@ -4743,7 +4743,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L6",
       "id": "ui_breadcrumb_breadcrumb",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumb()"
     },
     {
@@ -4752,7 +4752,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L14",
       "id": "ui_breadcrumb_breadcrumblist",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumblist()"
     },
     {
@@ -4761,7 +4761,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L24",
       "id": "ui_breadcrumb_breadcrumbitem",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumbitem()"
     },
     {
@@ -4770,7 +4770,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L28",
       "id": "ui_breadcrumb_breadcrumblink",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumblink()"
     },
     {
@@ -4779,7 +4779,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L42",
       "id": "ui_breadcrumb_breadcrumbpage",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumbpage()"
     },
     {
@@ -4788,7 +4788,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L55",
       "id": "ui_breadcrumb_breadcrumbseparator",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumbseparator()"
     },
     {
@@ -4797,7 +4797,7 @@
       "source_file": "packages/metronic/src/components/ui/breadcrumb.tsx",
       "source_location": "L67",
       "id": "ui_breadcrumb_breadcrumbellipsis",
-      "community": 86,
+      "community": 28,
       "norm_label": "breadcrumbellipsis()"
     },
     {
@@ -5247,7 +5247,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_kbd_tsx",
-      "community": 135,
+      "community": 128,
       "norm_label": "kbd.tsx"
     },
     {
@@ -5256,7 +5256,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L7",
       "id": "ui_kbd_kbdvariants",
-      "community": 135,
+      "community": 128,
       "norm_label": "kbdvariants"
     },
     {
@@ -5265,7 +5265,7 @@
       "source_file": "packages/metronic/src/components/ui/kbd.tsx",
       "source_location": "L25",
       "id": "ui_kbd_kbd",
-      "community": 135,
+      "community": 128,
       "norm_label": "kbd()"
     },
     {
@@ -5301,7 +5301,7 @@
       "source_file": "packages/metronic/src/components/ui/dialog.tsx",
       "source_location": "L24",
       "id": "ui_dialog_dialog",
-      "community": 94,
+      "community": 88,
       "norm_label": "dialog()"
     },
     {
@@ -5355,7 +5355,7 @@
       "source_file": "packages/metronic/src/components/ui/dialog.tsx",
       "source_location": "L87",
       "id": "ui_dialog_dialogheader",
-      "community": 120,
+      "community": 94,
       "norm_label": "dialogheader()"
     },
     {
@@ -5373,7 +5373,7 @@
       "source_file": "packages/metronic/src/components/ui/dialog.tsx",
       "source_location": "L103",
       "id": "ui_dialog_dialogtitle",
-      "community": 93,
+      "community": 94,
       "norm_label": "dialogtitle()"
     },
     {
@@ -5452,7 +5452,7 @@
       "label": "AccordionMenuGroupProps",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L156",
+      "source_location": "L151",
       "id": "ui_accordion_menu_accordionmenugroupprops",
       "community": 18,
       "norm_label": "accordionmenugroupprops"
@@ -5461,16 +5461,16 @@
       "label": "AccordionMenuGroup()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L158",
+      "source_location": "L153",
       "id": "ui_accordion_menu_accordionmenugroup",
-      "community": 92,
+      "community": 18,
       "norm_label": "accordionmenugroup()"
     },
     {
       "label": "AccordionMenuLabelProps",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L172",
+      "source_location": "L167",
       "id": "ui_accordion_menu_accordionmenulabelprops",
       "community": 18,
       "norm_label": "accordionmenulabelprops"
@@ -5479,16 +5479,16 @@
       "label": "AccordionMenuLabel()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L174",
+      "source_location": "L169",
       "id": "ui_accordion_menu_accordionmenulabel",
-      "community": 92,
+      "community": 18,
       "norm_label": "accordionmenulabel()"
     },
     {
       "label": "AccordionMenuSeparatorProps",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L189",
+      "source_location": "L184",
       "id": "ui_accordion_menu_accordionmenuseparatorprops",
       "community": 18,
       "norm_label": "accordionmenuseparatorprops"
@@ -5497,7 +5497,7 @@
       "label": "AccordionMenuSeparator()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L191",
+      "source_location": "L186",
       "id": "ui_accordion_menu_accordionmenuseparator",
       "community": 18,
       "norm_label": "accordionmenuseparator()"
@@ -5506,7 +5506,7 @@
       "label": "itemVariants",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L203",
+      "source_location": "L198",
       "id": "ui_accordion_menu_itemvariants",
       "community": 18,
       "norm_label": "itemvariants"
@@ -5515,7 +5515,7 @@
       "label": "AccordionMenuItem()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L219",
+      "source_location": "L214",
       "id": "ui_accordion_menu_accordionmenuitem",
       "community": 18,
       "norm_label": "accordionmenuitem()"
@@ -5524,7 +5524,7 @@
       "label": "AccordionMenuSub()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L267",
+      "source_location": "L262",
       "id": "ui_accordion_menu_accordionmenusub",
       "community": 18,
       "norm_label": "accordionmenusub()"
@@ -5533,7 +5533,7 @@
       "label": "AccordionMenuSubTrigger()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L280",
+      "source_location": "L275",
       "id": "ui_accordion_menu_accordionmenusubtrigger",
       "community": 18,
       "norm_label": "accordionmenusubtrigger()"
@@ -5542,7 +5542,7 @@
       "label": "AccordionMenuSubContentProps",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L309",
+      "source_location": "L304",
       "id": "ui_accordion_menu_accordionmenusubcontentprops",
       "community": 18,
       "norm_label": "accordionmenusubcontentprops"
@@ -5551,7 +5551,7 @@
       "label": "AccordionMenuSubContent()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L324",
+      "source_location": "L319",
       "id": "ui_accordion_menu_accordionmenusubcontent",
       "community": 18,
       "norm_label": "accordionmenusubcontent()"
@@ -5560,7 +5560,7 @@
       "label": "AccordionMenuIndicatorProps",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L392",
+      "source_location": "L387",
       "id": "ui_accordion_menu_accordionmenuindicatorprops",
       "community": 18,
       "norm_label": "accordionmenuindicatorprops"
@@ -5569,7 +5569,7 @@
       "label": "AccordionMenuIndicator()",
       "file_type": "code",
       "source_file": "packages/metronic/src/components/ui/accordion-menu.tsx",
-      "source_location": "L394",
+      "source_location": "L389",
       "id": "ui_accordion_menu_accordionmenuindicator",
       "community": 18,
       "norm_label": "accordionmenuindicator()"
@@ -5580,7 +5580,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_badge_tsx",
-      "community": 21,
+      "community": 116,
       "norm_label": "badge.tsx"
     },
     {
@@ -5589,7 +5589,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L6",
       "id": "ui_badge_badgeprops",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgeprops"
     },
     {
@@ -5598,7 +5598,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L12",
       "id": "ui_badge_badgebuttonprops",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgebuttonprops"
     },
     {
@@ -5607,7 +5607,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L18",
       "id": "ui_badge_badgedotprops",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgedotprops"
     },
     {
@@ -5616,7 +5616,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L20",
       "id": "ui_badge_badgevariants",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgevariants"
     },
     {
@@ -5625,7 +5625,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L168",
       "id": "ui_badge_badgebuttonvariants",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgebuttonvariants"
     },
     {
@@ -5634,7 +5634,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L182",
       "id": "ui_badge_badge",
-      "community": 21,
+      "community": 116,
       "norm_label": "badge()"
     },
     {
@@ -5643,7 +5643,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L203",
       "id": "ui_badge_badgebutton",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgebutton()"
     },
     {
@@ -5652,7 +5652,7 @@
       "source_file": "packages/metronic/src/components/ui/badge.tsx",
       "source_location": "L220",
       "id": "ui_badge_badgedot",
-      "community": 21,
+      "community": 116,
       "norm_label": "badgedot()"
     },
     {
@@ -5661,7 +5661,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_table_tsx",
-      "community": 47,
+      "community": 78,
       "norm_label": "table.tsx"
     },
     {
@@ -5670,7 +5670,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L6",
       "id": "ui_table_table",
-      "community": 47,
+      "community": 78,
       "norm_label": "table()"
     },
     {
@@ -5679,7 +5679,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L14",
       "id": "ui_table_tableheader",
-      "community": 47,
+      "community": 78,
       "norm_label": "tableheader()"
     },
     {
@@ -5688,7 +5688,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L18",
       "id": "ui_table_tablebody",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablebody()"
     },
     {
@@ -5697,7 +5697,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L22",
       "id": "ui_table_tablefooter",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablefooter()"
     },
     {
@@ -5706,7 +5706,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L32",
       "id": "ui_table_tablerow",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablerow()"
     },
     {
@@ -5715,7 +5715,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L45",
       "id": "ui_table_tablehead",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablehead()"
     },
     {
@@ -5724,7 +5724,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L58",
       "id": "ui_table_tablecell",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablecell()"
     },
     {
@@ -5733,7 +5733,7 @@
       "source_file": "packages/metronic/src/components/ui/table.tsx",
       "source_location": "L64",
       "id": "ui_table_tablecaption",
-      "community": 47,
+      "community": 78,
       "norm_label": "tablecaption()"
     },
     {
@@ -5895,7 +5895,7 @@
       "source_file": "packages/metronic/src/components/ui/github-button.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_github_button_tsx",
-      "community": 135,
+      "community": 127,
       "norm_label": "github-button.tsx"
     },
     {
@@ -5904,7 +5904,7 @@
       "source_file": "packages/metronic/src/components/ui/github-button.tsx",
       "source_location": "L9",
       "id": "ui_github_button_githubbuttonvariants",
-      "community": 135,
+      "community": 127,
       "norm_label": "githubbuttonvariants"
     },
     {
@@ -5913,7 +5913,7 @@
       "source_file": "packages/metronic/src/components/ui/github-button.tsx",
       "source_location": "L31",
       "id": "ui_github_button_githubbuttonprops",
-      "community": 135,
+      "community": 127,
       "norm_label": "githubbuttonprops"
     },
     {
@@ -5922,7 +5922,7 @@
       "source_file": "packages/metronic/src/components/ui/github-button.tsx",
       "source_location": "L70",
       "id": "ui_github_button_githubbutton",
-      "community": 135,
+      "community": 127,
       "norm_label": "githubbutton()"
     },
     {
@@ -5931,7 +5931,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_button_tsx",
-      "community": 58,
+      "community": 84,
       "norm_label": "button.tsx"
     },
     {
@@ -5940,7 +5940,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L7",
       "id": "ui_button_buttonvariants",
-      "community": 58,
+      "community": 84,
       "norm_label": "buttonvariants"
     },
     {
@@ -5949,7 +5949,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L360",
       "id": "ui_button_button",
-      "community": 58,
+      "community": 84,
       "norm_label": "button()"
     },
     {
@@ -5958,7 +5958,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L404",
       "id": "ui_button_buttonarrowprops",
-      "community": 58,
+      "community": 84,
       "norm_label": "buttonarrowprops"
     },
     {
@@ -5967,7 +5967,7 @@
       "source_file": "packages/metronic/src/components/ui/button.tsx",
       "source_location": "L408",
       "id": "ui_button_buttonarrow",
-      "community": 58,
+      "community": 84,
       "norm_label": "buttonarrow()"
     },
     {
@@ -6003,7 +6003,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_typing_text_tsx",
-      "community": 135,
+      "community": 86,
       "norm_label": "typing-text.tsx"
     },
     {
@@ -6012,7 +6012,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L7",
       "id": "ui_typing_text_animationvariant",
-      "community": 135,
+      "community": 86,
       "norm_label": "animationvariant"
     },
     {
@@ -6021,7 +6021,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L19",
       "id": "ui_typing_text_typingtextprops",
-      "community": 135,
+      "community": 86,
       "norm_label": "typingtextprops"
     },
     {
@@ -6030,7 +6030,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L52",
       "id": "ui_typing_text_cursorvariants",
-      "community": 135,
+      "community": 86,
       "norm_label": "cursorvariants"
     },
     {
@@ -6039,7 +6039,7 @@
       "source_file": "packages/metronic/src/components/ui/typing-text.tsx",
       "source_location": "L65",
       "id": "ui_typing_text_typingtext",
-      "community": 135,
+      "community": 86,
       "norm_label": "typingtext()"
     },
     {
@@ -6048,7 +6048,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_checkbox_tsx",
-      "community": 94,
+      "community": 3,
       "norm_label": "checkbox.tsx"
     },
     {
@@ -6057,7 +6057,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L10",
       "id": "ui_checkbox_checkboxvariants",
-      "community": 94,
+      "community": 3,
       "norm_label": "checkboxvariants"
     },
     {
@@ -6066,7 +6066,7 @@
       "source_file": "packages/metronic/src/components/ui/checkbox.tsx",
       "source_location": "L32",
       "id": "ui_checkbox_checkbox",
-      "community": 94,
+      "community": 3,
       "norm_label": "checkbox()"
     },
     {
@@ -6291,7 +6291,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_collapsible_tsx",
-      "community": 43,
+      "community": 119,
       "norm_label": "collapsible.tsx"
     },
     {
@@ -6300,7 +6300,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L7",
       "id": "ui_collapsible_collapsible",
-      "community": 43,
+      "community": 119,
       "norm_label": "collapsible()"
     },
     {
@@ -6309,7 +6309,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L11",
       "id": "ui_collapsible_collapsibletrigger",
-      "community": 43,
+      "community": 119,
       "norm_label": "collapsibletrigger()"
     },
     {
@@ -6318,7 +6318,7 @@
       "source_file": "packages/metronic/src/components/ui/collapsible.tsx",
       "source_location": "L15",
       "id": "ui_collapsible_collapsiblecontent",
-      "community": 43,
+      "community": 119,
       "norm_label": "collapsiblecontent()"
     },
     {
@@ -6606,7 +6606,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_ui_sliding_number_tsx",
-      "community": 8,
+      "community": 121,
       "norm_label": "sliding-number.tsx"
     },
     {
@@ -6615,7 +6615,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L6",
       "id": "ui_sliding_number_digit",
-      "community": 8,
+      "community": 121,
       "norm_label": "digit()"
     },
     {
@@ -6624,7 +6624,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L35",
       "id": "ui_sliding_number_number",
-      "community": 8,
+      "community": 121,
       "norm_label": "number()"
     },
     {
@@ -6633,7 +6633,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L56",
       "id": "ui_sliding_number_slidingnumberprops",
-      "community": 8,
+      "community": 121,
       "norm_label": "slidingnumberprops"
     },
     {
@@ -6642,7 +6642,7 @@
       "source_file": "packages/metronic/src/components/ui/sliding-number.tsx",
       "source_location": "L68",
       "id": "ui_sliding_number_slidingnumber",
-      "community": 8,
+      "community": 121,
       "norm_label": "slidingnumber()"
     },
     {
@@ -6723,7 +6723,7 @@
       "source_file": "packages/metronic/src/components/ui/input.tsx",
       "source_location": "L119",
       "id": "ui_input_input",
-      "community": 50,
+      "community": 71,
       "norm_label": "input()"
     },
     {
@@ -7515,7 +7515,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/index.tsx",
       "source_location": "L7",
       "id": "layout_21_index_layout21",
-      "community": 44,
+      "community": 28,
       "norm_label": "layout21()"
     },
     {
@@ -7524,7 +7524,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/header-breadcrumbs.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_header_breadcrumbs_tsx",
-      "community": 86,
+      "community": 28,
       "norm_label": "header-breadcrumbs.tsx"
     },
     {
@@ -7533,7 +7533,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/header-breadcrumbs.tsx",
       "source_location": "L20",
       "id": "components_header_breadcrumbs_pdfbutton",
-      "community": 86,
+      "community": 28,
       "norm_label": "pdfbutton"
     },
     {
@@ -7551,7 +7551,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-search.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_search_tsx",
-      "community": 50,
+      "community": 92,
       "norm_label": "sidebar-search.tsx"
     },
     {
@@ -7560,7 +7560,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-search.tsx",
       "source_location": "L4",
       "id": "components_sidebar_search_sidebarsearch",
-      "community": 50,
+      "community": 92,
       "norm_label": "sidebarsearch()"
     },
     {
@@ -7569,7 +7569,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-primary-menu.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_primary_menu_tsx",
-      "community": 92,
+      "community": 18,
       "norm_label": "sidebar-primary-menu.tsx"
     },
     {
@@ -7578,7 +7578,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-primary-menu.tsx",
       "source_location": "L14",
       "id": "components_sidebar_primary_menu_renderleafitems",
-      "community": 92,
+      "community": 18,
       "norm_label": "renderleafitems()"
     },
     {
@@ -7605,7 +7605,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-primary.tsx",
       "source_location": "L41",
       "id": "components_sidebar_primary_sidebarprimary",
-      "community": 116,
+      "community": 19,
       "norm_label": "sidebarprimary()"
     },
     {
@@ -7614,7 +7614,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_toolbar_tsx",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbar.tsx"
     },
     {
@@ -7623,7 +7623,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L3",
       "id": "components_toolbar_toolbar",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbar()"
     },
     {
@@ -7632,7 +7632,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L11",
       "id": "components_toolbar_toolbaractions",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbaractions()"
     },
     {
@@ -7641,7 +7641,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L15",
       "id": "components_toolbar_toolbarheading",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbarheading()"
     },
     {
@@ -7650,7 +7650,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L19",
       "id": "components_toolbar_toolbarpagetitle",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbarpagetitle()"
     },
     {
@@ -7659,7 +7659,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/toolbar.tsx",
       "source_location": "L27",
       "id": "components_toolbar_toolbarwrapper",
-      "community": 82,
+      "community": 37,
       "norm_label": "toolbarwrapper()"
     },
     {
@@ -7740,7 +7740,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_navigation_feedback_tsx",
-      "community": 114,
+      "community": 18,
       "norm_label": "navigation-feedback.tsx"
     },
     {
@@ -7749,7 +7749,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L17",
       "id": "components_navigation_feedback_navigationfeedbackstate",
-      "community": 114,
+      "community": 18,
       "norm_label": "navigationfeedbackstate"
     },
     {
@@ -7758,7 +7758,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L23",
       "id": "components_navigation_feedback_navigationfeedbackcontext",
-      "community": 114,
+      "community": 18,
       "norm_label": "navigationfeedbackcontext"
     },
     {
@@ -7767,7 +7767,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L25",
       "id": "components_navigation_feedback_navigationfeedbackprovider",
-      "community": 114,
+      "community": 28,
       "norm_label": "navigationfeedbackprovider()"
     },
     {
@@ -7776,7 +7776,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L68",
       "id": "components_navigation_feedback_usenavigationfeedback",
-      "community": 114,
+      "community": 18,
       "norm_label": "usenavigationfeedback()"
     },
     {
@@ -7785,7 +7785,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L76",
       "id": "components_navigation_feedback_sidebarnavlinkprops",
-      "community": 114,
+      "community": 18,
       "norm_label": "sidebarnavlinkprops"
     },
     {
@@ -7794,7 +7794,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L81",
       "id": "components_navigation_feedback_sidebarnavlink",
-      "community": 114,
+      "community": 18,
       "norm_label": "sidebarnavlink()"
     },
     {
@@ -7803,7 +7803,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/navigation-feedback.tsx",
       "source_location": "L144",
       "id": "components_navigation_feedback_navigationfeedback",
-      "community": 114,
+      "community": 18,
       "norm_label": "navigationfeedback()"
     },
     {
@@ -7812,7 +7812,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/header-toolbar.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_header_toolbar_tsx",
-      "community": 58,
+      "community": 28,
       "norm_label": "header-toolbar.tsx"
     },
     {
@@ -7821,7 +7821,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/header-toolbar.tsx",
       "source_location": "L11",
       "id": "components_header_toolbar_headertoolbar",
-      "community": 58,
+      "community": 28,
       "norm_label": "headertoolbar()"
     },
     {
@@ -7956,7 +7956,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_sidebar_tsx",
-      "community": 28,
+      "community": 92,
       "norm_label": "sidebar.tsx"
     },
     {
@@ -7965,7 +7965,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar.tsx",
       "source_location": "L4",
       "id": "components_sidebar_sidebar",
-      "community": 28,
+      "community": 92,
       "norm_label": "sidebar()"
     },
     {
@@ -7992,7 +7992,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/header-menu.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_header_menu_tsx",
-      "community": 28,
+      "community": 21,
       "norm_label": "header-menu.tsx"
     },
     {
@@ -8046,7 +8046,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-header.tsx",
       "source_location": "L40",
       "id": "components_sidebar_header_sidebarheader",
-      "community": 28,
+      "community": 92,
       "norm_label": "sidebarheader()"
     },
     {
@@ -8082,7 +8082,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/sidebar-secondary.tsx",
       "source_location": "L7",
       "id": "components_sidebar_secondary_sidebarsecondary",
-      "community": 28,
+      "community": 92,
       "norm_label": "sidebarsecondary()"
     },
     {
@@ -8091,7 +8091,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/pdf-button.tsx",
       "source_location": "L1",
       "id": "packages_metronic_src_components_layouts_layout_21_components_pdf_button_tsx",
-      "community": 32,
+      "community": 58,
       "norm_label": "pdf-button.tsx"
     },
     {
@@ -8100,7 +8100,7 @@
       "source_file": "packages/metronic/src/components/layouts/layout-21/components/pdf-button.tsx",
       "source_location": "L15",
       "id": "components_pdf_button_pdfbutton",
-      "community": 32,
+      "community": 58,
       "norm_label": "pdfbutton()"
     },
     {
@@ -8127,7 +8127,7 @@
       "source_file": "packages/metronic/src/hooks/use-operations-access.ts",
       "source_location": "L1",
       "id": "packages_metronic_src_hooks_use_operations_access_ts",
-      "community": 116,
+      "community": 19,
       "norm_label": "use-operations-access.ts"
     },
     {
@@ -8136,7 +8136,7 @@
       "source_file": "packages/metronic/src/hooks/use-operations-access.ts",
       "source_location": "L5",
       "id": "hooks_use_operations_access_useoperationsaccess",
-      "community": 116,
+      "community": 19,
       "norm_label": "useoperationsaccess()"
     },
     {
@@ -10125,7 +10125,7 @@
       "source_file": "apps/web/src/app/layout.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_layout_tsx",
-      "community": 32,
+      "community": 58,
       "norm_label": "layout.tsx"
     },
     {
@@ -10134,7 +10134,7 @@
       "source_file": "apps/web/src/app/layout.tsx",
       "source_location": "L9",
       "id": "app_layout_inter",
-      "community": 32,
+      "community": 58,
       "norm_label": "inter"
     },
     {
@@ -10143,7 +10143,7 @@
       "source_file": "apps/web/src/app/layout.tsx",
       "source_location": "L11",
       "id": "app_layout_metadata",
-      "community": 32,
+      "community": 58,
       "norm_label": "metadata"
     },
     {
@@ -10152,7 +10152,7 @@
       "source_file": "apps/web/src/app/layout.tsx",
       "source_location": "L19",
       "id": "app_layout_rootlayout",
-      "community": 32,
+      "community": 58,
       "norm_label": "rootlayout()"
     },
     {
@@ -10161,7 +10161,7 @@
       "source_file": "apps/web/src/app/(cockpit)/layout.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_layout_tsx",
-      "community": 44,
+      "community": 28,
       "norm_label": "layout.tsx"
     },
     {
@@ -10170,7 +10170,7 @@
       "source_file": "apps/web/src/app/(cockpit)/layout.tsx",
       "source_location": "L6",
       "id": "cockpit_layout_cockpitlayout",
-      "community": 44,
+      "community": 28,
       "norm_label": "cockpitlayout()"
     },
     {
@@ -10197,7 +10197,7 @@
       "source_file": "apps/web/src/app/(cockpit)/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_page_tsx",
-      "community": 82,
+      "community": 37,
       "norm_label": "page.tsx"
     },
     {
@@ -10206,7 +10206,7 @@
       "source_file": "apps/web/src/app/(cockpit)/page.tsx",
       "source_location": "L16",
       "id": "cockpit_page_cockpithomepage",
-      "community": 82,
+      "community": 37,
       "norm_label": "cockpithomepage()"
     },
     {
@@ -10557,7 +10557,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_pm_roadmap_page_tsx",
-      "community": 9,
+      "community": 47,
       "norm_label": "page.tsx"
     },
     {
@@ -10566,7 +10566,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L22",
       "id": "roadmap_page_risktone",
-      "community": 9,
+      "community": 47,
       "norm_label": "risktone"
     },
     {
@@ -10575,7 +10575,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L29",
       "id": "roadmap_page_phasestotimeline",
-      "community": 9,
+      "community": 47,
       "norm_label": "phasestotimeline()"
     },
     {
@@ -10584,7 +10584,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L53",
       "id": "roadmap_page_phasemetricsrows",
-      "community": 9,
+      "community": 47,
       "norm_label": "phasemetricsrows()"
     },
     {
@@ -10593,7 +10593,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/roadmap/page.tsx",
       "source_location": "L66",
       "id": "roadmap_page_roadmappage",
-      "community": 9,
+      "community": 47,
       "norm_label": "roadmappage()"
     },
     {
@@ -10647,7 +10647,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/overview/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_pm_overview_page_tsx",
-      "community": 38,
+      "community": 8,
       "norm_label": "page.tsx"
     },
     {
@@ -10656,7 +10656,7 @@
       "source_file": "apps/web/src/app/(cockpit)/pm/overview/page.tsx",
       "source_location": "L45",
       "id": "overview_page_pmoverviewpage",
-      "community": 38,
+      "community": 8,
       "norm_label": "pmoverviewpage()"
     },
     {
@@ -10692,7 +10692,7 @@
       "source_file": "apps/web/src/app/(cockpit)/[...slug]/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_slug_page_tsx",
-      "community": 82,
+      "community": 37,
       "norm_label": "page.tsx"
     },
     {
@@ -10703,24 +10703,6 @@
       "id": "slug_page_notionplaceholderpage",
       "community": 19,
       "norm_label": "notionplaceholderpage()"
-    },
-    {
-      "label": "page.tsx",
-      "file_type": "code",
-      "source_file": "apps/web/src/app/(cockpit)/product/page.tsx",
-      "source_location": "L1",
-      "id": "apps_web_src_app_cockpit_product_page_tsx",
-      "community": 121,
-      "norm_label": "page.tsx"
-    },
-    {
-      "label": "ProductRootPage()",
-      "file_type": "code",
-      "source_file": "apps/web/src/app/(cockpit)/product/page.tsx",
-      "source_location": "L3",
-      "id": "product_page_productrootpage",
-      "community": 121,
-      "norm_label": "productrootpage()"
     },
     {
       "label": "page.tsx",
@@ -10764,34 +10746,34 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "community": 20,
+      "community": 82,
       "norm_label": "page.tsx"
     },
     {
       "label": "moduleIcons",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
-      "source_location": "L30",
+      "source_location": "L29",
       "id": "feature_library_page_moduleicons",
-      "community": 20,
+      "community": 82,
       "norm_label": "moduleicons"
     },
     {
       "label": "moduleTones",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
-      "source_location": "L31",
+      "source_location": "L30",
       "id": "feature_library_page_moduletones",
-      "community": 20,
+      "community": 82,
       "norm_label": "moduletones"
     },
     {
       "label": "FeatureLibraryPage()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
-      "source_location": "L33",
+      "source_location": "L32",
       "id": "feature_library_page_featurelibrarypage",
-      "community": 20,
+      "community": 82,
       "norm_label": "featurelibrarypage()"
     },
     {
@@ -10807,7 +10789,7 @@
       "label": "moduleIcons",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L42",
+      "source_location": "L41",
       "id": "slugname_page_moduleicons",
       "community": 85,
       "norm_label": "moduleicons"
@@ -10816,7 +10798,7 @@
       "label": "moduleTones",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L43",
+      "source_location": "L42",
       "id": "slugname_page_moduletones",
       "community": 85,
       "norm_label": "moduletones"
@@ -10825,7 +10807,7 @@
       "label": "featureRecords",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L45",
+      "source_location": "L44",
       "id": "slugname_page_featurerecords",
       "community": 85,
       "norm_label": "featurerecords"
@@ -10834,7 +10816,7 @@
       "label": "scoreLabels",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L49",
+      "source_location": "L48",
       "id": "slugname_page_scorelabels",
       "community": 85,
       "norm_label": "scorelabels"
@@ -10843,7 +10825,7 @@
       "label": "scoreColors",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L56",
+      "source_location": "L55",
       "id": "slugname_page_scorecolors",
       "community": 85,
       "norm_label": "scorecolors"
@@ -10852,7 +10834,7 @@
       "label": "ticketStatus",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L64",
+      "source_location": "L63",
       "id": "slugname_page_ticketstatus",
       "community": 85,
       "norm_label": "ticketstatus"
@@ -10861,16 +10843,16 @@
       "label": "FeatureDetailPage()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L70",
+      "source_location": "L69",
       "id": "slugname_page_featuredetailpage",
-      "community": 85,
+      "community": 123,
       "norm_label": "featuredetailpage()"
     },
     {
       "label": "HeroMetric()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L413",
+      "source_location": "L410",
       "id": "slugname_page_herometric",
       "community": 85,
       "norm_label": "herometric()"
@@ -10879,7 +10861,7 @@
       "label": "DetailPanel()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L422",
+      "source_location": "L419",
       "id": "slugname_page_detailpanel",
       "community": 85,
       "norm_label": "detailpanel()"
@@ -10888,7 +10870,7 @@
       "label": "ScoreBar()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L448",
+      "source_location": "L445",
       "id": "slugname_page_scorebar",
       "community": 85,
       "norm_label": "scorebar()"
@@ -10897,7 +10879,7 @@
       "label": "EmptyPanel()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L462",
+      "source_location": "L459",
       "id": "slugname_page_emptypanel",
       "community": 85,
       "norm_label": "emptypanel()"
@@ -10906,7 +10888,7 @@
       "label": "InlineEmpty()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L471",
+      "source_location": "L468",
       "id": "slugname_page_inlineempty",
       "community": 85,
       "norm_label": "inlineempty()"
@@ -11385,34 +11367,16 @@
       "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "community": 67,
+      "community": 8,
       "norm_label": "page.tsx"
-    },
-    {
-      "label": "JourneyDefinition",
-      "file_type": "code",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L40",
-      "id": "user_journeys_page_journeydefinition",
-      "community": 67,
-      "norm_label": "journeydefinition"
-    },
-    {
-      "label": "JOURNEYS",
-      "file_type": "code",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L50",
-      "id": "user_journeys_page_journeys",
-      "community": 67,
-      "norm_label": "journeys"
     },
     {
       "label": "UserJourneysPage()",
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L297",
+      "source_location": "L34",
       "id": "user_journeys_page_userjourneyspage",
-      "community": 67,
+      "community": 8,
       "norm_label": "userjourneyspage()"
     },
     {
@@ -12096,7 +12060,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/insight-drawer.tsx",
       "source_location": "L88",
       "id": "log_explorer_insight_drawer_insightdrawer",
-      "community": 52,
+      "community": 98,
       "norm_label": "insightdrawer()"
     },
     {
@@ -12303,7 +12267,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_device_lab_log_explorer_log_timeline_tsx",
-      "community": 52,
+      "community": 61,
       "norm_label": "log-timeline.tsx"
     },
     {
@@ -12312,7 +12276,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L48",
       "id": "log_explorer_log_timeline_logtimelineprops",
-      "community": 52,
+      "community": 61,
       "norm_label": "logtimelineprops"
     },
     {
@@ -12321,7 +12285,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L71",
       "id": "log_explorer_log_timeline_level_row_bg",
-      "community": 52,
+      "community": 61,
       "norm_label": "level_row_bg"
     },
     {
@@ -12330,7 +12294,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L79",
       "id": "log_explorer_log_timeline_source_dot_class",
-      "community": 52,
+      "community": 61,
       "norm_label": "source_dot_class"
     },
     {
@@ -12339,7 +12303,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L93",
       "id": "log_explorer_log_timeline_usesessiontimer",
-      "community": 52,
+      "community": 61,
       "norm_label": "usesessiontimer()"
     },
     {
@@ -12348,7 +12312,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L107",
       "id": "log_explorer_log_timeline_fmttime",
-      "community": 52,
+      "community": 61,
       "norm_label": "fmttime()"
     },
     {
@@ -12357,7 +12321,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L123",
       "id": "log_explorer_log_timeline_logtimeline",
-      "community": 52,
+      "community": 61,
       "norm_label": "logtimeline()"
     },
     {
@@ -12366,7 +12330,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/log-explorer/log-timeline.tsx",
       "source_location": "L593",
       "id": "log_explorer_log_timeline_correlationsection",
-      "community": 52,
+      "community": 61,
       "norm_label": "correlationsection()"
     },
     {
@@ -12411,7 +12375,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L1",
       "id": "apps_web_src_app_cockpit_engineering_device_lab_adb_scenarios_scenario_config_tsx",
-      "community": 119,
+      "community": 80,
       "norm_label": "scenario-config.tsx"
     },
     {
@@ -12420,7 +12384,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L53",
       "id": "adb_scenarios_scenario_config_interpolatecommand",
-      "community": 119,
+      "community": 80,
       "norm_label": "interpolatecommand()"
     },
     {
@@ -12429,7 +12393,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L62",
       "id": "adb_scenarios_scenario_config_formatduration",
-      "community": 119,
+      "community": 80,
       "norm_label": "formatduration()"
     },
     {
@@ -12438,7 +12402,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L70",
       "id": "adb_scenarios_scenario_config_preflightresult",
-      "community": 119,
+      "community": 80,
       "norm_label": "preflightresult"
     },
     {
@@ -12447,7 +12411,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L78",
       "id": "adb_scenarios_scenario_config_scenarioconfigprops",
-      "community": 119,
+      "community": 80,
       "norm_label": "scenarioconfigprops"
     },
     {
@@ -12456,7 +12420,7 @@
       "source_file": "apps/web/src/app/(cockpit)/engineering/device-lab/adb-scenarios/scenario-config.tsx",
       "source_location": "L94",
       "id": "adb_scenarios_scenario_config_scenarioconfig",
-      "community": 119,
+      "community": 80,
       "norm_label": "scenarioconfig()"
     },
     {
@@ -13473,7 +13437,7 @@
       "source_file": "apps/web/src/components/product/feature-detail-dialog.tsx",
       "source_location": "L72",
       "id": "product_feature_detail_dialog_featuredetaildialog",
-      "community": 20,
+      "community": 82,
       "norm_label": "featuredetaildialog()"
     },
     {
@@ -13527,7 +13491,7 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L16",
       "id": "product_journey_journeystep",
-      "community": 67,
+      "community": 36,
       "norm_label": "journeystep"
     },
     {
@@ -13563,7 +13527,7 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L53",
       "id": "product_journey_journeymap",
-      "community": 67,
+      "community": 36,
       "norm_label": "journeymap()"
     },
     {
@@ -13599,7 +13563,7 @@
       "source_file": "apps/web/src/components/product/page-shell.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_page_shell_tsx",
-      "community": 82,
+      "community": 37,
       "norm_label": "page-shell.tsx"
     },
     {
@@ -13608,7 +13572,7 @@
       "source_file": "apps/web/src/components/product/page-shell.tsx",
       "source_location": "L17",
       "id": "product_page_shell_grouppdfbutton",
-      "community": 82,
+      "community": 37,
       "norm_label": "grouppdfbutton"
     },
     {
@@ -13671,7 +13635,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_evidence_ref_tsx",
-      "community": 36,
+      "community": 114,
       "norm_label": "evidence-ref.tsx"
     },
     {
@@ -13680,7 +13644,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L11",
       "id": "product_evidence_ref_evidencelevel",
-      "community": 12,
+      "community": 114,
       "norm_label": "evidencelevel"
     },
     {
@@ -13689,7 +13653,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L13",
       "id": "product_evidence_ref_levelconfig",
-      "community": 36,
+      "community": 114,
       "norm_label": "levelconfig"
     },
     {
@@ -13707,7 +13671,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L65",
       "id": "product_evidence_ref_severitytone",
-      "community": 36,
+      "community": 114,
       "norm_label": "severitytone"
     },
     {
@@ -13716,7 +13680,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L72",
       "id": "product_evidence_ref_severitybadge",
-      "community": 48,
+      "community": 114,
       "norm_label": "severitybadge()"
     },
     {
@@ -13725,7 +13689,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L91",
       "id": "product_evidence_ref_risktone",
-      "community": 36,
+      "community": 114,
       "norm_label": "risktone"
     },
     {
@@ -13734,7 +13698,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L97",
       "id": "product_evidence_ref_risklabel",
-      "community": 36,
+      "community": 114,
       "norm_label": "risklabel"
     },
     {
@@ -13743,7 +13707,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L103",
       "id": "product_evidence_ref_recurrenceriskbadge",
-      "community": 48,
+      "community": 114,
       "norm_label": "recurrenceriskbadge()"
     },
     {
@@ -13752,7 +13716,7 @@
       "source_file": "apps/web/src/components/product/evidence-ref.tsx",
       "source_location": "L122",
       "id": "product_evidence_ref_statusbadge",
-      "community": 48,
+      "community": 114,
       "norm_label": "statusbadge()"
     },
     {
@@ -13869,7 +13833,7 @@
       "source_file": "apps/web/src/components/product/flow-diagram.tsx",
       "source_location": "L69",
       "id": "product_flow_diagram_flowdiagram",
-      "community": 85,
+      "community": 20,
       "norm_label": "flowdiagram()"
     },
     {
@@ -13941,7 +13905,7 @@
       "source_file": "apps/web/src/components/product/timeline.tsx",
       "source_location": "L32",
       "id": "product_timeline_timeline",
-      "community": 67,
+      "community": 8,
       "norm_label": "timeline()"
     },
     {
@@ -13959,7 +13923,7 @@
       "source_file": "apps/web/src/components/product/segment-tabs.tsx",
       "source_location": "L7",
       "id": "product_segment_tabs_segmenttabitem",
-      "community": 91,
+      "community": 47,
       "norm_label": "segmenttabitem"
     },
     {
@@ -13968,7 +13932,7 @@
       "source_file": "apps/web/src/components/product/segment-tabs.tsx",
       "source_location": "L18",
       "id": "product_segment_tabs_segmenttabs",
-      "community": 78,
+      "community": 8,
       "norm_label": "segmenttabs()"
     },
     {
@@ -14004,7 +13968,7 @@
       "source_file": "apps/web/src/components/product/stats.tsx",
       "source_location": "L79",
       "id": "product_stats_statgrid",
-      "community": 38,
+      "community": 66,
       "norm_label": "statgrid()"
     },
     {
@@ -14067,7 +14031,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_product_collection_tsx",
-      "community": 36,
+      "community": 82,
       "norm_label": "collection.tsx"
     },
     {
@@ -14076,7 +14040,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L11",
       "id": "product_collection_tagbadge",
-      "community": 36,
+      "community": 82,
       "norm_label": "tagbadge()"
     },
     {
@@ -14085,7 +14049,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L34",
       "id": "product_collection_datatable",
-      "community": 36,
+      "community": 82,
       "norm_label": "datatable()"
     },
     {
@@ -14094,7 +14058,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L95",
       "id": "product_collection_boardcard",
-      "community": 36,
+      "community": 82,
       "norm_label": "boardcard"
     },
     {
@@ -14103,7 +14067,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L105",
       "id": "product_collection_boardcolumn",
-      "community": 36,
+      "community": 82,
       "norm_label": "boardcolumn"
     },
     {
@@ -14112,7 +14076,7 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L112",
       "id": "product_collection_boardgrid",
-      "community": 36,
+      "community": 82,
       "norm_label": "boardgrid()"
     },
     {
@@ -14364,7 +14328,7 @@
       "source_file": "apps/web/src/components/engineering/tools/shared.tsx",
       "source_location": "L1",
       "id": "apps_web_src_components_engineering_tools_shared_tsx",
-      "community": 21,
+      "community": 36,
       "norm_label": "shared.tsx"
     },
     {
@@ -14373,7 +14337,7 @@
       "source_file": "apps/web/src/components/engineering/tools/shared.tsx",
       "source_location": "L26",
       "id": "tools_shared_tool_links",
-      "community": 21,
+      "community": 36,
       "norm_label": "tool_links"
     },
     {
@@ -14391,7 +14355,7 @@
       "source_file": "apps/web/src/components/engineering/tools/shared.tsx",
       "source_location": "L102",
       "id": "tools_shared_copybutton",
-      "community": 21,
+      "community": 119,
       "norm_label": "copybutton()"
     },
     {
@@ -14400,7 +14364,7 @@
       "source_file": "apps/web/src/components/engineering/tools/shared.tsx",
       "source_location": "L125",
       "id": "tools_shared_codeblock",
-      "community": 21,
+      "community": 88,
       "norm_label": "codeblock()"
     },
     {
@@ -14571,7 +14535,7 @@
       "source_file": "apps/web/src/components/engineering/device-lab/device-lab-shared.tsx",
       "source_location": "L124",
       "id": "device_lab_device_lab_shared_stepstatusindicator",
-      "community": 119,
+      "community": 88,
       "norm_label": "stepstatusindicator()"
     },
     {
@@ -14589,7 +14553,7 @@
       "source_file": "apps/web/src/components/engineering/device-lab/device-lab-shared.tsx",
       "source_location": "L151",
       "id": "device_lab_device_lab_shared_debugonlywarning",
-      "community": 119,
+      "community": 80,
       "norm_label": "debugonlywarning()"
     },
     {
@@ -14616,7 +14580,7 @@
       "source_file": "apps/web/src/components/engineering/device-lab/device-lab-shared.tsx",
       "source_location": "L204",
       "id": "device_lab_device_lab_shared_preflightchecklist",
-      "community": 119,
+      "community": 80,
       "norm_label": "preflightchecklist()"
     },
     {
@@ -14634,7 +14598,7 @@
       "source_file": "apps/web/src/components/engineering/device-lab/device-lab-shared.tsx",
       "source_location": "L266",
       "id": "device_lab_device_lab_shared_productionprotectionbadge",
-      "community": 119,
+      "community": 80,
       "norm_label": "productionprotectionbadge()"
     },
     {
@@ -14940,7 +14904,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L104",
       "id": "pm_types_versionentry",
-      "community": 9,
+      "community": 8,
       "norm_label": "versionentry"
     },
     {
@@ -14985,7 +14949,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L139",
       "id": "pm_types_roadmaprisklevel",
-      "community": 9,
+      "community": 47,
       "norm_label": "roadmaprisklevel"
     },
     {
@@ -15039,7 +15003,7 @@
       "source_file": "apps/web/src/data/pm/types.ts",
       "source_location": "L158",
       "id": "pm_types_roadmapphase",
-      "community": 9,
+      "community": 47,
       "norm_label": "roadmapphase"
     },
     {
@@ -15084,7 +15048,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_pm_roadmap_ts",
-      "community": 9,
+      "community": 47,
       "norm_label": "roadmap.ts"
     },
     {
@@ -15093,7 +15057,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L8",
       "id": "pm_roadmap_newarchphases",
-      "community": 9,
+      "community": 47,
       "norm_label": "newarchphases"
     },
     {
@@ -15102,7 +15066,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L160",
       "id": "pm_roadmap_refactorphases",
-      "community": 9,
+      "community": 47,
       "norm_label": "refactorphases"
     },
     {
@@ -15111,7 +15075,7 @@
       "source_file": "apps/web/src/data/pm/roadmap.ts",
       "source_location": "L239",
       "id": "pm_roadmap_roadmapsummary",
-      "community": 9,
+      "community": 47,
       "norm_label": "roadmapsummary"
     },
     {
@@ -15257,24 +15221,6 @@
       "id": "pm_tickets_sorttickets",
       "community": 48,
       "norm_label": "sorttickets()"
-    },
-    {
-      "label": "feature-slug.ts",
-      "file_type": "code",
-      "source_file": "apps/web/src/data/product/feature-slug.ts",
-      "source_location": "L1",
-      "id": "apps_web_src_data_product_feature_slug_ts",
-      "community": 85,
-      "norm_label": "feature-slug.ts"
-    },
-    {
-      "label": "toFeatureSlug()",
-      "file_type": "code",
-      "source_file": "apps/web/src/data/product/feature-slug.ts",
-      "source_location": "L2",
-      "id": "product_feature_slug_tofeatureslug",
-      "community": 85,
-      "norm_label": "tofeatureslug()"
     },
     {
       "label": "domain-glossary.ts",
@@ -15444,7 +15390,7 @@
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L418",
       "id": "product_nesy_issupported",
-      "community": 20,
+      "community": 123,
       "norm_label": "issupported()"
     },
     {
@@ -15642,7 +15588,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L22",
       "id": "engineering_performance_intelligence_pi_meta",
-      "community": 12,
+      "community": 15,
       "norm_label": "pi_meta"
     },
     {
@@ -15678,7 +15624,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L62",
       "id": "engineering_performance_intelligence_pi_kpis",
-      "community": 15,
+      "community": 12,
       "norm_label": "pi_kpis"
     },
     {
@@ -15687,7 +15633,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L72",
       "id": "engineering_performance_intelligence_pi_narrative",
-      "community": 15,
+      "community": 12,
       "norm_label": "pi_narrative"
     },
     {
@@ -15795,7 +15741,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L268",
       "id": "engineering_performance_intelligence_pi_pillars",
-      "community": 15,
+      "community": 12,
       "norm_label": "pi_pillars"
     },
     {
@@ -15813,7 +15759,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L362",
       "id": "engineering_performance_intelligence_pi_priority_endpoints",
-      "community": 12,
+      "community": 15,
       "norm_label": "pi_priority_endpoints"
     },
     {
@@ -15831,7 +15777,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L483",
       "id": "engineering_performance_intelligence_pi_metric_flows",
-      "community": 12,
+      "community": 15,
       "norm_label": "pi_metric_flows"
     },
     {
@@ -15867,7 +15813,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L565",
       "id": "engineering_performance_intelligence_piaction",
-      "community": 12,
+      "community": 15,
       "norm_label": "piaction"
     },
     {
@@ -15876,7 +15822,7 @@
       "source_file": "apps/web/src/data/engineering/performance-intelligence.ts",
       "source_location": "L577",
       "id": "engineering_performance_intelligence_pi_actions",
-      "community": 15,
+      "community": 12,
       "norm_label": "pi_actions"
     },
     {
@@ -18072,7 +18018,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L1",
       "id": "apps_web_src_data_engineering_device_lab_device_lab_types_ts",
-      "community": 88,
+      "community": 52,
       "norm_label": "device-lab-types.ts"
     },
     {
@@ -18108,7 +18054,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L19",
       "id": "device_lab_device_lab_types_configtype",
-      "community": 119,
+      "community": 80,
       "norm_label": "configtype"
     },
     {
@@ -18144,7 +18090,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L51",
       "id": "device_lab_device_lab_types_devicerequirement",
-      "community": 88,
+      "community": 52,
       "norm_label": "devicerequirement"
     },
     {
@@ -18162,7 +18108,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L63",
       "id": "device_lab_device_lab_types_paramtype",
-      "community": 88,
+      "community": 52,
       "norm_label": "paramtype"
     },
     {
@@ -18171,7 +18117,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L77",
       "id": "device_lab_device_lab_types_scenarioparam",
-      "community": 88,
+      "community": 52,
       "norm_label": "scenarioparam"
     },
     {
@@ -18189,7 +18135,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L103",
       "id": "device_lab_device_lab_types_scenariocommand",
-      "community": 88,
+      "community": 52,
       "norm_label": "scenariocommand"
     },
     {
@@ -18198,7 +18144,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L114",
       "id": "device_lab_device_lab_types_verificationstep",
-      "community": 88,
+      "community": 52,
       "norm_label": "verificationstep"
     },
     {
@@ -18207,7 +18153,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L125",
       "id": "device_lab_device_lab_types_rollbackstep",
-      "community": 88,
+      "community": 52,
       "norm_label": "rollbackstep"
     },
     {
@@ -18216,7 +18162,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L136",
       "id": "device_lab_device_lab_types_scenariopackage",
-      "community": 119,
+      "community": 32,
       "norm_label": "scenariopackage"
     },
     {
@@ -18234,7 +18180,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L178",
       "id": "device_lab_device_lab_types_runstatus",
-      "community": 88,
+      "community": 119,
       "norm_label": "runstatus"
     },
     {
@@ -18243,7 +18189,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L180",
       "id": "device_lab_device_lab_types_stepstatus",
-      "community": 2,
+      "community": 52,
       "norm_label": "stepstatus"
     },
     {
@@ -18261,7 +18207,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L200",
       "id": "device_lab_device_lab_types_executionrecord",
-      "community": 88,
+      "community": 32,
       "norm_label": "executionrecord"
     },
     {
@@ -18297,7 +18243,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L246",
       "id": "device_lab_device_lab_types_sessionstatus",
-      "community": 88,
+      "community": 52,
       "norm_label": "sessionstatus"
     },
     {
@@ -18315,7 +18261,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L255",
       "id": "device_lab_device_lab_types_logevent",
-      "community": 98,
+      "community": 61,
       "norm_label": "logevent"
     },
     {
@@ -18369,7 +18315,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/device-lab-types.ts",
       "source_location": "L356",
       "id": "device_lab_device_lab_types_shareconfig",
-      "community": 88,
+      "community": 52,
       "norm_label": "shareconfig"
     },
     {
@@ -18387,7 +18333,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L20",
       "id": "device_lab_log_presets_log_source_meta",
-      "community": 52,
+      "community": 61,
       "norm_label": "log_source_meta"
     },
     {
@@ -18396,7 +18342,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L106",
       "id": "device_lab_log_presets_log_level_meta",
-      "community": 52,
+      "community": 98,
       "norm_label": "log_level_meta"
     },
     {
@@ -18459,7 +18405,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L659",
       "id": "device_lab_log_presets_correlation_rules",
-      "community": 52,
+      "community": 61,
       "norm_label": "correlation_rules"
     },
     {
@@ -18513,7 +18459,7 @@
       "source_file": "apps/web/src/data/engineering/device-lab/log-presets.ts",
       "source_location": "L958",
       "id": "device_lab_log_presets_matchcorrelation",
-      "community": 52,
+      "community": 61,
       "norm_label": "matchcorrelation()"
     },
     {
@@ -19430,7 +19376,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L1",
-      "community": 20,
+      "community": 123,
       "norm_label": "feature-library-card.tsx",
       "id": "apps_web_src_components_product_feature_library_card_tsx"
     },
@@ -19439,7 +19385,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L17",
-      "community": 20,
+      "community": 123,
       "norm_label": "activecountries",
       "id": "product_feature_library_card_activecountries"
     },
@@ -19448,7 +19394,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L19",
-      "community": 20,
+      "community": 123,
       "norm_label": "toneborder",
       "id": "product_feature_library_card_toneborder"
     },
@@ -19457,7 +19403,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L31",
-      "community": 20,
+      "community": 123,
       "norm_label": "itemvariants",
       "id": "product_feature_library_card_itemvariants"
     },
@@ -19466,7 +19412,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/product/feature-library-card.tsx",
       "source_location": "L36",
-      "community": 20,
+      "community": 123,
       "norm_label": "featurelibrarycard()",
       "id": "product_feature_library_card_featurelibrarycard"
     },
@@ -19529,7 +19475,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/backend/[domain]/domain-view.tsx",
       "source_location": "L1",
-      "community": 47,
+      "community": 78,
       "norm_label": "domain-view.tsx",
       "id": "apps_web_src_app_cockpit_engineering_mobile_knowledge_backend_domain_domain_view_tsx"
     },
@@ -19556,7 +19502,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L1",
-      "community": 38,
+      "community": 71,
       "norm_label": "page.tsx",
       "id": "apps_web_src_app_cockpit_engineering_mobile_knowledge_screens_page_tsx"
     },
@@ -19565,7 +19511,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L10",
-      "community": 38,
+      "community": 71,
       "norm_label": "group_order",
       "id": "screens_page_group_order"
     },
@@ -19574,7 +19520,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/app/(cockpit)/engineering/mobile-knowledge/screens/page.tsx",
       "source_location": "L12",
-      "community": 38,
+      "community": 71,
       "norm_label": "screenmanualpage()",
       "id": "screens_page_screenmanualpage"
     },
@@ -19808,7 +19754,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L1",
-      "community": 47,
+      "community": 21,
       "norm_label": "endpoint-table.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_endpoint_table_tsx"
     },
@@ -19817,7 +19763,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L30",
-      "community": 47,
+      "community": 21,
       "norm_label": "method_tone",
       "id": "mobile_knowledge_endpoint_table_method_tone"
     },
@@ -19826,7 +19772,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L38",
-      "community": 47,
+      "community": 21,
       "norm_label": "methodpill()",
       "id": "mobile_knowledge_endpoint_table_methodpill"
     },
@@ -19835,7 +19781,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L52",
-      "community": 47,
+      "community": 21,
       "norm_label": "codeblock()",
       "id": "mobile_knowledge_endpoint_table_codeblock"
     },
@@ -19844,7 +19790,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L61",
-      "community": 47,
+      "community": 21,
       "norm_label": "field()",
       "id": "mobile_knowledge_endpoint_table_field"
     },
@@ -19853,7 +19799,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/endpoint-table.tsx",
       "source_location": "L71",
-      "community": 47,
+      "community": 78,
       "norm_label": "endpointtable()",
       "id": "mobile_knowledge_endpoint_table_endpointtable"
     },
@@ -19862,7 +19808,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/screenshot-hotspots.tsx",
       "source_location": "L1",
-      "community": 118,
+      "community": 51,
       "norm_label": "screenshot-hotspots.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_screenshot_hotspots_tsx"
     },
@@ -19871,7 +19817,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/screenshot-hotspots.tsx",
       "source_location": "L11",
-      "community": 118,
+      "community": 51,
       "norm_label": "screenshothotspots()",
       "id": "mobile_knowledge_screenshot_hotspots_screenshothotspots"
     },
@@ -19880,7 +19826,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L1",
-      "community": 50,
+      "community": 71,
       "norm_label": "knowledge-nav.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_knowledge_nav_tsx"
     },
@@ -19889,7 +19835,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L12",
-      "community": 50,
+      "community": 71,
       "norm_label": "navitem",
       "id": "mobile_knowledge_knowledge_nav_navitem"
     },
@@ -19898,7 +19844,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L18",
-      "community": 50,
+      "community": 71,
       "norm_label": "navgroup",
       "id": "mobile_knowledge_knowledge_nav_navgroup"
     },
@@ -19907,7 +19853,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/knowledge-nav.tsx",
       "source_location": "L24",
-      "community": 38,
+      "community": 71,
       "norm_label": "knowledgenav()",
       "id": "mobile_knowledge_knowledge_nav_knowledgenav"
     },
@@ -19916,7 +19862,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/index.ts",
       "source_location": "L1",
-      "community": 118,
+      "community": 51,
       "norm_label": "index.ts",
       "id": "apps_web_src_components_engineering_mobile_knowledge_index_ts"
     },
@@ -19925,7 +19871,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L1",
-      "community": 36,
+      "community": 51,
       "norm_label": "flow.tsx",
       "id": "apps_web_src_components_engineering_mobile_knowledge_flow_tsx"
     },
@@ -19934,7 +19880,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L14",
-      "community": 78,
+      "community": 51,
       "norm_label": "flowdiagram()",
       "id": "mobile_knowledge_flow_flowdiagram"
     },
@@ -19943,7 +19889,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/flow.tsx",
       "source_location": "L67",
-      "community": 47,
+      "community": 51,
       "norm_label": "lineage()",
       "id": "mobile_knowledge_flow_lineage"
     },
@@ -19961,7 +19907,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/components/engineering/mobile-knowledge/badges.tsx",
       "source_location": "L20",
-      "community": 51,
+      "community": 78,
       "norm_label": "tonepill()",
       "id": "mobile_knowledge_badges_tonepill"
     },
@@ -20114,7 +20060,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/screens.ts",
       "source_location": "L220",
-      "community": 60,
+      "community": 71,
       "norm_label": "screens",
       "id": "mobile_knowledge_screens_screens"
     },
@@ -20330,7 +20276,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/engineering/mobile-knowledge/types.ts",
       "source_location": "L188",
-      "community": 118,
+      "community": 51,
       "norm_label": "hotspot",
       "id": "mobile_knowledge_types_hotspot"
     },
@@ -20546,7 +20492,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L46",
-      "community": 20,
+      "community": 123,
       "norm_label": "feature",
       "id": "product_nesy_feature"
     },
@@ -20555,7 +20501,7 @@
       "file_type": "code",
       "source_file": "apps/web/src/data/product/nesy.ts",
       "source_location": "L56",
-      "community": 20,
+      "community": 82,
       "norm_label": "module",
       "id": "product_nesy_module"
     },
@@ -32909,9 +32855,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L8",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "packages_metronic_src_components_ui_badge_tsx"
+      "target": "packages_metronic_src_components_ui_badge_tsx",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -33415,9 +33361,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L8",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "ui_badge_badge"
+      "target": "ui_badge_badge",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -34244,9 +34190,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L27",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "packages_metronic_src_components_ui_button_tsx"
+      "target": "packages_metronic_src_components_ui_button_tsx",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -34585,9 +34531,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L27",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "ui_button_button"
+      "target": "ui_button_button",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -39996,9 +39942,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L28",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "packages_metronic_src_lib_utils_ts"
+      "target": "packages_metronic_src_lib_utils_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -40403,9 +40349,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L5",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "packages_metronic_src_lib_utils_ts"
+      "target": "packages_metronic_src_lib_utils_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -40502,9 +40448,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L7",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "packages_metronic_src_lib_utils_ts"
+      "target": "packages_metronic_src_lib_utils_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -44755,16 +44701,6 @@
       "target": "slug_page_notionplaceholderpage"
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/page.tsx",
-      "source_location": "L3",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_page_tsx",
-      "target": "product_page_productrootpage"
-    },
-    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45004,28 +44940,6 @@
       "target": "product_nesy_issupported"
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
-      "source_location": "L28",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "target": "apps_web_src_data_product_feature_slug_ts"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
-      "source_location": "L28",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "target": "product_feature_slug_tofeatureslug"
-    },
-    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
@@ -45062,9 +44976,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "target": "product_collection_boardgrid"
+      "target": "product_collection_boardgrid",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45084,9 +44998,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "target": "product_collection_datatable"
+      "target": "product_collection_datatable",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45128,9 +45042,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/page.tsx",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_page_tsx",
-      "target": "product_collection_tagbadge"
+      "target": "product_collection_tagbadge",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45227,9 +45141,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "apps_web_src_components_product_index_ts"
+      "target": "apps_web_src_components_product_index_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -45238,9 +45152,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "apps_web_src_data_product_nesy_ts"
+      "target": "apps_web_src_data_product_nesy_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45249,9 +45163,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_nesy_countries"
+      "target": "product_nesy_countries",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45260,9 +45174,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_nesy_modules"
+      "target": "product_nesy_modules",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45271,9 +45185,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_nesy_issupported"
+      "target": "product_nesy_issupported",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -45282,9 +45196,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "apps_web_src_data_product_feature_slug_ts"
+      "target": "apps_web_src_components_product_tones_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45293,20 +45207,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_feature_slug_tofeatureslug"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L39",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "apps_web_src_components_product_tones_ts"
+      "target": "product_tones_tonecard",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45315,9 +45218,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_tones_tonecard"
+      "target": "product_tones_tonedot",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45326,9 +45229,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_tones_tonedot"
+      "target": "product_tones_toneicon",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45337,9 +45240,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_tones_toneicon"
+      "target": "product_tones_toneiconbox",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45348,20 +45251,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_tones_toneiconbox"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L39",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_tones_tonetext"
+      "target": "product_tones_tonetext",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45369,9 +45261,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L41",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_moduleicons"
+      "target": "slugname_page_moduleicons",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45379,9 +45271,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L42",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_moduletones"
+      "target": "slugname_page_moduletones",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45389,9 +45281,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L44",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_featurerecords"
+      "target": "slugname_page_featurerecords",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45399,9 +45291,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L48",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_scorelabels"
+      "target": "slugname_page_scorelabels",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45409,9 +45301,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L55",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_scorecolors"
+      "target": "slugname_page_scorecolors",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45419,9 +45311,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L63",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_ticketstatus"
+      "target": "slugname_page_ticketstatus",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45429,9 +45321,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L69",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_featuredetailpage"
+      "target": "slugname_page_featuredetailpage",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45439,9 +45331,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L410",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_herometric"
+      "target": "slugname_page_herometric",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45449,9 +45341,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L419",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_detailpanel"
+      "target": "slugname_page_detailpanel",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45459,9 +45351,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L445",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_scorebar"
+      "target": "slugname_page_scorebar",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45469,9 +45361,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L459",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_emptypanel"
+      "target": "slugname_page_emptypanel",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -45479,9 +45371,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L468",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "slugname_page_inlineempty"
+      "target": "slugname_page_inlineempty",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45490,9 +45382,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_blocks_callout"
+      "target": "product_blocks_callout",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45501,9 +45393,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_collection_datatable"
+      "target": "product_collection_datatable",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45512,9 +45404,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_flow_diagram_flowdiagram"
+      "target": "product_flow_diagram_flowdiagram",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45523,9 +45415,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_blocks_herocallout"
+      "target": "product_blocks_herocallout",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45534,9 +45426,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_page_shell_productpage"
+      "target": "product_page_shell_productpage",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45545,9 +45437,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_segment_tabs_segmenttabs"
+      "target": "product_segment_tabs_segmenttabs",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -45556,9 +45448,9 @@
       "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_feature_library_slugname_page_tsx",
-      "target": "product_collection_tagbadge"
+      "target": "product_collection_tagbadge",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -45570,17 +45462,6 @@
       "weight": 1.0,
       "source": "slugname_page_featuredetailpage",
       "target": "product_nesy_issupported"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/src/app/(cockpit)/product/feature-library/[slugName]/page.tsx",
-      "source_location": "L386",
-      "weight": 1.0,
-      "source": "slugname_page_featuredetailpage",
-      "target": "product_feature_slug_tofeatureslug"
     },
     {
       "relation": "imports_from",
@@ -47358,26 +47239,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L40",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "user_journeys_page_journeydefinition"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L50",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "user_journeys_page_journeys"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
       "source_location": "L34",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -47400,33 +47261,11 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L29",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "product_comparison_comparisontable"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
       "source_location": "L25",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
       "target": "product_blocks_herocallout"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L29",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "product_journey_journeymap"
     },
     {
       "relation": "imports",
@@ -47460,28 +47299,6 @@
       "confidence_score": 1.0,
       "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
       "target": "product_segment_tabs_segmenttabs"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L38",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "product_journey_journeystep"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/app/(cockpit)/product/user-journeys/page.tsx",
-      "source_location": "L38",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_app_cockpit_product_user_journeys_page_tsx",
-      "target": "product_tones_tone"
     },
     {
       "relation": "imports",
@@ -56646,9 +56463,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "apps_web_src_components_product_tones_ts"
+      "target": "apps_web_src_components_product_tones_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56657,9 +56474,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_ease"
+      "target": "product_tones_ease",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56668,9 +56485,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_tone"
+      "target": "product_tones_tone",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56679,9 +56496,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_tonecard"
+      "target": "product_tones_tonecard",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56690,9 +56507,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_tonedot"
+      "target": "product_tones_tonedot",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56701,9 +56518,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_toneicon"
+      "target": "product_tones_toneicon",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56712,9 +56529,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_toneiconbox"
+      "target": "product_tones_toneiconbox",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -56723,9 +56540,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_tones_tonetext"
+      "target": "product_tones_tonetext",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -56733,9 +56550,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L16",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_journey_journeystep"
+      "target": "product_journey_journeystep",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -56743,9 +56560,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L27",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_journey_emotion_labels"
+      "target": "product_journey_emotion_labels",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -56753,9 +56570,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_journey_curvestroke"
+      "target": "product_journey_curvestroke",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -56763,9 +56580,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L41",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_journey_curvefill"
+      "target": "product_journey_curvefill",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -56773,9 +56590,9 @@
       "source_file": "apps/web/src/components/product/journey.tsx",
       "source_location": "L53",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_journey_tsx",
-      "target": "product_journey_journeymap"
+      "target": "product_journey_journeymap",
+      "confidence_score": 1.0
     },
     {
       "relation": "re_exports",
@@ -56784,9 +56601,9 @@
       "source_file": "apps/web/src/components/product/index.ts",
       "source_location": "L14",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_index_ts",
-      "target": "apps_web_src_components_product_journey_tsx"
+      "target": "apps_web_src_components_product_journey_tsx",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -57891,9 +57708,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "apps_web_src_components_product_tones_ts"
+      "target": "apps_web_src_components_product_tones_ts",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -57957,9 +57774,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_tone"
+      "target": "product_tones_tone",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -58166,9 +57983,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_tonecard"
+      "target": "product_tones_tonecard",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -58254,9 +58071,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_toneicon"
+      "target": "product_tones_toneicon",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -58331,9 +58148,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_tonetext"
+      "target": "product_tones_tonetext",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -58463,9 +58280,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_tonedot"
+      "target": "product_tones_tonedot",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -58562,9 +58379,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_tones_ease"
+      "target": "product_tones_ease",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -59149,9 +58966,9 @@
       "source_file": "apps/web/src/components/product/index.ts",
       "source_location": "L8",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_index_ts",
-      "target": "apps_web_src_components_product_collection_tsx"
+      "target": "apps_web_src_components_product_collection_tsx",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -59478,9 +59295,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L11",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_collection_tagbadge"
+      "target": "product_collection_tagbadge",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -59488,9 +59305,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L34",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_collection_datatable"
+      "target": "product_collection_datatable",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -59498,9 +59315,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L95",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_collection_boardcard"
+      "target": "product_collection_boardcard",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -59508,9 +59325,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L105",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_collection_boardcolumn"
+      "target": "product_collection_boardcolumn",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -59518,9 +59335,9 @@
       "source_file": "apps/web/src/components/product/collection.tsx",
       "source_location": "L112",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "apps_web_src_components_product_collection_tsx",
-      "target": "product_collection_boardgrid"
+      "target": "product_collection_boardgrid",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -61132,16 +60949,6 @@
       "confidence_score": 1.0,
       "source": "apps_web_src_data_pm_tickets_ts",
       "target": "pm_tickets_sorttickets"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/data/product/feature-slug.ts",
-      "source_location": "L2",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "apps_web_src_data_product_feature_slug_ts",
-      "target": "product_feature_slug_tofeatureslug"
     },
     {
       "relation": "contains",

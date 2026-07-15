@@ -45,7 +45,7 @@ export function SidebarCollapsibleSection({
     <AccordionMenu
       type="single"
       collapsible
-      defaultValue={defaultOpen ? triggerId : undefined}
+      defaultValue={defaultOpen ? sectionId : undefined}
       selectedValue={pathname}
       matchPath={matchPath}
       className="space-y-7.5 px-2.5"

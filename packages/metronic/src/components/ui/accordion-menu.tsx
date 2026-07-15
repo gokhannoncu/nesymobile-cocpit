@@ -51,6 +51,7 @@ function AccordionMenu({
   children,
   selectedValue,
   onItemClick,
+  defaultValue,
   ...props
 }: React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Root> & AccordionMenuProps) {
   const [internalSelectedValue, setInternalSelectedValue] = React.useState<string | undefined>(selectedValue);
@@ -95,9 +96,11 @@ function AccordionMenu({
           if (key && next) mapping[key] = next
         }
       }
+    } else if (defaultValue) {
+      mapping['root'] = defaultValue
     }
     return mapping;
-  }, [children, matchPath, selectedValue, props.type]);
+  }, [children, defaultValue, matchPath, selectedValue, props.type]);
 
   const [nestedStates, setNestedStates] = React.useState<Record<string, string | string[]>>(initialNestedStates);
   const multipleValue = (
@@ -127,6 +130,7 @@ function AccordionMenu({
           value={singleValue}
           className={cn('w-full', classNames?.root, className)}
           onValueChange={(value: string) => setNestedStates((prev) => ({ ...prev, root: value }))}
+          defaultValue={defaultValue}
           {...props}
           role="menu"
         >
@@ -138,6 +142,7 @@ function AccordionMenu({
           value={multipleValue}
           className={cn('w-full', classNames?.root, className)}
           onValueChange={(value: string | string[]) => setNestedStates((prev) => ({ ...prev, root: value }))}
+          defaultValue={defaultValue}
           {...props}
           role="menu"
         >
