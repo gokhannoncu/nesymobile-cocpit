@@ -54,42 +54,42 @@ const JOURNEYS: JourneyDefinition[] = [
     icon: ScanLine,
     tone: 'blue',
     purpose:
-      'Kuryenin güne doğru rota ve eksiksiz koli setiyle başlamasını sağlamak; onay bekleme anını görünür, sonradan eklenen gönderileri ise kesintisiz yönetmek.',
+      'Ensure the courier starts the day with the correct route and a complete parcel set; make the approval wait visible and manage subsequently added shipments seamlessly.',
     steps: [
       {
-        label: 'Rotasını seçer',
-        desc: 'Kurye kendisine atanmış rotayı uygulamada açar.',
+        label: 'Selects route',
+        desc: 'The courier opens the assigned route in the app.',
         icon: MapPin,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Kolileri okutur',
-        desc: 'Araca yüklenen gönderiler barkodla doğrulanır.',
+        label: 'Scans parcels',
+        desc: 'Shipments loaded onto the vehicle are verified by barcode.',
         icon: ScanLine,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Onay ister',
-        desc: 'Tur başlangıcı operasyon onayına gönderilir.',
+        label: 'Requests approval',
+        desc: 'Tour start is submitted for operations approval.',
         icon: Send,
         emotion: 2,
         nesy: true,
       },
       {
-        label: 'Durakları yönetir',
-        desc: 'Aynı adresler birleşir, yeni gönderiler tur içine alınır.',
+        label: 'Manages stops',
+        desc: 'Same addresses are merged, new shipments are added to the tour.',
         icon: Boxes,
         emotion: 4,
         nesy: true,
       },
     ],
     rows: [
-      ['Rota seçimi', 'Doğru turu hatasız başlatmak', 'Rota seçim ekranı', '😐 Odaklı', 'Yanlış rota riskini gün/araç özetiyle azaltmak.'],
-      ['Koli okutma', 'Araçtaki fiziksel yükü sistemle eşleştirmek', 'Barkod tarayıcı', '😐 Tekrarlı işlem', 'İlerleme ve eksik koli sayısını sürekli görünür tutmak.'],
-      ['Onay bekleme', 'Sahaya çıkmak için izin almak', 'Onay durumu', '😟 Bekleme', 'Beklemenin nedenini ve sahibi olan rolü açıkça göstermek.'],
-      ['Durak yönetimi', 'Günün planını değişikliklere rağmen korumak', 'Stop listesi', '🙂 Kontrol hissi', 'Otomatik birleşen ve sonradan gelen durakları ayırt etmek.'],
+      ['Route selection', 'Start the correct tour without errors', 'Route selection screen', '😐 Focused', 'Reduce wrong route risk with day/vehicle summary.'],
+      ['Parcel scanning', 'Match the physical load in the vehicle with the system', 'Barcode scanner', '😐 Repetitive task', 'Keep progress and missing parcel count continuously visible.'],
+      ['Approval wait', 'Obtain permission to go to the field', 'Approval status', '😟 Waiting', 'Clearly show the reason for waiting and the responsible role.'],
+      ['Stop management', 'Maintain the day plan despite changes', 'Stop list', '🙂 Sense of control', 'Distinguish between auto-merged and subsequently added stops.'],
     ],
   },
   {
@@ -98,51 +98,51 @@ const JOURNEYS: JourneyDefinition[] = [
     icon: PackageCheck,
     tone: 'teal',
     purpose:
-      'Kapıdaki teslimat anını; alıcı doğrulama, tahsilat, fiskalizasyon ve imza adımları boyunca hızlı ama hataya dayanıklı biçimde tamamlamak.',
+      'Complete the doorstep delivery moment quickly yet fault-tolerantly through consignee verification, collection, fiscalization, and signature steps.',
     steps: [
       {
-        label: 'Durağa ulaşır',
-        desc: 'Alıcı ve gönderi bilgilerini doğrular.',
+        label: 'Arrives at stop',
+        desc: 'Verifies consignee and shipment information.',
         icon: DoorOpen,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Tahsilat yapar',
-        desc: 'COD/ExW tutarı nakit veya ülkeye uygun kart akışıyla alınır.',
+        label: 'Collects payment',
+        desc: 'COD/ExW amount is collected via cash or country-appropriate card flow.',
         icon: Banknote,
         emotion: 2,
         nesy: true,
       },
       {
-        label: 'Fişi oluşturur',
-        desc: 'Gerekli pazarlarda fiskalizasyon tetiklenir.',
+        label: 'Generates receipt',
+        desc: 'Fiscalization is triggered in required markets.',
         icon: Receipt,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'İmzayı alır',
-        desc: 'Dijital veya fiziksel teslim kanıtı tamamlanır.',
+        label: 'Captures signature',
+        desc: 'Digital or physical proof of delivery is completed.',
         icon: PenLine,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Teslimatı kapatır',
-        desc: 'DELY eventi üretilir ve takip yüzeyleri güncellenir.',
+        label: 'Closes delivery',
+        desc: 'DELY event is generated and tracking interfaces are updated.',
         icon: CheckCircle2,
         emotion: 5,
         nesy: true,
       },
     ],
     rows: [
-      ['Alıcı doğrulama', 'Doğru kişiye doğru gönderiyi vermek', 'Teslimat ekranı', '😐 Kontrollü', 'Ülkeye göre ön-dolu/düzenlenebilir alanları açıkça ayırmak.'],
-      ['Tahsilat', 'Tutarı güvenli ve hızlı almak', 'Ödeme yöntemi', '😟 Kritik an', 'Raipay, SoftPOS ve nakit seçeneklerini ülkeye göre sadeleştirmek.'],
-      ['Fiskalizasyon', 'Yasal fişi doğru anda üretmek', 'VPFR / yazıcı', '😐 Bekliyor', 'Entegrasyon hatasında tekrar ve iptal yollarını görünür yapmak.'],
-      ['İmza', 'Teslim kanıtını tamamlamak', 'İmza yüzeyi', '😐 Son kontrol', 'Zorunlu ve opsiyonel imza durumunu yanlış anlaşılmayacak biçimde göstermek.'],
-      ['Başarılı teslim', 'Görevi güvenle kapatmak', 'Başarı özeti', '😌 Tamamlandı', 'DELY sonucunu ve tahsilat özetini tek ekranda teyit etmek.'],
-      ['Başarısız teslim', 'Doğru neden ve kanıtı kaydetmek', 'Neden + fotoğraf', '😟 Baskı altında', 'Ülkeye göre fotoğraf zorunluluğunu işlem anında açıklamak.'],
+      ['Consignee verification', 'Deliver the right shipment to the right person', 'Delivery screen', '😐 Controlled', 'Clearly separate pre-filled and editable fields by country.'],
+      ['Collection', 'Collect the amount safely and quickly', 'Payment method', '😟 Critical moment', 'Simplify Raipay, SoftPOS, and cash options by country.'],
+      ['Fiscalization', 'Generate the legal receipt at the right time', 'VPFR / printer', '😐 Waiting', 'Make retry and cancellation paths visible on integration error.'],
+      ['Signature', 'Complete proof of delivery', 'Signature surface', '😐 Final check', 'Display mandatory and optional signature status unambiguously.'],
+      ['Successful delivery', 'Close the task confidently', 'Success summary', '😌 Completed', 'Confirm the DELY result and collection summary on a single screen.'],
+      ['Failed delivery', 'Record the correct reason and evidence', 'Reason + photo', '😟 Under pressure', 'Explain photo requirements by country at the time of the action.'],
     ],
   },
   {
@@ -151,50 +151,50 @@ const JOURNEYS: JourneyDefinition[] = [
     icon: PackageSearch,
     tone: 'indigo',
     purpose:
-      'Toplama görevini atamadan gün sonuna kadar izlenebilir tutmak; başarısız durumda doğru kodu üretip gerekiyorsa görevi sonraki iş gününe taşımak.',
+      'Keep the pickup task traceable from assignment to end of day; generate the correct code on failure and carry the task over to the next business day if needed.',
     steps: [
       {
-        label: 'Görevi alır',
-        desc: 'Otomatik job veya dispatcher atamasıyla pickup oluşur.',
+        label: 'Receives task',
+        desc: 'Pickup is created via automatic job or dispatcher assignment.',
         icon: ClipboardList,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Göndericiye ulaşır',
-        desc: 'Gönderici ve gerekli pazarlarda alıcı bilgilerini görür.',
+        label: 'Reaches sender',
+        desc: 'Views sender and, in required markets, consignee information.',
         icon: MapPin,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Koliyi teslim alır',
-        desc: 'Pickup ve varsa CPP tahsilatı tamamlanır.',
+        label: 'Receives parcel',
+        desc: 'Pickup and, if applicable, CPP collection is completed.',
         icon: PackageSearch,
         emotion: 4,
         nesy: true,
       },
       {
-        label: 'Sorunu kodlar',
-        desc: 'Başarısızlık nedeni doğru operasyon koduyla seçilir.',
+        label: 'Codes the issue',
+        desc: 'Failure reason is selected with the correct operation code.',
         icon: Undo2,
         emotion: 2,
         nesy: true,
       },
       {
-        label: 'Takibi planlar',
-        desc: 'Uygun nedenlerde sonraki iş gününe yeniden atama yapılır.',
+        label: 'Plans follow-up',
+        desc: 'Reassignment to the next business day is made for eligible reasons.',
         icon: Route,
         emotion: 4,
         nesy: true,
       },
     ],
     rows: [
-      ['Görev atama', 'Günün pickup işlerini görmek', 'Görev listesi', '😐 Planlıyor', 'Otomatik ve manuel atamaların kaynağını görünür kılmak.'],
-      ['Gönderici bilgisi', 'Doğru adrese ve kişiye ulaşmak', 'Pickup detayı', '😐 Sahada', 'Eksik iletişim bilgisini operasyon kanalına hızlı eskale etmek.'],
-      ['Pickup + CPP', 'Koliyi ve ödemeyi eksiksiz almak', 'Toplama akışı', '🙂 İlerliyor', 'CPP kapsamını ülkeye göre yalnız gerekli durumda göstermek.'],
-      ['Başarısızlık kodu', 'Gerçek nedeni doğru kaydetmek', 'Reason code seçimi', '😟 Karar anı', 'Kodları teknik kısaltma yerine açıklamayla desteklemek.'],
-      ['Yeniden atama', 'Görevin kaybolmadığından emin olmak', 'Görev sonucu', '🙂 Netlik', 'Sonraki çalışma gününü ve yeni görev durumunu açıkça göstermek.'],
+      ['Task assignment', 'View the day\'s pickup tasks', 'Task list', '😐 Planning', 'Make the source of automatic and manual assignments visible.'],
+      ['Sender information', 'Reach the correct address and person', 'Pickup detail', '😐 In the field', 'Quickly escalate missing contact information to the operations channel.'],
+      ['Pickup + CPP', 'Collect the parcel and payment completely', 'Pickup flow', '🙂 Progressing', 'Show CPP scope by country only when required.'],
+      ['Failure code', 'Record the actual reason correctly', 'Reason code selection', '😟 Decision moment', 'Support codes with descriptions instead of technical abbreviations.'],
+      ['Reassignment', 'Ensure the task is not lost', 'Task result', '🙂 Clarity', 'Clearly show the next business day and new task status.'],
     ],
   },
   {
@@ -203,49 +203,49 @@ const JOURNEYS: JourneyDefinition[] = [
     icon: Package,
     tone: 'purple',
     purpose:
-      'Henüz sistemde gönderi kaydı bulunmayan fiziksel bir koliyi müşteri noktasından alıp Npoint ve backoffice üzerinden izlenebilir gönderiye dönüştürmek.',
+      'Pick up a physical parcel with no existing shipment record from the customer location and convert it into a trackable shipment via Npoint and backoffice.',
     steps: [
       {
-        label: 'PAC görevi oluşur',
-        desc: 'Kayıtsız koli için pickup-at-customer görevi açılır.',
+        label: 'PAC task is created',
+        desc: 'A pickup-at-customer task is opened for the unregistered parcel.',
         icon: ClipboardList,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Koliyi alır',
-        desc: 'Red label fiziksel olarak teslim alınır.',
+        label: 'Picks up parcel',
+        desc: 'Red label parcel is physically picked up.',
         icon: PackageSearch,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Npoint’e bırakır',
-        desc: 'Koli operasyon noktasında araçtan indirilir.',
+        label: 'Drops at Npoint',
+        desc: 'Parcel is unloaded from the vehicle at the operations point.',
         icon: Boxes,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Gönderi oluşur',
-        desc: 'Koli sistemde takip edilebilir bir shipment olur.',
+        label: 'Shipment is created',
+        desc: 'Parcel becomes a trackable shipment in the system.',
         icon: Package,
         emotion: 4,
         nesy: true,
       },
       {
-        label: 'Veri tamamlanır',
-        desc: 'Eksik alanlar backoffice tarafından zenginleştirilir.',
+        label: 'Data is completed',
+        desc: 'Missing fields are enriched by the backoffice.',
         icon: CheckCircle2,
         emotion: 4,
       },
     ],
     rows: [
-      ['PAC oluşturma', 'Kayıtsız koliyi operasyon içine almak', 'Görev listesi', '😐 Belirsiz başlangıç', 'Red Label görevini standart pickup’tan görsel olarak ayırmak.'],
-      ['Fiziksel pickup', 'Kolinin sorumluluğunu devralmak', 'Pickup onayı', '😐 Dikkatli', 'Geçici kimliği ve fiziksel etiketi birlikte doğrulamak.'],
-      ['Npoint drop-off', 'Koliyi doğru operasyona bırakmak', 'Unload ekranı', '😐 Operasyonel', 'Noktayı ve teslim alan birimi açıkça teyit etmek.'],
-      ['Shipment creation', 'Koliyi izlenebilir hale getirmek', 'Gönderi sonucu', '🙂 Rahatlama', 'Yeni shipment kimliğini eski görevle bağlayarak göstermek.'],
-      ['Backoffice completion', 'Eksik veriyi tamamlamak', 'Backoffice', '🙂 Kontrol', 'Mobilde hangi alanların daha sonra tamamlanacağını açıklamak.'],
+      ['PAC creation', 'Bring the unregistered parcel into operations', 'Task list', '😐 Uncertain start', 'Visually distinguish the Red Label task from a standard pickup.'],
+      ['Physical pickup', 'Take responsibility for the parcel', 'Pickup confirmation', '😐 Careful', 'Verify the temporary ID and physical label together.'],
+      ['Npoint drop-off', 'Drop the parcel at the correct operation', 'Unload screen', '😐 Operational', 'Clearly confirm the point and receiving unit.'],
+      ['Shipment creation', 'Make the parcel trackable', 'Shipment result', '🙂 Relief', 'Show the new shipment ID linked to the previous task.'],
+      ['Backoffice completion', 'Complete missing data', 'Backoffice', '🙂 In control', 'Explain which fields will be completed later on mobile.'],
     ],
   },
   {
@@ -254,42 +254,42 @@ const JOURNEYS: JourneyDefinition[] = [
     icon: Lock,
     tone: 'orange',
     purpose:
-      'Dolap rezervasyonundan alıcı teslimine kadar D4Me entegrasyonunu görünür tutmak; süre aşımında koliyi kontrollü biçimde yeniden kurye akışına almak.',
+      'Keep the D4Me integration visible from locker reservation to consignee pickup; on timeout, return the parcel to the courier flow in a controlled manner.',
     steps: [
       {
-        label: 'Rezervasyon yapar',
-        desc: 'Kurye veya alıcı LCR/DDP rezervasyonu oluşturur.',
+        label: 'Makes reservation',
+        desc: 'Courier or consignee creates an LCR/DDP reservation.',
         icon: QrCode,
         emotion: 3,
         nesy: true,
       },
       {
-        label: 'Dolaba bırakır',
-        desc: 'Koli yerleştirilir ve DEPT callback’i işlenir.',
+        label: 'Deposits in locker',
+        desc: 'Parcel is placed and DEPT callback is processed.',
         icon: Lock,
         emotion: 4,
         nesy: true,
       },
       {
-        label: 'Alıcı teslim alır',
-        desc: 'Süresinde alım DELY callback’iyle kapanır.',
+        label: 'Consignee picks up',
+        desc: 'Timely pickup is closed with the DELY callback.',
         icon: CheckCircle2,
         emotion: 5,
         nesy: true,
       },
       {
-        label: 'Süre aşımını yönetir',
-        desc: 'Locker pickup görevi oluşur; alımda COPT üretilir.',
+        label: 'Manages timeout',
+        desc: 'Locker pickup task is created; COPT is generated upon pickup.',
         icon: Undo2,
         emotion: 2,
         nesy: true,
       },
     ],
     rows: [
-      ['LCR / DDP', 'Uygun dolabı rezerve etmek', 'Rezervasyon ekranı', '😐 Seçim yapıyor', 'Legacy ID dönüşümünü kullanıcıdan saklayıp sonucu açık göstermek.'],
-      ['Locker drop-off', 'Doğru göze doğru koliyi bırakmak', 'D4Me yönlendirmesi', '🙂 İlerliyor', 'Callback gelene kadar işlemi tamamlandı göstermemek.'],
-      ['Alıcı pickup', 'Teslimatı otomatik kapatmak', 'D4Me callback', '😌 Tamamlandı', 'DELY sonucunu takip ekranlarına gecikmesiz yansıtmak.'],
-      ['Süre aşımı', 'Koliyi kaybetmeden geri toplamak', 'Locker pickup görevi', '😟 İstisna', 'Yeni görevin nedenini, son tarihi ve dolap konumunu birlikte göstermek.'],
+      ['LCR / DDP', 'Reserve a suitable locker', 'Reservation screen', '😐 Making a choice', 'Hide the Legacy ID conversion from the user and show the result clearly.'],
+      ['Locker drop-off', 'Place the right parcel in the right compartment', 'D4Me guidance', '🙂 Progressing', 'Do not show the operation as completed until the callback arrives.'],
+      ['Consignee pickup', 'Close the delivery automatically', 'D4Me callback', '😌 Completed', 'Reflect the DELY result on tracking screens without delay.'],
+      ['Timeout', 'Retrieve the parcel without losing it', 'Locker pickup task', '😟 Exception', 'Show the new task reason, deadline, and locker location together.'],
     ],
   },
 ]
@@ -301,15 +301,15 @@ export default function UserJourneysPage() {
         icon={Footprints}
         eyebrow="Users & Field Experience · Journeys"
         tone="orange"
-        title="Kurye sahada hangi yolculukları yaşıyor?"
-        lead="Bu sayfa Nesy Mobile'ın ekran ve görev seviyesindeki yolculuklarını haritalar: kurye neyi tamamlamaya çalışıyor, hangi temas noktasında sürtünme yaşıyor ve hangi event ile güvenli biçimde ilerliyor? Her journey, adım haritası ve deneyim eğrisiyle birlikte okunur."
-        chips={['5 journey', 'Deneyim eğrisi 1–5', 'Ekran-seviyesi adımlar', 'Ülke fırsatları']}
+        title="What journeys does the courier experience in the field?"
+        lead="This page maps the screen and task-level journeys of Nesy Mobile: what is the courier trying to complete, at which touchpoint do they experience friction, and with which event do they safely proceed? Each journey is read alongside a step map and experience curve."
+        chips={['5 journeys', 'Experience curve 1–5', 'Screen-level steps', 'Country opportunities']}
       />
 
       <Callout icon={Map} title="Journey ≠ Country Matrix" tone="orange">
-        <b>User Journey</b> kuryenin görevi tamamlarken geçtiği ekran ve karar anlarını anlatır.{' '}
-        <b>Country Matrix</b> ise aynı adımın ülkelerdeki kesin davranışını tutar. Bu sayfa deneyimi,
-        matris operasyonel gerçeği açıklar; çelişki durumunda matris kaynak kabul edilir.
+        <b>User Journey</b> describes the screens and decision moments the courier goes through while completing a task.{' '}
+        <b>Country Matrix</b> holds the exact behavior of the same step across countries. This page explains the experience;
+        the matrix explains the operational truth; in case of conflict, the matrix is the source of record.
       </Callout>
 
       <SegmentTabs
@@ -320,7 +320,7 @@ export default function UserJourneysPage() {
           icon: journey.icon,
           content: (
             <div className="space-y-4">
-              <Callout icon={journey.icon} title="Yolculuğun amacı" tone={journey.tone}>
+              <Callout icon={journey.icon} title="Journey purpose" tone={journey.tone}>
                 {journey.purpose}
               </Callout>
 
@@ -328,11 +328,11 @@ export default function UserJourneysPage() {
 
               <ComparisonTable
                 headers={[
-                  { label: 'Adım' },
-                  { label: 'Kurye hedefi' },
-                  { label: 'Temas noktası' },
-                  { label: 'Deneyim' },
-                  { label: 'Tasarım fırsatı', tone: 'orange' },
+                  { label: 'Step' },
+                  { label: 'Courier goal' },
+                  { label: 'Touchpoint' },
+                  { label: 'Experience' },
+                  { label: 'Design opportunity', tone: 'orange' },
                 ]}
                 rows={journey.rows}
               />
@@ -342,27 +342,27 @@ export default function UserJourneysPage() {
       />
 
       <PageSection
-        eyebrow="Okuma Rehberi"
-        title="Deneyim eğrisi nasıl yorumlanır?"
+        eyebrow="Reading Guide"
+        title="How to interpret the experience curve?"
         icon={LineChart}
         tone="orange"
-        description="Eğri 1 (yüksek sürtünme) ile 5 (güvende) arasında çizilir. Hedef her adımı 5 yapmak değil; kritik düşüşleri görünür, açıklanabilir ve toparlanabilir hale getirmektir."
+        description="The curve is drawn between 1 (high friction) and 5 (safe). The goal is not to make every step a 5, but to make critical drops visible, explainable, and recoverable."
       >
         <div className="grid gap-3.5 md:grid-cols-2">
-          <Callout icon={Lightbulb} title="Düşüş her zaman hata değildir" tone="blue">
-            Tahsilat, onay bekleme veya başarısız neden seçimi doğal olarak gerilimlidir. Tasarımın görevi
-            bu gerilimi saklamak değil; nedeni, sonucu ve sonraki güvenli adımı açıkça göstermektir.
+          <Callout icon={Lightbulb} title="A drop is not always an error" tone="blue">
+            Collection, approval wait, or failure reason selection are naturally tense moments. The role of design
+            is not to hide this tension, but to clearly show the cause, the outcome, and the next safe step.
           </Callout>
-          <Callout icon={ShieldCheck} title="Nesy devrede işareti" tone="orange">
-            Turuncu “Nesy devrede” etiketi ürünün doğrudan yönettiği temas noktalarını gösterir. Etiketsiz
-            adımlar backoffice, fiziksel operasyon veya harici sistem sorumluluğundadır.
+          <Callout icon={ShieldCheck} title="Nesy active indicator" tone="orange">
+            The orange “Nesy active” label shows touchpoints directly managed by the product. Steps without
+            the label are the responsibility of the backoffice, physical operations, or external systems.
           </Callout>
         </div>
       </PageSection>
 
-      <Callout icon={Info} title="Journey verisinin kaynağı" tone="indigo">
-        Journey adımları feature envanteri ve ülke matrisiyle birlikte güncellenir. Yeni bir ekran veya
-        operasyon adımı eklendiğinde yalnız akış değil, deneyim düşüşü ve tasarım fırsatı da kayda alınır.
+      <Callout icon={Info} title="Source of journey data" tone="indigo">
+        Journey steps are updated alongside the feature inventory and country matrix. When a new screen or
+        operational step is added, not only the flow but also the experience drop and design opportunity are recorded.
       </Callout>
     </ProductPage>
   )

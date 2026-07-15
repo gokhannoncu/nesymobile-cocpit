@@ -1,5 +1,5 @@
-// Product alanı ortak ton sistemi — flow.tsx paletiyle uyumlu, genişletilmiş.
-// Her ton: tint kart zemini, ikon rengi, vurgu metni, nokta/şerit rengi.
+// Product area shared tone system — compatible with flow.tsx palette, extended.
+// Each tone: tint card background, icon color, accent text, dot/stripe color.
 
 export type Tone =
   | 'purple'
@@ -60,7 +60,7 @@ export const toneDot: Record<Tone, string> = {
   gray: 'bg-muted-foreground',
 }
 
-/** İkon squircle zemini (hero, kart başlıkları). */
+/** Icon squircle background (hero, card headers). */
 export const toneIconBox: Record<Tone, string> = {
   purple: 'bg-purple-100 dark:bg-purple-900/40',
   blue: 'bg-blue-100 dark:bg-blue-900/40',
@@ -73,7 +73,7 @@ export const toneIconBox: Record<Tone, string> = {
   gray: 'bg-muted',
 }
 
-/** Hero arkaplan degrade tonu. */
+/** Hero background gradient tone. */
 export const toneHero: Record<Tone, string> = {
   purple:
     'from-purple-50 via-background to-background dark:from-purple-950/40 border-purple-200/70 dark:border-purple-900/50',
@@ -91,5 +91,5 @@ export const toneHero: Record<Tone, string> = {
   gray: 'from-muted/60 via-background to-background border-border',
 }
 
-// Yumuşak geçiş — ease-out, yaylanma yok
+// Smooth transition — ease-out, no bounce
 export const EASE = [0.25, 0.1, 0.25, 1] as const

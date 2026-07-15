@@ -62,32 +62,32 @@ export default function FeatureLibraryPage() {
         icon={Grid3x3}
         eyebrow="Capabilities & Countries"
         tone="orange"
-        title="Her ürün yeteneği tek bir envanterde yaşar."
-        lead="Feature board, Nesy Mobile'ın tüm kabiliyetlerini modülleriyle birlikte tek yerde toplar. Ülke kapsamını karşılaştırın; karta tıklayarak akışı, API'leri, riskleri ve ticket'ları inceleyin."
+        title="Every product capability lives in a single inventory."
+        lead="The feature board consolidates all Nesy Mobile capabilities with their modules in one place. Compare country coverage; click a card to explore the workflow, APIs, risks, and tickets."
         chips={[
-          `${TOTAL_FEATURES} feature`,
-          `${MODULES.length} modül`,
-          `${activeCountries.length} ülke`,
-          'Tek envanter',
+          `${TOTAL_FEATURES} features`,
+          `${MODULES.length} modules`,
+          `${activeCountries.length} countries`,
+          'Single inventory',
         ]}
       />
 
-      <section aria-label="Feature filtreleri" className="rounded-2xl border bg-card p-3 shadow-sm">
+      <section aria-label="Feature filters" className="rounded-2xl border bg-card p-3 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative min-w-0 xl:w-80 xl:shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Feature ara..."
-              aria-label="Feature ara"
+              placeholder="Search features..."
+              aria-label="Search features"
               className="h-10 bg-background pl-9 pr-9"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Aramayı temizle"
+                aria-label="Clear search"
                 className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3.5" />
@@ -95,7 +95,7 @@ export default function FeatureLibraryPage() {
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 xl:pb-0" role="group" aria-label="Modül filtresi">
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 xl:pb-0" role="group" aria-label="Module filter">
             <button
               type="button"
               onClick={() => setActiveModule('all')}
@@ -107,7 +107,7 @@ export default function FeatureLibraryPage() {
                   : 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground',
               )}
             >
-              Tümü · {TOTAL_FEATURES}
+              All · {TOTAL_FEATURES}
             </button>
             {MODULES.map((module) => (
               <button
@@ -128,17 +128,17 @@ export default function FeatureLibraryPage() {
           </div>
 
           <div className="hidden shrink-0 text-xs font-medium text-muted-foreground xl:block">
-            {visibleFeatureCount} sonuç
+            {visibleFeatureCount} results
           </div>
         </div>
       </section>
 
       <PageSection
-        eyebrow="Yetenek Envanteri"
-        title="Feature board — modüllere göre tüm kabiliyetler"
+        eyebrow="Capability Inventory"
+        title="Feature board — all capabilities by module"
         icon={Grid3x3}
         tone="orange"
-        description="Her sütun bir ürün modülünü, her kart ise kullanıcıya dokunan tek bir feature'ı temsil eder. Kart üzerindeki rozetler CORE durumunu ve ülke kapsamını özetler."
+        description="Each column represents a product module; each card represents a single user-facing feature. Badges on the card summarize CORE status and country coverage."
       >
         {visibleFeatureCount > 0 ? (
           <BoardGrid
@@ -164,11 +164,11 @@ export default function FeatureLibraryPage() {
                     icon: moduleIcons[moduleIndex % moduleIcons.length],
                     badges: [
                       {
-                        label: isSupported(feature.values.core) ? 'CORE' : 'CORE yok',
+                        label: isSupported(feature.values.core) ? 'CORE' : 'No CORE',
                         tone: isSupported(feature.values.core) ? ('indigo' as const) : ('gray' as const),
                       },
                       {
-                        label: `${supportedCountryCount}/${activeCountries.length} ülke`,
+                        label: `${supportedCountryCount}/${activeCountries.length} countries`,
                         tone:
                           supportedCountryCount === activeCountries.length
                             ? ('teal' as const)
@@ -180,7 +180,7 @@ export default function FeatureLibraryPage() {
                         ? [{ label: `Risk ${detail!.score.bugProneness}/5`, tone: 'red' as const }]
                         : []),
                     ],
-                    meta: ticketCount > 0 ? `${ticketCount} ticket · Detayı aç` : 'Detayı aç',
+                    meta: ticketCount > 0 ? `${ticketCount} tickets · View details` : 'View details',
                     href: `/product/feature-library/${toFeatureSlug(feature.id)}`,
                   }
                 }),
@@ -190,9 +190,9 @@ export default function FeatureLibraryPage() {
         ) : (
           <div className="rounded-2xl border border-dashed bg-muted/20 px-6 py-14 text-center">
             <Search className="mx-auto size-8 text-muted-foreground/50" />
-            <h2 className="mt-3 text-sm font-bold text-foreground">Eşleşen feature bulunamadı</h2>
+            <h2 className="mt-3 text-sm font-bold text-foreground">No matching features found</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Arama ifadesini değiştirin veya farklı bir modül seçin.
+              Try a different search term or select another module.
             </p>
             <button
               type="button"
@@ -202,59 +202,59 @@ export default function FeatureLibraryPage() {
               }}
               className="mt-4 rounded-lg bg-foreground px-3 py-2 text-xs font-semibold text-background"
             >
-              Filtreleri temizle
+              Clear filters
             </button>
           </div>
         )}
       </PageSection>
 
       <PageSection
-        eyebrow="Kart Şeması"
-        title="Bir feature kartı hangi alanları taşır?"
+        eyebrow="Card Schema"
+        title="What fields does a feature card carry?"
         icon={Table2}
         tone="blue"
-        description="Feature kartı hızlı tarama için yalnızca karar verdiren sinyalleri gösterir; operasyonel detay karta tıklandığında açılır."
+        description="The feature card displays only decision-driving signals for quick scanning; operational details open when the card is clicked."
       >
         <DataTable
           columns={[
-            { key: 'field', label: 'Alan', className: 'min-w-40' },
-            { key: 'card', label: 'Kart Üzerinde', className: 'min-w-48' },
-            { key: 'detail', label: 'Detay Görünümünde', className: 'min-w-56' },
-            { key: 'purpose', label: 'Amaç', className: 'min-w-64' },
+             { key: 'field', label: 'Field', className: 'min-w-40' },
+             { key: 'card', label: 'On Card', className: 'min-w-48' },
+             { key: 'detail', label: 'In Detail View', className: 'min-w-56' },
+             { key: 'purpose', label: 'Purpose', className: 'min-w-64' },
           ]}
           rows={[
             {
-              field: <b>Feature kimliği</b>,
-              card: 'Başlık, kısa açıklama, modül',
-              detail: 'Nedir, nasıl çalışır, ekranlar',
-              purpose: 'Feature’ın ne olduğunu ve ürün içindeki yerini tanımlar.',
+              field: <b>Feature identity</b>,
+              card: 'Title, short description, module',
+              detail: 'What it is, how it works, screens',
+              purpose: 'Defines what the feature is and its place within the product.',
             },
             {
-              field: <b>Ülke kapsamı</b>,
-              card: <TagBadge label={`${activeCountries.length} ülkeye kadar`} tone="amber" />,
-              detail: 'CORE ve ülke bazlı davranışların tamamı',
-              purpose: 'Global standart ile ülke özelleştirmelerini ayırır.',
+              field: <b>Country coverage</b>,
+              card: <TagBadge label={`Up to ${activeCountries.length} countries`} tone="amber" />,
+              detail: 'All CORE and country-specific behaviors',
+              purpose: 'Separates global standards from country-level customizations.',
             },
             {
-              field: <b>Teknik bağlam</b>,
-              card: 'Risk ve açık ticket sayısı',
-              detail: 'API’ler, parametreler, uzmanlar ve test kapsamı',
-              purpose: 'Değişikliğin maliyetini ve operasyonel riskini görünür kılar.',
+              field: <b>Technical context</b>,
+              card: 'Risk and open ticket count',
+              detail: 'APIs, parameters, domain experts, and test coverage',
+              purpose: 'Makes the cost of change and operational risk visible.',
             },
             {
-              field: <b>Akış</b>,
-              card: <TagBadge label="Detayı aç" tone="teal" />,
-              detail: 'Adımlar, akış diyagramı ve uygulama ipuçları',
-              purpose: 'Feature bilgisini dağınık dokümanlar yerine tek kayıtta tutar.',
+              field: <b>Workflow</b>,
+              card: <TagBadge label="View details" tone="teal" />,
+              detail: 'Steps, flow diagram, and implementation tips',
+              purpose: 'Keeps feature knowledge in a single record instead of scattered documents.',
             },
           ]}
         />
       </PageSection>
 
-      <Callout icon={Grid3x3} title="Yeni feature eklerken" tone="orange">
-        Feature önce CORE davranışıyla tanımlanır, sonra ülke farklılıkları matrise işlenir. Kaynak
-        dosya: <code>src/data/product/nesy.ts</code> — kart ve matris sayfaları otomatik güncellenir.
-        Detail verisi: <code>src/data/product/feature-details.ts</code>
+      <Callout icon={Grid3x3} title="When adding a new feature" tone="orange">
+        A feature is first defined with its CORE behavior, then country differences are mapped into the matrix. Source
+        file: <code>src/data/product/nesy.ts</code> — card and matrix pages update automatically.
+        Detail data: <code>src/data/product/feature-details.ts</code>
       </Callout>
 
     </ProductPage>

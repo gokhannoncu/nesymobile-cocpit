@@ -7,10 +7,10 @@ import type { GroupExportProgress } from '@nesy/metronic/lib/export-group-pdf'
 import { Button } from '@nesy/metronic/components/ui/button'
 
 /**
- * Grup overview sayfasında görünen buton: o grubun TÜM sayfalarını tek bir
- * birleşik PDF olarak indirir. İşlem sırasında ilerleme (n/toplam + başlık)
- * gösterilir. `data-pdf-exclude` ile hem tek-sayfa export'un hem de bu export'un
- * yakalamasına girmez.
+ * Button displayed on the group overview page: downloads ALL pages of the group
+ * as a single merged PDF. Progress is shown during export (n/total + title).
+ * The `data-pdf-exclude` attribute ensures it is excluded from both single-page
+ * and group PDF captures.
  */
 export function GroupPdfButton({ workspace }: { workspace: Workspace }) {
   const [exporting, setExporting] = useState(false)
@@ -27,15 +27,15 @@ export function GroupPdfButton({ workspace }: { workspace: Workspace }) {
         onProgress: (p) => setProgress(p),
       })
       if (result.skipped.length > 0) {
-        console.warn('PDF export — atlanan sayfalar:', result.skipped)
+        console.warn('PDF export — skipped pages:', result.skipped)
         window.alert(
-          `PDF indirildi. ${result.skipped.length} sayfa yüklenemediği için atlandı:\n` +
+          `PDF downloaded. ${result.skipped.length} page(s) skipped because they could not be loaded:\n` +
             result.skipped.map((s) => `• ${s.title}`).join('\n'),
         )
       }
     } catch (error) {
-      console.error('Grup PDF dışa aktarma başarısız:', error)
-      window.alert('PDF oluşturulamadı. Lütfen tekrar deneyin.')
+      console.error('Group PDF export failed:', error)
+      window.alert('PDF could not be generated. Please try again.')
     } finally {
       setExporting(false)
       setProgress(null)
@@ -44,11 +44,11 @@ export function GroupPdfButton({ workspace }: { workspace: Workspace }) {
 
   const label = exporting
     ? progress?.stage === 'finalizing'
-      ? 'PDF birleştiriliyor…'
+      ? 'Merging PDF…'
       : progress
-        ? `Hazırlanıyor… ${progress.current}/${progress.total}`
-        : 'Hazırlanıyor…'
-    : 'Tüm Sayfaları PDF İndir'
+        ? `Preparing… ${progress.current}/${progress.total}`
+        : 'Preparing…'
+    : 'Download All Pages as PDF'
 
   return (
     <Button
@@ -57,11 +57,11 @@ export function GroupPdfButton({ workspace }: { workspace: Workspace }) {
       onClick={handleExport}
       disabled={exporting}
       data-pdf-exclude
-      aria-label="Bu grubun tüm sayfalarını PDF olarak indir"
+      aria-label="Download all pages of this group as PDF"
       title={
         exporting && progress?.title
           ? progress.title
-          : 'Bu grubun tüm sayfalarını tek PDF olarak indirir (~1-3 dk)'
+          : 'Downloads all pages of this group as a single PDF (~1-3 min)'
       }
     >
       {exporting ? <LoaderCircle className="animate-spin" /> : <FileDown />}

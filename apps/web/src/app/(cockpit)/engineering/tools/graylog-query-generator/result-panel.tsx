@@ -1,6 +1,6 @@
 'use client'
 
-// Sağ kolon — Query / Query Breakdown / Expected Signals sekmeleri + Query Quality paneli.
+// Right column — Query / Query Breakdown / Expected Signals tabs + Query Quality panel.
 
 import {
   AlertTriangle,
@@ -35,15 +35,15 @@ function EmptyState() {
       <span className="flex size-12 items-center justify-center rounded-xl bg-muted">
         <SearchX className="size-6 text-muted-foreground" />
       </span>
-      <p className="mt-4 text-sm font-bold text-foreground">Graylog sorgusu henüz oluşturulmadı</p>
+      <p className="mt-4 text-sm font-bold text-foreground">Graylog query not yet generated</p>
       <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-muted-foreground">
-        Bir shipment, courier, error code veya teknik davranış tanımlayarak başlayabilirsin.
+        You can start by specifying a shipment, courier, error code, or technical behavior.
       </p>
     </div>
   )
 }
 
-/** Ghost toolbar aksiyonları — mock, tıklama sonucu yok. */
+/** Ghost toolbar actions — mock, no click action. */
 function QueryToolbar() {
   const actions = [
     { label: 'Format', icon: WrapText },
@@ -99,9 +99,9 @@ export function ResultPanel({
   strong,
 }: {
   generated: boolean
-  /** Ör. "Production · HR · Last 1 hour · 3 sources". */
+  /** E.g. "Production · HR · Last 1 hour · 3 sources". */
   contextBar: string
-  /** Identifier gücüne göre verdict — true: Strong, false: Broad. */
+  /** Verdict based on identifier strength — true: Strong, false: Broad. */
   strong: boolean
 }) {
   if (!generated) return <EmptyState />
@@ -125,7 +125,7 @@ export function ResultPanel({
             label="graylog"
             labelTone="orange"
             actions={<QueryToolbar />}
-            summary="Search only · time range zorunlu · sensitive alanlar maskeli"
+            summary="Search only · time range required · sensitive fields masked"
           />
         </TabsContent>
 
@@ -144,7 +144,7 @@ export function ResultPanel({
           <div className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-2">
               <ListOrdered className="size-4 text-green-600 dark:text-green-400" />
-              <h3 className="text-xs font-bold text-foreground">Beklenen event sırası</h3>
+              <h3 className="text-xs font-bold text-foreground">Expected event sequence</h3>
             </div>
             <ol className="mt-3 space-y-1.5">
               {EXPECTED_EVENT_SEQUENCE.map((e, i) => (
@@ -159,7 +159,7 @@ export function ResultPanel({
           </div>
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Anomali örnekleri
+              Anomaly examples
             </h3>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {ANOMALY_EXAMPLES.map((a) => (
@@ -177,7 +177,7 @@ export function ResultPanel({
           </div>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="secondary" appearance="outline" size="xs">
-              Sinyaller shipment yaşam döngüsüne göre sıralanır
+              Signals are ordered by shipment lifecycle
             </Badge>
           </div>
         </TabsContent>

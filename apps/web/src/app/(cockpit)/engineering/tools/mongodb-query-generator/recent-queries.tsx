@@ -1,6 +1,6 @@
 'use client'
 
-// Recent Queries — tablo + sağ detail Sheet (field-tickets/pool.tsx deseni).
+// Recent Queries — table + right detail Sheet (field-tickets/pool.tsx pattern).
 
 import { ReactNode, useState } from 'react'
 import {
@@ -108,7 +108,7 @@ export function RecentQueriesTable({ onReuse }: { onReuse: (q: RecentQuery) => v
                       setSelected(q)
                     }}
                   >
-                    Detay
+                    Details
                   </Button>
                 </td>
               </tr>

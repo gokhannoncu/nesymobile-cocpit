@@ -11,9 +11,9 @@ import { EASE, type Tone, toneCard, toneIcon, toneText, toneDot } from './tones'
 export type EvidenceLevel = 'confirmed' | 'needs-validation' | 'unverified'
 
 const levelConfig: Record<EvidenceLevel, { icon: LucideIcon; tone: Tone; label: string }> = {
-  confirmed: { icon: CheckCircle2, tone: 'green', label: 'Doğrulandı' },
-  'needs-validation': { icon: AlertTriangle, tone: 'amber', label: 'Doğrulama Bekliyor' },
-  unverified: { icon: XCircle, tone: 'red', label: 'Doğrulanmadı' },
+  confirmed: { icon: CheckCircle2, tone: 'green', label: 'Confirmed' },
+  'needs-validation': { icon: AlertTriangle, tone: 'amber', label: 'Pending Validation' },
+  unverified: { icon: XCircle, tone: 'red', label: 'Unverified' },
 }
 
 export function EvidenceRef({
@@ -95,9 +95,9 @@ const riskTone: Record<string, Tone> = {
 }
 
 const riskLabel: Record<string, string> = {
-  high: 'Yüksek Tekrar Riski',
-  medium: 'Orta Tekrar Riski',
-  low: 'Düşük Tekrar Riski',
+  high: 'High Recurrence Risk',
+  medium: 'Medium Recurrence Risk',
+  low: 'Low Recurrence Risk',
 }
 
 export function RecurrenceRiskBadge({ risk, className }: { risk: string; className?: string }) {

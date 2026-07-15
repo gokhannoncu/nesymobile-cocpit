@@ -196,7 +196,7 @@ export function BoardGrid({ columns, className }: { columns: BoardColumn[]; clas
                     onClick={card.onClick}
                     className={cardClassName}
                     whileTap={{ scale: 0.99 }}
-                    aria-label={`${card.title} feature detayını aç`}
+                    aria-label={`Open ${card.title} feature details`}
                   >
                     {content}
                   </motion.button>

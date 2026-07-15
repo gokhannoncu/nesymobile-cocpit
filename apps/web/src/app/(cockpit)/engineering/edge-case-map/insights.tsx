@@ -1,7 +1,7 @@
 'use client'
 
-// Edge Case Intelligence — Risk Map, Test Coverage, Relationships ve
-// "What Should We Test Next?" görünümleri.
+// Edge Case Intelligence — Risk Map, Test Coverage, Relationships and
+// "What Should We Test Next?" views.
 
 import { Fragment } from 'react'
 import { Crosshair, FlaskConical, Layers, ListOrdered } from 'lucide-react'
@@ -24,7 +24,7 @@ type SelectFn = (e: EdgeCaseFull) => void
 
 // ── Risk Map ─────────────────────────────────────────────────────
 
-/** Bubble rengi = test coverage · kesik kenarlık = mitigation eksik. */
+/** Bubble color = test coverage · dashed border = mitigation missing. */
 function RiskChip({ e, onSelect }: { e: EdgeCaseFull; onSelect: SelectFn }) {
   const coverCls =
     e.testStatus === 'passed'
@@ -52,11 +52,11 @@ function RiskChip({ e, onSelect }: { e: EdgeCaseFull; onSelect: SelectFn }) {
 function MatrixLegend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-green-400" />Test geçti</span>
-      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-red-400" />Test kaldı</span>
-      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-muted-foreground/40" />Test edilmedi</span>
-      <span><span className="mr-1 inline-block size-2.5 rounded-full border border-dashed border-orange-500" />Mitigation yok</span>
-      <span>·n = bağlı incident sayısı</span>
+      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-green-400" />Test passed</span>
+      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-red-400" />Test failed</span>
+      <span><span className="mr-1 inline-block size-2.5 rounded-full bg-muted-foreground/40" />Not tested</span>
+      <span><span className="mr-1 inline-block size-2.5 rounded-full border border-dashed border-orange-500" />No mitigation</span>
+      <span>·n = linked incident count</span>
     </div>
   )
 }
@@ -68,9 +68,9 @@ export function RiskMapView({ onSelect }: { onSelect: SelectFn }) {
   return (
     <div className="space-y-8">
       <PageSection
-        eyebrow="Olasılık × Etki"
-        title="Risk Matrisi"
-        description="Sağ üst köşe en tehlikeli bölgedir: sık görülen + kritik. Chip'e tıklayınca detay drawer'ı açılır."
+        eyebrow="Likelihood × Impact"
+        title="Risk Matrix"
+        description="The top-right corner is the most dangerous zone: frequent + critical. Click a chip to open the detail drawer."
         icon={Crosshair}
         tone="red"
       >
@@ -117,23 +117,23 @@ export function RiskMapView({ onSelect }: { onSelect: SelectFn }) {
 
       <PageSection
         eyebrow="Detectability × Recoverability"
-        title="Sessiz Bozulma Haritası"
-        description="En tehlikeli alan sol alt köşedir: problem hem zor fark edilir hem de geri döndürülemez. Crash üretmeyen veri ayrışmaları burada yaşar."
+        title="Silent Corruption Map"
+        description="The most dangerous zone is the bottom-left corner: the problem is both hard to detect and irreversible. Data divergences that do not produce crashes reside here."
         icon={Crosshair}
         tone="purple"
       >
         <div className="overflow-x-auto rounded-xl border bg-background p-4">
           <div className="grid min-w-[640px] grid-cols-[110px_repeat(3,1fr)] gap-2">
             <div />
-            {(['Zor recover (1–2)', 'Orta (3)', 'Kolay recover (4–5)'] as const).map((h) => (
+            {(['Hard to recover (1–2)', 'Medium (3)', 'Easy to recover (4–5)'] as const).map((h) => (
               <div key={h} className="text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 {h}
               </div>
             ))}
             {([
-              { label: 'Kolay tespit (4–5)', test: (d: number) => d >= 4 },
-              { label: 'Orta (3)', test: (d: number) => d === 3 },
-              { label: 'Zor tespit (1–2)', test: (d: number) => d <= 2 },
+              { label: 'Easy to detect (4–5)', test: (d: number) => d >= 4 },
+              { label: 'Medium (3)', test: (d: number) => d === 3 },
+              { label: 'Hard to detect (1–2)', test: (d: number) => d <= 2 },
             ]).map((row, ri) => (
               <Fragment key={row.label}>
                 <div className="flex items-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -158,7 +158,7 @@ export function RiskMapView({ onSelect }: { onSelect: SelectFn }) {
                     >
                       {danger && (
                         <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-purple-700 dark:text-purple-300">
-                          Sessiz + geri döndürülemez
+                          Silent + irreversible
                         </div>
                       )}
                       <div className="flex flex-wrap gap-1">
@@ -182,10 +182,10 @@ export function RiskMapView({ onSelect }: { onSelect: SelectFn }) {
 // ── Test Coverage ────────────────────────────────────────────────
 
 const COV_SYMBOL: Record<'pass' | 'warn' | 'fail' | 'none', { s: string; cls: string; label: string }> = {
-  pass: { s: '✓', cls: 'text-green-600 dark:text-green-400', label: 'Geçti' },
-  warn: { s: '◐', cls: 'text-amber-600 dark:text-amber-400', label: 'Kısmi / stale' },
-  fail: { s: '×', cls: 'text-red-600 dark:text-red-400', label: 'Kaldı' },
-  none: { s: '—', cls: 'text-muted-foreground/50', label: 'Denenmedi' },
+  pass: { s: '✓', cls: 'text-green-600 dark:text-green-400', label: 'Passed' },
+  warn: { s: '◐', cls: 'text-amber-600 dark:text-amber-400', label: 'Partial / stale' },
+  fail: { s: '×', cls: 'text-red-600 dark:text-red-400', label: 'Failed' },
+  none: { s: '—', cls: 'text-muted-foreground/50', label: 'Not tested' },
 }
 
 export function CoverageView({ onSelect }: { onSelect: SelectFn }) {
@@ -194,9 +194,9 @@ export function CoverageView({ onSelect }: { onSelect: SelectFn }) {
   return (
     <div className="space-y-8">
       <PageSection
-        eyebrow="Edge case × test tipi"
-        title="Otomasyon Matrisi"
-        description="Hangi kayıt hangi test tipiyle korunuyor? '—' hücreleri kapsam boşluğudur; otomasyonsuz kayıtlar üstte listelenir."
+        eyebrow="Edge case × test type"
+        title="Automation Matrix"
+        description="Which record is protected by which test type? '—' cells indicate coverage gaps; records without automation are listed at the top."
         icon={FlaskConical}
         tone="teal"
       >
@@ -210,7 +210,7 @@ export function CoverageView({ onSelect }: { onSelect: SelectFn }) {
                 <th className={covTh}>Unit</th>
                 <th className={covTh}>Integration</th>
                 <th className={covTh}>E2E</th>
-                <th className={covTh}>Manuel / Son Sonuç</th>
+                <th className={covTh}>Manual / Last Result</th>
                 <th className={covTh}>Mitigation</th>
               </tr>
             </thead>
@@ -261,9 +261,9 @@ export function CoverageView({ onSelect }: { onSelect: SelectFn }) {
       </PageSection>
 
       <PageSection
-        eyebrow="Edge case × ortam"
-        title="Ortam Kapsamı"
-        description="Aynı senaryo online, offline, restart, rotation gibi ortamlarda ayrı ayrı davranır. Bu tablo hangi kombinasyonların hiç denenmediğini gösterir (yalnızca ortam verisi girilen kayıtlar)."
+        eyebrow="Edge case × environment"
+        title="Environment Coverage"
+        description="The same scenario behaves differently across environments such as online, offline, restart, and rotation. This table shows which combinations have never been tested (only records with environment data entered)."
         icon={FlaskConical}
         tone="indigo"
       >
@@ -316,7 +316,7 @@ export function CoverageView({ onSelect }: { onSelect: SelectFn }) {
   )
 }
 
-// ── Relationships (pool üyelikleri) ──────────────────────────────
+// ── Relationships (pool memberships) ──────────────────────────────
 
 export function RelationshipsView({ onPoolClick }: { onPoolClick: (query: string) => void }) {
   const domainPools = Object.entries(EDGE_CATEGORIES).map(([key, meta]) => ({
@@ -341,18 +341,18 @@ export function RelationshipsView({ onPoolClick }: { onPoolClick: (query: string
   }))
 
   const groups = [
-    { title: 'Domain Pool', desc: 'Teknik alan — bir kayıt tek domain’e aittir.', pools: domainPools, tone: 'blue' as const },
-    { title: 'Flow Pool', desc: 'Kullanıcı akışı — incident triage’da ilk soru.', pools: flowPools, tone: 'teal' as const },
-    { title: 'Failure Mechanism Pool', desc: 'Bozulma mekanizması — aynı mekanizma farklı domain’lerde tekrarlar.', pools: mechPools, tone: 'orange' as const },
-    { title: 'Environment Pool', desc: 'Tetikleyen ortam koşulu — test matrisinin kolonlarını besler.', pools: envPools, tone: 'purple' as const },
+    { title: 'Domain Pool', desc: 'Technical domain — a record belongs to a single domain.', pools: domainPools, tone: 'blue' as const },
+    { title: 'Flow Pool', desc: 'User flow — the first question during incident triage.', pools: flowPools, tone: 'teal' as const },
+    { title: 'Failure Mechanism Pool', desc: 'Failure mechanism — the same mechanism recurs across different domains.', pools: mechPools, tone: 'orange' as const },
+    { title: 'Environment Pool', desc: 'Triggering environment condition — feeds the columns of the test matrix.', pools: envPools, tone: 'purple' as const },
   ]
 
   return (
     <div className="space-y-8">
-      <Callout icon={Layers} title="Pool mantığı" tone="blue">
-        Bir edge case aynı anda birden fazla pool’a aittir — E27 hem <em>Payment & Fiscal</em>, hem{' '}
-        <em>Partial Success</em>, hem <em>Process Killed</em> havuzundadır. Pool’a tıklayınca Pool
-        sekmesi o filtreyle açılır; kayıtlar tek kategoriye hapsolmaz.
+      <Callout icon={Layers} title="Pool logic" tone="blue">
+        An edge case belongs to multiple pools simultaneously — E27 is in the <em>Payment &amp; Fiscal</em>,{' '}
+        <em>Partial Success</em>, and <em>Process Killed</em> pools. Clicking a pool opens the Pool
+        tab with that filter applied; records are not confined to a single category.
       </Callout>
       {groups.map((g) => (
         <PageSection key={g.title} title={g.title} description={g.desc} icon={Layers} tone={g.tone}>
@@ -386,7 +386,7 @@ export function TestNextPanel({ onSelect }: { onSelect: SelectFn }) {
     <PageSection
       eyebrow="Impact × Likelihood × Exposure × Incident × Change Proximity × Coverage Gap"
       title="What Should We Test Next?"
-      description="Öncelik kuyruğu — skor değil gerekçe gösterir. Release öncesi test planı buradan başlar."
+      description="Priority queue — shows rationale, not just scores. Pre-release test planning starts here."
       icon={ListOrdered}
       tone="red"
     >
@@ -409,7 +409,7 @@ export function TestNextPanel({ onSelect }: { onSelect: SelectFn }) {
               </div>
               <div className="mt-2.5">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Neden şimdi?
+                  Why now?
                 </div>
                 <ul className="mt-1 space-y-0.5 text-xs text-foreground/85">
                   {item.reasons.slice(0, 4).map((r) => (
@@ -421,7 +421,7 @@ export function TestNextPanel({ onSelect }: { onSelect: SelectFn }) {
                 </ul>
               </div>
               <div className="mt-2.5 rounded-lg bg-muted/50 p-2 text-xs leading-relaxed text-foreground/80">
-                <span className="font-bold text-foreground/70">Önerilen test: </span>
+                <span className="font-bold text-foreground/70">Suggested test: </span>
                 {item.suggestedTest}
               </div>
             </button>

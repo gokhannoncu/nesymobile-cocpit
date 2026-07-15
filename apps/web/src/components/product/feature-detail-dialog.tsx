@@ -33,25 +33,25 @@ import type { Tone } from './tones'
 import { toneCard, toneIcon, toneIconBox, toneText, toneDot, EASE } from './tones'
 import { FlowDiagram } from './flow-diagram'
 
-/* ─── Tab tanımları ─── */
+/* ─── Tab definitions ─── */
 const TABS = [
-  { id: 'overview', label: 'Genel Bakış', icon: Info },
-  { id: 'scope', label: 'Ülke Kapsamı', icon: Globe },
-  { id: 'diagram', label: 'Akış Diyagramı', icon: GitBranch },
-  { id: 'params', label: 'Parametreler & API', icon: Settings },
-  { id: 'tips', label: 'Bilgi & Trickler', icon: Lightbulb },
-  { id: 'tickets', label: "Ticket'lar", icon: Ticket },
-  { id: 'team', label: 'Ekip & Skor', icon: Users },
+  { id: 'overview', label: 'Overview', icon: Info },
+  { id: 'scope', label: 'Country Coverage', icon: Globe },
+  { id: 'diagram', label: 'Flow Diagram', icon: GitBranch },
+  { id: 'params', label: 'Parameters & API', icon: Settings },
+  { id: 'tips', label: 'Tips & Tricks', icon: Lightbulb },
+  { id: 'tickets', label: 'Tickets', icon: Ticket },
+  { id: 'team', label: 'Team & Score', icon: Users },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
 /* ─── Score bar helpers ─── */
 const scoreLabels: Record<string, string> = {
-  bugProneness: 'Bug Riski',
+  bugProneness: 'Bug Risk',
   boilerplate: 'Boilerplate',
-  complexity: 'Karmaşıklık',
-  testCoverage: 'Test Kapsamı',
+  complexity: 'Complexity',
+  testCoverage: 'Test Coverage',
 }
 
 const scoreColors: Record<number, string> = {
@@ -68,7 +68,7 @@ const ticketStatusColor: Record<string, string> = {
   'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
 }
 
-/* ─── Ana Bileşen ─── */
+/* ─── Main Component ─── */
 export function FeatureDetailDialog({
   feature,
   module,
@@ -124,7 +124,7 @@ export function FeatureDetailDialog({
                   {feature.id}
                 </Badge>
                 <Badge variant="secondary" appearance="outline" size="sm">
-                  {activeCountries.filter((c) => isSupported(feature.values[c.id])).length}/{activeCountries.length} ülkede aktif
+                  {activeCountries.filter((c) => isSupported(feature.values[c.id])).length}/{activeCountries.length} countries active
                 </Badge>
                 {detail?.score && (
                   <Badge
@@ -171,7 +171,7 @@ export function FeatureDetailDialog({
             </div>
 
             <div className="mt-0 min-h-0 grow overflow-y-auto px-4 pb-5 sm:px-6">
-              {/* ─── 1. Genel Bakış ─── */}
+              {/* ─── 1. Overview ─── */}
               <TabsContent value="overview">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -183,9 +183,9 @@ export function FeatureDetailDialog({
                   >
                     {detail ? (
                       <>
-                        {/* Nedir */}
+                        {/* What Is It */}
                         <Section
-                          title="Nedir?"
+                          title="What Is It?"
                           icon={Info}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4 lg:col-span-2"
@@ -195,9 +195,9 @@ export function FeatureDetailDialog({
                           </p>
                         </Section>
 
-                        {/* Nasıl Çalışır */}
+                        {/* How It Works */}
                         <Section
-                          title="Nasıl Çalışır?"
+                          title="How Does It Work?"
                           icon={GitBranch}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4"
@@ -219,9 +219,9 @@ export function FeatureDetailDialog({
                           </ol>
                         </Section>
 
-                        {/* Ekranlar */}
+                        {/* Screens */}
                         <Section
-                          title="Hangi Ekranda Çalışıyor?"
+                          title="Which Screen Does It Run On?"
                           icon={Code2}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4"
@@ -245,13 +245,13 @@ export function FeatureDetailDialog({
                         </Section>
                       </>
                     ) : (
-                      <EmptyState message="Bu özellik için henüz detay bilgisi eklenmemiş." />
+                      <EmptyState message="No detail information has been added for this feature yet." />
                     )}
                   </motion.div>
                 </AnimatePresence>
               </TabsContent>
 
-              {/* ─── 2. Ülke Kapsamı ─── */}
+              {/* ─── 2. Country Coverage ─── */}
               <TabsContent value="scope">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -263,9 +263,9 @@ export function FeatureDetailDialog({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/60">
-                          <th className="py-2 pr-4 text-left font-semibold text-foreground">Ülke</th>
-                          <th className="py-2 pr-4 text-left font-semibold text-foreground">Durum</th>
-                          <th className="py-2 text-left font-semibold text-foreground">Detay</th>
+                          <th className="py-2 pr-4 text-left font-semibold text-foreground">Country</th>
+                          <th className="py-2 pr-4 text-left font-semibold text-foreground">Status</th>
+                          <th className="py-2 text-left font-semibold text-foreground">Details</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -292,12 +292,12 @@ export function FeatureDetailDialog({
                                         : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
                                   )}
                                 >
-                                  {val === '—' ? 'Yok' : val === 'N/A' ? 'Kapsam Dışı' : 'Aktif'}
+                                  {val === '—' ? 'Unavailable' : val === 'N/A' ? 'Out of Scope' : 'Active'}
                                 </Badge>
                               </td>
                               <td className="py-2.5">
                                 <div className="text-xs text-foreground/75 whitespace-pre-line leading-relaxed max-w-xl">
-                                  {val === '—' ? 'Henüz mevcut değil' : val === 'N/A' ? 'Bu ülkede kapsam dışı' : val}
+                                  {val === '—' ? 'Not yet available' : val === 'N/A' ? 'Out of scope in this country' : val}
                                 </div>
                               </td>
                             </tr>
@@ -309,7 +309,7 @@ export function FeatureDetailDialog({
                 </motion.div>
               </TabsContent>
 
-              {/* ─── 3. Akış Diyagramı ─── */}
+              {/* ─── 3. Flow Diagram ─── */}
               <TabsContent value="diagram">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -320,17 +320,17 @@ export function FeatureDetailDialog({
                   {detail?.diagram && detail.diagram.length > 0 ? (
                     <div className={cn('rounded-xl border p-6 sm:p-8', toneCard[tone])}>
                       <div className={cn('text-xs font-bold uppercase tracking-[0.15em] mb-5', toneText[tone])}>
-                        Akış Diyagramı
+                        Flow Diagram
                       </div>
                       <FlowDiagram elements={detail.diagram} tone={tone} />
                     </div>
                   ) : (
-                    <EmptyState message="Bu özellik için henüz akış diyagramı eklenmemiş." />
+                    <EmptyState message="No flow diagram has been added for this feature yet." />
                   )}
                 </motion.div>
               </TabsContent>
 
-              {/* ─── 4. Parametreler & API ─── */}
+              {/* ─── 4. Parameters & API ─── */}
               <TabsContent value="params">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -342,14 +342,14 @@ export function FeatureDetailDialog({
                     <>
                       {/* Parameters */}
                       {detail.parameters.length > 0 && (
-                        <Section title="Bağlı Parametreler" icon={Settings} tone={tone}>
+                        <Section title="Related Parameters" icon={Settings} tone={tone}>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-border/60">
-                                  <th className="py-2 pr-3 text-left font-semibold">Parametre</th>
-                                  <th className="py-2 pr-3 text-left font-semibold">Açıklama</th>
-                                  <th className="py-2 text-left font-semibold">Tip</th>
+                                  <th className="py-2 pr-3 text-left font-semibold">Parameter</th>
+                                  <th className="py-2 pr-3 text-left font-semibold">Description</th>
+                                  <th className="py-2 text-left font-semibold">Type</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -374,14 +374,14 @@ export function FeatureDetailDialog({
 
                       {/* APIs */}
                       {detail.apis && detail.apis.length > 0 && (
-                        <Section title="API Endpoint'leri" icon={Code2} tone={tone}>
+                        <Section title="API Endpoints" icon={Code2} tone={tone}>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-border/60">
                                   <th className="py-2 pr-3 text-left font-semibold">Method</th>
                                   <th className="py-2 pr-3 text-left font-semibold">Endpoint</th>
-                                  <th className="py-2 text-left font-semibold">Açıklama</th>
+                                  <th className="py-2 text-left font-semibold">Description</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -411,12 +411,12 @@ export function FeatureDetailDialog({
                       )}
                     </>
                   ) : (
-                    <EmptyState message="Bu özellik için parametre ve API bilgisi henüz eklenmemiş." />
+                    <EmptyState message="No parameter and API information has been added for this feature yet." />
                   )}
                 </motion.div>
               </TabsContent>
 
-              {/* ─── 5. Bilgi & Trickler ─── */}
+              {/* ─── 5. Tips & Tricks ─── */}
               <TabsContent value="tips">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -442,12 +442,12 @@ export function FeatureDetailDialog({
                       ))}
                     </div>
                   ) : (
-                    <EmptyState message="Bu özellik için henüz ipucu veya trick eklenmemiş." />
+                    <EmptyState message="No tips or tricks have been added for this feature yet." />
                   )}
                 </motion.div>
               </TabsContent>
 
-              {/* ─── 6. Ticket'lar ─── */}
+              {/* ─── 6. Tickets ─── */}
               <TabsContent value="tickets">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -472,10 +472,10 @@ export function FeatureDetailDialog({
                                 className={ticketStatusColor[ticket.status]}
                               >
                                 {ticket.status === 'open'
-                                  ? 'Açık'
+                                  ? 'Open'
                                   : ticket.status === 'closed'
-                                    ? 'Kapalı'
-                                    : 'Devam Ediyor'}
+                                    ? 'Closed'
+                                    : 'In Progress'}
                               </Badge>
                             </div>
                             <p className="mt-0.5 text-sm text-foreground/80">{ticket.title}</p>
@@ -484,12 +484,12 @@ export function FeatureDetailDialog({
                       ))}
                     </div>
                   ) : (
-                    <EmptyState message="Bu özellik hakkında kayıtlı ticket bulunmuyor." />
+                    <EmptyState message="No tickets are recorded for this feature." />
                   )}
                 </motion.div>
               </TabsContent>
 
-              {/* ─── 7. Ekip & Skor ─── */}
+              {/* ─── 7. Team & Score ─── */}
               <TabsContent value="team">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -499,9 +499,9 @@ export function FeatureDetailDialog({
                 >
                   {detail ? (
                     <>
-                      {/* Know-how sahipleri */}
+                      {/* Know-how owners */}
                       {detail.experts.length > 0 && (
-                        <Section title="Know-How Sahipleri" icon={Users} tone={tone}>
+                        <Section title="Know-How Owners" icon={Users} tone={tone}>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {detail.experts.map((expert) => (
                               <div
@@ -537,8 +537,8 @@ export function FeatureDetailDialog({
                         </Section>
                       )}
 
-                      {/* Skor */}
-                      <Section title="Özellik Skoru" icon={AlertTriangle} tone={tone}>
+                      {/* Score */}
+                      <Section title="Feature Score" icon={AlertTriangle} tone={tone}>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {(
                             Object.entries(detail.score) as [string, number][]
@@ -563,11 +563,11 @@ export function FeatureDetailDialog({
                             </div>
                           ))}
                         </div>
-                        {/* Toplam skor */}
+                        {/* Overall score */}
                         <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3">
                           <Bug className={cn('size-4', toneIcon[tone])} />
                           <span className="text-sm font-medium text-foreground">
-                            Toplam Risk Skoru:{' '}
+                            Overall Risk Score:{' '}
                             <strong>
                               {(
                                 (detail.score.bugProneness +
@@ -583,7 +583,7 @@ export function FeatureDetailDialog({
                       </Section>
                     </>
                   ) : (
-                    <EmptyState message="Bu özellik için ekip ve skor bilgisi henüz eklenmemiş." />
+                    <EmptyState message="No team and score information has been added for this feature yet." />
                   )}
                 </motion.div>
               </TabsContent>
@@ -595,7 +595,7 @@ export function FeatureDetailDialog({
   )
 }
 
-/* ─── Yardımcı bileşenler ─── */
+/* ─── Helper components ─── */
 
 function Section({
   title,

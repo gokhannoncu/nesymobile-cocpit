@@ -3,9 +3,9 @@ export default function CockpitLoading() {
     <div
       className="container-fluid animate-pulse space-y-6"
       role="status"
-      aria-label="Sayfa içeriği yükleniyor"
+      aria-label="Loading page content"
     >
-      <span className="sr-only">Sayfa içeriği yükleniyor</span>
+      <span className="sr-only">Loading page content</span>
       <div className="space-y-3">
         <div className="h-7 w-56 max-w-2/3 rounded-md bg-accent" />
         <div className="h-4 w-[32rem] max-w-full rounded bg-accent/80" />

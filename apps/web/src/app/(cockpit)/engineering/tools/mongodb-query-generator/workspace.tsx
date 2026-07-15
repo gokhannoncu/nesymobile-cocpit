@@ -1,8 +1,8 @@
 'use client'
 
-// Generated Query Workspace — sağ kolon: sekmeler (query / explanation /
-// validation) + altta Estimated Scope. Tamamı mock; "generated" prop'u
-// empty state ile sonuç durumu arasında geçiş yapar.
+// Generated Query Workspace — right column: tabs (query / explanation /
+// validation) + Estimated Scope at the bottom. All mock; the "generated" prop
+// toggles between empty state and result state.
 
 import {
   AlertTriangle,
@@ -32,9 +32,9 @@ function EmptyState() {
       <span className="flex size-14 items-center justify-center rounded-2xl bg-muted">
         <Database className="size-7 text-muted-foreground" />
       </span>
-      <p className="mt-4 text-sm font-bold text-foreground">Query henüz oluşturulmadı</p>
+      <p className="mt-4 text-sm font-bold text-foreground">Query not yet generated</p>
       <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-        Veri ihtiyacını doğal dille yaz veya hazır örneklerden birini seç.
+        Describe your data needs in natural language or select one of the ready-made examples.
       </p>
     </div>
   )
@@ -90,7 +90,7 @@ function ExplanationTab() {
       <div className="flex items-start gap-2.5 rounded-lg border border-green-200 bg-green-50/70 p-3 dark:border-green-900/60 dark:bg-green-950/30">
         <CheckCircle2 className="mt-px size-4 shrink-0 text-green-600 dark:text-green-400" />
         <p className="text-xs font-semibold leading-relaxed text-green-700 dark:text-green-300">
-          Bu sorgu veri değiştirmez.
+          This query does not modify data.
         </p>
       </div>
     </div>

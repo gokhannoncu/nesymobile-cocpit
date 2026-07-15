@@ -26,6 +26,7 @@ import {
   Map,
   MapPin,
   MonitorSmartphone,
+  MousePointerClick,
   Network,
   Package,
   Play,
@@ -43,6 +44,7 @@ import {
   Target,
   Ticket,
   Users,
+  Wifi,
   Zap,
 } from 'lucide-react'
 
@@ -389,6 +391,63 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Roadmap',
                 path: '/pm/roadmap',
                 icon: Map,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'debug-view',
+    label: 'Debug View',
+    icon: Bug,
+    className: 'border-white bg-teal-500 hover:bg-teal-600 text-white hover:text-white',
+    path: '/debug-view/overview',
+    basePaths: ['/debug-view'],
+    menu: [
+      {
+        title: 'Debug View',
+        children: [
+          {
+            title: 'Device Overview',
+            path: '/debug-view/overview',
+            icon: MonitorSmartphone,
+          },
+          {
+            title: 'Live Inspection',
+            icon: Radar,
+            children: [
+              {
+                title: 'Screen State',
+                path: '/debug-view/screen-state',
+                icon: LayoutDashboard,
+              },
+              {
+                title: 'User Interactions',
+                path: '/debug-view/interactions',
+                icon: MousePointerClick,
+              },
+              {
+                title: 'Network Inspector',
+                path: '/debug-view/network-inspector',
+                icon: Wifi,
+              },
+            ],
+          },
+          {
+            title: 'On-Device Data',
+            icon: Database,
+            children: [
+              {
+                title: 'Schedule Explorer',
+                path: '/debug-view/schedule',
+                icon: Route,
+              },
+              {
+                title: 'Database Access',
+                path: '/debug-view/database',
+                icon: Table2,
               },
             ],
           },

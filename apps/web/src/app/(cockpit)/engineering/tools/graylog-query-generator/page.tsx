@@ -1,7 +1,7 @@
 'use client'
 
-// Graylog Query Generator — doğal dil isteğini güvenli Graylog sorgusuna çevirir (mock).
-// Sol: istek + context formu · Sağ: sorgu sonucu sekmeleri · Altta: field dictionary + saved investigations.
+// Graylog Query Generator — converts natural language requests into safe Graylog queries (mock).
+// Left: request + context form · Right: query result tabs · Bottom: field dictionary + saved investigations.
 
 import { ReactNode, useMemo, useState } from 'react'
 import {
@@ -54,7 +54,7 @@ import {
 import { ResultPanel } from './result-panel'
 import { SavedInvestigations } from './investigations'
 
-// ── Küçük form yardımcıları ──────────────────────────────────────
+// ── Small form helpers ──────────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -119,7 +119,7 @@ export default function GraylogQueryGeneratorPage() {
     () => Object.values(identifiers).some((v) => v.trim().length > 0),
     [identifiers],
   )
-  // Amber guardrail: 24 saatlik geniş aralık + hiç identifier yoksa uyar.
+  // Amber guardrail: warns when using a 24-hour broad range with no identifier.
   const showGuardrail = timeRange === '24h' && !hasIdentifier
 
   const contextBar = useMemo(() => {
@@ -130,7 +130,7 @@ export default function GraylogQueryGeneratorPage() {
 
   const handleEnvChange = (v: string) => {
     setEnv(v)
-    // Production'a geçişte varsayılan zaman aralığı 1 saate çekilir.
+    // When switching to production, the default time range is reduced to 1 hour.
     if (v === 'production') setTimeRange(PRODUCTION_DEFAULT_TIME_RANGE)
   }
 
@@ -178,7 +178,7 @@ export default function GraylogQueryGeneratorPage() {
         icon={Terminal}
         tone="orange"
         title="Graylog Query Generator"
-        lead="Aradığın log sinyalini doğal dille tanımla; zaman, servis ve teknik alanlarla güvenli Graylog sorgusuna dönüştür."
+        lead="Describe the log signal you need in natural language; convert it into a safe Graylog query with time, service, and technical field constraints."
         badges={[
           { label: 'Search only', icon: Search, tone: 'green' },
           { label: 'Time range required', icon: Clock, tone: 'blue' },
@@ -188,18 +188,18 @@ export default function GraylogQueryGeneratorPage() {
         ]}
       />
 
-      {/* Ana düzen: sol form %45 / sağ sonuç %55 */}
+      {/* Main layout: left form 45% / right result 55% */}
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[45fr_55fr]">
-        {/* ── Sol kolon ── */}
+        {/* ── Left column ── */}
         <ToolCard
           step="1"
-          title="Hangi logları arıyorsun?"
-          description="İsteğini doğal dille yaz veya hazır bir senaryodan başla; context alanları sorguyu daraltır."
+          title="What logs are you looking for?"
+          description="Describe your request in natural language or start from a ready-made scenario; context fields narrow the query."
         >
           <Textarea
             value={request}
             onChange={(e) => setRequest(e.target.value)}
-            placeholder="Shipment 45-40-20251224-1 için son 2 saatte oluşan delivery, fiscal ve retry loglarını göster."
+            placeholder="Show the delivery, fiscal, and retry logs generated in the last 2 hours for shipment 45-40-20251224-1."
             className="min-h-[96px]"
             variant="sm"
           />
@@ -238,7 +238,7 @@ export default function GraylogQueryGeneratorPage() {
           <div className="rounded-lg border bg-muted/20 p-3">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Known Identifiers
-              <span className="ms-1.5 font-medium normal-case tracking-normal">(opsiyonel)</span>
+              <span className="ms-1.5 font-medium normal-case tracking-normal">(optional)</span>
             </h3>
             <div className="mt-2 grid grid-cols-2 gap-2.5">
               {IDENTIFIER_FIELDS.map((f) => (
@@ -256,10 +256,10 @@ export default function GraylogQueryGeneratorPage() {
             </div>
           </div>
 
-          {/* Log kaynakları */}
+          {/* Log sources */}
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Log kaynakları
+              Log sources
             </h3>
             <ToggleGroup
               type="multiple"
@@ -297,33 +297,33 @@ export default function GraylogQueryGeneratorPage() {
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             <Button variant="primary" onClick={() => setGenerated(true)}>
               <Sparkles className="size-4" />
-              Graylog Query Oluştur
+              Generate Graylog Query
             </Button>
             <Button variant="outline" onClick={handleClear}>
               <Eraser className="size-4" />
-              Alanları temizle
+              Clear fields
             </Button>
           </div>
         </ToolCard>
 
-        {/* ── Sağ kolon ── */}
+        {/* ── Right column ── */}
         <ResultPanel generated={generated} contextBar={contextBar} strong={hasIdentifier} />
       </div>
 
       {/* ── Common Graylog Fields ── */}
       <PageSection
-        eyebrow="Sözlük"
+        eyebrow="Dictionary"
         title="Common Graylog Fields"
         icon={BookOpen}
         tone="orange"
-        description="Sık kullanılan alanların anlamı ve kaynağı. Bir satıra tıklayarak alanı isteğine ekleyebilirsin."
+        description="Meanings and sources of frequently used fields. Click a row to append the field to your request."
       >
         <div className="space-y-3">
           <Input
             variant="sm"
             value={fieldFilter}
             onChange={(e) => setFieldFilter(e.target.value)}
-            placeholder="Alan, anlam veya kaynak ara…"
+            placeholder="Search field, meaning, or source…"
             className="max-w-xs"
           />
           <div className="overflow-x-auto rounded-xl border bg-card">
@@ -340,7 +340,7 @@ export default function GraylogQueryGeneratorPage() {
                 {filteredFields.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                      Filtreye uyan alan yok.
+                      No fields match the filter.
                     </td>
                   </tr>
                 )}
@@ -348,7 +348,7 @@ export default function GraylogQueryGeneratorPage() {
                   <tr
                     key={f.field}
                     onClick={() => appendField(f.field)}
-                    title={`${f.field}: isteğine ekle`}
+                    title={`${f.field}: append to your request`}
                     className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                   >
                     <td className={cn(td, 'whitespace-nowrap')}>
@@ -369,11 +369,11 @@ export default function GraylogQueryGeneratorPage() {
 
       {/* ── Saved Investigations ── */}
       <PageSection
-        eyebrow="Arşiv"
+        eyebrow="Archive"
         title="Saved Investigations"
         icon={FolderSearch}
         tone="orange"
-        description="Ekibin daha önce çalıştığı araştırma sorguları. Satıra tıklayarak detayı aç; 'Reuse query' ile formu doldur."
+        description="Investigation queries previously run by the team. Click a row for details; use 'Reuse query' to populate the form."
       >
         <SavedInvestigations onReuse={handleReuse} />
       </PageSection>

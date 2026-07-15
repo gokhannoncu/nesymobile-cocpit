@@ -8,7 +8,7 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { EASE, type Tone, toneCard, toneDot, toneIcon, toneIconBox, toneText } from './tones'
 
-/** Genel kart ızgarası — stagger animasyonlu. */
+/** General card grid — with stagger animation. */
 export function CardGrid({
   children,
   cols = 3,
@@ -43,8 +43,8 @@ const itemVariants = {
 }
 
 /**
- * Bilgi kartı — ikon squircle + başlık + açıklama + madde listesi + rozetler.
- * Notion "renkli callout kartı" karşılığı; href verilirse tıklanabilir.
+ * Info card — icon squircle + title + description + bullet list + badges.
+ * Equivalent of the Notion "colored callout card"; clickable when href is provided.
  */
 export function InfoCard({
   icon: Icon,
@@ -134,7 +134,7 @@ export function InfoCard({
 }
 
 /**
- * Prensip kartı — numara + ikon + prensip + Neden / Pratikte / İhlal örneği satırları.
+ * Principle card — number + icon + principle + Why / In Practice / Violation Example rows.
  */
 export function PrincipleCard({
   num,
@@ -174,20 +174,20 @@ export function PrincipleCard({
       <dl className="mt-3 space-y-2 text-xs leading-relaxed">
         <div>
           <dt className={cn('font-bold uppercase tracking-wide text-[10px]', toneText[tone])}>
-            Neden
+            Why
           </dt>
           <dd className="mt-0.5 text-foreground/85">{why}</dd>
         </div>
         <div>
           <dt className={cn('font-bold uppercase tracking-wide text-[10px]', toneText[tone])}>
-            Pratikte ne demek
+            In Practice
           </dt>
           <dd className="mt-0.5 text-foreground/85">{inPractice}</dd>
         </div>
         {violation && (
           <div>
             <dt className="font-bold uppercase tracking-wide text-[10px] text-red-600 dark:text-red-400">
-              İhlal örneği
+              Violation Example
             </dt>
             <dd className="mt-0.5 text-muted-foreground italic">{violation}</dd>
           </div>

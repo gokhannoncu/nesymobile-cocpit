@@ -12,7 +12,7 @@ const c = {
   gray: '\x1b[90m',
 }
 
-/** İçerik genişliği (│ kenarlıklar hariç) */
+/** Content width (excluding │ borders) */
 const W = 52
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g
@@ -67,14 +67,14 @@ export function printStartupBanner(env: Env) {
     boxLine(`  ${c.dim}Fastify · Socket.io · Zod${c.reset}`),
     boxLine(''),
     border('├', '─', '┤'),
-    row('Ortam', envLabel),
+    row('Env', envLabel),
     row('PID', `${c.white}${process.pid}${c.reset}`),
     row('HTTP', `${c.cyan}${baseUrl}${c.reset}`),
     row('Health', `${c.cyan}${baseUrl}/health${c.reset}`),
-    row('Socket.io', `${c.emerald}aktif${c.reset} ${c.dim}· CORS ${env.CORS_ORIGIN}${c.reset}`),
+    row('Socket.io', `${c.emerald}active${c.reset} ${c.dim}· CORS ${env.CORS_ORIGIN}${c.reset}`),
     border('├', '─', '┤'),
-    route('GET', '/', 'API bilgisi'),
-    route('GET', '/health', 'Sağlık kontrolü'),
+    route('GET', '/', 'API info'),
+    route('GET', '/health', 'Health check'),
     route('WS', 'ping → pong', 'Heartbeat'),
     border('└', '─', '┘'),
     '',

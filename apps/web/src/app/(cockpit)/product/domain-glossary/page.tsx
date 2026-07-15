@@ -128,9 +128,9 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 const VIEWS: { id: GlossaryView; label: string; icon: LucideIcon; tone: Tone }[] = [
-  { id: 'dictionary', label: 'Sözlük', icon: BookOpen, tone: 'indigo' },
-  { id: 'hierarchy', label: 'Hiyerarşi', icon: GitBranch, tone: 'teal' },
-  { id: 'rules', label: 'Durum Kuralları', icon: ArrowLeftRight, tone: 'amber' },
+  { id: 'dictionary', label: 'Dictionary', icon: BookOpen, tone: 'indigo' },
+  { id: 'hierarchy', label: 'Hierarchy', icon: GitBranch, tone: 'teal' },
+  { id: 'rules', label: 'State Rules', icon: ArrowLeftRight, tone: 'amber' },
 ]
 
 const CATEGORY_TONE: Record<EntityCategory, Tone> = {
@@ -259,9 +259,9 @@ function entitySurface(entity: DomainEntity) {
 }
 
 function directionMeta(direction: PropagationRule['direction']) {
-  if (direction === 'up') return { label: 'Yukarı', icon: ArrowUp, className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900' }
-  if (direction === 'down') return { label: 'Aşağı', icon: ArrowDown, className: 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900' }
-  return { label: 'Yatay', icon: ArrowLeftRight, className: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900' }
+  if (direction === 'up') return { label: 'Upward', icon: ArrowUp, className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900' }
+  if (direction === 'down') return { label: 'Downward', icon: ArrowDown, className: 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900' }
+  return { label: 'Horizontal', icon: ArrowLeftRight, className: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900' }
 }
 
 function entityById(id: string | null) {
@@ -379,19 +379,19 @@ function GlossaryChrome({
               <BookOpen className={cn('size-5', toneIcon.indigo)} />
             </span>
             <div className="min-w-0">
-              <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.indigo)}>Ürün omurgası</p>
-              <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Alan sözlüğü</h1>
+              <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.indigo)}>Product backbone</p>
+              <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Domain glossary</h1>
               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-                Nesy Mobile&apos;da herkesin aynı dili konuşması için kavramlar, hiyerarşi ve durum yayılım kuralları tek yerde.
+                Concepts, hierarchy, and state propagation rules in one place — so everyone at Nesy Mobile speaks the same language.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {[
-              { icon: Package, label: `${entities.length} kavram`, tone: 'indigo' as Tone },
-              { icon: GitBranch, label: `${chainLevels} seviye`, tone: 'teal' as Tone },
-              { icon: Network, label: `${propagationRules.length} yayılım kuralı`, tone: 'amber' as Tone },
-              { icon: Clock, label: '13 Tem 2026', tone: 'gray' as Tone },
+              { icon: Package, label: `${entities.length} concepts`, tone: 'indigo' as Tone },
+              { icon: GitBranch, label: `${chainLevels} levels`, tone: 'teal' as Tone },
+              { icon: Network, label: `${propagationRules.length} propagation rules`, tone: 'amber' as Tone },
+              { icon: Clock, label: 'Jul 13, 2026', tone: 'gray' as Tone },
             ].map(({ icon: Icon, label, tone }) => (
               <span
                 key={label}
@@ -410,8 +410,8 @@ function GlossaryChrome({
             <Input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Kavram adı, Türkçe karşılık, durum kodu veya açıklama…"
-              aria-label="Alan sözlüğünde ara"
+              placeholder="Concept name, alias, status code, or description…"
+              aria-label="Search domain glossary"
               className="h-9 rounded-lg border-indigo-100/80 bg-indigo-50/40 ps-9 pe-9 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-indigo-500/50 dark:border-indigo-900/40 dark:bg-indigo-950/25"
             />
             {query && (
@@ -419,7 +419,7 @@ function GlossaryChrome({
                 type="button"
                 onClick={() => onQueryChange('')}
                 className="absolute end-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
-                aria-label="Aramayı temizle"
+                aria-label="Clear search"
               >
                 <X className="size-3.5" />
               </button>
@@ -429,7 +429,7 @@ function GlossaryChrome({
           <div
             className="relative grid shrink-0 grid-cols-3 rounded-lg border border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-violet-50/30 to-amber-50/40 p-0.5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-violet-950/15 dark:to-amber-950/15 sm:w-[min(100%,24rem)]"
             role="tablist"
-            aria-label="Görünüm seçici"
+            aria-label="View selector"
           >
             <motion.span
               aria-hidden
@@ -692,7 +692,7 @@ function EntityDictionaryTable({
         </table>
       </div>
       <div className="border-t border-indigo-200/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground dark:border-indigo-900/40">
-        {rows.length} kavram · detay için satıra tıklayın
+        {rows.length} concepts · click a row for details
       </div>
     </div>
   )
@@ -730,7 +730,7 @@ function LearningPathBanner({ entity }: { entity: DomainEntity }) {
     return (
       <div className={cn('rounded-xl border p-3', toneCard[categoryTone])}>
         <p className={cn('text-[10px] font-bold uppercase tracking-wider', toneText[categoryTone])}>{categoryLabel}</p>
-        <p className="mt-1 text-xs leading-relaxed text-foreground/85">Bu kavram yatay bir bağlamda çalışır; ana zinciri belirli operasyonlarda keser.</p>
+        <p className="mt-1 text-xs leading-relaxed text-foreground/85">This concept operates in a cross-cutting context; it intersects the main chain during specific operations.</p>
       </div>
     )
   }
@@ -744,7 +744,7 @@ function LearningPathBanner({ entity }: { entity: DomainEntity }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', toneCard.indigo, toneText.indigo)}>
-              Adım {ctx.current.step}/{ctx.total}
+              Step {ctx.current.step}/{ctx.total}
             </span>
             <span className="text-xs font-bold text-foreground">{ctx.current.title}</span>
             <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', toneCard[categoryTone], toneText[categoryTone])}>
@@ -852,7 +852,7 @@ function EntityDetailPanel({
         </div>
         {entity.aliases.length > 0 && (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Sahada şöyle de duyabilirsin: {entity.aliases.slice(0, 3).join(', ')}
+            Also known in the field as: {entity.aliases.slice(0, 3).join(', ')}
           </p>
         )}
       </div>
@@ -861,20 +861,20 @@ function EntityDetailPanel({
 
   const definitionBlock = (
     <>
-      <DetailSection title="Bu kavram ne?" hint="Tek cümlelik tanım — toplantıda bu cümleyi kullan." tone={tone}>
+      <DetailSection title="What is this concept?" hint="One-sentence definition — use this in meetings." tone={tone}>
         <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-6 text-foreground/90">
           {entity.definition}
         </p>
       </DetailSection>
 
-      <DetailSection title="Sahada ne demek?" hint="Kurye operasyonunda pratikte ne işe yarar?" tone="blue">
+      <DetailSection title="What does it mean in the field?" hint="What role does it play in courier operations?" tone="blue">
         <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-950/20">
           <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <p className="text-sm leading-6 text-foreground/90">{entity.businessContext}</p>
         </div>
       </DetailSection>
 
-      <DetailSection title="Sık karıştırılanlar" hint="Yanlış anlamayı önlemek için bunları aklında tut." tone="amber">
+      <DetailSection title="Common misconceptions" hint="Keep these in mind to avoid misunderstandings." tone="amber">
         <ul className="space-y-2">
           {entity.antiPatterns.slice(0, 3).map((item) => (
             <li key={item} className="flex gap-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -889,27 +889,27 @@ function EntityDetailPanel({
 
   const structureBlock = (
     <>
-      <DetailSection title="Zincirdeki yeri" hint="Üst ve alt kavramlarla nasıl bağlanır?" tone="teal">
+      <DetailSection title="Position in the chain" hint="How does it connect to parent and child concepts?" tone="teal">
         <ChainBreadcrumb entity={entity} />
         <dl className="mt-2 grid gap-2 rounded-lg border border-teal-200/60 bg-teal-50/40 p-3 text-sm dark:border-teal-900/50 dark:bg-teal-950/20 sm:grid-cols-1">
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Üst kavram</dt>
-            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Kök — üst yok'}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Parent concept</dt>
+            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Root — no parent'}</dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Alt kavramlar</dt>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Child concepts</dt>
             <dd className="mt-0.5 font-semibold">
-              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Yaprak — alt yok'}
+              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Leaf — no children'}
             </dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">İlişki türü</dt>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Relationship type</dt>
             <dd className="mt-0.5 font-semibold">{entity.cardinalityDesc}</dd>
           </div>
         </dl>
         {related.length > 0 && (
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Yatay bağlantı: {related.map((relation) => relation.description).join(' ')}
+            Horizontal link: {related.map((relation) => relation.description).join(' ')}
           </p>
         )}
       </DetailSection>
@@ -917,7 +917,7 @@ function EntityDetailPanel({
   )
 
   const statusesBlock = (
-    <DetailSection title="Olası durumlar" hint="Bunlar sistem enum değerleri — Türkçe karşılık değil, kod olarak kullan." tone="purple">
+    <DetailSection title="Possible states" hint="These are system enum values — use them as code, not display labels." tone="purple">
       <div className="grid gap-2 sm:grid-cols-2">
         {entity.statuses.map((status) => (
           <div
@@ -927,7 +927,7 @@ function EntityDetailPanel({
             <div className="flex items-center justify-between gap-2">
               <code className="text-xs font-bold">{status.code}</code>
               {status.isTerminal && (
-                <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">Son durum</span>
+                <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">Terminal</span>
               )}
             </div>
             <p className="mt-1 text-[11px] leading-relaxed opacity-90">{status.description}</p>
@@ -940,9 +940,9 @@ function EntityDetailPanel({
   const rulesBlock = (
     <>
       {entity.prerequisiteIds.length > 0 && (
-        <DetailSection title="Önce bunları öğren" hint="Bu kavrama geçmeden önce bilmen gerekenler." tone="indigo">
+        <DetailSection title="Prerequisites" hint="What you need to know before moving on to this concept." tone="indigo">
           <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            Aşağıdaki kavramları anlamadan {entity.name} bağlamını tam oturtmak zor olur. Önce onlara göz at.
+            Without understanding the concepts below, it is difficult to fully grasp the context of {entity.name}. Review them first.
           </p>
           <div className="flex flex-wrap gap-2">
             {entity.prerequisiteIds.map((id) => (
@@ -953,9 +953,9 @@ function EntityDetailPanel({
       )}
 
       {relevantRules.length > 0 && (
-        <DetailSection title="Otomatik kurallar" hint="Bir durum değişince sistem ne yapar?" tone="green">
+        <DetailSection title="Automatic rules" hint="What does the system do when a state changes?" tone="green">
           <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            Bu kurallar kurye aksiyonu gerektirmeden arka planda çalışır — statü yayılımını anlamak için kritik.
+            These rules run in the background without requiring courier action — critical for understanding status propagation.
           </p>
           <ul className="space-y-2">
             {relevantRules.map((rule) => (
@@ -970,7 +970,7 @@ function EntityDetailPanel({
 
       {!hasRulesTab && (
         <p className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
-          Bu kavram için özel önkoşul veya yayılım kuralı tanımlı değil.
+          No specific prerequisites or propagation rules are defined for this concept.
         </p>
       )}
     </>
@@ -980,9 +980,9 @@ function EntityDetailPanel({
     <>
       {ctx?.next && (
         <div className={cn('rounded-xl border p-3', toneCard.teal)}>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Sıradaki kavram</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Next concept</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Öğrenme yolunda bir sonraki adım — bağlamı tamamlamak için devam et.
+            The next step in the learning path — continue to complete the context.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -995,7 +995,7 @@ function EntityDetailPanel({
                 onClick={() => onNavigate(ctx.next!.entityId)}
                 className="inline-flex items-center gap-1 rounded-lg border border-teal-300/70 bg-background px-3 py-1.5 text-xs font-semibold text-teal-700 shadow-sm hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-950/30"
               >
-                Devam et
+                Continue
                 <ChevronRight className="size-3.5" />
               </button>
             )}
@@ -1005,11 +1005,11 @@ function EntityDetailPanel({
 
       {!ctx?.next && (
         <p className="rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-3 text-xs leading-relaxed text-foreground/85 dark:border-teal-900/50 dark:bg-teal-950/20">
-          Bu kavram öğrenme yolunun son adımlarından biri — veya yatay bir bağlamda çalışıyor. Ana zinciri tamamladıysan diğer cross-cutting kavramlara göz at.
+          This concept is one of the final steps in the learning path — or it operates in a cross-cutting context. If you have completed the main chain, explore the other cross-cutting concepts.
         </p>
       )}
 
-      <DetailSection title="Geliştirici notu" hint="Kodda karşılığı — merak edenler için." tone="gray">
+      <DetailSection title="Developer note" hint="Code equivalent — for the curious." tone="gray">
         <button
           type="button"
           onClick={() => setTechnicalOpen((open) => !open)}
@@ -1018,7 +1018,7 @@ function EntityDetailPanel({
         >
           <span className="flex items-center gap-2 text-muted-foreground">
             <Code2 className="size-4" />
-            Teknik karşılığı {technicalOpen ? 'gizle' : 'göster'}
+            Technical details {technicalOpen ? 'hide' : 'show'}
           </span>
           <ChevronDown className={cn('size-4 transition-transform', technicalOpen && 'rotate-180')} />
         </button>
@@ -1067,8 +1067,8 @@ function EmptyState({ query }: { query: string }) {
       <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950/50">
         <Search className="size-7 text-indigo-600 dark:text-indigo-400" />
       </span>
-      <p className="mt-4 text-sm font-bold text-foreground">“{query}” için eşleşme bulunamadı</p>
-      <p className="mt-1 text-xs text-muted-foreground">Farklı bir anahtar kelime veya filtre deneyin.</p>
+      <p className="mt-4 text-sm font-bold text-foreground">No matches found for "{query}"</p>
+      <p className="mt-1 text-xs text-muted-foreground">Try a different keyword or filter.</p>
     </div>
   )
 }
@@ -1090,7 +1090,7 @@ function DictionaryView({ query }: { query: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="dictionary-title" className="flex items-center gap-1.5 text-sm font-bold">
           <BookOpen className="size-4 text-indigo-600 dark:text-indigo-400" />
-          Tüm kavramlar
+          All concepts
           <span className="text-xs font-medium text-muted-foreground">({filtered.length})</span>
         </h2>
       </div>
@@ -1098,7 +1098,7 @@ function DictionaryView({ query }: { query: string }) {
       <div className="rounded-lg border border-indigo-200/50 bg-gradient-to-r from-indigo-50/30 via-background to-violet-50/20 p-2 dark:border-indigo-900/40 dark:from-indigo-950/15 dark:to-violet-950/10">
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn('mr-1 text-[11px] font-bold uppercase tracking-wider', toneText.indigo)}>Category</span>
-          <FilterButton active={categoryFilter === 'all'} tone="indigo" onClick={() => setCategoryFilter('all')}>Tümü</FilterButton>
+          <FilterButton active={categoryFilter === 'all'} tone="indigo" onClick={() => setCategoryFilter('all')}>All</FilterButton>
           {ENTITY_CATEGORIES.map(({ id, label }) => (
             <FilterButton key={id} active={categoryFilter === id} tone={CATEGORY_TONE[id]} onClick={() => setCategoryFilter(id)}>
               {label}
@@ -1108,7 +1108,7 @@ function DictionaryView({ query }: { query: string }) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState query={query || 'seçili filtreler'} />
+        <EmptyState query={query || 'selected filters'} />
       ) : (
         <EntityDictionaryTable entities={filtered} onRowClick={setDetailId} />
       )}
@@ -1178,13 +1178,13 @@ function HierarchyView({ query, selectedId, onSelect }: { query: string; selecte
     <section aria-labelledby="hierarchy-title" className="space-y-3">
       <h2 id="hierarchy-title" className="flex items-center gap-1.5 text-sm font-bold">
         <GitBranch className="size-4 text-teal-600 dark:text-teal-400" />
-        Varlık zinciri
+        Entity chain
       </h2>
       {visibleChain.length === 0 ? <EmptyState query={query} /> : (
         <>
           <div className="rounded-xl border border-teal-200/60 bg-gradient-to-br from-teal-50/50 via-background to-indigo-50/30 p-3 shadow-sm dark:border-teal-900/50 dark:from-teal-950/20 dark:to-indigo-950/15 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className={cn('text-xs font-bold uppercase tracking-wider', toneText.teal)}>Ana zincir</p>
+              <p className={cn('text-xs font-bold uppercase tracking-wider', toneText.teal)}>Main chain</p>
               <p className="hidden rounded-full border border-teal-200/70 bg-teal-50/60 px-2.5 py-1 text-xs font-medium text-teal-800 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-300 sm:block">
                 {entityById('schedule')?.name} → {entityById('shipment-item')?.name}
               </p>
@@ -1202,9 +1202,9 @@ function HierarchyView({ query, selectedId, onSelect }: { query: string; selecte
           <div className="rounded-2xl border border-dashed border-amber-300/60 bg-gradient-to-br from-amber-50/40 via-background to-green-50/30 p-4 dark:border-amber-800/50 dark:from-amber-950/20 dark:to-green-950/15 sm:p-5">
             <h3 className="flex items-center gap-2 text-sm font-bold">
               <ArrowLeftRight className="size-4 text-amber-600" />
-              Yatay kesen varlıklar
+              Cross-cutting entities
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">Tahsilat ve akıllı dolap gibi varlıklar, operasyon sırasında ana zinciri yatay olarak keser.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Entities such as collections and smart lockers intersect the main chain horizontally during operations.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {CROSS_CUTTING.map((entity) => {
                 const rel = relations.find((relation) => relation.from === entity.id || relation.to === entity.id)
@@ -1238,10 +1238,10 @@ function HierarchyView({ query, selectedId, onSelect }: { query: string; selecte
 function ruleEntities(rule: PropagationRule) {
   const from = entityById(rule.fromEntity)
   const to = entityById(rule.toEntity)
-  const source = rule.id === 'prop-up-completed' || rule.id === 'prop-cancel' ? `Tüm ${from?.name ?? rule.fromEntity}'lar` : from?.name ?? rule.fromEntity
-  const trigger = rule.id === 'prop-up-completed' ? 'Final durum' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'PENDING'
+  const source = rule.id === 'prop-up-completed' || rule.id === 'prop-cancel' ? `All ${from?.name ?? rule.fromEntity}s` : from?.name ?? rule.fromEntity
+  const trigger = rule.id === 'prop-up-completed' ? 'Final state' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'PENDING'
   const affected = rule.id.startsWith('prop-up') ? 'Stop, Route, Schedule' : rule.id === 'prop-down-delivered' || rule.id === 'prop-down-failed' ? 'Shipment, ShipmentItem' : to?.name ?? rule.toEntity
-  const result = rule.id === 'prop-up-completed' ? 'COMPLETED' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'DELIVERED engellenir'
+  const result = rule.id === 'prop-up-completed' ? 'COMPLETED' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'DELIVERED blocked'
   return { source, trigger, affected, result }
 }
 
@@ -1281,7 +1281,7 @@ function RuleDetail({ rule }: { rule: PropagationRule }) {
     <div className={cn('p-4 sm:p-5', detailBg)}>
       <h3 className="text-sm font-bold">{rule.title.replace(/\s*\([^)]*\)$/, '')}</h3>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground/85">{rule.description}</p>
-      <p className="mt-2 text-xs text-muted-foreground">Bu işlem kullanıcı aksiyonu gerektirmeden otomatik gerçekleşir.</p>
+      <p className="mt-2 text-xs text-muted-foreground">This operation occurs automatically without requiring user action.</p>
       <RuleFlow rule={rule} />
     </div>
   )
@@ -1299,24 +1299,24 @@ function StateRulesView({ query }: { query: string }) {
     <section aria-labelledby="rules-title" className="space-y-3">
       <h2 id="rules-title" className="flex items-center gap-1.5 text-sm font-bold">
         <ArrowLeftRight className="size-4 text-amber-600 dark:text-amber-400" />
-        Statü yayılımı
+        Status propagation
       </h2>
       <div className="flex flex-wrap gap-1.5 rounded-lg border border-amber-200/50 bg-gradient-to-r from-amber-50/40 via-background to-emerald-50/30 p-2 dark:border-amber-900/40 dark:from-amber-950/15 dark:to-emerald-950/10">
-        <FilterButton active={direction === 'all'} tone="amber" onClick={() => setDirection('all')}>Tümü</FilterButton>
-        <FilterButton active={direction === 'up'} tone="green" onClick={() => setDirection('up')}>↑ Yukarı</FilterButton>
-        <FilterButton active={direction === 'down'} tone="red" onClick={() => setDirection('down')}>↓ Aşağı</FilterButton>
-        <FilterButton active={direction === 'horizontal'} tone="purple" onClick={() => setDirection('horizontal')}>↔ Yatay</FilterButton>
+        <FilterButton active={direction === 'all'} tone="amber" onClick={() => setDirection('all')}>All</FilterButton>
+        <FilterButton active={direction === 'up'} tone="green" onClick={() => setDirection('up')}>↑ Upward</FilterButton>
+        <FilterButton active={direction === 'down'} tone="red" onClick={() => setDirection('down')}>↓ Downward</FilterButton>
+        <FilterButton active={direction === 'horizontal'} tone="purple" onClick={() => setDirection('horizontal')}>↔ Horizontal</FilterButton>
       </div>
-      {filtered.length === 0 ? <EmptyState query={query || 'seçili yön'} /> : (
+      {filtered.length === 0 ? <EmptyState query={query || 'selected direction'} /> : (
         <div className="overflow-hidden rounded-2xl border border-amber-200/50 bg-card shadow-md dark:border-amber-900/40">
           <table className="hidden w-full table-fixed text-left text-sm md:table">
             <thead className="border-b border-amber-200/50 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-emerald-50/50 text-[11px] uppercase tracking-wide dark:border-amber-900/40 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-emerald-950/20">
               <tr>
-                <th className="w-[19%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Kaynak varlık</th>
-                <th className="w-[18%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Tetikleyici durum</th>
-                <th className="w-[13%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Yön</th>
-                <th className="w-[27%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Etkilenen varlık</th>
-                <th className="px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Sonuç</th>
+                <th className="w-[19%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Source entity</th>
+                <th className="w-[18%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Trigger state</th>
+                <th className="w-[13%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Direction</th>
+                <th className="w-[27%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Affected entity</th>
+                <th className="px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Result</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -1351,8 +1351,8 @@ function StateRulesView({ query }: { query: string }) {
                 <div key={rule.id}>
                   <button type="button" onClick={() => setOpenId(open ? null : rule.id)} className="w-full p-4 text-left">
                     <div className="flex items-center justify-between gap-3"><strong className="text-sm">{cells.source} → {cells.trigger}</strong><ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} /></div>
-                    <span className={cn('mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium', meta.className)}><Icon className="size-3" />{meta.label} yayılım</span>
-                    <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-muted-foreground">Etkilenenler</dt><dd className="mt-0.5 font-medium">{cells.affected}</dd></div><div><dt className="text-muted-foreground">Sonuç</dt><dd className="mt-0.5 font-mono font-medium">{cells.result}</dd></div></dl>
+                    <span className={cn('mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium', meta.className)}><Icon className="size-3" />{meta.label} propagation</span>
+                    <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-muted-foreground">Affected</dt><dd className="mt-0.5 font-medium">{cells.affected}</dd></div><div><dt className="text-muted-foreground">Result</dt><dd className="mt-0.5 font-mono font-medium">{cells.result}</dd></div></dl>
                   </button>
                   {open && <RuleDetail rule={rule} />}
                 </div>

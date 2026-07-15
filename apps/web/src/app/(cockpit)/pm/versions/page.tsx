@@ -17,7 +17,7 @@ import type { TimelineItem } from '@/components/product/timeline'
 import { countryVersions, versionHistory, COUNTRY_LABELS, getOutdatedCountries } from '@/data/pm/versions'
 import { getLatestRelease } from '@/data/pm/releases'
 
-const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ function versionFreshnessTone(production: string): 'green' | 'amber' | 'red' {
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
-  return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -45,10 +45,10 @@ export default function VersionsPage() {
 
   // ─ Section 2: Comparison Table ──────────────────────────────────────────────
   const tableHeaders = [
-    { label: 'Ülke' },
+    { label: 'Country' },
     { label: 'Production', tone: 'green' as const },
     { label: 'Staging', tone: 'blue' as const },
-    { label: 'Son Deploy' },
+    { label: 'Last Deploy' },
     { label: 'Store' },
   ]
 
@@ -87,23 +87,23 @@ export default function VersionsPage() {
   }))
 
   return (
-    <ProductPage path="/pm/versions" title="Versiyon Takipçisi">
+    <ProductPage path="/pm/versions" title="Version Tracker">
       {/* ─ Hero ────────────────────────────────────────────────────────────── */}
       <HeroCallout
         icon={Tag}
         eyebrow="Release & Versions"
         tone="indigo"
-        title="Versiyon Takipçisi"
-        lead="Her ülkenin production ve staging sürümlerini, store linklerini ve versiyon geçmişini tek ekrandan takip edin."
-        chips={['Ülke Bazlı', 'Prod & Staging', 'Store Linkleri']}
+        title="Version Tracker"
+        lead="Track each country's production and staging versions, store links, and version history from a single screen."
+        chips={['By Country', 'Prod & Staging', 'Store Links']}
       />
 
-      {/* ─ Güncel Sürümler ─────────────────────────────────────────────────── */}
+      {/* ─ Current Versions ────────────────────────────────────────────────── */}
       <PageSection
-        title="Güncel Sürümler"
+        title="Current Versions"
         icon={Globe}
         tone="green"
-        description="Ülke bazında canlıdaki ve staging ortamındaki mevcut versiyonlar."
+        description="Current versions in production and staging environments by country."
       >
         <StatGrid cols={3}>
           {countryVersions.map((cv) => (
@@ -118,43 +118,42 @@ export default function VersionsPage() {
         </StatGrid>
       </PageSection>
 
-      {/* ─ Ülke × Versiyon Matrisi ─────────────────────────────────────────── */}
+      {/* ─ Country × Version Matrix ────────────────────────────────────────── */}
       <PageSection
-        title="Ülke × Versiyon Matrisi"
+        title="Country × Version Matrix"
         icon={Tag}
         tone="indigo"
-        description="Tüm ülkelerin production, staging, deploy tarihi ve store bağlantıları."
+        description="Production, staging, deploy dates, and store links for all countries."
       >
         <ComparisonTable headers={tableHeaders} rows={tableRows} highlightCol={1} />
       </PageSection>
 
-      {/* ─ Versiyon Geçmişi ────────────────────────────────────────────────── */}
+      {/* ─ Version History ─────────────────────────────────────────────────── */}
       <PageSection
-        title="Versiyon Geçmişi"
+        title="Version History"
         icon={History}
         tone="blue"
-        description="Tüm sürümlerin kronolojik listesi ve öne çıkan değişiklikler."
+        description="Chronological list of all versions and key changes."
       >
         <Timeline items={historyItems} />
       </PageSection>
 
       {/* ─ Guardrail ───────────────────────────────────────────────────────── */}
       <GuardrailCallout
-        title="Güncel Olmayan Sürüm Uyarısı"
+        title="Outdated Version Warning"
         icon={ShieldAlert}
         tone="amber"
       >
         {outdated.length > 0 ? (
           <>
-            <strong>{outdated.length} ülke</strong> güncel sürümün ({latest?.version}) gerisinde.
-            Güncel olmayan ülkeler:{' '}
+            <strong>{outdated.length} countries</strong> are behind the current version ({latest?.version}).
+            Outdated countries:{' '}
             {outdated.map((c) => c.countryName).join(', ')}.
-            Güvenlik yamaları ve kritik düzeltmeler tüm ülkelere eş zamanlı deploy edilmelidir.
+            Security patches and critical fixes should be deployed to all countries simultaneously.
           </>
         ) : (
           <>
-            Tüm ülkeler güncel sürümde. Yeni release&apos;lerde deploy sırasının
-            48 saat içinde tamamlanması hedeflenmelidir.
+            All countries are on the current version. For new releases, deployment should be completed within 48 hours.
           </>
         )}
       </GuardrailCallout>

@@ -13,7 +13,7 @@ import { cn } from '@nesy/metronic/lib/utils'
 import type { DiagramElement, DiagramNodeVariant } from '@/data/product/nesy-types'
 import type { Tone } from './tones'
 
-/* ─── Node variant stilleri ─── */
+/* ─── Node variant styles ─── */
 const nodeStyles: Record<
   DiagramNodeVariant,
   { bg: string; border: string; text: string; icon: typeof Cog; iconBg: string }
@@ -63,7 +63,7 @@ const nodeStyles: Record<
 }
 
 /* ═══════════════════════════════════════════════════════
- * Ana Bileşen: FlowDiagram
+ * Main Component: FlowDiagram
  * ═══════════════════════════════════════════════════════ */
 
 export function FlowDiagram({
@@ -105,7 +105,7 @@ function FlowElement({
   }
 }
 
-/* ─── FlowNode: Görsel adım kartı ─── */
+/* ─── FlowNode: Visual step card ─── */
 function FlowNode({
   label,
   variant,
@@ -126,7 +126,7 @@ function FlowNode({
         'hover:shadow-md hover:-translate-y-px',
         style.bg,
         style.border,
-        // Karar noktaları için belirgin stil
+        // Prominent style for decision nodes
         variant === 'decision' && 'border-2 rounded-2xl shadow-amber-100/50 dark:shadow-amber-900/20',
       )}
     >
@@ -150,11 +150,11 @@ function FlowNode({
   )
 }
 
-/* ─── FlowArrow: Bağlantı oku ─── */
+/* ─── FlowArrow: Connection arrow ─── */
 function FlowArrow({ label }: { label?: string }) {
   return (
     <div className="flex flex-col items-center py-0.5">
-      {/* Dikey çizgi */}
+      {/* Vertical line */}
       <div className="w-px h-5 bg-border dark:bg-border" />
       {label && (
         <span className="text-[10px] font-medium text-muted-foreground bg-background px-1.5 py-0.5 rounded -my-0.5 border border-border/50">
@@ -162,13 +162,13 @@ function FlowArrow({ label }: { label?: string }) {
         </span>
       )}
       {label && <div className="w-px h-2 bg-border dark:bg-border" />}
-      {/* Ok başı */}
+      {/* Arrowhead */}
       <ChevronDown className="size-3.5 text-muted-foreground -mt-1.5" />
     </div>
   )
 }
 
-/* ─── FlowBranch: Karar dallanması ─── */
+/* ─── FlowBranch: Decision branching ─── */
 function FlowBranch({
   branch,
   tone,
@@ -178,19 +178,19 @@ function FlowBranch({
 }) {
   return (
     <div className="w-full flex flex-col items-center">
-      {/* Üst bağlantı çizgisi — karar noktasından yanlara */}
+      {/* Top connector line — from decision node to sides */}
       <div className="relative w-full max-w-md lg:max-w-lg">
-        {/* Yatay çizgi */}
+        {/* Horizontal line */}
         <div className="absolute top-0 left-1/4 right-1/4 h-px bg-border" />
-        {/* Sol dikey */}
+        {/* Left vertical */}
         <div className="absolute top-0 left-1/4 w-px h-3 bg-border" />
-        {/* Sağ dikey */}
+        {/* Right vertical */}
         <div className="absolute top-0 right-1/4 w-px h-3 bg-border" />
       </div>
 
-      {/* Dal etiketleri ve içerikleri */}
+      {/* Branch labels and contents */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-md lg:max-w-lg mt-3">
-        {/* SOL DAL — Evet */}
+        {/* LEFT BRANCH — Yes */}
         <div className="flex flex-col items-center">
           <span className="text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-800 mb-2">
             {branch.yes.label}
@@ -207,7 +207,7 @@ function FlowBranch({
           </div>
         </div>
 
-        {/* SAĞ DAL — Hayır */}
+        {/* RIGHT BRANCH — No */}
         <div className="flex flex-col items-center">
           <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800 mb-2">
             {branch.no.label}
@@ -225,7 +225,7 @@ function FlowBranch({
         </div>
       </div>
 
-      {/* Alt birleşme çizgisi */}
+      {/* Bottom merge line */}
       <div className="relative w-full max-w-md lg:max-w-lg mt-1">
         <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-border" />
         <div className="absolute bottom-0 left-1/4 w-px h-3 bg-border" />

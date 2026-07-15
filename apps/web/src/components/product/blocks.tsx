@@ -16,8 +16,8 @@ import {
 } from './tones'
 
 /**
- * Sayfa üstü büyük renkli başlık bloğu — "header callout".
- * Degrade tint zemin + ikon squircle + eyebrow + başlık + tek cümle amaç + chip'ler.
+ * Large colored header block at the top of the page — "header callout".
+ * Gradient tint background + icon squircle + eyebrow + title + single-sentence purpose + chips.
  */
 export function HeroCallout({
   icon: Icon,
@@ -31,12 +31,12 @@ export function HeroCallout({
   icon: LucideIcon
   eyebrow: string
   title: string
-  /** Sayfanın tek cümlelik amacı — "bu sayfa hangi soruya cevap veriyor?" */
+  /** Single-sentence purpose of the page — "what question does this page answer?" */
   lead: string
   tone?: Tone
-  /** Kısa etiketler — ör. kapsam, durum, sahip. */
+  /** Short labels — e.g. scope, status, owner. */
   chips?: string[]
-  /** Sağ tarafa yaslanan opsiyonel içerik (mini istatistik vb.) */
+  /** Optional content aligned to the right (mini statistics, etc.) */
   children?: ReactNode
 }) {
   return (
@@ -49,7 +49,7 @@ export function HeroCallout({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: EASE }}
     >
-      {/* Dekoratif nokta ızgarası */}
+      {/* Decorative dot grid */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-20 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:22px_22px] text-foreground/10"
@@ -98,7 +98,7 @@ export function HeroCallout({
   )
 }
 
-/** Satır içi renkli vurgu kutusu — callout. */
+/** Inline colored highlight box — callout. */
 export function Callout({
   icon: Icon,
   title,

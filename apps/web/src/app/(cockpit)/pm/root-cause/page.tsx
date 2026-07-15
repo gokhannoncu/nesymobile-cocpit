@@ -106,7 +106,7 @@ export default function RootCausePage() {
   // ═══ Risk Matrix: Screen × Group ═══════════════════════════════════════
   const riskMatrixHeaders = useMemo(
     () => [
-      { label: 'Ekran', tone: 'gray' as const },
+      { label: 'Screen', tone: 'gray' as const },
       ...ALL_GROUPS.map((g, i) => ({
         label: g.length > 12 ? g.split(' ')[0]! : g,
         tone: groupTones[i % groupTones.length]!,
@@ -155,9 +155,9 @@ export default function RootCausePage() {
         icon={Search}
         eyebrow="Ticket Management"
         tone="indigo"
-        title="Kök Neden Analizi"
-        lead="Ticket'ların kök neden analizleri, grup bazlı dağılımlar ve ekran × grup risk matrisi."
-        chips={['Grup Analizi', 'Risk Matrisi', 'Edge Cases']}
+        title="Root Cause Analysis"
+        lead="Root cause analyses of tickets, group-based distributions, and screen × group risk matrix."
+        chips={['Group Analysis', 'Risk Matrix', 'Edge Cases']}
       >
         <StatGrid cols={4}>
           <StatCard label="Analyzed" value={analyzed} tone="green" icon={ShieldCheck} />
@@ -172,7 +172,7 @@ export default function RootCausePage() {
         items={[
           {
             value: 'grup',
-            label: 'Grup Bazlı',
+            label: 'By Group',
             content: (
               <CardGrid cols={2}>
                 {groupBreakdown.map((g) => {
@@ -228,7 +228,7 @@ export default function RootCausePage() {
           },
           {
             value: 'risk',
-            label: 'Risk Matrisi',
+            label: 'Risk Matrix',
             content: (
               <ComparisonTable headers={riskMatrixHeaders} rows={riskMatrixRows} />
             ),
@@ -238,9 +238,9 @@ export default function RootCausePage() {
 
       {/* ─── Callout ─────────────────────────────────────────────────── */}
       <Callout icon={Info} tone="amber">
-        Kök neden analizi henüz tamamlanmamış ticket&apos;lar için &quot;Unanalyzed&quot;
-        sayacına dikkat edin. Yüksek tekrar riskli ticket&apos;lar sprint planlamasında
-        önceliklendirilmelidir.
+        Pay attention to the &quot;Unanalyzed&quot; counter for tickets where root cause
+        analysis has not yet been completed. Tickets with high recurrence risk
+        should be prioritized in sprint planning.
       </Callout>
     </ProductPage>
   )

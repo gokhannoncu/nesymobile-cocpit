@@ -1,7 +1,7 @@
 'use client'
 
-// Engineering Tools ortak parçaları — üç araç sayfası (Data Locator,
-// MongoDB Query Generator, Graylog Query Generator) aynı görsel dili buradan alır.
+// Engineering Tools shared components — the three tool pages (Data Locator,
+// MongoDB Query Generator, Graylog Query Generator) derive their visual language from here.
 
 import { ReactNode, useState } from 'react'
 import Link from 'next/link'
@@ -22,7 +22,7 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { EASE, toneIcon, toneIconBox, type Tone } from '@/components/product'
 
-/** Araçların tek gerçek kaynağı — header çapraz linkleri buradan türetilir. */
+/** Single source of truth for tools — header cross-links are derived from here. */
 export const TOOL_LINKS: { path: string; title: string; icon: LucideIcon }[] = [
   { path: '/engineering/tools/data-locator', title: 'Data Locator', icon: Compass },
   { path: '/engineering/tools/mongodb-query-generator', title: 'MongoDB Query Generator', icon: Database },
@@ -32,9 +32,9 @@ export const TOOL_LINKS: { path: string; title: string; icon: LucideIcon }[] = [
 ]
 
 /**
- * Kompakt araç başlığı — pazarlama hero'su değil.
- * Sol: ikon + başlık + tek cümle amaç + güven rozetleri.
- * Sağ: diğer iki araca secondary geçiş kartları.
+ * Compact tool header — not a marketing hero.
+ * Left: icon + title + single-sentence purpose + trust badges.
+ * Right: secondary navigation cards to the other tools.
  */
 export function ToolHeader({
   path,
@@ -44,13 +44,13 @@ export function ToolHeader({
   tone = 'orange',
   badges,
 }: {
-  /** Bu sayfanın route'u — çapraz linklerden kendisi çıkarılır. */
+  /** This page's route — excluded from cross-links. */
   path: string
   icon: LucideIcon
   title: string
   lead: string
   tone?: Tone
-  /** Güven/durum rozetleri — ör. "Read-only by default". */
+  /** Trust/status badges — e.g. "Read-only by default". */
   badges: { label: string; icon?: LucideIcon; tone?: Tone }[]
 }) {
   const others = TOOL_LINKS.filter((t) => t.path !== path)
@@ -98,7 +98,7 @@ export function ToolHeader({
   )
 }
 
-/** Panoya kopyala butonu — kopyalanınca kısa süreli "Copied" durumu gösterir. */
+/** Copy to clipboard button — briefly shows a "Copied" state after copying. */
 export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -119,8 +119,8 @@ export function CopyButton({ text, label = 'Copy' }: { text: string; label?: str
 }
 
 /**
- * Monospace kod alanı — üstte etiket/rozet + aksiyon toolbar'ı, altta opsiyonel özet satırı.
- * IDE yoğunluğunda değil; satır numarası istenirse gösterilir.
+ * Monospace code block — label/badge + action toolbar on top, optional summary line at the bottom.
+ * Not IDE-dense; line numbers are shown if requested.
  */
 export function CodeBlock({
   code,
@@ -133,14 +133,14 @@ export function CodeBlock({
   className,
 }: {
   code: string
-  /** Sol üst dil etiketi — ör. "mongodb", "graylog". */
+  /** Top-left language label — e.g. "mongodb", "graylog". */
   label?: string
   labelTone?: Tone
-  /** Etiketin yanındaki küçük rozetler — ör. "Read-only". */
+  /** Small badges next to the label — e.g. "Read-only". */
   badges?: ReactNode
-  /** Copy dışındaki toolbar aksiyonları. */
+  /** Toolbar actions besides Copy. */
   actions?: ReactNode
-  /** Kod altındaki tek satır özet — ör. "Collection: … · Limit: 100". */
+  /** Single-line summary below the code — e.g. "Collection: … · Limit: 100". */
   summary?: string
   lineNumbers?: boolean
   className?: string
@@ -183,7 +183,7 @@ export function CodeBlock({
   )
 }
 
-/** Örnek istek chip'i — tıklanınca metni forma yerleştirir. */
+/** Example request chip — inserts the text into the form when clicked. */
 export function ExampleChip({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
@@ -196,7 +196,7 @@ export function ExampleChip({ label, onClick }: { label: string; onClick: () => 
   )
 }
 
-/** Araç kartı — beyaz zemin, ince border, başlık + açıklama + içerik. */
+/** Tool card — white background, thin border, title + description + content. */
 export function ToolCard({
   step,
   title,
@@ -204,7 +204,7 @@ export function ToolCard({
   children,
   className,
 }: {
-  /** Adım numarası — ör. "1". */
+  /** Step number — e.g. "1". */
   step?: string
   title: string
   description?: string

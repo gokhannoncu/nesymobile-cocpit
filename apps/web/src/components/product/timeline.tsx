@@ -7,7 +7,7 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { EASE, type Tone, toneCard, toneDot, toneIcon, toneText } from './tones'
 
 export interface TimelineItem {
-  /** Dönem etiketi — "Faz 1 · Ay 1-3", "Şimdi", "2026 Q1" */
+  /** Period label — "Phase 1 · Months 1-3", "Now", "2026 Q1" */
   period: string
   title: string
   desc?: string
@@ -15,19 +15,19 @@ export interface TimelineItem {
   tone?: Tone
   bullets?: string[]
   badges?: string[]
-  /** Durum işareti — "done" geçmiş, "active" mevcut, "next" gelecek */
+  /** Status indicator — "done" past, "active" current, "next" upcoming */
   status?: 'done' | 'active' | 'next'
 }
 
 const statusBadge: Record<NonNullable<TimelineItem['status']>, { label: string; cls: string }> = {
-  done: { label: 'Tamamlandı', cls: 'bg-green-500' },
-  active: { label: 'Aktif', cls: 'bg-blue-500 animate-pulse' },
-  next: { label: 'Sırada', cls: 'bg-muted-foreground/50' },
+  done: { label: 'Completed', cls: 'bg-green-500' },
+  active: { label: 'Active', cls: 'bg-blue-500 animate-pulse' },
+  next: { label: 'Up Next', cls: 'bg-muted-foreground/50' },
 }
 
 /**
- * Dikey zaman şeridi — faz / horizon / kronolojik değişim için.
- * Sol tarafta renkli hat + nokta; her öğe tint kart.
+ * Vertical timeline — for phases / horizons / chronological changes.
+ * Colored line + dot on the left; each item is a tinted card.
  */
 export function Timeline({ items, className }: { items: TimelineItem[]; className?: string }) {
   return (
@@ -51,7 +51,7 @@ export function Timeline({ items, className }: { items: TimelineItem[]; classNam
               show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE } },
             }}
           >
-            {/* Hat + nokta */}
+            {/* Line + dot */}
             <div className="flex flex-col items-center">
               <span
                 className={cn(

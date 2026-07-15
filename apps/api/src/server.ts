@@ -8,7 +8,7 @@ async function main() {
   const { app } = await buildApp(env)
 
   const shutdown = async (signal: string) => {
-    console.log(`\n\x1b[33m${signal}\x1b[0m alındı, API kapatılıyor…`)
+    console.log(`\n\x1b[33m${signal}\x1b[0m received, shutting down API…`)
     await app.close()
     process.exit(0)
   }
@@ -22,7 +22,7 @@ async function main() {
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'EADDRINUSE') {
       console.error(
-        `\n\x1b[31m✖ Port ${env.PORT} kullanımda.\x1b[0m Başka bir API süreci çalışıyor olabilir.\n` +
+        `\n\x1b[31m✖ Port ${env.PORT} is in use.\x1b[0m Another API process may be running.\n` +
           `  → lsof -nP -iTCP:${env.PORT} -sTCP:LISTEN\n` +
           `  → kill <PID>\n`,
       )

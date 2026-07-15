@@ -1,8 +1,8 @@
 'use client'
 
-// MongoDB Query Generator — doğal dilden güvenli, read-only MongoDB sorgusu.
-// Tüm etkileşim mock/simülasyon: "Query Oluştur" sağ paneli sonuç durumuna
-// geçirir, guardrail'ler metin ve environment seçimine göre görünür.
+// MongoDB Query Generator — safe, read-only MongoDB query from natural language.
+// All interaction is mock/simulation: "Generate Query" switches the right panel
+// to the result state; guardrails appear based on text and environment selection.
 
 import { useState } from 'react'
 import {
@@ -88,7 +88,7 @@ export default function MongodbQueryGeneratorPage() {
   const [collection, setCollection] = useState('deliveryRequests')
   const [queryType, setQueryType] = useState('Find')
   const [country, setCountry] = useState('HR')
-  const [timeRange, setTimeRange] = useState('Son 24 saat')
+  const [timeRange, setTimeRange] = useState('Last 24 hours')
   const [toggles, setToggles] = useState<Record<string, boolean>>(
     Object.fromEntries(SAFETY_TOGGLES.map((t) => [t.id, true])),
   )
@@ -105,7 +105,7 @@ export default function MongodbQueryGeneratorPage() {
     setCollection('deliveryRequests')
     setQueryType('Find')
     setCountry('HR')
-    setTimeRange('Son 24 saat')
+    setTimeRange('Last 24 hours')
     setToggles(Object.fromEntries(SAFETY_TOGGLES.map((t) => [t.id, true])))
     setGenerated(false)
   }
@@ -125,7 +125,7 @@ export default function MongodbQueryGeneratorPage() {
         path={PATH}
         icon={Database}
         title="MongoDB Query Generator"
-        lead="Doğal dilde veri ihtiyacını tanımla, güvenli MongoDB sorgusunu oluştur ve sorgunun ne yaptığını adım adım doğrula."
+        lead="Describe your data needs in natural language, generate a safe MongoDB query, and verify step-by-step what the query does."
         tone="orange"
         badges={[
           { label: 'Read-only by default', icon: ShieldCheck, tone: 'green' },
@@ -137,17 +137,17 @@ export default function MongodbQueryGeneratorPage() {
       />
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[42fr_58fr]">
-        {/* ── Sol kolon: form ─────────────────────────────────── */}
+        {/* ── Left column: form ─────────────────────────────────────────────── */}
         <ToolCard
           step="1"
-          title="Veri ihtiyacını tanımla"
-          description="Aradığın veriyi doğal dille yaz. Database ve collection bilgilerini biliyorsan ekleyebilirsin."
+          title="Define your data needs"
+          description="Describe the data you need in natural language. If you know the database and collection, you can add them."
         >
           <div className="space-y-2">
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Son 24 saatte HR ülkesinde başarısız olan ve henüz retry edilmemiş delivery request'lerini göster."
+              placeholder="Show delivery requests that failed in the last 24 hours in HR country and have not yet been retried."
               className="min-h-[110px] text-sm"
             />
             <div className="flex flex-wrap gap-1.5">
@@ -252,7 +252,7 @@ export default function MongodbQueryGeneratorPage() {
             <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50">
               <span className="inline-flex items-center gap-1.5">
                 <DatabaseZap className="size-3.5 text-muted-foreground" />
-                Schema bilgisi ekle
+                Schema information
               </span>
               <ChevronDown
                 className={cn(
@@ -267,7 +267,7 @@ export default function MongodbQueryGeneratorPage() {
                   <table className="w-full min-w-[440px] border-collapse text-xs">
                     <thead className="border-b bg-muted/40">
                       <tr>
-                        {['Alan adı', 'Veri tipi', 'Açıklama', 'Örnek değer'].map((h) => (
+                        {['Field name', 'Data type', 'Description', 'Example value'].map((h) => (
                           <th
                             key={h}
                             className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
@@ -293,7 +293,7 @@ export default function MongodbQueryGeneratorPage() {
                 </div>
                 <Button size="sm" variant="outline">
                   <RefreshCw className="size-3.5" />
-                  Collection şemasını otomatik getir
+                  Auto-fetch collection schema
                 </Button>
               </div>
             </CollapsibleContent>
@@ -334,25 +334,25 @@ export default function MongodbQueryGeneratorPage() {
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             <Button variant="primary" onClick={() => setGenerated(true)} disabled={!text.trim()}>
               <Sparkles className="size-4" />
-              Query Oluştur
+              Generate Query
             </Button>
             <Button variant="outline" onClick={resetForm}>
               <Eraser className="size-4" />
-              Formu temizle
+              Clear form
             </Button>
           </div>
         </ToolCard>
 
-        {/* ── Sağ kolon: workspace ────────────────────────────── */}
+        {/* ── Right column: workspace ──────────────────────────────────────── */}
         <QueryWorkspace generated={generated} />
       </div>
 
       <PageSection
-        eyebrow="Geçmiş"
+        eyebrow="History"
         title="Recent Queries"
         icon={History}
         tone="orange"
-        description="Takımın son doğrulanan sorguları — satıra tıklayınca istek, sorgu ve validasyon geçmişi açılır."
+        description="The team's recently validated queries — click a row to open the request, query, and validation history."
       >
         <RecentQueriesTable onReuse={reuseQuery} />
       </PageSection>

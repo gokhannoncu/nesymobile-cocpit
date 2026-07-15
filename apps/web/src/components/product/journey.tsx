@@ -18,13 +18,13 @@ export interface JourneyStep {
   desc?: string
   icon?: LucideIcon
   tone?: Tone
-  /** 1 = yoğun sürtünme, 5 = güvenli ve rahat. */
+  /** 1 = high friction, 5 = safe and comfortable. */
   emotion: 1 | 2 | 3 | 4 | 5
-  /** Nesy Mobile'ın bu temas noktasını doğrudan yönettiğini gösterir. */
+  /** Indicates that Nesy Mobile directly manages this touchpoint. */
   nesy?: boolean
 }
 
-const EMOTION_LABELS = ['😰 yüksek sürtünme', '😟 endişeli', '😐 odaklı', '🙂 rahat', '😌 güvende']
+const EMOTION_LABELS = ['😰 high friction', '😟 anxious', '😐 focused', '🙂 comfortable', '😌 safe']
 
 const curveStroke: Record<Tone, string> = {
   purple: 'stroke-purple-500',
@@ -134,7 +134,7 @@ export function JourneyMap({
                       toneText[tone],
                     )}
                   >
-                    ◈ Nesy devrede
+                    ◈ Nesy active
                   </span>
                 )}
               </motion.article>
@@ -144,13 +144,13 @@ export function JourneyMap({
 
         <div>
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-            Deneyim eğrisi
+            Experience curve
           </div>
           <svg
             viewBox={`0 0 ${width} ${height}`}
             style={{ width: '100%', height: 'auto' }}
             role="img"
-            aria-label="Journey boyunca deneyim ve sürtünme eğrisi"
+            aria-label="Experience and friction curve throughout the journey"
           >
             {[1, 3, 5].map((emotion) => (
               <line

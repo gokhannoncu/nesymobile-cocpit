@@ -29,7 +29,7 @@ const riskTone: Record<RoadmapRiskLevel, 'red' | 'orange' | 'amber' | 'green'> =
 function phasesToTimeline(phases: RoadmapPhase[], isNewArch: boolean): TimelineItem[] {
   return phases.map((p) => ({
     period: p.months,
-    title: `Faz ${p.phase}: ${p.title}`,
+    title: `Phase ${p.phase}: ${p.title}`,
     desc: p.subtitle,
     tone: riskTone[p.riskLevel],
     status: isNewArch
@@ -53,7 +53,7 @@ function phasesToTimeline(phases: RoadmapPhase[], isNewArch: boolean): TimelineI
 function phaseMetricsRows(phases: RoadmapPhase[]) {
   return phases.flatMap((p) =>
     p.metrics.map((m) => [
-      <span key="faz" className="font-medium">{`Faz ${p.phase}`}</span>,
+      <span key="phase" className="font-medium">{`Phase ${p.phase}`}</span>,
       m.label,
       m.current,
       m.target,
@@ -72,28 +72,28 @@ export default function RoadmapPage() {
 
   const comparisonRows = useMemo(
     () => [
-      ['Süre', roadmapSummary.newArch.duration, roadmapSummary.refactor.duration],
-      ['Ekip', roadmapSummary.newArch.teamSize, roadmapSummary.refactor.teamSize],
+      ['Duration', roadmapSummary.newArch.duration, roadmapSummary.refactor.duration],
+      ['Team', roadmapSummary.newArch.teamSize, roadmapSummary.refactor.teamSize],
       ['Risk', roadmapSummary.newArch.risk, roadmapSummary.refactor.risk],
       [
-        'Faz Sayısı',
+        'Phase Count',
         String(roadmapSummary.newArch.totalPhases),
         String(roadmapSummary.refactor.totalPhases),
       ],
       [
-        'Hedef',
-        'Temiz mimari, tam yeniden yazım',
-        'Hızlı stabilizasyon, düşük maliyet',
+        'Goal',
+        'Clean architecture, full rewrite',
+        'Quick stabilization, low cost',
       ],
       [
-        'Avantaj',
+        'Advantage',
         roadmapSummary.newArch.benefit,
         roadmapSummary.refactor.benefit,
       ],
       [
-        'Dezavantaj',
-        'Uzun süre, yüksek maliyet, büyük ekip gereksinimi',
-        'Teknik borç tam temizlenmez, sınırlı iyileştirme',
+        'Disadvantage',
+        'Long timeline, high cost, large team required',
+        'Technical debt not fully resolved, limited improvement',
       ],
     ],
     [],
@@ -103,17 +103,17 @@ export default function RoadmapPage() {
     () => [
       {
         value: 'yeni-mimari',
-        label: 'Yeni Mimariye Geçiş',
+        label: 'New Architecture Migration',
         content: (
           <div className="space-y-6">
             <Timeline items={newArchTimeline} />
-            <PageSection title="Metrik Hedefleri">
+            <PageSection title="Metric Targets">
               <ComparisonTable
                 headers={[
-                  { label: 'Faz', tone: 'purple' },
-                  { label: 'Metrik', tone: 'blue' },
-                  { label: 'Mevcut', tone: 'red' },
-                  { label: 'Hedef', tone: 'green' },
+                  { label: 'Phase', tone: 'purple' },
+                  { label: 'Metric', tone: 'blue' },
+                  { label: 'Current', tone: 'red' },
+                  { label: 'Target', tone: 'green' },
                 ]}
                 rows={newArchMetrics}
               />
@@ -123,17 +123,17 @@ export default function RoadmapPage() {
       },
       {
         value: 'refactor',
-        label: 'Mevcut App Refactor',
+        label: 'Existing App Refactor',
         content: (
           <div className="space-y-6">
             <Timeline items={refactorTimeline} />
-            <PageSection title="Metrik Hedefleri">
+            <PageSection title="Metric Targets">
               <ComparisonTable
                 headers={[
-                  { label: 'Faz', tone: 'purple' },
-                  { label: 'Metrik', tone: 'blue' },
-                  { label: 'Mevcut', tone: 'red' },
-                  { label: 'Hedef', tone: 'green' },
+                  { label: 'Phase', tone: 'purple' },
+                  { label: 'Metric', tone: 'blue' },
+                  { label: 'Current', tone: 'red' },
+                  { label: 'Target', tone: 'green' },
                 ]}
                 rows={refactorMetrics}
               />
@@ -143,32 +143,32 @@ export default function RoadmapPage() {
       },
       {
         value: 'karsilastirma',
-        label: 'Plan Karşılaştırma',
+        label: 'Plan Comparison',
         content: (
           <div className="space-y-6">
             <ComparisonTable
               headers={[
-                { label: 'Özellik', tone: 'gray' },
-                { label: 'Yeni Mimari', tone: 'indigo' },
-                { label: 'Mevcut Refactor', tone: 'teal' },
+                { label: 'Feature', tone: 'gray' },
+                { label: 'New Architecture', tone: 'indigo' },
+                { label: 'Existing Refactor', tone: 'teal' },
               ]}
               rows={comparisonRows}
               highlightCol={1}
             />
             <DoesDontGrid
-              doesTitle="Yeni Mimari Avantajları"
-              dontTitle="Yeni Mimari Riskleri"
+              doesTitle="New Architecture Advantages"
+              dontTitle="New Architecture Risks"
               does={[
-                'Temiz mimari — test edilebilirlik ve sürdürülebilirlik',
-                'Compose UI ile modern, hızlı geliştirme',
-                'Feature module sınırları ile paralel geliştirme',
-                'Teknik borç tamamen temizlenir',
+                'Clean architecture — testability and maintainability',
+                'Modern, rapid development with Compose UI',
+                'Parallel development via feature module boundaries',
+                'Technical debt fully eliminated',
               ]}
               dont={[
-                '12 ay süre — uzun delivery döngüsü',
-                '3-4 kişilik ekip — yüksek maliyet',
-                'Yeniden yazımda regression riski yüksek',
-                'Mevcut özellikler geçiş süresince dondurulabilir',
+                '12-month timeline — long delivery cycle',
+                '3-4 person team — high cost',
+                'High regression risk during rewrite',
+                'Existing features may be frozen during transition',
               ]}
             />
           </div>
@@ -179,25 +179,25 @@ export default function RoadmapPage() {
   )
 
   return (
-    <ProductPage path="/pm/roadmap" title="Yol Haritası">
+    <ProductPage path="/pm/roadmap" title="Roadmap">
       {/* 1 — Hero */}
       <HeroCallout
         icon={Map}
         eyebrow="Planning"
         tone="indigo"
-        title="Yol Haritası"
-        lead="NeSy Mobile mimari dönüşüm planları — iki alternatif yaklaşım."
-        chips={['Yeni Mimari', 'Mevcut Refactor', '2 Plan Karşılaştırma']}
+        title="Roadmap"
+        lead="NeSy Mobile architecture transformation plans — two alternative approaches."
+        chips={['New Architecture', 'Existing Refactor', '2-Plan Comparison']}
       />
 
       {/* 2 — Segment Tabs */}
       <SegmentTabs items={tabs} defaultValue="yeni-mimari" />
 
       {/* 3 — Guardrail */}
-      <GuardrailCallout tone="amber" icon={AlertTriangle} title="Roadmap ≠ Sprint Planı">
-        Roadmap stratejik yönlendirme aracıdır. Sprint bazlı iş dağılımı için
-        Sprint Takvimi sayfasını kullanın. Roadmap değişiklikleri sadece
-        Architecture Review toplantısında onaylanır.
+      <GuardrailCallout tone="amber" icon={AlertTriangle} title="Roadmap ≠ Sprint Plan">
+        The roadmap is a strategic guidance tool. For sprint-based task distribution,
+        use the Sprint Calendar page. Roadmap changes are only approved
+        at Architecture Review meetings.
       </GuardrailCallout>
     </ProductPage>
   )

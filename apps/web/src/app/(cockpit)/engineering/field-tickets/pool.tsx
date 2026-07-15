@@ -1,7 +1,7 @@
 'use client'
 
-// Field Ticket Pool — DataGrid + sağ Detail Drawer.
-// Satır arka planı boyanmaz; severity sol nokta + badge ile gösterilir (edge-case-map ile aynı ilke).
+// Field Ticket Pool — DataGrid + right Detail Drawer.
+// Row background is not colored; severity is shown via left dot + badge (same principle as edge-case-map).
 
 import { ReactNode, useState } from 'react'
 import {
@@ -80,7 +80,7 @@ export function ConfidenceCell({ value }: { value: number }) {
   )
 }
 
-// ── Pool tablosu ─────────────────────────────────────────────────
+// ── Pool table ─────────────────────────────────────────────────
 
 const th =
   'px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap'
@@ -98,7 +98,7 @@ export function TicketPoolTable({
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        Filtreye uyan ticket yok. Aramayı sadeleştirin veya hızlı filtreleri temizleyin.
+        No tickets match the filter. Simplify your search or clear the quick filters.
       </div>
     )
   }
@@ -113,15 +113,15 @@ export function TicketPoolTable({
             </th>
             <th className={th}>Severity</th>
             <th className={th}>Status</th>
-            <th className={th}>Ülke</th>
-            <th className={th}>Ekran</th>
+            <th className={th}>Country</th>
+            <th className={th}>Screen</th>
             <th className={th}>Root Cause</th>
             <th className={th}>Confidence</th>
-            <th className={th}>Tekrar Riski</th>
+            <th className={th}>Recurrence Risk</th>
             <th className={th}>Fix</th>
             <th className={th}>Edge Case</th>
-            <th className={th}>Müşteri Ticket</th>
-            <th className={th}>Tarih</th>
+            <th className={th}>Customer Ticket</th>
+            <th className={th}>Date</th>
           </tr>
         </thead>
         <tbody>
@@ -149,7 +149,7 @@ export function TicketPoolTable({
                         : 'text-muted-foreground',
                     )}
                   >
-                    {t.status === 'open' ? 'Açık' : 'Kapalı'}
+                    {t.status === 'open' ? 'Open' : 'Closed'}
                   </span>
                 </td>
                 <td className={cn(td, 'whitespace-nowrap')}>{t.country}</td>
@@ -265,7 +265,7 @@ export function TicketDrawer({
                   appearance="outline"
                   size="xs"
                 >
-                  {t.status === 'open' ? 'Açık' : 'Kapalı'}
+                  {t.status === 'open' ? 'Open' : 'Closed'}
                 </Badge>
                 {t.ghUrl && (
                   <a
@@ -281,29 +281,29 @@ export function TicketDrawer({
               </div>
             </SheetHeader>
             <SheetBody className="h-[calc(100vh-96px)] space-y-6 overflow-y-auto px-5 py-5">
-              <DrawerSection icon={Target} title="1 · Belirti (Symptom)" tone="blue">
+              <DrawerSection icon={Target} title="1 · Symptom" tone="blue">
                 <p>{t.symptom}</p>
                 <div className="mt-2.5 space-y-1.5">
-                  <Fact label="Müşteri ticket">{t.customerTicket || '—'}</Fact>
-                  <Fact label="Tarih">{t.date}</Fact>
-                  <Fact label="Tip">{t.type}</Fact>
+                  <Fact label="Customer ticket">{t.customerTicket || '—'}</Fact>
+                  <Fact label="Date">{t.date}</Fact>
+                  <Fact label="Type">{t.type}</Fact>
                   {t.detectability && (
                     <Fact label="Detectability">
                       {t.detectability}
-                      {t.detectability === 'low' && ' · sessiz bozulma — mutabakata kadar görünmez'}
+                      {t.detectability === 'low' && ' · silent corruption — invisible until reconciliation'}
                     </Fact>
                   )}
                 </div>
               </DrawerSection>
 
-              <DrawerSection icon={ShieldAlert} title="2 · Tekrar Riski" tone={RISK_META[t.repeatRisk].tone}>
+              <DrawerSection icon={ShieldAlert} title="2 · Recurrence Risk" tone={RISK_META[t.repeatRisk].tone}>
                 <p>
                   <RiskCell risk={t.repeatRisk} />
                   {t.repeatRisk === 'high' &&
-                    ' — mevcut mimariyle tekrar etmesi beklenir; ticket kapalı olsa bile risk ortadan kalkmış değildir.'}
+                    ' — recurrence is expected under the current architecture; even if the ticket is closed, the risk has not been eliminated.'}
                   {t.repeatRisk === 'medium' &&
-                    ' — kök neden yapısal olarak kapanmadan benzer akışlarda yeniden görülebilir.'}
-                  {t.repeatRisk === 'low' && ' — lokal çözüm yeterli; yapısal tekrar beklenmiyor.'}
+                    ' — may reappear in similar flows until the root cause is structurally resolved.'}
+                  {t.repeatRisk === 'low' && ' — local fix is sufficient; structural recurrence is not expected.'}
                 </p>
               </DrawerSection>
 
@@ -315,7 +315,7 @@ export function TicketDrawer({
                 </DrawerSection>
               )}
 
-              <DrawerSection icon={AlertTriangle} title="4 · Kanonik Root Cause" tone="orange">
+              <DrawerSection icon={AlertTriangle} title="4 · Canonical Root Cause" tone="orange">
                 {rc && (
                   <button
                     type="button"
@@ -337,12 +337,12 @@ export function TicketDrawer({
                     <ConfidenceCell value={t.confidence} />
                     {t.confidence < 65 && (
                       <span className="ml-2 text-[11px] font-semibold text-red-600 dark:text-red-400">
-                        hypothesis — kesin dil kullanmayın
+                        hypothesis — do not use definitive language
                       </span>
                     )}
                   </Fact>
                   {t.contributing.length > 0 && (
-                    <Fact label="Katkı verenler">
+                    <Fact label="Contributors">
                       <span className="flex flex-wrap gap-1">
                         {t.contributing.map((cid) => {
                           const c = RC_BY_ID.get(cid)
@@ -365,19 +365,19 @@ export function TicketDrawer({
               </DrawerSection>
 
               {t.pastAttempt && (
-                <DrawerSection icon={History} title="5 · Ne Denendi?" tone="amber">
+                <DrawerSection icon={History} title="5 · What Was Tried?" tone="amber">
                   <p>{t.pastAttempt}</p>
                 </DrawerSection>
               )}
 
               {t.whyInsufficient && (
-                <DrawerSection icon={FileSearch} title="6 · Neden Yeterli Değil?" tone="red">
+                <DrawerSection icon={FileSearch} title="6 · Why Not Sufficient?" tone="red">
                   <p>{t.whyInsufficient}</p>
                 </DrawerSection>
               )}
 
               {t.fix && (
-                <DrawerSection icon={Wrench} title="7 · Önerilen Kalıcı Çözüm" tone="green">
+                <DrawerSection icon={Wrench} title="7 · Proposed Permanent Fix" tone="green">
                   <p>{t.fix}</p>
                   {rc && rc.actions.length > 0 && (
                     <div className="mt-2.5 space-y-1.5">
@@ -408,15 +408,15 @@ export function TicketDrawer({
               <DrawerSection icon={Link2} title="8 · Connected Knowledge" tone="purple">
                 <div className="space-y-1.5">
                   <Fact label="Edge case">
-                    {t.edgeCases.length > 0 ? t.edgeCases.join(' · ') : 'Bağlı edge case yok'}
+                    {t.edgeCases.length > 0 ? t.edgeCases.join(' · ') : 'No linked edge case'}
                   </Fact>
-                  <Fact label="ADR / Rapor">{rc?.adrRefs.join(' · ') ?? '—'}</Fact>
-                  <Fact label="Kapanış tipi"><FixTypeCell t={t} /></Fact>
+                  <Fact label="ADR / Report">{rc?.adrRefs.join(' · ') ?? '—'}</Fact>
+                  <Fact label="Closure type"><FixTypeCell t={t} /></Fact>
                 </div>
                 {siblings.length > 0 && (
                   <div className="mt-3">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Aynı kök nedene bağlı diğer ticket&apos;lar
+                      Other tickets linked to the same root cause
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {siblings.map((s) => (
@@ -469,17 +469,17 @@ export function RootCauseDrawer({
                   {RC_STATUS_META[rc.status].label}
                 </Badge>
                 <span className={cn('text-xs font-semibold', toneText[RISK_META[rc.repeatRisk].tone])}>
-                  Tekrar riski: {RISK_META[rc.repeatRisk].label}
+                  Recurrence risk: {RISK_META[rc.repeatRisk].label}
                 </span>
               </div>
             </SheetHeader>
             <SheetBody className="h-[calc(100vh-96px)] space-y-6 overflow-y-auto px-5 py-5">
               <div className="rounded-lg border bg-muted/30 p-3 text-xs font-semibold text-foreground/85">
-                {tickets.length} occurrence · {countries.size} ülke · {screens.size} ekran ·{' '}
+                {tickets.length} occurrence · {countries.size} countries · {screens.size} screens ·{' '}
                 {wa} workaround · confidence: {rc.confidence}
               </div>
 
-              <DrawerSection icon={AlertTriangle} title="Kanonik Açıklama" tone="orange">
+              <DrawerSection icon={AlertTriangle} title="Canonical Description" tone="orange">
                 <p>{rc.summary}</p>
               </DrawerSection>
 
@@ -489,7 +489,7 @@ export function RootCauseDrawer({
                 </ul>
               </DrawerSection>
 
-              <DrawerSection icon={Wrench} title="Kalıcı Aksiyonlar" tone="green">
+              <DrawerSection icon={Wrench} title="Permanent Actions" tone="green">
                 <div className="space-y-1.5">
                   {rc.actions.map((aid) => {
                     const act = ACTION_BY_ID.get(aid)
@@ -502,14 +502,14 @@ export function RootCauseDrawer({
                           <span className={cn('font-semibold', toneText[meta.tone])}>{meta.label}</span>
                         </div>
                         <p className="mt-1 font-semibold text-foreground">{act.title}</p>
-                        <p className="mt-1 text-muted-foreground">Doğrulama: {act.verification}</p>
+                        <p className="mt-1 text-muted-foreground">Verification: {act.verification}</p>
                       </div>
                     )
                   })}
                 </div>
               </DrawerSection>
 
-              <DrawerSection icon={Link2} title="Bağlı Ticket'lar" tone="blue">
+              <DrawerSection icon={Link2} title="Linked Tickets" tone="blue">
                 <div className="space-y-1.5">
                   {tickets.map((t) => (
                     <button
@@ -534,7 +534,7 @@ export function RootCauseDrawer({
               <DrawerSection icon={Link2} title="Connected Knowledge" tone="purple">
                 <div className="space-y-1.5">
                   <Fact label="Edge case">{rc.edgeCases.length > 0 ? rc.edgeCases.join(' · ') : '—'}</Fact>
-                  <Fact label="ADR / Rapor">{rc.adrRefs.join(' · ')}</Fact>
+                  <Fact label="ADR / Report">{rc.adrRefs.join(' · ')}</Fact>
                 </div>
               </DrawerSection>
             </SheetBody>

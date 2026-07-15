@@ -7,8 +7,8 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { EASE, type Tone, toneCard, toneIcon, toneText } from './tones'
 
 /**
- * Renkli başlıklı karşılaştırma tablosu — Notion renkli tablo karşılığı.
- * Yatay taşmada kendi içinde kayar (sayfa gövdesi asla yatay kaymaz).
+ * Color-headed comparison table — equivalent of Notion colored table.
+ * Scrolls horizontally within its own container (page body never scrolls horizontally).
  */
 export function ComparisonTable({
   headers,
@@ -18,7 +18,7 @@ export function ComparisonTable({
 }: {
   headers: { label: string; tone?: Tone }[]
   rows: ReactNode[][]
-  /** Vurgulanacak sütun index'i (ör. "CORE" sütunu). */
+  /** Index of the column to highlight (e.g. the "CORE" column). */
   highlightCol?: number
   className?: string
 }) {
@@ -77,11 +77,11 @@ export function ComparisonTable({
 }
 
 /**
- * Yapar / Yapmaz ikili paneli — yeşil ✓ ve kırmızı ✕ listeleri yan yana.
+ * Does / Does Not dual panel — green checkmark and red cross lists side by side.
  */
 export function DoesDontGrid({
-  doesTitle = 'Ne Yapar?',
-  dontTitle = 'Ne Yapmaz?',
+  doesTitle = 'What It Does',
+  dontTitle = 'What It Does Not',
   does,
   dont,
 }: {

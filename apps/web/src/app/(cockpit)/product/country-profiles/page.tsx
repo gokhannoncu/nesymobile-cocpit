@@ -14,47 +14,47 @@ import {
 import { COUNTRIES, TOTAL_FEATURES, supportedCount } from '@/data/product/nesy'
 
 const statusTone: Record<string, Tone> = {
-  Küresel: 'indigo',
-  Aktif: 'green',
-  Gelişmiş: 'purple',
-  Kısıtlı: 'gray',
+  Global: 'indigo',
+  Active: 'green',
+  Advanced: 'purple',
+  Limited: 'gray',
 }
 
-// Ülke paketlerinin öne çıkan farklılıkları — matristen türetilmiş özet.
+// Key differentiators of country packages — summary derived from the matrix.
 const highlights: Record<string, string[]> = {
   core: [
-    'Tüm feature setinin varsayılan davranışı',
-    'Nakit + kredi kartı tahsilat, VPFR fiskalizasyon',
-    'Otomatik pickup ataması (3 dakikada bir job)',
+    'Default behavior of the full feature set',
+    'Cash + credit card collection, VPFR fiscalization',
+    'Automatic pickup assignment (job runs every 3 minutes)',
   ],
   hr: [
-    'Kredi kartı tahsilatı Raipay üzerinden',
-    'Fiskalizasyon yok; pickup ataması dispatcher ile manuel',
-    'İlk tur sonrası ek koliler otomatik onaylanır',
+    'Credit card collection via Raipay',
+    'No fiscalization; pickup assignment is manual via dispatcher',
+    'Additional parcels after the first tour are automatically approved',
   ],
   si: [
-    'Kredi kartı tahsilatı Softpos üzerinden',
-    'CPP ve Red Label kapsam dışı; sınırlı failed-reason listesi',
-    'Aksiyonsuz PAC görevi gün sonunu engellemez',
+    'Credit card collection via Softpos',
+    'CPP and Red Label out of scope; limited failed-reason list',
+    'Inactive PAC task does not block end-of-day',
   ],
   rs: [
-    'Fiskalizasyon (VPFR) CORE ile aynı — en geniş kapsam',
-    'Softpos entegrasyonu yolda; dijital imza opsiyonel',
-    'D4Me entegrasyonu 14 haneli Legacy ID eşlemesiyle',
+    'Fiscalization (VPFR) same as CORE — broadest scope',
+    'Softpos integration in progress; digital signature optional',
+    'D4Me integration with 14-digit Legacy ID mapping',
   ],
   ba: [
-    'Yalnızca nakit tahsilat; fotoğraf kanıtı çekilemez',
-    'Parcelshop / locker teslimatı kapsam dışı',
-    'Event listesinde ek PICK event’i',
+    'Cash collection only; photo proof not available',
+    'Parcelshop / locker delivery out of scope',
+    'Additional PICK event in the event list',
   ],
   me: [
-    'Yalnızca nakit tahsilat; Red Label kapsam dışı',
-    'Parcelshop / locker teslimatı kapsam dışı',
-    'Event listesinde ek RETS (Return to Sender) event’i',
+    'Cash collection only; Red Label out of scope',
+    'Parcelshop / locker delivery out of scope',
+    'Additional RETS (Return to Sender) event in the event list',
   ],
   sk: [
-    'Devreye alınma aşamasında — davranışlar henüz tanımlanmadı',
-    'Feature seti Country Matrix üzerinden tanımlanacak',
+    'In onboarding phase — behaviors not yet defined',
+    'Feature set will be defined via the Country Matrix',
   ],
 }
 
@@ -65,17 +65,17 @@ export default function CountryProfilesPage() {
         icon={Globe}
         eyebrow="Capabilities & Countries"
         tone="orange"
-        title="Ülke paketleri: aynı çekirdek, yerel davranış."
-        lead="Her ülke, CORE altyapısının üzerine kendi ödeme sağlayıcısını, fiskalizasyon kuralını ve operasyon modelini koyar. Bu sayfa paketlerin ticari ve operasyonel özetidir."
-        chips={['CORE + 6 ülke', 'Balkanlar & Orta Avrupa']}
+        title="Country packages: same core, local behavior."
+        lead="Each country layers its own payment provider, fiscalization rules, and operations model on top of the CORE infrastructure. This page is a commercial and operational summary of the packages."
+        chips={['CORE + 6 countries', 'Balkans & Central Europe']}
       />
 
       <PageSection
-        eyebrow="Paketler"
-        title="Ülke paketleri"
+        eyebrow="Packages"
+        title="Country Packages"
         icon={MapPin}
         tone="orange"
-        description="Kapsam sayısı, o ülkede aktif (kapsam dışı ve tanımsız olmayan) feature sayısıdır."
+        description="The scope count is the number of active (not out-of-scope or undefined) features in that country."
       >
         <CardGrid cols={3}>
           {COUNTRIES.map((c) => (
@@ -85,7 +85,7 @@ export default function CountryProfilesPage() {
               tone={statusTone[c.status] ?? 'gray'}
               eyebrow={c.status}
               title={`${c.name} — ${c.subtitle}`}
-              desc={`${c.price} · ${supportedCount(c.id)}/${TOTAL_FEATURES} feature aktif${c.isPopular ? ' · En yaygın paket' : ''}`}
+              desc={`${c.price} · ${supportedCount(c.id)}/${TOTAL_FEATURES} features active${c.isPopular ? ' · Most popular package' : ''}`}
               bullets={highlights[c.id]}
               href="/product/country-matrix"
             />
@@ -94,36 +94,36 @@ export default function CountryProfilesPage() {
       </PageSection>
 
       <PageSection
-        eyebrow="Yerel Farklılıklar"
-        title="Ödeme ve fiskalizasyon özeti"
+        eyebrow="Local Differences"
+        title="Payment and fiscalization summary"
         icon={CreditCard}
         tone="purple"
-        description="Ülke davranış farklılıklarının en sık kaynağı: tahsilat sağlayıcısı ve fiskal zorunluluklar."
+        description="The most common source of country behavior differences: collection provider and fiscal requirements."
       >
         <ComparisonTable
           headers={[
-            { label: 'Ülke' },
-            { label: 'Nakit', tone: 'green' },
-            { label: 'Kredi Kartı', tone: 'blue' },
-            { label: 'Fiskalizasyon', tone: 'purple' },
+            { label: 'Country' },
+            { label: 'Cash', tone: 'green' },
+            { label: 'Credit Card', tone: 'blue' },
+            { label: 'Fiscalization', tone: 'purple' },
           ]}
           rows={[
-            ['CORE', 'Var', 'Var', 'VPFR — teslimat ve CPP toplamada'],
-            ['Scale HR · Hırvatistan', 'Var', 'Raipay', 'Yok'],
-            ['Scale SI · Slovenya', 'Var', 'Softpos', 'Yok'],
-            ['Scale Plus RS · Sırbistan', 'Var', 'Softpos (entegre edilecek)', 'VPFR — CORE ile aynı'],
-            ['Start BA · Bosna', 'Var', 'Yok', 'Yok'],
-            ['Start ME · Karadağ', 'Var', 'Yok', 'Yok'],
-            ['Scale SK · Slovakya', '—', '—', '—'],
+            ['CORE', 'Yes', 'Yes', 'VPFR — on delivery and CPP collection'],
+            ['Scale HR · Croatia', 'Yes', 'Raipay', 'No'],
+            ['Scale SI · Slovenia', 'Yes', 'Softpos', 'No'],
+            ['Scale Plus RS · Serbia', 'Yes', 'Softpos (to be integrated)', 'VPFR — same as CORE'],
+            ['Start BA · Bosnia', 'Yes', 'No', 'No'],
+            ['Start ME · Montenegro', 'Yes', 'No', 'No'],
+            ['Scale SK · Slovakia', '—', '—', '—'],
           ]}
           highlightCol={0}
         />
       </PageSection>
 
-      <Callout icon={Zap} title="Yeni ülke açılışı" tone="orange">
-        Yeni bir ülke, önce Country Matrix&apos;te bir sütun olarak tanımlanır (Scale SK örneğindeki
-        gibi). Davranışlar feature feature netleştikçe matris doldurulur; paket ancak matris
-        tamamlandığında &quot;Aktif&quot; statüsüne geçer.
+      <Callout icon={Zap} title="New country launch" tone="orange">
+        A new country is first defined as a column in the Country Matrix (as in the Scale SK
+        example). As behaviors are clarified feature by feature, the matrix is filled in; the package
+        only moves to &quot;Active&quot; status once the matrix is complete.
       </Callout>
     </ProductPage>
   )

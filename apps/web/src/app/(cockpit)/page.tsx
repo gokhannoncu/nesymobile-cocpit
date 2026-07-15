@@ -10,8 +10,8 @@ import {
 } from '@nesy/metronic/layout-21/components/toolbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@nesy/metronic/components/ui/card'
 
-// Ana sayfa (root /) — cockpit'in giriş ekranı.
-// Template başlangıç noktası: workspace'leri listeler; kendi dashboard'unuzla değiştirin.
+// Home page (root /) — cockpit entry screen.
+// Template starting point: lists workspaces; replace with your own dashboard.
 
 export default function CockpitHomePage() {
   return (
@@ -28,10 +28,10 @@ export default function CockpitHomePage() {
             <CardTitle>Nesy Mobile Cockpit</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Bu template, Metronic Layout 21 tabanlı cockpit yapısının temelini içerir: sol ikon
-            rayı (workspace&apos;ler), ikincil sidebar menüsü, header + breadcrumb ve içerik alanı.
-            Menü yapısı <code>packages/metronic/src/config/layout-21.config.tsx</code> dosyasından
-            yönetilir; path&apos;i olan her menü öğesi otomatik olarak placeholder sayfası alır.
+            This template contains the foundation of the Metronic Layout 21 based cockpit structure: left icon
+            rail (workspaces), secondary sidebar menu, header + breadcrumb, and content area.
+            The menu structure is managed from the <code>packages/metronic/src/config/layout-21.config.tsx</code> file;
+            every menu item with a path automatically gets a placeholder page.
           </CardContent>
         </Card>
 
@@ -49,7 +49,7 @@ export default function CockpitHomePage() {
                   href={w.path}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
                 >
-                  Workspace&apos;e git <ArrowRight className="size-3.5" />
+                  Go to Workspace <ArrowRight className="size-3.5" />
                 </Link>
               </CardContent>
             </Card>

@@ -103,9 +103,9 @@ export default function PmOverviewPage() {
         icon={KanbanSquare}
         eyebrow="Project Management"
         tone="purple"
-        title="Nesy Mobile — Proje Yönetimi Kokpiti"
-        lead="Ticket yönetimi, release takibi, versiyon kontrolü ve sprint planlaması tek panelden."
-        chips={['Ticket Board', 'Release Geçmişi', 'Versiyon Takip']}
+        title="Nesy Mobile — Project Management Cockpit"
+        lead="Ticket management, release tracking, version control, and sprint planning from a single panel."
+        chips={['Ticket Board', 'Release History', 'Version Tracking']}
       >
         <StatGrid cols={4}>
           <StatCard label="Total Tickets" value={totalTickets} tone="purple" icon={KanbanSquare} />
@@ -139,7 +139,7 @@ export default function PmOverviewPage() {
               <Area
                 type="monotone"
                 dataKey="opened"
-                name="Açılan"
+                name="Opened"
                 stroke="#a855f7"
                 fill="#a855f7"
                 fillOpacity={0.2}
@@ -148,7 +148,7 @@ export default function PmOverviewPage() {
               <Area
                 type="monotone"
                 dataKey="closed"
-                name="Kapanan"
+                name="Closed"
                 stroke="#22c55e"
                 fill="#22c55e"
                 fillOpacity={0.2}
@@ -160,10 +160,10 @@ export default function PmOverviewPage() {
         </div>
       </PageSection>
 
-      {/* ─── Severity Dağılımı ─────────────────────────────────────────── */}
+      {/* ─── Severity Distribution ─────────────────────────────────────── */}
       <PageSection
-        eyebrow="Dağılım"
-        title="Severity Dağılımı"
+        eyebrow="Distribution"
+        title="Severity Distribution"
         icon={PieChartIcon}
         tone="purple"
       >
@@ -191,7 +191,7 @@ export default function PmOverviewPage() {
             </ResponsiveContainer>
           </div>
           <div className="rounded-xl border p-6 bg-card">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Grup Dağılımı</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Group Distribution</h3>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={groupData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
@@ -219,10 +219,10 @@ export default function PmOverviewPage() {
         </div>
       </PageSection>
 
-      {/* ─── Workspace Haritası ────────────────────────────────────────── */}
+      {/* ─── Workspace Map ──────────────────────────────────────────────── */}
       <PageSection
-        eyebrow="Navigasyon"
-        title="Workspace Haritası"
+        eyebrow="Navigation"
+        title="Workspace Map"
         icon={Map}
         tone="purple"
       >
@@ -231,42 +231,42 @@ export default function PmOverviewPage() {
             icon={KanbanSquare}
             tone="purple"
             title="Ticket Board"
-            desc="Tüm ticket'ları kanban, tablo ve analitik görünümlerinde yönetin."
+            desc="Manage all tickets in kanban, table, and analytics views."
             href="/pm/tickets"
           />
           <InfoCard
             icon={Search}
             tone="indigo"
             title="Root Cause Analysis"
-            desc="Kök neden analizi — grup ve risk matrisi bazında inceleme."
+            desc="Root cause analysis — inspection by group and risk matrix."
             href="/pm/root-cause"
           />
           <InfoCard
             icon={ShieldCheck}
             tone="green"
             title="Test Coverage"
-            desc="Test kapsamı durumu ve test case takibi."
+            desc="Test coverage status and test case tracking."
             href="/pm/test-coverage"
           />
           <InfoCard
             icon={Rocket}
             tone="orange"
             title="Release History"
-            desc="Tüm release'ler, feature ve fix listesi ile birlikte."
+            desc="All releases, along with feature and fix lists."
             href="/pm/releases"
           />
           <InfoCard
             icon={Tag}
             tone="teal"
             title="Version Tracker"
-            desc="Ülke bazlı production ve staging versiyon takibi."
+            desc="Country-based production and staging version tracking."
             href="/pm/versions"
           />
           <InfoCard
             icon={CalendarDays}
             tone="blue"
             title="Sprint Calendar"
-            desc="Sprint planlaması ve takvim etkinlikleri."
+            desc="Sprint planning and calendar events."
             href="/pm/calendar"
           />
         </CardGrid>
@@ -274,8 +274,8 @@ export default function PmOverviewPage() {
 
       {/* ─── Callout ───────────────────────────────────────────────────── */}
       <Callout icon={Info} tone="purple">
-        Tek bakışta proje durumu — tüm ticket, release ve versiyon bilgileri bu kokpitten
-        yönetilir.
+        Project status at a glance — all ticket, release, and version information is managed
+        from this cockpit.
       </Callout>
     </ProductPage>
   )

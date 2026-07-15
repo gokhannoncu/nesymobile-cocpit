@@ -37,7 +37,7 @@ export default function NotionPlaceholderPage() {
               <Button size="sm" variant="outline" asChild>
                 <a href={item.notionUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink />
-                  Notion&apos;da Aç
+                  Open in Notion
                 </a>
               </Button>
             </ToolbarActions>

@@ -1,7 +1,7 @@
 'use client'
 
-// Saved Investigations — tam genişlik tablo + sağ Sheet drawer.
-// Desen: field-tickets/pool.tsx ile aynı tablo hücre ve drawer bölüm dili.
+// Saved Investigations — full-width table + right Sheet drawer.
+// Pattern: same table cell and drawer section language as field-tickets/pool.tsx.
 
 import { ReactNode, useState } from 'react'
 import {
@@ -106,7 +106,7 @@ export function SavedInvestigations({ onReuse }: { onReuse: (inv: SavedInvestiga
                       setSelected(inv)
                     }}
                   >
-                    Detay <ArrowRight className="size-3.5" />
+                    Details <ArrowRight className="size-3.5" />
                   </Button>
                 </td>
               </tr>

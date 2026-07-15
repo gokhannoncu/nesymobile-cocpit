@@ -1,7 +1,7 @@
 'use client'
 
-// Seçili veri kaynağı detayı — sağ sabit panelde ve katalog drawer'ında
-// aynı içerik bileşeni kullanılır.
+// Selected data source detail — the same content component is used
+// in both the fixed right panel and the catalog drawer.
 
 import { ReactNode } from 'react'
 import Link from 'next/link'
@@ -59,7 +59,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** Kaynak başlığı — teknik ad + tip + source-of-truth rozeti. */
+/** Source header — technical name + type + source-of-truth badge. */
 export function SourceDetailHeader({ source }: { source: DataSource }) {
   const truth = TRUTH_META[source.truth]
   return (
@@ -81,13 +81,13 @@ export function SourceDetailHeader({ source }: { source: DataSource }) {
   )
 }
 
-/** Detay gövdesi — Overview, key fields, sorular, örnek query, ilişkiler, caveat'ler. */
+/** Detail body — Overview, key fields, questions, example query, relations, caveats. */
 export function SourceDetailBody({
   source,
   onSelectRelated,
 }: {
   source: DataSource
-  /** Related source chip'ine tıklanınca — panel o kaynağa geçer. */
+  /** When a related source chip is clicked — the panel navigates to that source. */
   onSelectRelated?: (id: string) => void
 }) {
   return (
@@ -95,13 +95,13 @@ export function SourceDetailBody({
       <DetailSection icon={Info} title="Overview" tone="blue">
         <div className="space-y-2.5">
           <div className="rounded-lg border border-green-200 bg-green-50/60 p-2.5 text-xs leading-relaxed text-foreground/85 dark:border-green-900/60 dark:bg-green-950/30">
-            <span className="font-bold text-green-700 dark:text-green-300">Ne için kullanılır: </span>
+            <span className="font-bold text-green-700 dark:text-green-300">Used for: </span>
             {source.purpose}
           </div>
           <div className="flex items-start gap-1.5 rounded-lg border p-2.5 text-xs leading-relaxed text-foreground/80">
             <XCircle className="mt-px size-3.5 shrink-0 text-muted-foreground" />
             <span>
-              <span className="font-bold">Ne için kullanılmamalıdır: </span>
+              <span className="font-bold">Not intended for: </span>
               {source.notFor}
             </span>
           </div>
@@ -155,11 +155,11 @@ export function SourceDetailBody({
         <div className="mt-2.5 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" asChild>
             <Link href="/engineering/tools/mongodb-query-generator">
-              MongoDB Query Generator&rsquo;da aç
+              Open in MongoDB Query Generator
               <ArrowUpRight className="size-3.5 opacity-60" />
             </Link>
           </Button>
-          <CopyButton text={source.exampleQuery.code} label="Query'yi kopyala" />
+          <CopyButton text={source.exampleQuery.code} label="Copy query" />
         </div>
       </DetailSection>
 

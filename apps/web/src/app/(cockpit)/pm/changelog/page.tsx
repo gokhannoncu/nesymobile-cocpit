@@ -13,7 +13,7 @@ import type { TimelineItem } from '@/components/product/timeline'
 import { releases } from '@/data/pm/releases'
 import { COUNTRY_LABELS } from '@/data/pm/versions'
 
-const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const statusTone: Record<string, 'green' | 'blue' | 'gray'> = {
   released: 'green',
@@ -36,7 +36,7 @@ const statusLabel: Record<string, string> = {
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
-  return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -72,19 +72,19 @@ export default function ChangelogPage() {
   })
 
   return (
-    <ProductPage path="/pm/changelog" title="Değişiklik Geçmişi">
+    <ProductPage path="/pm/changelog" title="Changelog">
       {/* ─ Hero ────────────────────────────────────────────────────────────── */}
       <HeroCallout
         icon={ScrollText}
         eyebrow="Release & Versions"
         tone="purple"
-        title="Değişiklik Geçmişi"
-        lead="Her sürümde eklenen özellikler, düzeltilen hatalar ve kırılma değişikliklerinin tam kaydı."
+        title="Changelog"
+        lead="Complete record of features added, bugs fixed, and breaking changes in every release."
       >
         <StatGrid cols={3}>
-          <StatCard label="Toplam Release" value={totalReleases} tone="purple" />
-          <StatCard label="Toplam Feature" value={totalFeatures} tone="green" />
-          <StatCard label="Toplam Fix" value={totalFixes} tone="blue" />
+          <StatCard label="Total Releases" value={totalReleases} tone="purple" />
+          <StatCard label="Total Features" value={totalFeatures} tone="green" />
+          <StatCard label="Total Fixes" value={totalFixes} tone="blue" />
         </StatGrid>
       </HeroCallout>
 
@@ -92,10 +92,10 @@ export default function ChangelogPage() {
       <Timeline items={timelineItems} />
 
       {/* ─ Guardrail ───────────────────────────────────────────────────────── */}
-      <Callout icon={AlertTriangle} title="Changelog ≠ Karar Kaydı" tone="orange">
-        Changelog teknik değişiklikleri listeler, ancak &quot;neden bu kararı aldık?&quot; sorusuna cevap vermez.
-        Mimari kararlar ve trade-off&apos;lar için ADR (Architecture Decision Record) dokümanlarını kullanın.
-        Changelog&apos;da yalnızca &quot;ne değişti&quot; yer almalıdır.
+      <Callout icon={AlertTriangle} title="Changelog ≠ Decision Record" tone="orange">
+        The changelog lists technical changes but does not answer &quot;why did we make this decision?&quot;
+        For architectural decisions and trade-offs, use ADR (Architecture Decision Record) documents.
+        The changelog should only contain &quot;what changed.&quot;
       </Callout>
     </ProductPage>
   )

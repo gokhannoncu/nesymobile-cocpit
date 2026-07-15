@@ -1,9 +1,9 @@
 'use client'
 
-// Field Ticket Intelligence — sahadan gelen ticket'ları, kanonik kök nedenleri,
-// uygulanan müdahaleleri ve tekrar risklerini ilişkisel olarak analiz eden merkez.
-// İlke: ticket'lar kendi kök neden metnini üretmez; kanonik Root Cause / Action /
-// Edge Case kayıtlarına bağlanır (Engineering Knowledge Graph).
+// Field Ticket Intelligence — a hub that relationally analyzes field tickets, canonical root causes,
+// applied interventions, and recurrence risks.
+// Principle: tickets do not generate their own root cause text; they link to canonical Root Cause / Action /
+// Edge Case records (Engineering Knowledge Graph).
 
 import { useMemo, useState } from 'react'
 import {
@@ -95,61 +95,61 @@ export default function FieldTicketIntelligencePage() {
         eyebrow="Reliability & Operations"
         tone="indigo"
         title="Field Ticket Intelligence"
-        lead={`${kpi.total} saha ticket'ı ${kpi.rootCauses} kanonik kök neden altında kümeleniyor. Açık ticket'ların çoğu Finans & Ödeme ile Barcode & Scan alanlarında yoğunlaşıyor; ${kpi.highRepeatRc} kök neden yüksek tekrar riski taşıyor ve ${kpi.workaroundClosed} ticket workaround ile kapatıldı — Closed ≠ Eliminated.`}
+        lead={`${kpi.total} field tickets are clustered under ${kpi.rootCauses} canonical root causes. Most open tickets are concentrated in the Finance & Payment and Barcode & Scan domains; ${kpi.highRepeatRc} root causes carry high recurrence risk and ${kpi.workaroundClosed} tickets were closed with workarounds — Closed ≠ Eliminated.`}
         chips={[
           `${kpi.total} ticket`,
-          `${kpi.rootCauses} kök neden`,
-          `${kpi.families} mühendislik alanı`,
-          `${kpi.open} açık`,
-          `Güncelleme: ${LAST_UPDATED}`,
+          `${kpi.rootCauses} root causes`,
+          `${kpi.families} engineering domains`,
+          `${kpi.open} open`,
+          `Updated: ${LAST_UPDATED}`,
           DATA_SOURCES,
         ]}
       >
         <StatGrid cols={2}>
           <StatCard
-            label="Workaround ile Kapalı"
+            label="Closed with Workaround"
             value={kpi.workaroundClosed}
             tone="amber"
             icon={Scale}
-            hint="Ticket kapalı ancak mimari risk devam ediyor"
+            hint="Ticket closed but architectural risk persists"
           />
-          <StatCard label="Kritik" value={kpi.critical} tone="red" icon={AlertTriangle} />
+          <StatCard label="Critical" value={kpi.critical} tone="red" icon={AlertTriangle} />
         </StatGrid>
       </HeroCallout>
 
-      {/* ── KPI şeridi ── */}
+      {/* ── KPI strip ── */}
       <StatGrid cols={4}>
         <StatCard
-          label="Kanonik Kök Neden"
+          label="Canonical Root Causes"
           value={kpi.rootCauses}
           tone="indigo"
           icon={Network}
-          hint="Tekrar etmeyen gerçek neden sayısı"
+          hint="Count of non-recurring true causes"
         />
         <StatCard
-          label="Yüksek Tekrar Riski"
+          label="High Recurrence Risk"
           value={kpi.highRepeatRc}
           tone="red"
           icon={AlertTriangle}
-          hint="Mevcut mimaride yeniden oluşması beklenen kök neden"
+          hint="Root causes expected to recur under current architecture"
         />
         <StatCard
-          label="Kök Nedeni Belirsiz"
+          label="Unclear Root Cause"
           value={kpi.unclear}
           tone="amber"
           icon={FileQuestion}
-          hint="Confidence < 65 — hâlâ hipotez aşamasında"
+          hint="Confidence < 65 — still in hypothesis stage"
         />
         <StatCard
-          label="Açık Kalıcı Aksiyon"
+          label="Open Permanent Actions"
           value={kpi.openActions}
           tone="blue"
           icon={Wrench}
-          hint="Mimari çözüm tamamlanmamış / doğrulanmamış"
+          hint="Architectural fix not completed / not verified"
         />
       </StatGrid>
 
-      {/* ── Sticky arama & filtre barı ── */}
+      {/* ── Sticky search & filter bar ── */}
       <div className="sticky top-2 z-20 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +158,7 @@ export default function FieldTicketIntelligencePage() {
               <input
                 value={search}
                 onChange={(ev) => setSearch(ev.target.value)}
-                placeholder='Ara — serbest metin veya status:closed workaround:true · rootcause:"race" · country:RS'
+                placeholder='Search — free text or status:closed workaround:true · rootcause:"race" · country:RS'
                 className="h-9 w-full rounded-lg border bg-background pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-indigo-500/30"
               />
               {search && (
@@ -177,7 +177,7 @@ export default function FieldTicketIntelligencePage() {
               className="h-9 rounded-lg border bg-background px-2.5 text-sm text-foreground"
               title={SAVED_VIEWS.find((v) => v.id === savedView)?.desc}
             >
-              <option value="">Saved View: Tümü</option>
+              <option value="">Saved View: All</option>
               {SAVED_VIEWS.map((v) => (
                 <option key={v.id} value={v.id}>{v.label}</option>
               ))}
@@ -212,14 +212,14 @@ export default function FieldTicketIntelligencePage() {
                 onClick={() => { setSearch(''); setQuick([]); setSavedView(null) }}
                 className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
-                <X className="size-3.5" /> Temizle · {filtered.length}/{kpi.total} ticket
+                <X className="size-3.5" /> Clear · {filtered.length}/{kpi.total} tickets
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Görünümler ── */}
+      {/* ── Views ── */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList variant="button" className="mb-5 flex-wrap justify-start">
           <TabsTrigger value="overview"><LayoutDashboard className="size-4" /> Overview</TabsTrigger>

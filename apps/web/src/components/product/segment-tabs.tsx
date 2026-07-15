@@ -12,8 +12,8 @@ export interface SegmentTabItem {
 }
 
 /**
- * Tek sayfada çok-segment gezinme — Notion "sekme deseni" karşılığı.
- * Kullanıcı tipleri, journey seçici, tez bölümleri için.
+ * Multi-segment navigation on a single page — equivalent of the Notion "tab pattern".
+ * For user types, journey selector, thesis sections.
  */
 export function SegmentTabs({
   items,

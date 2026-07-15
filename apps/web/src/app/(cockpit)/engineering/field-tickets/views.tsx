@@ -1,6 +1,6 @@
 'use client'
 
-// Field Ticket Intelligence — Overview / Patterns / Actions / Knowledge Base görünümleri.
+// Field Ticket Intelligence — Overview / Patterns / Actions / Knowledge Base views.
 
 import { useMemo } from 'react'
 import {
@@ -31,7 +31,7 @@ import {
   type FieldTicket,
 } from '@/data/engineering/field-tickets'
 
-// ── Ortak mini bar ───────────────────────────────────────────────
+// ── Common mini bar ───────────────────────────────────────────────
 
 function Bar({ value, max, tone = 'blue' }: { value: number; max: number; tone?: string }) {
   return (
@@ -62,9 +62,9 @@ export function OverviewView({
   return (
     <div className="space-y-8">
       <PageSection
-        eyebrow={`${highRisk.length} kök neden`}
-        title="Aktif yüksek tekrar riski"
-        description="Bu kök nedenler mevcut mimaride yeniden ticket üretmesi beklenen kayıtlardır. Ticket'ın kapalı olması riski ortadan kaldırmaz."
+        eyebrow={`${highRisk.length} root causes`}
+        title="Active high recurrence risk"
+        description="These root causes are records expected to generate new tickets under the current architecture. A ticket being closed does not eliminate the risk."
         icon={ShieldAlert}
         tone="red"
       >
@@ -95,7 +95,7 @@ export function OverviewView({
       <PageSection
         eyebrow={`${waDebt.length} ticket`}
         title="Closed ≠ Eliminated — workaround borcu"
-        description="Bu ticket'lar kapalı ancak kök neden yapısal olarak kapanmadı; teknik borç olarak izlenir."
+        description="These tickets are closed but the root cause has not been structurally resolved; tracked as technical debt."
         icon={Scale}
         tone="amber"
       >
@@ -117,14 +117,14 @@ export function OverviewView({
           onClick={() => onJumpPool('status:closed workaround:true')}
           className="mt-3 text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
         >
-          Pool&apos;da aç: status:closed workaround:true →
+          Open in Pool: status:closed workaround:true →
         </button>
       </PageSection>
 
       <PageSection
-        eyebrow={`${verifQueue.length} kayıt`}
+        eyebrow={`${verifQueue.length} records`}
         title="Verification Queue"
-        description="Müdahale uygulanmış ancak race/regression doğrulaması tamamlanmamış kayıtlar. Fix Implemented ≠ Verified."
+        description="Records where intervention was applied but race/regression verification is not yet complete. Fix Implemented ≠ Verified."
         icon={CheckCircle2}
         tone="blue"
       >
@@ -138,8 +138,8 @@ export function OverviewView({
             <thead className="border-b bg-muted/40 text-left">
               <tr>
                 <th className="px-3 py-2 font-bold text-muted-foreground">Ticket</th>
-                <th className="px-3 py-2 font-bold text-muted-foreground">Uygulanan müdahale</th>
-                <th className="px-3 py-2 font-bold text-muted-foreground">Tekrar riski</th>
+                <th className="px-3 py-2 font-bold text-muted-foreground">Applied intervention</th>
+                <th className="px-3 py-2 font-bold text-muted-foreground">Recurrence risk</th>
               </tr>
             </thead>
             <tbody>
@@ -163,7 +163,7 @@ export function OverviewView({
         </div>
         {verifQueue.length > 10 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            +{verifQueue.length - 10} kayıt daha — Saved View: Verification Queue
+            +{verifQueue.length - 10} more records — Saved View: Verification Queue
           </p>
         )}
       </PageSection>
@@ -199,8 +199,8 @@ export function PatternsView({ onOpenRc }: { onOpenRc: (rcId: string) => void })
     <div className="space-y-8">
       <PageSection
         eyebrow="Pareto"
-        title="En fazla ticket üreten kök nedenler"
-        description="Ticket'ların çoğu az sayıda kanonik kök nedenden geliyor — mimari yatırım önceliği bu sıradan okunur."
+        title="Root causes generating the most tickets"
+        description="Most tickets originate from a small number of canonical root causes — architectural investment priority is read from this order."
         icon={BarChart3}
         tone="indigo"
       >
@@ -222,14 +222,14 @@ export function PatternsView({ onOpenRc }: { onOpenRc: (rcId: string) => void })
           ))}
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Bar rengi tekrar riskini gösterir: kırmızı yüksek · amber orta · yeşil düşük.
+          Bar color indicates recurrence risk: red high · amber medium · green low.
         </p>
       </PageSection>
 
       <PageSection
-        eyebrow="Risk matrisi"
-        title="Occurrence × Tekrar Riski"
-        description="Sağ üst köşe (çok ticket + yüksek tekrar riski) en acil mimari yatırım alanıdır."
+        eyebrow="Risk matrix"
+        title="Occurrence × Recurrence Risk"
+        description="The top-right corner (many tickets + high recurrence risk) is the most urgent area for architectural investment."
         icon={AlertTriangle}
         tone="red"
       >
@@ -260,14 +260,14 @@ export function PatternsView({ onOpenRc }: { onOpenRc: (rcId: string) => void })
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">Chip içindeki sayı = bağlı ticket sayısı.</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">Number inside chip = linked ticket count.</p>
       </PageSection>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {[
-          { title: 'Mühendislik alanı', data: groups, tone: 'blue' },
-          { title: 'Ekran / Flow', data: screens, tone: 'purple' },
-          { title: 'Ülke', data: countries, tone: 'teal' },
+          { title: 'Engineering Domain', data: groups, tone: 'blue' },
+          { title: 'Screen / Flow', data: screens, tone: 'purple' },
+          { title: 'Country', data: countries, tone: 'teal' },
         ].map(({ title, data, tone }) => {
           const m = data[0]?.[1] ?? 1
           return (
@@ -344,7 +344,7 @@ export function ActionsView({ onOpenRc }: { onOpenRc: (rcId: string) => void }) 
                         </div>
                         <p className="mt-2 border-t pt-2 text-[10px] text-muted-foreground">
                           <Wrench className="mr-1 inline size-3" />
-                          {n} bağlı ticket · Ref: {a.ref}
+                          {n} linked tickets · Ref: {a.ref}
                         </p>
                       </div>
                     )
@@ -356,10 +356,10 @@ export function ActionsView({ onOpenRc }: { onOpenRc: (rcId: string) => void }) 
         </div>
       </div>
 
-      <Callout icon={GitPullRequestArrow} title="Aksiyon doğrulama kuralı" tone="blue">
-        Bir aksiyon <strong>Completed</strong> kolonuna yalnızca <em>verification</em> kriteri
-        kanıtla (regression testi, production metriği veya QA kaydı) karşılandığında taşınır.
-        Kod değişikliğinin merge edilmesi tek başına yeterli değildir — Fix Implemented ≠ Verified.
+      <Callout icon={GitPullRequestArrow} title="Action verification rule" tone="blue">
+        An action moves to the <strong>Completed</strong> column only when the <em>verification</em> criteria
+        are met with evidence (regression test, production metric, or QA record).
+        Merging a code change alone is not sufficient — Fix Implemented ≠ Verified.
       </Callout>
     </div>
   )
@@ -376,7 +376,7 @@ export function KnowledgeView({ onOpenRc }: { onOpenRc: (rcId: string) => void }
         return (
           <PageSection
             key={family}
-            eyebrow={`${items.length} kanonik kayıt`}
+            eyebrow={`${items.length} canonical records`}
             title={family}
             icon={Landmark}
             tone="indigo"
@@ -408,7 +408,7 @@ export function KnowledgeView({ onOpenRc }: { onOpenRc: (rcId: string) => void }
                       <span>{n} occurrence</span>
                       <span>· confidence: {rc.confidence}</span>
                       <span className={toneText[RISK_META[rc.repeatRisk].tone]}>
-                        · tekrar riski {RISK_META[rc.repeatRisk].label.toLowerCase()}
+                        · recurrence risk {RISK_META[rc.repeatRisk].label.toLowerCase()}
                       </span>
                       {rc.edgeCases.length > 0 && <span>· {rc.edgeCases.join(', ')}</span>}
                       <span>· {rc.adrRefs.join(', ')}</span>
@@ -423,19 +423,19 @@ export function KnowledgeView({ onOpenRc }: { onOpenRc: (rcId: string) => void }
 
       <PageSection
         eyebrow="Guardrails"
-        title="Yorumlama kuralları"
-        description="Bu sayfadaki veriler aşağıdaki kurallarla okunur; kural ihlali yanlış mühendislik kararına yol açar."
+        title="Interpretation Rules"
+        description="Data on this page is read using the following rules; violating them leads to incorrect engineering decisions."
         icon={BookOpen}
         tone="gray"
       >
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
           {[
-            ['Symptom ≠ Root Cause', 'Kullanıcının gördüğü davranış teknik kök neden değildir; ticket önce belirti olarak kaydedilir, kanonik nedene analizle bağlanır.'],
-            ['Hypothesis ≠ Confirmed', "Confidence 65 altındaki teşhisler hipotezdir; 'Confirmed' statüsü olmadan kesin dil kullanılmaz."],
-            ['Workaround ≠ Permanent Fix', 'Ticket kapanması mimari riskin kapandığını göstermez; workaround ile kapanan kayıtlar borç olarak izlenir.'],
-            ['Closed Ticket ≠ Eliminated Risk', 'Aynı kök neden altında tekrar riski devam edebilir; risk kök neden seviyesinde okunur.'],
-            ['Correlation ≠ Causation', "Bir release ile zaman yakınlığı tek başına nedensellik kanıtı değildir; release bağlantısı evidence ister."],
-            ['Fix Implemented ≠ Verified', 'Kod değişikliği regression/production doğrulaması olmadan Verified yapılmaz.'],
+            ['Symptom ≠ Root Cause', 'The behavior observed by the user is not the technical root cause; the ticket is first recorded as a symptom and linked to the canonical cause through analysis.'],
+            ['Hypothesis ≠ Confirmed', "Diagnoses with confidence below 65 are hypotheses; definitive language must not be used without 'Confirmed' status."],
+            ['Workaround ≠ Permanent Fix', 'A ticket closure does not indicate the architectural risk is resolved; records closed with workarounds are tracked as debt.'],
+            ['Closed Ticket ≠ Eliminated Risk', 'Recurrence risk may persist under the same root cause; risk is assessed at the root cause level.'],
+            ['Correlation ≠ Causation', 'Temporal proximity to a release alone is not proof of causality; release linkage requires evidence.'],
+            ['Fix Implemented ≠ Verified', 'A code change is not marked as Verified without regression/production validation.'],
           ].map(([title, body]) => (
             <Callout key={title} icon={AlertTriangle} title={title} tone="gray">
               {body}

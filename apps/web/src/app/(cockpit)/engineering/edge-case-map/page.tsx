@@ -1,7 +1,7 @@
 'use client'
 
-// Edge Case Intelligence — yaşayan Edge Case Pool + Risk Registry + Test Coverage Center.
-// Varsayılan görünüm DataGrid tablosudur; eski kategorili kart ekranı "Reading View" olarak korunur.
+// Edge Case Intelligence — living Edge Case Pool + Risk Registry + Test Coverage Center.
+// Default view is the DataGrid table; the legacy categorized card screen is preserved as "Reading View".
 
 import { useMemo, useState } from 'react'
 import {
@@ -91,11 +91,11 @@ export default function EdgeCaseIntelligencePage() {
         eyebrow="Reliability & Operations"
         tone="orange"
         title="Edge Case Intelligence"
-        lead="Bilinen uç durumları, test kapsamını, incident bağlantılarını ve kalıcı çözümleri tek merkezde yönet. Her kayıt yalnızca 'bilinen problem' değildir: hangi koşulda oluştuğunu, nasıl tespit edildiğini, nasıl test edildiğini ve tekrarına karşı hangi korumanın bulunduğunu gösterir."
+        lead="Manage known edge cases, test coverage, incident links, and permanent fixes in a single hub. Each record is not merely a 'known problem': it shows under which conditions it occurs, how it is detected, how it is tested, and what safeguards exist against recurrence."
         chips={[
           `${kpi.total} edge case`,
           `Release ${RELEASE_VERSION}`,
-          `${kpi.incidentLinked} kayıt incident üretti`,
+          `${kpi.incidentLinked} records linked to incidents`,
         ]}
       >
         <StatGrid cols={2}>
@@ -105,13 +105,13 @@ export default function EdgeCaseIntelligencePage() {
             suffix="%"
             tone={kpi.releaseReady >= 80 ? 'green' : kpi.releaseReady >= 50 ? 'amber' : 'red'}
             icon={Zap}
-            hint={`${RELEASE_VERSION} kapsamındaki ${kpi.releaseRisk} kaydın test edilme oranı`}
+            hint={`Test coverage ratio of ${kpi.releaseRisk} records within ${RELEASE_VERSION} scope`}
           />
-          <StatCard label="Kritik" value={kpi.critical} tone="red" icon={AlertTriangle} />
+          <StatCard label="Critical" value={kpi.critical} tone="red" icon={AlertTriangle} />
         </StatGrid>
       </HeroCallout>
 
-      {/* ── Sticky aksiyon & filtre barı ── */}
+      {/* ── Sticky action & filter bar ── */}
       <div className="sticky top-2 z-20 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -120,7 +120,7 @@ export default function EdgeCaseIntelligencePage() {
               <input
                 value={search}
                 onChange={(ev) => setSearch(ev.target.value)}
-                placeholder="Ara — serbest metin veya severity:critical automation:false domain:offline"
+                placeholder="Search — free text or severity:critical automation:false domain:offline"
                 className="h-9 w-full rounded-lg border bg-background pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-orange-500/30"
               />
               {search && (
@@ -139,7 +139,7 @@ export default function EdgeCaseIntelligencePage() {
               className="h-9 rounded-lg border bg-background px-2.5 text-sm text-foreground"
               title={SAVED_VIEWS.find((v) => v.id === savedView)?.desc}
             >
-              <option value="">Saved View: Tümü</option>
+              <option value="">Saved View: All</option>
               {SAVED_VIEWS.map((v) => (
                 <option key={v.id} value={v.id}>{v.label}</option>
               ))}
@@ -174,14 +174,14 @@ export default function EdgeCaseIntelligencePage() {
                 onClick={() => { setSearch(''); setQuick([]); setSavedView(null) }}
                 className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
-                <X className="size-3.5" /> Temizle · {filtered.length}/{kpi.total} kayıt
+                <X className="size-3.5" /> Clear · {filtered.length}/{kpi.total} records
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Görünümler ── */}
+      {/* ── Views ── */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList variant="button" className="mb-5 flex-wrap justify-start">
           <TabsTrigger value="pool"><Table2 className="size-4" /> Pool</TabsTrigger>
@@ -213,20 +213,20 @@ export default function EdgeCaseIntelligencePage() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Süreç kuralları ── */}
+      {/* ── Process rules ── */}
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-        <Callout icon={Bug} title="Incident entegrasyonu" tone="red">
-          Incident kapanırken zorunlu soru: <em>kök neden mevcut bir edge case ile eşleşiyor mu?</em>{' '}
-          Evet ise incident kayda bağlanır, occurrence ve reproduce güncellenir. Hayır ise yeni
-          E-numarası açılır, owner atanır ve minimum regression testi planlanır. Pool her incident
-          ile büyür — statik doküman değildir.
+        <Callout icon={Bug} title="Incident integration" tone="red">
+          Mandatory question when closing an incident: <em>does the root cause match an existing edge case?</em>{' '}
+          If yes, the incident is linked to the record and occurrence/reproduce data is updated. If no, a new
+          E-number is created, an owner is assigned, and a minimum regression test is planned. The pool grows with every incident
+          — it is not a static document.
         </Callout>
-        <Callout icon={Lightbulb} title="Yeni edge case nasıl eklenir?" tone="orange">
-          Kaynak: <code>src/data/engineering/edge-cases.ts</code> (katalog) +{' '}
-          <code>edge-case-ops.ts</code> (test/risk katmanı). Dört adım: ne oldu (expected vs
-          actual) → ne tetikliyor → risk nedir (detectability &amp; recoverability dahil) → nasıl
-          korunacağız (reproduce, mitigation, recovery, owner). Benzer kayıt varsa duplicate açmayın
-          — mevcut kaydın occurrence’ını artırın.
+        <Callout icon={Lightbulb} title="How to add a new edge case?" tone="orange">
+          Source: <code>src/data/engineering/edge-cases.ts</code> (catalog) +{' '}
+          <code>edge-case-ops.ts</code> (test/risk layer). Four steps: what happened (expected vs
+          actual) → what triggers it → what is the risk (including detectability &amp; recoverability) → how
+          do we protect against it (reproduce, mitigation, recovery, owner). If a similar record exists, do not create a duplicate
+          — increment the existing record's occurrence count.
         </Callout>
       </div>
 
@@ -235,7 +235,7 @@ export default function EdgeCaseIntelligencePage() {
   )
 }
 
-// ── Reading View — eski kategorili kart kataloğu ─────────────────
+// ── Reading View — legacy categorized card catalog ─────────────────
 
 function ReadingView({ onSelect }: { onSelect: (e: EdgeCaseFull) => void }) {
   return (
@@ -247,7 +247,7 @@ function ReadingView({ onSelect }: { onSelect: (e: EdgeCaseFull) => void }) {
         return (
           <PageSection
             key={cat}
-            eyebrow={`${items.length} kayıt`}
+            eyebrow={`${items.length} records`}
             title={meta.label}
             description={meta.desc}
             icon={Radar}
@@ -277,15 +277,15 @@ function ReadingView({ onSelect }: { onSelect: (e: EdgeCaseFull) => void }) {
                     </div>
                     <dl className="mt-2.5 space-y-1.5 text-xs leading-relaxed">
                       <div>
-                        <dt className="inline font-bold text-foreground/70">Tetikleyici: </dt>
+                        <dt className="inline font-bold text-foreground/70">Trigger: </dt>
                         <dd className="inline text-foreground/85">{e.trigger}</dd>
                       </div>
                       <div>
-                        <dt className="inline font-bold text-foreground/70">Etki: </dt>
+                        <dt className="inline font-bold text-foreground/70">Impact: </dt>
                         <dd className="inline text-foreground/85">{e.impact}</dd>
                       </div>
                       <div>
-                        <dt className={cn('inline font-bold', toneText[sev.tone])}>Hafifletme: </dt>
+                        <dt className={cn('inline font-bold', toneText[sev.tone])}>Mitigation: </dt>
                         <dd className="inline text-muted-foreground">{e.mitigation}</dd>
                       </div>
                     </dl>

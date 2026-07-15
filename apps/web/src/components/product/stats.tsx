@@ -6,7 +6,7 @@ import { type LucideIcon } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { EASE, type Tone, toneCard, toneDot, toneIcon } from './tones'
 
-/** Görünüme girince sayan animasyonlu sayı (Calm Tech — ease-out). */
+/** Animated count-up number that starts counting when in view (Calm Tech — ease-out). */
 function CountUp({ to, format }: { to: number; format?: (v: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, margin: '-40px' })
@@ -23,12 +23,12 @@ function CountUp({ to, format }: { to: number; format?: (v: number) => string })
     return () => controls.stop()
   }, [inView, to, mv])
 
-  return <span ref={ref}>{format ? format(display) : Math.round(display).toLocaleString('tr-TR')}</span>
+  return <span ref={ref}>{format ? format(display) : Math.round(display).toLocaleString('en-US')}</span>
 }
 
 /**
- * KPI / etki kartı — büyük animasyonlu değer + etiket + alt not.
- * value sayı ise sayaç animasyonu; string ise düz gösterim ("18–24 ay" gibi).
+ * KPI / impact card — large animated value + label + footnote.
+ * If value is a number, counter animation is applied; if string, plain display (e.g. "18–24 months").
  */
 export function StatCard({
   icon: Icon,
@@ -75,7 +75,7 @@ export function StatCard({
   )
 }
 
-/** KPI kartları ızgarası. */
+/** KPI cards grid. */
 export function StatGrid({
   children,
   cols = 4,

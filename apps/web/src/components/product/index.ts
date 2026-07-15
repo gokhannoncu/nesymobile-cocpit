@@ -1,4 +1,4 @@
-// Product alanı ortak tasarım toolkit'i — tek noktadan export.
+// Product area shared design toolkit — single-point export.
 export * from './tones'
 export * from './page-shell'
 export * from './blocks'

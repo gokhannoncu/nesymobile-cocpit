@@ -1,14 +1,14 @@
 /**
- * Bir workspace grubunun (ör. Engineering) TÜM sayfalarını tek bir birleşik PDF
- * olarak indirir. Tek-sayfa export motorunu (`export-pdf.ts`) yeniden kullanır:
- * her sayfa gizli bir iframe'de yüklenir, `main[role="content"]` alanı aynı
- * html2canvas tabanlı motorla yakalanır — böylece sayfa bazında dikey/yatay
- * kararı, akıllı sayfa sonu ve içerik kaybı yasağı aynen korunur.
+ * Downloads ALL pages of a workspace group (e.g. Engineering) as a single
+ * combined PDF. Reuses the single-page export engine (`export-pdf.ts`):
+ * each page is loaded in a hidden iframe, the `main[role="content"]` area
+ * is captured with the same html2canvas-based engine — preserving per-page
+ * portrait/landscape decisions, smart page breaks, and the no-content-loss rule.
  *
- * PDF yapısı: [Kapak] · [İçindekiler] · [her sayfa, sidebar sırasıyla].
- * Kapak ve içindekiler de aynı motorla (DOM → canvas) üretilir; bu sayede jsPDF
- * gömülü fontunun Türkçe glif sorunları yaşanmaz. İçerik sayfalarına mutlak
- * sayfa numarası basılır (yalnızca rakam → font güvenli).
+ * PDF structure: [Cover] · [Table of Contents] · [each page, in sidebar order].
+ * Cover and TOC are also produced with the same engine (DOM → canvas), avoiding
+ * embedded font Turkish glyph issues in jsPDF. Absolute page numbers are stamped
+ * on content pages (digits only → font-safe).
  */
 import type { jsPDF } from 'jspdf'
 import type { Workspace } from '@nesy/metronic/config/types'
@@ -20,31 +20,31 @@ import {
   type PdfPage,
 } from '@nesy/metronic/lib/export-pdf'
 
-/** İçindekiler tek sayfada tutulan azami satır sayısı (A4 dikey sığar). */
+/** Maximum number of rows kept on a single TOC page (fits A4 portrait). */
 const TOC_ROWS_PER_PAGE = 30
 
-/** Bir sayfanın yüklenmesi + yerleşmesi için azami süre (ms). */
+/** Maximum time (ms) for a page to load and settle. */
 const PAGE_TIMEOUT_MS = 25_000
 
 const A4_MARGIN_MM = 10
 
 export interface GroupExportProgress {
-  /** İşlenen sayfa sırası (1 tabanlı). */
+  /** Current page being processed (1-based). */
   current: number
   total: number
-  /** O an işlenen sayfanın başlığı. */
+  /** Title of the page currently being processed. */
   title: string
   stage: 'loading' | 'rendering' | 'finalizing'
 }
 
 export interface GroupExportResult {
-  /** PDF'e eklenen sayfa sayısı. */
+  /** Number of pages added to the PDF. */
   exported: number
-  /** Yüklenemeyen / render edilemeyen ve atlanan sayfalar. */
+  /** Pages that failed to load or render and were skipped. */
   skipped: { path: string; title: string; reason: string }[]
 }
 
-/** Ekran dışı, gizli bir iframe oluşturur (her sayfa için yeniden kullanılır). */
+/** Creates a hidden, off-screen iframe (reused for each page). */
 function createHiddenIframe(): HTMLIFrameElement {
   const iframe = document.createElement('iframe')
   iframe.setAttribute('aria-hidden', 'true')
@@ -56,7 +56,7 @@ function createHiddenIframe(): HTMLIFrameElement {
   return iframe
 }
 
-/** Verilen document içinde bir seçici görünene kadar bekler (poll). */
+/** Waits (polling) until a selector appears in the given document. */
 function waitForSelector(doc: Document, selector: string, timeoutMs: number): Promise<HTMLElement> {
   return new Promise((resolve, reject) => {
     const start = Date.now()
@@ -67,7 +67,7 @@ function waitForSelector(doc: Document, selector: string, timeoutMs: number): Pr
         return
       }
       if (Date.now() - start > timeoutMs) {
-        reject(new Error(`"${selector}" zaman aşımına uğradı`))
+        reject(new Error(`"${selector}" timed out`))
         return
       }
       requestAnimationFrame(tick)
@@ -76,21 +76,21 @@ function waitForSelector(doc: Document, selector: string, timeoutMs: number): Pr
   })
 }
 
-/** İki animasyon karesi bekleyerek hydration/animasyon yerleşmesine izin verir. */
+/** Waits two animation frames to allow hydration/animation to settle. */
 function nextFrames(): Promise<void> {
   return new Promise((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   )
 }
 
-/** Bir sayfayı iframe'de yükler ve `main[role="content"]` içeriğini hazır döndürür. */
+/** Loads a page in the iframe and returns the ready `main[role="content"]` element. */
 async function loadPageContent(
   iframe: HTMLIFrameElement,
   path: string,
   timeoutMs: number,
 ): Promise<HTMLElement> {
   const loaded = new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('iframe yükleme zaman aşımı')), timeoutMs)
+    const timer = setTimeout(() => reject(new Error('iframe load timed out')), timeoutMs)
     iframe.addEventListener(
       'load',
       () => {
@@ -105,28 +105,28 @@ async function loadPageContent(
   await loaded
 
   const doc = iframe.contentDocument
-  if (!doc) throw new Error('iframe belgesine erişilemedi')
+  if (!doc) throw new Error('Unable to access iframe document')
 
   const main = await waitForSelector(doc, 'main[role="content"]', timeoutMs)
 
   try {
     await doc.fonts?.ready
   } catch {
-    /* fonts API yoksa devam */
+    /* fonts API not available, continue */
   }
-  // React hydration + framer-motion başlangıç stillerinin yerleşmesi için kısa bekleme.
+  // Short delay for React hydration + framer-motion initial styles to settle.
   await new Promise((r) => setTimeout(r, 400))
   await nextFrames()
 
   return main
 }
 
-/** Ortak sayfa gövdesi stili (inline — Tailwind'e bağımlı değil, deterministik). */
+/** Common page body style (inline — not dependent on Tailwind, deterministic). */
 const PAGE_STYLE =
   'width:1120px;background:#ffffff;color:#18181b;box-sizing:border-box;' +
   "font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;"
 
-/** Kapak sayfası DOM'u üretir. */
+/** Builds the cover page DOM. */
 function buildCoverDom(workspace: Workspace, date: string, pageCount: number, sectionCount: number): HTMLElement {
   const el = document.createElement('div')
   el.setAttribute(
@@ -139,12 +139,12 @@ function buildCoverDom(workspace: Workspace, date: string, pageCount: number, se
     </div>
     <div style="margin-top:auto;">
       <div style="font-size:54px;font-weight:800;line-height:1.08;">${escapeHtml(workspace.label)}</div>
-      <div style="font-size:21px;color:#52525b;margin-top:18px;">Tüm sayfalar — birleşik doküman</div>
+      <div style="font-size:21px;color:#52525b;margin-top:18px;">All pages — combined document</div>
     </div>
     <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;
                 font-size:14px;color:#71717a;border-top:1px solid #e4e4e7;padding-top:22px;">
       <span>${escapeHtml(date)}</span>
-      <span>${pageCount} sayfa · ${sectionCount} bölüm</span>
+      <span>${pageCount} pages · ${sectionCount} sections</span>
     </div>`
   return el
 }
@@ -154,7 +154,7 @@ interface TocEntry {
   page: number
 }
 
-/** Bir İçindekiler sayfası (chunk) DOM'u üretir. */
+/** Builds a Table of Contents page (chunk) DOM. */
 function buildTocDom(entries: TocEntry[], continued: boolean): HTMLElement {
   const el = document.createElement('div')
   el.setAttribute('style', PAGE_STYLE + 'padding:64px 76px;')
@@ -170,7 +170,7 @@ function buildTocDom(entries: TocEntry[], continued: boolean): HTMLElement {
     .join('')
   el.innerHTML = `
     <div style="font-size:13px;letter-spacing:0.22em;text-transform:uppercase;color:#71717a;font-weight:700;">
-      İçindekiler${continued ? ' (devam)' : ''}
+      Table of Contents${continued ? ' (continued)' : ''}
     </div>
     <div style="margin-top:26px;">${rows}</div>`
   return el
@@ -190,17 +190,17 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out
 }
 
-/** Bir DOM düğümünü tek bir portre A4 sayfasına (PdfPage[]) çevirir. */
+/** Converts a DOM node into portrait A4 pages (PdfPage[]). */
 async function domToPdfPages(el: HTMLElement): Promise<PdfPage[]> {
   const { canvas } = await captureElementToCanvas(el)
-  // Kapak/İçindekiler kısa tutulduğundan tek sayfaya sığar; yine de bölünürse
-  // canvasToPdfPages doğru sayfa sayısını döndürür (yalnızca 'portrait' zorlanır).
+  // Cover/TOC are kept short so they fit on a single page; if they do overflow,
+  // canvasToPdfPages returns the correct number of pages (portrait is always forced).
   return canvasToPdfPages(canvas, 'portrait')
 }
 
 /**
- * Bir workspace grubunun tüm sayfalarını tek PDF olarak indirir.
- * Bir sayfa yüklenemez/render edilemezse atlanır ve `skipped` içinde raporlanır.
+ * Downloads all pages of a workspace group as a single PDF.
+ * If a page fails to load or render, it is skipped and reported in `skipped`.
  */
 export async function exportGroupToPdf(opts: {
   workspace: Workspace
@@ -212,7 +212,7 @@ export async function exportGroupToPdf(opts: {
   const iframe = createHiddenIframe()
 
   try {
-    // 1) Her içerik sayfasını yükle ve yakala.
+    // 1) Load and capture each content page.
     const groups: { item: WorkspacePageRef; pages: PdfPage[] }[] = []
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i]!
@@ -222,7 +222,7 @@ export async function exportGroupToPdf(opts: {
         onProgress?.({ current: i + 1, total: pages.length, title: page.title, stage: 'rendering' })
         const { canvas, orientation } = await captureElementToCanvas(main)
         const pdfPages = canvasToPdfPages(canvas, orientation)
-        if (pdfPages.length === 0) throw new Error('boş render')
+        if (pdfPages.length === 0) throw new Error('empty render')
         groups.push({ item: page, pages: pdfPages })
       } catch (error) {
         skipped.push({ path: page.path, title: page.title, reason: (error as Error).message })
@@ -230,12 +230,12 @@ export async function exportGroupToPdf(opts: {
     }
 
     if (groups.length === 0) {
-      throw new Error('Hiçbir sayfa render edilemedi')
+      throw new Error('No pages could be rendered')
     }
 
     onProgress?.({ current: pages.length, total: pages.length, title: '', stage: 'finalizing' })
 
-    // 2) İçerik sayfalarının blok-göreli başlangıç numaraları (1 tabanlı).
+    // 2) Block-relative start numbers for content pages (1-based).
     const relStart: number[] = []
     let rel = 1
     for (const g of groups) {
@@ -245,12 +245,12 @@ export async function exportGroupToPdf(opts: {
 
     const date = new Date().toISOString().slice(0, 10)
 
-    // 3) Kapak (mutlak sayfa numaraları için önce onun sayfa sayısını bil).
+    // 3) Cover (need its page count first for absolute page numbers).
     const coverPages = await domToPdfPages(
       buildCoverDom(workspace, date, rel - 1, groups.length),
     )
 
-    // 4) İçindekiler — chunk sayısı deterministik; mutlak numara = frontCount + relStart.
+    // 4) Table of Contents — chunk count is deterministic; absolute number = frontCount + relStart.
     const tocChunks = chunk(groups, TOC_ROWS_PER_PAGE)
     const frontCount = coverPages.length + tocChunks.length
     const tocPages: PdfPage[] = []
@@ -263,7 +263,7 @@ export async function exportGroupToPdf(opts: {
       tocPages.push(...rendered)
     }
 
-    // 5) Tüm sayfaları sırayla tek jsPDF'e ekle: kapak → içindekiler → içerik.
+    // 5) Append all pages sequentially to a single jsPDF: cover → TOC → content.
     const contentPages = groups.flatMap((g) => g.pages)
     const allPages: PdfPage[] = [...coverPages, ...tocPages, ...contentPages]
 
@@ -274,14 +274,14 @@ export async function exportGroupToPdf(opts: {
       format: 'a4',
       compress: true,
     })
-    pdf.setProperties({ title: `${workspace.label} — Tüm Sayfalar` })
+    pdf.setProperties({ title: `${workspace.label} — All Pages` })
 
     allPages.forEach((pg, index) => {
       if (index > 0) pdf.addPage('a4', pg.orientation)
       pdf.addImage(pg.dataUrl, 'JPEG', A4_MARGIN_MM, A4_MARGIN_MM, pg.wMm, pg.hMm)
     })
 
-    // 6) İçerik sayfalarına mutlak sayfa numarası bas (yalnızca rakam → font güvenli).
+    // 6) Stamp absolute page numbers on content pages (digits only → font-safe).
     const contentStartAbs = coverPages.length + tocPages.length + 1
     for (let p = contentStartAbs; p <= allPages.length; p++) {
       pdf.setPage(p)
@@ -292,7 +292,7 @@ export async function exportGroupToPdf(opts: {
       pdf.text(String(p), w / 2, h - 5, { align: 'center' })
     }
 
-    pdf.save(`nesy-${slugify(workspace.label)}-tum-sayfalar-${date}.pdf`)
+    pdf.save(`nesy-${slugify(workspace.label)}-all-pages-${date}.pdf`)
 
     return { exported: contentPages.length, skipped }
   } finally {

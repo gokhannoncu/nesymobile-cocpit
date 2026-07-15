@@ -51,14 +51,14 @@ export default function TestCoveragePage() {
   )
 
   return (
-    <ProductPage path="/pm/test-coverage" title="Test Kapsamı">
+    <ProductPage path="/pm/test-coverage" title="Test Coverage">
       {/* 1 — Hero */}
       <HeroCallout
         icon={ShieldCheck}
         eyebrow="Ticket Management"
         tone="green"
-        title="Test Kapsamı"
-        lead="Ticket bazlı test durumu, edge case kapsamı ve kalite metrikleri."
+        title="Test Coverage"
+        lead="Ticket-based test status, edge case coverage, and quality metrics."
         chips={['Unit', 'Integration', 'E2E', 'Manual']}
       />
 
@@ -70,16 +70,16 @@ export default function TestCoveragePage() {
         <StatCard icon={AlertTriangle} label="Failed" value={stats.failed} tone="orange" />
       </StatGrid>
 
-      {/* 3 — Test Durum Matrisi */}
-      <PageSection title="Test Durum Matrisi">
+      {/* 3 — Test Status Matrix */}
+      <PageSection title="Test Status Matrix">
         <ComparisonTable
           headers={[
             { label: 'Ticket', tone: 'gray' },
             { label: 'Severity', tone: 'red' },
             { label: 'Test', tone: 'blue' },
-            { label: '✓ Geçti', tone: 'green' },
-            { label: '✗ Kaldı', tone: 'red' },
-            { label: 'Bekliyor', tone: 'amber' },
+            { label: '✓ Passed', tone: 'green' },
+            { label: '✗ Failed', tone: 'red' },
+            { label: 'Pending', tone: 'amber' },
           ]}
           rows={ticketsWithTests.map((t) => {
             const cases = t.testCases!
@@ -102,8 +102,8 @@ export default function TestCoveragePage() {
         />
       </PageSection>
 
-      {/* 4 — Test Edilmemiş Ticket'lar */}
-      <PageSection title="Test Edilmemiş Ticket'lar">
+      {/* 4 — Untested Tickets */}
+      <PageSection title="Untested Tickets">
         <CardGrid cols={2}>
           {untestedCriticalHigh.map((t) => (
             <InfoCard
@@ -117,32 +117,32 @@ export default function TestCoveragePage() {
                 { label: t.screen },
               ]}
               footer={
-                <EvidenceRef level="unverified" label="Test yok" />
+                <EvidenceRef level="unverified" label="No tests" />
               }
             />
           ))}
         </CardGrid>
       </PageSection>
 
-      {/* 5 — Test Politikası Guardrail */}
-      <GuardrailCallout tone="red" icon={AlertTriangle} title="Test Politikası">
+      {/* 5 — Test Policy Guardrail */}
+      <GuardrailCallout tone="red" icon={AlertTriangle} title="Test Policy">
         {
-          "Kritik ve yüksek öncelikli ticket'ların test kapsamı olmadan kapatılması kabul edilemez. Her Critical/High ticket için en az 1 integration test zorunludur."
+          "Closing critical and high-priority tickets without test coverage is unacceptable. At least 1 integration test is mandatory for every Critical/High ticket."
         }
       </GuardrailCallout>
 
       {/* 6 — Does / Don't */}
       <DoesDontGrid
         does={[
-          'Her Critical ticket regression test içerir',
-          "Edge case'ler test senaryolarına eklenir",
-          "Test sonuçları CI pipeline'da otomatik çalışır",
-          "Hotfix'ler test ile birlikte merge edilir",
+          'Every Critical ticket includes a regression test',
+          'Edge cases are added to test scenarios',
+          'Test results run automatically in the CI pipeline',
+          'Hotfixes are merged together with tests',
         ]}
         dont={[
-          'Load test kapsamı bu sayfada izlenmez',
-          'Manual test sonuçları otomatik güncellenmez',
-          "Security test'ler ayrı pipeline'da yönetilir",
+          'Load test coverage is not tracked on this page',
+          'Manual test results are not updated automatically',
+          'Security tests are managed in a separate pipeline',
         ]}
       />
     </ProductPage>

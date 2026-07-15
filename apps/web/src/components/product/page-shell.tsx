@@ -20,22 +20,22 @@ const GroupPdfButton = dynamic(
 )
 
 /**
- * Product alanı standart sayfa kabuğu.
- * Başlık sidebar config'inden (findWorkspaceMenuItem) gelir — tek kaynak.
+ * Product area standard page shell.
+ * Title comes from sidebar config (findWorkspaceMenuItem) — single source of truth.
  */
 export function ProductPage({
   path,
   title,
   children,
 }: {
-  /** Route path — ör. "/product/solution-overview". Başlık config'ten çözülür. */
+  /** Route path — e.g. "/product/solution-overview". Title is resolved from config. */
   path: string
-  /** Config'te bulunamazsa yedek başlık. */
+  /** Fallback title if not found in config. */
   title?: string
   children: ReactNode
 }) {
   const item = findWorkspaceMenuItem(path)
-  // Grup overview sayfası mı? (workspace kök route'u = overview). Home hariç.
+  // Is this a group overview page? (workspace root route = overview). Excluding home.
   const workspace = getActiveWorkspace(path)
   const isGroupOverview = workspace.path === path && path !== '/'
 
@@ -58,7 +58,7 @@ export function ProductPage({
   )
 }
 
-/** Bölüm başlığı — eyebrow + başlık + opsiyonel açıklama, ikonlu. */
+/** Section heading — eyebrow + title + optional description, with icon. */
 export function PageSection({
   eyebrow,
   title,
@@ -78,11 +78,11 @@ export function PageSection({
   tone?: Tone
   children: ReactNode
   className?: string
-  /** Sayfa içi anchor hedefi. */
+  /** In-page anchor target. */
   id?: string
-  /** Planlı PDF export'ta bu bölümü kendi slaytına (kendi sayfasına) alır. */
+  /** In scheduled PDF export, places this section on its own slide (own page). */
   slide?: boolean
-  /** Planlı PDF export slayt sırası (varsayılan: DOM sırası). */
+  /** Scheduled PDF export slide order (default: DOM order). */
   slideOrder?: number
 }) {
   return (

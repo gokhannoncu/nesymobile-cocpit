@@ -1,10 +1,10 @@
 'use client'
 
-// Root Cause Graph — katmanlı ilişki haritası (SVG).
-// Sol: Ticket'lar · Orta: Kanonik Root Cause'lar · Sağ: Kalıcı Aksiyonlar.
-// Edge'ler ilişki tipini taşır: caused_by (ticket→RC) ve fixed_by (RC→action).
-// Node rengi durumu anlatır: kırmızı = aktif yüksek risk, amber = doğrulama bekliyor,
-// yeşil = doğrulanmış/kalıcı, gri = düşük risk/arşiv.
+// Root Cause Graph — layered relationship map (SVG).
+// Left: Tickets · Middle: Canonical Root Causes · Right: Permanent Actions.
+// Edges carry relationship type: caused_by (ticket→RC) and fixed_by (RC→action).
+// Node color indicates status: red = active high risk, amber = awaiting verification,
+// green = verified/permanent, gray = low risk/archive.
 
 import { useMemo, useState } from 'react'
 import { cn } from '@nesy/metronic/lib/utils'
@@ -17,7 +17,7 @@ import {
   type FieldTicket,
 } from '@/data/engineering/field-tickets'
 
-const ROW = 30 // ticket satır yüksekliği
+const ROW = 30 // ticket row height
 const RC_MIN_H = 64
 const PAD_TOP = 28
 
@@ -56,7 +56,7 @@ export function RootCauseGraph({
 
   const layout = useMemo(() => {
     const visible = new Set(tickets.map((t) => t.id))
-    // Occurrence'a göre sıralı RC listesi; filtre sonrası boş kalan RC'ler gizlenir.
+    // RC list sorted by occurrence; RCs left empty after filtering are hidden.
     const rcs = ROOT_CAUSES
       .map((rc) => ({ rc, items: primaryTicketsOf(rc.id).filter((t) => visible.has(t.id)) }))
       .filter((g) => g.items.length > 0)
@@ -76,7 +76,7 @@ export function RootCauseGraph({
     }
     const height = y + 10
 
-    // Aksiyonlar: bağlı RC'lerin ortalama y'sine göre sırala, min aralıkla yerleştir.
+    // Actions: sort by average y of linked RCs, place with minimum spacing.
     const visibleRcIds = new Set(rcs.map((g) => g.rc.id))
     const acts = ACTIONS
       .map((a) => {
@@ -105,7 +105,7 @@ export function RootCauseGraph({
     return !links.has(`${hover.kind}:${hover.id}`)
   }
 
-  // hover bağlantı kümeleri
+  // hover connection sets
   const linksFor = useMemo(() => {
     const map = new Map<string, Set<string>>()
     const add = (a: string, b: string) => {
@@ -127,11 +127,11 @@ export function RootCauseGraph({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">
         <span>■ Ticket (rectangle)</span>
         <span className="text-indigo-600 dark:text-indigo-400">⬢ Root Cause (hexagon)</span>
-        <span>▢ Kalıcı Aksiyon</span>
+        <span>▢ Permanent Action</span>
         <span className="ml-auto flex items-center gap-3">
-          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-red-500/70" /> yüksek tekrar riski</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-amber-500/70" /> doğrulama bekliyor</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-emerald-500/70" /> düşük risk / tamam</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-red-500/70" /> high recurrence risk</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-amber-500/70" /> awaiting verification</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-4 rounded bg-emerald-500/70" /> low risk / OK</span>
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -142,7 +142,7 @@ export function RootCauseGraph({
           className="min-w-full"
           onMouseLeave={() => setHover(null)}
         >
-          {/* kolon başlıkları */}
+          {/* column headers */}
           <text x={TICKET_X} y={16} className="fill-muted-foreground text-[11px] font-bold uppercase">
             Tickets — shows / caused_by
           </text>
@@ -246,13 +246,13 @@ export function RootCauseGraph({
                   {t.id}
                 </text>
                 <text x={82} y={15} className="fill-muted-foreground text-[10px]">
-                  {t.country} · {t.status === 'open' ? 'açık' : 'kapalı'}
+                  {t.country} · {t.status === 'open' ? 'open' : 'closed'}
                 </text>
               </g>
             )
           })}
 
-          {/* rc nodes — hexagon hissi için kırpılmış köşeli path */}
+          {/* rc nodes — hexagon feel via clipped corner path */}
           {layout.rcs.map(({ rc, items }) => {
             const rp = layout.rcPos.get(rc.id)!
             const dim = isDim(hover, 'rc', rc.id, connected('rc', rc.id))

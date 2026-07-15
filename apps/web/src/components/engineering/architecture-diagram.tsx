@@ -1,17 +1,17 @@
 /* ─────────────────────────────────────────────────────────────────────────────
- * Mimari Seçimler — Mevcut vs. Hedef mimari, "metro hattı" animasyonuyla.
- * Mevcut: dolaşan nokta sağlam→yeşil, kritik→kırmızı.
- * Hedef (PLAN5): Compose+MVI · Domain UseCase · Room SSoT · Outbox/WorkManager —
- *   nokta baştan sona yeşil; her durakta hangi yapısal kusuru çözdüğü yazılı.
+ * Architecture Decisions — Current vs. Target architecture, with "metro line" animation.
+ * Current: traveling dot healthy→green, critical→red.
+ * Target (PLAN5): Compose+MVI · Domain UseCase · Room SSoT · Outbox/WorkManager —
+ *   dot is green end-to-end; each stop describes which structural flaw it resolves.
  * ──────────────────────────────────────────────────────────────────────────── */
-// @ts-nocheck -- Kaynak raporun sabit waypoint dizileri birebir korunuyor.
+// @ts-nocheck -- The fixed waypoint arrays from the source report are preserved as-is.
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 
 const O = '#ea6a1e'   // orange
 const B = '#1f5fe0'   // blue
-const GA = '#0e9f6e'  // green (hedef sol kolonlar)
+const GA = '#0e9f6e'  // green (target left columns)
 const BD = '#3b82f6'  // dashed feedback
 
 type ThemeKey = 'orange' | 'blue' | 'blueSoft' | 'groupItem' | 'green' | 'greenSoft' | 'greenItem'
@@ -100,7 +100,7 @@ function Header({ x, icon, color, label }: { x: number; icon: string; color: str
   </>
 }
 
-/* ════════════════════════ MEVCUT MİMARİ İÇERİĞİ ════════════════════════ */
+/* ════════════════════════ CURRENT ARCHITECTURE CONTENT ════════════════════════ */
 const CURRENT_WP: WP = [
   [220, 206], [410, 206], [440, 206], [440, 196], [470, 196],
   [660, 196], [660, 328], [660, 404], [660, 553],
@@ -109,21 +109,21 @@ const CURRENT_WP: WP = [
   [1610, 616], [1770, 616], [1800, 616], [1895, 616], [1895, 672], [1895, 880], [660, 880], [660, 706],
 ]
 const CURRENT_STATIONS: StationDef[] = [
-  { wp: 0,  label: 'Scan / Delivery / Pickup', note: 'Barkod yönlendirme ve event ayrıştırma UI sınıflarına gömülü; StopList/TaskList Fragment\'ları 5–7 bin satıra şişiyor.', health: 'warn' },
-  { wp: 5,  label: 'Feature ViewModels',        note: 'VM\'ler ince kalıyor, asıl mantık SharedViewModel\'e kaçıyor; ekran ile durum sınırı belirsiz.', health: 'warn' },
-  { wp: 6,  label: 'SharedViewModel',           note: 'God object (~3.450 satır): her ekran buna bağımlı, tek güvenilir SSoT yok — değişiklik her yeri kırabiliyor.', health: 'bad' },
-  { wp: 8,  label: 'Orkestrasyon',              note: 'İş kuralları + offline akış tek zincirde; izole test edilemiyor (0 test), regresyon riski yüksek.', health: 'bad' },
-  { wp: 14, label: 'Room / AppDatabase',        note: 'JSON chunk + allowMainThreadQueries() → ekran donuyor (ANR); destructive migration ile şema değişiminde veri kaybı.', health: 'bad' },
-  { wp: 17, label: 'RequestSenderService',      note: 'Tek serviste 3 sn polling + tek APIService (527 endpoint); backoff yok, çakışmada "son yazan kazanır".', health: 'warn' },
-  { wp: 19, label: 'WorkManager / Retry',       note: 'Bağımlılık eklenmiş ama kullanılmıyor; garanti foreground service\'in hayatta kalmasına bağlı.', health: 'warn' },
-  { wp: 22, label: 'Backend Services',          note: 'Servis yanıtı döner; idempotency yok, process ölümünde çift gönderim penceresi açık.', health: 'warn' },
-  { wp: 26, label: "UI'a geri dönüş",           note: 'State reaktif değil; güncelleme elle taşınıyor, ekran gecikmeli/eksik yenileniyor.', health: 'warn' },
+  { wp: 0,  label: 'Scan / Delivery / Pickup', note: 'Barcode routing and event parsing are embedded in UI classes; StopList/TaskList Fragments bloat to 5–7K lines.', health: 'warn' },
+  { wp: 5,  label: 'Feature ViewModels',        note: 'VMs stay thin but real logic leaks into SharedViewModel; screen vs. state boundary is unclear.', health: 'warn' },
+  { wp: 6,  label: 'SharedViewModel',           note: 'God object (~3,450 lines): every screen depends on it, no single reliable SSoT — any change can break everything.', health: 'bad' },
+  { wp: 8,  label: 'Orchestration',              note: 'Business rules + offline flow in one chain; cannot be tested in isolation (0 tests), high regression risk.', health: 'bad' },
+  { wp: 14, label: 'Room / AppDatabase',        note: 'JSON chunk + allowMainThreadQueries() → screen freezes (ANR); destructive migration causes data loss on schema changes.', health: 'bad' },
+  { wp: 17, label: 'RequestSenderService',      note: 'Single service with 3s polling + single APIService (527 endpoints); no backoff, "last writer wins" on conflicts.', health: 'warn' },
+  { wp: 19, label: 'WorkManager / Retry',       note: 'Dependency added but never used; reliability depends on foreground service staying alive.', health: 'warn' },
+  { wp: 22, label: 'Backend Services',          note: 'Service returns response; no idempotency, duplicate submission window open on process death.', health: 'warn' },
+  { wp: 26, label: 'Return to UI',              note: 'State is not reactive; updates are manually propagated, screen refreshes with delay or incompletely.', health: 'warn' },
 ]
 const COL1 = [
-  { icon: 'scan',  title: 'Scan / Delivery / Pickup', sub: 'Kullanıcı aksiyonları' },
-  { icon: 'task',  title: 'Task / Stop İşlemleri',    sub: "Operasyon event'leri" },
-  { icon: 'wifi',  title: 'Network Değişimi',          sub: 'Online / offline durumu' },
-  { icon: 'phone', title: 'Session / Device Olayları', sub: 'Oturum ve cihaz tetikleri' },
+  { icon: 'scan',  title: 'Scan / Delivery / Pickup', sub: 'User actions' },
+  { icon: 'task',  title: 'Task / Stop Operations',    sub: 'Operation events' },
+  { icon: 'wifi',  title: 'Network Change',          sub: 'Online / offline status' },
+  { icon: 'phone', title: 'Session / Device Events', sub: 'Session and device triggers' },
 ]
 const GROUP_ITEMS = [
   { icon: 'gear', title: 'ScanProcessor' }, { icon: 'person', title: 'ScanCoordinator' },
@@ -132,10 +132,10 @@ const GROUP_ITEMS = [
 function CurrentContent() {
   return <>
     {[440, 910, 1430].map((x) => <line key={x} x1={x} y1={95} x2={x} y2={822} stroke="#e6ebf2" strokeWidth={1.5} />)}
-    <Header x={72} icon="target" color={O} label="1  EVENT KAYNAKLARI" />
-    <Header x={488} icon="sitemap" color={O} label="2  VIEWMODEL & ORKESTRASYON" />
-    <Header x={952} icon="db" color={B} label="3  REPOSITORY & KALICILIK" />
-    <Header x={1472} icon="refresh" color={B} label="4  SENKRONİZASYON" />
+    <Header x={72} icon="target" color={O} label="1  EVENT SOURCES" />
+    <Header x={488} icon="sitemap" color={O} label="2  VIEWMODEL & ORCHESTRATION" />
+    <Header x={952} icon="db" color={B} label="3  REPOSITORY & PERSISTENCE" />
+    <Header x={1472} icon="refresh" color={B} label="4  SYNCHRONIZATION" />
 
     {[206, 348, 490, 632].map((y) => <line key={y} x1={410} y1={y} x2={440} y2={y} stroke={O} strokeWidth={2.2} />)}
     <line x1={440} y1={196} x2={440} y2={632} stroke={O} strokeWidth={2.2} />
@@ -154,28 +154,28 @@ function CurrentContent() {
     <path d="M955 150 V118 H660 V150" fill="none" stroke={BD} strokeWidth={2} strokeDasharray="6 6" markerEnd="url(#ah-bs)" />
     <text x={808} y={107} fontSize={15} fontWeight={600} fill="#5b7bbf" textAnchor="middle">State / UI update</text>
     <path d="M1895 672 V880 H660 V706" fill="none" stroke={BD} strokeWidth={2} strokeDasharray="6 6" markerEnd="url(#ah-bs)" />
-    <text x={1290} y={868} fontSize={15} fontWeight={600} fill="#5b7bbf" textAnchor="middle">Yanıt / durum güncellemesi</text>
+    <text x={1290} y={868} fontSize={15} fontWeight={600} fill="#5b7bbf" textAnchor="middle">Response / status update</text>
 
     {COL1.map((b, i) => <Box key={b.title} x={30} y={150 + i * 142} w={380} h={112} icon={b.icon} title={b.title} subs={[b.sub]} theme="orange" titleSize={19} />)}
     <Box x={470} y={150} w={380} h={92} icon="cube" title="Feature ViewModels" theme="orange" />
-    <Box x={470} y={282} w={380} h={92} icon="people" title="SharedViewModel" subs={['Merkezi uygulama durumu']} theme="orange" />
+    <Box x={470} y={282} w={380} h={92} icon="people" title="SharedViewModel" subs={['Central application state']} theme="orange" />
     <rect x={470} y={404} width={380} height={300} rx={16} fill="#fffdf9" stroke="#f0a868" strokeWidth={1.8} strokeDasharray="6 5" />
     {GROUP_ITEMS.map((g, i) => <Box key={g.title} x={490} y={424 + i * 66} w={340} h={56} icon={g.icon} title={g.title} theme="groupItem" titleSize={18} />)}
     <rect x={940} y={150} width={430} height={176} rx={14} fill="#eaf1fe" stroke="#c4d6f4" strokeWidth={1.6} />
     <Icon name="db" x={974} y={186} color={B} />
-    <text x={1004} y={186} fontSize={21} fontWeight={700} fill="#16315f" dominantBaseline="middle">Repository Katmanı</text>
+    <text x={1004} y={186} fontSize={21} fontWeight={700} fill="#16315f" dominantBaseline="middle">Repository Layer</text>
     {['MainRepository', 'ScheduleRepositoryImpl', 'LocationRepositoryImpl'].map((b, i) => <text key={b} x={978} y={234 + i * 30} fontSize={16.5} fill="#33507e">•  {b}</text>)}
     <Box x={940} y={372} w={430} h={104} icon="db" title="Room / AppDatabase" subs={['RequestDao, ScheduleDao,', 'ParcelDao, LiveLocationDao']} theme="blue" />
-    <Box x={940} y={508} w={430} h={100} icon="file" title="SharedPreferences / JsonSerializer" subs={['Cache ve yardımcı veri']} theme="blue" titleSize={18} />
-    <Box x={940} y={640} w={430} h={104} icon="globe" title="APIService / Retrofit / OkHttp" subs={['Remote erişim']} theme="blue" titleSize={18} />
-    <Box x={1450} y={150} w={320} h={100} icon="clock" title="Offline Queue" subs={['Bekleyen request kayıtları']} theme="blue" titleSize={18} />
-    <Box x={1450} y={374} w={320} h={100} icon="send" title="RequestSenderService" subs={['Kuyruktaki işleri gönderir']} theme="blue" titleSize={18} />
-    <Box x={1450} y={560} w={320} h={112} icon="refresh" title="WorkManager / Retry" subs={['Arka plan çalıştırma,', 'retry / backoff']} theme="blue" titleSize={18} />
-    <Box x={1800} y={560} w={190} h={112} icon="cloud" title="Backend" subs={['API uçları /', 'operasyon servisleri']} theme="blue" titleSize={17} />
+    <Box x={940} y={508} w={430} h={100} icon="file" title="SharedPreferences / JsonSerializer" subs={['Cache and auxiliary data']} theme="blue" titleSize={18} />
+    <Box x={940} y={640} w={430} h={104} icon="globe" title="APIService / Retrofit / OkHttp" subs={['Remote access']} theme="blue" titleSize={18} />
+    <Box x={1450} y={150} w={320} h={100} icon="clock" title="Offline Queue" subs={['Pending request records']} theme="blue" titleSize={18} />
+    <Box x={1450} y={374} w={320} h={100} icon="send" title="RequestSenderService" subs={['Dispatches queued jobs']} theme="blue" titleSize={18} />
+    <Box x={1450} y={560} w={320} h={112} icon="refresh" title="WorkManager / Retry" subs={['Background execution,', 'retry / backoff']} theme="blue" titleSize={18} />
+    <Box x={1800} y={560} w={190} h={112} icon="cloud" title="Backend" subs={['API endpoints /', 'operation services']} theme="blue" titleSize={17} />
   </>
 }
 
-/* ════════════════════════ HEDEF MİMARİ İÇERİĞİ (PLAN5) ════════════════════════ */
+/* ════════════════════════ TARGET ARCHITECTURE CONTENT (PLAN5) ════════════════════════ */
 const TARGET_WP: WP = [
   [220, 206], [220, 348], [220, 490], [410, 490], [440, 490], [440, 196], [470, 196],
   [660, 196], [660, 300], [660, 500],
@@ -185,20 +185,20 @@ const TARGET_WP: WP = [
   [1770, 422], [1800, 422], [1895, 422], [1895, 474], [1895, 840], [660, 840], [660, 760],
 ]
 const TARGET_STATIONS: StationDef[] = [
-  { wp: 0,  label: 'Compose Screens', note: 'Kullanıcı aksiyonu UiAction\'a dönüşür — tek yönlü veri akışı (UDF), iş kuralı yok.', health: 'good' },
-  { wp: 2,  label: 'BaseMviViewModel · reduce()', note: 'reduce(state, action) saf fonksiyon: UI olmadan test edilebilir, %0 testten çıkışın ucuz yolu.', health: 'good' },
-  { wp: 7,  label: 'UseCase', note: 'İş akışını orkestre eder; kural tek yerde, ekrandan bağımsız — God object son bulur.', health: 'good' },
-  { wp: 9,  label: 'Domain araçları', note: 'Specification / RuleEngine / Policy + DeliveryMediator → tek @Transaction\'da tutarlı statü yayılımı.', health: 'good' },
-  { wp: 15, label: 'Room SSoT (normalize)', note: 'Tek doğru kaynak: StopEntity…ItemEntity ilişkisel; reaktif Flow, ana thread\'de sorgu yok.', health: 'good' },
-  { wp: 17, label: 'OutboxEventEntity', note: 'Her yazma bir outbox kaydı; idempotencyKey + traceId → çift tahsilat / veri kaybı yapısal olarak imkânsız.', health: 'good' },
-  { wp: 20, label: 'core:sync · Outbox Processor', note: 'Event\'leri sıralı ve aggregate-bazlı işler; sıra ihlali ve zombi istek ortadan kalkar.', health: 'good' },
-  { wp: 22, label: 'WorkManager', note: 'Garantili sync: exponential backoff + decorrelated jitter; process ölse de OS yeniden çalıştırır.', health: 'good' },
-  { wp: 25, label: 'Backend Services', note: 'İstek tam-bir-kez (idempotent) ulaşır; yanıt SSoT\'a işlenir, kör nokta yok (trace-id).', health: 'good' },
-  { wp: 29, label: "UI'a reaktif dönüş", note: 'Room → Flow → UiState → Compose; ekran otomatik, tutarlı ve gecikmesiz yenilenir.', health: 'good' },
+  { wp: 0,  label: 'Compose Screens', note: 'User action becomes a UiAction — unidirectional data flow (UDF), no business rules.', health: 'good' },
+  { wp: 2,  label: 'BaseMviViewModel · reduce()', note: 'reduce(state, action) is a pure function: testable without UI, the cheapest way out of 0% test coverage.', health: 'good' },
+  { wp: 7,  label: 'UseCase', note: 'Orchestrates the workflow; rules in one place, screen-independent — God object eliminated.', health: 'good' },
+  { wp: 9,  label: 'Domain tools', note: 'Specification / RuleEngine / Policy + DeliveryMediator → consistent status propagation in a single @Transaction.', health: 'good' },
+  { wp: 15, label: 'Room SSoT (normalize)', note: 'Single source of truth: StopEntity…ItemEntity relational; reactive Flow, no main-thread queries.', health: 'good' },
+  { wp: 17, label: 'OutboxEventEntity', note: 'Every write creates an outbox record; idempotencyKey + traceId → duplicate collection / data loss structurally impossible.', health: 'good' },
+  { wp: 20, label: 'core:sync · Outbox Processor', note: 'Processes events sequentially and per-aggregate; ordering violations and zombie requests eliminated.', health: 'good' },
+  { wp: 22, label: 'WorkManager', note: 'Guaranteed sync: exponential backoff + decorrelated jitter; OS restarts even if process dies.', health: 'good' },
+  { wp: 25, label: 'Backend Services', note: 'Request arrives exactly-once (idempotent); response is written to SSoT, no blind spots (trace-id).', health: 'good' },
+  { wp: 29, label: 'Reactive return to UI', note: 'Room → Flow → UiState → Compose; screen refreshes automatically, consistently and without delay.', health: 'good' },
 ]
 const T_COL1 = [
   { icon: 'cube',    title: 'Compose Screens', subs: ['StopList · Delivery · ScanParcel'] },
-  { icon: 'file',    title: 'UiState / UiAction / UiEffect', subs: ['Tek immutable state + one-shot effect'] },
+  { icon: 'file',    title: 'UiState / UiAction / UiEffect', subs: ['Single immutable state + one-shot effect'] },
   { icon: 'gear',    title: 'BaseMviViewModel', subs: ['reduce(state, action) → state'] },
   { icon: 'route',   title: 'Navigation (typed routes)', subs: ['Compose Navigation Component'] },
 ]
@@ -207,9 +207,9 @@ const T_GROUP = [
   { icon: 'sitemap', title: 'DeliveryMediator' }, { icon: 'flag', title: 'Policy / Strategy' },
 ]
 const T_COL4 = [
-  { icon: 'wifi',    title: 'NetworkQualityManager', subs: ['Şebeke kalitesine göre gönderim'], y: 180, h: 100 },
+  { icon: 'wifi',    title: 'NetworkQualityManager', subs: ['Dispatch based on network quality'], y: 180, h: 100 },
   { icon: 'refresh', title: 'WorkManager', subs: ['backoff + decorrelated jitter'], y: 370, h: 104 },
-  { icon: 'bolt',    title: 'core:sync · Outbox Processor', subs: ['Sıralı, garantili, idempotent'], y: 640, h: 104 },
+  { icon: 'bolt',    title: 'core:sync · Outbox Processor', subs: ['Sequential, guaranteed, idempotent'], y: 640, h: 104 },
 ]
 function TargetContent() {
   return <>
@@ -241,16 +241,16 @@ function TargetContent() {
     <line x1={1770} y1={422} x2={1800} y2={422} stroke={B} strokeWidth={2.2} markerEnd="url(#ah-b)" />
     {/* reactive feedback (Room → Flow → UI) */}
     <path d="M945 372 V118 H220 V150" fill="none" stroke={BD} strokeWidth={2} strokeDasharray="6 6" markerEnd="url(#ah-bs)" />
-    <text x={560} y={107} fontSize={15} fontWeight={600} fill="#3f9b6e" textAnchor="middle">reaktif state · Flow</text>
+    <text x={560} y={107} fontSize={15} fontWeight={600} fill="#3f9b6e" textAnchor="middle">reactive state · Flow</text>
     <path d="M1895 474 V840 H660 V760" fill="none" stroke={BD} strokeWidth={2} strokeDasharray="6 6" markerEnd="url(#ah-bs)" />
-    <text x={1290} y={828} fontSize={15} fontWeight={600} fill="#3f9b6e" textAnchor="middle">yanıt → SSoT → Flow → UI</text>
+    <text x={1290} y={828} fontSize={15} fontWeight={600} fill="#3f9b6e" textAnchor="middle">response → SSoT → Flow → UI</text>
 
     {/* col1 boxes */}
     {T_COL1.map((b, i) => <Box key={b.title} x={30} y={150 + i * 142} w={380} h={112} icon={b.icon} title={b.title} subs={b.subs} theme="green" titleSize={18} />)}
     {/* col2 */}
-    <Box x={470} y={150} w={380} h={92} icon="check" title="UseCase" subs={['Ekran akışını orkestre eder']} theme="green" />
+    <Box x={470} y={150} w={380} h={92} icon="check" title="UseCase" subs={['Orchestrates the screen flow']} theme="green" />
     <rect x={470} y={300} width={380} height={404} rx={16} fill="#f6fef9" stroke="#86d6a6" strokeWidth={1.8} strokeDasharray="6 5" />
-    <text x={490} y={326} fontSize={13.5} fontWeight={700} fill="#0e9f6e" letterSpacing="0.04em">USECASE’İN ARAÇLARI</text>
+    <text x={490} y={326} fontSize={13.5} fontWeight={700} fill="#0e9f6e" letterSpacing="0.04em">USECASE TOOLS</text>
     {T_GROUP.map((g, i) => <Box key={g.title} x={490} y={344 + i * 84} w={340} h={66} icon={g.icon} title={g.title} theme="greenItem" titleSize={18} />)}
     {/* col3 */}
     <rect x={940} y={150} width={430} height={176} rx={14} fill="#eaf1fe" stroke="#c4d6f4" strokeWidth={1.6} />
@@ -258,15 +258,15 @@ function TargetContent() {
     <text x={1004} y={186} fontSize={21} fontWeight={700} fill="#16315f" dominantBaseline="middle">Repository</text>
     {['StopRepository · DeliveryRepository', 'OutboxRepository', 'LocationRepository'].map((b, i) => <text key={b} x={978} y={234 + i * 30} fontSize={15.5} fill="#33507e">•  {b}</text>)}
     <Box x={940} y={372} w={430} h={104} icon="db" title="Room SSoT (normalize)" subs={['Stop · Task · Shipment · Item ·', 'Collection · @Relation read-model']} theme="blue" titleSize={19} />
-    <Box x={940} y={508} w={430} h={100} icon="file" title="@Transaction / @Relation" subs={['Türetilmiş statü · tek yazım (Mediator)']} theme="blue" titleSize={18} />
+    <Box x={940} y={508} w={430} h={100} icon="file" title="@Transaction / @Relation" subs={['Derived status · single write (Mediator)']} theme="blue" titleSize={18} />
     <Box x={940} y={640} w={430} h={104} icon="layers" title="OutboxEventEntity" subs={['idempotencyKey · traceId ·', 'status · nextAttemptAt']} theme="blueSoft" titleSize={18} />
     {/* col4 */}
     {T_COL4.map((b) => <Box key={b.title} x={1450} y={b.y} w={320} h={b.h} icon={b.icon} title={b.title} subs={b.subs} theme="blue" titleSize={17} />)}
-    <Box x={1800} y={370} w={190} h={104} icon="cloud" title="Backend" subs={['Idempotent', 'uçlar']} theme="blue" titleSize={17} />
+    <Box x={1800} y={370} w={190} h={104} icon="cloud" title="Backend" subs={['Idempotent', 'endpoints']} theme="blue" titleSize={17} />
   </>
 }
 
-/* ════════════════════════ ANİMASYONLU AKIŞ ÇERÇEVESİ ════════════════════════ */
+/* ════════════════════════ ANIMATED FLOW FRAME ════════════════════════ */
 interface FlowProps {
   eyebrow: string; title: string; sub: string
   waypoints: WP; stations: StationDef[]
@@ -368,60 +368,60 @@ function FlowDiagram({ eyebrow, title, sub, waypoints, stations, summary, childr
         </svg>
       </div>
       <div className="arch-anim-bar" ref={barRef}>
-        <button className="arch-anim-play" type="button" onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Oynat' : 'Duraklat'}>{paused ? '▶' : '❚❚'}</button>
+        <button className="arch-anim-play" type="button" onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'}>{paused ? '▶' : '❚❚'}</button>
         <span className="arch-anim-dot" />
         <span className="arch-anim-label" ref={labelRef}>{stations[0].label}</span>
         <span className="arch-anim-note" ref={noteRef}>{stations[0].note}</span>
-        <span className="arch-anim-legend"><i style={{ background: HEALTH.good }} />sağlam<i style={{ background: HEALTH.warn }} />dikkat<i style={{ background: HEALTH.bad }} />kritik</span>
+        <span className="arch-anim-legend"><i style={{ background: HEALTH.good }} />healthy<i style={{ background: HEALTH.warn }} />warning<i style={{ background: HEALTH.bad }} />critical</span>
       </div>
       <div className="arch-summary"><span className="arch-summary-icon">i</span><p>{summary}</p></div>
     </div>
   )
 }
 
-/* ════════════════════════ TAB KÖKÜ ════════════════════════ */
+/* ════════════════════════ TAB ROOT ════════════════════════ */
 export function ArchitectureDiagram() {
-  const [view, setView] = useState<'mevcut' | 'hedef'>('mevcut')
+  const [view, setView] = useState<'current' | 'target'>('current')
   return (
     <div className="arch">
-      <nav className="arch-nav" aria-label="Mimari görünümü">
+      <nav className="arch-nav" aria-label="Architecture view">
         <button
           type="button"
-          className={`arch-nav-btn${view === 'mevcut' ? ' active' : ''}`}
-          aria-current={view === 'mevcut' ? 'page' : undefined}
-          onClick={() => setView('mevcut')}
+          className={`arch-nav-btn${view === 'current' ? ' active' : ''}`}
+          aria-current={view === 'current' ? 'page' : undefined}
+          onClick={() => setView('current')}
         >
-          Mevcut Mimari
+          Current Architecture
         </button>
         <button
           type="button"
-          className={`arch-nav-btn${view === 'hedef' ? ' active' : ''}`}
-          aria-current={view === 'hedef' ? 'page' : undefined}
-          onClick={() => setView('hedef')}
+          className={`arch-nav-btn${view === 'target' ? ' active' : ''}`}
+          aria-current={view === 'target' ? 'page' : undefined}
+          onClick={() => setView('target')}
         >
-          Hedef Mimari
+          Target Architecture
         </button>
       </nav>
 
-      {view === 'mevcut' ? (
+      {view === 'current' ? (
         <FlowDiagram
-          key="mevcut"
-          eyebrow="Mevcut Mimari"
-          title="Senkronizasyon · Event Handling"
-          sub="Mevcut yapıda event üretimi, offline queue ve senkronizasyon akışı"
+          key="current"
+          eyebrow="Current Architecture"
+          title="Synchronization · Event Handling"
+          sub="Event generation, offline queue and synchronization flow in the current structure"
           waypoints={CURRENT_WP}
           stations={CURRENT_STATIONS}
-          summary={<><strong>Akış özeti:</strong> UI event&apos;i SharedViewModel&apos;e gelir, orkestrasyon repository üzerinden JSON-chunk Room&apos;a yazar, polling tabanlı servis remote&apos;a gönderir; kritik noktalar (SSoT yok, ana-thread sorgu, garantisiz kuyruk) operasyonel risk üretir.</>}
+          summary={<><strong>Flow summary:</strong> UI event reaches SharedViewModel, orchestration writes JSON-chunk to Room via repository, polling-based service sends to remote; critical points (no SSoT, main-thread queries, unreliable queue) generate operational risk.</>}
         ><CurrentContent /></FlowDiagram>
       ) : (
         <FlowDiagram
-          key="hedef"
-          eyebrow="Hedef Mimari"
+          key="target"
+          eyebrow="Target Architecture"
           title="Compose + MVI · Room SSoT · Offline-first"
-          sub="UDF akış, normalize tek doğru kaynak ve Outbox/WorkManager ile garantili senkronizasyon"
+          sub="UDF flow, normalized single source of truth and guaranteed synchronization via Outbox/WorkManager"
           waypoints={TARGET_WP}
           stations={TARGET_STATIONS}
-          summary={<><strong>Akış özeti:</strong> Aksiyon → reduce → UseCase (Mediator/Policy) → Repository → <strong>Room SSoT</strong> + <strong>OutboxEvent</strong>; core:sync + WorkManager idempotent ve backoff&apos;lu gönderir; yanıt SSoT&apos;a işlenir, Room → Flow → UiState ile ekran reaktif güncellenir. Her kritik kusur (çift tahsilat, veri kaybı, ANR, zombi istek) yapısal olarak kapanır.</>}
+          summary={<><strong>Flow summary:</strong> Action → reduce → UseCase (Mediator/Policy) → Repository → <strong>Room SSoT</strong> + <strong>OutboxEvent</strong>; core:sync + WorkManager sends with idempotency and backoff; response is written to SSoT, screen reactively updates via Room → Flow → UiState. Every critical flaw (duplicate collection, data loss, ANR, zombie requests) is structurally eliminated.</>}
         ><TargetContent /></FlowDiagram>
       )}
     </div>

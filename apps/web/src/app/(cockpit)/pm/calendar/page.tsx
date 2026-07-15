@@ -24,12 +24,12 @@ import {
 
 // ═══ Helpers ════════════════════════════════════════════════════════════════
 
-const TR_MONTHS = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const eventTypeColor: Record<CalendarEventType, string> = {
   release: 'bg-green-500',
@@ -43,8 +43,8 @@ const eventTypeColor: Record<CalendarEventType, string> = {
 const eventTypeLabel: Record<CalendarEventType, string> = {
   release: 'Release',
   'critical-bug': 'Critical Bug',
-  'sprint-start': 'Sprint Başlangıç',
-  'sprint-end': 'Sprint Bitiş',
+  'sprint-start': 'Sprint Start',
+  'sprint-end': 'Sprint End',
   review: 'Review',
   deploy: 'Deploy',
 }
@@ -137,39 +137,39 @@ export default function CalendarPage() {
   }
 
   const sprintStatusLabel: Record<string, string> = {
-    completed: 'Tamamlandı',
-    active: 'Aktif',
-    planned: 'Planlandı',
+    completed: 'Completed',
+    active: 'Active',
+    planned: 'Planned',
   }
 
   return (
-    <ProductPage path="/pm/calendar" title="Sprint Takvimi">
+    <ProductPage path="/pm/calendar" title="Sprint Calendar">
       {/* 1 — Hero */}
       <HeroCallout
         icon={CalendarDays}
         eyebrow="Planning"
         tone="purple"
-        title="Sprint Takvimi"
-        lead="Sprint planlaması, event takvimleri ve milestone takibi."
+        title="Sprint Calendar"
+        lead="Sprint planning, event calendars, and milestone tracking."
       >
         <StatGrid cols={2}>
           <StatCard
-            label="Aktif Sprint"
+            label="Active Sprint"
             value={activeSprint?.name ?? '—'}
             tone="blue"
           />
           <StatCard
-            label="Kalan Gün"
+            label="Days Remaining"
             value={remainingDays}
             tone="purple"
           />
           <StatCard
-            label="Sprint Hedefleri"
+            label="Sprint Goals"
             value={activeSprint?.goals.length ?? 0}
             tone="teal"
           />
           <StatCard
-            label="Bu Ay Event"
+            label="Events This Month"
             value={monthEvents.length}
             tone="amber"
           />
@@ -177,7 +177,7 @@ export default function CalendarPage() {
       </HeroCallout>
 
       {/* 2 — Interactive Calendar */}
-      <PageSection title="Takvim">
+      <PageSection title="Calendar">
         {/* Month Header */}
         <div className="flex items-center justify-between rounded-xl border bg-card p-4">
           <button
@@ -187,7 +187,7 @@ export default function CalendarPage() {
             <ChevronLeft className="size-4" />
           </button>
           <h3 className="text-lg font-bold text-foreground">
-            {TR_MONTHS[currentMonth - 1]} {currentYear}
+            {MONTHS[currentMonth - 1]} {currentYear}
           </h3>
           <button
             onClick={nextMonth}
@@ -306,8 +306,8 @@ export default function CalendarPage() {
         )}
       </PageSection>
 
-      {/* 3 — Sprint Özeti */}
-      <PageSection title="Sprint Özeti">
+      {/* 3 — Sprint Summary */}
+      <PageSection title="Sprint Summary">
         <CardGrid cols={2}>
           {sprints.map((s) => (
             <InfoCard
@@ -325,10 +325,10 @@ export default function CalendarPage() {
       </PageSection>
 
       {/* 4 — Guardrail */}
-      <Callout icon={Info} tone="amber" title="Planlama Rehberi">
-        Sprint takvimi bir planlama aracıdır. Taahhüt edilen sprint kapsamı,
-        sprint başladıktan sonra sadece Product Owner onayı ile değiştirilebilir.
-        Takvim dışı değişiklikler sprint retrospective&apos;de değerlendirilir.
+      <Callout icon={Info} tone="amber" title="Planning Guide">
+        The sprint calendar is a planning tool. The committed sprint scope can only be changed
+        with Product Owner approval after the sprint has started. Out-of-calendar changes are
+        evaluated in the sprint retrospective.
       </Callout>
     </ProductPage>
   )

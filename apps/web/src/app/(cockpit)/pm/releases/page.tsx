@@ -20,7 +20,7 @@ import type { SegmentTabItem } from '@/components/product/segment-tabs'
 import { releases, getReleasedVersions, getLatestRelease } from '@/data/pm/releases'
 import { COUNTRY_LABELS } from '@/data/pm/versions'
 
-const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function getCalendarDays(year: number, month: number) {
   const firstDay = new Date(year, month - 1, 1)
@@ -66,7 +66,7 @@ function TimelineTab() {
   const sorted = [...releases].sort((a, b) => b.date.localeCompare(a.date))
   const items: TimelineItem[] = sorted.map((r) => {
     const d = new Date(r.date)
-    const period = `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+    const period = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
     const title = `v${r.version}${r.codename ? ` — ${r.codename}` : ''}`
     const bullets = [...r.features, ...r.fixes].slice(0, 5)
     const badges = [
@@ -94,7 +94,7 @@ function CalendarTab() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const days = getCalendarDays(year, month)
-  const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   function prev() {
     if (month === 1) { setMonth(12); setYear(year - 1) }
@@ -125,7 +125,7 @@ function CalendarTab() {
           <ChevronLeft className="size-4" />
         </button>
         <span className="text-sm font-bold text-foreground">
-          {TR_MONTHS[month - 1]} {year}
+          {MONTHS[month - 1]} {year}
         </span>
         <button
           onClick={next}
@@ -244,7 +244,7 @@ function CalendarTab() {
 
       {selectedDate && selectedReleases.length === 0 && (
         <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-          Bu tarihte release bulunmuyor.
+          No releases found for this date.
         </div>
       )}
     </div>
@@ -259,17 +259,17 @@ function ComparisonTab() {
     .slice(0, 4)
 
   const headers = [
-    { label: 'Özellik' },
+    { label: 'Feature' },
     ...last4.map((r) => ({ label: `v${r.version}`, tone: 'blue' as const })),
   ]
 
   const rows = [
-    ['Tarih', ...last4.map((r) => {
+    ['Date', ...last4.map((r) => {
       const d = new Date(r.date)
-      return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+      return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
     })],
     ['Codename', ...last4.map((r) => r.codename ?? '—')],
-    ['Ülkeler', ...last4.map((r) =>
+    ['Countries', ...last4.map((r) =>
       r.countries.map((c) => COUNTRY_LABELS[c] ?? c.toUpperCase()).join(', '),
     )],
     ['Ticket Fix', ...last4.map((r) => String(r.ticketIds.length))],
@@ -292,47 +292,47 @@ export default function ReleasesPage() {
   const tabs: SegmentTabItem[] = [
     {
       value: 'timeline',
-      label: 'Zaman Çizelgesi',
+      label: 'Timeline',
       icon: Timer,
       content: <TimelineTab />,
     },
     {
-      value: 'takvim',
-      label: 'Takvim',
+      value: 'calendar',
+      label: 'Calendar',
       icon: CalendarDays,
       content: <CalendarTab />,
     },
     {
-      value: 'karsilastirma',
-      label: 'Karşılaştırma',
+      value: 'comparison',
+      label: 'Comparison',
       icon: GitCompare,
       content: <ComparisonTab />,
     },
   ]
 
   return (
-    <ProductPage path="/pm/releases" title="Release Geçmişi">
+    <ProductPage path="/pm/releases" title="Release History">
       <HeroCallout
         icon={Rocket}
         eyebrow="Release & Versions"
         tone="purple"
-        title="Release Geçmişi"
-        lead="Tüm sürümlerin kronolojik kaydı — hangi özellik ve düzeltme hangi versiyonda, hangi ülkelere deploy edildi."
+        title="Release History"
+        lead="Chronological record of all releases — which features and fixes were deployed in which version and to which countries."
       >
         <StatGrid cols={4}>
           <StatCard label="Released" value={releasedCount} tone="green" />
           <StatCard label="Staging" value={stagingCount} tone="blue" />
           <StatCard label="Planned" value={plannedCount} tone="gray" />
-          <StatCard label="Son Versiyon" value={latest?.version ?? '—'} tone="purple" />
+          <StatCard label="Latest Version" value={latest?.version ?? '—'} tone="purple" />
         </StatGrid>
       </HeroCallout>
 
       <SegmentTabs items={tabs} defaultValue="timeline" />
 
-      <Callout icon={Rocket} title="Release Test Kuralı" tone="amber">
-        Her release staging ortamında en az 48 saat test edilmeden production&apos;a alınmamalıdır.
-        Hotfix release&apos;lerde bile minimum smoke test zorunludur. Breaking change içeren sürümler
-        tüm ülke ekiplerinin onayını gerektirir.
+      <Callout icon={Rocket} title="Release Testing Policy" tone="amber">
+        No release should be promoted to production without at least 48 hours of testing in the staging environment.
+        Even hotfix releases require minimum smoke testing. Releases containing breaking changes
+        require approval from all country teams.
       </Callout>
     </ProductPage>
   )

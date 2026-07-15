@@ -1,26 +1,27 @@
 /**
- * Sayfa içeriğini A4 PDF olarak indirir (önizleme yok, doğrudan indirme).
+ * Downloads page content as an A4 PDF (no preview, direct download).
  *
- * Mimari:
- * 1. `main[role="content"]` canlı DOM'dan klonlanır ve ekran dışı (off-screen)
- *    bir yakalama köküne yerleştirilir — ekranda hiçbir titreme/değişiklik olmaz.
- * 2. Klon içinde tüm tab panelleri açılır (forceMount sayesinde DOM'da
- *    mevcutlar), her panelin üstüne sekme etiketi başlık olarak eklenir,
- *    framer-motion'ın inline opacity/transform değerleri sıfırlanır.
- * 3. İÇERİK KAYBI YASAĞI: klon önce dikey (1120px) genişlikte ölçülür; yatayda
- *    kırpılan öğe (truncate üç noktası, taşan tablo/grid) varsa PDF yatay
- *    (landscape) formata geçer ve yakalama genişliği, kırpılma sıfırlanana
- *    kadar kademeli artırılır. PDF'te hiçbir içerik kesilmez / üst üste binmez.
- * 4. Canvas boyutu ÖNDEN belirlenir: içerik boyutları ölçülür ve tarayıcı
- *    canvas limitlerine (boyut + alan) göre ölçek hesaplanır.
- * 5. html2canvas-pro ile (oklch/color-mix destekli) tek canvas'a render edilir;
- *    koyu tema render sırasında açık temaya çevrilir.
- * 6. Canvas, A4 sayfalarına bölünür; kesim noktaları piksel analizi ile
- *    "boş" satırlara denk getirilir (içerik ortadan kesilmez).
+ * Architecture:
+ * 1. `main[role="content"]` is cloned from the live DOM and placed in an
+ *    off-screen capture root — no flicker or visible change on screen.
+ * 2. Inside the clone, all tab panels are revealed (they already exist in the
+ *    DOM thanks to forceMount), a tab label heading is prepended to each panel,
+ *    and framer-motion inline opacity/transform values are reset.
+ * 3. NO CONTENT LOSS RULE: the clone is first measured at portrait width (1120px);
+ *    if any element is horizontally clipped (truncated ellipsis, overflowing
+ *    table/grid), the PDF switches to landscape orientation and the capture
+ *    width is progressively increased until clipping is eliminated. No content
+ *    is ever cut off or overlapped in the PDF.
+ * 4. Canvas size is determined UP FRONT: content dimensions are measured and
+ *    scale is computed against browser canvas limits (dimension + area).
+ * 5. Rendered to a single canvas via html2canvas-pro (with oklch/color-mix
+ *    support); dark theme is switched to light theme during rendering.
+ * 6. The canvas is split into A4 pages; cut points are aligned to "blank"
+ *    (uniform-color) rows via pixel analysis (content is never cut mid-line).
  */
 import type { jsPDF } from 'jspdf'
 
-/** Tarayıcıya özel; SSR bundle'ına girmemesi için yalnızca export sırasında yüklenir. */
+/** Browser-specific; loaded only during export to avoid entering the SSR bundle. */
 async function loadHtml2Canvas() {
   const { default: html2canvas } = await import('html2canvas-pro')
   return html2canvas
@@ -31,30 +32,31 @@ async function loadJsPDF() {
   return jsPDF
 }
 
-/** Dikey mod yakalama genişliği (px) — A4 190mm baskı alanı ~150dpi karşılığı. */
+/** Portrait mode capture width (px) — corresponds to A4 190mm print area at ~150dpi. */
 const PORTRAIT_WIDTH = 1120
 
 /**
- * Yatay mod genişlik adayları (px). İlki, dikeydeki 1120px ile aynı yazı
- * boyutunu koruyan 277mm karşılığıdır; kırpılma sürerse sırayla genişletilir.
+ * Landscape mode width candidates (px). The first corresponds to 277mm,
+ * maintaining the same font size as portrait 1120px; if clipping persists,
+ * width is progressively increased.
  */
 const LANDSCAPE_WIDTHS = [1584, 1920, 2320, 2800]
 
-/** A4 (mm) ve kenar boşlukları. */
+/** A4 dimensions (mm) and margins. */
 const PAGE_SHORT = 210
 const PAGE_LONG = 297
 const MARGIN = 10
 
 export type PdfOrientation = 'portrait' | 'landscape'
 
-/** Seçilen yöne göre A4 baskı alanı (mm). */
+/** A4 print area (mm) for the chosen orientation. */
 function contentSize(orientation: PdfOrientation): { w: number; h: number } {
   return orientation === 'portrait'
     ? { w: PAGE_SHORT - MARGIN * 2, h: PAGE_LONG - MARGIN * 2 } // 190×277
     : { w: PAGE_LONG - MARGIN * 2, h: PAGE_SHORT - MARGIN * 2 } // 277×190
 }
 
-/** Tarayıcı canvas güvenlik limitleri (Safari/Chrome ortak alt sınır). */
+/** Browser canvas safety limits (Safari/Chrome common lower bound). */
 const MAX_CANVAS_DIM = 16384
 const MAX_CANVAS_AREA = 100_000_000
 const PREFERRED_SCALE = 2
@@ -64,8 +66,8 @@ const STYLE_ID = 'nesy-pdf-capture-style'
 const ROOT_CLASS = 'nesy-pdf-capture-root'
 
 /**
- * Yakalama köküne özel CSS — canlı sayfayı etkilemez (sınıf ile kapsamlı),
- * html2canvas'ın dahili klonuna stylesheet olarak kopyalanır.
+ * Capture-root-specific CSS — does not affect the live page (scoped via class),
+ * copied as a stylesheet into html2canvas's internal clone.
  */
 const CAPTURE_CSS = `
 .${ROOT_CLASS} { background: #ffffff; }
@@ -89,13 +91,13 @@ export function slugify(input: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return slug || 'sayfa'
+  return slug || 'page'
 }
 
 /**
- * Canvas boyutu algoritması: içerik yüksekliğine göre render ölçeğini önden
- * belirler. Uzun sayfalarda ölçek düşürülerek tarayıcı canvas limitleri
- * (kenar uzunluğu ve toplam alan) aşılmaz.
+ * Canvas sizing algorithm: determines the render scale up front based on
+ * content height. On long pages the scale is reduced so that browser canvas
+ * limits (edge length and total area) are not exceeded.
  */
 export function resolveCanvasScale(widthPx: number, heightPx: number): number {
   let scale = PREFERRED_SCALE
@@ -113,7 +115,7 @@ function ensureCaptureStyle(): void {
   document.head.appendChild(style)
 }
 
-/** Her tab paneline, ait olduğu sekmenin etiketini başlık olarak ekler. */
+/** Prepends a heading with the associated tab label to each tab panel. */
 function injectTabHeadings(root: HTMLElement): void {
   root.querySelectorAll<HTMLElement>('[data-slot="tabs"]').forEach((tabs) => {
     const triggers = Array.from(tabs.querySelectorAll<HTMLElement>('[data-slot="tabs-trigger"]'))
@@ -145,9 +147,9 @@ function injectTabHeadings(root: HTMLElement): void {
 }
 
 /**
- * İçeriği klonlayıp ekran dışı yakalama kökü oluşturur (genişlik sonradan ayarlanır).
- * `source` başka bir document'ten (ör. iframe) gelebilir; bu yüzden `cloneNode`
- * yerine `document.importNode` kullanılır — düğüm ana document'e uyarlanarak alınır.
+ * Clones the content and creates an off-screen capture root (width is set later).
+ * `source` may come from another document (e.g. an iframe), so `document.importNode`
+ * is used instead of `cloneNode` — the node is adapted to the main document.
  */
 function buildCaptureRoot(source: HTMLElement, opts?: { pad?: boolean }): HTMLElement {
   const wrapper = document.createElement('div')
@@ -156,8 +158,8 @@ function buildCaptureRoot(source: HTMLElement, opts?: { pad?: boolean }): HTMLEl
   wrapper.setAttribute(
     'style',
     `position:fixed;top:0;left:-100000px;width:${PORTRAIT_WIDTH}px;z-index:-1;background:#ffffff;` +
-      // Tek bölüm (slayt) yakalanırken `main` kuralındaki iç boşluk uygulanmaz;
-      // beyaz çerçeveyi wrapper üzerinden veriyoruz.
+      // When capturing a single section (slide), the `main` rule's padding does not apply;
+      // we provide the white border via the wrapper instead.
       (opts?.pad ? 'padding:28px;' : ''),
   )
   const clone = document.importNode(source, true) as HTMLElement
@@ -167,9 +169,10 @@ function buildCaptureRoot(source: HTMLElement, opts?: { pad?: boolean }): HTMLEl
 }
 
 /**
- * Yatayda kırpılan öğe sayısı: `truncate` üç noktası, taşan tablo/grid gibi
- * içeriği gerçekten kesen (overflow-x !== visible) öğeleri sayar.
- * PDF'te içerik kaybı yasak — bu sayı sıfırlanana kadar genişlik artırılır.
+ * Counts the number of horizontally clipped elements: elements with truncated
+ * ellipsis, overflowing tables/grids whose content is actually cut off
+ * (overflow-x !== visible). No content loss is allowed in the PDF — width is
+ * increased until this count reaches zero.
  */
 function countClippedElements(root: HTMLElement): number {
   let clipped = 0
@@ -182,9 +185,10 @@ function countClippedElements(root: HTMLElement): number {
 }
 
 /**
- * İçerik kaybı yasağı: dikeyde (1120px) kırpılma varsa yatay moda geçer ve
- * yakalama genişliğini, kırpılan öğe kalmayana kadar kademeli artırır.
- * En geniş adayda bile kırpılma sürerse en geniş aday kullanılır (en az kayıp).
+ * No content loss rule: if clipping exists at portrait width (1120px), switches
+ * to landscape mode and progressively increases capture width until no clipped
+ * elements remain. If clipping persists even at the widest candidate, the
+ * widest candidate is used (minimal loss).
  */
 function resolveLayout(captureRoot: HTMLElement): { orientation: PdfOrientation; width: number } {
   if (countClippedElements(captureRoot) === 0) {
@@ -194,7 +198,7 @@ function resolveLayout(captureRoot: HTMLElement): { orientation: PdfOrientation;
   let width = LANDSCAPE_WIDTHS[LANDSCAPE_WIDTHS.length - 1] ?? PORTRAIT_WIDTH
   for (const candidate of LANDSCAPE_WIDTHS) {
     captureRoot.style.width = `${candidate}px`
-    void captureRoot.offsetHeight // reflow — ölçüm yeni genişlikte yapılsın
+    void captureRoot.offsetHeight // reflow — measurements use the new width
     if (countClippedElements(captureRoot) === 0) {
       width = candidate
       break
@@ -205,12 +209,12 @@ function resolveLayout(captureRoot: HTMLElement): { orientation: PdfOrientation;
   return { orientation: 'landscape', width }
 }
 
-/** Fontların ve klondaki görsellerin hazır olmasını bekler (yükseklik ölçümü öncesi). */
+/** Waits for fonts and images in the clone to be ready (before height measurement). */
 async function waitForAssets(root: HTMLElement): Promise<void> {
   try {
     await document.fonts.ready
   } catch {
-    /* fonts API yoksa devam et */
+    /* fonts API not available, continue */
   }
   const images = Array.from(root.querySelectorAll('img'))
   await Promise.allSettled(
@@ -218,7 +222,7 @@ async function waitForAssets(root: HTMLElement): Promise<void> {
   )
 }
 
-/** Satırın görsel olarak "boş" (tek renk) olup olmadığını örnekleyerek kontrol eder. */
+/** Checks whether a row is visually "blank" (uniform color) by sampling pixels. */
 function isUniformRow(data: Uint8ClampedArray, rowOffset: number, width: number): boolean {
   const r0 = data[rowOffset] ?? 255
   const g0 = data[rowOffset + 1] ?? 255
@@ -237,8 +241,8 @@ function isUniformRow(data: Uint8ClampedArray, rowOffset: number, width: number)
 }
 
 /**
- * Akıllı sayfa sonu: hedef kesim noktasından yukarı doğru tarayıp içerik
- * barındırmayan (tek renk) ilk satırı bulur; bulunamazsa hedefte keser.
+ * Smart page break: scans upward from the target cut point to find the first
+ * row that contains no content (uniform color); if none is found, cuts at the target.
  */
 function findPageBreak(
   ctx: CanvasRenderingContext2D,
@@ -255,20 +259,20 @@ function findPageBreak(
   return targetY
 }
 
-/** PDF'e eklenmeye hazır tek bir sayfa: JPEG data URL + yerleşim boyutu (mm) + yön. */
+/** A single page ready to be added to the PDF: JPEG data URL + layout size (mm) + orientation. */
 export interface PdfPage {
   dataUrl: string
   orientation: PdfOrientation
-  /** Sayfaya yerleştirme genişliği (mm) — baskı alanı genişliği. */
+  /** Placement width on the page (mm) — equals the print area width. */
   wMm: number
-  /** Sayfaya yerleştirme yüksekliği (mm). */
+  /** Placement height on the page (mm). */
   hMm: number
 }
 
 /**
- * Bir canvas'ı A4 baskı alanına göre sayfalara böler ve her sayfa için PDF'e
- * hazır bir görsel (JPEG data URL) üretir. Kesim noktaları piksel analizi ile
- * "boş" satırlara denk getirilir; içerik ortadan kesilmez.
+ * Splits a canvas into A4 print-area pages and produces a PDF-ready image
+ * (JPEG data URL) for each page. Cut points are aligned to "blank" rows
+ * via pixel analysis; content is never cut mid-line.
  */
 export function canvasToPdfPages(
   canvas: HTMLCanvasElement,
@@ -284,7 +288,7 @@ export function canvasToPdfPages(
   while (y < canvas.height) {
     let end = Math.min(y + pageHeightPx, canvas.height)
     if (end < canvas.height && ctx) {
-      // Sayfanın en az %65'i dolu kalacak şekilde boş satır ara.
+      // Search for a blank row ensuring at least 65% of the page is filled.
       const minY = y + Math.floor(pageHeightPx * 0.65)
       end = findPageBreak(ctx, canvas.width, end, minY)
     }
@@ -313,10 +317,10 @@ export function canvasToPdfPages(
 }
 
 /**
- * Bir canvas'ı A4 dilimlerine bölerek MEVCUT bir jsPDF belgesine ekler.
- * Sayfa yönü sayfa bazında değişebilir (`addPage('a4', orientation)`).
- * `skipFirstAddPage` true ise ilk dilim, dokümanın mevcut (kurucu) sayfasına
- * yazılır — tek sayfalık export bu sayede fazladan boş sayfa üretmez.
+ * Splits a canvas into A4 slices and appends them to an EXISTING jsPDF document.
+ * Page orientation may vary per page (`addPage('a4', orientation)`).
+ * If `skipFirstAddPage` is true, the first slice is written to the document's
+ * existing (constructor) page — preventing an extra blank page for single-page exports.
  */
 export function appendCanvasToPdf(
   pdf: jsPDF,
@@ -332,9 +336,10 @@ export function appendCanvasToPdf(
 }
 
 /**
- * Bir kaynak elementi ekran dışında klonlar, yönünü (dikey/yatay) içeriğe göre
- * çözer ve html2canvas ile tek bir canvas'a render eder. Kaynak başka bir
- * document'ten (iframe) gelebilir. Koyu tema render sırasında açık temaya çevrilir.
+ * Clones a source element off-screen, resolves its orientation (portrait/landscape)
+ * based on content, and renders it to a single canvas via html2canvas. The source
+ * may come from another document (e.g. an iframe). Dark theme is switched to
+ * light theme during rendering.
  */
 export async function captureElementToCanvas(
   source: HTMLElement,
@@ -347,7 +352,7 @@ export async function captureElementToCanvas(
   try {
     await waitForAssets(captureRoot)
 
-    // İçerik kaybı yasağı: kırpılma varsa yatay moda geç ve genişliği artır.
+    // No content loss rule: switch to landscape if clipping exists and increase width.
     const { orientation, width } = resolveLayout(captureRoot)
 
     const height = Math.ceil(captureRoot.scrollHeight)
@@ -360,7 +365,7 @@ export async function captureElementToCanvas(
       useCORS: true,
       logging: false,
       onclone: (clonedDoc: Document) => {
-        // Koyu temada bile baskı her zaman açık temada üretilir.
+        // Print is always rendered in light theme, even in dark mode.
         clonedDoc.documentElement.classList.remove('dark')
         clonedDoc.documentElement.style.colorScheme = 'light'
       },
@@ -373,24 +378,24 @@ export async function captureElementToCanvas(
 }
 
 export interface ExportPageToPdfOptions {
-  /** PDF başlığı ve dosya adı kaynağı — genellikle aktif breadcrumb. */
+  /** PDF title and file name source — typically the active breadcrumb. */
   title: string
 }
 
 /**
- * PowerPoint 16:9 geniş ekran slayt kanvası (mm) — 13.333 in × 7.5 in.
- * A4 kâğıt değil; sunum kanvası boyutu. 960 × 540 pt'ye denk gelir.
+ * PowerPoint 16:9 widescreen slide canvas (mm) — 13.333 in × 7.5 in.
+ * Not A4 paper; this is the presentation canvas size. Equals 960 × 540 pt.
  */
 const SLIDE_W_MM = 338.667
 const SLIDE_H_MM = 190.5
 const SLIDE_MARGIN = 10
 
 /**
- * Planlı (slayt) export: her `[data-pdf-slide]` bölümü kendi 16:9 sunum
- * slaytına yerleştirilir — A4 kâğıdı değil, PowerPoint kanvas boyutu. Her bölüm
- * tam olarak tek slayta sığdırılır (contain-fit + ortalanmış); içerik hiçbir
- * zaman kırpılmaz. Bölümler DOM sırasında işlenir; istenirse
- * `data-pdf-slide-order` ile sıra bozulmadan yeniden düzenlenebilir.
+ * Structured (slide) export: each `[data-pdf-slide]` section is placed on its
+ * own 16:9 presentation slide — not A4 paper, but a PowerPoint canvas size.
+ * Each section is contain-fitted and centered to exactly one slide; content is
+ * never clipped. Sections are processed in DOM order; optionally reordered via
+ * `data-pdf-slide-order` without breaking the sequence.
  */
 export async function exportSlidesToPdf({
   title,
@@ -399,7 +404,7 @@ export async function exportSlidesToPdf({
   title: string
   slides: HTMLElement[]
 }): Promise<void> {
-  if (slides.length === 0) throw new Error('Yakalanacak slayt bulunamadı')
+  if (slides.length === 0) throw new Error('No slides found to capture')
 
   const JsPDF = await loadJsPDF()
   const format: [number, number] = [SLIDE_W_MM, SLIDE_H_MM]
@@ -408,11 +413,11 @@ export async function exportSlidesToPdf({
   let pdf: jsPDF | null = null
 
   for (const slide of slides) {
-    // Yön (dikey/yatay) yakalamada içerik kırpılmasını önlemek için çözülür;
-    // slayta yerleştirme her koşulda 16:9 kanvasa contain-fit yapılır.
+    // Orientation (portrait/landscape) is resolved during capture to prevent
+    // content clipping; slide placement always uses contain-fit on the 16:9 canvas.
     const { canvas } = await captureElementToCanvas(slide)
 
-    // Bölümün tamamını slayta sığdır (en/boy oranını koru), sonra ortala.
+    // Contain-fit the entire section to the slide (preserve aspect ratio), then center.
     const fit = Math.min(areaW / canvas.width, areaH / canvas.height)
     const wMm = canvas.width * fit
     const hMm = canvas.height * fit
@@ -421,7 +426,7 @@ export async function exportSlidesToPdf({
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
 
     if (!pdf) {
-      // İlk slayt dokümanın kurucu sayfasına yazılır (fazladan boş sayfa olmaz).
+      // First slide is written to the document's constructor page (no extra blank page).
       pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format, compress: true })
       pdf.setProperties({ title })
     } else {
@@ -435,17 +440,18 @@ export async function exportSlidesToPdf({
 }
 
 /**
- * Aktif sayfanın içerik alanını A4 PDF olarak doğrudan indirir.
+ * Downloads the active page's content area as an A4 PDF.
  *
- * İki mod: sayfa bölümleri `data-pdf-slide` ile işaretlenmişse PLANLI (slayt)
- * mod devreye girer — her bölüm kendi sayfasında başlar. İşaret yoksa sayfa
- * tek sürekli akış olarak yakalanıp A4 sayfalarına bölünür (varsayılan).
+ * Two modes: if page sections are marked with `data-pdf-slide`, STRUCTURED
+ * (slide) mode is used — each section starts on its own page. If no markers
+ * exist, the page is captured as a single continuous flow and split into
+ * A4 pages (default).
  */
 export async function exportPageToPdf({ title }: ExportPageToPdfOptions): Promise<void> {
   const source = document.querySelector<HTMLElement>('main[role="content"]')
-  if (!source) throw new Error('Sayfa içerik alanı (main[role="content"]) bulunamadı')
+  if (!source) throw new Error('Page content area (main[role="content"]) not found')
 
-  // Planlı mod: bölüm başına slayt.
+  // Structured mode: one slide per section.
   const slideNodes = Array.from(source.querySelectorAll<HTMLElement>('[data-pdf-slide]')).filter(
     (el) => !el.closest('[data-pdf-exclude]'),
   )
@@ -457,7 +463,7 @@ export async function exportPageToPdf({ title }: ExportPageToPdfOptions): Promis
     return
   }
 
-  // Varsayılan: sürekli akış.
+  // Default: continuous flow.
   const { canvas, orientation } = await captureElementToCanvas(source)
 
   const JsPDF = await loadJsPDF()

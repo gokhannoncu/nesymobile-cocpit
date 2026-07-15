@@ -66,12 +66,12 @@ const phaseIcons: Record<string, typeof Bug> = {
 }
 
 const phaseLabels: Record<string, string> = {
-  symptom: 'Belirti',
-  cause: 'Neden',
-  fix: 'Çözüm',
-  why: 'Neden Böyle?',
-  state: 'Güncel Durum',
-  todo: 'Yapılacak',
+  symptom: 'Symptom',
+  cause: 'Cause',
+  fix: 'Fix',
+  why: 'Why?',
+  state: 'Current Status',
+  todo: 'To Do',
 }
 
 export default function TicketsPage() {
@@ -101,8 +101,8 @@ export default function TicketsPage() {
         eyebrow="Ticket Management"
         tone="purple"
         title="Ticket Board"
-        lead="Proje ticket'larını kanban, tablo ve analitik görünümlerinde takip edin."
-        chips={['Kanban', 'Tablo', 'Analitik']}
+        lead="Track project tickets in kanban, table, and analytics views."
+        chips={['Kanban', 'Table', 'Analytics']}
       >
         <StatGrid cols={4}>
           <StatCard label="Total" value={totalTickets} tone="purple" icon={KanbanSquare} />
@@ -123,12 +123,12 @@ export default function TicketsPage() {
           },
           {
             value: 'tablo',
-            label: 'Tablo Görünümü',
+            label: 'Table View',
             content: <TabloView onSelect={setSelectedTicket} />,
           },
           {
             value: 'analitik',
-            label: 'Analitik',
+            label: 'Analytics',
             content: <AnalyticsView />,
           },
         ]}
@@ -174,7 +174,7 @@ export default function TicketsPage() {
                     : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
-                Özet
+                Summary
               </button>
               <button
                 onClick={() => setDetailTab('kokneden')}
@@ -185,7 +185,7 @@ export default function TicketsPage() {
                     : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
-                Kök Neden
+                Root Cause
               </button>
             </div>
 
@@ -197,37 +197,37 @@ export default function TicketsPage() {
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Grup
+                        Group
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.group}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Ekran
+                        Screen
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.screen}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Ülke
+                        Country
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.country}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Tarih
+                        Date
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.date}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Tip
+                        Type
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.type}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Müşteri Ref
+                        Customer Ref
                       </span>
                       <p className="mt-0.5 font-medium">{selectedTicket.customer_ticket}</p>
                     </div>
@@ -235,7 +235,7 @@ export default function TicketsPage() {
                   {/* Summary */}
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                      Özet
+                      Summary
                     </h4>
                     <p className="text-sm leading-relaxed text-foreground/90">
                       {selectedTicket.summary}
@@ -292,7 +292,7 @@ export default function TicketsPage() {
                                     {phaseLabels[step.k] ?? step.k}
                                     {step.confidence != null && (
                                       <span className="ml-2 text-purple-600 dark:text-purple-400">
-                                        {step.confidence}% güven
+                                        {step.confidence}% confidence
                                       </span>
                                     )}
                                   </div>
@@ -308,7 +308,7 @@ export default function TicketsPage() {
                         <div className="space-y-2 mt-3">
                           <div className="rounded-lg border p-3 bg-muted/30">
                             <h4 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                              Rapor
+                              Report
                             </h4>
                             <p className="text-sm text-foreground/90">
                               {selectedTicket.analysis.report}
@@ -317,7 +317,7 @@ export default function TicketsPage() {
                           {selectedTicket.analysis.rootCause && (
                             <div className="rounded-lg border p-3 bg-muted/30">
                               <h4 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                                Kök Neden
+                                Root Cause
                               </h4>
                               <p className="text-sm text-foreground/90">
                                 {selectedTicket.analysis.rootCause}
@@ -327,7 +327,7 @@ export default function TicketsPage() {
                           {selectedTicket.analysis.fix && (
                             <div className="rounded-lg border p-3 bg-muted/30">
                               <h4 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                                Çözüm
+                                Fix
                               </h4>
                               <p className="text-sm text-foreground/90">
                                 {selectedTicket.analysis.fix}
@@ -337,7 +337,7 @@ export default function TicketsPage() {
                           {selectedTicket.analysis.verdict && (
                             <div className="rounded-lg border p-3 bg-muted/30">
                               <h4 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                                Karar
+                                Verdict
                               </h4>
                               <p className="text-sm text-foreground/90">
                                 {selectedTicket.analysis.verdict}
@@ -364,7 +364,7 @@ export default function TicketsPage() {
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground italic">
-                      Bu ticket için kök neden analizi henüz yapılmamış.
+                      Root cause analysis has not been completed for this ticket yet.
                     </p>
                   )}
                 </div>
@@ -501,7 +501,7 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Ticket ara..."
+            placeholder="Search tickets..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border bg-background pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30"
@@ -514,7 +514,7 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
           }
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">Tüm Severity</option>
+          <option value="">All Severities</option>
           <option value="Critical">Critical</option>
           <option value="High">High</option>
           <option value="Medium">Medium</option>
@@ -527,7 +527,7 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
           }
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">Tüm Durum</option>
+          <option value="">All Statuses</option>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
         </select>
@@ -536,7 +536,7 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
           onChange={(e) => setFilters((f) => ({ ...f, group: e.target.value || null }))}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">Tüm Gruplar</option>
+          <option value="">All Groups</option>
           {ALL_GROUPS.map((g) => (
             <option key={g} value={g}>
               {g}
@@ -551,19 +551,19 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
           <thead>
             <tr className="border-b bg-muted/50">
               <SortHeader col="id">#</SortHeader>
-              <SortHeader col="title">Başlık</SortHeader>
+              <SortHeader col="title">Title</SortHeader>
               <SortHeader col="severity">Severity</SortHeader>
               <th className="px-3 py-2.5 text-start text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Durum
+                Status
               </th>
-              <SortHeader col="group">Grup</SortHeader>
+              <SortHeader col="group">Group</SortHeader>
               <th className="px-3 py-2.5 text-start text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Ekran
+                Screen
               </th>
               <th className="px-3 py-2.5 text-start text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Ülke
+                Country
               </th>
-              <SortHeader col="date">Tarih</SortHeader>
+              <SortHeader col="date">Date</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -599,7 +599,7 @@ function TabloView({ onSelect }: { onSelect: (t: Ticket) => void }) {
         </table>
         {filtered.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
-            Sonuç bulunamadı.
+            No results found.
           </div>
         )}
       </div>
@@ -631,7 +631,7 @@ function AnalyticsView() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="rounded-xl border p-6 bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Gruplara Göre Ticket</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">Tickets by Group</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={groupData} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
@@ -657,7 +657,7 @@ function AnalyticsView() {
         </ResponsiveContainer>
       </div>
       <div className="rounded-xl border p-6 bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Açık / Kapalı Dağılımı</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">Open / Closed Distribution</h3>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie
