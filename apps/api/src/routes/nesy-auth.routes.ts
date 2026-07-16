@@ -67,6 +67,7 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
             Password: password,
             CaptchaToken: null,
           }),
+          signal: AbortSignal.timeout(25_000),
         })
 
         const result = await nesyResponse.json()

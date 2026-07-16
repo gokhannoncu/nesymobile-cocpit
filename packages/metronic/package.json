@@ -26,6 +26,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "@tanstack/react-table": "^8.21.3",
     "framer-motion": "^12.23.12",
     "html2canvas-pro": "^2.2.1",
     "jspdf": "^4.2.1",

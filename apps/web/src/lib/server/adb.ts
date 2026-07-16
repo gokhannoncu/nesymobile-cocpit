@@ -7,10 +7,10 @@
 
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { homedir, tmpdir } from 'node:os'
-import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { resolveAdbPath, resolveSqlitePath } from '@/lib/server/adb-path'
 import type {
   ConnectedDevice,
   DeviceStatus,
@@ -60,20 +60,7 @@ const PING_TARGET = '8.8.8.8'
 // adb binary resolution + exec
 // ---------------------------------------------------------------------------
 
-let cachedAdbPath: string | null | undefined
-
-export function resolveAdbPath(): string | null {
-  if (cachedAdbPath !== undefined) return cachedAdbPath
-  const candidates = [
-    process.env.ADB_PATH,
-    `${homedir()}/Library/Android/sdk/platform-tools/adb`,
-    '/opt/homebrew/bin/adb',
-    '/usr/local/bin/adb',
-    '/usr/bin/adb',
-  ].filter((p): p is string => Boolean(p))
-  cachedAdbPath = candidates.find((p) => existsSync(p)) ?? null
-  return cachedAdbPath
-}
+export { resolveAdbPath } from '@/lib/server/adb-path'
 
 async function adb(args: string[], timeoutMs = 10_000): Promise<string> {
   const bin = resolveAdbPath()
@@ -697,20 +684,6 @@ const DATABASE_TABLE_DESCRIPTIONS: Record<string, string> = {
   request: 'Offline request queue waiting to be sent',
   schedule: 'Active schedule payload',
   schedulestopchunk: 'Chunked schedule/stop payloads',
-}
-
-let cachedSqlitePath: string | null | undefined
-
-function resolveSqlitePath(): string | null {
-  if (cachedSqlitePath !== undefined) return cachedSqlitePath
-  const candidates = [
-    process.env.SQLITE3_PATH,
-    '/usr/bin/sqlite3',
-    '/opt/homebrew/bin/sqlite3',
-    '/usr/local/bin/sqlite3',
-  ].filter((p): p is string => Boolean(p))
-  cachedSqlitePath = candidates.find((p) => existsSync(p)) ?? null
-  return cachedSqlitePath
 }
 
 async function sqlite(databasePath: string, sql: string, json = false): Promise<string> {

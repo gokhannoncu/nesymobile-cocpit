@@ -1,5 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import express from 'express'
+import fastifyExpress from '@fastify/express'
 import {
   serializerCompiler,
   validatorCompiler,
@@ -9,6 +11,8 @@ import type { Env } from './env.js'
 import { healthRoutes } from './routes/health.routes.js'
 import { nesyAuthRoutes } from './routes/nesy-auth.routes.js'
 import { nesyEnvRoutes } from './routes/nesy-env.routes.js'
+import shipmentsRouter from './legacy/shipments.router.js'
+import customersRouter from './legacy/customers.router.js'
 import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
 
 export type AppContext = {
@@ -36,6 +40,10 @@ export async function buildApp(env: Env) {
   await app.register(healthRoutes)
   await app.register(nesyAuthRoutes, { prefix: '/api/nesy/auth' })
   await app.register(nesyEnvRoutes, { prefix: '/api/nesy' })
+
+  await app.register(fastifyExpress)
+  app.use('/api/shipments', express.json(), shipmentsRouter)
+  app.use('/api/customers', express.json(), customersRouter)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
 

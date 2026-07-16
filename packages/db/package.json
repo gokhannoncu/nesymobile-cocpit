@@ -1,0 +1,34 @@
+{
+  "name": "@nesy/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema": "./prisma/schema.prisma"
+  },
+  "scripts": {
+    "prebuild": "prisma generate",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "predev": "prisma generate",
+    "dev": "tsup src/index.ts --watch --format esm,cjs --dts",
+    "lint": "eslint \"src/**/*.ts\"",
+    "generate": "prisma generate",
+    "db:push": "prisma db push",
+    "migrate:dev": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  },
+  "devDependencies": {
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "@types/node": "^22.10.10",
+    "prisma": "^6.1.0",
+    "tsup": "^8.3.5"
+  }
+}

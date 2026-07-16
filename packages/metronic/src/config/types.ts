@@ -17,6 +17,8 @@ export interface MenuItem {
   expandTitle?: string;
   badge?: string;
   separator?: boolean;
+  /** When true, sidebar link stays disabled until Nesy dashboard auth is connected. */
+  requiresNesyAuth?: boolean;
 }
 
 export type MenuConfig = MenuItem[];

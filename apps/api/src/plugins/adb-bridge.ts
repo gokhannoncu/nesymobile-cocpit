@@ -1,22 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
 import type { AppSocketServer } from './socket.js'
-
-let cachedAdbPath: string | null | undefined
-
-function resolveAdbPath(): string | null {
-  if (cachedAdbPath !== undefined) return cachedAdbPath
-  const candidates = [
-    process.env.ADB_PATH,
-    `${homedir()}/Library/Android/sdk/platform-tools/adb`,
-    '/opt/homebrew/bin/adb',
-    '/usr/local/bin/adb',
-    '/usr/bin/adb',
-  ].filter((p): p is string => Boolean(p))
-  cachedAdbPath = candidates.find((p) => existsSync(p)) ?? null
-  return cachedAdbPath
-}
 
 function attachSpawnErrorHandler(proc: ChildProcess, label: string) {
   proc.on('error', (err) => {
@@ -27,13 +11,11 @@ function attachSpawnErrorHandler(proc: ChildProcess, label: string) {
 export function startAdbBridge(io: AppSocketServer) {
   const adbPath = resolveAdbPath()
   if (!adbPath) {
-    console.warn(
-      '[ADB Bridge] adb binary not found — logcat listener disabled (set ADB_PATH or install Android platform-tools)',
-    )
+    console.warn(`[ADB Bridge] adb binary not found — logcat listener disabled (${getAdbPathHint()})`)
     return
   }
 
-  console.log('[ADB Bridge] Starting logcat listener...')
+  console.log(`[ADB Bridge] Starting logcat listener (${adbPath})...`)
 
   // NOTE: never run `logcat -c`. Clearing the ring buffer here would wipe the
   // shared device history that Device Log Explorer's buffer/backfill queries

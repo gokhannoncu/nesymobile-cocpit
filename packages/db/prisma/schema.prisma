@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AutomationRun {
+  id          String   @id @default(cuid())
+  variantName String
+  status      String
+  createdAt   DateTime @default(now())
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Shipment {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  unloadStatus String   @default("Pending")
+  country      String?
+  environment  String?
+  data         Json
+
+  @@index([country, environment, createdAt])
+}
+
+model Pickup {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+  pickupType      String   @default("remote")
+  shipmentId      String
+  assignStatus    String   @default("Pending")
+  taskId          String?
+  branchId        String?
+  courierZoneCode String?
+  country         String?
+  environment     String?
+  data            Json
+
+  @@index([country, environment, createdAt])
+}
+
+/// Ops / Auth: Nesy kullanıcı ekranından kaydedilen kurye cüzdanı (PIN + hub)
+model CourierWallet {
+  id          String @id @default(cuid())
+  username    String
+  password    String /// 4 haneli PIN (Auth sayfasına doldurulur — iç ağı önerilir)
+  hubName     String
+  hubId       String @default("")
+  country     String @default("HR")
+  environment String @default("stage")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([username, hubId, country, environment])
+  @@map("courier_wallets")
+}
+
+model MobileDevice {
+  id          String   @id @default(cuid())
+  deviceId    String   @unique
+  adbDeviceId String?
+  modelName   String
+  product     String?
+  transportId String?
+  label       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([modelName])
+  @@map("mobile_devices")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workflow Automation Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Workflow {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  description      String?
+  status           String   @default("draft")
+  category         String?
+  icon             String   @default("Workflow")
+  iconClassName    String   @default("")
+  currentVersionId String?
+  draftNodes       Json?
+  draftEdges       Json?
+  draftConfig      Json?
+  draftBaseVersionId String?
+  draftUpdatedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions WorkflowVersion[]
+  runs     WorkflowRun[]
+
+  @@index([status])
+  @@index([slug])
+  @@map("workflows")
+}
+
+model WorkflowVersion {
+  id         String   @id @default(cuid())
+  workflowId String
+  version    Int
+  nodes      Json
+  edges      Json
+  config     Json?
+  changelog  String?
+
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  runs     WorkflowRun[]
+
+  @@unique([workflowId, version])
+  @@index([workflowId])
+  @@map("workflow_versions")
+}
+
+model WorkflowRun {
+  id           String  @id @default(cuid())
+  workflowId   String
+  versionId    String
+  status       String  @default("pending")
+  mode         String  @default("full")
+  targetStepId String?
+  deviceId     String?
+  country      String?
+  environment  String?
+
+  yamlContent   String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  duration      Int?
+  screenshotDir String?
+  maestroOutput String?
+
+  createdAt DateTime @default(now())
+
+  workflow    Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version    WorkflowVersion  @relation(fields: [versionId], references: [id])
+  stepResults WorkflowStepResult[]
+
+  @@index([workflowId, createdAt])
+  @@index([status])
+  @@map("workflow_runs")
+}
+
+model WorkflowStepResult {
+  id             String    @id @default(cuid())
+  runId          String
+  nodeId         String
+  nodeType       String
+  nodeTitle      String
+  order          Int
+  status         String    @default("pending")
+  output         String?
+  errorMessage   String?
+  screenshotPath String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  duration       Int?
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, order])
+  @@map("workflow_step_results")
+}

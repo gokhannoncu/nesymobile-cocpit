@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server'
 import { listConnectedDevices, resolveAdbPath } from '@/lib/server/adb'
+import { getAdbResolutionHint } from '@/lib/server/adb-path'
 import type { AdbDevicesResponse } from '@/data/debug-view/live-types'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export async function GET() {
     return NextResponse.json<AdbDevicesResponse>({
       adbAvailable: false,
       adbPath: null,
-      error: 'adb binary not found. Install Android platform-tools or set ADB_PATH env variable.',
+      error: `adb binary not found. ${getAdbResolutionHint()}.`,
       devices: [],
     })
   }

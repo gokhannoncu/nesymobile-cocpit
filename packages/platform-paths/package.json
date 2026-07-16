@@ -1,0 +1,25 @@
+{
+  "name": "@nesy/platform-paths",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Platform-specific binary path resolution (adb, sqlite3, …)",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "@types/node": "^22.10.10",
+    "eslint": "^9.39.1",
+    "typescript": "^5.8.3"
+  }
+}

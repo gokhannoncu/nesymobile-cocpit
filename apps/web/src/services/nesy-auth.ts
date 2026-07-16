@@ -61,6 +61,7 @@ export async function loginNesyDashboard(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ country, environment }),
+    signal: AbortSignal.timeout(30_000),
   })
 
   const json = await response.json()

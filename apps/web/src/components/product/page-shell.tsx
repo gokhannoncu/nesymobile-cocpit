@@ -46,7 +46,7 @@ export function ProductPage({
           <ToolbarHeading>
             <ToolbarPageTitle>{item?.title ?? title ?? 'Product'}</ToolbarPageTitle>
           </ToolbarHeading>
-          {isGroupOverview && (
+          {isGroupOverview && workspace.id !== 'data-center' && (
             <div className="flex items-center gap-2">
               <GroupPdfButton workspace={workspace} />
             </div>

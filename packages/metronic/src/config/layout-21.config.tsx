@@ -21,8 +21,9 @@ import {
   KanbanSquare,
   Layers,
   LayoutDashboard,
-  LineChart,
   ListTodo,
+  PackagePlus,
+  Plug,
   Map,
   MapPin,
   MonitorSmartphone,
@@ -43,10 +44,16 @@ import {
   Terminal,
   Target,
   Ticket,
+  Truck,
   Users,
   Wifi,
   Zap,
 } from 'lucide-react'
+
+export const DATA_CENTER_CONNECTION_PATH = '/data-center/connection' as const
+export const DATA_CENTER_SHIPMENT_PATH = '/data-center/shipment' as const
+export const DATA_CENTER_PICKUP_PATH = '/data-center/pickup' as const
+export const DATA_CENTER_HAPPY_PATH_PATH = '/data-center/happy-path' as const
 
 // Single source of truth for the cockpit navigation.
 // The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
@@ -375,6 +382,50 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Device Log Explorer',
                 path: '/debug-view/log-explorer',
                 icon: ScrollText,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'data-center',
+    label: 'Data Center',
+    icon: Database,
+    className: 'border-white bg-indigo-500 hover:bg-indigo-600 text-white hover:text-white',
+    path: DATA_CENTER_CONNECTION_PATH,
+    basePaths: ['/data-center'],
+    menu: [
+      {
+        title: 'Data Center',
+        children: [
+          {
+            title: 'Connection',
+            path: DATA_CENTER_CONNECTION_PATH,
+            icon: Plug,
+          },
+          {
+            title: 'Management',
+            icon: Truck,
+            children: [
+              {
+                title: 'Shipment Operations',
+                path: DATA_CENTER_SHIPMENT_PATH,
+                icon: Truck,
+                requiresNesyAuth: true,
+              },
+              {
+                title: 'Pickup Operations',
+                path: DATA_CENTER_PICKUP_PATH,
+                icon: Calendar,
+                requiresNesyAuth: true,
+              },
+              {
+                title: 'Happy Path Operations',
+                path: DATA_CENTER_HAPPY_PATH_PATH,
+                icon: PackagePlus,
+                requiresNesyAuth: true,
               },
             ],
           },
