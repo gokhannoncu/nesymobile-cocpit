@@ -11,6 +11,7 @@ import {
   formatDateOnly,
 } from "../nesy-env.js";
 import { extractShipmentIdFromNesySaveResponse, isNesyResultOk } from "./nesy-save-response.js";
+import { loadHappyPathLinkedRecordIds } from "./happy-path-list-exclusions.js";
 
 const router: RouterType = Router();
 
@@ -840,7 +841,13 @@ router.get("/:id/nesy-url", async (req, res) => {
   }
 });
 
-router.delete("/bulk", async (req, res) => {
+async function handlePickupBulkDelete(
+  req: { body: unknown },
+  res: {
+    status: (code: number) => { json: (body: unknown) => void };
+    json: (body: unknown) => void;
+  },
+) {
   try {
     const { ids } = req.body as { ids?: string[] };
 
@@ -860,18 +867,30 @@ router.delete("/bulk", async (req, res) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
-});
+}
+
+router.delete("/bulk", (req, res) => void handlePickupBulkDelete(req, res));
+router.post("/bulk/delete", (req, res) => void handlePickupBulkDelete(req, res));
 
 router.get("/", async (req, res) => {
   try {
     const country = typeof req.query.country === "string" ? req.query.country : undefined;
     const environment =
       typeof req.query.environment === "string" ? req.query.environment : undefined;
-    const where: Prisma.PickupWhereInput | undefined =
-      country && environment ? { country, environment } : undefined;
+
+    const { pickupIds: happyPathPickupIds } = await loadHappyPathLinkedRecordIds();
+
+    const where: Prisma.PickupWhereInput = {};
+    if (country && environment) {
+      where.country = country;
+      where.environment = environment;
+    }
+    if (happyPathPickupIds.length > 0) {
+      where.id = { notIn: happyPathPickupIds };
+    }
 
     const pickups = await prisma.pickup.findMany({
-      ...(where ? { where } : {}),
+      ...(Object.keys(where).length > 0 ? { where } : {}),
       orderBy: { createdAt: "desc" },
     });
     res.json({ data: pickups });

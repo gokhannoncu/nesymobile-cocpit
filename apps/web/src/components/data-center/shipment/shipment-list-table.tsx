@@ -185,6 +185,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
   });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState("Could not load shipments");
 
   const filterEnvironments = useMemo(
     () => [...NESY_DASHBOARD_COUNTRY_ENVIRONMENTS[filterCountry]],
@@ -211,6 +212,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
   const loadShipments = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setErrorTitle("Could not load shipments");
     try {
       const records = await fetchShipments({
         country: filterCountry,
@@ -237,6 +239,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
     async function syncAndReload() {
       setLoading(true);
       setLoadError(null);
+      setErrorTitle("Could not refresh shipments");
       try {
         if (!token || authStatus !== "connected") {
           throw new Error("Refresh requires an active Nesy connection.");
@@ -281,26 +284,31 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
     );
   }, [searchQuery, data]);
 
-  const selectedShipmentIds = useMemo(
-    () =>
-      Object.keys(rowSelection)
-        .map(Number)
-        .map((idx) => filteredData[idx]?.id)
-        .filter(Boolean) as string[],
-    [rowSelection, filteredData]
-  );
+  const selectedShipmentIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((rowId) => rowSelection[rowId]);
+  }, [rowSelection]);
   const selectedRowCount = selectedShipmentIds.length;
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedShipmentIds.length === 0) return;
 
     setDeleting(true);
+    setLoadError(null);
+    setErrorTitle("Could not delete shipments");
     try {
-      await deleteShipments(selectedShipmentIds);
+      const deleted = await deleteShipments(selectedShipmentIds);
+      if (deleted === 0) {
+        setLoadError(
+          "No shipments were deleted. Refresh the list and try again.",
+        );
+        return;
+      }
       setRowSelection({});
       await loadShipments();
-    } catch {
-      // silently handle
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "Could not delete shipments.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -533,6 +541,8 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
     state: { pagination, rowSelection },
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
@@ -555,7 +565,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
         {loadError && (
           <div className="px-3.5 pt-3.5">
             <Alert variant="destructive">
-              <AlertTitle>Could not load shipments</AlertTitle>
+              <AlertTitle>{errorTitle}</AlertTitle>
               <AlertDescription className="text-balance break-words whitespace-pre-wrap">
                 {loadError}
               </AlertDescription>
@@ -626,7 +636,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={handleBulkDelete}
+                  onClick={() => void handleBulkDelete()}
                   disabled={deleting}
                 >
                   <Trash2 className="size-4 me-1" />

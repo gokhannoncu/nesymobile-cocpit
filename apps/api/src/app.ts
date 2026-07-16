@@ -14,6 +14,7 @@ import { nesyEnvRoutes } from './routes/nesy-env.routes.js'
 import shipmentsRouter from './legacy/shipments.router.js'
 import customersRouter from './legacy/customers.router.js'
 import pickupsRouter from './legacy/pickups.router.js'
+import happyPathRouter from './legacy/happy-path.router.js'
 import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
 
 export type AppContext = {
@@ -36,6 +37,8 @@ export async function buildApp(env: Env) {
 
   await app.register(cors, {
     origin: env.CORS_ORIGIN,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
   await app.register(healthRoutes)
@@ -50,7 +53,8 @@ export async function buildApp(env: Env) {
     if (
       path.startsWith('/api/shipments') ||
       path.startsWith('/api/customers') ||
-      path.startsWith('/api/pickups')
+      path.startsWith('/api/pickups') ||
+      path.startsWith('/api/happy-path')
     ) {
       return express.json()(req, res, next)
     }
@@ -59,6 +63,7 @@ export async function buildApp(env: Env) {
   dataCenterApi.use('/api/shipments', shipmentsRouter)
   dataCenterApi.use('/api/customers', customersRouter)
   dataCenterApi.use('/api/pickups', pickupsRouter)
+  dataCenterApi.use('/api/happy-path/pools', happyPathRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)

@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { formatApiNetworkError } from "@/services/api-errors";
 import type { BffCustomerPayload } from "@/services/customer";
 
 export interface PickupRecord {
@@ -77,11 +78,16 @@ export async function assignPickup(params: {
 }
 
 export async function deletePickups(ids: string[]): Promise<number> {
-  const res = await fetch(`${API_BASE}/pickups/bulk`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/pickups/bulk/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Delete failed."));
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -101,8 +107,19 @@ export async function fetchPickups(scope?: PickupScope): Promise<PickupRecord[]>
     params.set("environment", scope.environment);
   }
   const query = params.toString();
-  const res = await fetch(`${API_BASE}/pickups${query ? `?${query}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch pickups");
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/pickups${query ? `?${query}` : ""}`);
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Failed to load pickups."));
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { message?: string }).message ??
+        `Failed to load pickups (${res.status})`,
+    );
+  }
   const json = (await res.json()) as { data: PickupRecord[] };
   return json.data;
 }

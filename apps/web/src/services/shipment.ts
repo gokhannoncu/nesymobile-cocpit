@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { formatApiNetworkError } from "@/services/api-errors";
 import type { BffCustomerPayload } from "@/services/customer";
 import type { BffCreateShipmentParties } from "@/lib/nesy-shipment-parties";
 
@@ -78,11 +79,16 @@ export async function unloadParcel(params: {
 }
 
 export async function deleteShipments(ids: string[]): Promise<number> {
-  const res = await fetch(`${API_BASE}/shipments/bulk`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/shipments/bulk/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Delete failed."));
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -100,11 +106,16 @@ export async function refreshShipmentLastEvents(params: {
   country: string;
   environment: string;
 }): Promise<{ total: number; updated: number; failed: number }> {
-  const res = await fetch(`${API_BASE}/shipments/refresh-last-events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/shipments/refresh-last-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Refresh failed."));
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -125,7 +136,12 @@ export async function fetchShipments(scope?: ShipmentScope): Promise<ShipmentRec
     params.set("environment", scope.environment);
   }
   const query = params.toString();
-  const res = await fetch(`${API_BASE}/shipments${query ? `?${query}` : ""}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/shipments${query ? `?${query}` : ""}`);
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Failed to load shipments."));
+  }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as {
       message?: string;

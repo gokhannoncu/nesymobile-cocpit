@@ -18,6 +18,7 @@ import {
   extractNesyShipmentId,
   resolveLatestEventLabel,
 } from "./nesy-last-event.js";
+import { loadHappyPathLinkedRecordIds } from "./happy-path-list-exclusions.js";
 
 const router: RouterType = Router();
 
@@ -1312,7 +1313,13 @@ router.get("/:id/nesy-url", async (req, res) => {
 });
 
 // ─── DELETE /bulk ───────────────────────────────────────────────
-router.delete("/bulk", async (req, res) => {
+async function handleShipmentBulkDelete(
+  req: { body: unknown },
+  res: {
+    status: (code: number) => { json: (body: unknown) => void };
+    json: (body: unknown) => void;
+  },
+) {
   try {
     const { ids } = req.body as { ids?: string[] };
 
@@ -1332,7 +1339,10 @@ router.delete("/bulk", async (req, res) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
-});
+}
+
+router.delete("/bulk", (req, res) => void handleShipmentBulkDelete(req, res));
+router.post("/bulk/delete", (req, res) => void handleShipmentBulkDelete(req, res));
 
 router.post("/refresh-last-events", async (req, res) => {
   try {
@@ -1435,11 +1445,20 @@ router.get("/", async (req, res) => {
     const country = typeof req.query.country === "string" ? req.query.country : undefined;
     const environment =
       typeof req.query.environment === "string" ? req.query.environment : undefined;
-    const where: Prisma.ShipmentWhereInput | undefined =
-      country && environment ? { country, environment } : undefined;
+
+    const { shipmentIds: happyPathShipmentIds } = await loadHappyPathLinkedRecordIds();
+
+    const where: Prisma.ShipmentWhereInput = {};
+    if (country && environment) {
+      where.country = country;
+      where.environment = environment;
+    }
+    if (happyPathShipmentIds.length > 0) {
+      where.id = { notIn: happyPathShipmentIds };
+    }
 
     const shipments = await prisma.shipment.findMany({
-      ...(where ? { where } : {}),
+      ...(Object.keys(where).length > 0 ? { where } : {}),
       orderBy: { createdAt: "desc" },
     });
     res.json({ data: shipments });

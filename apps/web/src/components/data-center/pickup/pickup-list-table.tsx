@@ -137,6 +137,7 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState("Pickup list error");
   const [openingNesyId, setOpeningNesyId] = useState<string | null>(null);
   const [selectedPickup, setSelectedPickup] = useState<PickupRecord | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -175,6 +176,7 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
   const loadPickups = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setErrorTitle("Pickup list error");
     try {
       const records = await fetchPickups({
         country: filterCountry,
@@ -184,6 +186,7 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
     } catch (e) {
       setData([]);
       setLoadError(e instanceof Error ? e.message : "Failed to load pickups.");
+      setErrorTitle("Pickup list error");
     } finally {
       setLoading(false);
     }
@@ -193,7 +196,10 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
     loadPickups();
   }, [loadPickups, refreshKey]);
 
-  const selectedRowCount = Object.keys(rowSelection).length;
+  const selectedPickupIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((rowId) => rowSelection[rowId]);
+  }, [rowSelection]);
+  const selectedRowCount = selectedPickupIds.length;
 
   const filteredData = useMemo(() => {
     if (!searchQuery) return data;
@@ -208,16 +214,19 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
   }, [searchQuery, data]);
 
   const handleBulkDelete = useCallback(async () => {
-    const selectedIndices = Object.keys(rowSelection).map(Number);
-    const selectedIds = selectedIndices
-      .map((idx) => filteredData[idx]?.id)
-      .filter(Boolean) as string[];
-
-    if (selectedIds.length === 0) return;
+    if (selectedPickupIds.length === 0) return;
 
     setDeleting(true);
+    setLoadError(null);
+    setErrorTitle("Could not delete pickups");
     try {
-      await deletePickups(selectedIds);
+      const deleted = await deletePickups(selectedPickupIds);
+      if (deleted === 0) {
+        setLoadError(
+          "No pickups were deleted. Refresh the list and try again.",
+        );
+        return;
+      }
       setRowSelection({});
       await loadPickups();
     } catch (e) {
@@ -225,7 +234,7 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
     } finally {
       setDeleting(false);
     }
-  }, [rowSelection, loadPickups, filteredData]);
+  }, [selectedPickupIds, loadPickups]);
 
   function openAssignDialog(record: PickupRecord) {
     setAssignTarget(record);
@@ -372,6 +381,8 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
     state: { pagination, rowSelection },
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
@@ -380,7 +391,7 @@ export function PickupListTable({ refreshKey }: { refreshKey?: number }) {
     <>
       {loadError ? (
         <Alert variant="destructive">
-          <AlertTitle>Pickup list error</AlertTitle>
+          <AlertTitle>{errorTitle}</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       ) : null}

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Check,
   Loader2,
@@ -115,7 +122,7 @@ function SelectionRadio({ selected }: { selected: boolean }) {
       className={cn(
         "flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
         selected
-          ? "border-nesy bg-nesy-soft0"
+          ? "border-nesy bg-nesy"
           : "border-input bg-background",
       )}
       aria-hidden
@@ -128,7 +135,7 @@ function SelectionRadio({ selected }: { selected: boolean }) {
 function SelectionCheckIcon() {
   return (
     <span
-      className="flex size-5 shrink-0 items-center justify-center rounded-full bg-nesy-soft0 text-white"
+      className="flex size-5 shrink-0 items-center justify-center rounded-full bg-nesy text-white"
       aria-hidden
     >
       <Check className="size-3 stroke-[2.5]" />
@@ -202,12 +209,25 @@ export function SelectCustomerAddressDialog({
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingCustomerId, setLoadingCustomerId] = useState<string | null>(null);
 
+  const selectedCustomerRowRef = useRef(selectedCustomerRow);
+  selectedCustomerRowRef.current = selectedCustomerRow;
+
   const selectedCustomerId = selectedCustomerRow
     ? pickRowIdString(selectedCustomerRow)
     : null;
 
+  const hasActiveSelection =
+    !!selectedCustomerRow && addresses.length > 0;
+
   const showSelectionLists =
-    isConnected && debouncedQuery.trim().length >= MIN_SEARCH_LENGTH;
+    isConnected &&
+    (debouncedQuery.trim().length >= MIN_SEARCH_LENGTH || hasActiveSelection);
+
+  const customerRowsToShow = useMemo(() => {
+    if (searchResults.length > 0) return searchResults;
+    if (selectedCustomerRow) return [selectedCustomerRow];
+    return [];
+  }, [searchResults, selectedCustomerRow]);
 
   useEffect(() => {
     if (!open) return;
@@ -245,7 +265,9 @@ export function SelectCustomerAddressDialog({
     if (!open || !isConnected || !token) return;
 
     if (debouncedQuery.length < MIN_SEARCH_LENGTH) {
-      setSearchResults([]);
+      if (!selectedCustomerRowRef.current) {
+        setSearchResults([]);
+      }
       setSearchError(null);
       setSearchLoading(false);
       return;
@@ -437,10 +459,7 @@ export function SelectCustomerAddressDialog({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    setTab(item.id);
-                    if (item.id === "settings") setQuery("");
-                  }}
+                  onClick={() => setTab(item.id)}
                   className={cn(
                     "-mb-px border-b-2 pb-2.5 text-sm font-medium transition-colors",
                     tab === item.id
@@ -482,8 +501,8 @@ export function SelectCustomerAddressDialog({
                           <Loader2 className="size-4 animate-spin" />
                           Searching…
                         </div>
-                      ) : searchResults.length > 0 ? (
-                        searchResults.map((row, index) => {
+                      ) : customerRowsToShow.length > 0 ? (
+                        customerRowsToShow.map((row, index) => {
                           const customerId = pickRowIdString(row);
                           const selected = customerId === selectedCustomerId;
                           const busy = loadingCustomerId === customerId;

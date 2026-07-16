@@ -62,6 +62,12 @@ import {
   type ShipmentSettings,
 } from "@/lib/happy-path/shipment-group-settings";
 import { useNesyAuth } from "@/contexts/nesy-auth-context";
+import {
+  createHappyPathPool,
+  buildHappyPathPoolName,
+  jobsToPoolEntries,
+  resolvePoolStatusFromJobs,
+} from "@/services/happy-path";
 import { cn } from "@nesy/metronic/lib/utils";
 
 /* ---------------------------------- Data ---------------------------------- */
@@ -307,6 +313,11 @@ const RECOMMENDED_GROUPS: RecommendedGroup[] = [
 
 type AssignmentMode = "one" | "recommended" | "custom";
 
+export type CreateSetReconfigureSeed = {
+  includedTypeIds: string[];
+  assignmentMode: AssignmentMode;
+};
+
 function isCustomerAssignmentComplete(
   assignment?: CustomerAssignmentSelection | null,
 ): boolean {
@@ -415,12 +426,14 @@ interface CreateSetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  reconfigureSeed?: CreateSetReconfigureSeed | null;
 }
 
 export function CreateSetDialog({
   open,
   onOpenChange,
   onCreated,
+  reconfigureSeed,
 }: CreateSetDialogProps) {
   const [mode, setMode] = useState<AssignmentMode>("one");
   const { token, country, environment, status: authStatus } = useNesyAuth();
@@ -449,8 +462,20 @@ export function CreateSetDialog({
     wasOpenRef.current = open;
     if (!justOpened) return;
 
-    setMode("one");
-    setIncludedTypeIds(createIncludedTypeSet(country));
+    if (reconfigureSeed) {
+      setMode(reconfigureSeed.assignmentMode);
+      const seeded = syncPacDdefTypeIds(
+        new Set(
+          reconfigureSeed.includedTypeIds.filter((id) =>
+            isTypeAvailableForCountry(id, country),
+          ),
+        ),
+      );
+      setIncludedTypeIds(seeded);
+    } else {
+      setMode("one");
+      setIncludedTypeIds(createIncludedTypeSet(country));
+    }
     setCustomerAssignments({});
     setSettingsMap({});
     setOneCustomerSearchQuery("");
@@ -461,7 +486,7 @@ export function CreateSetDialog({
     setGenerationOpen(false);
     setGenerationRunning(false);
     setGenerationIndex(0);
-  }, [open, country]);
+  }, [open, country, reconfigureSeed]);
 
   useEffect(() => {
     if (!open) return;
@@ -670,6 +695,27 @@ export function CreateSetDialog({
     }
 
     setGenerationRunning(false);
+
+    try {
+      const finalJobs = updatedJobs;
+      const successCount = finalJobs.filter((j) => j.status === "success").length;
+      await createHappyPathPool({
+        name: buildHappyPathPoolName(country, environment),
+        country,
+        environment,
+        status: resolvePoolStatusFromJobs(finalJobs),
+        shipmentCount: successCount,
+        assignmentMode: mode,
+        meta: {
+          includedTypeIds: [...includedTypeIds],
+          assignmentMode: mode,
+        },
+        entries: jobsToPoolEntries(finalJobs),
+      });
+    } catch (poolError) {
+      console.error("Happy path pool save failed:", poolError);
+    }
+
     onCreated?.();
   }
 

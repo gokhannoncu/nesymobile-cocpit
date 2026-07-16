@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -40,22 +40,40 @@ import {
   type NesyDashboardToolbarCountry,
   type NesyEnvironment,
 } from "@/services/nesy-auth";
-interface HappyPathSet {
-  id: string;
-  name: string;
-  country: string;
-  environment: string;
-  shipmentCount: number;
-  status: "Completed" | "Generating" | "Failed" | "Draft";
-  createdDate: string;
-}
+import { useNesyAuth } from "@/contexts/nesy-auth-context";
+import {
+  deleteHappyPathPool,
+  fetchHappyPathPools,
+  type HappyPathPoolListItem,
+} from "@/services/happy-path";
+import { Alert, AlertDescription, AlertTitle } from "@nesy/metronic/components/ui/alert";
+import { Skeleton } from "@nesy/metronic/components/ui/skeleton";
+import { HappyPathEditDialog } from "./happy-path-edit-dialog";
+import { HappyPathViewDialog } from "./happy-path-view-dialog";
+import type { CreateSetReconfigureSeed } from "./create-set-dialog";
+
+type HappyPathSet = HappyPathPoolListItem;
 
 const DEFAULT_FILTER_COUNTRY: NesyDashboardToolbarCountry = "HR";
 const DEFAULT_FILTER_ENVIRONMENT = "STAGE";
 
-const HARDCODED_SETS: HappyPathSet[] = [];
-
 const HAPPY_PATH_ENVIRONMENTS = ["STAGE", "TEST", "PROD"] as const;
+
+const nameSkeleton = (
+  <div className="space-y-1.5">
+    <Skeleton className="h-4 w-4/5" />
+    <Skeleton className="h-3 w-1/2" />
+  </div>
+);
+const textSkeleton = <Skeleton className="h-4 w-full" />;
+const badgeSkeleton = <Skeleton className="h-6 w-20" />;
+const actionsSkeleton = (
+  <div className="flex items-center gap-2">
+    <Skeleton className="h-8 w-14" />
+    <Skeleton className="h-8 w-14" />
+    <Skeleton className="h-8 w-16" />
+  </div>
+);
 
 function getEnvironmentsForCountry(country: NesyDashboardToolbarCountry) {
   const nesyEnvironments = NESY_DASHBOARD_COUNTRY_ENVIRONMENTS[
@@ -192,10 +210,13 @@ function HappyPathEmptyView({ onCreateSet }: { onCreateSet?: () => void }) {
 export function HappyPathListTable({
   refreshKey,
   onCreateSet,
+  onReconfigure,
 }: {
   refreshKey?: number;
   onCreateSet?: () => void;
+  onReconfigure?: (seed: CreateSetReconfigureSeed) => void;
 }) {
+  const { country: authCountry, environment: authEnvironment } = useNesyAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCountry, setFilterCountry] = useState<NesyDashboardToolbarCountry>(
     DEFAULT_FILTER_COUNTRY,
@@ -203,24 +224,85 @@ export function HappyPathListTable({
   const [filterEnvironment, setFilterEnvironment] = useState<string>(
     DEFAULT_FILTER_ENVIRONMENT,
   );
+  const [sets, setSets] = useState<HappyPathSet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewPool, setViewPool] = useState<HappyPathSet | null>(null);
+  const [editPool, setEditPool] = useState<HappyPathSet | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  // refreshKey is accepted to mirror the other operations tables; data starts empty.
-  void refreshKey;
+  const openView = useCallback((row: HappyPathSet) => {
+    setViewPool(row);
+    setIsViewOpen(true);
+  }, []);
+
+  const openEdit = useCallback((row: HappyPathSet) => {
+    setEditPool(row);
+    setIsEditOpen(true);
+  }, []);
 
   const filterEnvironments = useMemo(
     () => getEnvironmentsForCountry(filterCountry),
     [filterCountry],
   );
 
+  useEffect(() => {
+    setFilterCountry(authCountry);
+    setFilterEnvironment(authEnvironment.toUpperCase());
+  }, [authCountry, authEnvironment]);
+
+  const loadPools = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const rows = await fetchHappyPathPools({
+        country: filterCountry,
+        environment: filterEnvironment,
+      });
+      setSets(rows);
+    } catch (error) {
+      setSets([]);
+      setLoadError(
+        error instanceof Error ? error.message : "Could not load happy path sets.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [filterCountry, filterEnvironment]);
+
+  useEffect(() => {
+    void loadPools();
+  }, [loadPools, refreshKey]);
+
+  const handleDeletePool = useCallback(
+    async (poolId: string) => {
+      setDeletingId(poolId);
+      setLoadError(null);
+      try {
+        await deleteHappyPathPool(poolId);
+        await loadPools();
+      } catch (error) {
+        setLoadError(
+          error instanceof Error ? error.message : "Could not delete happy path set.",
+        );
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [loadPools],
+  );
+
   const filteredData = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return HARDCODED_SETS.filter((item) => {
+    return sets.filter((item) => {
       if (item.country !== filterCountry) {
         return false;
       }
 
-      if (item.environment !== filterEnvironment) {
+      if (item.environment.toUpperCase() !== filterEnvironment.toUpperCase()) {
         return false;
       }
 
@@ -233,10 +315,10 @@ export function HappyPathListTable({
         item.status.toLowerCase().includes(query)
       );
     });
-  }, [searchQuery, filterCountry, filterEnvironment]);
+  }, [searchQuery, filterCountry, filterEnvironment, sets]);
 
   const showEmptyView =
-    HARDCODED_SETS.length === 0 && !searchQuery.trim();
+    !loading && sets.length === 0 && !searchQuery.trim() && !loadError;
 
   function handleFilterCountryChange(value: string) {
     const nextCountry = value as NesyDashboardToolbarCountry;
@@ -253,9 +335,13 @@ export function HappyPathListTable({
         header: () => <span>Name</span>,
         cell: ({ row }) => (
           <div className="min-w-0">
-            <p className="truncate font-medium text-foreground">
+            <button
+              type="button"
+              className="truncate text-left font-medium text-foreground hover:text-nesy hover:underline"
+              onClick={() => openView(row.original)}
+            >
               {row.original.name}
-            </p>
+            </button>
             <p className="truncate text-xs text-muted-foreground">
               {row.original.country} · {row.original.environment}
             </p>
@@ -263,6 +349,9 @@ export function HappyPathListTable({
         ),
         enableSorting: false,
         size: 240,
+        meta: {
+          skeleton: nameSkeleton,
+        },
       },
       {
         accessorKey: "country",
@@ -277,6 +366,7 @@ export function HappyPathListTable({
         meta: {
           headerClassName: "hidden lg:table-cell",
           cellClassName: "hidden lg:table-cell",
+          skeleton: badgeSkeleton,
         },
       },
       {
@@ -290,6 +380,7 @@ export function HappyPathListTable({
         meta: {
           headerClassName: "hidden lg:table-cell",
           cellClassName: "hidden lg:table-cell",
+          skeleton: badgeSkeleton,
         },
       },
       {
@@ -303,6 +394,9 @@ export function HappyPathListTable({
         ),
         enableSorting: false,
         size: 130,
+        meta: {
+          skeleton: textSkeleton,
+        },
       },
       {
         accessorKey: "status",
@@ -310,6 +404,9 @@ export function HappyPathListTable({
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
         enableSorting: false,
         size: 130,
+        meta: {
+          skeleton: badgeSkeleton,
+        },
       },
       {
         accessorKey: "createdDate",
@@ -329,13 +426,23 @@ export function HappyPathListTable({
         ),
         enableSorting: false,
         size: 120,
+        meta: {
+          skeleton: textSkeleton,
+        },
       },
       {
         id: "actions",
         header: () => <span>Actions</span>,
-        cell: () => (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openView(row.original)}
+            >
+              View
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openEdit(row.original)}>
               <PenLine className="size-4" />
               Edit
             </Button>
@@ -343,18 +450,23 @@ export function HappyPathListTable({
               variant="outline"
               size="sm"
               className="text-destructive hover:bg-destructive/5 hover:text-destructive"
+              disabled={deletingId === row.original.id}
+              onClick={() => void handleDeletePool(row.original.id)}
             >
               <Trash2 className="size-4" />
-              Delete
+              {deletingId === row.original.id ? "Deleting..." : "Delete"}
             </Button>
           </div>
         ),
         enableSorting: false,
         enableHiding: false,
-        size: 180,
+        size: 280,
+        meta: {
+          skeleton: actionsSkeleton,
+        },
       },
     ],
-    [],
+    [deletingId, handleDeletePool, openEdit, openView],
   );
 
   const table = useReactTable({
@@ -366,9 +478,31 @@ export function HappyPathListTable({
   });
 
   return (
-    <DataGrid
+    <>
+      <HappyPathViewDialog
+        open={isViewOpen}
+        onOpenChange={(open) => {
+          setIsViewOpen(open);
+          if (!open) setViewPool(null);
+        }}
+        poolId={viewPool?.id ?? null}
+        listItem={viewPool}
+      />
+      <HappyPathEditDialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) setEditPool(null);
+        }}
+        pool={editPool}
+        onSaved={() => void loadPools()}
+        onReconfigure={onReconfigure}
+      />
+      <DataGrid
       table={table}
       recordCount={filteredData.length}
+      isLoading={loading}
+      loadingSkeletonRowCount={3}
       emptyMessage={
         searchQuery.trim()
           ? "No sets match your filters. Try adjusting your search or filters."
@@ -382,6 +516,14 @@ export function HappyPathListTable({
       }}
     >
       <Card>
+        {loadError ? (
+          <div className="px-3.5 pt-3.5">
+            <Alert variant="destructive">
+              <AlertTitle>Happy path sets</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
         <CardHeader className="py-3.5">
           <CardToolbar className="flex flex-wrap items-center gap-3">
             <InputWrapper className="w-full sm:w-[320px]" variant="lg">
@@ -448,5 +590,6 @@ export function HappyPathListTable({
         ) : null}
       </Card>
     </DataGrid>
+    </>
   );
 }

@@ -49,6 +49,48 @@ model Pickup {
   @@index([country, environment, createdAt])
 }
 
+/// Data Center: Happy Path shipment bundle (pool) — groups generated shipments/pickups
+model HappyPathPool {
+  id             String   @id @default(uuid())
+  name           String
+  country        String
+  environment    String
+  status         String   @default("Draft")
+  shipmentCount  Int      @default(0)
+  assignmentMode String?
+  meta           Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  entries HappyPathPoolEntry[]
+
+  @@index([country, environment, createdAt])
+  @@map("happy_path_pools")
+}
+
+/// One generated item inside a Happy Path pool (links to Shipment and/or Pickup rows)
+model HappyPathPoolEntry {
+  id           String   @id @default(uuid())
+  poolId       String
+  typeId       String
+  label        String
+  route        String
+  status       String
+  shipmentId   String?
+  pickupId     String?
+  unloadStatus String?
+  error        String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  pool HappyPathPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+  @@index([shipmentId])
+  @@index([pickupId])
+  @@map("happy_path_pool_entries")
+}
+
 /// Ops / Auth: Nesy kullanıcı ekranından kaydedilen kurye cüzdanı (PIN + hub)
 model CourierWallet {
   id          String @id @default(cuid())
