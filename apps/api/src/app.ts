@@ -7,6 +7,8 @@ import {
 } from 'fastify-type-provider-zod'
 import type { Env } from './env.js'
 import { healthRoutes } from './routes/health.routes.js'
+import { nesyAuthRoutes } from './routes/nesy-auth.routes.js'
+import { nesyEnvRoutes } from './routes/nesy-env.routes.js'
 import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
 
 export type AppContext = {
@@ -32,6 +34,8 @@ export async function buildApp(env: Env) {
   })
 
   await app.register(healthRoutes)
+  await app.register(nesyAuthRoutes, { prefix: '/api/nesy/auth' })
+  await app.register(nesyEnvRoutes, { prefix: '/api/nesy' })
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
 
