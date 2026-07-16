@@ -34,6 +34,7 @@ export async function createSingleShipment(params: {
   payerType?: number;
   customer?: BffCustomerPayload;
   parties?: BffCreateShipmentParties;
+  happyPathOrigin?: boolean;
 }): Promise<ShipmentRecord> {
   const res = await fetch(`${API_BASE}/shipments/create`, {
     method: "POST",

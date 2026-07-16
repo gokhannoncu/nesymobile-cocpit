@@ -18,7 +18,7 @@ import {
   extractNesyShipmentId,
   resolveLatestEventLabel,
 } from "./nesy-last-event.js";
-import { loadHappyPathLinkedRecordIds } from "./happy-path-list-exclusions.js";
+import { loadHappyPathLinkedRecordIds, mergeHappyPathOrigin, ensureHappyPathRecordTagsBackfill } from "./happy-path-list-exclusions.js";
 
 const router: RouterType = Router();
 
@@ -617,6 +617,7 @@ interface CreateShipmentBody {
   billingOption?: string;
   /** Verilmezse 2 (Nesy staging örnek isteği ile uyumlu) */
   payerType?: number;
+  happyPathOrigin?: boolean;
 }
 
 router.post("/create", async (req, res) => {
@@ -639,6 +640,7 @@ router.post("/create", async (req, res) => {
       parties,
       billingOption: billingOptionRaw,
       payerType: payerTypeRaw,
+      happyPathOrigin,
     } = body;
 
     const billingOption =
@@ -794,7 +796,10 @@ router.post("/create", async (req, res) => {
       data: {
         country,
         environment,
-        data: shipmentData as Prisma.InputJsonValue,
+        data: mergeHappyPathOrigin(
+          shipmentData as Record<string, unknown>,
+          happyPathOrigin,
+        ) as Prisma.InputJsonValue,
         unloadStatus: "Pending",
       },
     });
@@ -1442,6 +1447,8 @@ router.post("/refresh-last-events", async (req, res) => {
 // ─── GET / ──────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
+    await ensureHappyPathRecordTagsBackfill();
+
     const country = typeof req.query.country === "string" ? req.query.country : undefined;
     const environment =
       typeof req.query.environment === "string" ? req.query.environment : undefined;

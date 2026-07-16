@@ -85,6 +85,7 @@ async function resolveParties(
 export interface ExecuteJobResult {
   recordId: string;
   record?: ShipmentRecord;
+  linkedPickupId?: string;
 }
 
 export async function executeGenerationJob(
@@ -124,6 +125,7 @@ export async function executeGenerationJob(
       environment: ctx.environment,
       pickupType,
       shipmentCount,
+      happyPathOrigin: true,
       ...(pickUpDateOffsetDays !== undefined ? { pickUpDateOffsetDays } : {}),
       ...(pickupEndTime ? { pickupEndTime } : {}),
       ...(parcelWeight !== undefined ? { parcelWeight } : {}),
@@ -144,6 +146,7 @@ export async function executeGenerationJob(
     parcelCount,
     shipmentType: config.bffShipmentType ?? "standard",
     parties,
+    happyPathOrigin: true,
   };
 
   if (config.bffShipmentType === "cod") {
@@ -181,6 +184,8 @@ export async function executeGenerationJob(
 
   const record = await createSingleShipment(body);
 
+  let linkedPickupId: string | undefined;
+
   if (job.typeId === "delivery-pick") {
     const linkedPickupCustomer = bffCustomerFromConsigneeParty(parties);
     const pickUpDateOffsetDays =
@@ -195,24 +200,26 @@ export async function executeGenerationJob(
       typeof job.settings.shipmentCount === "number" ? job.settings.shipmentCount : 1;
 
     try {
-      await createPickup({
+      const pickupRecord = await createPickup({
         token: ctx.token,
         country: ctx.country,
         environment: ctx.environment,
         pickupType: "remote",
         shipmentCount,
+        happyPathOrigin: true,
         ...(pickUpDateOffsetDays !== undefined ? { pickUpDateOffsetDays } : {}),
         ...(pickupEndTime ? { pickupEndTime } : {}),
         ...(parcelWeight !== undefined ? { parcelWeight } : {}),
         customer: linkedPickupCustomer,
       });
+      linkedPickupId = pickupRecord.id;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       throw new Error(`Delivery created but linked pickup failed: ${message}`);
     }
   }
 
-  return { recordId: record.id, record };
+  return { recordId: record.id, record, linkedPickupId };
 }
 
 export function clearCustomerDetailsCache() {

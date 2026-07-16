@@ -33,6 +33,7 @@ export async function createPickup(params: {
   branchId?: string;
   courierZoneCode?: string;
   customer?: BffCustomerPayload;
+  happyPathOrigin?: boolean;
 }): Promise<PickupRecord> {
   const res = await fetch(`${API_BASE}/pickups/create`, {
     method: "POST",

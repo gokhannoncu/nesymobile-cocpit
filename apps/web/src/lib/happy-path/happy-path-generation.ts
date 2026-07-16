@@ -41,6 +41,7 @@ export interface GenerationJob {
   unloadError?: string;
   currentUnloadParcel?: number;
   resultId?: string;
+  linkedPickupId?: string;
   error?: string;
 }
 

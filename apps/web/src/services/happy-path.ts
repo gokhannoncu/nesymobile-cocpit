@@ -156,7 +156,10 @@ export function jobsToPoolEntries(jobs: GenerationJob[]): HappyPathPoolEntryInpu
     route: job.route,
     status: job.status,
     shipmentId: job.route === "shipment" ? job.resultId ?? null : null,
-    pickupId: job.route === "pickup" ? job.resultId ?? null : null,
+    pickupId:
+      job.route === "pickup"
+        ? job.resultId ?? null
+        : job.linkedPickupId ?? null,
     unloadStatus:
       job.unloadPhase === "success"
         ? "unloaded"

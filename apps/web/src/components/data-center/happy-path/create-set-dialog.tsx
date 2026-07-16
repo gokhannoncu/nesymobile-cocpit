@@ -633,6 +633,7 @@ export function CreateSetDialog({
         let nextJob: GenerationJob = {
           ...job,
           resultId: result.recordId,
+          linkedPickupId: result.linkedPickupId,
           unloadPhase: job.requiresUnload ? "pending" : "none",
         };
 

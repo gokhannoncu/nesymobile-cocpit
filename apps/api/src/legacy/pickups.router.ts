@@ -11,7 +11,11 @@ import {
   formatDateOnly,
 } from "../nesy-env.js";
 import { extractShipmentIdFromNesySaveResponse, isNesyResultOk } from "./nesy-save-response.js";
-import { loadHappyPathLinkedRecordIds } from "./happy-path-list-exclusions.js";
+import {
+  ensureHappyPathRecordTagsBackfill,
+  loadHappyPathLinkedRecordIds,
+  mergeHappyPathOrigin,
+} from "./happy-path-list-exclusions.js";
 
 const router: RouterType = Router();
 
@@ -333,6 +337,7 @@ interface CreatePickupBody {
   branchId?: string;
   courierZoneCode?: string;
   customer?: BffCustomerPayload;
+  happyPathOrigin?: boolean;
 }
 
 router.post("/create", async (req, res) => {
@@ -350,6 +355,7 @@ router.post("/create", async (req, res) => {
       branchId,
       courierZoneCode,
       customer,
+      happyPathOrigin,
     } = body;
 
     if (!token || !country || !environment) {
@@ -474,7 +480,10 @@ router.post("/create", async (req, res) => {
         courierZoneCode: courierZoneCode?.trim() || null,
         country,
         environment,
-        data: shipmentData as Prisma.InputJsonValue,
+        data: mergeHappyPathOrigin(
+          shipmentData as Record<string, unknown>,
+          happyPathOrigin,
+        ) as Prisma.InputJsonValue,
       },
     });
 
@@ -874,6 +883,8 @@ router.post("/bulk/delete", (req, res) => void handlePickupBulkDelete(req, res))
 
 router.get("/", async (req, res) => {
   try {
+    await ensureHappyPathRecordTagsBackfill();
+
     const country = typeof req.query.country === "string" ? req.query.country : undefined;
     const environment =
       typeof req.query.environment === "string" ? req.query.environment : undefined;
