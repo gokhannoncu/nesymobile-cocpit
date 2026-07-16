@@ -13,6 +13,7 @@ import { nesyAuthRoutes } from './routes/nesy-auth.routes.js'
 import { nesyEnvRoutes } from './routes/nesy-env.routes.js'
 import shipmentsRouter from './legacy/shipments.router.js'
 import customersRouter from './legacy/customers.router.js'
+import pickupsRouter from './legacy/pickups.router.js'
 import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
 
 export type AppContext = {
@@ -46,13 +47,18 @@ export async function buildApp(env: Env) {
   const dataCenterApi = express()
   dataCenterApi.use((req, res, next) => {
     const path = (req.path ?? req.url ?? '').split('?')[0] ?? ''
-    if (path.startsWith('/api/shipments') || path.startsWith('/api/customers')) {
+    if (
+      path.startsWith('/api/shipments') ||
+      path.startsWith('/api/customers') ||
+      path.startsWith('/api/pickups')
+    ) {
       return express.json()(req, res, next)
     }
     next()
   })
   dataCenterApi.use('/api/shipments', shipmentsRouter)
   dataCenterApi.use('/api/customers', customersRouter)
+  dataCenterApi.use('/api/pickups', pickupsRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)

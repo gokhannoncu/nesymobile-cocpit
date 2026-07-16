@@ -70,11 +70,11 @@ function SessionCard({
   const hubName = user.hubName?.trim()
 
   const content = (
-    <div className={cn('flex flex-wrap items-center gap-3', embedded ? 'ps-1' : 'flex-col gap-4 p-4 ps-5 sm:flex-row sm:items-start sm:justify-between')}>
+    <div className={cn('flex flex-wrap items-center gap-3', embedded ? '' : 'flex-col gap-4 p-4 ps-5 sm:flex-row sm:items-start sm:justify-between')}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <motion.span
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-full bg-indigo-600 font-bold text-white shadow-sm',
+            'flex shrink-0 items-center justify-center rounded-full bg-nesy font-bold text-white shadow-sm',
             embedded ? 'size-9 text-xs' : 'size-11 text-sm',
           )}
           initial={{ scale: 0.85, opacity: 0 }}
@@ -86,7 +86,7 @@ function SessionCard({
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-nesy">
               Active session
             </span>
             <span className="hidden text-border sm:inline">·</span>
@@ -108,7 +108,7 @@ function SessionCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="info" appearance="light" size="sm">
+        <Badge variant="secondary" appearance="light" size="sm" className="border-nesy-muted bg-nesy-soft text-nesy-ink">
           {country}
         </Badge>
         <Badge variant="warning" appearance="light" size="sm">
@@ -148,7 +148,7 @@ function SessionCard({
   return (
     <motion.div
       key="session-card"
-      className="relative overflow-hidden rounded-xl border border-indigo-200/70 bg-gradient-to-br from-indigo-50/90 via-background to-background dark:border-indigo-900/50 dark:from-indigo-950/40"
+      className="relative overflow-hidden rounded-xl border border-nesy-muted/80 bg-gradient-to-br from-nesy-soft/90 via-background to-background dark:border-nesy/25 dark:from-nesy-soft/10"
       initial={{ opacity: 0, y: 10, height: 0 }}
       animate={{ opacity: 1, y: 0, height: 'auto' }}
       exit={{ opacity: 0, y: -6, height: 0 }}
@@ -208,13 +208,13 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
   return (
     <div
       className={cn(
-        'flex h-7 shrink-0 items-center gap-2 rounded-full border px-2.5 shadow-sm backdrop-blur-sm',
+        'flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 shadow-sm backdrop-blur-sm',
         STATUS_SHELL[status],
       )}
     >
-      <span className="relative flex size-3.5 shrink-0 items-center justify-center">
+      <span className="relative flex size-4 shrink-0 items-center justify-center">
         <motion.span
-          className={cn('size-2 rounded-full', toneDot[meta.tone])}
+          className={cn('size-2.5 rounded-full', toneDot[meta.tone])}
           animate={
             isLive
               ? { y: [0, -2.5, 0], scale: [1, 1.12, 1] }
@@ -228,7 +228,7 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
         />
       </span>
 
-      <span className="min-w-[5.75rem] text-xs font-medium leading-none">
+      <span className="min-w-[5.75rem] text-sm font-medium leading-none">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={meta.label}
@@ -272,19 +272,19 @@ export function NesyConnectionPanel() {
 
   return (
     <motion.div
-      className={cn('w-full overflow-hidden rounded-2xl border bg-card', toneHero.indigo)}
+      className={cn('w-full overflow-hidden rounded-2xl border bg-card', toneHero.nesy)}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE }}
     >
       {/* Hero */}
-      <div className="relative border-b border-indigo-200/60 bg-gradient-to-r from-indigo-50/80 via-background to-background px-5 py-5 lg:px-6 dark:border-indigo-900/50 dark:from-indigo-950/30">
+      <div className="relative border-b border-nesy-muted/70 bg-gradient-to-r from-nesy-soft/80 via-background to-background px-5 py-5 lg:px-6 dark:border-nesy/25 dark:from-nesy-soft/10">
         <div className="flex items-start gap-4 min-w-0 pe-28 sm:pe-32">
-          <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', toneIconBox.indigo)}>
-            <Globe2 className={cn('size-5.5', toneIcon.indigo)} />
+          <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', toneIconBox.nesy)}>
+            <Globe2 className={cn('size-5.5', toneIcon.nesy)} />
           </span>
           <div className="min-w-0">
-            <div className={cn('text-[11px] font-bold uppercase tracking-[0.18em]', toneIcon.indigo)}>
+            <div className={cn('text-[11px] font-bold uppercase tracking-[0.18em]', toneIcon.nesy)}>
               Data Center
             </div>
             <h1 className="mt-0.5 text-xl font-bold text-foreground lg:text-2xl">Dashboard Connection</h1>
@@ -300,7 +300,7 @@ export function NesyConnectionPanel() {
         </div>
       </div>
 
-      <div className="px-5 pb-5 lg:px-6 lg:pb-6">
+      <div className="px-5 py-5 lg:px-6 lg:py-6">
         <div className="overflow-hidden rounded-xl border border-border/80 bg-muted/20">
           <div className="grid lg:grid-cols-2">
             {/* Left: target + action */}
@@ -439,10 +439,10 @@ export function NesyConnectionPanel() {
                         >
                           <Link
                             href={route.path}
-                            className="group flex items-center gap-2.5 rounded-lg border border-green-200/50 bg-background/80 px-2.5 py-2 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-green-900/35 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20"
+                            className="group flex items-center gap-2.5 rounded-lg border border-green-200/50 bg-background/80 px-2.5 py-2 transition-colors hover:border-nesy/50 hover:bg-nesy-soft/60 dark:border-green-900/35 dark:hover:border-nesy/40 dark:hover:bg-nesy-soft/10"
                           >
-                            <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', toneIconBox.indigo)}>
-                              <Icon className={cn('size-3.5', toneIcon.indigo)} />
+                            <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', toneIconBox.nesy)}>
+                              <Icon className={cn('size-3.5', toneIcon.nesy)} />
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
@@ -451,7 +451,7 @@ export function NesyConnectionPanel() {
                               </div>
                               <p className="text-[11px] leading-tight text-muted-foreground">{route.description}</p>
                             </div>
-                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-600" />
+                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-nesy" />
                           </Link>
                         </motion.div>
                       ) : (
@@ -481,7 +481,7 @@ export function NesyConnectionPanel() {
 
           <AnimatePresence mode="wait">
             {isConnected && displayUser && (
-              <div className="border-t border-border/70 bg-indigo-50/30 px-4 py-3 dark:bg-indigo-950/15">
+              <div className="border-t border-border/70 bg-nesy-soft/40 p-4 dark:bg-nesy-soft/10">
                 <SessionCard
                   embedded
                   user={displayUser}

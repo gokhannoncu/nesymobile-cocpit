@@ -12,7 +12,7 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
 } from '@nesy/metronic/components/ui/breadcrumb'
-import { getBreadcrumbs } from '@nesy/metronic/config/menu-utils'
+import { getActiveWorkspace, getBreadcrumbs } from '@nesy/metronic/config/menu-utils'
 import { useLayout } from './context'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { PanelRight } from 'lucide-react'
@@ -25,7 +25,9 @@ const PdfButton = dynamic(
 export function HeaderBreadcrumbs() {
   const { isMobile, sidebarToggle } = useLayout()
   const pathname = usePathname()
+  const workspace = getActiveWorkspace(pathname)
   const crumbs = getBreadcrumbs(pathname)
+  const hideCrumbs = workspace.id === 'data-center'
 
   return (
     // data-pdf-exclude: rendered inside main on mobile, so exclude it from PDF capture
@@ -38,6 +40,7 @@ export function HeaderBreadcrumbs() {
           <PanelRight className="opacity-100" />
         </Button>
       )}
+      {!hideCrumbs && (
       <Breadcrumb>
         <BreadcrumbList>
           {crumbs.map((crumb, index) => (
@@ -60,6 +63,7 @@ export function HeaderBreadcrumbs() {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
+      )}
       <PdfButton className="ms-auto" />
     </div>
   )

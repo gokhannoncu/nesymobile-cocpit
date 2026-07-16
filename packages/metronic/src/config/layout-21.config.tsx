@@ -393,7 +393,7 @@ export const WORKSPACES: Workspace[] = [
     id: 'data-center',
     label: 'Data Center',
     icon: Database,
-    className: 'border-white bg-indigo-500 hover:bg-indigo-600 text-white hover:text-white',
+    className: 'border-white bg-nesy hover:bg-nesy-hover text-white hover:text-white',
     path: DATA_CENTER_CONNECTION_PATH,
     basePaths: ['/data-center'],
     menu: [

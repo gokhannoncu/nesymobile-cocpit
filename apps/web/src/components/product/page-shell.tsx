@@ -38,9 +38,11 @@ export function ProductPage({
   // Is this a group overview page? (workspace root route = overview). Excluding home.
   const workspace = getActiveWorkspace(path)
   const isGroupOverview = workspace.path === path && path !== '/'
+  const showToolbar = workspace.id !== 'data-center'
 
   return (
     <div className="container-fluid min-w-0 max-w-full">
+      {showToolbar && (
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
@@ -53,7 +55,8 @@ export function ProductPage({
           )}
         </ToolbarWrapper>
       </Toolbar>
-      <div className="space-y-8 pb-12">{children}</div>
+      )}
+      <div className={showToolbar ? 'space-y-8 pb-12' : 'pb-12'}>{children}</div>
     </div>
   )
 }

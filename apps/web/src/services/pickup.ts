@@ -1,0 +1,152 @@
+import { API_BASE } from "@/services/api";
+import type { BffCustomerPayload } from "@/services/customer";
+
+export interface PickupRecord {
+  id: string;
+  createdAt: string;
+  pickupType: string;
+  shipmentId: string;
+  assignStatus: string;
+  taskId: string | null;
+  branchId: string | null;
+  courierZoneCode: string | null;
+  country: string | null;
+  environment: string | null;
+  data: Record<string, unknown>;
+}
+
+interface PickupScope {
+  country: string;
+  environment: string;
+}
+
+export async function createPickup(params: {
+  token: string;
+  country: string;
+  environment: string;
+  pickupType: "remote" | "customer";
+  shipmentCount: number;
+  pickUpDateOffsetDays?: number;
+  pickupEndTime?: string;
+  parcelWeight?: number;
+  branchId?: string;
+  courierZoneCode?: string;
+  customer?: BffCustomerPayload;
+}): Promise<PickupRecord> {
+  const res = await fetch(`${API_BASE}/pickups/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { message?: string }).message ?? `Pickup creation failed (${res.status})`
+    );
+  }
+
+  const json = (await res.json()) as { data: PickupRecord };
+  return json.data;
+}
+
+export async function assignPickup(params: {
+  pickupDbId: string;
+  token: string;
+  country: string;
+  environment: string;
+  branchId?: string;
+  courierZoneCode?: string;
+}): Promise<{ assignStatus: string; taskId: string }> {
+  const { pickupDbId, ...body } = params;
+  const res = await fetch(`${API_BASE}/pickups/${pickupDbId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(
+      (errBody as { message?: string }).message ?? `Assign failed (${res.status})`
+    );
+  }
+
+  const json = (await res.json()) as { data: { assignStatus: string; taskId: string } };
+  return json.data;
+}
+
+export async function deletePickups(ids: string[]): Promise<number> {
+  const res = await fetch(`${API_BASE}/pickups/bulk`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { message?: string }).message ?? `Delete failed (${res.status})`
+    );
+  }
+
+  const json = (await res.json()) as { deleted: number };
+  return json.deleted;
+}
+
+export async function fetchPickups(scope?: PickupScope): Promise<PickupRecord[]> {
+  const params = new URLSearchParams();
+  if (scope?.country && scope.environment) {
+    params.set("country", scope.country);
+    params.set("environment", scope.environment);
+  }
+  const query = params.toString();
+  const res = await fetch(`${API_BASE}/pickups${query ? `?${query}` : ""}`);
+  if (!res.ok) throw new Error("Failed to fetch pickups");
+  const json = (await res.json()) as { data: PickupRecord[] };
+  return json.data;
+}
+
+export async function getPickupNesyUrl(pickupDbId: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/pickups/${pickupDbId}/nesy-url`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { message?: string }).message ?? `Failed to build Nesy URL (${res.status})`
+    );
+  }
+  const json = (await res.json()) as { data: { url: string } };
+  return json.data.url;
+}
+
+export interface PickupTaskDetailData {
+  taskId: string;
+  branchId: string;
+  courierZoneCode: string;
+  waybillNumber: string;
+  resolvedDate?: string;
+  match: Record<string, unknown>;
+}
+
+export async function getPickupTaskDetail(params: {
+  token: string;
+  country: string;
+  environment: string;
+  shipmentId: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<PickupTaskDetailData> {
+  const res = await fetch(`${API_BASE}/pickups/task-detail`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { message?: string }).message ?? `Pickup task detail failed (${res.status})`
+    );
+  }
+  const json = (await res.json()) as { data: PickupTaskDetailData };
+  return json.data;
+}

@@ -10,6 +10,7 @@ export type Tone =
   | 'amber'
   | 'teal'
   | 'indigo'
+  | 'nesy'
   | 'gray'
 
 export const toneCard: Record<Tone, string> = {
@@ -21,6 +22,7 @@ export const toneCard: Record<Tone, string> = {
   amber: 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/60',
   teal: 'bg-teal-50/70 border-teal-200 dark:bg-teal-950/30 dark:border-teal-900/60',
   indigo: 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-900/60',
+  nesy: 'bg-nesy-soft/80 border-nesy-muted dark:bg-nesy-soft/15 dark:border-nesy/25',
   gray: 'bg-muted/40 border-border',
 }
 
@@ -33,6 +35,7 @@ export const toneIcon: Record<Tone, string> = {
   amber: 'text-amber-600 dark:text-amber-400',
   teal: 'text-teal-600 dark:text-teal-400',
   indigo: 'text-indigo-600 dark:text-indigo-400',
+  nesy: 'text-nesy dark:text-nesy',
   gray: 'text-muted-foreground',
 }
 
@@ -45,6 +48,7 @@ export const toneText: Record<Tone, string> = {
   amber: 'text-amber-700 dark:text-amber-300',
   teal: 'text-teal-700 dark:text-teal-300',
   indigo: 'text-indigo-700 dark:text-indigo-300',
+  nesy: 'text-nesy-ink dark:text-nesy',
   gray: 'text-muted-foreground',
 }
 
@@ -57,6 +61,7 @@ export const toneDot: Record<Tone, string> = {
   amber: 'bg-amber-500',
   teal: 'bg-teal-500',
   indigo: 'bg-indigo-500',
+  nesy: 'bg-nesy',
   gray: 'bg-muted-foreground',
 }
 
@@ -70,6 +75,7 @@ export const toneIconBox: Record<Tone, string> = {
   amber: 'bg-amber-100 dark:bg-amber-900/40',
   teal: 'bg-teal-100 dark:bg-teal-900/40',
   indigo: 'bg-indigo-100 dark:bg-indigo-900/40',
+  nesy: 'bg-nesy-soft text-nesy',
   gray: 'bg-muted',
 }
 
@@ -88,6 +94,7 @@ export const toneHero: Record<Tone, string> = {
   teal: 'from-teal-50 via-background to-background dark:from-teal-950/40 border-teal-200/70 dark:border-teal-900/50',
   indigo:
     'from-indigo-50 via-background to-background dark:from-indigo-950/40 border-indigo-200/70 dark:border-indigo-900/50',
+  nesy: 'from-nesy-soft via-background to-background dark:from-nesy-soft/10 border-nesy-muted/80 dark:border-nesy/25',
   gray: 'from-muted/60 via-background to-background border-border',
 }
 

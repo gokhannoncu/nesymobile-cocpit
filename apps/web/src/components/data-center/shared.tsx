@@ -26,7 +26,7 @@ export function DataCenterHeader({
   icon: Icon,
   title,
   lead,
-  tone = 'indigo',
+  tone = 'nesy',
   badges,
   actions,
 }: {

@@ -253,7 +253,7 @@ const SERVICE_BADGE_STYLES = [
   "bg-rose-100 text-rose-800",
   "bg-cyan-100 text-cyan-800",
   "bg-orange-100 text-orange-800",
-  "bg-indigo-100 text-indigo-800",
+  "bg-nesy-soft text-nesy-ink",
   "bg-fuchsia-100 text-fuchsia-800",
   "bg-lime-100 text-lime-900",
 ] as const;
