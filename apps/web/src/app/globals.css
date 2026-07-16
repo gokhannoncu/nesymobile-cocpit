@@ -15,7 +15,7 @@
   --card-foreground: var(--color-zinc-950);
   --popover: var(--color-white);
   --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-orange-600);
+  --primary: var(--nesy-orange);
   --primary-foreground: var(--color-white);
   --secondary: var(--color-zinc-100);
   --secondary-foreground: var(--color-zinc-900);
@@ -32,8 +32,15 @@
   --chart-5: var(--color-zinc-600);
   --border: oklch(94% 0.004 286.32);
   --input: var(--color-zinc-200);
-  --ring: var(--color-orange-400);
+  --ring: var(--nesy-orange);
   --radius: 0.5rem;
+
+  /** NESY brand orange (Data Center + shipment UI) **/
+  --nesy-orange: #ff7a1a;
+  --nesy-orange-hover: #e96b11;
+  --nesy-orange-soft: #fff4ed;
+  --nesy-orange-muted: #ffedd5;
+  --nesy-orange-ink: #c2410c;
 }
 
 .dark {
@@ -43,7 +50,7 @@
   --card-foreground: var(--color-zinc-50);
   --popover: var(--color-zinc-950);
   --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-orange-500);
+  --primary: var(--nesy-orange);
   --primary-foreground: var(--color-white);
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
@@ -60,7 +67,13 @@
   --chart-5: var(--color-zinc-400);
   --border: var(--color-zinc-800);
   --input: var(--color-zinc-800);
-  --ring: var(--color-orange-700);
+  --ring: var(--nesy-orange);
+
+  --nesy-orange: #ff7a1a;
+  --nesy-orange-hover: #e96b11;
+  --nesy-orange-soft: #fff4ed;
+  --nesy-orange-muted: #ffedd5;
+  --nesy-orange-ink: #c2410c;
 }
 
 @theme inline {
@@ -80,6 +93,14 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+
+  /** NESY brand (Tailwind: bg-nesy, border-nesy, bg-nesy-soft, etc.) **/
+  --color-nesy: var(--nesy-orange);
+  --color-nesy-hover: var(--nesy-orange-hover);
+  --color-nesy-soft: var(--nesy-orange-soft);
+  --color-nesy-muted: var(--nesy-orange-muted);
+  --color-nesy-ink: var(--nesy-orange-ink);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

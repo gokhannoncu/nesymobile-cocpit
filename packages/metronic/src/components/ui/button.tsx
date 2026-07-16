@@ -10,6 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90',
+        nesy: 'bg-nesy text-white border border-transparent hover:bg-nesy-hover data-[state=open]:bg-nesy-hover',
         mono: 'bg-zinc-950 text-white dark:bg-zinc-300 dark:text-black hover:bg-zinc-950/90 dark:hover:bg-zinc-300/90 data-[state=open]:bg-zinc-950/90 dark:data-[state=open]:bg-zinc-300/90',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 data-[state=open]:bg-destructive/90',
@@ -128,6 +129,12 @@ const buttonVariants = cva(
         className: 'shadow-xs shadow-black/5',
       },
       {
+        variant: 'nesy',
+        mode: 'default',
+        appearance: 'default',
+        className: 'shadow-xs shadow-black/5',
+      },
+      {
         variant: 'mono',
         mode: 'default',
         appearance: 'default',
@@ -161,6 +168,12 @@ const buttonVariants = cva(
       // Shadow support
       {
         variant: 'primary',
+        mode: 'icon',
+        appearance: 'default',
+        className: 'shadow-xs shadow-black/5',
+      },
+      {
+        variant: 'nesy',
         mode: 'icon',
         appearance: 'default',
         className: 'shadow-xs shadow-black/5',

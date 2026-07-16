@@ -831,7 +831,8 @@ export function ShipmentViewSheet({
           <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
-              className="bg-nesy px-9 text-white hover:bg-nesy-hover"
+              variant="nesy"
+              className="px-9"
               size="lg"
               disabled={!shipment || openingNesy}
               onClick={() => void handleManageShipment()}

@@ -66,7 +66,11 @@ export function DataCenterHeader({
             )}
           </div>
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 [&_[data-slot=button]]:h-10 [&_[data-slot=button]]:min-h-10">
+            {actions}
+          </div>
+        )}
       </div>
     </motion.section>
   )

@@ -24,7 +24,7 @@ export default function ShipmentOperationsPage() {
 
   return (
     <ProductPage path="/data-center/shipment">
-      <div className="container-fluid flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <DataCenterHeader
           icon={Truck}
           title="Shipment Operations"
@@ -37,7 +37,7 @@ export default function ShipmentOperationsPage() {
                   type="button"
                   variant="outline"
                   size="lg"
-                  className="h-10 min-h-10 shrink-0 py-0"
+                  className="h-10 shrink-0 whitespace-nowrap py-0"
                   onClick={() => setRefreshKey((prev) => prev + 1)}
                 >
                   <RefreshCw className="size-4" />
@@ -45,9 +45,9 @@ export default function ShipmentOperationsPage() {
                 </Button>
                 <Button
                   type="button"
-                  variant="mono"
+                  variant="nesy"
                   size="lg"
-                  className="h-10 min-h-10 shrink-0 py-0"
+                  className="h-10 shrink-0 whitespace-nowrap py-0"
                   onClick={() => setIsCreateOpen(true)}
                 >
                   <PlusIcon className="size-4" />

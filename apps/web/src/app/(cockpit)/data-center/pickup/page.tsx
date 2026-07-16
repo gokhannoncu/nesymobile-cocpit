@@ -10,7 +10,7 @@ export default function PickupOperationsPage() {
 
   return (
     <ProductPage path="/data-center/pickup">
-      <div className="container-fluid flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <DataCenterHeader
           icon={Calendar}
           title="Pickup Operations"

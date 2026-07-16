@@ -10,7 +10,7 @@ export default function HappyPathOperationsPage() {
 
   return (
     <ProductPage path="/data-center/happy-path">
-      <div className="container-fluid flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <DataCenterHeader
           icon={PackagePlus}
           title="Happy Path Operations"

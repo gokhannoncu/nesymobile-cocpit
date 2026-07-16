@@ -54,6 +54,7 @@ export interface DataGridProps<TData extends object> {
   onRowClick?: (row: TData) => void;
   isLoading?: boolean;
   loadingMode?: 'skeleton' | 'spinner';
+  loadingSkeletonRowCount?: number;
   loadingMessage?: ReactNode | string;
   emptyMessage?: ReactNode | string;
   tableLayout?: {

@@ -42,8 +42,18 @@ export async function buildApp(env: Env) {
   await app.register(nesyEnvRoutes, { prefix: '/api/nesy' })
 
   await app.register(fastifyExpress)
-  app.use('/api/shipments', express.json(), shipmentsRouter)
-  app.use('/api/customers', express.json(), customersRouter)
+
+  const dataCenterApi = express()
+  dataCenterApi.use((req, res, next) => {
+    const path = (req.path ?? req.url ?? '').split('?')[0] ?? ''
+    if (path.startsWith('/api/shipments') || path.startsWith('/api/customers')) {
+      return express.json()(req, res, next)
+    }
+    next()
+  })
+  dataCenterApi.use('/api/shipments', shipmentsRouter)
+  dataCenterApi.use('/api/customers', customersRouter)
+  app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
 

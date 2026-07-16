@@ -414,6 +414,7 @@ function DataGridTableRowSelectAll({ size }: { size?: 'sm' | 'md' | 'lg' }) {
 function DataGridTable<TData>() {
   const { table, isLoading, props } = useDataGrid();
   const pagination = table.getState().pagination;
+  const skeletonRowCount = props.loadingSkeletonRowCount ?? pagination?.pageSize ?? 0;
 
   return (
     <DataGridTableBase>
@@ -441,8 +442,8 @@ function DataGridTable<TData>() {
       {(props.tableLayout?.stripped || !props.tableLayout?.rowBorder) && <DataGridTableRowSpacer />}
 
       <DataGridTableBody>
-        {props.loadingMode === 'skeleton' && isLoading && pagination?.pageSize ? (
-          Array.from({ length: pagination.pageSize }).map((_, rowIndex) => (
+        {props.loadingMode === 'skeleton' && isLoading && skeletonRowCount ? (
+          Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
             <DataGridTableBodyRowSkeleton key={rowIndex}>
               {table.getVisibleFlatColumns().map((column, colIndex) => {
                 return (

@@ -1081,8 +1081,9 @@ export function CreateShipmentDialog({
               </Button>
               <Button
                 type="button"
+                variant="nesy"
                 size="lg"
-                className="h-10 bg-nesy text-white hover:bg-nesy-hover"
+                className="h-10"
                 onClick={() => onCloseAfterCreate?.()}
               >
                 View Shipments
@@ -1091,8 +1092,9 @@ export function CreateShipmentDialog({
           ) : (
             <Button
               type="button"
+              variant="nesy"
               size="lg"
-              className="h-10 w-full bg-nesy text-white hover:bg-nesy-hover"
+              className="h-10 w-full"
               disabled={!addressesReady || !isConnected || isProcessing}
               onClick={() => void handleCreate()}
             >

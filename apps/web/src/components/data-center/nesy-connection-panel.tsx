@@ -366,7 +366,7 @@ export function NesyConnectionPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    variant={isConnected ? 'outline' : 'primary'}
+                    variant={isConnected ? 'outline' : 'nesy'}
                     onClick={() => {
                       if (isConnected) {
                         logout()

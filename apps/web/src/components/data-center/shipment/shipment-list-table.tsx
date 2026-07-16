@@ -542,6 +542,7 @@ export function ShipmentListTable({ refreshKey }: { refreshKey?: number }) {
       table={table}
       recordCount={filteredData.length}
       isLoading={loading}
+      loadingSkeletonRowCount={2}
       tableLayout={{
         columnsPinnable: true,
         columnsMovable: true,
