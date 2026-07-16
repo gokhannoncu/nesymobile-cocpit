@@ -305,84 +305,6 @@ export const WORKSPACES: Workspace[] = [
     ],
   },
   {
-    id: 'pm',
-    label: 'Project Management',
-    icon: KanbanSquare,
-    className: 'border-white bg-violet-500 hover:bg-violet-600 text-white hover:text-white',
-    path: '/pm/overview',
-    basePaths: ['/pm'],
-    menu: [
-      {
-        title: 'Project Management',
-        children: [
-          {
-            title: 'Overview',
-            path: '/pm/overview',
-            icon: LayoutDashboard,
-          },
-          {
-            title: 'Ticket Management',
-            icon: Bug,
-            children: [
-              {
-                title: 'Ticket Board',
-                path: '/pm/tickets',
-                icon: KanbanSquare,
-              },
-              {
-                title: 'Root Cause Analysis',
-                path: '/pm/root-cause',
-                icon: Search,
-              },
-              {
-                title: 'Test Coverage',
-                path: '/pm/test-coverage',
-                icon: ShieldCheck,
-              },
-            ],
-          },
-          {
-            title: 'Release & Versions',
-            icon: GitBranch,
-            children: [
-              {
-                title: 'Release History',
-                path: '/pm/releases',
-                icon: Rocket,
-              },
-              {
-                title: 'Version Tracker',
-                path: '/pm/versions',
-                icon: Tag,
-              },
-              {
-                title: 'Changelog',
-                path: '/pm/changelog',
-                icon: ScrollText,
-              },
-            ],
-          },
-          {
-            title: 'Planning',
-            icon: Calendar,
-            children: [
-              {
-                title: 'Sprint Calendar',
-                path: '/pm/calendar',
-                icon: CalendarDays,
-              },
-              {
-                title: 'Roadmap',
-                path: '/pm/roadmap',
-                icon: Map,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
     id: 'debug-view',
     label: 'Debug View',
     icon: Bug,
@@ -453,6 +375,84 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Device Log Explorer',
                 path: '/debug-view/log-explorer',
                 icon: ScrollText,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'pm',
+    label: 'Project Management',
+    icon: KanbanSquare,
+    className: 'border-white bg-violet-500 hover:bg-violet-600 text-white hover:text-white',
+    path: '/pm/overview',
+    basePaths: ['/pm'],
+    menu: [
+      {
+        title: 'Project Management',
+        children: [
+          {
+            title: 'Overview',
+            path: '/pm/overview',
+            icon: LayoutDashboard,
+          },
+          {
+            title: 'Ticket Management',
+            icon: Bug,
+            children: [
+              {
+                title: 'Ticket Board',
+                path: '/pm/tickets',
+                icon: KanbanSquare,
+              },
+              {
+                title: 'Root Cause Analysis',
+                path: '/pm/root-cause',
+                icon: Search,
+              },
+              {
+                title: 'Test Coverage',
+                path: '/pm/test-coverage',
+                icon: ShieldCheck,
+              },
+            ],
+          },
+          {
+            title: 'Release & Versions',
+            icon: GitBranch,
+            children: [
+              {
+                title: 'Release History',
+                path: '/pm/releases',
+                icon: Rocket,
+              },
+              {
+                title: 'Version Tracker',
+                path: '/pm/versions',
+                icon: Tag,
+              },
+              {
+                title: 'Changelog',
+                path: '/pm/changelog',
+                icon: ScrollText,
+              },
+            ],
+          },
+          {
+            title: 'Planning',
+            icon: Calendar,
+            children: [
+              {
+                title: 'Sprint Calendar',
+                path: '/pm/calendar',
+                icon: CalendarDays,
+              },
+              {
+                title: 'Roadmap',
+                path: '/pm/roadmap',
+                icon: Map,
               },
             ],
           },
