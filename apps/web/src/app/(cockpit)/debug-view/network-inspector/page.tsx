@@ -7,17 +7,56 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowDownUp, KeyRound, Pause, Play, Radio, Search, Smartphone, Trash2, Wifi, X, Zap } from 'lucide-react'
+import { ArrowDownUp, Clock, HeartPulse, KeyRound, Pause, Play, Radio, Search, Smartphone, Trash2, Wifi, X, Zap } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { Input } from '@nesy/metronic/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@nesy/metronic/components/ui/select'
 import { ProductPage, StatCard, StatGrid, EASE, toneText, type Tone } from '@/components/product'
 import { DebugHeader, DebugCrossLinks, CodeBlock, InfoRow, NoDeviceState } from '@/components/debug-view/shared'
 import { useDebugView } from '@/components/debug-view/debug-context'
 import type { NetworkTransaction } from '@/data/debug-view/types'
 
 const MAX_TRANSACTIONS = 1000
+
+const TIME_FILTER_OPTIONS = [
+  { value: 'auto', label: 'Default (Auto)' },
+  { value: '0', label: 'Live (Now)' },
+  { value: '5', label: 'Last 5 min' },
+  { value: '15', label: 'Last 15 min' },
+  { value: '60', label: 'Last 60 min' },
+] as const
+
+/** NesyMobile polls GET /Task/Info every ~5s to verify API health — grouped out of the main list. */
+const HEALTH_POLL_PATH = 'Task/Info'
+
+function normalizePath(path: string): string {
+  return path.replace(/^\/+/, '').replace(/\/+$/, '')
+}
+
+function isHealthPoll(txn: NetworkTransaction): boolean {
+  return txn.method === 'GET' && normalizePath(txn.path) === HEALTH_POLL_PATH
+}
+
+function formatElapsed(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime()
+  if (ms < 0 || Number.isNaN(ms)) return 'just now'
+  if (ms < 5000) return 'just now'
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s ago`
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`
+  return `${Math.round(ms / 3_600_000)}h ago`
+}
+
+function formatDuration(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`
+}
 
 /**
  * Headers appended by NesyMobile's AuthInterceptor (di/AuthInterceptor.kt).
@@ -61,7 +100,7 @@ const TIMING_SEGMENTS: { key: keyof NetworkTransaction['timing']; label: string;
 ]
 
 /** Streams live transactions for a device serial over SSE. */
-function useNetworkStream(serial: string | null) {
+function useNetworkStream(serial: string | null, minutes: number | null) {
   const [transactions, setTransactions] = useState<NetworkTransaction[]>([])
   const [streamState, setStreamState] = useState<StreamState>('connecting')
   const [paused, setPaused] = useState(false)
@@ -74,7 +113,8 @@ function useNetworkStream(serial: string | null) {
     if (!serial) return
 
     setStreamState('connecting')
-    const source = new EventSource(`/api/adb/network/stream?serial=${encodeURIComponent(serial)}`)
+    const url = `/api/adb/network/stream?serial=${encodeURIComponent(serial)}${minutes != null ? `&minutes=${minutes}` : ''}`
+    const source = new EventSource(url)
 
     source.onopen = () => setStreamState('live')
     source.onerror = () => setStreamState('error')
@@ -88,7 +128,7 @@ function useNetworkStream(serial: string | null) {
     }
 
     return () => source.close()
-  }, [serial])
+  }, [serial, minutes])
 
   const togglePause = () => {
     const next = !pausedRef.current
@@ -112,39 +152,61 @@ function useNetworkStream(serial: string | null) {
 export default function NetworkInspectorPage() {
   const { selectedDevice } = useDebugView()
   const serial = selectedDevice?.serial ?? null
-  const { transactions, streamState, paused, togglePause, clear } = useNetworkStream(serial)
+  const [timeFilter, setTimeFilter] = useState<number | null>(null)
+  const { transactions, streamState, paused, togglePause, clear } = useNetworkStream(serial, timeFilter)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [healthPollFocused, setHealthPollFocused] = useState(false)
   const [query, setQuery] = useState('')
+
+  const healthPolls = useMemo(() => transactions.filter(isHealthPoll), [transactions])
+  const latestHealthPoll = healthPolls[0] ?? null
+  const traffic = useMemo(() => transactions.filter((t) => !isHealthPoll(t)), [transactions])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return transactions
-    return transactions.filter(
+    if (!q) return traffic
+    return traffic.filter(
       (t) => t.path.toLowerCase().includes(q) || t.host.toLowerCase().includes(q) || t.method.toLowerCase().includes(q),
     )
-  }, [query, transactions])
+  }, [query, traffic])
 
-  const selected = transactions.find((t) => t.id === selectedId) ?? null
+  const selected =
+    healthPollFocused && latestHealthPoll
+      ? latestHealthPoll
+      : transactions.find((t) => t.id === selectedId) ?? null
   const showCaptureHero = transactions.length === 0 && !query.trim()
 
   useEffect(() => {
+    if (healthPollFocused) return
     if (filtered.length === 0) {
+      if (healthPolls.length > 0) {
+        setHealthPollFocused(true)
+        setSelectedId(healthPolls[0]!.id)
+        return
+      }
       if (selectedId != null) setSelectedId(null)
       return
     }
     if (!selectedId || !filtered.some((t) => t.id === selectedId)) {
       setSelectedId(filtered[0]!.id)
     }
-  }, [filtered, selectedId])
+  }, [filtered, selectedId, healthPollFocused, healthPolls])
+
+  const handleClear = () => {
+    clear()
+    setSelectedId(null)
+    setHealthPollFocused(false)
+    setQuery('')
+  }
 
   const stats = useMemo(() => {
-    const total = transactions.length
-    if (total === 0) return { total: 0, failed: 0, avg: 0, kb: 0 }
-    const failed = transactions.filter((t) => t.status === null || (t.status ?? 0) >= 400).length
-    const avg = Math.round(transactions.reduce((s, t) => s + t.timing.totalMs, 0) / total)
-    const bytes = transactions.reduce((s, t) => s + t.responseSizeBytes, 0)
-    return { total, failed, avg, kb: Math.round(bytes / 1024) }
-  }, [transactions])
+    const total = traffic.length
+    if (total === 0) return { total: 0, failed: 0, avg: 0, kb: 0, healthPolls: healthPolls.length }
+    const failed = traffic.filter((t) => t.status === null || (t.status ?? 0) >= 400).length
+    const avg = Math.round(traffic.reduce((s, t) => s + t.timing.totalMs, 0) / total)
+    const bytes = traffic.reduce((s, t) => s + t.responseSizeBytes, 0)
+    return { total, failed, avg, kb: Math.round(bytes / 1024), healthPolls: healthPolls.length }
+  }, [traffic, healthPolls.length])
 
   return (
     <ProductPage path="/debug-view/network-inspector">
@@ -162,10 +224,10 @@ export default function NetworkInspectorPage() {
       ) : (
         <>
           <StatGrid cols={4}>
-            <StatCard icon={ArrowDownUp} label="Total requests" value={stats.total} tone="orange" />
+            <StatCard icon={ArrowDownUp} label="App requests" value={stats.total} tone="orange" hint={stats.healthPolls > 0 ? `${stats.healthPolls} health polls grouped` : undefined} />
             <StatCard icon={X} label="Failed / timeout" value={stats.failed} tone={stats.failed > 0 ? 'red' : 'green'} />
             <StatCard icon={Wifi} label="Avg. duration" value={stats.avg} suffix="ms" tone="orange" />
-            <StatCard icon={ArrowDownUp} label="Downloaded" value={stats.kb} suffix="KB" tone="orange" />
+            <StatCard icon={HeartPulse} label="Health polls" value={stats.healthPolls} tone={stats.healthPolls > 0 ? 'green' : 'gray'} hint="GET /Task/Info · ~5s interval" />
           </StatGrid>
 
           {showCaptureHero ? (
@@ -175,7 +237,7 @@ export default function NetworkInspectorPage() {
               streamState={streamState}
               paused={paused}
               onTogglePause={togglePause}
-              onClear={clear}
+              onClear={handleClear}
             />
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -199,11 +261,30 @@ export default function NetworkInspectorPage() {
                   <Badge variant="secondary" appearance="outline" size="xs" className="font-mono">
                     {selectedDevice.serial}
                   </Badge>
+                  <Select
+                    value={timeFilter == null ? 'auto' : String(timeFilter)}
+                    onValueChange={(v) => setTimeFilter(v === 'auto' ? null : Number(v))}
+                  >
+                    <SelectTrigger
+                      size="sm"
+                      className="h-8 w-[9.25rem] gap-1.5 border-border/80 bg-background px-2.5 text-xs font-medium shadow-none hover:bg-muted/40 focus-visible:border-orange-500/40 focus-visible:ring-orange-500/15"
+                    >
+                      <Clock className="size-3 shrink-0 text-orange-600/80 dark:text-orange-400" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" className="min-w-[9.25rem]">
+                      {TIME_FILTER_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button size="sm" variant="outline" onClick={togglePause} className="h-8 gap-1 text-[11px]">
                     {paused ? <Play className="size-3" /> : <Pause className="size-3" />}
                     {paused ? 'Resume' : 'Pause'}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={clear} className="h-8 gap-1 text-[11px]">
+                  <Button size="sm" variant="ghost" onClick={handleClear} className="h-8 gap-1 text-[11px]">
                     <Trash2 className="size-3" />
                     Clear
                   </Button>
@@ -212,6 +293,17 @@ export default function NetworkInspectorPage() {
 
               <div className="flex min-h-[min(72vh,640px)] flex-col xl:flex-row">
                 <div className="flex w-full shrink-0 flex-col border-b border-border/70 xl:w-[min(42%,420px)] xl:border-b-0 xl:border-e">
+                  {latestHealthPoll ? (
+                    <HealthPollCard
+                      poll={latestHealthPoll}
+                      count={healthPolls.length}
+                      selected={healthPollFocused}
+                      onSelect={() => {
+                        setHealthPollFocused(true)
+                        setSelectedId(latestHealthPoll.id)
+                      }}
+                    />
+                  ) : null}
                   <div className="shrink-0 border-b border-border/60 p-3">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -227,6 +319,7 @@ export default function NetworkInspectorPage() {
                     {filtered.length === 0 ? (
                       <NetworkListEmptyState
                         query={query}
+                        hasHealthPolls={healthPolls.length > 0}
                         onClearSearch={() => setQuery('')}
                       />
                     ) : (
@@ -236,7 +329,6 @@ export default function NetworkInspectorPage() {
                             <th className="w-[4.5rem] px-2.5 py-2 font-semibold">Method</th>
                             <th className="px-2.5 py-2 font-semibold">Endpoint</th>
                             <th className="w-14 px-2.5 py-2 font-semibold">Status</th>
-                            <th className="w-16 px-2.5 py-2 text-right font-semibold">Time</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
@@ -248,10 +340,13 @@ export default function NetworkInspectorPage() {
                                 initial={{ opacity: 0, backgroundColor: 'rgba(249,115,22,0.12)' }}
                                 animate={{ opacity: 1, backgroundColor: 'rgba(249,115,22,0)' }}
                                 transition={{ duration: 0.6, ease: EASE }}
-                                onClick={() => setSelectedId(t.id)}
+                                onClick={() => {
+                                  setHealthPollFocused(false)
+                                  setSelectedId(t.id)
+                                }}
                                 className={cn(
                                   'cursor-pointer transition-colors hover:bg-muted/40',
-                                  selectedId === t.id && 'bg-orange-500/8 shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
+                                  !healthPollFocused && selectedId === t.id && 'bg-orange-500/8 shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
                                 )}
                               >
                                 <td className="px-2.5 py-2.5">
@@ -268,11 +363,6 @@ export default function NetworkInspectorPage() {
                                     {t.status ?? 'ERR'}
                                   </span>
                                 </td>
-                                <td className="px-2.5 py-2.5 text-right">
-                                  <span className={cn('font-mono text-[11px]', t.timing.totalMs > 5000 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')}>
-                                    {t.timing.totalMs >= 1000 ? `${(t.timing.totalMs / 1000).toFixed(1)}s` : `${t.timing.totalMs}ms`}
-                                  </span>
-                                </td>
                               </motion.tr>
                             ))}
                           </AnimatePresence>
@@ -286,14 +376,18 @@ export default function NetworkInspectorPage() {
                   <AnimatePresence mode="wait">
                     {selected ? (
                       <motion.div
-                        key={selected.id}
+                        key={healthPollFocused ? `health-${selected.id}` : selected.id}
                         className="h-full"
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.25, ease: EASE }}
                       >
-                        <TransactionDetail txn={selected} />
+                        {healthPollFocused ? (
+                          <HealthPollDetail poll={selected} count={healthPolls.length} />
+                        ) : (
+                          <TransactionDetail txn={selected} />
+                        )}
                       </motion.div>
                     ) : (
                       <NetworkDetailEmptyState />
@@ -306,6 +400,82 @@ export default function NetworkInspectorPage() {
         </>
       )}
     </ProductPage>
+  )
+}
+
+function HealthPollCard({
+  poll,
+  count,
+  selected,
+  onSelect,
+}: {
+  poll: NetworkTransaction
+  count: number
+  selected: boolean
+  onSelect: () => void
+}) {
+  const healthy = poll.status != null && poll.status >= 200 && poll.status < 300
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-start gap-3 border-b border-border/60 px-3 py-3 text-left transition-all',
+        'hover:bg-orange-500/[0.04]',
+        selected && 'bg-orange-500/8 shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
+      )}
+    >
+      <span
+        className={cn(
+          'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border',
+          healthy
+            ? 'border-green-500/25 bg-green-500/10'
+            : 'border-red-500/25 bg-red-500/10',
+        )}
+      >
+        <HeartPulse className={cn('size-4', healthy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-foreground">Service health poll</span>
+          <Badge variant="secondary" appearance="outline" size="xs" className="font-mono tabular-nums">
+            {count} poll{count === 1 ? '' : 's'}
+          </Badge>
+          <Badge variant="secondary" appearance="outline" size="xs" className={cn('font-mono', toneText[statusTone(poll.status)])}>
+            last {poll.status ?? 'ERR'}
+          </Badge>
+        </div>
+        <div className="mt-0.5 truncate font-mono text-[11px] text-foreground">GET /{normalizePath(poll.path)}</div>
+        <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{poll.host}</div>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          {formatDuration(poll.timing.totalMs)} · {formatElapsed(poll.startedAt)} · ~5s interval
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function HealthPollDetail({ poll, count }: { poll: NetworkTransaction; count: number }) {
+  const healthy = poll.status != null && poll.status >= 200 && poll.status < 300
+
+  return (
+    <div>
+      <div className="border-b border-border bg-orange-50/30 px-3 py-3 dark:bg-orange-950/10">
+        <div className="flex flex-wrap items-center gap-2">
+          <HeartPulse className={cn('size-4', healthy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')} />
+          <span className="text-sm font-semibold text-foreground">Latest health poll</span>
+          <Badge variant="secondary" appearance="outline" size="xs" className="font-mono tabular-nums">
+            {count} captured
+          </Badge>
+        </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          NesyMobile calls <code className="font-mono text-foreground">GET /Task/Info</code> every ~5 seconds to verify the API is healthy.
+          Older polls are grouped here so the main list stays readable.
+        </p>
+      </div>
+      <TransactionDetail txn={poll} />
+    </div>
   )
 }
 
@@ -432,9 +602,11 @@ function NetworkCaptureEmptyHero({
 
 function NetworkListEmptyState({
   query,
+  hasHealthPolls,
   onClearSearch,
 }: {
   query: string
+  hasHealthPolls?: boolean
   onClearSearch: () => void
 }) {
   return (
@@ -448,14 +620,29 @@ function NetworkListEmptyState({
         <Search className="size-5 text-muted-foreground/70" />
       </div>
       <div>
-        <p className="text-sm font-semibold text-foreground">No matching requests</p>
-        <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted-foreground">
-          Nothing matches <code className="font-mono text-foreground">{query.trim()}</code>. Try path, host or HTTP method.
-        </p>
+        {query.trim() ? (
+          <>
+            <p className="text-sm font-semibold text-foreground">No matching requests</p>
+            <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted-foreground">
+              Nothing matches <code className="font-mono text-foreground">{query.trim()}</code>. Try path, host or HTTP method.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-foreground">No app traffic yet</p>
+            <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted-foreground">
+              {hasHealthPolls
+                ? 'Health polls are grouped above. Other API calls will appear here as you use NesyMobile.'
+                : 'Use NesyMobile on the device — requests will appear here automatically.'}
+            </p>
+          </>
+        )}
       </div>
-      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onClearSearch}>
-        Clear search
-      </Button>
+      {query.trim() ? (
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onClearSearch}>
+          Clear search
+        </Button>
+      ) : null}
     </motion.div>
   )
 }

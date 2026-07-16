@@ -38,7 +38,6 @@ import type {
 import {
   LOG_SOURCE_META,
   LOG_LEVEL_META,
-  MOCK_RAW_LOGS,
   CORRELATION_RULES,
   matchCorrelation,
 } from '@/data/engineering/device-lab/log-presets'
@@ -493,7 +492,7 @@ export function LogTimeline({
                       toneIcon[levelMeta?.tone ?? 'gray'],
                     )}
                   >
-                    {levelMeta?.shortLabel ?? event.level[0].toUpperCase()}
+                    {levelMeta?.shortLabel ?? event.level.charAt(0).toUpperCase()}
                   </span>
 
                   {/* Tag */}
@@ -554,7 +553,7 @@ export function LogTimeline({
                 wrapRaw ? 'whitespace-pre-wrap' : 'whitespace-pre',
               )}
             >
-              {MOCK_RAW_LOGS.split('\n').map((line, i) => (
+              {events.map((e) => e.raw).map((line, i) => (
                 <span key={i} className="block hover:bg-muted/30 transition-colors">
                   <span className="inline-block w-8 select-none text-right text-muted-foreground/40 mr-3">
                     {i + 1}
@@ -642,7 +641,7 @@ function CorrelationSection({
                         <AlertCircle className="size-3.5 text-amber-600" />
                       )}
                       <span className="text-xs font-semibold text-foreground">
-                        {(rule as any).label ?? rule.name}
+                        {rule.label}
                       </span>
                       <Badge
                         variant="secondary"
@@ -685,7 +684,7 @@ function CorrelationSection({
                     {/* Analysis text */}
                     <div className="rounded-md bg-muted/30 px-3 py-2">
                       <p className="text-[11px] leading-relaxed text-foreground/70">
-                        {(rule as any).description ?? rule.flow}
+                        {rule.description}
                       </p>
                       <div className="mt-1.5 flex items-center gap-2">
                         <span className="text-[10px] text-muted-foreground">

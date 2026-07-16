@@ -23,6 +23,12 @@
 import type { HttpMethod, NetworkTransaction } from '@/data/debug-view/types'
 
 const MAX_BODY_CHARS = 16_384
+const SENSITIVE_HEADERS = new Set([
+  'cookie',
+  'proxy-authorization',
+  'set-cookie',
+  'x-api-key',
+])
 
 const STATUS_TEXT: Record<number, string> = {
   200: 'OK',
@@ -97,7 +103,8 @@ function capBody(lines: string[]): string | null {
 function parseHeaderLine(msg: string, target: Record<string, string>): boolean {
   const idx = msg.indexOf(': ')
   if (idx <= 0) return false
-  target[msg.slice(0, idx)] = msg.slice(idx + 2)
+  const name = msg.slice(0, idx)
+  target[name] = SENSITIVE_HEADERS.has(name.toLowerCase()) ? '[REDACTED]' : msg.slice(idx + 2)
   return true
 }
 

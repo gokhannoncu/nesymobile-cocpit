@@ -193,7 +193,7 @@ export const DATA_SOURCES: DataSource[] = [
     countries: ['General'],
     lastSchemaUpdate: '2026-04-14',
     purpose:
-      'The main record of the courier\\'s daily tour (schedule): stop order, assigned shipments and tour status. The single source of truth for the schedule data on the mobile side.',
+      'The main record of the courier\'s daily tour (schedule): stop order, assigned shipments and tour status. The single source of truth for the schedule data on the mobile side.',
     notFor:
       'Understanding what the courier is seeing on the screen right now (look at mobile Room copy) or real-time location tracking (LiveLocation).',
     keyFields: [
@@ -204,7 +204,7 @@ export const DATA_SOURCES: DataSource[] = [
       { name: 'state', type: 'Enum', meaning: 'Tour status (PLANNED, ACTIVE, COMPLETED).' },
     ],
     commonQuestions: [
-      'Which stops are on the courier\\'s tour today?',
+      'Which stops are on the courier\'s tour today?',
       'Which schedule is the shipment assigned to?',
       'Is the tour active in the backend?',
     ],
@@ -284,7 +284,7 @@ export const DATA_SOURCES: DataSource[] = [
       { name: 'createdAt', type: 'Long (epoch)', meaning: 'Moment the action was performed on the device.' },
     ],
     commonQuestions: [
-      'Why did the courier\\'s action not reach the backend?',
+      'Why did the courier\'s action not reach the backend?',
       'How many requests are waiting in the queue?',
       'Is isProcessing stuck?',
     ],
@@ -295,7 +295,7 @@ export const DATA_SOURCES: DataSource[] = [
     relatedSources: ['schedule-stop-chunks', 'shipments', 'delivery-events'],
     caveats: [
       'The queue is only visible on the device; for remote diagnosis, check Graylog sender logs.',
-      'If isProcessing=true gets stuck, queue won\\'t drain — a known edge case.',
+      'If isProcessing=true gets stuck, queue won\'t drain — a known edge case.',
     ],
   },
   {
@@ -366,7 +366,7 @@ export const DATA_SOURCES: DataSource[] = [
     ],
     commonQuestions: [
       'Did the schedule change push reach the device?',
-      'Push arrived but why didn\\'t sync work?',
+      'Push arrived but why didn\'t sync work?',
     ],
     exampleQuery: {
       label: 'sql (room)',
@@ -392,7 +392,7 @@ export const DATA_SOURCES: DataSource[] = [
     countries: ['General'],
     lastSchemaUpdate: '2025-12-12',
     purpose:
-      'Courier\\'s last known location; dispatcher map and D4Me ETA calculation read from here.',
+      'Courier\'s last known location; dispatcher map and D4Me ETA calculation read from here.',
     notFor:
       'Proof of delivery or route history analysis — location data is a derived snapshot.',
     keyFields: [

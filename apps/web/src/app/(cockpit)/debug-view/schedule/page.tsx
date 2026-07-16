@@ -560,7 +560,7 @@ function ScheduleLoadingState({ deviceName }: { deviceName: string }) {
       <div>
         <h3 className="text-sm font-semibold text-foreground">Reading {deviceName}&apos;s schedule...</h3>
         <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-          Pulling one consistent Room DB, WAL and SHM snapshot and parsing ScheduleStopChunk rows.
+          Pulling a live Room DB, WAL and SHM copy without stopping the app, then parsing ScheduleStopChunk rows.
         </p>
       </div>
     </motion.div>

@@ -300,22 +300,6 @@ export const WORKSPACES: Workspace[] = [
               },
             ],
           },
-          {
-            title: 'Device Lab',
-            icon: MonitorSmartphone,
-            children: [
-              {
-                title: 'ADB Scenario Runner',
-                path: '/engineering/device-lab/adb-scenarios',
-                icon: Play,
-              },
-              {
-                title: 'Device Log Explorer',
-                path: '/engineering/device-lab/log-explorer',
-                icon: ScrollText,
-              },
-            ],
-          },
         ],
       },
     ],
@@ -415,6 +399,11 @@ export const WORKSPACES: Workspace[] = [
             icon: MonitorSmartphone,
           },
           {
+            title: 'Operational Readiness',
+            path: '/debug-view/operational-health',
+            icon: ShieldCheck,
+          },
+          {
             title: 'Live Inspection',
             icon: Radar,
             children: [
@@ -448,6 +437,22 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Database Access',
                 path: '/debug-view/database',
                 icon: Table2,
+              },
+            ],
+          },
+          {
+            title: 'Device Tools',
+            icon: MonitorSmartphone,
+            children: [
+              {
+                title: 'ADB Scenario Runner',
+                path: '/debug-view/adb-scenarios',
+                icon: Play,
+              },
+              {
+                title: 'Device Log Explorer',
+                path: '/debug-view/log-explorer',
+                icon: ScrollText,
               },
             ],
           },

@@ -12,8 +12,6 @@ import {
   Compass,
   Copy,
   Database,
-  Play,
-  ScrollText,
   Terminal,
   type LucideIcon,
 } from 'lucide-react'
@@ -27,8 +25,6 @@ export const TOOL_LINKS: { path: string; title: string; icon: LucideIcon }[] = [
   { path: '/engineering/tools/data-locator', title: 'Data Locator', icon: Compass },
   { path: '/engineering/tools/mongodb-query-generator', title: 'MongoDB Query Generator', icon: Database },
   { path: '/engineering/tools/graylog-query-generator', title: 'Graylog Query Generator', icon: Terminal },
-  { path: '/engineering/device-lab/adb-scenarios', title: 'ADB Scenario Runner', icon: Play },
-  { path: '/engineering/device-lab/log-explorer', title: 'Device Log Explorer', icon: ScrollText },
 ]
 
 /**

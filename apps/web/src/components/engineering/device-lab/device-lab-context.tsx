@@ -1,65 +1,97 @@
 'use client'
 
-// Device Lab shared state management — shares device selection,
-// bridge connection status, and cross-navigation functions between two pages.
+// Device Lab shared state — shares the REAL connected-device selection, bridge
+// status, and cross-navigation between Log Explorer and ADB Scenario Runner.
+// The device list comes from /api/adb/devices (same source as Debug View), so
+// both tools always see the same physical device the user picked.
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useRouter } from 'next/navigation'
 import type { ConnectedDevice } from '@/data/engineering/device-lab/device-lab-types'
-import { MOCK_DEVICES } from '@/data/engineering/device-lab/mock-devices'
+import type { AdbDevicesResponse } from '@/data/debug-view/live-types'
 
-/** Device and session context shared between two pages. */
 interface DeviceLabContextValue {
-  /** Selected device */
   selectedDevice: ConnectedDevice | null
-  /** Select device */
   setSelectedDevice: (device: ConnectedDevice | null) => void
-  /** All connected devices */
   devices: ConnectedDevice[]
-  /** Refresh device list */
   refreshDevices: () => void
-  /** Is Nesy Device Bridge connected */
+  /** True on first load and during a refresh. */
+  devicesLoading: boolean
+  /** adb reachable AND last listing succeeded. */
   bridgeConnected: boolean
-  /** Active ADB run ID */
+  /** adb-not-found / listing error message, or null. */
+  bridgeError: string | null
   activeRunId: string | null
   setActiveRunId: (id: string | null) => void
-  /** Active log session ID */
   activeSessionId: string | null
   setActiveSessionId: (id: string | null) => void
-  /** Redirect to Log Explorer — associate with optional run ID */
   navigateToLogs: (runId?: string) => void
-  /** Redirect to ADB Scenario Runner — with optional scenario ID and context */
   navigateToScenario: (scenarioId?: string, context?: Record<string, string>) => void
 }
 
 const DeviceLabContext = createContext<DeviceLabContextValue | null>(null)
 
-/** Used as wrapper in Device Lab layout. */
 export function DeviceLabProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
-  // Device status
-  const [devices, setDevices] = useState<ConnectedDevice[]>(MOCK_DEVICES)
-  const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(
-    MOCK_DEVICES.find((d) => d.status === 'connected') ?? null,
-  )
+  const [devices, setDevices] = useState<ConnectedDevice[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(null)
+  const [devicesLoading, setDevicesLoading] = useState(true)
+  const [bridgeConnected, setBridgeConnected] = useState(false)
+  const [bridgeError, setBridgeError] = useState<string | null>(null)
 
-  // Bridge status (mock: always connected)
-  const [bridgeConnected] = useState(true)
-
-  // Active run and session IDs
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
+  // Read current selection without making refreshDevices depend on it.
+  const selectedRef = useRef<ConnectedDevice | null>(null)
+  selectedRef.current = selectedDevice
+
   const refreshDevices = useCallback(() => {
-    // Mock: reload device list
-    setDevices([...MOCK_DEVICES])
+    setDevicesLoading(true)
+    fetch('/api/adb/devices')
+      .then((res) => res.json() as Promise<AdbDevicesResponse>)
+      .then((data) => {
+        setDevices(data.devices)
+        setBridgeConnected(data.adbAvailable && !data.error)
+        setBridgeError(data.error)
+        const current = selectedRef.current
+        if (current) {
+          const still = data.devices.find((d) => d.serial === current.serial)
+          setSelectedDevice(
+            still ??
+              data.devices.find((d) => d.status === 'connected') ??
+              data.devices[0] ??
+              null,
+          )
+        } else {
+          setSelectedDevice(
+            data.devices.find((d) => d.status === 'connected') ?? data.devices[0] ?? null,
+          )
+        }
+      })
+      .catch((err: unknown) => {
+        setBridgeConnected(false)
+        setBridgeError(err instanceof Error ? err.message : 'adb query failed')
+      })
+      .finally(() => setDevicesLoading(false))
   }, [])
+
+  useEffect(refreshDevices, [refreshDevices])
 
   const navigateToLogs = useCallback(
     (runId?: string) => {
       if (runId) setActiveRunId(runId)
-      router.push('/engineering/device-lab/log-explorer')
+      router.push(runId ? `/debug-view/log-explorer?run=${encodeURIComponent(runId)}` : '/debug-view/log-explorer')
     },
     [router],
   )
@@ -67,7 +99,7 @@ export function DeviceLabProvider({ children }: { children: ReactNode }) {
   const navigateToScenario = useCallback(
     (scenarioId?: string, _context?: Record<string, string>) => {
       const query = scenarioId ? `?scenario=${scenarioId}` : ''
-      router.push(`/engineering/device-lab/adb-scenarios${query}`)
+      router.push(`/debug-view/adb-scenarios${query}`)
     },
     [router],
   )
@@ -78,7 +110,9 @@ export function DeviceLabProvider({ children }: { children: ReactNode }) {
       setSelectedDevice,
       devices,
       refreshDevices,
+      devicesLoading,
       bridgeConnected,
+      bridgeError,
       activeRunId,
       setActiveRunId,
       activeSessionId,
@@ -86,13 +120,23 @@ export function DeviceLabProvider({ children }: { children: ReactNode }) {
       navigateToLogs,
       navigateToScenario,
     }),
-    [selectedDevice, devices, refreshDevices, bridgeConnected, activeRunId, activeSessionId, navigateToLogs, navigateToScenario],
+    [
+      selectedDevice,
+      devices,
+      refreshDevices,
+      devicesLoading,
+      bridgeConnected,
+      bridgeError,
+      activeRunId,
+      activeSessionId,
+      navigateToLogs,
+      navigateToScenario,
+    ],
   )
 
   return <DeviceLabContext.Provider value={value}>{children}</DeviceLabContext.Provider>
 }
 
-/** Device Lab context hook — throws error if called outside layout. */
 export function useDeviceLab(): DeviceLabContextValue {
   const ctx = useContext(DeviceLabContext)
   if (!ctx) throw new Error('useDeviceLab must be used within DeviceLabProvider')

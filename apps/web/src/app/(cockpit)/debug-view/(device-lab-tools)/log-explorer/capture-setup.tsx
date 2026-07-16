@@ -38,6 +38,7 @@ import type {
   LogSource,
   LogLevel,
   CaptureMode,
+  TimeRange,
 } from '@/data/engineering/device-lab/device-lab-types'
 import {
   CAPTURE_PRESETS,
@@ -88,6 +89,15 @@ interface CaptureSetupProps {
   onContextFields: (fields: Record<string, string>) => void
   onStartCapture: () => void
   onStopCapture: () => void
+  timeRange: TimeRange
+  onTimeRange: (range: TimeRange) => void
+  customFrom: string
+  onCustomFrom: (value: string) => void
+  customTo: string
+  onCustomTo: (value: string) => void
+  onFetchBuffer: () => void
+  startDisabled?: boolean
+  startDisabledReason?: string | null
 }
 
 /* ─────────────────── Elapsed Timer Hook ──────────────────────────── */
@@ -168,6 +178,15 @@ export function CaptureSetup({
   onContextFields,
   onStartCapture,
   onStopCapture,
+  timeRange,
+  onTimeRange,
+  customFrom,
+  onCustomFrom,
+  customTo,
+  onCustomTo,
+  onFetchBuffer,
+  startDisabled = false,
+  startDisabledReason = null,
 }: CaptureSetupProps) {
   const isCapturing =
     captureState === 'capturing' || captureState === 'paused'
@@ -292,18 +311,50 @@ export function CaptureSetup({
             {/* ── Time Range ─────────────────────────────────────── */}
             <CollapsibleSection title="Time Range" defaultOpen={false}>
               <div className="flex flex-wrap gap-1.5">
-                {TIME_RANGE_OPTIONS.map((opt) => (
-                  <Badge
-                    key={opt.value}
-                    variant="secondary"
-                    appearance="outline"
-                    size="sm"
-                    className="cursor-pointer hover:bg-muted/80 transition-colors"
-                  >
-                    {opt.label}
-                  </Badge>
-                ))}
+                {TIME_RANGE_OPTIONS.map((opt) => {
+                  const active = timeRange === opt.value
+                  return (
+                    <Badge
+                      key={opt.value}
+                      variant={active ? 'primary' : 'secondary'}
+                      appearance={active ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => !isCapturing && onTimeRange(opt.value)}
+                      className={cn(
+                        'transition-colors',
+                        isCapturing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/80',
+                        active && 'bg-purple-600 text-white hover:bg-purple-700',
+                      )}
+                    >
+                      {opt.label}
+                    </Badge>
+                  )
+                })}
               </div>
+              {timeRange === 'custom' && (
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  <div>
+                    <label className="text-[10px] font-medium text-muted-foreground">From</label>
+                    <Input
+                      type="datetime-local"
+                      value={customFrom}
+                      onChange={(e) => onCustomFrom(e.target.value)}
+                      disabled={isCapturing}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-muted-foreground">To (optional)</label>
+                    <Input
+                      type="datetime-local"
+                      value={customTo}
+                      onChange={(e) => onCustomTo(e.target.value)}
+                      disabled={isCapturing}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
             </CollapsibleSection>
 
             <Separator />
@@ -451,7 +502,7 @@ export function CaptureSetup({
                               : 'text-foreground/80',
                           )}
                         >
-                          {(preset as any).label ?? preset.name ?? preset.id}
+                          {preset.label ?? preset.id}
                         </p>
                         <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground line-clamp-2">
                           {preset.description}
@@ -537,6 +588,7 @@ export function CaptureSetup({
               size="sm"
               className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
               onClick={onStartCapture}
+              disabled={startDisabled}
             >
               <Play className="size-3.5" />
               Start Log Capture
@@ -546,11 +598,17 @@ export function CaptureSetup({
             size="sm"
             variant="outline"
             className="w-full gap-2"
-            disabled={isCapturing}
+            disabled={isCapturing || startDisabled}
+            onClick={onFetchBuffer}
           >
             <HardDriveDownload className="size-3.5" />
             Fetch Device Buffer
           </Button>
+          {startDisabled && startDisabledReason && (
+            <p className="text-center text-[10px] text-amber-600 dark:text-amber-400">
+              {startDisabledReason}
+            </p>
+          )}
         </div>
       </div>
     </motion.aside>

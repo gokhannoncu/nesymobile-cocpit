@@ -86,7 +86,14 @@ export function DebugViewProvider({ children }: { children: ReactNode }) {
       runtimeAvailable: (id: string) =>
         devices.some((d) => d.id === id && (d.status === 'connected' || d.status === 'app-not-installed')),
     }),
-    [selectedDevice, devices, refreshDevices, devicesLoading, bridgeConnected, bridgeError],
+    [
+      selectedDevice,
+      devices,
+      refreshDevices,
+      devicesLoading,
+      bridgeConnected,
+      bridgeError,
+    ],
   )
 
   return <DebugViewContext.Provider value={value}>{children}</DebugViewContext.Provider>

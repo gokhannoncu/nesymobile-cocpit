@@ -137,10 +137,10 @@ export default function AdbScenariosPage() {
   }
 
   return (
-    <ProductPage path="/engineering/device-lab/adb-scenarios">
+    <ProductPage path="/debug-view/adb-scenarios">
       {/* ─── Header ─── */}
       <ToolHeader
-        path="/engineering/device-lab/adb-scenarios"
+        path="/debug-view/adb-scenarios"
         icon={Play}
         title="ADB Scenario Runner"
         lead="Select approved device scenarios, enter their parameters, verify the commands to be applied, and execute them in a controlled manner."

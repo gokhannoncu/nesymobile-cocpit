@@ -35,5 +35,10 @@ export async function buildApp(env: Env) {
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
 
+  if (io) {
+    const { startAdbBridge } = await import('./plugins/adb-bridge.js')
+    startAdbBridge(io)
+  }
+
   return { app, io }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-// Reads a consistent Room DB + WAL snapshot and exposes every table read-only.
+// Reads a live Room DB + WAL snapshot and exposes every table read-only.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -924,7 +924,8 @@ function DatabaseLoadingState({ deviceName }: { deviceName: string }) {
       <div>
         <h3 className="text-sm font-semibold text-foreground">{`Reading ${deviceName}'s Room database...`}</h3>
         <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-          Force-stopping the app, pulling the database with its WAL/SHM files, then opening the merged snapshot in read-only mode.
+          Leaving the app running while pulling the database with its WAL/SHM files, then opening the merged snapshot
+          in read-only mode. A rare mid-write skew is possible.
         </p>
       </div>
     </motion.div>

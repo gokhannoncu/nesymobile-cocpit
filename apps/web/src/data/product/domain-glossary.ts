@@ -172,7 +172,7 @@ export const entities: DomainEntity[] = [
     id: 'route',
     name: 'Route',
     turkishName: 'Route',
-    aliases: ['Tour', 'Path', 'Tour'],
+    aliases: ['Tour', 'Path'],
     level: 1,
     parentId: 'schedule',
     childIds: ['stop'],

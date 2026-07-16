@@ -244,22 +244,34 @@ export type CaptureMode =
 
 export type SessionStatus = 'capturing' | 'paused' | 'stopped' | 'saved'
 
-export type TimeRange = 'now' | '5min' | '15min' | '1hour' | 'app-start' | 'custom'
+export type TimeRange = 'now' | 'last-5m' | 'last-15m' | 'last-30m' | 'last-1h' | 'custom'
+
+/** Logcat ring buffer a line came from. */
+export type LogBuffer = 'main' | 'system' | 'crash' | 'radio' | 'events' | 'kernel'
 
 /**
- * Represents a single log line captured from Logcat.
- * Includes process/thread info, correlation IDs, and raw text.
+ * A single parsed logcat line. Produced by the server-side logcat parser
+ * (`epoch,uid` format), streamed to the client, and persisted verbatim.
  */
 export interface LogEvent {
   id: string
+  /** ISO timestamp derived from the logcat epoch. */
   timestamp: string
+  /** Epoch milliseconds — used for ordering, dedup and time-range queries. */
+  epochMs: number
   source: LogSource
   level: LogLevel
   tag: string
   message: string
   processId: number
   threadId: number
-  threadName: string
+  /** Linux uid of the emitting process (null when logcat reports a symbolic uid). */
+  uid: number | null
+  /** Resolved package name when the uid maps to the NesyMobile app. */
+  packageName: string | null
+  /** Ring buffer the line came from. */
+  buffer: LogBuffer
+  threadName?: string
   correlationId?: string
   shipmentId?: string
   requestId?: string
@@ -281,75 +293,120 @@ export interface LogMarker {
 }
 
 /**
- * Predefined log capture preset for a specific flow or error type.
- * Includes source filters, expected events, and anomaly hints.
+ * Predefined capture preset. Field names match the CAPTURE_PRESETS fixture
+ * exactly so components consume it without casts.
  */
 export interface CapturePreset {
   id: string
-  name: string
+  label: string
   description: string
-  sources: LogSource[]
-  tags: string[]
-  levels: LogLevel[]
-  expectedEvents: string[]
-  anomalyHints: string[]
-  systemDumps: string[]
   icon: string
+  sources: LogSource[]
+  levels: LogLevel[]
+  tags: string[]
+  expectedEvents: string[]
+  captureMode: CaptureMode
+  bufferSizeKb: number
+  maxDurationMin: number
 }
 
-/**
- * Log capture session started from a device.
- * Covers start/end times, event count, markers, and sharing info.
- */
-export interface LogSession {
-  id: string
-  deviceId: string
-  deviceName: string
-  presetId: string | null
-  presetName: string | null
-  status: SessionStatus
-  startedAt: string
-  stoppedAt: string | null
-  /** Session duration (seconds) */
-  duration: number
-  eventCount: number
-  createdBy: string
-  markers: LogMarker[]
-  context: Record<string, string>
-  sharedTo: string | null
-}
-
-/**
- * Rule definition used to correlate multiple log events within a workflow.
- * Includes expected events and analysis template.
- */
+/** Correlation rule — matches the CORRELATION_RULES fixture shape. */
 export interface CorrelationRule {
   id: string
-  name: string
-  flow: string
+  label: string
+  description: string
   expectedEvents: { event: string; required: boolean }[]
   analysisTemplate: string
 }
 
-/**
- * Privacy rule used for masking sensitive data during log sharing.
- */
+/** Privacy redaction rule — matches the PRIVACY_RULES fixture shape. */
 export interface PrivacyRule {
   id: string
-  field: string
+  label: string
+  /** Source regex applied (global, case-insensitive) to text during export. */
   pattern: string
   replacement: string
-  description: string
+  enabled: boolean
 }
 
-/**
- * Export and sharing configuration of the log session.
- * Includes settings like format, access level, and time limit.
- */
-export interface ShareConfig {
-  contents: string[]
-  format: 'link' | 'zip' | 'plaintext' | 'ticket' | 'incident'
-  access: 'internal' | 'team' | 'public'
-  expiryDays: 7 | 30 | null
-  auditEnabled: boolean
+// === Capture / stream / storage contract ===
+
+/** What a capture run asks the logcat stream for. */
+export interface LogCaptureConfig {
+  serial: string
+  /** `live` follows new lines; `buffer` reads a bounded window then completes. */
+  mode: 'live' | 'buffer'
+  sources: LogSource[]
+  levels: LogLevel[]
+  timeRange: TimeRange
+  /** ISO start for backfill/custom (null = live only). */
+  from: string | null
+  /** ISO end for a custom buffer read (null = open-ended / live). */
+  to: string | null
+  captureMode: CaptureMode
+  presetId: string | null
+}
+
+/** Discriminated SSE payload sent on the default message channel. */
+export type LogStreamEnvelope =
+  | { type: 'ready'; serial: string; packageName: string | null; uid: number | null; startedAt: string }
+  | { type: 'log'; event: LogEvent }
+  | { type: 'complete'; reason: string; total: number; lastTimestamp: string | null }
+  | { type: 'error'; code: string; message: string; retryable: boolean }
+
+export type StoredSessionStatus = 'capturing' | 'stopped' | 'interrupted' | 'saved'
+
+/** Device identity snapshot embedded in a stored session. */
+export interface SessionDeviceInfo {
+  serial: string
+  name: string
+  androidVersion: string
+  appVersion: string | null
+  packageName: string | null
+}
+
+/** IndexedDB `sessions` record — metadata only; events live in chunks. */
+export interface StoredLogSession {
+  id: string
+  device: SessionDeviceInfo
+  config: LogCaptureConfig
+  status: StoredSessionStatus
+  startedAt: string
+  stoppedAt: string | null
+  eventCount: number
+  markers: LogMarker[]
+  context: Record<string, string>
+  presetId: string | null
+  presetLabel: string | null
+  linkedRunId: string | null
+}
+
+/** IndexedDB `eventChunks` record — up to 500 events keyed by [sessionId, chunkIndex]. */
+export interface StoredEventChunk {
+  sessionId: string
+  chunkIndex: number
+  events: LogEvent[]
+}
+
+/** Manifest entry describing one privacy rule's effect during export. */
+export interface MaskManifestEntry {
+  ruleId: string
+  label: string
+  hits: number
+}
+
+export type BundleFormat = 'zip' | 'json' | 'txt'
+
+/** IndexedDB `bundles` record — a locally generated diagnostic package. */
+export interface StoredLogBundle {
+  id: string
+  sessionId: string
+  createdAt: string
+  format: BundleFormat
+  filename: string
+  sizeBytes: number
+  eventCount: number
+  deviceName: string
+  blob: Blob
+  maskManifest: MaskManifestEntry[]
 }

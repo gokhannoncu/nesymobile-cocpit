@@ -19,6 +19,7 @@ import {
   FileCode,
   Database,
   Terminal,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Button } from '@nesy/metronic/components/ui/button'
@@ -261,7 +262,7 @@ function DetailsTab({
         <MetaItem label="Timestamp" value={fmtTimeFull(event.timestamp)} mono />
         <MetaItem label="Process ID" value={String(event.processId)} mono />
         <MetaItem label="Thread ID" value={String(event.threadId)} mono />
-        <MetaItem label="Thread Name" value={event.threadName} mono />
+        <MetaItem label="Thread Name" value={event.threadName ?? '—'} mono />
         {event.correlationId && (
           <MetaItem label="Correlation ID" value={event.correlationId} mono />
         )}

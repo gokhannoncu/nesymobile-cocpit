@@ -15,11 +15,14 @@ import { EASE, toneIcon, toneIconBox, toneText, type Tone } from '@/components/p
 /** Single source of truth for Debug View pages — header cross links from here. */
 export const DEBUG_LINKS: { path: string; title: string; icon: string }[] = [
   { path: '/debug-view/overview', title: 'Device Overview', icon: 'MonitorSmartphone' },
+  { path: '/debug-view/operational-health', title: 'Operational Readiness', icon: 'ShieldCheck' },
   { path: '/debug-view/screen-state', title: 'Screen State', icon: 'LayoutDashboard' },
   { path: '/debug-view/interactions', title: 'User Interactions', icon: 'MousePointerClick' },
   { path: '/debug-view/network-inspector', title: 'Network Inspector', icon: 'Wifi' },
   { path: '/debug-view/schedule', title: 'Schedule Explorer', icon: 'Route' },
   { path: '/debug-view/database', title: 'Database Access', icon: 'Table2' },
+  { path: '/debug-view/adb-scenarios', title: 'ADB Scenario Runner', icon: 'Play' },
+  { path: '/debug-view/log-explorer', title: 'Device Log Explorer', icon: 'ScrollText' },
 ]
 
 /**

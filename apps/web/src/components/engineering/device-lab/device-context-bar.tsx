@@ -303,7 +303,7 @@ export function DeviceContextBar() {
               <CopyDeviceInfoButton device={selectedDevice} />
 
               <Button size="xs" variant="ghost" className="h-7 gap-1 px-1.5 text-[10px]" asChild>
-                <Link href="/engineering/device-lab/log-explorer">
+                <Link href="/debug-view/log-explorer">
                   <ScrollText className="size-3" />
                   <span className="hidden xl:inline">Log Explorer</span>
                 </Link>

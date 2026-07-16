@@ -63,8 +63,8 @@ import {
 import { motion } from 'framer-motion'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
+import { Button } from '@nesy/metronic/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal } from '@nesy/metronic/components/ui/dialog'
-import { ScrollArea } from '@nesy/metronic/components/ui/scroll-area'
 import { Input } from '@nesy/metronic/components/ui/input'
 import {
   EASE,
@@ -276,17 +276,26 @@ const TURKISH_ALIAS_WORDS = new Set([
 ])
 
 function displayAliases(entity: DomainEntity) {
-  return entity.aliases
-    .filter((alias) => /^[\x20-\x7E]+$/.test(alias))
-    .filter((alias) => alias !== entity.name)
-    .filter((alias) => {
-      const words = alias.toLocaleLowerCase('en').split(/[\s\-/]+/)
-      return words.every((word) => {
-        const normalized = word.replace(/[^a-z]/g, '')
-        return normalized.length === 0 || !TURKISH_ALIAS_WORDS.has(normalized)
-      })
-    })
-    .slice(0, 4)
+  const seen = new Set<string>()
+  const aliases: string[] = []
+
+  for (const alias of entity.aliases) {
+    if (!/^[\x20-\x7E]+$/.test(alias)) continue
+    if (alias === entity.name) continue
+    const words = alias.toLocaleLowerCase('en').split(/[\s\-/]+/)
+    if (!words.every((word) => {
+      const normalized = word.replace(/[^a-z]/g, '')
+      return normalized.length === 0 || !TURKISH_ALIAS_WORDS.has(normalized)
+    })) continue
+
+    const key = alias.toLocaleLowerCase('en')
+    if (seen.has(key)) continue
+    seen.add(key)
+    aliases.push(alias)
+    if (aliases.length >= 4) break
+  }
+
+  return aliases
 }
 
 function relationFor(entity: DomainEntity) {
@@ -481,6 +490,31 @@ function learningContext(entityId: string) {
   return { current, previous, next, index, total: learningPath.length }
 }
 
+function DialogSection({
+  title,
+  hint,
+  tone = 'indigo',
+  children,
+}: {
+  title: string
+  hint?: string
+  tone?: Tone
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-2.5">
+      <div>
+        <h3 className={cn('flex items-center gap-2 text-xs font-bold', toneText[tone])}>
+          <span aria-hidden className={cn('h-3.5 w-1 rounded-full', toneDot[tone])} />
+          {title}
+        </h3>
+        {hint && <p className="mt-1 ps-3 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+      </div>
+      {children}
+    </section>
+  )
+}
+
 function EntityDetailDialog({
   entity,
   open,
@@ -492,130 +526,217 @@ function EntityDetailDialog({
   onOpenChange: (open: boolean) => void
   onNavigate?: (id: string) => void
 }) {
+  useEffect(() => {
+    if (!open || !onNavigate || !entity) return
+    const context = learningContext(entity.id)
+    if (!context) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' && context.previous) onNavigate(context.previous.entityId)
+      if (event.key === 'ArrowRight' && context.next) onNavigate(context.next.entityId)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onNavigate, entity])
+
   if (!entity) return null
 
-  const Icon = ICONS[entity.icon] ?? Package
   const ctx = learningContext(entity.id)
-  const { label: categoryLabel } = categoryMeta(entityCategory(entity))
+  const Icon = ICONS[entity.icon] ?? Package
+  const tone = entityTone(entity)
+  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
   const chainIndex = CHAIN.findIndex((item) => item.id === entity.id)
   const hasNav = onNavigate && ctx && (ctx.previous || ctx.next)
   const aliases = displayAliases(entity)
-
-  const metaItems = [
-    categoryLabel,
-    ctx ? `Step ${ctx.current.step} of ${ctx.total}` : null,
-    chainIndex >= 0 ? `Level ${entity.level}` : null,
-  ].filter(Boolean) as string[]
+  const { parent, children } = relationshipRows(entity)
+  const progressPct = ctx ? ((ctx.index + 1) / ctx.total) * 100 : 0
+  const nextEntity = ctx?.next ? entityById(ctx.next.entityId) : null
+  const prevEntity = ctx?.previous ? entityById(ctx.previous.entityId) : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
-        <DialogOverlay className="bg-slate-900/50 backdrop-blur-[1px]" />
+        <DialogOverlay className="bg-slate-900/55 backdrop-blur-sm" />
       </DialogPortal>
       <DialogContent
         overlay={false}
         showCloseButton={false}
-        className="fixed top-1/2 left-1/2 z-50 flex max-h-[min(88vh,680px)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+        className="fixed top-1/2 left-1/2 z-50 flex h-[min(90vh,720px)] max-h-[min(90vh,720px)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border/80 bg-card p-0 shadow-2xl"
       >
-        <div className="relative shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-5 dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                Domain term
-              </p>
-              <div className="mt-2 flex items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                  <Icon className="size-4" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="text-[22px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
-                    {entity.name}
-                  </h2>
-                  {metaItems.length > 0 && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {metaItems.join(' · ')}
-                    </p>
-                  )}
+        <div className={cn('relative shrink-0 overflow-hidden border-b', toneHero[tone])}>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-[0.22] dark:opacity-10 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:16px_16px] text-foreground/10"
+          />
+          <span aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
+
+          <div className="relative px-5 py-4 sm:px-6 sm:py-5">
+            {ctx && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <GraduationCap className="size-3" />
+                    Learning path
+                  </span>
+                  <span className="tabular-nums">Step {ctx.current.step} / {ctx.total}</span>
+                </div>
+                <div
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10"
+                  role="progressbar"
+                  aria-valuenow={ctx.current.step}
+                  aria-valuemin={1}
+                  aria-valuemax={ctx.total}
+                  aria-label={`Learning path progress: step ${ctx.current.step} of ${ctx.total}`}
+                >
+                  <div
+                    className={cn('h-full rounded-full transition-all duration-300', toneDot[tone])}
+                    style={{ width: `${progressPct}%` }}
+                  />
                 </div>
               </div>
-              {aliases.length > 0 && (
-                <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Also known as</span>
-                  {' '}
-                  {aliases.join(' · ')}
+            )}
+
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneText[tone])}>
+                  Domain term
                 </p>
-              )}
+                <div className="mt-2 flex items-start gap-3">
+                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
+                    <Icon className={cn('size-5', toneIcon[tone])} />
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground sm:text-[22px]">
+                      {entity.name}
+                    </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="secondary" appearance="outline" size="sm" className={cn(toneCard[categoryTone], toneText[categoryTone])}>
+                        {categoryLabel}
+                      </Badge>
+                      {chainIndex >= 0 && (
+                        <Badge variant="secondary" appearance="outline" size="xs" className={cn(toneCard[tone], toneText[tone])}>
+                          Level {entity.level}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {aliases.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground">Also known as</span>
+                    {aliases.map((alias) => (
+                      <span
+                        key={alias}
+                        className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
+                      >
+                        {alias}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogClose
+                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border/70 bg-background/80 text-muted-foreground outline-none transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </DialogClose>
             </div>
-            <DialogClose
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 outline-none transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="Close"
-            >
-              <X className="size-4" />
-            </DialogClose>
           </div>
         </div>
 
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            <section className="px-6 py-5">
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Definition
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300">{entity.definition}</p>
-            </section>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="space-y-5 px-5 py-5 sm:px-6">
+            {ctx && (
+              <div className={cn('rounded-xl border p-3.5', toneCard.indigo)}>
+                <p className={cn('text-[10px] font-bold uppercase tracking-wide', toneText.indigo)}>
+                  {ctx.current.title}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-foreground/90">{ctx.current.hint}</p>
+              </div>
+            )}
 
-            <section className="px-6 py-5">
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Operational context
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300">{entity.businessContext}</p>
-            </section>
+            <DialogSection title="What is this concept?" hint="One-sentence definition — use this in meetings." tone={tone}>
+              <p className="rounded-lg border border-border/60 bg-muted/25 px-3.5 py-3 text-sm leading-7 text-foreground/90">
+                {entity.definition}
+              </p>
+            </DialogSection>
+
+            <DialogSection title="What does it mean in the field?" hint="What role does it play in courier operations?" tone="blue">
+              <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3.5 py-3 dark:border-blue-900/50 dark:bg-blue-950/20">
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                <p className="text-sm leading-7 text-foreground/90">{entity.businessContext}</p>
+              </div>
+            </DialogSection>
 
             {entity.antiPatterns.length > 0 && (
-              <section className="px-6 py-5">
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                  Common misconceptions
-                </h3>
-                <ol className="mt-3 space-y-3">
-                  {entity.antiPatterns.slice(0, 3).map((item, index) => (
-                    <li key={item} className="flex gap-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                      <span className="mt-0.5 w-5 shrink-0 text-right text-xs font-medium tabular-nums text-slate-400">
-                        {index + 1}.
-                      </span>
+              <DialogSection title="Common misconceptions" hint="Keep these in mind to avoid misunderstandings." tone="amber">
+                <ul className="space-y-2">
+                  {entity.antiPatterns.slice(0, 3).map((item) => (
+                    <li
+                      key={item}
+                      className="flex gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3.5 py-2.5 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20"
+                    >
+                      <Info className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                       <span>{item.replace(/^[^\p{L}\p{N}]+/u, '').trim()}</span>
                     </li>
                   ))}
-                </ol>
-              </section>
+                </ul>
+              </DialogSection>
+            )}
+
+            {(parent || children.length > 0) && onNavigate && (
+              <DialogSection title="Related concepts" hint="Jump to connected terms in the domain chain." tone="teal">
+                <div className="flex flex-wrap gap-2">
+                  {parent && <EntityNavChip entityId={parent.id} onNavigate={onNavigate} />}
+                  {children.map((child) => (
+                    <EntityNavChip key={child.id} entityId={child.id} onNavigate={onNavigate} />
+                  ))}
+                </div>
+              </DialogSection>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {hasNav && (
-          <div className="flex shrink-0 items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex shrink-0 flex-col gap-2 border-t bg-muted/20 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             {ctx!.previous ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onNavigate!(ctx!.previous!.entityId)}
-                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                className="max-w-full justify-start gap-1.5 sm:max-w-[44%]"
               >
                 <ChevronLeft className="size-3.5 shrink-0" />
-                <span className="truncate">{entityById(ctx!.previous!.entityId)?.name}</span>
-              </button>
+                <span className="truncate">{prevEntity?.name}</span>
+              </Button>
             ) : (
-              <span />
+              <span className="hidden sm:block" />
             )}
+
+            <p className="text-center text-[10px] text-muted-foreground sm:order-none">
+              <kbd className="rounded border border-border/70 bg-background px-1 py-0.5 font-mono text-[9px]">←</kbd>
+              {' '}
+              <kbd className="rounded border border-border/70 bg-background px-1 py-0.5 font-mono text-[9px]">→</kbd>
+              {' '}
+              to navigate
+            </p>
+
             {ctx!.next ? (
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => onNavigate!(ctx!.next!.entityId)}
-                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                className="max-w-full gap-1.5 sm:max-w-[44%]"
               >
-                <span className="truncate">{entityById(ctx!.next!.entityId)?.name}</span>
+                Continue to {nextEntity?.name}
                 <ChevronRight className="size-3.5 shrink-0" />
-              </button>
+              </Button>
             ) : (
-              <span />
+              <span className="hidden sm:block" />
             )}
           </div>
         )}

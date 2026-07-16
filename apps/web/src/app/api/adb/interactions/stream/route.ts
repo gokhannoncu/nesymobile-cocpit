@@ -1,11 +1,12 @@
-// GET /api/adb/network/stream?serial=XXX — Server-Sent Events stream of live
-// OkHttp transactions parsed from `adb logcat`. Starts with a short backfill
-// (last ~800 OkHttpLog lines) and then follows new traffic in real time.
+// GET /api/adb/interactions/stream?serial=XXX — direct SSE bridge from the
+// selected device's InteractionEvent logcat tag. Includes a large device-log
+// backfill before following new events, so activity that happened while the
+// timeline page was closed is recovered when the Debug View layout mounts.
 
 import { spawn } from 'node:child_process'
 import type { NextRequest } from 'next/server'
 import { resolveAdbPath } from '@/lib/server/adb'
-import { createOkHttpLogParser } from '@/lib/server/okhttp-log-parser'
+import { parseInteractionLogLine } from '@/lib/server/interaction-log-parser'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -22,25 +23,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: 'adb binary not found' }, { status: 503 })
   }
 
-  const minutesStr = req.nextUrl.searchParams.get('minutes')
-  let logcatT = '800' // default backfill
-  if (minutesStr != null) {
-    const minutes = Number(minutesStr)
-    if (minutes === 0) {
-      logcatT = '1' // Live only
-    } else if (minutes > 0 && Number.isFinite(minutes)) {
-      const d = new Date(Date.now() - minutes * 60000)
-      const mm = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      const hh = String(d.getHours()).padStart(2, '0')
-      const min = String(d.getMinutes()).padStart(2, '0')
-      const ss = String(d.getSeconds()).padStart(2, '0')
-      logcatT = `${mm}-${dd} ${hh}:${min}:${ss}.000`
-    }
-  }
-
   const encoder = new TextEncoder()
-
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       let closed = false
@@ -51,8 +34,8 @@ export async function GET(req: NextRequest) {
         '-v',
         'epoch',
         '-T',
-        logcatT,
-        'OkHttpLog:D',
+        '5000',
+        'InteractionEvent:D',
         '*:S',
       ])
 
@@ -65,20 +48,18 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const parser = createOkHttpLogParser((txn) => {
-        send(`data: ${JSON.stringify(txn)}\n\n`)
-      })
-
       let buffer = ''
       child.stdout.on('data', (chunk: Buffer) => {
         buffer += chunk.toString('utf8')
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
-        for (const line of lines) parser.feed(line)
+        for (const line of lines) {
+          const event = parseInteractionLogLine(line)
+          if (event) send(`data: ${JSON.stringify(event)}\n\n`)
+        }
       })
 
       const heartbeat = setInterval(() => send(': heartbeat\n\n'), HEARTBEAT_MS)
-
       const shutdown = () => {
         if (closed) return
         closed = true
