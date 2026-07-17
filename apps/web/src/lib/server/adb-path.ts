@@ -1,7 +1,8 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
-import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
+import { getAdbPathHint } from '@nesy/platform-paths'
 
 export { resolveAdbPath } from '@nesy/platform-paths'
 
@@ -32,6 +33,21 @@ function defaultSqliteCandidates(): string[] {
   return ['/usr/bin/sqlite3', '/usr/local/bin/sqlite3']
 }
 
+function resolveSqliteFromPath(): string | null {
+  try {
+    const os = platform()
+    const output = execFileSync(os === 'win32' ? 'where.exe' : 'which', ['sqlite3'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      windowsHide: os === 'win32',
+    })
+    const first = output.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
+    return first && existsSync(first) ? first : null
+  } catch {
+    return null
+  }
+}
+
 let cachedSqlitePath: string | null | undefined
 
 export function resolveSqlitePath(): string | null {
@@ -41,7 +57,7 @@ export function resolveSqlitePath(): string | null {
     platformSqliteEnvPath(),
     ...defaultSqliteCandidates(),
   ].filter((p): p is string => Boolean(p))
-  cachedSqlitePath = candidates.find((p) => existsSync(p)) ?? null
+  cachedSqlitePath = candidates.find((p) => existsSync(p)) ?? resolveSqliteFromPath()
   return cachedSqlitePath
 }
 

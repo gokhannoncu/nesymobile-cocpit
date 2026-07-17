@@ -20,4 +20,22 @@ describe('createOkHttpLogParser', () => {
       'X-Correlation-ID': 'trace-1',
     })
   })
+
+  it('parses CRLF logcat lines emitted by adb on Windows', () => {
+    const onTransaction = vi.fn()
+    const parser = createOkHttpLogParser(onTransaction)
+    const prefix = '1784152000.123 100 200 D OkHttpLog: '
+
+    parser.feed(`${prefix}--> GET https://example.test/Task/Info\r`)
+    parser.feed(`${prefix}--> END GET\r`)
+    parser.feed(`${prefix}<-- 200 https://example.test/Task/Info (76ms)\r`)
+    parser.feed(`${prefix}<-- END HTTP (2-byte body)\r`)
+
+    expect(onTransaction).toHaveBeenCalledOnce()
+    expect(onTransaction.mock.calls[0]?.[0]).toMatchObject({
+      method: 'GET',
+      fullUrl: 'https://example.test/Task/Info',
+      status: 200,
+    })
+  })
 })

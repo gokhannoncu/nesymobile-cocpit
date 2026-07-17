@@ -178,7 +178,7 @@ export function createOkHttpLogParser(onTransaction: (txn: NetworkTransaction) =
   }
 
   function feed(rawLine: string) {
-    const m = rawLine.match(LINE_RE)
+    const m = rawLine.replace(/\r$/, '').match(LINE_RE)
     if (!m) return
     const [, epoch = '0', , tid = '?', msg = ''] = m
     const atMs = Math.round(Number(epoch) * 1000)
