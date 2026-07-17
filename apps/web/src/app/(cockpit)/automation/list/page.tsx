@@ -34,6 +34,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   Truck,
   WalletCards,
   Workflow,
@@ -67,6 +68,11 @@ import {
   ShimmerBlock,
 } from '@/components/automation/automation-list-page-shimmer'
 import { ProductPage } from '@/components/product'
+import {
+  formatWorkflowShare,
+  workflowMatchesStatusFilter,
+  type WorkflowLibraryStatusFilter,
+} from '@/lib/automation/workflow-library-filters'
 import { useNesyAuth } from '@/contexts/nesy-auth-context'
 import {
   coerceNesyMobileEnvironment,
@@ -141,34 +147,40 @@ const modalOptions: ModalOption[] = [
   },
 ]
 
-const summaryCards = [
+const summaryCards: Array<{
+  title: string
+  detail: string
+  icon: LucideIcon
+  className: string
+  filter: WorkflowLibraryStatusFilter
+}> = [
   {
     title: 'Total Workflows',
-    value: '—',
     detail: 'Across all environments',
     icon: Workflow,
     className: 'bg-nesy-soft text-nesy-ink',
+    filter: 'all',
   },
   {
     title: 'Active',
-    value: '—',
     detail: 'Active workflows',
     icon: Play,
-    className: 'bg-emerald-100 text-emerald-700',
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+    filter: 'active',
   },
   {
     title: 'Draft',
-    value: '—',
     detail: 'Draft workflows',
     icon: Pencil,
-    className: 'bg-amber-100 text-amber-700',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+    filter: 'draft',
   },
   {
     title: 'Archived',
-    value: '—',
     detail: 'Archived workflows',
     icon: Archive,
     className: 'bg-muted text-muted-foreground',
+    filter: 'archived',
   },
 ]
 
@@ -202,6 +214,57 @@ function resolveIcon(iconName: string): LucideIcon {
   return iconMap[iconName] ?? Workflow
 }
 
+function WorkflowSummaryStatCard({
+  title,
+  value,
+  detail,
+  icon: Icon,
+  className,
+  selected,
+  onSelect,
+}: {
+  title: string
+  value: number
+  detail: string
+  icon: LucideIcon
+  className: string
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        'rounded-md border border-border bg-card px-4 py-3 text-left shadow-xs transition-colors',
+        'hover:border-nesy-muted hover:bg-nesy-soft/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-nesy-soft',
+        selected && 'border-nesy-muted bg-nesy-soft/25 ring-2 ring-nesy/25',
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={cn(
+              'flex size-11 shrink-0 items-center justify-center rounded-md',
+              className,
+            )}
+          >
+            <Icon className="size-6" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{detail}</p>
+          </div>
+        </div>
+        <p className="shrink-0 text-3xl font-semibold tabular-nums leading-none tracking-[-0.03em] text-foreground">
+          {value}
+        </p>
+      </div>
+    </button>
+  )
+}
+
 export default function AutomationListPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -210,6 +273,7 @@ export default function AutomationListPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [workflows, setWorkflows] = useState<WorkflowListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<WorkflowLibraryStatusFilter>('all')
 
   const loadWorkflows = useCallback(async () => {
     try {
@@ -232,38 +296,52 @@ export default function AutomationListPage() {
     const active = workflows.filter((w) => w.status === 'active').length
     const draft = workflows.filter((w) => w.status === 'draft').length
     const archived = workflows.filter((w) => w.status === 'archived').length
-    return [
-      { ...summaryCards[0], value: String(total), detail: 'Across all environments' },
-      {
-        ...summaryCards[1],
-        value: String(active),
-        detail: `${total ? ((active / total) * 100).toFixed(1) : 0}% of total`,
-      },
-      {
-        ...summaryCards[2],
-        value: String(draft),
-        detail: `${total ? ((draft / total) * 100).toFixed(1) : 0}% of total`,
-      },
-      {
-        ...summaryCards[3],
-        value: String(archived),
-        detail: `${total ? ((archived / total) * 100).toFixed(1) : 0}% of total`,
-      },
-    ]
-  }, [workflows])
 
-  const totalPages = Math.max(1, Math.ceil(workflows.length / pageSize))
+    const values: Record<WorkflowLibraryStatusFilter, number> = {
+      all: total,
+      active,
+      draft,
+      archived,
+    }
+
+    const details: Record<WorkflowLibraryStatusFilter, string> = {
+      all: total
+        ? `${active} active · ${draft} draft · tap to show all`
+        : 'Create a workflow to get started',
+      active: formatWorkflowShare(active, total),
+      draft: formatWorkflowShare(draft, total),
+      archived: formatWorkflowShare(archived, total),
+    }
+
+    return summaryCards.map((card) => ({
+      ...card,
+      value: values[card.filter],
+      detail: details[card.filter],
+      selected: statusFilter === card.filter,
+    }))
+  }, [workflows, statusFilter])
+
+  const filteredWorkflows = useMemo(
+    () => workflows.filter((workflow) => workflowMatchesStatusFilter(workflow, statusFilter)),
+    [workflows, statusFilter],
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / pageSize))
 
   useEffect(() => {
     setPage((p) => Math.min(p, totalPages))
   }, [totalPages])
 
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, search])
+
   const safePage = Math.min(page, totalPages)
   const pageSlice = useMemo(() => {
     const p = Math.min(page, totalPages)
     const start = (p - 1) * pageSize
-    return workflows.slice(start, start + pageSize)
-  }, [workflows, page, pageSize, totalPages])
+    return filteredWorkflows.slice(start, start + pageSize)
+  }, [filteredWorkflows, page, pageSize, totalPages])
 
   const paginationPages = buildPaginationPages(safePage, totalPages)
 
@@ -311,31 +389,26 @@ export default function AutomationListPage() {
       </header>
 
       <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {loading
-          ? <AutomationListStatCardsShimmer />
-          : stats.map((card) => (
-              <div
-                key={card.title}
-                className="rounded-md border border-border bg-card px-4 py-2.5 shadow-xs"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex size-11 shrink-0 items-center justify-center rounded-md ${card.className}`}
-                  >
-                    <card.icon className="size-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">{card.title}</p>
-                    <p className="mt-0.5 text-2xl font-semibold leading-none text-foreground">
-                      {card.value}
-                    </p>
-                    <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                      {card.detail}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {loading ? (
+          <AutomationListStatCardsShimmer />
+        ) : (
+          stats.map((card) => (
+            <WorkflowSummaryStatCard
+              key={card.title}
+              title={card.title}
+              value={card.value}
+              detail={card.detail}
+              icon={card.icon}
+              className={card.className}
+              selected={card.selected}
+              onSelect={() => {
+                setStatusFilter((current) =>
+                  current === card.filter ? 'all' : card.filter,
+                )
+              }}
+            />
+          ))
+        )}
       </section>
 
       <section className="rounded-md border border-border bg-card p-4 shadow-xs">
@@ -364,16 +437,55 @@ export default function AutomationListPage() {
           {loading ? (
             <ShimmerBlock className="inline-block h-4 w-10 rounded-sm" />
           ) : (
-            <span className="text-sm font-medium text-muted-foreground">({workflows.length})</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              ({filteredWorkflows.length}
+              {statusFilter !== 'all' && workflows.length !== filteredWorkflows.length
+                ? ` of ${workflows.length}`
+                : ''}
+              )
+            </span>
           )}
         </h2>
 
         {loading ? (
           <AutomationListGridShimmer count={3} />
         ) : pageSlice.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-            No workflows match your filters.
-          </p>
+          <div className="rounded-md border border-dashed border-border bg-card px-6 py-12 text-center">
+            {workflows.length === 0 ? (
+              <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                <p className="text-sm font-medium text-foreground">No workflows yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Start with a blank workflow or import a template when that option is enabled.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="h-9 rounded-md bg-nesy px-4 text-white hover:bg-nesy-hover"
+                >
+                  <Plus className="size-4" />
+                  New Workflow
+                </Button>
+              </div>
+            ) : (
+              <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                <p className="text-sm font-medium text-foreground">No workflows in this view</p>
+                <p className="text-sm text-muted-foreground">
+                  Try another status filter or clear your search query.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter('all')
+                    setSearch('')
+                    setPage(1)
+                  }}
+                  className="text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+                >
+                  Reset filters
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
             {pageSlice.map((workflow) => (
@@ -730,25 +842,46 @@ function WorkflowCard({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const Icon = resolveIcon(workflow.icon)
   const statusLabel = workflow.status.charAt(0).toUpperCase() + workflow.status.slice(1)
+  const editorHref = `/automation/${workflow.slug}`
 
   const statusClasses: Record<string, string> = {
-    active: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
-    draft: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
-    archived: 'bg-muted text-muted-foreground',
+    active: 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950 dark:text-emerald-400 dark:ring-emerald-900',
+    draft: 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-950 dark:text-amber-400 dark:ring-amber-900',
+    archived: 'bg-muted text-muted-foreground ring-border',
   }
 
   const timeSince = useMemo(() => {
     const diff = Date.now() - new Date(workflow.updatedAt).getTime()
     const minutes = Math.floor(diff / 60000)
-    if (minutes < 60) return `Updated ${minutes}m ago`
+    if (minutes < 60) return `${minutes}m ago`
     const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `Updated ${hours}h ago`
+    if (hours < 24) return `${hours}h ago`
     const days = Math.floor(hours / 24)
-    return `Updated ${days}d ago`
+    return `${days}d ago`
   }, [workflow.updatedAt])
 
+  const metaParts = [
+    `Updated ${timeSince}`,
+    workflow.latestVersion ? `v${workflow.latestVersion.version}` : null,
+    workflow.lastRun
+      ? `Last run ${workflow.lastRun.status}`
+      : 'No runs yet',
+  ].filter(Boolean)
+
+  const lastRunTone =
+    workflow.lastRun?.status === 'success'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : workflow.lastRun?.status === 'failed'
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-muted-foreground'
+
   return (
-    <article className="rounded-md border border-border bg-card p-4 shadow-xs">
+    <article
+      className={cn(
+        'group flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs transition-colors',
+        'hover:border-nesy-muted/80 hover:shadow-sm',
+      )}
+    >
       <WorkflowDeleteDialog
         workflowTitle={workflow.name}
         open={deleteOpen}
@@ -759,71 +892,85 @@ function WorkflowCard({
         }}
       />
 
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`rounded-md px-3 py-1 text-xs font-semibold tabular-nums ${statusClasses[workflow.status] ?? 'bg-muted text-muted-foreground'}`}
-        >
-          {statusLabel}
-        </span>
-        {workflow.category && (
-          <span className="rounded-md px-3 py-1 text-xs font-semibold bg-nesy-soft text-nesy-ink">
-            {workflow.category}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-5 flex items-center gap-4">
+      <Link
+        href={editorHref}
+        className="flex min-w-0 flex-1 gap-3 p-4 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-inset"
+      >
         <div
-          className={`flex size-16 shrink-0 items-center justify-center rounded-md ${workflow.iconClassName || 'bg-gradient-to-br from-nesy to-nesy-hover text-white'}`}
+          className={cn(
+            'flex size-12 shrink-0 items-center justify-center rounded-md',
+            workflow.iconClassName ||
+              'bg-gradient-to-br from-nesy to-nesy-hover text-white',
+          )}
         >
-          <Icon className="size-9" />
+          <Icon className="size-6" strokeWidth={2} />
         </div>
+
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-xl font-semibold tracking-[-0.02em] text-foreground">
-            {workflow.name}
-          </h3>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {workflow.description ?? 'No description'}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold tracking-[-0.02em] text-foreground">
+              {workflow.name}
+            </h3>
+            <span
+              className={cn(
+                'inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[11px] font-semibold ring-1 ring-inset',
+                statusClasses[workflow.status] ?? 'bg-muted text-muted-foreground ring-border',
+              )}
+            >
+              {statusLabel}
+            </span>
+            {workflow.category ? (
+              <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-nesy-soft px-2 text-[11px] font-semibold text-nesy-ink">
+                {workflow.category}
+              </span>
+            ) : null}
+          </div>
+
+          {workflow.description ? (
+            <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-muted-foreground">
+              {workflow.description}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-sm italic text-muted-foreground/70">
+              Add a short description in the editor
+            </p>
+          )}
+
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+            {metaParts.map((part, index) => (
+              <span key={`${part}-${index}`} className="inline-flex items-center gap-1.5">
+                {index > 0 ? <span aria-hidden className="text-border">·</span> : null}
+                <span
+                  className={cn(
+                    part.startsWith('Last run') && workflow.lastRun ? lastRunTone : undefined,
+                  )}
+                >
+                  {part}
+                </span>
+              </span>
+            ))}
           </p>
         </div>
-      </div>
+      </Link>
 
-      <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-4">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">{timeSince}</p>
-          {workflow.latestVersion && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              v{workflow.latestVersion.version}
-            </p>
-          )}
-          {workflow.lastRun && (
-            <p
-              className={`mt-1 text-xs font-semibold ${
-                workflow.lastRun.status === 'success'
-                  ? 'text-emerald-600'
-                  : workflow.lastRun.status === 'failed'
-                    ? 'text-red-600'
-                    : 'text-muted-foreground'
-              }`}
-            >
-              Last run: {workflow.lastRun.status}
-            </p>
-          )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/20 px-3 py-2">
+        <span className="truncate text-[11px] font-medium text-muted-foreground">
+          Open to edit or run tests
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
           <Link
-            href={`/automation/${workflow.slug}`}
-            className="inline-flex h-9 items-center rounded-md border border-nesy-muted px-4 text-sm font-semibold text-nesy-ink shadow-xs hover:bg-nesy-soft"
+            href={editorHref}
+            className="inline-flex h-8 items-center rounded-md bg-nesy px-3 text-xs font-semibold text-white shadow-xs transition hover:bg-nesy-hover"
           >
             Open
           </Link>
           <button
             type="button"
-            className="h-9 rounded-md border border-red-200 px-4 text-sm font-semibold text-red-600 shadow-xs hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+            aria-label={`Delete ${workflow.name}`}
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
             onClick={() => setDeleteOpen(true)}
           >
-            Delete
+            <Trash2 className="size-4" />
           </button>
         </div>
       </div>

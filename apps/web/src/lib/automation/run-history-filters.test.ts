@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { runMatchesStatusFilter } from '@/lib/automation/run-history-filters'
-import type { WorkflowRun } from '@/services/automation-api'
+import { runMatchesStatusFilter } from './run-history-filters'
 
 const run = (status: string) =>
   ({
     id: 'run-1',
     status,
-  }) as WorkflowRun
+  }) as Parameters<typeof runMatchesStatusFilter>[0]
 
 describe('runMatchesStatusFilter', () => {
   it('matches in-progress runs for the active filter', () => {
