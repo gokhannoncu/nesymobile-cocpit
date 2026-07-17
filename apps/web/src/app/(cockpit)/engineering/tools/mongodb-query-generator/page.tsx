@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   AlertTriangle,
   CalendarClock,
@@ -147,6 +148,7 @@ function PredefinedQueryPicker({
 }
 
 export default function MongodbQueryGeneratorPage() {
+  const searchParams = useSearchParams()
   const [text, setText] = useState('')
   const [database, setDatabase] = useState('NESY_ShipmentDB')
   const [collection, setCollection] = useState('Shipment')
@@ -221,13 +223,27 @@ export default function MongodbQueryGeneratorPage() {
         setPredefinedQueries(data.predefinedQueries ?? [])
         setDatabases(data.databases)
         setCatalogError(null)
-        if (data.databases.length && !data.databases.includes(database)) {
-          setDatabase(data.databases[0])
-        }
-        const first = data.collections.find((c) => c.database === (data.databases[0] ?? database))
-        if (first && !data.collections.some((c) => c.database === database && c.collection === collection)) {
-          setDatabase(first.database)
-          setCollection(first.collection)
+        const paramDb = searchParams.get('database')
+        const paramCol = searchParams.get('collection')
+        const fromLink =
+          paramDb &&
+          paramCol &&
+          data.collections.some((c) => c.database === paramDb && c.collection === paramCol)
+        if (fromLink) {
+          setDatabase(paramDb)
+          setCollection(paramCol)
+        } else {
+          if (data.databases.length && !data.databases.includes(database)) {
+            setDatabase(data.databases[0])
+          }
+          const first = data.collections.find((c) => c.database === (data.databases[0] ?? database))
+          if (
+            first &&
+            !data.collections.some((c) => c.database === database && c.collection === collection)
+          ) {
+            setDatabase(first.database)
+            setCollection(first.collection)
+          }
         }
       } catch (e) {
         if (!cancelled) {

@@ -1,7 +1,6 @@
 'use client'
 
-// Selected data source detail — the same content component is used
-// in both the fixed right panel and the catalog drawer.
+// Selected data source detail — used in the right panel and catalog drawer.
 
 import { ReactNode } from 'react'
 import Link from 'next/link'
@@ -21,8 +20,8 @@ import { Button } from '@nesy/metronic/components/ui/button'
 import { toneCard, toneText, type Tone } from '@/components/product'
 import { CodeBlock, CopyButton } from '@/components/engineering/tools/shared'
 import {
-  SOURCE_BY_ID,
   TRUTH_META,
+  mongoGeneratorHref,
   type DataSource,
 } from '@/data/engineering/tools/data-locator'
 
@@ -59,7 +58,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** Source header — technical name + type + source-of-truth badge. */
 export function SourceDetailHeader({ source }: { source: DataSource }) {
   const truth = TRUTH_META[source.truth]
   return (
@@ -72,24 +70,36 @@ export function SourceDetailHeader({ source }: { source: DataSource }) {
         {source.sourceType} · {source.system}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <Badge variant="secondary" appearance="outline" size="sm" className={cn('font-semibold', toneText[truth.tone])}>
+        <Badge
+          variant="secondary"
+          appearance="outline"
+          size="sm"
+          className={cn('font-semibold', toneText[truth.tone])}
+        >
           Source of Truth: {truth.label}
         </Badge>
+        {source.kind === 'mongo' && source.database && (
+          <Badge variant="secondary" appearance="outline" size="sm">
+            {source.database}
+          </Badge>
+        )}
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{truth.hint}</p>
     </div>
   )
 }
 
-/** Detail body — Overview, key fields, questions, example query, relations, caveats. */
 export function SourceDetailBody({
   source,
+  sourceById,
   onSelectRelated,
 }: {
   source: DataSource
-  /** When a related source chip is clicked — the panel navigates to that source. */
+  sourceById: Map<string, DataSource>
   onSelectRelated?: (id: string) => void
 }) {
+  const generatorHref = mongoGeneratorHref(source)
+
   return (
     <div className="space-y-6">
       <DetailSection icon={Info} title="Overview" tone="blue">
@@ -121,9 +131,15 @@ export function SourceDetailBody({
           <table className="w-full border-collapse text-xs">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Field</th>
-                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Type</th>
-                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Meaning</th>
+                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Field
+                </th>
+                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Type
+                </th>
+                <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Meaning
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -153,12 +169,14 @@ export function SourceDetailBody({
       <DetailSection icon={Database} title="Example query" tone="green">
         <CodeBlock code={source.exampleQuery.code} label={source.exampleQuery.label} />
         <div className="mt-2.5 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/engineering/tools/mongodb-query-generator">
-              Open in MongoDB Query Generator
-              <ArrowUpRight className="size-3.5 opacity-60" />
-            </Link>
-          </Button>
+          {generatorHref && (
+            <Button size="sm" variant="outline" asChild>
+              <Link href={generatorHref}>
+                Open in MongoDB Query Generator
+                <ArrowUpRight className="size-3.5 opacity-60" />
+              </Link>
+            </Button>
+          )}
           <CopyButton text={source.exampleQuery.code} label="Copy query" />
         </div>
       </DetailSection>
@@ -166,7 +184,7 @@ export function SourceDetailBody({
       <DetailSection icon={Link2} title="Related sources" tone="purple">
         <div className="flex flex-wrap gap-1.5">
           {source.relatedSources.map((id) => {
-            const rel = SOURCE_BY_ID.get(id)
+            const rel = sourceById.get(id)
             if (!rel) return null
             return (
               <button
