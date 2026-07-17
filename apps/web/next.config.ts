@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '../..'),
   // PDF export — tarayıcıya özel paketler SSR'da bundle'lanmaz
   serverExternalPackages: ['html2canvas-pro', 'jspdf'],
+  async rewrites() {
+    const automationApi = process.env.AUTOMATION_API_ORIGIN ?? 'http://localhost:3008'
+    return [
+      {
+        source: '/automation-api/:path*',
+        destination: `${automationApi}/api/:path*`,
+      },
+    ]
+  },
 }
 
 export default nextConfig

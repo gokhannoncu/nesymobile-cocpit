@@ -18,6 +18,14 @@ export function getNesyMobileEnvironmentsForCountry(
   return [...NESY_MOBILE_COUNTRY_ENVIRONMENTS[country]]
 }
 
+export function coerceNesyMobileEnvironment(
+  country: NesyMobileCountry,
+  environment: NesyMobileEnvironment,
+): NesyMobileEnvironment {
+  const allowed = NESY_MOBILE_COUNTRY_ENVIRONMENTS[country]
+  return allowed.includes(environment) ? environment : allowed[0]
+}
+
 export const NESY_MOBILE_BASE_URLS: Record<
   NesyMobileCountry,
   Record<NesyMobileEnvironment, string>
