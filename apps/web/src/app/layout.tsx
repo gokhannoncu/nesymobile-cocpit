@@ -2,6 +2,7 @@ import { ReactNode, Suspense } from 'react'
 import { Inter } from 'next/font/google'
 import { cn } from '@nesy/metronic/lib/utils'
 import { TooltipProvider } from '@nesy/metronic/components/ui/tooltip'
+import { AppToaster } from '@/components/app-toaster'
 import { ThemeProvider } from 'next-themes'
 import type { Metadata } from 'next'
 import './globals.css'
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <TooltipProvider delayDuration={0}>
             <Suspense>{children}</Suspense>
+            <AppToaster />
           </TooltipProvider>
         </ThemeProvider>
       </body>
