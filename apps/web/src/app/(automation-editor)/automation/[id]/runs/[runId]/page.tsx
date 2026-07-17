@@ -33,6 +33,7 @@ import { Fragment, useEffect, useState, useRef, useCallback, useMemo } from "rea
 import { fetchWorkflow, fetchRunDetail, type WorkflowDetail, type WorkflowRun, type WorkflowStepResult } from "@/services/automation-api";
 import { toast } from "sonner";
 import { ExecutionTimeline, toExecutionTimelineSteps, type ExecutionTimelineStep } from "./ExecutionTimeline";
+import { playVideoElement } from "@/lib/safe-video-play";
 
 type RunDetailTab = "summary" | "parameters" | "logs" | "video";
 
@@ -425,9 +426,19 @@ function VideoPlayer({
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) { v.play(); setIsPlaying(true); }
-    else { v.pause(); setIsPlaying(false); }
+    if (v.paused) {
+      playVideoElement(v);
+    } else {
+      v.pause();
+    }
   }, []);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setIsMetadataLoaded(false);
+    setCurrentTime(0);
+    videoRef.current?.pause();
+  }, [videoUrl]);
 
   const skip = useCallback((delta: number) => {
     const v = videoRef.current;
@@ -868,11 +879,12 @@ export default function RunResultsPage() {
           className="z-10 flex items-center gap-2 hover:opacity-80"
         >
           <img
-            src="/media/app/nesy-courier-app-icon.png"
+            src="/media/app/nesy-icon.png"
             alt="NESY"
             width={24}
             height={24}
             className="size-6 shrink-0 rounded-[6px] object-contain"
+            decoding="async"
           />
           <span className="whitespace-nowrap text-sm font-semibold tracking-[-0.02em] text-slate-900">
             NESY AUTOMATION

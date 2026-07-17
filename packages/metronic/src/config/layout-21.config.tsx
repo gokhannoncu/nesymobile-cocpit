@@ -57,7 +57,6 @@ export const DATA_CENTER_PICKUP_PATH = '/data-center/pickup' as const
 export const DATA_CENTER_HAPPY_PATH_PATH = '/data-center/happy-path' as const
 export const DATA_CENTER_USERS_PATH = '/data-center/users' as const
 
-export const AUTOMATION_OVERVIEW_PATH = '/automation/overview' as const
 export const AUTOMATION_LIST_PATH = '/automation/list' as const
 export const AUTOMATION_HISTORY_PATH = '/automation/history' as const
 
@@ -450,26 +449,27 @@ export const WORKSPACES: Workspace[] = [
     label: 'Automation',
     icon: Workflow,
     className: 'border-white bg-emerald-500 hover:bg-emerald-600 text-white hover:text-white',
-    path: AUTOMATION_OVERVIEW_PATH,
+    path: AUTOMATION_LIST_PATH,
     basePaths: ['/automation'],
     menu: [
       {
         title: 'Automation',
         children: [
           {
-            title: 'Overview',
-            path: AUTOMATION_OVERVIEW_PATH,
-            icon: LayoutDashboard,
-          },
-          {
-            title: 'Workflow Library',
-            path: AUTOMATION_LIST_PATH,
-            icon: Layers,
-          },
-          {
-            title: 'Run History',
-            path: AUTOMATION_HISTORY_PATH,
-            icon: History,
+            title: 'Workflows',
+            icon: Workflow,
+            children: [
+              {
+                title: 'Workflow Library',
+                path: AUTOMATION_LIST_PATH,
+                icon: Layers,
+              },
+              {
+                title: 'Run History',
+                path: AUTOMATION_HISTORY_PATH,
+                icon: History,
+              },
+            ],
           },
         ],
       },

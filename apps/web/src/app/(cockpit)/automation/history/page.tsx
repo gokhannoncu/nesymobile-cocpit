@@ -24,6 +24,12 @@ import {
   AlertDialogTitle,
 } from '@nesy/metronic/components/ui/alert-dialog'
 import { ProductPage } from '@/components/product'
+import {
+  AutomationHistoryStatCardsShimmer,
+  AutomationHistoryTableShimmer,
+} from '@/components/automation/automation-history-page-shimmer'
+import { cn } from '@nesy/metronic/lib/utils'
+import { AUTOMATION_LIST_PATH } from '@nesy/metronic/config/layout-21.config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ComponentType, ReactNode, SVGProps } from 'react'
 import { deleteRun, fetchAllRuns, type WorkflowRun } from '@/services/automation-api'
@@ -32,34 +38,48 @@ import { toast } from 'sonner'
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>
 
-const statCards = [
+import {
+  formatRunShare,
+  runMatchesStatusFilter,
+  type RunHistoryStatusFilter,
+} from '@/lib/automation/run-history-filters'
+
+type StatCardFilter = 'all' | 'success' | 'failed' | 'active'
+
+const statCardDefinitions: Array<{
+  label: string
+  caption: string
+  icon: Icon
+  tone: string
+  filter: StatCardFilter
+}> = [
   {
     label: 'Total runs',
-    value: '—',
     caption: 'All time',
     icon: Network,
     tone: 'bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
+    filter: 'all',
   },
   {
     label: 'Successful',
-    value: '—',
     caption: 'Completed OK',
     icon: BadgeCheck,
     tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
+    filter: 'success',
   },
   {
     label: 'In progress',
-    value: '—',
     caption: 'Running or pending',
     icon: ClipboardCheck,
     tone: 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+    filter: 'active',
   },
   {
     label: 'Failed',
-    value: '—',
     caption: 'Ended with error',
     icon: CircleX,
     tone: 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400',
+    filter: 'failed',
   },
 ]
 
@@ -84,6 +104,7 @@ function runStatusClassName(status: string): string {
 export default function AutomationHistoryPage() {
   const [runs, setRuns] = useState<WorkflowRun[]>([])
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<RunHistoryStatusFilter>('all')
 
   const loadRuns = useCallback(async () => {
     try {
@@ -107,13 +128,33 @@ export default function AutomationHistoryPage() {
     const success = runs.filter((r) => r.status === 'success').length
     const active = runs.filter((r) => r.status === 'running' || r.status === 'pending').length
     const failed = runs.filter((r) => r.status === 'failed').length
-    return [
-      { ...statCards[0], value: String(total) },
-      { ...statCards[1], value: String(success) },
-      { ...statCards[2], value: String(active) },
-      { ...statCards[3], value: String(failed) },
-    ]
-  }, [runs])
+    const passRate = total ? Math.round((success / total) * 100) : null
+
+    const captions: Record<StatCardFilter, string> = {
+      all: total
+        ? `${passRate}% pass rate · tap to show all`
+        : 'Run a workflow to populate history',
+      success: formatRunShare(success, total),
+      active: formatRunShare(active, total),
+      failed: formatRunShare(failed, total),
+    }
+
+    const values: Record<StatCardFilter, number> = {
+      all: total,
+      success,
+      active,
+      failed,
+    }
+
+    return statCardDefinitions.map((card) => ({
+      ...card,
+      value: values[card.filter],
+      caption: captions[card.filter],
+      selected:
+        statusFilter === card.filter ||
+        (card.filter === 'active' && (statusFilter === 'running' || statusFilter === 'pending')),
+    }))
+  }, [runs, statusFilter])
 
   const handleDeleteRun = async (workflowId: string, runId: string) => {
     try {
@@ -129,16 +170,36 @@ export default function AutomationHistoryPage() {
   return (
     <ProductPage path="/automation/history">
       <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((card) => (
-          <StatCard key={card.label} {...card} />
-        ))}
+        {loading ? (
+          <AutomationHistoryStatCardsShimmer />
+        ) : (
+          stats.map((card) => (
+            <StatCard
+              key={card.label}
+              {...card}
+              onSelect={() => {
+                setStatusFilter((current) => {
+                  if (card.filter === 'active') {
+                    const activeSelected =
+                      current === 'active' || current === 'running' || current === 'pending'
+                    return activeSelected ? 'all' : 'active'
+                  }
+                  return current === card.filter ? 'all' : card.filter
+                })
+              }}
+            />
+          ))
+        )}
       </section>
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        </div>
+        <AutomationHistoryTableShimmer />
       ) : (
-        <RunHistoryTable runs={runs} onDeleteRun={handleDeleteRun} />
+        <RunHistoryTable
+          runs={runs}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          onDeleteRun={handleDeleteRun}
+        />
       )}
     </ProductPage>
   )
@@ -150,32 +211,61 @@ function StatCard({
   caption,
   icon: IconComponent,
   tone,
-}: (typeof statCards)[number]) {
+  selected,
+  onSelect,
+}: {
+  label: string
+  value: number
+  caption: string
+  icon: Icon
+  tone: string
+  selected: boolean
+  onSelect: () => void
+}) {
   return (
-    <article className="flex min-h-[112px] min-w-0 items-center gap-3 rounded-[4px] border border-border bg-card px-4 py-5">
-      <div className={`flex size-12 shrink-0 items-center justify-center rounded-[4px] ${tone}`}>
-        <IconComponent className="size-5" strokeWidth={2.2} />
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        'rounded-md border border-border bg-card px-4 py-2.5 text-left shadow-xs transition-colors',
+        'hover:border-nesy-muted hover:bg-nesy-soft/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-nesy-soft',
+        selected && 'border-nesy-muted bg-nesy-soft/25 ring-2 ring-nesy/25',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            'flex size-11 shrink-0 items-center justify-center rounded-md',
+            tone,
+          )}
+        >
+          <IconComponent className="size-6" strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="mt-0.5 text-2xl font-semibold leading-none tracking-[-0.03em] text-foreground">
+            {value}
+          </p>
+          <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{caption}</p>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-muted-foreground">{label}</p>
-        <p className="mt-2 text-[28px] font-semibold leading-none tracking-[-0.04em] text-foreground">
-          {value}
-        </p>
-        <p className="mt-2 text-sm font-medium text-muted-foreground">{caption}</p>
-      </div>
-    </article>
+    </button>
   )
 }
 
 function RunHistoryTable({
   runs,
+  statusFilter,
+  onStatusFilterChange,
   onDeleteRun,
 }: {
   runs: WorkflowRun[]
+  statusFilter: RunHistoryStatusFilter
+  onStatusFilterChange: (filter: RunHistoryStatusFilter) => void
   onDeleteRun: (workflowId: string, runId: string) => void
 }) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | string>('all')
   const [sortBy, setSortBy] = useState<'created-desc' | 'created-asc'>('created-desc')
   const [deleteTarget, setDeleteTarget] = useState<{
     workflowId: string
@@ -186,7 +276,7 @@ function RunHistoryTable({
   const filteredRuns = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
     const filtered = runs.filter((run) => {
-      if (statusFilter !== 'all' && run.status !== statusFilter) return false
+      if (!runMatchesStatusFilter(run, statusFilter)) return false
       if (!normalizedQuery) return true
 
       const haystack = [
@@ -233,14 +323,14 @@ function RunHistoryTable({
   }
 
   return (
-    <section className="overflow-hidden rounded-[4px] border border-border bg-card">
+    <section className="overflow-hidden rounded-md border border-border bg-card shadow-xs">
       <div className="grid gap-3 border-b border-border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_220px_220px]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="h-11 w-full rounded-[4px] border border-border bg-card pl-10 pr-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground focus:border-nesy focus:ring-4 focus:ring-nesy-soft"
+            className="h-11 w-full rounded-md border border-border bg-card pl-10 pr-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground focus:border-nesy focus:ring-4 focus:ring-nesy-soft"
             placeholder="Search runs or workflows..."
             type="search"
           />
@@ -248,11 +338,12 @@ function RunHistoryTable({
         <SelectLike
           ariaLabel="Filter by status"
           value={statusFilter}
-          onValueChange={setStatusFilter}
+          onValueChange={(value) => onStatusFilterChange(value as RunHistoryStatusFilter)}
           options={[
             { value: 'all', label: 'All statuses' },
             { value: 'success', label: 'Success' },
             { value: 'failed', label: 'Failed' },
+            { value: 'active', label: 'In progress' },
             { value: 'running', label: 'Running' },
             { value: 'pending', label: 'Pending' },
             { value: 'cancelled', label: 'Cancelled' },
@@ -351,11 +442,39 @@ function RunHistoryTable({
             })}
             {paginatedRuns.length === 0 ? (
               <tr>
-                <td
-                  className="px-5 py-8 text-center text-sm text-muted-foreground"
-                  colSpan={6}
-                >
-                  No runs match your search.
+                <td className="px-5 py-10 text-center" colSpan={6}>
+                  {runs.length === 0 ? (
+                    <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                      <p className="text-sm font-medium text-foreground">No runs recorded yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Execute a workflow from the library and completed runs will appear here with
+                        status, duration, and replay links.
+                      </p>
+                      <Link
+                        href={AUTOMATION_LIST_PATH}
+                        className="inline-flex h-9 items-center rounded-md border border-nesy-muted bg-nesy-soft px-4 text-sm font-semibold text-nesy-ink transition hover:bg-nesy-soft/80"
+                      >
+                        Open Workflow Library
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">No runs match this view</p>
+                      <p className="text-sm text-muted-foreground">
+                        Try clearing search or choose &quot;All statuses&quot; from the filter.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('')
+                          onStatusFilterChange('all')
+                        }}
+                        className="text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : null}
