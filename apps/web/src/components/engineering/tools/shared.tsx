@@ -38,7 +38,7 @@ export function ToolHeader({
   title,
   lead,
   tone = 'orange',
-  badges,
+  badges = [],
 }: {
   /** This page's route — excluded from cross-links. */
   path: string
@@ -47,7 +47,7 @@ export function ToolHeader({
   lead: string
   tone?: Tone
   /** Trust/status badges — e.g. "Read-only by default". */
-  badges: { label: string; icon?: LucideIcon; tone?: Tone }[]
+  badges?: { label: string; icon?: LucideIcon; tone?: Tone }[]
 }) {
   const others = TOOL_LINKS.filter((t) => t.path !== path)
   return (
@@ -82,14 +82,16 @@ export function ToolHeader({
           ))}
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/70 pt-4">
-        {badges.map((b) => (
-          <Badge key={b.label} variant="secondary" appearance="outline" size="sm" className="gap-1">
-            {b.icon && <b.icon className={cn('size-3', toneIcon[b.tone ?? 'gray'])} />}
-            {b.label}
-          </Badge>
-        ))}
-      </div>
+      {badges.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/70 pt-4">
+          {badges.map((b) => (
+            <Badge key={b.label} variant="secondary" appearance="outline" size="sm" className="gap-1">
+              {b.icon && <b.icon className={cn('size-3', toneIcon[b.tone ?? 'gray'])} />}
+              {b.label}
+            </Badge>
+          ))}
+        </div>
+      )}
     </motion.section>
   )
 }

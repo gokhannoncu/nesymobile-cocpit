@@ -223,3 +223,33 @@ model WorkflowStepResult {
   @@index([runId, order])
   @@map("workflow_step_results")
 }
+
+/// Engineering tools: MongoDB Query Generator history (auto-saved on Generate)
+model MongoQueryRun {
+  id              String   @id @default(cuid())
+  name            String
+  naturalLanguage String
+  query           String
+  database        String
+  collection      String
+  environment     String
+  queryType       String
+  country         String?
+  status          String
+  explanation     Json
+  validation      Json
+  estimatedScope  Json?
+  safetyToggles   Json?
+  model           String?
+  createdBy       String   @default("local")
+  owner           String?
+  relatedTicket   String?
+  relatedIncident String?
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+
+  @@index([lastUsedAt])
+  @@index([collection])
+  @@index([environment])
+  @@map("mongo_query_runs")
+}

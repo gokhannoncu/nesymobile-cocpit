@@ -58,7 +58,8 @@ export async function buildApp(env: Env) {
       path.startsWith('/api/nesy/dashboard') ||
       path.startsWith('/api/courier-wallets') ||
       path.startsWith('/api/mobile-devices') ||
-      path.startsWith('/api/nesy/mobile-auth')
+      path.startsWith('/api/nesy/mobile-auth') ||
+      path.startsWith('/api/mongo-query')
     ) {
       return express.json()(req, res, next)
     }
@@ -72,10 +73,12 @@ export async function buildApp(env: Env) {
   const { default: courierWalletsRouter } = await import('./legacy/courier-wallets.router.js')
   const { default: mobileDevicesRouter } = await import('./legacy/mobile-devices.router.js')
   const { default: nesyMobileAuthRouter } = await import('./legacy/nesy-mobile-auth.router.js')
+  const { default: mongoQueryRouter } = await import('./legacy/mongo-query.router.js')
   dataCenterApi.use('/api/nesy/dashboard', nesyDashboardRouter)
   dataCenterApi.use('/api/courier-wallets', courierWalletsRouter)
   dataCenterApi.use('/api/mobile-devices', mobileDevicesRouter)
   dataCenterApi.use('/api/nesy/mobile-auth', nesyMobileAuthRouter)
+  dataCenterApi.use('/api/mongo-query', mongoQueryRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
