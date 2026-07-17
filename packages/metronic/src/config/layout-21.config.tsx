@@ -54,6 +54,7 @@ export const DATA_CENTER_CONNECTION_PATH = '/data-center/connection' as const
 export const DATA_CENTER_SHIPMENT_PATH = '/data-center/shipment' as const
 export const DATA_CENTER_PICKUP_PATH = '/data-center/pickup' as const
 export const DATA_CENTER_HAPPY_PATH_PATH = '/data-center/happy-path' as const
+export const DATA_CENTER_USERS_PATH = '/data-center/users' as const
 
 // Single source of truth for the cockpit navigation.
 // The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
@@ -425,6 +426,12 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Happy Path Operations',
                 path: DATA_CENTER_HAPPY_PATH_PATH,
                 icon: PackagePlus,
+                requiresNesyAuth: true,
+              },
+              {
+                title: 'User Operations',
+                path: DATA_CENTER_USERS_PATH,
+                icon: Users,
                 requiresNesyAuth: true,
               },
             ],

@@ -1,7 +1,10 @@
 import { API_BASE } from "@/services/api";
 import type { GenerationJob } from "@/lib/happy-path/happy-path-generation";
 
-export type HappyPathPoolStatus = "Draft" | "Generating" | "Completed" | "Failed";
+export type HappyPathPoolStatus = "Draft" | "Generating" | "Created" | "Failed";
+
+/** @deprecated DB may still store legacy value */
+export type HappyPathPoolStatusStored = HappyPathPoolStatus | "Completed";
 
 export interface HappyPathPoolListItem {
   id: string;
@@ -9,8 +12,17 @@ export interface HappyPathPoolListItem {
   country: string;
   environment: string;
   shipmentCount: number;
-  status: HappyPathPoolStatus;
+  status: HappyPathPoolStatusStored;
   createdDate: string;
+}
+
+export function normalizePoolStatus(status: HappyPathPoolStatusStored): HappyPathPoolStatus {
+  if (status === "Completed") return "Created";
+  return status;
+}
+
+export function formatPoolStatusLabel(status: HappyPathPoolStatusStored): string {
+  return normalizePoolStatus(status);
 }
 
 export interface HappyPathPoolEntryInput {
@@ -29,6 +41,8 @@ export interface HappyPathPoolEntry extends HappyPathPoolEntryInput {
   id: string;
   poolId: string;
   createdAt?: string;
+  /** Nesy business shipment id (from linked shipment/pickup record) */
+  nesyShipmentId?: string | null;
 }
 
 export interface HappyPathPoolDetail extends HappyPathPoolListItem {
@@ -146,7 +160,7 @@ export function resolvePoolStatusFromJobs(
   const successCount = jobs.filter((j) => j.status === "success").length;
   const failedCount = jobs.filter((j) => j.status === "failed").length;
   if (successCount === 0 && failedCount > 0) return "Failed";
-  return "Completed";
+  return "Created";
 }
 
 export function jobsToPoolEntries(jobs: GenerationJob[]): HappyPathPoolEntryInput[] {

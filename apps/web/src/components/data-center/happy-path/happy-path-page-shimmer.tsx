@@ -2,7 +2,7 @@
 
 import { cn } from "@nesy/metronic/lib/utils";
 
-function ShimmerBlock({ className }: { className?: string }) {
+export function ShimmerBlock({ className }: { className?: string }) {
   return (
     <span
       aria-hidden

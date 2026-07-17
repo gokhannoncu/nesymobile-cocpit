@@ -12,6 +12,7 @@ import {
   DATA_CENTER_HAPPY_PATH_PATH,
   DATA_CENTER_PICKUP_PATH,
   DATA_CENTER_SHIPMENT_PATH,
+  DATA_CENTER_USERS_PATH,
 } from '@nesy/metronic/config/layout-21.config'
 import { EASE, toneIcon, toneIconBox, type Tone } from '@/components/product'
 
@@ -20,6 +21,7 @@ export const DATA_CENTER_LINKS = [
   { path: DATA_CENTER_SHIPMENT_PATH, title: 'Shipment Operations' },
   { path: DATA_CENTER_PICKUP_PATH, title: 'Pickup Operations' },
   { path: DATA_CENTER_HAPPY_PATH_PATH, title: 'Happy Path Operations' },
+  { path: DATA_CENTER_USERS_PATH, title: 'User Operations' },
 ] as const
 
 export function DataCenterHeader({

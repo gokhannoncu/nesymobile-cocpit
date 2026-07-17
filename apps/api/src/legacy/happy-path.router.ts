@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { Router, type Router as RouterType } from "express";
 import { prisma, type Prisma } from "@nesy/db";
+import { deleteRecordsLinkedToHappyPathPools } from "./happy-path-list-exclusions.js";
 
 const router: RouterType = Router();
 
-const POOL_STATUSES = new Set(["Draft", "Generating", "Completed", "Failed"]);
+const POOL_STATUSES = new Set(["Draft", "Generating", "Created", "Failed", "Completed"]);
 
 function normalizeEnvironment(value: string): string {
   return value.trim().toLowerCase();
@@ -13,6 +14,10 @@ function normalizeEnvironment(value: string): string {
 function formatCreatedDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function normalizePoolStatus(status: string): string {
+  return status === "Completed" ? "Created" : status;
 }
 
 function mapPoolToListItem(pool: {
@@ -30,7 +35,7 @@ function mapPoolToListItem(pool: {
     country: pool.country,
     environment: pool.environment.toUpperCase(),
     shipmentCount: pool.shipmentCount,
-    status: pool.status,
+    status: normalizePoolStatus(pool.status),
     createdDate: formatCreatedDate(pool.createdAt),
   };
 }
@@ -62,6 +67,68 @@ router.get("/", async (req, res) => {
 });
 
 // ─── GET /:id — pool detail with entries ───────────────────────
+async function enrichPoolEntriesWithNesyShipmentIds(
+  entries: {
+    route: string;
+    shipmentId: string | null;
+    pickupId: string | null;
+    [key: string]: unknown;
+  }[],
+) {
+  const shipmentDbIds = [
+    ...new Set(
+      entries
+        .map((e) => e.shipmentId?.trim())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const pickupDbIds = [
+    ...new Set(
+      entries
+        .map((e) => e.pickupId?.trim())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const [shipments, pickups] = await Promise.all([
+    shipmentDbIds.length
+      ? prisma.shipment.findMany({
+          where: { id: { in: shipmentDbIds } },
+          select: { id: true, data: true },
+        })
+      : Promise.resolve([]),
+    pickupDbIds.length
+      ? prisma.pickup.findMany({
+          where: { id: { in: pickupDbIds } },
+          select: { id: true, shipmentId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const nesyByShipmentDbId = new Map<string, string>();
+  for (const row of shipments) {
+    const data = row.data as Record<string, unknown> | null;
+    const nesyId = typeof data?.shipmentId === "string" ? data.shipmentId.trim() : "";
+    if (nesyId) nesyByShipmentDbId.set(row.id, nesyId);
+  }
+
+  const nesyByPickupDbId = new Map<string, string>();
+  for (const row of pickups) {
+    const sid = row.shipmentId?.trim();
+    if (sid) nesyByPickupDbId.set(row.id, sid);
+  }
+
+  return entries.map((entry) => {
+    let nesyShipmentId: string | null = null;
+    if (entry.route === "shipment" && entry.shipmentId) {
+      nesyShipmentId = nesyByShipmentDbId.get(entry.shipmentId.trim()) ?? null;
+    } else if (entry.route === "pickup" && entry.pickupId) {
+      nesyShipmentId = nesyByPickupDbId.get(entry.pickupId.trim()) ?? null;
+    }
+    return { ...entry, nesyShipmentId };
+  });
+}
+
 router.get("/:id", async (req, res) => {
   try {
     const pool = await prisma.happyPathPool.findUnique({
@@ -74,12 +141,14 @@ router.get("/:id", async (req, res) => {
       return;
     }
 
+    const entries = await enrichPoolEntriesWithNesyShipmentIds(pool.entries);
+
     res.json({
       data: {
         ...mapPoolToListItem(pool),
         assignmentMode: pool.assignmentMode,
         meta: pool.meta,
-        entries: pool.entries,
+        entries,
       },
     });
   } catch (error) {
@@ -124,7 +193,8 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    const status = body.status && POOL_STATUSES.has(body.status) ? body.status : "Completed";
+    const statusRaw = body.status && POOL_STATUSES.has(body.status) ? body.status : "Created";
+    const status = statusRaw === "Completed" ? "Created" : statusRaw;
     const shipmentCount =
       typeof body.shipmentCount === "number"
         ? body.shipmentCount
@@ -209,11 +279,18 @@ router.delete("/bulk", async (req, res) => {
       return;
     }
 
+    const trimmedIds = ids.map((id) => String(id).trim()).filter(Boolean);
+    const linked = await deleteRecordsLinkedToHappyPathPools(trimmedIds);
+
     const result = await prisma.happyPathPool.deleteMany({
-      where: { id: { in: ids } },
+      where: { id: { in: trimmedIds } },
     });
 
-    res.json({ deleted: result.count });
+    res.json({
+      deleted: result.count,
+      deletedShipments: linked.deletedShipments,
+      deletedPickups: linked.deletedPickups,
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to delete happy path pools.",
@@ -234,8 +311,14 @@ router.delete("/:id", async (req, res) => {
       return;
     }
 
+    const linked = await deleteRecordsLinkedToHappyPathPools([req.params.id]);
+
     await prisma.happyPathPool.delete({ where: { id: req.params.id } });
-    res.json({ deleted: true });
+    res.json({
+      deleted: true,
+      deletedShipments: linked.deletedShipments,
+      deletedPickups: linked.deletedPickups,
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to delete happy path pool.",

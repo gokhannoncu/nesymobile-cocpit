@@ -6,6 +6,7 @@ import {
   DATA_CENTER_HAPPY_PATH_PATH,
   DATA_CENTER_PICKUP_PATH,
   DATA_CENTER_SHIPMENT_PATH,
+  DATA_CENTER_USERS_PATH,
 } from '@nesy/metronic/config/layout-21.config'
 import {
   AccordionMenu,
@@ -17,7 +18,7 @@ import {
   AccordionMenuSubTrigger,
 } from '@nesy/metronic/components/ui/accordion-menu'
 import { Separator } from '@nesy/metronic/components/ui/separator'
-import { Calendar, PackagePlus, Plug, Truck } from 'lucide-react'
+import { Calendar, PackagePlus, Plug, Truck, Users } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { SidebarNavLink } from './navigation-feedback'
 
@@ -25,6 +26,7 @@ const LOCKED_OPERATION_PATHS = [
   DATA_CENTER_SHIPMENT_PATH,
   DATA_CENTER_PICKUP_PATH,
   DATA_CENTER_HAPPY_PATH_PATH,
+  DATA_CENTER_USERS_PATH,
 ] as const
 
 const LOCK_TITLE = 'Connect to Nesy Dashboard from the Connection page first.'
@@ -66,6 +68,11 @@ const MANAGEMENT_ITEMS = [
     title: 'Happy Path Operations',
     path: DATA_CENTER_HAPPY_PATH_PATH,
     icon: PackagePlus,
+  },
+  {
+    title: 'User Operations',
+    path: DATA_CENTER_USERS_PATH,
+    icon: Users,
   },
 ] as const
 

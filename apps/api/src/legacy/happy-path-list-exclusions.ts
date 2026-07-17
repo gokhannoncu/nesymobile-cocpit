@@ -161,3 +161,60 @@ async function backfillHappyPathRecordTags(): Promise<void> {
     linkedPickups.map((row) => tagRecordDataIfNeeded("pickup", row.id)),
   );
 }
+
+/** Remove shipment/pickup DB rows referenced by pool entries (before pool delete). */
+export async function deleteRecordsLinkedToHappyPathPools(poolIds: string[]): Promise<{
+  deletedShipments: number;
+  deletedPickups: number;
+}> {
+  const uniquePoolIds = [...new Set(poolIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniquePoolIds.length === 0) {
+    return { deletedShipments: 0, deletedPickups: 0 };
+  }
+
+  const entries = await prisma.happyPathPoolEntry.findMany({
+    where: { poolId: { in: uniquePoolIds } },
+    select: { shipmentId: true, pickupId: true },
+  });
+
+  const shipmentIdSet = new Set(collectNonEmptyIds(entries.map((entry) => entry.shipmentId)));
+  const pickupIdSet = new Set(collectNonEmptyIds(entries.map((entry) => entry.pickupId)));
+
+  if (shipmentIdSet.size > 0) {
+    const shipments = await prisma.shipment.findMany({
+      where: { id: { in: [...shipmentIdSet] } },
+      select: { data: true },
+    });
+    const waybills = collectNonEmptyIds(
+      shipments.map((row) => readWaybillFromShipmentData(row.data)),
+    );
+    if (waybills.length > 0) {
+      const pickupsByWaybill = await prisma.pickup.findMany({
+        where: { shipmentId: { in: waybills } },
+        select: { id: true },
+      });
+      for (const row of pickupsByWaybill) pickupIdSet.add(row.id);
+    }
+  }
+
+  const pickupIds = [...pickupIdSet];
+  const shipmentIds = [...shipmentIdSet];
+
+  let deletedPickups = 0;
+  let deletedShipments = 0;
+
+  if (pickupIds.length > 0) {
+    const pickupResult = await prisma.pickup.deleteMany({
+      where: { id: { in: pickupIds } },
+    });
+    deletedPickups = pickupResult.count;
+  }
+  if (shipmentIds.length > 0) {
+    const shipmentResult = await prisma.shipment.deleteMany({
+      where: { id: { in: shipmentIds } },
+    });
+    deletedShipments = shipmentResult.count;
+  }
+
+  return { deletedShipments, deletedPickups };
+}

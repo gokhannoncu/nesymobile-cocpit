@@ -18,6 +18,10 @@ import {
   type NesyDashboardToolbarCountry,
   type NesyEnvironment,
 } from '@/services/nesy-auth'
+import {
+  resolveSessionDashboardUserId,
+  type NesyDashboardAuth,
+} from '@/services/nesy-dashboard'
 
 type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'failed'
 
@@ -31,6 +35,7 @@ interface NesyAuthState {
   isHydrated: boolean
   token: string | null
   user: NesyUser | null
+  sessionUserId: string | null
   error: string | null
   setCountry: (country: NesyDashboardToolbarCountry) => void
   setEnvironment: (environment: NesyEnvironment) => void
@@ -45,6 +50,7 @@ interface PersistedState {
   environment: NesyEnvironment
   token: string
   user: NesyUser | null
+  sessionUserId?: string | null
 }
 
 function loadPersistedState(): PersistedState | null {
@@ -98,6 +104,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false)
   const [token, setToken] = useState<string | null>(null)
   const [user, setUser] = useState<NesyUser | null>(null)
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const availableEnvironments = [...NESY_DASHBOARD_COUNTRY_ENVIRONMENTS[country]]
@@ -119,16 +126,17 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
     setEnvironmentValue(nextEnvironment)
     setToken(persisted.token)
     setUser(persisted.user)
+    setSessionUserId(persisted.sessionUserId ?? null)
     setStatus('connected')
     setIsHydrated(true)
   }, [])
 
   useEffect(() => {
     if (status === 'connected' && token) {
-      persistState({ country, environment, token, user })
+      persistState({ country, environment, token, user, sessionUserId })
     }
     notifyAuthChanged()
-  }, [status, token, country, environment, user])
+  }, [status, token, country, environment, user, sessionUserId])
 
   function setCountry(nextCountry: NesyDashboardToolbarCountry) {
     setCountryValue(nextCountry)
@@ -139,6 +147,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
     setStatus('idle')
     setToken(null)
     setUser(null)
+    setSessionUserId(null)
     setError(null)
     clearPersistedState()
     notifyAuthChanged()
@@ -152,6 +161,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
     setStatus('idle')
     setToken(null)
     setUser(null)
+    setSessionUserId(null)
     setError(null)
     clearPersistedState()
     notifyAuthChanged()
@@ -160,6 +170,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
+    setSessionUserId(null)
     setError(null)
     setStatus('idle')
     clearPersistedState()
@@ -180,14 +191,33 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Token not found in Nesy response.')
       }
 
+      const authDash: NesyDashboardAuth = { token: nextToken, country, environment }
+      const loginSnap =
+        nextUser && typeof nextUser === 'object' && nextUser !== null && !Array.isArray(nextUser)
+          ? ({ ...nextUser } as Record<string, unknown>)
+          : undefined
+
+      let resolvedSessionMongoId: string | null = null
+      try {
+        resolvedSessionMongoId = await resolveSessionDashboardUserId(
+          authDash,
+          loginSnap ?? null,
+          nextToken,
+        )
+      } catch {
+        resolvedSessionMongoId = null
+      }
+
       setToken(nextToken)
       setUser(nextUser)
+      setSessionUserId(resolvedSessionMongoId)
       setStatus('connected')
       notifyAuthChanged()
       return nextToken
     } catch (connectError) {
       setToken(null)
       setUser(null)
+      setSessionUserId(null)
       setStatus('failed')
       clearPersistedState()
       setError(
@@ -207,6 +237,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
       isHydrated,
       token,
       user,
+      sessionUserId,
       error,
       setCountry,
       setEnvironment,
@@ -221,6 +252,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
       isHydrated,
       token,
       user,
+      sessionUserId,
       error,
       logout,
     ],

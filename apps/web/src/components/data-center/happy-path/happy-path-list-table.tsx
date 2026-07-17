@@ -44,6 +44,8 @@ import { useNesyAuth } from "@/contexts/nesy-auth-context";
 import {
   deleteHappyPathPool,
   fetchHappyPathPools,
+  formatPoolStatusLabel,
+  normalizePoolStatus,
   type HappyPathPoolListItem,
 } from "@/services/happy-path";
 import { Alert, AlertDescription, AlertTitle } from "@nesy/metronic/components/ui/alert";
@@ -160,21 +162,22 @@ function EnvironmentBadge({ environment }: { environment: string }) {
 }
 
 function StatusBadge({ status }: { status: HappyPathSet["status"] }) {
+  const normalized = normalizePoolStatus(status);
   const variant =
-    status === "Completed"
+    normalized === "Created"
       ? "success"
-      : status === "Generating"
+      : normalized === "Generating"
         ? "info"
-        : status === "Failed"
+        : normalized === "Failed"
           ? "destructive"
           : "secondary";
 
   return (
     <Badge variant={variant} appearance="light" size="sm" className="gap-1">
-      {status === "Generating" ? (
+      {normalized === "Generating" ? (
         <Loader2 className="size-3 animate-spin" aria-hidden />
       ) : null}
-      {status}
+      {formatPoolStatusLabel(status)}
     </Badge>
   );
 }

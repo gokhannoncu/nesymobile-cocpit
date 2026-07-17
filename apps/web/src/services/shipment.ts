@@ -283,3 +283,17 @@ export async function getBulkShipmentDisplayLabel(params: {
   }
   return { content: json.data.content, count: json.data.count ?? shipmentDbIds.length };
 }
+
+export function base64PdfToObjectUrl(base64: string): string {
+  const byteCharacters = atob(base64);
+  const byteArrays: BlobPart[] = [];
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Uint8Array(slice.length);
+    for (let i = 0; i < slice.length; i += 1) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(byteNumbers);
+  }
+  return URL.createObjectURL(new Blob(byteArrays, { type: "application/pdf" }));
+}

@@ -54,7 +54,11 @@ export async function buildApp(env: Env) {
       path.startsWith('/api/shipments') ||
       path.startsWith('/api/customers') ||
       path.startsWith('/api/pickups') ||
-      path.startsWith('/api/happy-path')
+      path.startsWith('/api/happy-path') ||
+      path.startsWith('/api/nesy/dashboard') ||
+      path.startsWith('/api/courier-wallets') ||
+      path.startsWith('/api/mobile-devices') ||
+      path.startsWith('/api/nesy/mobile-auth')
     ) {
       return express.json()(req, res, next)
     }
@@ -64,6 +68,14 @@ export async function buildApp(env: Env) {
   dataCenterApi.use('/api/customers', customersRouter)
   dataCenterApi.use('/api/pickups', pickupsRouter)
   dataCenterApi.use('/api/happy-path/pools', happyPathRouter)
+  const { default: nesyDashboardRouter } = await import('./legacy/nesy-dashboard.router.js')
+  const { default: courierWalletsRouter } = await import('./legacy/courier-wallets.router.js')
+  const { default: mobileDevicesRouter } = await import('./legacy/mobile-devices.router.js')
+  const { default: nesyMobileAuthRouter } = await import('./legacy/nesy-mobile-auth.router.js')
+  dataCenterApi.use('/api/nesy/dashboard', nesyDashboardRouter)
+  dataCenterApi.use('/api/courier-wallets', courierWalletsRouter)
+  dataCenterApi.use('/api/mobile-devices', mobileDevicesRouter)
+  dataCenterApi.use('/api/nesy/mobile-auth', nesyMobileAuthRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
