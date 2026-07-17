@@ -61,6 +61,11 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  AutomationListGridShimmer,
+  AutomationListStatCardsShimmer,
+  ShimmerBlock,
+} from '@/components/automation/automation-list-page-shimmer'
 import { ProductPage } from '@/components/product'
 import { useNesyAuth } from '@/contexts/nesy-auth-context'
 import {
@@ -307,7 +312,7 @@ export default function AutomationListPage() {
 
       <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         {loading
-          ? Array.from({ length: 4 }).map((_, index) => <WorkflowStatCardSkeleton key={index} />)
+          ? <AutomationListStatCardsShimmer />
           : stats.map((card) => (
               <div
                 key={card.title}
@@ -334,29 +339,37 @@ export default function AutomationListPage() {
       </section>
 
       <section className="rounded-md border border-border bg-card p-4 shadow-xs">
-        <label className="flex h-12 max-h-[3rem] w-full items-center gap-3 rounded-md border border-border bg-card px-4 text-muted-foreground shadow-xs">
-          <Search className="size-5 shrink-0" />
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            placeholder="Search workflows..."
-            type="search"
-          />
-        </label>
+        {loading && workflows.length === 0 ? (
+          <ShimmerBlock className="h-12 w-full rounded-md" aria-hidden />
+        ) : (
+          <label className="flex h-12 max-h-[3rem] w-full items-center gap-3 rounded-md border border-border bg-card px-4 text-muted-foreground shadow-xs">
+            <Search className="size-5 shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              placeholder="Search workflows..."
+              type="search"
+            />
+          </label>
+        )}
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
-          All Workflows{' '}
-          <span className="text-sm font-medium text-muted-foreground">({workflows.length})</span>
+        <h2 className="flex flex-wrap items-baseline gap-x-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
+          All Workflows
+          {loading ? (
+            <ShimmerBlock className="inline-block h-4 w-10 rounded-sm" />
+          ) : (
+            <span className="text-sm font-medium text-muted-foreground">({workflows.length})</span>
+          )}
         </h2>
 
         {loading ? (
-          <WorkflowCardGridSkeleton />
+          <AutomationListGridShimmer count={3} />
         ) : pageSlice.length === 0 ? (
           <p className="rounded-md border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
             No workflows match your filters.
@@ -440,75 +453,6 @@ export default function AutomationListPage() {
         )}
       </AnimatePresence>
     </ProductPage>
-  )
-}
-
-function ShimmerBlock({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'block animate-[shimmer_1.45s_linear_infinite] rounded-md bg-[linear-gradient(110deg,hsl(var(--muted))_8%,hsl(var(--card))_18%,hsl(var(--muted))_33%)] bg-[length:200%_100%]',
-        className,
-      )}
-    />
-  )
-}
-
-function WorkflowStatCardSkeleton() {
-  return (
-    <div className="rounded-md border border-border bg-card px-4 py-2.5 shadow-xs" aria-hidden>
-      <div className="flex items-center gap-3">
-        <ShimmerBlock className="size-11 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-3 w-24" />
-          <ShimmerBlock className="mt-2 h-6 w-12" />
-          <ShimmerBlock className="mt-2 h-3 w-32 max-w-full" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function WorkflowCardGridSkeleton() {
-  return (
-    <div
-      className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4"
-      aria-label="Workflow listesi yukleniyor"
-      aria-busy="true"
-    >
-      {Array.from({ length: 4 }).map((_, index) => (
-        <WorkflowCardSkeleton key={index} />
-      ))}
-    </div>
-  )
-}
-
-function WorkflowCardSkeleton() {
-  return (
-    <article className="rounded-md border border-border bg-card p-4 shadow-xs" aria-hidden>
-      <div className="flex items-center justify-between gap-2">
-        <ShimmerBlock className="h-6 w-20" />
-        <ShimmerBlock className="h-6 w-24" />
-      </div>
-      <div className="mt-5 flex items-center gap-4">
-        <ShimmerBlock className="size-16 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-6 w-4/5" />
-          <ShimmerBlock className="mt-2 h-4 w-3/5" />
-        </div>
-      </div>
-      <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-4">
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-3 w-24" />
-          <ShimmerBlock className="mt-2 h-3 w-12" />
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ShimmerBlock className="h-9 w-16" />
-          <ShimmerBlock className="h-9 w-20" />
-        </div>
-      </div>
-    </article>
   )
 }
 

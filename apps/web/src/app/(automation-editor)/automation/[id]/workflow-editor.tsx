@@ -2563,6 +2563,60 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               )}
               {isTestRunning ? "Stop Test" : isTestFinished ? "View Results" : "Run Test"}
             </Button>
+            <DeviceSelector
+              devices={devices}
+              filteredDevices={filteredDevices}
+              disabled={editorLocked}
+              isLoading={devicesLoading}
+              isOpen={isDeviceDropdownOpen}
+              onOpenChange={(open) => {
+                if (editorLocked) return;
+                setIsDeviceDropdownOpen(open);
+                if (open) setDeviceSelectorAttention(false);
+              }}
+              onRefresh={() => void refreshDevices()}
+              onSelectDevice={handleDeviceSelect}
+              searchQuery={deviceSearchQuery}
+              selectedDevice={selectedDevice}
+              setSearchQuery={setDeviceSearchQuery}
+              attention={deviceSelectorAttention}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  mode="icon"
+                  size="lg"
+                  disabled={editorLocked}
+                  className="size-9 min-h-9 shrink-0 rounded-md"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuItem onSelect={() => setYamlPreviewOpen(true)}>
+                  <Code2 className="size-4" />
+                  Preview YAML
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <RotateCcw className="size-4" />
+                  Reset Workflow
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={requestCloseEditor}>
+                  <X className="size-4" />
+                  Close Editor
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -2582,12 +2636,311 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           onSaveAndClose={() => void handleSaveAndClose()}
         />
 
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className="max-w-md rounded-md border border-slate-200 shadow-lg sm:rounded-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear workflow?</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-600">
+                Are you sure? This will remove every node and connection from the canvas.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button" className="rounded-md">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                type="button"
+                className="rounded-md bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
+                onClick={() => {
+                  handleResetWorkflow();
+                  setDeleteDialogOpen(false);
+                }}
+              >
+                Clear
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={nodeDeleteDialog.open}
+          onOpenChange={(open) => {
+            if (!open) setNodeDeleteDialog({ open: false, nodeId: null });
+            else setNodeDeleteDialog((previous) => ({ ...previous, open }));
+          }}
+        >
+          <AlertDialogContent className="max-w-md rounded-md border border-slate-200 shadow-lg sm:rounded-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {nodeDeleteImpact?.clearsEntireWorkflow
+                  ? "Clear entire workflow?"
+                  : nodeDeleteImpact?.isBranchDelete
+                    ? "Delete workflow branch?"
+                    : "Delete node?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm text-slate-600">
+                  {nodeDeleteImpact?.clearsEntireWorkflow ? (
+                    <p>
+                      Deleting <span className="font-semibold text-slate-800">{nodeDeleteImpact.rootLabel}</span> removes
+                      every node and connection. The canvas will return to an empty state.
+                    </p>
+                  ) : nodeDeleteImpact?.isBranchDelete ? (
+                    <>
+                      <p>This will delete the selected node and all nodes below it that are only reachable through this branch.</p>
+                      <p className="text-xs font-medium text-slate-500">
+                        Nodes to remove:{" "}
+                        <span className="tabular-nums text-slate-700">{nodeDeleteImpact.nodeCount}</span>
+                        {" · "}
+                        Connections to remove:{" "}
+                        <span className="tabular-nums text-slate-700">{nodeDeleteImpact.connectionCount}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <p>This node will be removed from the workflow.</p>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button" className="rounded-md">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                type="button"
+                className="rounded-md bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
+                onClick={() => {
+                  if (nodeDeleteDialog.nodeId) deleteNode(nodeDeleteDialog.nodeId);
+                  setNodeDeleteDialog({ open: false, nodeId: null });
+                }}
+              >
+                {nodeDeleteImpact?.clearsEntireWorkflow
+                  ? "Clear workflow"
+                  : nodeDeleteImpact?.isBranchDelete
+                    ? "Delete branch"
+                    : "Delete node"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={templateDialogState.open}
+          onOpenChange={(open) => {
+            if (!open) setTemplateDialogState({ open: false, templateId: null });
+            else setTemplateDialogState((previous) => ({ ...previous, open }));
+          }}
+        >
+          <AlertDialogContent className="max-w-md rounded-md border border-slate-200 shadow-lg sm:rounded-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Canvas is not empty</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-600">
+                Adding this template may replace or merge with your current workflow.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button" className="rounded-md">
+                Cancel
+              </AlertDialogCancel>
+              <Button type="button" variant="outline" disabled className="rounded-md">
+                Merge Template
+              </Button>
+              <AlertDialogAction
+                type="button"
+                className="rounded-md bg-nesy text-white hover:bg-nesy-hover"
+                onClick={() => {
+                  if (templateDialogState.templateId) applyTemplate(templateDialogState.templateId);
+                  setTemplateDialogState({ open: false, templateId: null });
+                }}
+              >
+                Replace Canvas
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <InvalidWorkflowStepDialog
           open={ruleDialogState.open}
           result={ruleDialogState.result}
           onClose={() => setRuleDialogState({ open: false, result: null, pendingItem: null })}
           onPrimaryAction={handleRuleDialogPrimaryAction}
         />
+
+        <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+          <AlertDialogContent className="max-w-lg rounded-md border border-slate-200 shadow-lg sm:rounded-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Workflow validation failed</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-600">
+                Fix the issues below before running a test or publishing the workflow.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              {validationErrors.map((error, index) => (
+                <div
+                  key={`${error.code ?? "error"}-${error.nodeId ?? index}`}
+                  className="flex flex-col gap-1 border-b border-slate-100 pb-2 last:border-0 last:pb-0"
+                >
+                  <p className="text-xs font-medium text-slate-700">- {error.title ?? error.message}</p>
+                  {error.detail ? <p className="text-[11px] leading-snug text-slate-500">{error.detail}</p> : null}
+                  {error.suggestedAction === "REMOVE_INVALID_NODE" && error.nodeId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-1 self-start rounded-md"
+                      onClick={() => deleteNode(error.nodeId!)}
+                    >
+                      {error.suggestedActionLabel ?? "Remove invalid node"}
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button" className="rounded-md">
+                Close
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <div className="h-[calc(100vh-3.5rem)] pt-14">
+          <aside
+            className={cn(
+              "fixed bottom-0 left-0 top-14 z-20 w-[280px] overflow-y-auto border-r border-slate-200 bg-white p-4",
+              editorLocked && "pointer-events-none opacity-55",
+            )}
+            aria-disabled={editorLocked}
+          >
+            <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-slate-400 shadow-xs">
+              <Search className="size-4" />
+              <input
+                ref={paletteSearchInputRef}
+                type="search"
+                placeholder="Search components"
+                value={paletteSearch}
+                onChange={(event) => setPaletteSearch(event.target.value)}
+                className="min-w-0 flex-1 appearance-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {paletteSearch ? (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setPaletteSearch("")}
+                  className="flex size-5 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700"
+                >
+                  <X className="size-3" />
+                </button>
+              ) : null}
+            </label>
+
+            {filteredTemplates.length > 0 ? (
+              <TemplatePaletteSection templates={filteredTemplates} onTemplateSelect={requestTemplateApply} />
+            ) : null}
+
+            {filteredPaletteGroups.map((group) => (
+              <PaletteSection
+                key={group.title}
+                title={group.title}
+                items={group.items}
+                subsections={group.subsections}
+              />
+            ))}
+
+            {!hasPaletteResults ? (
+              <div className="mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs font-medium text-slate-500">
+                No components found.
+              </div>
+            ) : null}
+          </aside>
+
+          <WorkflowCanvas
+            canvasContainerRef={canvasContainerRef}
+            canvasTool={canvasTool}
+            connections={connections}
+            cursorClass={cursorClass}
+            invalidNodeIds={invalidNodeIds}
+            isPanning={isPanning}
+            isSpacePressed={isSpacePressed}
+            nodes={nodes}
+            onCanvasToolChange={setCanvasTool}
+            onDuplicateNode={() => {
+              if (selectedNodeId) duplicateNode(selectedNodeId);
+            }}
+            onFitToScreen={resetZoom}
+            onRequestConnectionDelete={requestConnectionDelete}
+            onRequestDeleteNode={requestNodeDelete}
+            onRequestSelectedNodeDelete={() => {
+              if (selectedNodeId) requestNodeDelete(selectedNodeId);
+            }}
+            onToggleGrid={() => setShowGrid((value) => !value)}
+            onToggleMinimap={() => setShowMinimap((value) => !value)}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            propertiesPanelOpen={propertiesPanelOpen}
+            selectedNodeId={selectedNodeId ?? null}
+            showGrid={showGrid}
+            showMinimap={showMinimap}
+            showZoomIndicator={showZoomIndicator}
+            viewport={viewport}
+            viewportHandlers={viewportHandlers}
+            onTemplateSelect={requestTemplateApply}
+            runVisualization={runVisualization}
+            editorLocked={editorLocked}
+          />
+
+          {isPublishing ? (
+            <div
+              className="fixed bottom-0 left-[280px] top-14 z-[35] flex cursor-wait items-center justify-center bg-slate-900/10 backdrop-blur-[1px]"
+              style={{ right: propertiesPanelOpen ? `${RIGHT_PROPERTIES_PANEL_PX}px` : 0 }}
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label="Publishing workflow"
+            >
+              <div className="flex items-center gap-2.5 rounded-[6px] border border-slate-200 bg-white px-4 py-3 shadow-lg">
+                <Loader2 className="size-4 shrink-0 animate-spin text-red-600" />
+                <span className="text-sm font-semibold text-slate-800">Publishing workflow...</span>
+              </div>
+            </div>
+          ) : null}
+
+          {isWorkflowLoading ? (
+            <div
+              className="fixed bottom-0 left-[280px] top-14 z-[25] overflow-hidden bg-[#F8FAFC]"
+              style={{ right: propertiesPanelOpen ? `${RIGHT_PROPERTIES_PANEL_PX}px` : 0 }}
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <WorkflowCanvasContentShimmer title={displayTitle} />
+            </div>
+          ) : null}
+
+          {propertiesPanelOpen && selectedNode ? (
+            <aside
+              className="fixed bottom-0 right-0 top-14 z-20 shrink-0 overflow-hidden border-l border-slate-200 bg-white"
+              style={{ width: `${RIGHT_PROPERTIES_PANEL_PX}px` }}
+            >
+              <YamlPreviewPanel
+                selectedNode={selectedNode}
+                onClose={() => setPropertiesPanelOpen(false)}
+                onRunTest={runWorkflowTest}
+                runTestDisabled={!selectedDevice || editorLocked}
+                onUpdateNodeConfig={updateNodeConfig}
+              />
+            </aside>
+          ) : selectedNode ? (
+            <button
+              type="button"
+              aria-label="Open properties panel"
+              onClick={() => setPropertiesPanelOpen(true)}
+              className="fixed right-0 top-1/2 z-20 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-md border border-slate-200 border-r-0 bg-white text-slate-600 shadow-xs hover:bg-slate-50"
+            >
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={null}>
@@ -2979,7 +3332,7 @@ function WorkflowCanvas({
 function WorkflowMark() {
   return (
     <img
-      src="/media/app/nesy-courier-app-icon.png"
+      src="/media/app/nesy-icon.png"
       alt="NESY"
       width={24}
       height={24}
