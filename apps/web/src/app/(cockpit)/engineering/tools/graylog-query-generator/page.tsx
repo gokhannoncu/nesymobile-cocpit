@@ -164,7 +164,18 @@ export default function GraylogQueryGeneratorPage() {
       const rows = await fetchRecentGraylogQueries()
       setRecent(rows)
     } catch (e) {
-      setRecentError(e instanceof Error ? e.message : 'Failed to load recent queries')
+      // One retry — API may be briefly unavailable during tsx watch restart
+      try {
+        await new Promise((r) => window.setTimeout(r, 600))
+        const rows = await fetchRecentGraylogQueries()
+        setRecent(rows)
+        setRecentError(null)
+      } catch (retryError) {
+        setRecent([])
+        setRecentError(
+          retryError instanceof Error ? retryError.message : 'Failed to load recent queries',
+        )
+      }
     } finally {
       setRecentLoading(false)
     }

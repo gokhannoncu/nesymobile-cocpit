@@ -1,4 +1,5 @@
 import { API_BASE } from '@/services/api'
+import { formatApiNetworkError } from '@/services/api-errors'
 
 export type GraylogField = {
   field: string
@@ -81,38 +82,59 @@ function normalizeRun(run: GraylogQueryRun): GraylogQueryRun {
 }
 
 export async function fetchGraylogFields(): Promise<GraylogField[]> {
-  const res = await fetch(`${API_BASE}/graylog-query/fields`)
-  if (!res.ok) throw new Error(await readError(res))
-  const json = (await res.json()) as { data: { fields: GraylogField[] } }
-  return json.data.fields
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/fields`)
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: { fields: GraylogField[] } }
+    return Array.isArray(json.data?.fields) ? json.data.fields : []
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to load Graylog fields'))
+  }
 }
 
 export async function fetchRecentGraylogQueries(limit = 50): Promise<GraylogQueryRun[]> {
-  const res = await fetch(`${API_BASE}/graylog-query/recent?limit=${limit}`)
-  if (!res.ok) throw new Error(await readError(res))
-  const json = (await res.json()) as { data: GraylogQueryRun[] }
-  return json.data.map(normalizeRun)
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/recent?limit=${limit}`)
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: GraylogQueryRun[] }
+    const rows = Array.isArray(json.data) ? json.data : []
+    return rows.map(normalizeRun)
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to load recent Graylog queries'))
+  }
 }
 
 export async function generateGraylogQuery(input: GenerateGraylogInput): Promise<GraylogQueryRun> {
-  const res = await fetch(`${API_BASE}/graylog-query/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-  if (!res.ok) throw new Error(await readError(res))
-  const json = (await res.json()) as { data: GraylogQueryRun }
-  return normalizeRun(json.data)
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: GraylogQueryRun }
+    return normalizeRun(json.data)
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to generate Graylog query'))
+  }
 }
 
 export async function reuseGraylogQuery(id: string): Promise<GraylogQueryRun> {
-  const res = await fetch(`${API_BASE}/graylog-query/recent/${id}/reuse`, { method: 'POST' })
-  if (!res.ok) throw new Error(await readError(res))
-  const json = (await res.json()) as { data: GraylogQueryRun }
-  return normalizeRun(json.data)
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/recent/${id}/reuse`, { method: 'POST' })
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: GraylogQueryRun }
+    return normalizeRun(json.data)
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to reuse Graylog query'))
+  }
 }
 
 export async function deleteGraylogQuery(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/graylog-query/recent/${id}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readError(res))
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/recent/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await readError(res))
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to delete Graylog query'))
+  }
 }

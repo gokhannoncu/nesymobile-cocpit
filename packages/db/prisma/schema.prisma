@@ -287,3 +287,32 @@ model GraylogQueryRun {
   @@index([country])
   @@map("graylog_query_runs")
 }
+
+/// Automation: field support courier login sessions (PIN never stored)
+model FieldCourierLogin {
+  id               String   @id @default(cuid())
+  country          String
+  environment      String
+  courierUserId    String?
+  courierUsername  String?
+  courierFullName  String?
+  hubId            String?
+  hubName          String?
+  waybillNumber    String?
+  legacyBarcode    String?
+  barcode          String?
+  deviceCode       String?
+  adbDeviceId      String?
+  adminUserId      String?
+  adminUsername    String?
+  status           String
+  errorMessage     String?
+  failedStep       String?
+  maestroRunId     String?
+  createdAt        DateTime @default(now())
+
+  @@index([country, environment, createdAt])
+  @@index([status])
+  @@index([courierUsername])
+  @@map("field_courier_logins")
+}

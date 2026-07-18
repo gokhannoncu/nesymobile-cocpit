@@ -61,7 +61,8 @@ export async function buildApp(env: Env) {
       path.startsWith('/api/nesy/mobile-auth') ||
       path.startsWith('/api/mongo-query') ||
       path.startsWith('/api/graylog-query') ||
-      path.startsWith('/api/data-locator')
+      path.startsWith('/api/data-locator') ||
+      path.startsWith('/api/field-courier-login')
     ) {
       return express.json()(req, res, next)
     }
@@ -78,6 +79,7 @@ export async function buildApp(env: Env) {
   const { default: mongoQueryRouter } = await import('./legacy/mongo-query.router.js')
   const { default: graylogQueryRouter } = await import('./legacy/graylog-query.router.js')
   const { default: dataLocatorRouter } = await import('./legacy/data-locator.router.js')
+  const { default: fieldCourierLoginRouter } = await import('./legacy/field-courier-login.router.js')
   dataCenterApi.use('/api/nesy/dashboard', nesyDashboardRouter)
   dataCenterApi.use('/api/courier-wallets', courierWalletsRouter)
   dataCenterApi.use('/api/mobile-devices', mobileDevicesRouter)
@@ -85,6 +87,7 @@ export async function buildApp(env: Env) {
   dataCenterApi.use('/api/mongo-query', mongoQueryRouter)
   dataCenterApi.use('/api/graylog-query', graylogQueryRouter)
   dataCenterApi.use('/api/data-locator', dataLocatorRouter)
+  dataCenterApi.use('/api/field-courier-login', fieldCourierLoginRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)

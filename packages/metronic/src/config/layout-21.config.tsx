@@ -45,6 +45,7 @@ import {
   Target,
   Ticket,
   Truck,
+  UserRoundCog,
   Users,
   Wifi,
   Workflow,
@@ -59,6 +60,7 @@ export const DATA_CENTER_USERS_PATH = '/data-center/users' as const
 
 export const AUTOMATION_LIST_PATH = '/automation/list' as const
 export const AUTOMATION_HISTORY_PATH = '/automation/history' as const
+export const AUTOMATION_FIELD_LOGIN_PATH = '/automation/field-login' as const
 
 // Single source of truth for the cockpit navigation.
 // The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
@@ -468,6 +470,11 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Run History',
                 path: AUTOMATION_HISTORY_PATH,
                 icon: History,
+              },
+              {
+                title: 'Field Courier Login',
+                path: AUTOMATION_FIELD_LOGIN_PATH,
+                icon: UserRoundCog,
               },
             ],
           },

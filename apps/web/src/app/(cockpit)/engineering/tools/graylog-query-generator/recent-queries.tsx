@@ -96,8 +96,8 @@ export function RecentQueriesTable({
   return (
     <>
       {error && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-          {error}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+          <span>{error}</span>
         </div>
       )}
       <div className="overflow-x-auto rounded-xl border bg-background">
@@ -125,10 +125,17 @@ export function RecentQueriesTable({
                 </td>
               </tr>
             )}
-            {!loading && queries.length === 0 && (
+            {!loading && !error && queries.length === 0 && (
               <tr>
                 <td colSpan={8} className={cn(td, 'py-8 text-center text-muted-foreground')}>
                   No saved queries yet. Generate one to populate history.
+                </td>
+              </tr>
+            )}
+            {!loading && error && queries.length === 0 && (
+              <tr>
+                <td colSpan={8} className={cn(td, 'py-8 text-center text-muted-foreground')}>
+                  History could not be loaded. Check that the API is running on port 4001, then refresh the page.
                 </td>
               </tr>
             )}
