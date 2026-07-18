@@ -38,7 +38,8 @@ export function ProductPage({
   // Is this a group overview page? (workspace root route = overview). Excluding home.
   const workspace = getActiveWorkspace(path)
   const isGroupOverview = workspace.path === path && path !== '/'
-  const showToolbar = workspace.id !== 'data-center'
+  // Debug View / Data Center use their own page headers; skip the generic toolbar.
+  const showToolbar = workspace.id !== 'data-center' && workspace.id !== 'debug-view'
 
   return (
     <div className="container-fluid min-w-0 max-w-full">
@@ -50,7 +51,8 @@ export function ProductPage({
           </ToolbarHeading>
           {isGroupOverview &&
             workspace.id !== 'data-center' &&
-            workspace.id !== 'automation' && (
+            workspace.id !== 'automation' &&
+            workspace.id !== 'debug-view' && (
             <div className="flex items-center gap-2">
               <GroupPdfButton workspace={workspace} />
             </div>

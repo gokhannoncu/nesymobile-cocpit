@@ -28,11 +28,11 @@ import { Button } from '@nesy/metronic/components/ui/button'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
   Callout,
-  DataTable,
+  FeatureCountryRows,
   FlowDiagram,
-  HeroCallout,
+  PageSection,
   ProductPage,
-  SegmentTabs,
+  StickySectionNav,
   TagBadge,
 } from '@/components/product'
 import {
@@ -42,7 +42,8 @@ import {
   listFeatureRecordsByDomain,
 } from '@/data/product/nesy'
 import { toFeatureSlug } from '@/data/product/feature-slug'
-import { toneCard, toneDot, toneIcon, toneIconBox, toneText } from '@/components/product/tones'
+import { toneCard, toneDot, toneHero, toneIcon, toneIconBox, toneText } from '@/components/product/tones'
+import { resolveFeatureDetailSections } from './feature-detail-sections'
 
 const moduleIcons = [PackageCheck, PackageSearch, Route, Truck, Globe, Boxes] as const
 const moduleTones = ['orange', 'amber', 'teal', 'blue', 'purple', 'indigo'] as const
@@ -106,28 +107,11 @@ export default function FeatureDetailPage() {
   const nextFeature = featureRecords[recordIndex + 1]?.feature
   const isCore = isSupported(feature.values.core)
 
-  const countryRows = COUNTRIES.map((country) => {
-    const value = feature.values[country.id]
-    const isCore = country.id === 'core'
-    const status = value === '—' ? 'None' : value === 'N/A' ? 'Out of scope' : 'Active'
-    const statusTone = value === '—' ? 'red' : value === 'N/A' ? 'gray' : 'green'
-
-    return {
-      country: (
-        <div>
-          <div className="font-semibold text-foreground">{country.name}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">{country.subtitle}</div>
-        </div>
-      ),
-      type: <TagBadge label={isCore ? 'Standard' : 'Country'} tone={isCore ? 'indigo' : 'gray'} />,
-      status: <TagBadge label={status} tone={statusTone} />,
-      behavior: (
-        <p className="max-w-2xl whitespace-pre-line text-xs leading-relaxed text-foreground/80">
-          {value === '—' ? 'Not available yet.' : value === 'N/A' ? 'Out of scope for this country.' : value}
-        </p>
-      ),
-    }
+  const sections = resolveFeatureDetailSections({
+    hasDetail: Boolean(detail),
+    hasDiagram: Boolean(detail?.diagram && detail.diagram.length > 0),
   })
+  const sectionIds = new Set(sections.map((section) => section.id))
 
   return (
     <ProductPage path="/product/feature-library">
@@ -158,74 +142,79 @@ export default function FeatureDetailPage() {
         </span>
       </div>
 
-      <HeroCallout
-        icon={ModuleIcon}
-        eyebrow={domain ? `${domain.title} · Feature Detail` : `${module.title} · Feature Detail`}
-        tone={tone}
-        title={feature.title}
-        lead={feature.desc}
-        chips={[
-          isCore ? 'CORE' : 'No CORE',
-          module.title,
-          `${supportedCountryCount}/${activeCountries.length} countries`,
-          detail ? 'Detail document ready' : 'Detail pending',
-        ]}
+      <section
+        className={cn(
+          'rounded-2xl border bg-gradient-to-br p-5 sm:p-6',
+          toneHero[tone],
+          toneCard[tone],
+        )}
       >
-        <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/70 bg-background/75 p-3 shadow-sm backdrop-blur-sm">
-          <HeroMetric label="Country" value={`${supportedCountryCount}/${activeCountries.length}`} />
-          <HeroMetric label="Risk" value={detail ? `${detail.score.bugProneness}/5` : '—'} />
-          <HeroMetric label="Ticket" value={String(detail?.tickets.length ?? 0)} />
-        </div>
-      </HeroCallout>
-
-      <SegmentTabs
-        variant="button"
-        items={[
-          {
-            value: 'overview',
-            label: 'Overview',
-            icon: Info,
-            content: detail ? (
-              <div className="grid gap-4 lg:grid-cols-12">
-                <DetailPanel
-                  title="What is it?"
-                  icon={Info}
-                  tone={tone}
-                  className="lg:col-span-7"
-                >
-                  <p className="text-sm leading-7 text-foreground/85">{detail.whatIs}</p>
-                </DetailPanel>
-
-                <DetailPanel
-                  title="Screens Used"
-                  icon={MonitorSmartphone}
-                  tone={tone}
-                  className="lg:col-span-5"
-                >
-                  <div className="space-y-2">
-                    {detail.screens.map((screen) => (
-                      <div
-                        key={screen}
-                        className="flex gap-2 rounded-lg border border-border/60 bg-background/70 px-3 py-2.5 text-xs leading-relaxed"
-                      >
-                        <Code2 className={cn('mt-0.5 size-3.5 shrink-0', toneIcon[tone])} />
-                        {screen}
-                      </div>
-                    ))}
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-3">
+              <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', toneIconBox[tone])}>
+                <ModuleIcon className={cn('size-5', toneIcon[tone])} />
+              </span>
+              <div className="min-w-0">
+                {domain && (
+                  <div className={cn('text-[11px] font-bold uppercase tracking-[0.16em]', toneText[tone])}>
+                    {domain.title} · Feature Detail
                   </div>
-                </DetailPanel>
+                )}
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  {feature.title}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-foreground/80">{feature.desc}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              <TagBadge label={isCore ? 'CORE' : 'No CORE'} tone={isCore ? 'green' : 'gray'} />
+              <TagBadge label={module.title} tone="gray" />
+              <TagBadge
+                label={detail ? 'Detail document ready' : 'Detail pending'}
+                tone={detail ? 'blue' : 'amber'}
+              />
+            </div>
+          </div>
 
-                <DetailPanel
-                  title="How it Works?"
-                  icon={GitBranch}
-                  tone={tone}
-                  className="lg:col-span-12"
-                >
+          <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4 lg:min-w-[240px] lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            <IdentityMetric
+              label="Country"
+              value={`${supportedCountryCount}/${activeCountries.length}`}
+            />
+            <IdentityMetric label="Risk" value={detail ? `${detail.score.bugProneness}/5` : '—'} />
+            <IdentityMetric label="Tickets" value={String(detail?.tickets.length ?? 0)} />
+          </div>
+        </div>
+      </section>
+
+      <StickySectionNav items={sections} tone={tone} />
+
+      <div className="space-y-10 pt-2">
+        {sectionIds.has('overview') && (
+          <PageSection
+            id="feature-overview"
+            className="scroll-mt-24"
+            eyebrow="Overview"
+            title="What is it?"
+            icon={Info}
+            tone={tone}
+            description={detail ? undefined : 'Detail content is not prepared yet for this feature.'}
+          >
+            {detail ? (
+              <div className="space-y-6">
+                <p className="max-w-3xl text-sm leading-7 text-foreground/85">{detail.whatIs}</p>
+
+                <div>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                    <GitBranch className={cn('size-4', toneIcon[tone])} />
+                    How it works
+                  </h3>
                   <ol className="grid gap-2.5 md:grid-cols-2">
                     {detail.howItWorks.map((step, index) => (
                       <li
                         key={step}
-                        className="flex gap-2.5 rounded-lg border border-border/50 bg-background/60 p-3 text-sm"
+                        className="flex gap-2.5 rounded-lg border border-border/50 bg-background/40 p-3 text-sm"
                       >
                         <span
                           className={cn(
@@ -239,229 +228,278 @@ export default function FeatureDetailPage() {
                       </li>
                     ))}
                   </ol>
-                </DetailPanel>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                    <MonitorSmartphone className={cn('size-4', toneIcon[tone])} />
+                    Screens used
+                  </h3>
+                  <div className="space-y-2">
+                    {detail.screens.map((screen) => (
+                      <div
+                        key={screen}
+                        className="flex gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-relaxed"
+                      >
+                        <Code2 className={cn('mt-0.5 size-3.5 shrink-0', toneIcon[tone])} />
+                        {screen}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <EmptyPanel message="Detail content is not prepared yet for this feature." />
-            ),
-          },
-          {
-            value: 'countries',
-            label: 'Country Scope',
-            icon: Globe,
-            content: (
-              <DataTable
-                columns={[
-                  { key: 'country', label: 'Country', className: 'min-w-36' },
-                  { key: 'type', label: 'Type' },
-                  { key: 'status', label: 'Status' },
-                  { key: 'behavior', label: 'Behavior', className: 'min-w-80' },
-                ]}
-                rows={countryRows}
-              />
-            ),
-          },
-          {
-            value: 'flow',
-            label: 'Flow Diagram',
-            icon: GitBranch,
-            content:
-              detail?.diagram && detail.diagram.length > 0 ? (
-                <div className={cn('rounded-2xl border p-5 sm:p-8', toneCard[tone])}>
-                  <div className={cn('mb-6 text-xs font-bold uppercase tracking-[0.16em]', toneText[tone])}>
-                    {feature.title} · Operation Flow
-                  </div>
-                  <FlowDiagram elements={detail.diagram} tone={tone} />
-                </div>
-              ) : (
-                <EmptyPanel message="Flow diagram is not prepared yet for this feature." />
-              ),
-          },
-          {
-            value: 'technical',
-            label: 'Parameters & API',
-            icon: Settings,
-            content: detail ? (
-              <div className="grid gap-5 xl:grid-cols-2">
-                <DetailPanel title="Linked Parameters" icon={Settings} tone={tone}>
-                  {detail.parameters.length > 0 ? (
-                    <div className="space-y-2">
-                      {detail.parameters.map((parameter) => (
-                        <div key={parameter.name} className="rounded-lg border border-border/60 bg-background/70 p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <code className="text-xs font-bold text-foreground">{parameter.name}</code>
-                            <TagBadge label={parameter.type} tone="gray" />
-                          </div>
-                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{parameter.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <InlineEmpty label="No linked parameters." />
-                  )}
-                </DetailPanel>
+            )}
+          </PageSection>
+        )}
 
-                <DetailPanel title="API Endpoints" icon={Code2} tone={tone}>
-                  {detail.apis && detail.apis.length > 0 ? (
-                    <div className="space-y-2">
-                      {detail.apis.map((api) => (
-                        <div key={`${api.method}-${api.endpoint}`} className="rounded-lg border border-border/60 bg-background/70 p-3">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <TagBadge label={api.method} tone="blue" />
-                            <code className="min-w-0 break-all text-xs font-semibold text-foreground">{api.endpoint}</code>
-                          </div>
-                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{api.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <InlineEmpty label="No linked API endpoints." />
-                  )}
-                </DetailPanel>
-              </div>
-            ) : (
-              <EmptyPanel message="Technical details are not prepared yet." />
-            ),
-          },
-          {
-            value: 'operations',
-            label: 'Know-how & Score',
-            icon: Lightbulb,
-            content: detail ? (
-              <div className="grid gap-5 lg:grid-cols-12">
-                <DetailPanel title="Info & Tricks" icon={Lightbulb} tone={tone} className="lg:col-span-7">
-                  {detail.tips.length > 0 ? (
-                    <ul className="space-y-2">
-                      {detail.tips.map((tip) => (
-                        <li key={tip} className="flex gap-2.5 rounded-lg border border-border/60 bg-background/70 p-3 text-sm">
-                          <CheckCircle2 className={cn('mt-0.5 size-4 shrink-0', toneIcon[tone])} />
-                          <span className="leading-relaxed text-foreground/85">{tip}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <InlineEmpty label="No saved tips." />
-                  )}
-                </DetailPanel>
+        {sectionIds.has('flow') && detail?.diagram && (
+          <PageSection
+            id="feature-flow"
+            className="scroll-mt-24"
+            eyebrow="Flow"
+            title={`${feature.title} · Operation flow`}
+            icon={GitBranch}
+            tone={tone}
+          >
+            <div className={cn('rounded-2xl border p-5 sm:p-8', toneCard[tone])}>
+              <FlowDiagram elements={detail.diagram} tone={tone} />
+            </div>
+          </PageSection>
+        )}
 
-                <DetailPanel title="Feature Score" icon={Bug} tone={tone} className="lg:col-span-5">
-                  <div className="space-y-3">
-                    {Object.entries(detail.score).map(([key, value]) => (
-                      <ScoreBar key={key} label={scoreLabels[key] ?? key} value={value} />
+        {sectionIds.has('countries') && (
+          <PageSection
+            id="feature-countries"
+            className="scroll-mt-24"
+            eyebrow="Countries"
+            title="Country scope"
+            icon={Globe}
+            tone={tone}
+            description="How this capability behaves across CORE and country markets."
+          >
+            <FeatureCountryRows
+              rows={COUNTRIES.map((country) => ({
+                id: country.id,
+                name: country.name,
+                subtitle: country.subtitle,
+                value: feature.values[country.id],
+              }))}
+            />
+          </PageSection>
+        )}
+
+        {sectionIds.has('tech') && detail && (
+          <PageSection
+            id="feature-tech"
+            className="scroll-mt-24"
+            eyebrow="Tech"
+            title="Parameters & API"
+            icon={Settings}
+            tone={tone}
+          >
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Settings className={cn('size-4', toneIcon[tone])} />
+                  Linked parameters
+                </h3>
+                {detail.parameters.length > 0 ? (
+                  <div className="space-y-2">
+                    {detail.parameters.map((parameter) => (
+                      <div key={parameter.name} className="rounded-lg border border-border/60 bg-background/40 p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="text-xs font-bold text-foreground">{parameter.name}</code>
+                          <TagBadge label={parameter.type} tone="gray" />
+                        </div>
+                        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{parameter.desc}</p>
+                      </div>
                     ))}
                   </div>
-                </DetailPanel>
-
-                <DetailPanel title="Tickets" icon={Ticket} tone={tone} className="lg:col-span-7">
-                  {detail.tickets.length > 0 ? (
-                    <div className="space-y-2">
-                      {detail.tickets.map((ticket) => (
-                        <div key={ticket.id} className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/70 p-3">
-                          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <code className="text-xs font-bold">{ticket.id}</code>
-                              <TagBadge label={ticketStatus[ticket.status].label} tone={ticketStatus[ticket.status].tone} />
-                            </div>
-                            <p className="mt-1 text-sm text-foreground/80">{ticket.title}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <InlineEmpty label="No tickets for this feature." />
-                  )}
-                </DetailPanel>
-
-                <DetailPanel title="Know-how Owners" icon={Users} tone={tone} className="lg:col-span-5">
-                  {detail.experts.length > 0 ? (
-                    <div className="space-y-2">
-                      {detail.experts.map((expert) => (
-                        <div key={expert.name} className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/70 p-3">
-                          <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', toneDot[tone])}>
-                            {expert.name.split(' ').map((word) => word[0]).slice(0, 2).join('')}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold">{expert.name}</div>
-                            <div className="truncate text-xs text-muted-foreground">{expert.role}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <InlineEmpty label="No know-how owner defined." />
-                  )}
-                </DetailPanel>
+                ) : (
+                  <InlineEmpty label="No linked parameters." />
+                )}
               </div>
-            ) : (
-              <EmptyPanel message="Operational know-how is not prepared yet." />
-            ),
-          },
-        ]}
-      />
 
-      <nav className="grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2" aria-label="Feature navigation">
-        {previousFeature ? (
-          <Link
-            href={`/product/feature-library/${toFeatureSlug(previousFeature.id)}`}
-            className="group rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
-          >
-            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              <ArrowLeft className="size-3" /> Previous feature
+              <div>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Code2 className={cn('size-4', toneIcon[tone])} />
+                  API endpoints
+                </h3>
+                {detail.apis && detail.apis.length > 0 ? (
+                  <div className="space-y-2">
+                    {detail.apis.map((api) => (
+                      <div key={`${api.method}-${api.endpoint}`} className="rounded-lg border border-border/60 bg-background/40 p-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <TagBadge label={api.method} tone="blue" />
+                          <code className="min-w-0 break-all text-xs font-semibold text-foreground">{api.endpoint}</code>
+                        </div>
+                        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{api.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineEmpty label="No linked API endpoints." />
+                )}
+              </div>
             </div>
-            <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{previousFeature.title}</div>
-          </Link>
-        ) : (
-          <div />
+          </PageSection>
         )}
-        {nextFeature && (
-          <Link
-            href={`/product/feature-library/${toFeatureSlug(nextFeature.id)}`}
-            className="group rounded-xl border bg-card p-4 text-right transition-colors hover:bg-muted/40"
+
+        {sectionIds.has('ops') && detail && (
+          <PageSection
+            id="feature-ops"
+            className="scroll-mt-24"
+            eyebrow="Ops"
+            title="Know-how & score"
+            icon={Lightbulb}
+            tone={tone}
           >
-            <div className="flex items-center justify-end gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Next feature <ArrowRight className="size-3" />
+            <div className="grid gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-7">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Lightbulb className={cn('size-4', toneIcon[tone])} />
+                  Info & tricks
+                </h3>
+                {detail.tips.length > 0 ? (
+                  <ul className="space-y-2">
+                    {detail.tips.map((tip) => (
+                      <li
+                        key={tip}
+                        className="flex gap-2.5 rounded-lg border border-border/60 bg-background/40 p-3 text-sm"
+                      >
+                        <CheckCircle2 className={cn('mt-0.5 size-4 shrink-0', toneIcon[tone])} />
+                        <span className="leading-relaxed text-foreground/85">{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <InlineEmpty label="No saved tips." />
+                )}
+              </div>
+
+              <div className="lg:col-span-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Bug className={cn('size-4', toneIcon[tone])} />
+                  Feature score
+                </h3>
+                <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-4">
+                  {Object.entries(detail.score).map(([key, value]) => (
+                    <ScoreBar key={key} label={scoreLabels[key] ?? key} value={value} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-7">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Ticket className={cn('size-4', toneIcon[tone])} />
+                  Tickets
+                </h3>
+                {detail.tickets.length > 0 ? (
+                  <div className="space-y-2">
+                    {detail.tickets.map((ticket) => (
+                      <div
+                        key={ticket.id}
+                        className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/40 p-3"
+                      >
+                        <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <code className="text-xs font-bold">{ticket.id}</code>
+                            <TagBadge
+                              label={ticketStatus[ticket.status].label}
+                              tone={ticketStatus[ticket.status].tone}
+                            />
+                          </div>
+                          <p className="mt-1 text-sm text-foreground/80">{ticket.title}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineEmpty label="No tickets for this feature." />
+                )}
+              </div>
+
+              <div className="lg:col-span-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Users className={cn('size-4', toneIcon[tone])} />
+                  Know-how owners
+                </h3>
+                {detail.experts.length > 0 ? (
+                  <div className="space-y-2">
+                    {detail.experts.map((expert) => (
+                      <div
+                        key={expert.name}
+                        className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3"
+                      >
+                        <span
+                          className={cn(
+                            'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white',
+                            toneDot[tone],
+                          )}
+                        >
+                          {expert.name
+                            .split(' ')
+                            .map((word) => word[0])
+                            .slice(0, 2)
+                            .join('')}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold">{expert.name}</div>
+                          <div className="truncate text-xs text-muted-foreground">{expert.role}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineEmpty label="No know-how owner defined." />
+                )}
+              </div>
             </div>
-            <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{nextFeature.title}</div>
-          </Link>
+          </PageSection>
         )}
+      </div>
+
+      <nav className="grid gap-3 border-t border-border/60 pt-6" aria-label="Feature navigation">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {previousFeature ? (
+            <Link
+              href={`/product/feature-library/${toFeatureSlug(previousFeature.id)}`}
+              className="group rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                <ArrowLeft className="size-3" /> Previous feature
+              </div>
+              <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{previousFeature.title}</div>
+            </Link>
+          ) : (
+            <div />
+          )}
+          {nextFeature && (
+            <Link
+              href={`/product/feature-library/${toFeatureSlug(nextFeature.id)}`}
+              className="group rounded-xl border bg-card p-4 text-right transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center justify-end gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                Next feature <ArrowRight className="size-3" />
+              </div>
+              <div className="mt-1.5 text-sm font-semibold group-hover:text-primary">{nextFeature.title}</div>
+            </Link>
+          )}
+        </div>
       </nav>
     </ProductPage>
   )
 }
 
-function HeroMetric({ label, value }: { label: string; value: string }) {
+function IdentityMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-center">
+    <div className="text-center lg:text-left">
       <div className="text-lg font-bold text-foreground">{value}</div>
       <div className="text-[9px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{label}</div>
     </div>
-  )
-}
-
-function DetailPanel({
-  title,
-  icon: Icon,
-  tone,
-  children,
-  className,
-}: {
-  title: string
-  icon: typeof Info
-  tone: (typeof moduleTones)[number]
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <section className={cn('rounded-2xl border p-4 sm:p-5', toneCard[tone], className)}>
-      <header className="mb-3 flex items-center gap-2.5">
-        <span className={cn('flex size-8 items-center justify-center rounded-lg', toneIconBox[tone])}>
-          <Icon className={cn('size-4', toneIcon[tone])} />
-        </span>
-        <h2 className={cn('text-sm font-bold', toneText[tone])}>{title}</h2>
-      </header>
-      {children}
-    </section>
   )
 }
 
@@ -472,7 +510,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
         <span className="font-medium text-foreground">{label}</span>
         <span className="font-bold text-foreground">{value}/5</span>
       </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background">
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
         <div className={cn('h-full rounded-full', scoreColors[value])} style={{ width: `${value * 20}%` }} />
       </div>
     </div>

@@ -27,12 +27,17 @@ export function findMenuItemByPath(config: MenuConfig, path: string): MenuItem |
 
 /**
  * Searches all workspace menus for the item matching the given path.
- * Since workspace root routes (/modules, /design, etc.) do not appear as
- * separate menu items, a synthetic item is generated from the group title.
+ * Prefer a real menu item when the workspace landing path is also a leaf
+ * (e.g. Product → /product/domain-glossary → "Domain Glossary").
+ * Only synthesize from the group title when the root route is not in the menu.
  * The dynamic placeholder page ([...slug]) uses this for title + notionUrl.
  */
 export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
   for (const ws of WORKSPACES) {
+    const found = findMenuItemByPath(ws.menu, path);
+    if (found) {
+      return found;
+    }
     if (ws.path === path) {
       const group = ws.menu[0];
       return {
@@ -40,10 +45,6 @@ export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
         path: ws.path,
         notionUrl: group?.notionUrl,
       };
-    }
-    const found = findMenuItemByPath(ws.menu, path);
-    if (found) {
-      return found;
     }
   }
   return undefined;
