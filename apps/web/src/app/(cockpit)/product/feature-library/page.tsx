@@ -15,7 +15,6 @@ import { Input } from '@nesy/metronic/components/ui/input'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
   FeatureDomainSection,
-  HeroCallout,
   PageSection,
   ProductPage,
 } from '@/components/product'
@@ -23,7 +22,6 @@ import type { Tone } from '@/components/product/tones'
 import {
   COUNTRIES,
   FEATURE_DOMAINS,
-  TOTAL_FEATURES,
   isSupported,
   listFeatureRecordsByDomain,
 } from '@/data/product/nesy'
@@ -41,7 +39,6 @@ const domainMeta: Record<
 }
 
 export default function FeatureLibraryPage() {
-  const activeCountries = COUNTRIES.filter((country) => country.id !== 'core')
   const [query, setQuery] = useState('')
   const [coreOnly, setCoreOnly] = useState(false)
   const catalogRecords = useMemo(() => listFeatureRecordsByDomain(), [])
@@ -85,20 +82,6 @@ export default function FeatureLibraryPage() {
 
   return (
     <ProductPage path="/product/feature-library">
-      <HeroCallout
-        icon={Grid3x3}
-        eyebrow="Capabilities by domain"
-        tone="orange"
-        title="Every product capability, grouped by what it does — Core first."
-        lead="Browse Nesy Mobile features by capability domain. Core baseline sits at the top of each group; process module and country coverage stay on every card."
-        chips={[
-          `${TOTAL_FEATURES} features`,
-          `${FEATURE_DOMAINS.length} domains`,
-          `${activeCountries.length} countries`,
-          'Core baseline',
-        ]}
-      />
-
       <section
         aria-label="Feature filters"
         className="sticky top-0 z-20 rounded-2xl border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80"

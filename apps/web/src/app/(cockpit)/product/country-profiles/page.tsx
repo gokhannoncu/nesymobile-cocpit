@@ -1,11 +1,10 @@
 'use client'
 
-import { Building2, CreditCard, Globe, MapPin, Zap } from 'lucide-react'
+import { Building2, CreditCard, MapPin, Zap } from 'lucide-react'
 import {
   Callout,
   CardGrid,
   ComparisonTable,
-  HeroCallout,
   InfoCard,
   PageSection,
   ProductPage,
@@ -61,15 +60,6 @@ const highlights: Record<string, string[]> = {
 export default function CountryProfilesPage() {
   return (
     <ProductPage path="/product/country-profiles">
-      <HeroCallout
-        icon={Globe}
-        eyebrow="Capabilities & Countries"
-        tone="orange"
-        title="Country packages: same core, local behavior."
-        lead="Each country layers its own payment provider, fiscalization rules, and operations model on top of the CORE infrastructure. This page is a commercial and operational summary of the packages."
-        chips={['CORE + 6 countries', 'Balkans & Central Europe']}
-      />
-
       <PageSection
         eyebrow="Packages"
         title="Country Packages"

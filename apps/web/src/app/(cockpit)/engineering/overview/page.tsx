@@ -81,14 +81,6 @@ export default function EngineeringOverviewPage() {
             href="/engineering/edge-case-map"
           />
           <InfoCard
-            icon={Bug}
-            tone="amber"
-            eyebrow="Reliability"
-            title="Crashlytics"
-            desc="Country-based crash-free rates and status of the crash reporting infrastructure."
-            href="/engineering/crashlytics"
-          />
-          <InfoCard
             icon={Gauge}
             tone="teal"
             eyebrow="Reliability"

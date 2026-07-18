@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import {
   Archive,
   ArrowLeftRight,
@@ -29,12 +29,10 @@ import {
   MapPinned,
   Monitor,
   Navigation,
-  Network,
   Package,
   PackageCheck,
   Receipt,
   Route,
-  Search,
   Store,
   Truck,
   User,
@@ -42,21 +40,12 @@ import {
   Wallet,
   Warehouse,
   Webhook,
-  X,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
-import {
-  filterEntities,
-  resolveSelection,
-  type CategoryFilter,
-} from './domain-model-filters'
-import { motion } from 'framer-motion'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Input } from '@nesy/metronic/components/ui/input'
 import {
-  EASE,
   ProductPage,
   type Tone,
   toneCard,
@@ -265,31 +254,6 @@ function displayAliases(entity: DomainEntity) {
   }
 
   return aliases
-}
-
-function normalize(value: string) {
-  return value.toLocaleLowerCase('en')
-}
-
-function searchableEntity(entity: DomainEntity) {
-  const entityRelations = relations.filter((relation) => relation.from === entity.id || relation.to === entity.id)
-  const category = categoryMeta(entityCategory(entity)).label
-  return normalize([
-    entity.name,
-    entity.id,
-    category,
-    ...entity.aliases,
-    entity.definition,
-    entity.businessContext,
-    entity.technicalContext,
-    ...entity.statuses.flatMap((status) => [status.code, status.label, status.description]),
-    ...entity.antiPatterns,
-    ...entityRelations.flatMap((relation) => [relation.label, relation.description, relation.cardinality]),
-  ].join(' '))
-}
-
-function entityMatches(entity: DomainEntity, query: string) {
-  return !query || searchableEntity(entity).includes(normalize(query))
 }
 
 function relationshipRows(entity: DomainEntity) {
@@ -662,7 +626,6 @@ function EntityDetailPanel({
   return (
     <article className="relative overflow-hidden rounded-xl border bg-card p-4 shadow-sm sm:p-5">
       <div aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent opacity-70', toneHero[tone])} />
-      <span aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
 
       <div className="relative space-y-4">
         <LearningPathBanner entity={entity} />
@@ -670,18 +633,6 @@ function EntityDetailPanel({
         {stackedContent}
       </div>
     </article>
-  )
-}
-
-function EmptyState({ query }: { query: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-indigo-300/60 bg-gradient-to-br from-indigo-50/60 via-background to-violet-50/40 px-6 py-14 text-center dark:border-indigo-800 dark:from-indigo-950/30 dark:to-violet-950/20">
-      <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950/50">
-        <Search className="size-7 text-indigo-600 dark:text-indigo-400" />
-      </span>
-      <p className="mt-4 text-sm font-bold text-foreground">No matches found for "{query}"</p>
-      <p className="mt-1 text-xs text-muted-foreground">Try a different keyword or filter.</p>
-    </div>
   )
 }
 
@@ -707,9 +658,9 @@ function ChainNavRow({
       type="button"
       onClick={() => onSelect(entity.id)}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
+        'flex w-full max-w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
         isSelected
-          ? cn('border-transparent shadow-sm ring-2 ring-offset-1 ring-offset-background', TONE_RING[tone], toneCard[tone])
+          ? cn('border-transparent shadow-sm ring-2', TONE_RING[tone], toneCard[tone])
           : 'border-border/60 bg-card hover:bg-muted/30',
         selectedIndex >= 0 && distance > 1 && !isSelected && 'opacity-50',
       )}
@@ -717,10 +668,10 @@ function ChainNavRow({
       <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg border', toneIconBox[tone])}>
         <Icon className={cn('size-3.5', toneIcon[tone])} />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
+      <span className="min-w-0 flex-1 overflow-hidden">
+        <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-sm font-semibold text-foreground">{entity.name}</span>
-          <span className={cn('text-[10px] font-bold uppercase tracking-wide', toneText[tone])}>L{entity.level}</span>
+          <span className={cn('shrink-0 text-[10px] font-bold uppercase tracking-wide', toneText[tone])}>L{entity.level}</span>
         </span>
         <span className={cn('block truncate text-[11px]', toneText[categoryTone])}>{categoryLabel}</span>
       </span>
@@ -748,7 +699,7 @@ function CrossCuttingNavRow({
       type="button"
       onClick={() => onSelect(entity.id)}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
+        'flex w-full max-w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
         isSelected
           ? cn('border-transparent shadow-sm ring-2', TONE_RING[tone], toneCard[tone])
           : 'border-border/60 bg-card hover:bg-muted/30',
@@ -757,7 +708,7 @@ function CrossCuttingNavRow({
       <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg border', toneIconBox[tone])}>
         <Icon className={cn('size-3.5', toneIcon[tone])} />
       </span>
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-1 overflow-hidden">
         <span className="block truncate text-sm font-semibold">{entity.name}</span>
         {peer && (
           <span className="block truncate text-[11px] text-muted-foreground">— {peer.name}</span>
@@ -792,74 +743,55 @@ function ChainPill({
   )
 }
 
-function emptyStateLabel(query: string, category: CategoryFilter) {
-  if (query.trim()) return query
-  if (category === 'all') return 'your filters'
-  return ENTITY_CATEGORIES.find((item) => item.id === category)?.label ?? category
-}
-
 function DomainModelSplitView({
-  query,
-  category,
   selectedId,
   onSelect,
 }: {
-  query: string
-  category: CategoryFilter
   selectedId: string
   onSelect: (id: string) => void
 }) {
-  const visibleChain = filterEntities(CHAIN, query, category, entityMatches, entityCategory)
-  const visibleCrossCutting = filterEntities(CROSS_CUTTING, query, category, entityMatches, entityCategory)
-  const selected = entityById(selectedId) ?? visibleChain[0] ?? visibleCrossCutting[0]
-  const hasResults = visibleChain.length > 0 || visibleCrossCutting.length > 0
-
-  if (!hasResults) return <EmptyState query={emptyStateLabel(query, category)} />
+  const selected = entityById(selectedId) ?? CHAIN[0] ?? CROSS_CUTTING[0]
 
   const nav = (
-    <div className="space-y-4">
-      <div>
+    <div className="space-y-4 p-0.5 pe-1">
+      <div className="min-w-0">
         <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <GitBranch className="size-3.5 text-teal-600 dark:text-teal-400" />
+          <GitBranch className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
           Main chain
         </h2>
         <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-          {visibleChain.map((entity) => (
+          {CHAIN.map((entity) => (
             <ChainPill key={entity.id} entity={entity} selectedId={selectedId} onSelect={onSelect} />
           ))}
         </div>
-        <div className="hidden space-y-1.5 lg:block">
-          {visibleChain.map((entity) => (
+        <div className="hidden min-w-0 space-y-1.5 lg:block">
+          {CHAIN.map((entity) => (
             <ChainNavRow key={entity.id} entity={entity} selectedId={selectedId} onSelect={onSelect} />
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/70 bg-card/50 p-3">
-        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <ArrowLeftRight className="size-3.5 text-amber-600" />
-          Cross-cutting
-          <span className="font-mono text-[10px] text-muted-foreground/80">({visibleCrossCutting.length})</span>
+      <div className="min-w-0 rounded-xl border border-border/70 bg-card/50 p-3">
+        <h2 className="mb-2 flex min-w-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <ArrowLeftRight className="size-3.5 shrink-0 text-amber-600" />
+          <span className="truncate">Cross-cutting</span>
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/80">({CROSS_CUTTING.length})</span>
         </h2>
-        {visibleCrossCutting.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No cross-cutting entities match the current filters.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {visibleCrossCutting.map((entity) => (
-              <CrossCuttingNavRow key={entity.id} entity={entity} selectedId={selectedId} onSelect={onSelect} />
-            ))}
-          </div>
-        )}
+        <div className="min-w-0 space-y-1.5">
+          {CROSS_CUTTING.map((entity) => (
+            <CrossCuttingNavRow key={entity.id} entity={entity} selectedId={selectedId} onSelect={onSelect} />
+          ))}
+        </div>
       </div>
     </div>
   )
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:items-start">
-      <aside className="min-w-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start">
+      <aside className="min-w-0 overflow-x-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {nav}
       </aside>
-      <div className="min-w-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+      <div className="min-w-0 overflow-x-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {selected && (
           <EntityDetailPanel key={`detail-${selected.id}`} entity={selected} onNavigate={onSelect} />
         )}
@@ -868,146 +800,13 @@ function DomainModelSplitView({
   )
 }
 
-function DomainModelChrome({
-  query,
-  onQueryChange,
-  category,
-  onCategoryChange,
-}: {
-  query: string
-  onQueryChange: (query: string) => void
-  category: CategoryFilter
-  onCategoryChange: (category: CategoryFilter) => void
-}) {
-  const chainLevels = new Set(CHAIN.map((entity) => entity.level)).size
-
-  return (
-    <motion.section
-      className={cn('sticky top-0 z-20 overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm', toneHero.teal)}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: EASE }}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.28] dark:opacity-15 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:18px_18px] text-foreground/10"
-      />
-
-      <div className="relative space-y-3 p-3.5 sm:p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm', toneIconBox.teal)}>
-              <Network className={cn('size-5', toneIcon.teal)} />
-            </span>
-            <div className="min-w-0">
-              <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.teal)}>Product backbone</p>
-              <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Domain model</h1>
-              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-                The main entity chain and cross-cutting concepts — how Schedule flows down to Shipment Item in Nesy Mobile.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { icon: GitBranch, label: `${chainLevels} levels`, tone: 'teal' as Tone },
-              { icon: Package, label: `${CHAIN.length} chain entities`, tone: 'indigo' as Tone },
-              { icon: ArrowLeftRight, label: `${CROSS_CUTTING.length} cross-cutting`, tone: 'amber' as Tone },
-            ].map(({ icon: Icon, label, tone }) => (
-              <span
-                key={label}
-                className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold', toneCard[tone], toneText[tone])}
-              >
-                <Icon className="size-3" />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative">
-          <Search className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-teal-600 dark:text-teal-400" />
-          <Input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Filter entities in the chain…"
-            aria-label="Search domain model"
-            className="h-9 rounded-lg border-teal-100/80 bg-teal-50/40 ps-9 pe-9 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-teal-500/50 dark:border-teal-900/40 dark:bg-teal-950/25"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => onQueryChange('')}
-              className="absolute end-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-teal-700 hover:bg-teal-100 dark:text-teal-400 dark:hover:bg-teal-950/50"
-              aria-label="Clear search"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by category">
-          <button
-            type="button"
-            onClick={() => onCategoryChange('all')}
-            className={cn(
-              'rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors',
-              category === 'all'
-                ? cn(toneCard.teal, toneText.teal)
-                : 'border-border/70 bg-background text-muted-foreground hover:bg-muted/40',
-            )}
-          >
-            All
-          </button>
-          {ENTITY_CATEGORIES.map((item) => {
-            const tone = CATEGORY_TONE[item.id]
-            const active = category === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onCategoryChange(item.id)}
-                className={cn(
-                  'rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors',
-                  active ? cn(toneCard[tone], toneText[tone]) : 'border-border/70 bg-background text-muted-foreground hover:bg-muted/40',
-                )}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </motion.section>
-  )
-}
-
 export default function DomainModelPage() {
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<CategoryFilter>('all')
   const [selectedId, setSelectedId] = useState('schedule')
-
-  useEffect(() => {
-    const chain = filterEntities(CHAIN, query, category, entityMatches, entityCategory)
-    const cross = filterEntities(CROSS_CUTTING, query, category, entityMatches, entityCategory)
-    const next = resolveSelection(selectedId, chain, cross)
-    if (next && next !== selectedId) setSelectedId(next)
-  }, [query, category, selectedId])
 
   return (
     <ProductPage path="/product/domain-model">
-      <DomainModelChrome
-        query={query}
-        onQueryChange={setQuery}
-        category={category}
-        onCategoryChange={setCategory}
-      />
-      <main className="pt-3">
-        <DomainModelSplitView
-          query={query}
-          category={category}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
+      <main>
+        <DomainModelSplitView selectedId={selectedId} onSelect={setSelectedId} />
       </main>
     </ProductPage>
   )

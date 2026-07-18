@@ -51,11 +51,10 @@ export type BuildCompatibility = 'debug' | 'internal' | 'any' | 'root'
 export type DeviceRequirement = 'any' | 'physical' | 'emulator'
 
 export type ScenarioCategory =
-  | 'schedule'
+  | 'network'
   | 'auth'
-  | 'shared-prefs'
-  | 'room-db'
-  | 'offline-sync'
+  | 'schedule'
+  | 'shipment'
   | 'lifecycle'
   | 'permission'
   | 'diagnostic'
@@ -189,6 +188,18 @@ export interface RunStep {
   output?: string
   startedAt?: string
   completedAt?: string
+}
+
+/** SSE payload from POST /api/adb/scenarios/run */
+export type ScenarioStepEvent = {
+  type: 'step' | 'done' | 'error'
+  step?: number
+  label?: string
+  status?: 'running' | 'completed' | 'failed'
+  output?: string
+  runStatus?: 'success' | 'failed'
+  runId?: string
+  message?: string
 }
 
 /**

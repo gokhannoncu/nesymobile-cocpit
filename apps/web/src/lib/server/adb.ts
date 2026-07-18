@@ -40,6 +40,13 @@ const execFileAsync = promisify(execFile)
 /** NesyMobile package candidates — first found on device is used. */
 const PACKAGE_CANDIDATES = [
   'com.arasdigital.nesymobile.test',
+  'com.arasdigital.nesymobile.rstest',
+  'com.arasdigital.nesymobile.sitest',
+  'com.arasdigital.nesymobile.batest',
+  'com.arasdigital.nesymobile.metest',
+  'com.arasdigital.nesymobile.aztest',
+  'com.arasdigital.nesymobile.bgtest',
+  'com.arasdigital.nesymobiledev',
   'com.arasdigital.nesymobile',
 ]
 

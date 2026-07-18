@@ -51,7 +51,9 @@ import type { ScenarioPackage, ConfigType } from '@/data/engineering/device-lab/
 
 /* ─── Command interpolation ─── */
 function interpolateCommand(cmd: string, serial: string, params: Record<string, any>): string {
-  let result = cmd.replace(/{serial}/g, serial)
+  let result = cmd
+    .replace(/\{serial\}/g, serial || '{serial}')
+    .replace(/\{package\}/g, 'com.arasdigital.nesymobile.test')
   Object.entries(params).forEach(([key, value]) => {
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value))
   })

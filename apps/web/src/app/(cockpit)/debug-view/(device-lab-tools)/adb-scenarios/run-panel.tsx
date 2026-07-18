@@ -61,12 +61,14 @@ export function RunPanel({ runId, status, steps, scenario, startedAt }: RunPanel
     return Math.round((completed / steps.length) * 100)
   }, [steps])
 
-  // Mock terminal output
   const terminalOutput = useMemo(() => {
     if (!scenario) return ''
     return steps
-      .filter((s) => s.status === 'completed' || s.status === 'running')
-      .map((s) => `$ ${s.label}\n  → ${s.status === 'completed' ? 'OK' : 'running...'}`)
+      .filter((s) => s.status === 'completed' || s.status === 'running' || s.status === 'failed')
+      .map((s) => {
+        const body = s.output?.trim() || (s.status === 'running' ? 'running...' : s.status)
+        return `$ ${s.label}\n  → ${body}`
+      })
       .join('\n\n')
   }, [steps, scenario])
 

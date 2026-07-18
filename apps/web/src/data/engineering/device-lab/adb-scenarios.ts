@@ -1,5 +1,5 @@
 // ============================================================================
-// Device Lab – ADB Scenarios Data & Helpers
+// Device Lab – Real ADB Scenarios (Courier Mobile hard situations)
 // ============================================================================
 
 import type {
@@ -10,66 +10,74 @@ import type {
   CategoryInfo,
 } from './device-lab-types'
 
+/** Packages used by NESY Courier Mobile flavors (test + common). */
+export const NESY_MOBILE_PACKAGES = [
+  'com.arasdigital.nesymobile.test',
+  'com.arasdigital.nesymobile.rstest',
+  'com.arasdigital.nesymobile.sitest',
+  'com.arasdigital.nesymobile.batest',
+  'com.arasdigital.nesymobile.metest',
+  'com.arasdigital.nesymobile.aztest',
+  'com.arasdigital.nesymobile.bgtest',
+  'com.arasdigital.nesymobiledev',
+]
+
+const PKG = '{package}'
+const SERIAL = '{serial}'
+
 // ---------------------------------------------------------------------------
 // 1. SCENARIO CATEGORIES
 // ---------------------------------------------------------------------------
 
 export const SCENARIO_CATEGORIES: CategoryInfo[] = [
   {
-    id: 'schedule',
-    label: 'Schedule',
-    description: 'Order scheduling and delivery plan scenarios',
-    icon: '📅',
-    scenarioCount: 3,
+    id: 'network',
+    label: 'Network',
+    description: 'Offline, airplane, wifi flap chaos',
+    icon: '📡',
+    scenarioCount: 5,
   },
   {
     id: 'auth',
     label: 'Authentication',
-    description: 'Session management, token and login scenarios',
+    description: 'Token, session and API host chaos',
     icon: '🔐',
-    scenarioCount: 2,
+    scenarioCount: 4,
   },
   {
-    id: 'shared-prefs',
-    label: 'SharedPreferences',
-    description: 'App preference and settings file changes',
-    icon: '⚙️',
+    id: 'schedule',
+    label: 'Schedule',
+    description: 'Schedule date skew and wipe',
+    icon: '📅',
     scenarioCount: 3,
   },
   {
-    id: 'room-db',
-    label: 'Room Database',
-    description: 'Local database querying and manipulation',
-    icon: '🗄️',
-    scenarioCount: 2,
-  },
-  {
-    id: 'offline-sync',
-    label: 'Offline & Sync',
-    description: 'Offline queue and synchronization test scenarios',
-    icon: '📡',
-    scenarioCount: 2,
+    id: 'shipment',
+    label: 'Shipment',
+    description: 'Shipment restart / queue chaos',
+    icon: '📦',
+    scenarioCount: 1,
   },
   {
     id: 'lifecycle',
     label: 'Lifecycle',
-    description: 'App startup, shutdown and cleanup scenarios',
+    description: 'Process kill and cold start',
     icon: '🔄',
     scenarioCount: 2,
   },
   {
     id: 'permission',
     label: 'Permissions',
-    description: 'Android runtime permission management',
+    description: 'Runtime permission revocation',
     icon: '🛡️',
     scenarioCount: 2,
   },
   {
     id: 'diagnostic',
     label: 'Diagnostic',
-    description: 'Device info, performance and debugging scenarios',
+    description: 'State dump, protected key, bug pack',
     icon: '🔍',
-    scenarioCount: 2,
+    scenarioCount: 3,
   },
 ]
 
@@ -92,8 +100,14 @@ export const PREFLIGHT_CHECKS: PreflightCheck[] = [
   },
   {
     id: 'debuggable',
-    label: 'Debug build installed (debuggable flag active)',
-    description: 'Debug build required for run-as command',
+    label: 'Debug / test build (chaos receiver)',
+    description: 'Required for ChaosReceiver / ProtectedRequestKeyReceiver',
+    required: false,
+  },
+  {
+    id: 'chaos-receiver',
+    label: 'Chaos receiver available',
+    description: 'Test/dev flavor with ENABLE_CHAOS_RECEIVER',
     required: false,
   },
   {
@@ -123,931 +137,626 @@ export const QUICK_VIEW_FILTERS = [
   { key: 'debug-only', label: 'Debug Only', icon: '🐛' },
 ] as const
 
+function baseScenario(
+  partial: Omit<ScenarioPackage, 'supportedPackages' | 'supportedAndroidVersions' | 'requiresRoot' | 'deviceRequirement' | 'lastVerifiedVersion' | 'lastVerifiedAt' | 'owner' | 'reviewer' | 'version' | 'executionCount'> &
+    Partial<ScenarioPackage>,
+): ScenarioPackage {
+  return {
+    supportedPackages: NESY_MOBILE_PACKAGES,
+    supportedAndroidVersions: '>=10',
+    requiresRoot: false,
+    deviceRequirement: 'any',
+    lastVerifiedVersion: '0.1157',
+    lastVerifiedAt: '2026-07-18',
+    owner: 'Device Lab',
+    reviewer: 'Device Lab',
+    version: '2.0.0',
+    executionCount: 0,
+    ...partial,
+  }
+}
+
 // ---------------------------------------------------------------------------
-// 4. SCENARIO PACKAGES
+// 4. SCENARIO PACKAGES (20 hard situations)
 // ---------------------------------------------------------------------------
 
 export const SCENARIO_PACKAGES: ScenarioPackage[] = [
-  // ── Schedule ──
-  {
-    id: 'scn-override-delivery-date',
-    name: 'Delivery Date Override',
-    description: 'Updates delivery date of selected order to specified date. Changes delivery_date field via SharedPreferences.',
-    category: 'schedule',
+  baseScenario({
+    id: 'scn-mid-delivery-offline',
+    name: 'Mid-Delivery Offline',
+    description: 'Cuts Wi-Fi and mobile data to simulate network loss during delivery/scan.',
+    category: 'network',
     riskLevel: 'caution',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'orderId', label: 'Order No', type: 'text', required: true, defaultValue: '', hint: 'Ex: ORD-2026-0001' },
-      { key: 'newDate', label: 'New Date', type: 'date', required: true, defaultValue: '2026-07-15' },
-      { key: 'notifyUser', label: 'Notify User', type: 'boolean', required: false, defaultValue: true },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Backup current date', command: 'adb -s {serial} shell run-as com.nesy.mobile cat shared_prefs/delivery_schedule.xml', description: 'Current delivery schedule is backed up' },
-      { step: 2, label: 'Update date', command: 'adb -s {serial} shell run-as com.nesy.mobile sed -i \'s/delivery_date="[^"]*"/delivery_date="{newDate}"/\' shared_prefs/delivery_schedule.xml', description: 'Delivery date is updated' },
-      { step: 3, label: 'Restart app', command: 'adb -s {serial} shell am force-stop com.nesy.mobile && adb -s {serial} shell am start -n com.nesy.mobile/.MainActivity', description: 'App is restarted to reflect changes' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Check new date', description: 'Verify delivery_date value updated in SharedPreferences', query: 'adb -s {serial} shell run-as com.nesy.mobile cat shared_prefs/delivery_schedule.xml | grep delivery_date' },
-      { step: 2, label: 'UI validation', description: 'Check new date displayed in order detail screen' },
-    ],
-    rollbackSteps: [
-      { label: 'Restore old date', command: 'adb -s {serial} shell run-as com.nesy.mobile sed -i \'s/delivery_date="{newDate}"/delivery_date="{originalDate}"/\' shared_prefs/delivery_schedule.xml', description: 'Backed up original date is restored' },
-    ],
-    estimatedDuration: 8,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-10',
-    owner: 'Gokhan Oncu',
-    reviewer: 'Ali Yilmaz',
-    version: '1.3.0',
-    isFavorite: true,
-    executionCount: 47,
-    tags: ['schedule', 'shared-prefs', 'delivery'],
-  },
-  {
-    id: 'scn-simulate-route-delay',
-    name: 'Route Delay Simulation',
-    description: 'Temporarily delays device location data and tests route calculation behavior.',
-    category: 'schedule',
-    riskLevel: 'safe',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'delayMs', label: 'Delay (ms)', type: 'number', required: true, defaultValue: 5000, hint: 'Between 1000-30000' },
-      { key: 'routeId', label: 'Route ID', type: 'text', required: false, defaultValue: '', hint: 'If empty, active route' },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Activate debug flag', command: 'adb -s {serial} shell run-as com.nesy.mobile am broadcast -a com.nesy.mobile.DEBUG_ROUTE_DELAY --ei delay_ms {delayMs}', description: 'Route delay debug broadcast is sent' },
-      { step: 2, label: 'Check location provider', command: 'adb -s {serial} shell dumpsys location | grep "com.nesy"', description: 'Location provider status is checked' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Logcat check', description: 'Verify delay value applied in RouteCalculator logs', query: 'adb -s {serial} logcat -d -s RouteCalculator | tail -5' },
-    ],
-    rollbackSteps: [
-      { label: 'Remove delay', command: 'adb -s {serial} shell run-as com.nesy.mobile am broadcast -a com.nesy.mobile.DEBUG_ROUTE_DELAY --ei delay_ms 0', description: 'Delay is reset' },
-    ],
-    estimatedDuration: 4,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-09',
-    owner: 'Gokhan Oncu',
-    reviewer: 'Mehmet Demir',
-    version: '1.0.0',
-    isFavorite: false,
-    executionCount: 12,
-    tags: ['schedule', 'location', 'simulation'],
-  },
-  {
-    id: 'scn-force-schedule-sync',
-    name: 'Force Schedule Sync',
-    description: 'Triggers device to immediately synchronize schedule data with server.',
-    category: 'schedule',
-    riskLevel: 'safe',
     buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'clearQueue', label: 'Clear Queue', type: 'boolean', required: false, defaultValue: false },
-    ],
-    preflightChecks: ['device-connected', 'app-installed'],
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Trigger sync', command: 'adb -s {serial} shell am broadcast -a com.nesy.mobile.FORCE_SCHEDULE_SYNC', description: 'Schedule sync is triggered via broadcast' },
+      { step: 1, label: 'Disable Wi-Fi', command: `adb -s ${SERIAL} shell svc wifi disable`, description: 'Wi-Fi off' },
+      { step: 2, label: 'Disable data', command: `adb -s ${SERIAL} shell svc data disable`, description: 'Mobile data off' },
     ],
     verificationSteps: [
-      { step: 1, label: 'Check sync status', description: 'Verify successful sync completion from logs', query: 'adb -s {serial} logcat -d -s ScheduleSync | tail -3' },
+      { step: 1, label: 'App shows offline', description: 'Courier UI / OfflineModeOldService should mark offline' },
     ],
     rollbackSteps: [
-      { label: 'Rollback not required', command: '# N/A', description: 'This operation cannot be rolled back but is harmless' },
-    ],
-    estimatedDuration: 3,
-    lastVerifiedVersion: '4.12.0',
-    lastVerifiedAt: '2026-07-08',
-    owner: 'Ali Yilmaz',
-    reviewer: 'Gokhan Oncu',
-    version: '1.1.0',
-    isFavorite: true,
-    executionCount: 89,
-    tags: ['schedule', 'sync', 'workmanager'],
-  },
-
-  // ── Auth ──
-  {
-    id: 'scn-invalidate-session',
-    name: 'Invalidate Session',
-    description: 'Invalidates current user session and forces re-login.',
-    category: 'auth',
-    riskLevel: 'caution',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'clearTokens', label: 'Clear Tokens', type: 'boolean', required: false, defaultValue: true },
-      { key: 'clearCookies', label: 'Clear Cookies', type: 'boolean', required: false, defaultValue: false },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Backup token', command: 'adb -s {serial} shell run-as com.nesy.mobile cat shared_prefs/auth_tokens.xml', description: 'Current tokens backed up' },
-      { step: 2, label: 'Clear token', command: 'adb -s {serial} shell run-as com.nesy.mobile rm shared_prefs/auth_tokens.xml', description: 'Auth token file deleted' },
-      { step: 3, label: 'Clear session cache', command: 'adb -s {serial} shell run-as com.nesy.mobile rm -rf cache/session/', description: 'Session cache directory cleared' },
-      { step: 4, label: 'Restart app', command: 'adb -s {serial} shell am force-stop com.nesy.mobile && adb -s {serial} shell am start -n com.nesy.mobile/.MainActivity', description: 'App restarted to fall back to login screen' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Check login screen', description: 'Verify app redirects to login screen' },
-      { step: 2, label: 'Check token file absence', description: 'Verify auth_tokens.xml file is deleted', query: 'adb -s {serial} shell run-as com.nesy.mobile ls shared_prefs/ | grep auth' },
-    ],
-    rollbackSteps: [
-      { label: 'Restore token', command: 'adb -s {serial} shell run-as com.nesy.mobile cp /sdcard/nesy_backup/auth_tokens.xml shared_prefs/', description: 'Backed up tokens are restored' },
+      { label: 'Restore network', command: `adb -s ${SERIAL} shell svc wifi enable && adb -s ${SERIAL} shell svc data enable`, description: 'Re-enable radios' },
     ],
     estimatedDuration: 6,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-11',
-    owner: 'Mehmet Demir',
-    reviewer: 'Gokhan Oncu',
-    version: '2.0.0',
     isFavorite: true,
-    executionCount: 63,
-    tags: ['auth', 'session', 'token'],
-  },
-  {
-    id: 'scn-inject-test-token',
-    name: 'Test Token Injection',
-    description: 'Injects a test token with a specific user role.',
-    category: 'auth',
+    tags: ['network', 'offline', 'delivery'],
+  }),
+  baseScenario({
+    id: 'scn-force-offline-flag',
+    name: 'Force Offline Flag',
+    description: 'Forces SharedPreferences offlineMode via ChaosReceiver (bypasses health probe).',
+    category: 'network',
     riskLevel: 'caution',
     buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
     parameters: [
-      { key: 'userRole', label: 'User Role', type: 'select', required: true, defaultValue: 'driver', options: [
-        { label: 'Driver', value: 'driver' },
-        { label: 'Warehouse Staff', value: 'warehouse' },
-        { label: 'Supervisor', value: 'supervisor' },
-        { label: 'Admin', value: 'admin' },
-      ] },
-      { key: 'expiresIn', label: 'Duration (hours)', type: 'number', required: false, defaultValue: 24 },
+      { key: 'offline', label: 'Offline', type: 'boolean', required: true, defaultValue: true },
     ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Clear current session', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug am broadcast -a com.nesy.mobile.CLEAR_SESSION', description: 'Current session is cleared' },
-      { step: 2, label: 'Inject test token', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug am broadcast -a com.nesy.mobile.INJECT_TEST_TOKEN --es role "{userRole}" --ei expires_hours {expiresIn}', description: 'Test token is injected' },
+      {
+        step: 1,
+        label: 'SET_OFFLINE',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/${'com.arasdigital.nesymobile.adb.ChaosReceiver'} -a com.arasdigital.nesymobile.SET_OFFLINE --ez offline {offline}`,
+        description: 'Force offlineMode preference',
+      },
     ],
     verificationSteps: [
-      { step: 1, label: 'Token validation', description: 'Verify injected token is valid', query: 'adb -s {serial} logcat -d -s AuthManager | tail -3' },
+      { step: 1, label: 'DUMP_STATE', description: 'offlineMode should match parameter' },
     ],
     rollbackSteps: [
-      { label: 'Remove test token', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug am broadcast -a com.nesy.mobile.CLEAR_SESSION', description: 'Test token is cleared' },
+      {
+        label: 'Clear offline flag',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_OFFLINE --ez offline false`,
+        description: 'offlineMode=false',
+      },
     ],
+    estimatedDuration: 4,
+    isFavorite: true,
+    tags: ['network', 'offline', 'chaos'],
+  }),
+  baseScenario({
+    id: 'scn-restore-network',
+    name: 'Restore Network',
+    description: 'Re-enables Wi-Fi/data and clears airplane mode so offline queue can drain.',
+    category: 'network',
+    riskLevel: 'safe',
+    buildCompatibility: 'any',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
+    commands: [
+      { step: 1, label: 'Enable Wi-Fi', command: `adb -s ${SERIAL} shell svc wifi enable`, description: 'Wi-Fi on' },
+      { step: 2, label: 'Enable data', command: `adb -s ${SERIAL} shell svc data enable`, description: 'Data on' },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Queue drain', description: 'Watch RequestSenderService / OkHttp logs' },
+    ],
+    rollbackSteps: [{ label: 'N/A', command: '# N/A', description: 'Harmless restore' }],
     estimatedDuration: 5,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-10',
-    owner: 'Ali Yilmaz',
-    reviewer: 'Mehmet Demir',
-    version: '1.2.0',
-    isFavorite: false,
-    executionCount: 28,
-    tags: ['auth', 'token', 'test', 'role'],
-  },
-
-  // ── SharedPreferences ──
-  {
-    id: 'scn-toggle-feature-flag',
-    name: 'Change Feature Flag',
-    description: 'Changes a specific feature flag value via SharedPreferences.',
-    category: 'shared-prefs',
-    riskLevel: 'safe',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'flagName', label: 'Flag Name', type: 'select', required: true, defaultValue: 'new_scanner_ui', options: [
-        { label: 'New Scanner UI', value: 'new_scanner_ui' },
-        { label: 'Offline Mode v2', value: 'offline_mode_v2' },
-        { label: 'Route Optimization', value: 'route_optimization' },
-        { label: 'Real Time Notifications', value: 'real_time_notifications' },
-        { label: 'Dark Mode', value: 'dark_mode' },
-      ] },
-      { key: 'enabled', label: 'Active', type: 'boolean', required: true, defaultValue: true },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Backup current flag value', command: 'adb -s {serial} shell run-as com.nesy.mobile cat shared_prefs/feature_flags.xml | grep "{flagName}"', description: 'Current flag value is saved' },
-      { step: 2, label: 'Update flag value', command: 'adb -s {serial} shell run-as com.nesy.mobile am broadcast -a com.nesy.mobile.SET_FEATURE_FLAG --es flag "{flagName}" --ez enabled {enabled}', description: 'Flag value is updated' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Flag validation', description: 'Verify new flag value is applied', query: 'adb -s {serial} shell run-as com.nesy.mobile cat shared_prefs/feature_flags.xml | grep "{flagName}"' },
-    ],
-    rollbackSteps: [
-      { label: 'Revert flag to old value', command: 'adb -s {serial} shell run-as com.nesy.mobile am broadcast -a com.nesy.mobile.SET_FEATURE_FLAG --es flag "{flagName}" --ez enabled false', description: 'Flag is reverted to old value' },
-    ],
-    estimatedDuration: 3,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-11',
-    owner: 'Gokhan Oncu',
-    reviewer: 'Ali Yilmaz',
-    version: '1.4.0',
     isFavorite: true,
-    executionCount: 104,
-    tags: ['shared-prefs', 'feature-flag', 'config'],
-  },
-  {
-    id: 'scn-change-api-endpoint',
-    name: 'Change API Endpoint',
-    description: 'Changes backend API endpoint address app connects to.',
-    category: 'shared-prefs',
-    riskLevel: 'caution',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'environment', label: 'Environment', type: 'select', required: true, defaultValue: 'staging', options: [
-        { label: 'Production', value: 'https://api.nesy.com' },
-        { label: 'Staging', value: 'https://staging-api.nesy.com' },
-        { label: 'Development', value: 'https://dev-api.nesy.com' },
-        { label: 'Local', value: 'http://10.0.2.2:8080' },
-      ] },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Backup current endpoint', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug cat shared_prefs/network_config.xml | grep "base_url"', description: 'Current API URL is backed up' },
-      { step: 2, label: 'Update endpoint', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug am broadcast -a com.nesy.mobile.SET_API_URL --es url "{environment}"', description: 'API endpoint is changed' },
-      { step: 3, label: 'Restart app', command: 'adb -s {serial} shell am force-stop com.nesy.mobile.debug && adb -s {serial} shell am start -n com.nesy.mobile.debug/.MainActivity', description: 'App is started with new endpoint' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Endpoint check', description: 'Verify new URL is applied', query: 'adb -s {serial} shell run-as com.nesy.mobile.debug cat shared_prefs/network_config.xml | grep "base_url"' },
-      { step: 2, label: 'Connection test', description: 'Check app can connect to new endpoint' },
-    ],
-    rollbackSteps: [
-      { label: 'Restore old endpoint', command: 'adb -s {serial} shell run-as com.nesy.mobile.debug am broadcast -a com.nesy.mobile.SET_API_URL --es url "{originalUrl}"', description: 'Original API URL is restored' },
-    ],
-    estimatedDuration: 6,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-10',
-    owner: 'Mehmet Demir',
-    reviewer: 'Gokhan Oncu',
-    version: '1.1.0',
-    isFavorite: false,
-    executionCount: 35,
-    tags: ['shared-prefs', 'network', 'endpoint', 'config'],
-  },
-  {
-    id: 'scn-export-shared-prefs',
-    name: 'Export SharedPreferences',
-    description: 'Copies all SharedPreferences files of the app to computer.',
-    category: 'shared-prefs',
-    riskLevel: 'safe',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'outputDir', label: 'Output Directory', type: 'text', required: false, defaultValue: '/tmp/nesy-prefs', hint: 'Local computer directory' },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'File list', command: 'adb -s {serial} shell run-as com.nesy.mobile ls shared_prefs/', description: 'Current SharedPreferences files are listed' },
-      { step: 2, label: 'Copy files', command: 'adb -s {serial} shell "run-as com.nesy.mobile tar -cf - shared_prefs/" | tar -xf - -C {outputDir}', description: 'All files are copied to computer' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'File check', description: 'Verify copied files are present in target directory' },
-    ],
-    rollbackSteps: [
-      { label: 'Rollback not required', command: '# N/A', description: 'This operation makes no changes to device' },
-    ],
-    estimatedDuration: 4,
-    lastVerifiedVersion: '4.12.0',
-    lastVerifiedAt: '2026-07-08',
-    owner: 'Ali Yilmaz',
-    reviewer: 'Gokhan Oncu',
-    version: '1.0.0',
-    isFavorite: false,
-    executionCount: 22,
-    tags: ['shared-prefs', 'export', 'backup'],
-  },
-
-  // ── Room DB ──
-  {
-    id: 'scn-query-room-orders',
-    name: 'Room Order Query',
-    description: 'Queries order records from local Room database.',
-    category: 'room-db',
-    riskLevel: 'safe',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'status', label: 'Order Status', type: 'select', required: false, defaultValue: 'all', options: [
-        { label: 'All', value: 'all' },
-        { label: 'Pending', value: 'pending' },
-        { label: 'Delivered', value: 'delivered' },
-        { label: 'Cancelled', value: 'cancelled' },
-        { label: 'Problematic', value: 'problematic' },
-      ] },
-      { key: 'limit', label: 'Limit', type: 'number', required: false, defaultValue: 50 },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Database query', command: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "SELECT id, order_no, status, delivery_date FROM orders WHERE status LIKE \'%{status}%\' ORDER BY created_at DESC LIMIT {limit}"', description: 'Order query is made via Room DB' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Result check', description: 'Check query results returned and format is correct' },
-    ],
-    rollbackSteps: [
-      { label: 'Rollback not required', command: '# N/A', description: 'No changes made to database' },
-    ],
-    estimatedDuration: 3,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-11',
-    owner: 'Gokhan Oncu',
-    reviewer: 'Mehmet Demir',
-    version: '1.2.0',
-    isFavorite: true,
-    executionCount: 76,
-    tags: ['room-db', 'query', 'orders', 'read-only'],
-  },
-  {
-    id: 'scn-clear-room-cache',
-    name: 'Room Cache Clear',
-    description: 'Clears local database cache tables. Used in case of synchronization issues.',
-    category: 'room-db',
-    riskLevel: 'destructive',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'tables', label: 'Tables to Clear', type: 'multiselect', required: true, defaultValue: ['sync_cache'], options: [
-        { label: 'Sync Cache', value: 'sync_cache' },
-        { label: 'Image Cache', value: 'image_cache' },
-        { label: 'Route Cache', value: 'route_cache' },
-        { label: 'All', value: 'all' },
-      ] },
-      { key: 'backupFirst', label: 'Backup First', type: 'boolean', required: false, defaultValue: true },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'no-active-run'],
-    commands: [
-      { step: 1, label: 'Database backup', command: 'adb -s {serial} shell "run-as com.nesy.mobile cp databases/nesy_db databases/nesy_db.backup"', description: 'Database backup copy is taken' },
-      { step: 2, label: 'Clear cache tables', command: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "DELETE FROM {tables}"', description: 'Selected cache tables are cleared' },
-      { step: 3, label: 'VACUUM', command: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "VACUUM"', description: 'Database size is optimized' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Table size check', description: 'Verify cleared tables are empty', query: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "SELECT COUNT(*) FROM {tables}"' },
-    ],
-    rollbackSteps: [
-      { label: 'Restore from backup', command: 'adb -s {serial} shell "run-as com.nesy.mobile cp databases/nesy_db.backup databases/nesy_db"', description: 'Backup database is restored' },
-    ],
-    estimatedDuration: 10,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-09',
-    owner: 'Mehmet Demir',
-    reviewer: 'Ali Yilmaz',
-    version: '1.1.0',
-    isFavorite: false,
-    executionCount: 18,
-    tags: ['room-db', 'cache', 'cleanup', 'destructive'],
-  },
-
-  // ── Offline & Sync ──
-  {
-    id: 'scn-simulate-offline',
-    name: 'Offline Mode Simulation',
-    description: 'Temporarily disconnects device network connection and tests offline queue behavior.',
-    category: 'offline-sync',
+    tags: ['network', 'restore', 'sync'],
+  }),
+  baseScenario({
+    id: 'scn-airplane-mode',
+    name: 'Airplane Mode Toggle',
+    description: 'Toggles airplane mode for hard radio-off conditions.',
+    category: 'network',
     riskLevel: 'caution',
     buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
     parameters: [
-      { key: 'durationSec', label: 'Duration (seconds)', type: 'number', required: true, defaultValue: 30, hint: 'Between 10-300' },
-      { key: 'disableWifi', label: 'Disable WiFi', type: 'boolean', required: false, defaultValue: true },
-      { key: 'disableData', label: 'Disable Mobile Data', type: 'boolean', required: false, defaultValue: true },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'battery-ok'],
-    commands: [
-      { step: 1, label: 'Save network status', command: 'adb -s {serial} shell dumpsys connectivity | head -20', description: 'Current network status is saved' },
-      { step: 2, label: 'Turn on airplane mode', command: 'adb -s {serial} shell settings put global airplane_mode_on 1 && adb -s {serial} shell am broadcast -a android.intent.action.AIRPLANE_MODE', description: 'Airplane mode is activated' },
-      { step: 3, label: 'Wait', command: 'sleep {durationSec}', description: 'Offline test duration is awaited' },
-      { step: 4, label: 'Turn off airplane mode', command: 'adb -s {serial} shell settings put global airplane_mode_on 0 && adb -s {serial} shell am broadcast -a android.intent.action.AIRPLANE_MODE', description: 'Airplane mode is disabled' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Queue check', description: 'Verify offline queue is filled correctly', query: 'adb -s {serial} logcat -d -s OfflineQueue | tail -10' },
-      { step: 2, label: 'Sync check', description: 'Verify queue is processed when connection is restored' },
-    ],
-    rollbackSteps: [
-      { label: 'Restore connection', command: 'adb -s {serial} shell settings put global airplane_mode_on 0 && adb -s {serial} shell am broadcast -a android.intent.action.AIRPLANE_MODE', description: 'Airplane mode is disabled' },
-    ],
-    estimatedDuration: 45,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-10',
-    owner: 'Ali Yilmaz',
-    reviewer: 'Gokhan Oncu',
-    version: '1.0.0',
-    isFavorite: false,
-    executionCount: 15,
-    tags: ['offline', 'sync', 'network', 'simulation'],
-  },
-  {
-    id: 'scn-flush-offline-queue',
-    name: 'Force Send Offline Queue',
-    description: 'Sends pending offline requests immediately to server.',
-    category: 'offline-sync',
-    riskLevel: 'caution',
-    buildCompatibility: 'debug',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'maxItems', label: 'Max Operations', type: 'number', required: false, defaultValue: 100 },
-    ],
-    preflightChecks: ['device-connected', 'app-installed', 'debuggable'],
-    commands: [
-      { step: 1, label: 'Check queue status', command: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "SELECT COUNT(*) FROM offline_queue WHERE status = \'pending\'"', description: 'Pending operation count is queried' },
-      { step: 2, label: 'Send queue', command: 'adb -s {serial} shell run-as com.nesy.mobile am broadcast -a com.nesy.mobile.FLUSH_OFFLINE_QUEUE --ei max_items {maxItems}', description: 'Queue is force processed' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'Operation check', description: 'Verify queue is processed successfully', query: 'adb -s {serial} shell run-as com.nesy.mobile sqlite3 databases/nesy_db "SELECT COUNT(*) FROM offline_queue WHERE status = \'pending\'"' },
-    ],
-    rollbackSteps: [
-      { label: 'Rollback not possible', command: '# N/A', description: 'Data sent to server cannot be rolled back' },
-    ],
-    estimatedDuration: 8,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-09',
-    owner: 'Gokhan Oncu',
-    reviewer: 'Mehmet Demir',
-    version: '1.0.0',
-    isFavorite: false,
-    executionCount: 9,
-    tags: ['offline', 'sync', 'queue', 'flush'],
-  },
-
-  // ── Lifecycle ──
-  {
-    id: 'scn-clear-app-data',
-    name: 'Uygulama Verilerini Temizle',
-    description: 'NesyMobile uygulamasının tüm verilerini temizler. Temiz kurulum testi için kullanılır.',
-    category: 'lifecycle',
-    riskLevel: 'destructive',
-    buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'backupFirst', label: 'Önce Yedekle', type: 'boolean', required: false, defaultValue: true },
-      { key: 'packageName', label: 'Paket Adı', type: 'select', required: true, defaultValue: 'com.nesy.mobile', options: [
-        { label: 'NesyMobile (Production)', value: 'com.nesy.mobile' },
-        { label: 'NesyMobile (Debug)', value: 'com.nesy.mobile.debug' },
-      ] },
+      { key: 'enabled', label: 'Airplane On', type: 'boolean', required: true, defaultValue: true },
     ],
     preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Veri yedekleme', command: 'adb -s {serial} backup -f /tmp/nesy_backup.ab {packageName}', description: 'Tüm uygulama verileri yedeklenir' },
-      { step: 2, label: 'Uygulama durdur', command: 'adb -s {serial} shell am force-stop {packageName}', description: 'Uygulama durdurulur' },
-      { step: 3, label: 'Verileri temizle', command: 'adb -s {serial} shell pm clear {packageName}', description: 'Tüm uygulama verileri silinir' },
-      { step: 4, label: 'Uygulamayı başlat', command: 'adb -s {serial} shell am start -n {packageName}/.MainActivity', description: 'Uygulama temiz başlatılır' },
+      {
+        step: 1,
+        label: 'Airplane mode',
+        command: `adb -s ${SERIAL} shell settings put global airplane_mode_on {enabled}`,
+        description: 'Toggle airplane',
+      },
     ],
     verificationSteps: [
-      { step: 1, label: 'İlk açılış kontrolü', description: 'Uygulamanın onboarding/login ekranına düştüğü doğrulanır' },
-      { step: 2, label: 'Veri yokluğu kontrolü', description: 'Yerel veritabanı ve SharedPreferences dosyalarının temizlendiği kontrol edilir' },
+      { step: 1, label: 'Connectivity', description: 'Confirm no network in courier app' },
     ],
     rollbackSteps: [
-      { label: 'Yedekten geri yükle', command: 'adb -s {serial} restore /tmp/nesy_backup.ab', description: 'Yedeklenen veriler geri yüklenir' },
+      {
+        label: 'Airplane off',
+        command: `adb -s ${SERIAL} shell settings put global airplane_mode_on 0`,
+        description: 'Disable airplane',
+      },
     ],
-    estimatedDuration: 15,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-11',
-    owner: 'Mehmet Demir',
-    reviewer: 'Ali Yılmaz',
-    version: '2.1.0',
+    estimatedDuration: 4,
     isFavorite: false,
-    executionCount: 31,
-    tags: ['lifecycle', 'clear-data', 'reset', 'destructive'],
-  },
-  {
-    id: 'scn-force-stop-restart',
-    name: 'Zorla Durdur ve Yeniden Başlat',
-    description: 'Uygulamayı zorla durdurur ve cold-start ile yeniden başlatır.',
+    tags: ['network', 'airplane'],
+  }),
+  baseScenario({
+    id: 'scn-network-flap',
+    name: 'Network Flap ×3',
+    description: 'Rapid Wi-Fi off/on cycles to stress offline transitions and queue.',
+    category: 'network',
+    riskLevel: 'caution',
+    buildCompatibility: 'any',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'battery-ok', 'no-active-run'],
+    commands: [
+      { step: 1, label: 'Wi-Fi flap loop', command: `adb -s ${SERIAL} shell svc wifi disable/enable ×3`, description: 'Three flaps' },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Transition log', description: 'Check NetworkDiagnosticLogger file / logcat' },
+    ],
+    rollbackSteps: [
+      { label: 'Ensure Wi-Fi on', command: `adb -s ${SERIAL} shell svc wifi enable`, description: 'Leave radio on' },
+    ],
+    estimatedDuration: 12,
+    isFavorite: false,
+    tags: ['network', 'flap', 'stress'],
+  }),
+  baseScenario({
+    id: 'scn-clear-token',
+    name: 'Clear Session Token',
+    description: 'Clears JWT and relaunches app — forces re-login.',
+    category: 'auth',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'CLEAR_TOKEN',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.CLEAR_TOKEN`,
+        description: 'Clear SP.token',
+      },
+      {
+        step: 2,
+        label: 'Relaunch',
+        command: `adb -s ${SERIAL} shell am force-stop ${PKG} && adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`,
+        description: 'Restart app',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Login screen', description: 'App should land on login' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-login', command: '# Use field-login or manual login', description: 'Session must be recreated' },
+    ],
+    estimatedDuration: 8,
+    isFavorite: true,
+    tags: ['auth', 'token', 'logout'],
+  }),
+  baseScenario({
+    id: 'scn-corrupt-token',
+    name: 'Corrupt Token (401)',
+    description: 'Corrupts the bearer token so the next API call hits 401 / ErrorInterceptor logout.',
+    category: 'auth',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'CORRUPT_TOKEN',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.CORRUPT_TOKEN`,
+        description: 'Corrupt token string',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Trigger API', description: 'Navigate to a screen that calls API — expect logout' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-login', command: '# Re-login required', description: 'Restore valid session' },
+    ],
+    estimatedDuration: 5,
+    isFavorite: false,
+    tags: ['auth', 'token', '401'],
+  }),
+  baseScenario({
+    id: 'scn-expire-token-foreground',
+    name: 'Expire Token (Foreground)',
+    description: 'Injects an expired JWT and relaunches — ScheduleSessionValidator should logout.',
+    category: 'auth',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'SET_TOKEN_EXPIRY_HINT',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_TOKEN_EXPIRY_HINT`,
+        description: 'Write expired JWT',
+      },
+      {
+        step: 2,
+        label: 'Relaunch',
+        command: `adb -s ${SERIAL} shell am force-stop ${PKG} && adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`,
+        description: 'Trigger foreground session check',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Logout', description: 'Expect login after JWT exp check' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-login', command: '# Re-login required', description: 'Restore session' },
+    ],
+    estimatedDuration: 8,
+    isFavorite: true,
+    tags: ['auth', 'jwt', 'expiry'],
+  }),
+  baseScenario({
+    id: 'scn-schedule-yesterday',
+    name: 'Schedule Date → Yesterday',
+    description: 'Mutates Room scheduleMetaJson.scheduleDate to yesterday so hasValidTodaySchedule fails.',
+    category: 'schedule',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'SET_SCHEDULE_DATE yesterday',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_SCHEDULE_DATE --es date_offset yesterday`,
+        description: 'Skew schedule date',
+      },
+      {
+        step: 2,
+        label: 'Relaunch',
+        command: `adb -s ${SERIAL} shell am force-stop ${PKG} && adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`,
+        description: 'Apply schedule validation',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Route selection', description: 'App should not treat schedule as today' },
+    ],
+    rollbackSteps: [
+      {
+        label: 'Set today',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_SCHEDULE_DATE --es date_offset tomorrow`,
+        description: 'Or re-fetch schedule from server',
+      },
+    ],
+    estimatedDuration: 10,
+    isFavorite: true,
+    tags: ['schedule', 'date', 'chaos'],
+  }),
+  baseScenario({
+    id: 'scn-schedule-tomorrow',
+    name: 'Schedule Date → Tomorrow',
+    description: 'Sets scheduleDate to tomorrow (postpone / future-day edge).',
+    category: 'schedule',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'SET_SCHEDULE_DATE tomorrow',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_SCHEDULE_DATE --es date_offset tomorrow`,
+        description: 'Future schedule date',
+      },
+      {
+        step: 2,
+        label: 'Relaunch',
+        command: `adb -s ${SERIAL} shell am force-stop ${PKG} && adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`,
+        description: 'Apply validation',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Schedule validity', description: 'Confirm today-schedule logic rejects or routes correctly' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-sync schedule', command: '# Login / GetMySchedule', description: 'Restore from server' },
+    ],
+    estimatedDuration: 10,
+    isFavorite: false,
+    tags: ['schedule', 'postpone', 'date'],
+  }),
+  baseScenario({
+    id: 'scn-clear-schedule',
+    name: 'Clear Schedule Tables',
+    description: 'Wipes local schedule (and optionally request queue) via ChaosReceiver.',
+    category: 'schedule',
+    riskLevel: 'destructive',
+    buildCompatibility: 'debug',
+    parameters: [
+      { key: 'clearQueue', label: 'Also clear request queue', type: 'boolean', required: false, defaultValue: false },
+    ],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'CLEAR_SCHEDULE',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.CLEAR_SCHEDULE --ez clear_queue {clearQueue}`,
+        description: 'Delete schedule rows',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Empty schedule', description: 'Stop list / schedule screens empty or prompt route select' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-fetch schedule', command: '# GetMySchedule after login', description: 'Restore from API' },
+    ],
+    estimatedDuration: 8,
+    isFavorite: false,
+    tags: ['schedule', 'destructive', 'room'],
+  }),
+  baseScenario({
+    id: 'scn-restart-shipment',
+    name: 'Restart Shipment',
+    description: 'Cancels waiting delivery requests for a waybill (Chaos RESTART_SHIPMENT).',
+    category: 'shipment',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [
+      { key: 'waybill', label: 'Waybill number', type: 'text', required: true, defaultValue: '', hint: 'Exact waybill on device queue' },
+    ],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'RESTART_SHIPMENT',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.RESTART_SHIPMENT --es waybill "{waybill}"`,
+        description: 'Delete matching delivery queue items',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Queue', description: 'Waiting deliverParcels for waybill removed; check RestartDebug logs' },
+    ],
+    rollbackSteps: [
+      { label: 'Re-deliver', command: '# Manual re-delivery on device', description: 'Cannot auto-restore UI state' },
+    ],
+    estimatedDuration: 6,
+    isFavorite: true,
+    tags: ['shipment', 'restart', 'queue'],
+  }),
+  baseScenario({
+    id: 'scn-alt-api-endpoint',
+    name: 'Alternate API Endpoint',
+    description: 'Points HostSelectionInterceptor at a custom host (pinning may break).',
+    category: 'auth',
+    riskLevel: 'caution',
+    buildCompatibility: 'debug',
+    parameters: [
+      { key: 'host', label: 'Host', type: 'text', required: true, defaultValue: '10.0.2.2', hint: 'Hostname without scheme' },
+      { key: 'scheme', label: 'Scheme', type: 'select', required: true, defaultValue: 'https', options: [
+        { label: 'https', value: 'https' },
+        { label: 'http', value: 'http' },
+      ] },
+      { key: 'port', label: 'Port', type: 'number', required: false, defaultValue: 0, hint: '0 = default' },
+    ],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'SET_ALT_URL',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_ALT_URL --es host "{host}" --es scheme "{scheme}" --ei port {port}`,
+        description: 'Write alternativeURL prefs',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Next API call', description: 'Traffic goes to alt host or fails pinning' },
+    ],
+    rollbackSteps: [
+      {
+        label: 'Clear alt URL',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.SET_ALT_URL --es host "" --es scheme "https" --ei port 0`,
+        description: 'May need in-app delete-DB / clear prefs',
+      },
+    ],
+    estimatedDuration: 8,
+    isFavorite: false,
+    tags: ['auth', 'api', 'host'],
+  }),
+  baseScenario({
+    id: 'scn-force-stop-mid-tour',
+    name: 'Force-Stop Mid-Tour',
+    description: 'Kills the process mid-tour and relaunches SplashActivity.',
     category: 'lifecycle',
     riskLevel: 'safe',
     buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
     parameters: [
-      { key: 'waitSec', label: 'Bekleme Süresi (saniye)', type: 'number', required: false, defaultValue: 3 },
+      { key: 'waitSec', label: 'Wait (sec)', type: 'number', required: false, defaultValue: 2 },
     ],
-    preflightChecks: ['device-connected', 'app-installed'],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Uygulamayı durdur', command: 'adb -s {serial} shell am force-stop com.nesy.mobile', description: 'Uygulama zorla durdurulur' },
-      { step: 2, label: 'Bekleme', command: 'sleep {waitSec}', description: 'Belirtilen süre beklenir' },
-      { step: 3, label: 'Uygulamayı başlat', command: 'adb -s {serial} shell am start -n com.nesy.mobile/.MainActivity', description: 'Uygulama cold-start ile başlatılır' },
+      { step: 1, label: 'Force-stop', command: `adb -s ${SERIAL} shell am force-stop ${PKG}`, description: 'Kill process' },
+      { step: 2, label: 'Start Splash', command: `adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`, description: 'Cold-ish start' },
     ],
     verificationSteps: [
-      { step: 1, label: 'Başlatma kontrolü', description: 'Uygulamanın başarıyla açıldığı doğrulanır', query: 'adb -s {serial} shell dumpsys activity activities | grep "com.nesy.mobile" | head -3' },
+      { step: 1, label: 'Recovery', description: 'Session/schedule restore behaves correctly' },
+    ],
+    rollbackSteps: [{ label: 'N/A', command: '# N/A', description: 'Harmless' }],
+    estimatedDuration: 6,
+    isFavorite: true,
+    tags: ['lifecycle', 'force-stop'],
+  }),
+  baseScenario({
+    id: 'scn-pm-clear-cold',
+    name: 'Clear App Data (Cold)',
+    description: 'Destructive pm clear — wipes prefs, Room DB, and login state.',
+    category: 'lifecycle',
+    riskLevel: 'destructive',
+    buildCompatibility: 'any',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
+    commands: [
+      { step: 1, label: 'pm clear', command: `adb -s ${SERIAL} shell pm clear ${PKG}`, description: 'Full app data wipe' },
+      { step: 2, label: 'Start Splash', command: `adb -s ${SERIAL} shell am start -n ${PKG}/com.arasdigital.nesymobile.SplashActivity`, description: 'Fresh launch' },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Login required', description: 'No residual schedule/token' },
     ],
     rollbackSteps: [
-      { label: 'Geri alma gerekli değil', command: '# N/A', description: 'Uygulama zaten yeniden başlatılmış durumda' },
+      { label: 'Re-login', command: '# Field login / manual', description: 'Full setup again' },
+    ],
+    estimatedDuration: 10,
+    isFavorite: false,
+    tags: ['lifecycle', 'destructive', 'pm-clear'],
+  }),
+  baseScenario({
+    id: 'scn-revoke-location',
+    name: 'Revoke Location Permission',
+    description: 'Revokes fine/coarse location to break LocationService / headers.',
+    category: 'permission',
+    riskLevel: 'caution',
+    buildCompatibility: 'any',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'Revoke FINE',
+        command: `adb -s ${SERIAL} shell pm revoke ${PKG} android.permission.ACCESS_FINE_LOCATION`,
+        description: 'Revoke fine location',
+      },
+      {
+        step: 2,
+        label: 'Revoke COARSE',
+        command: `adb -s ${SERIAL} shell pm revoke ${PKG} android.permission.ACCESS_COARSE_LOCATION`,
+        description: 'Revoke coarse location',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Location flows', description: 'Delivery/location dependent screens fail gracefully' },
+    ],
+    rollbackSteps: [
+      {
+        label: 'Re-grant',
+        command: `adb -s ${SERIAL} shell pm grant ${PKG} android.permission.ACCESS_FINE_LOCATION`,
+        description: 'Grant location again',
+      },
     ],
     estimatedDuration: 5,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-12',
-    owner: 'Ali Yılmaz',
-    reviewer: 'Gökhan Öncü',
-    version: '1.0.0',
-    isFavorite: true,
-    executionCount: 142,
-    tags: ['lifecycle', 'restart', 'force-stop'],
-  },
-
-  // ── Permission ──
-  {
-    id: 'scn-grant-all-permissions',
-    name: 'Tüm İzinleri Ver',
-    description: 'Uygulamanın tüm çalışma zamanı izinlerini otomatik olarak kabul eder.',
+    isFavorite: false,
+    tags: ['permission', 'location'],
+  }),
+  baseScenario({
+    id: 'scn-revoke-camera',
+    name: 'Revoke Camera Permission',
+    description: 'Revokes CAMERA to break barcode / damage photo flows.',
     category: 'permission',
-    riskLevel: 'safe',
+    riskLevel: 'caution',
     buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
     parameters: [],
-    preflightChecks: ['device-connected', 'app-installed'],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Kamera izni', command: 'adb -s {serial} shell pm grant com.nesy.mobile android.permission.CAMERA', description: 'Kamera izni verilir' },
-      { step: 2, label: 'Konum izni', command: 'adb -s {serial} shell pm grant com.nesy.mobile android.permission.ACCESS_FINE_LOCATION', description: 'Hassas konum izni verilir' },
-      { step: 3, label: 'Depolama izni', command: 'adb -s {serial} shell pm grant com.nesy.mobile android.permission.READ_EXTERNAL_STORAGE', description: 'Depolama okuma izni verilir' },
-      { step: 4, label: 'Telefon izni', command: 'adb -s {serial} shell pm grant com.nesy.mobile android.permission.READ_PHONE_STATE', description: 'Telefon durumu izni verilir' },
+      {
+        step: 1,
+        label: 'Revoke CAMERA',
+        command: `adb -s ${SERIAL} shell pm revoke ${PKG} android.permission.CAMERA`,
+        description: 'Revoke camera',
+      },
     ],
     verificationSteps: [
-      { step: 1, label: 'İzin kontrolü', description: 'Tüm izinlerin verildiği doğrulanır', query: 'adb -s {serial} shell dumpsys package com.nesy.mobile | grep "granted=true"' },
+      { step: 1, label: 'Scan/camera', description: 'Camera fragment should request or fail cleanly' },
     ],
     rollbackSteps: [
-      { label: 'İzinleri geri al', command: 'adb -s {serial} shell pm revoke com.nesy.mobile android.permission.CAMERA && adb -s {serial} shell pm revoke com.nesy.mobile android.permission.ACCESS_FINE_LOCATION', description: 'Verilen izinler geri alınır' },
+      {
+        label: 'Re-grant',
+        command: `adb -s ${SERIAL} shell pm grant ${PKG} android.permission.CAMERA`,
+        description: 'Grant camera',
+      },
     ],
     estimatedDuration: 4,
-    lastVerifiedVersion: '4.12.0',
-    lastVerifiedAt: '2026-07-08',
-    owner: 'Gökhan Öncü',
-    reviewer: 'Ali Yılmaz',
-    version: '1.0.0',
-    isFavorite: true,
-    executionCount: 95,
-    tags: ['permission', 'grant', 'runtime'],
-  },
-  {
-    id: 'scn-revoke-specific-permission',
-    name: 'Belirli İzni Kaldır',
-    description: 'Seçilen izni kaldırarak uygulamanın izin reddedilme durumundaki davranışını test eder.',
-    category: 'permission',
-    riskLevel: 'safe',
-    buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'permission', label: 'İzin', type: 'select', required: true, defaultValue: 'android.permission.CAMERA', options: [
-        { label: 'Kamera', value: 'android.permission.CAMERA' },
-        { label: 'Konum (Hassas)', value: 'android.permission.ACCESS_FINE_LOCATION' },
-        { label: 'Konum (Kaba)', value: 'android.permission.ACCESS_COARSE_LOCATION' },
-        { label: 'Depolama', value: 'android.permission.READ_EXTERNAL_STORAGE' },
-        { label: 'Telefon', value: 'android.permission.READ_PHONE_STATE' },
-      ] },
-    ],
-    preflightChecks: ['device-connected', 'app-installed'],
-    commands: [
-      { step: 1, label: 'Mevcut izin durumu', command: 'adb -s {serial} shell dumpsys package com.nesy.mobile | grep "{permission}"', description: 'İznin mevcut durumu kontrol edilir' },
-      { step: 2, label: 'İzni kaldır', command: 'adb -s {serial} shell pm revoke com.nesy.mobile {permission}', description: 'Seçilen izin kaldırılır' },
-    ],
-    verificationSteps: [
-      { step: 1, label: 'İzin kontrolü', description: 'İznin kaldırıldığı doğrulanır', query: 'adb -s {serial} shell dumpsys package com.nesy.mobile | grep "{permission}"' },
-    ],
-    rollbackSteps: [
-      { label: 'İzni geri ver', command: 'adb -s {serial} shell pm grant com.nesy.mobile {permission}', description: 'Kaldırılan izin geri verilir' },
-    ],
-    estimatedDuration: 3,
-    lastVerifiedVersion: '4.12.0',
-    lastVerifiedAt: '2026-07-08',
-    owner: 'Ali Yılmaz',
-    reviewer: 'Mehmet Demir',
-    version: '1.0.0',
     isFavorite: false,
-    executionCount: 41,
-    tags: ['permission', 'revoke', 'runtime', 'test'],
-  },
-
-  // ── Diagnostic ──
-  {
-    id: 'scn-collect-device-info',
-    name: 'Cihaz Bilgisi Topla',
-    description: 'Cihazın donanım, yazılım ve uygulama bilgilerini tek seferde toplar.',
+    tags: ['permission', 'camera', 'scan'],
+  }),
+  baseScenario({
+    id: 'scn-dump-courier-state',
+    name: 'Dump Courier State',
+    description: 'Broadcast DUMP_STATE — returns token/schedule/offline JSON via result data.',
     category: 'diagnostic',
     riskLevel: 'safe',
-    buildCompatibility: 'any',
-    deviceRequirement: 'any',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
+    buildCompatibility: 'debug',
     parameters: [],
-    preflightChecks: ['device-connected'],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Android sürümü', command: 'adb -s {serial} shell getprop ro.build.version.release', description: 'Android sürüm bilgisi alınır' },
-      { step: 2, label: 'Cihaz modeli', command: 'adb -s {serial} shell getprop ro.product.model', description: 'Cihaz model bilgisi alınır' },
-      { step: 3, label: 'Batarya durumu', command: 'adb -s {serial} shell dumpsys battery', description: 'Batarya detay bilgisi alınır' },
-      { step: 4, label: 'Depolama durumu', command: 'adb -s {serial} shell df -h /data', description: 'Depolama kullanımı sorgulanır' },
-      { step: 5, label: 'Uygulama bilgisi', command: 'adb -s {serial} shell dumpsys package com.nesy.mobile | grep -E "versionName|versionCode|firstInstallTime|lastUpdateTime"', description: 'Uygulama versiyon bilgileri alınır' },
+      {
+        step: 1,
+        label: 'DUMP_STATE',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ChaosReceiver -a com.arasdigital.nesymobile.DUMP_STATE`,
+        description: 'Read courier debug snapshot',
+      },
     ],
     verificationSteps: [
-      { step: 1, label: 'Bilgi kontrolü', description: 'Tüm bilgi bloklarının başarıyla toplandığı doğrulanır' },
+      { step: 1, label: 'Result data', description: 'Broadcast data= JSON with scheduleId/offlineMode' },
     ],
-    rollbackSteps: [
-      { label: 'Geri alma gerekli değil', command: '# N/A', description: 'Bu işlem cihazda değişiklik yapmaz' },
-    ],
-    estimatedDuration: 6,
-    lastVerifiedVersion: '4.12.1',
-    lastVerifiedAt: '2026-07-12',
-    owner: 'Gökhan Öncü',
-    reviewer: 'Ali Yılmaz',
-    version: '1.0.0',
+    rollbackSteps: [{ label: 'N/A', command: '# N/A', description: 'Read-only' }],
+    estimatedDuration: 3,
     isFavorite: true,
-    executionCount: 156,
-    tags: ['diagnostic', 'info', 'report', 'read-only'],
-  },
-  {
+    tags: ['diagnostic', 'dump', 'chaos'],
+  }),
+  baseScenario({
+    id: 'scn-get-protected-key',
+    name: 'Get Protected Key + Device ID',
+    description: 'Exercises ProtectedRequestKeyReceiver used by Cockpit field-login.',
+    category: 'diagnostic',
+    riskLevel: 'safe',
+    buildCompatibility: 'debug',
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'debuggable', 'chaos-receiver', 'no-active-run'],
+    commands: [
+      {
+        step: 1,
+        label: 'GET_DEVICE_ID',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver -a com.arasdigital.nesymobile.GET_DEVICE_ID`,
+        description: 'ANDROID_ID via broadcast',
+      },
+      {
+        step: 2,
+        label: 'GET_KEY',
+        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver -a com.arasdigital.nesymobile.GET_KEY`,
+        description: 'Native protected request key',
+      },
+    ],
+    verificationSteps: [
+      { step: 1, label: 'Result data', description: 'Non-empty data= for both actions' },
+    ],
+    rollbackSteps: [{ label: 'N/A', command: '# N/A', description: 'Read-only' }],
+    estimatedDuration: 5,
+    isFavorite: true,
+    tags: ['diagnostic', 'protected-key', 'field-login'],
+  }),
+  baseScenario({
     id: 'scn-capture-bugreport',
-    name: 'Bug Report Oluştur',
-    description: 'Android bugreport dosyasını oluşturur ve bilgisayara çeker.',
+    name: 'Capture Device Bug Pack',
+    description: 'Collects props, package dump, and recent Chaos/Restart logs (lightweight bug pack).',
     category: 'diagnostic',
     riskLevel: 'safe',
     buildCompatibility: 'any',
-    deviceRequirement: 'physical',
-    requiresRoot: false,
-    supportedPackages: ['com.nesy.mobile', 'com.nesy.mobile.debug'],
-    supportedAndroidVersions: '>=10',
-    parameters: [
-      { key: 'outputPath', label: 'Çıkış Yolu', type: 'text', required: false, defaultValue: '/tmp/bugreport', hint: 'Yerel dosya yolu' },
-    ],
-    preflightChecks: ['device-connected', 'battery-ok'],
+    parameters: [],
+    preflightChecks: ['device-connected', 'app-installed', 'no-active-run'],
     commands: [
-      { step: 1, label: 'Bugreport oluşturma', command: 'adb -s {serial} bugreport {outputPath}', description: 'Kapsamlı bugreport dosyası oluşturulur (1-3 dk)' },
+      { step: 1, label: 'Device props', command: `adb -s ${SERIAL} shell getprop ro.product.model`, description: 'Model / battery' },
+      { step: 2, label: 'Package dump', command: `adb -s ${SERIAL} shell dumpsys package ${PKG}`, description: 'Version / debuggable' },
+      { step: 3, label: 'Logcat slice', command: `adb -s ${SERIAL} logcat -d -t 80 -s ChaosReceiver:I`, description: 'Recent chaos logs' },
     ],
     verificationSteps: [
-      { step: 1, label: 'Dosya kontrolü', description: 'Bugreport dosyasının oluşturulduğu ve boyutunun makul olduğu doğrulanır' },
+      { step: 1, label: 'Output', description: 'Terminal shows device + package + logs' },
     ],
-    rollbackSteps: [
-      { label: 'Geri alma gerekli değil', command: '# N/A', description: 'Bugreport dosyası sadece bilgi toplar' },
-    ],
-    estimatedDuration: 120,
-    lastVerifiedVersion: '4.12.0',
-    lastVerifiedAt: '2026-07-07',
-    owner: 'Mehmet Demir',
-    reviewer: 'Gökhan Öncü',
-    version: '1.0.0',
+    rollbackSteps: [{ label: 'N/A', command: '# N/A', description: 'Read-only' }],
+    estimatedDuration: 15,
     isFavorite: false,
-    executionCount: 8,
-    tags: ['diagnostic', 'bugreport', 'debug', 'dump'],
-  },
+    tags: ['diagnostic', 'bugreport', 'logs'],
+  }),
 ]
 
-// ---------------------------------------------------------------------------
-// 5. MOCK EXECUTION HISTORY
-// ---------------------------------------------------------------------------
-
-export const MOCK_EXECUTION_HISTORY: ExecutionRecord[] = [
-  {
-    id: 'RUN-2026-0712-1845',
-    scenarioId: 'scn-override-delivery-date',
-    scenarioName: 'Teslimat Tarihi Override',
-    deviceId: 'dev-urovo-dt50-001',
-    deviceName: 'Urovo DT50',
-    user: 'Gökhan Öncü',
-    startedAt: '2026-07-12T18:45:00Z',
-    completedAt: '2026-07-12T18:45:08Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Mevcut tarih yedekleme', status: 'completed' },
-      { step: 3, label: 'Tarih güncelleme', status: 'completed' },
-      { step: 4, label: 'Uygulama yeniden başlatma', status: 'completed' },
-      { step: 5, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: { orderId: 'ORD-2026-0712', newDate: '2026-07-20', notifyUser: true },
-    previousValues: { delivery_date: '2026-07-15' },
-    newValues: { delivery_date: '2026-07-20' },
-    terminalOutput: '$ adb -s UROVO-DT50-A1B2C3 shell run-as com.nesy.mobile cat shared_prefs/delivery_schedule.xml\n<map>\n  <string name="delivery_date">2026-07-15</string>\n</map>\n\n$ sed -i ... OK\n\n$ am force-stop com.nesy.mobile\n$ am start -n com.nesy.mobile/.MainActivity\nStarting: Intent { cmp=com.nesy.mobile/.MainActivity }\n\nverification: delivery_date = 2026-07-20',
-    linkedSessionId: 'LOG-2026-0712-1844',
-    rollbackAvailable: true,
-  },
-  {
-    id: 'RUN-2026-0712-1730',
-    scenarioId: 'scn-toggle-feature-flag',
-    scenarioName: 'Feature Flag Değiştir',
-    deviceId: 'dev-samsung-a13-002',
-    deviceName: 'Samsung Galaxy A13',
-    user: 'Ali Yılmaz',
-    startedAt: '2026-07-12T17:30:00Z',
-    completedAt: '2026-07-12T17:30:04Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Mevcut flag değeri yedekleme', status: 'completed' },
-      { step: 3, label: 'Flag değeri güncelleme', status: 'completed' },
-      { step: 4, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: { flagName: 'new_scanner_ui', enabled: true },
-    previousValues: { new_scanner_ui: false },
-    newValues: { new_scanner_ui: true },
-    terminalOutput: '$ cat shared_prefs/feature_flags.xml | grep "new_scanner_ui"\n<boolean name="new_scanner_ui" value="false" />\n\n$ SET_FEATURE_FLAG broadcast\nBroadcast completed: result=0\n\nverification: new_scanner_ui = true',
-    linkedSessionId: null,
-    rollbackAvailable: true,
-  },
-  {
-    id: 'RUN-2026-0712-1615',
-    scenarioId: 'scn-invalidate-session',
-    scenarioName: 'Oturum Geçersiz Kılma',
-    deviceId: 'dev-urovo-dt50-001',
-    deviceName: 'Urovo DT50',
-    user: 'Mehmet Demir',
-    startedAt: '2026-07-12T16:15:00Z',
-    completedAt: '2026-07-12T16:15:07Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Token yedekleme', status: 'completed' },
-      { step: 3, label: 'Token temizleme', status: 'completed' },
-      { step: 4, label: 'Session cache temizleme', status: 'completed' },
-      { step: 5, label: 'Uygulamayı yeniden başlat', status: 'completed' },
-      { step: 6, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: { clearTokens: true, clearCookies: false },
-    previousValues: { hasToken: true, sessionActive: true },
-    newValues: { hasToken: false, sessionActive: false },
-    terminalOutput: '$ Token yedekleme... OK\n$ Token temizleme... OK\n$ Session cache temizleme... OK\n$ Uygulamayı yeniden başlat... OK\n\nverification: login ekranı gösterildi',
-    linkedSessionId: null,
-    rollbackAvailable: true,
-  },
-  {
-    id: 'RUN-2026-0712-1500',
-    scenarioId: 'scn-clear-room-cache',
-    scenarioName: 'Room Cache Temizleme',
-    deviceId: 'dev-pixel7-emu-003',
-    deviceName: 'Google Pixel 7 Emulator',
-    user: 'Gökhan Öncü',
-    startedAt: '2026-07-12T15:00:00Z',
-    completedAt: '2026-07-12T15:00:12Z',
-    status: 'partial',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Veritabanı yedekleme', status: 'completed' },
-      { step: 3, label: 'Cache tabloları temizleme', status: 'completed' },
-      { step: 4, label: 'VACUUM', status: 'failed' },
-      { step: 5, label: 'Result verification', status: 'skipped' },
-    ],
-    parameters: { tables: ['sync_cache', 'image_cache'], backupFirst: true },
-    previousValues: { sync_cache_count: 1247, image_cache_count: 89 },
-    newValues: { sync_cache_count: 0, image_cache_count: 0 },
-    terminalOutput: '$ Veritabanı yedekleme... OK\n$ Cache tabloları temizleme... OK\n$ VACUUM... FAILED: database is locked\n\nKısmi basari: tablolar temizlendi ancak VACUUM yapilamadi',
-    linkedSessionId: 'LOG-2026-0712-1459',
-    rollbackAvailable: true,
-  },
-  {
-    id: 'RUN-2026-0712-1400',
-    scenarioId: 'scn-simulate-offline',
-    scenarioName: 'Çevrimdışı Mod Simülasyonu',
-    deviceId: 'dev-urovo-dt50-001',
-    deviceName: 'Urovo DT50',
-    user: 'Ali Yılmaz',
-    startedAt: '2026-07-12T14:00:00Z',
-    completedAt: null,
-    status: 'failed',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Ağ durumu kaydet', status: 'completed' },
-      { step: 3, label: 'Airplane mode aç', status: 'failed' },
-      { step: 4, label: 'Bekleme (30 saniye)', status: 'skipped' },
-      { step: 5, label: 'Airplane mode kapat', status: 'skipped' },
-      { step: 6, label: 'Result verification', status: 'skipped' },
-    ],
-    parameters: { durationSec: 30, disableWifi: true, disableData: true },
-    previousValues: {},
-    newValues: {},
-    terminalOutput: '$ dumpsys connectivity | head -20\nNetworkAgentInfo... OK\n\n$ settings put global airplane_mode_on 1\nException: java.lang.SecurityException: Permission denial\n\nHata: Airplane mode degistirme izni reddedildi',
-    linkedSessionId: null,
-    rollbackAvailable: false,
-  },
-  {
-    id: 'RUN-2026-0712-1230',
-    scenarioId: 'scn-collect-device-info',
-    scenarioName: 'Cihaz Bilgisi Topla',
-    deviceId: 'dev-samsung-a13-002',
-    deviceName: 'Samsung Galaxy A13',
-    user: 'Gökhan Öncü',
-    startedAt: '2026-07-12T12:30:00Z',
-    completedAt: '2026-07-12T12:30:06Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Android sürümü', status: 'completed' },
-      { step: 3, label: 'Cihaz modeli', status: 'completed' },
-      { step: 4, label: 'Batarya durumu', status: 'completed' },
-      { step: 5, label: 'Depolama durumu', status: 'completed' },
-      { step: 6, label: 'Uygulama bilgisi', status: 'completed' },
-      { step: 7, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: {},
-    previousValues: {},
-    newValues: { androidVersion: '13', model: 'SM-A135F', batteryLevel: 85 },
-    terminalOutput: '$ Android sürümü: 13\n$ Model: SM-A135F\n$ Batarya: 85%\n$ Depolama: 24GB / 64GB kullanımda\n$ App: v4.12.0-internal (code 41200)\n\nTüm bilgiler toplandı',
-    linkedSessionId: null,
-    rollbackAvailable: false,
-  },
-  {
-    id: 'RUN-2026-0711-1900',
-    scenarioId: 'scn-force-stop-restart',
-    scenarioName: 'Zorla Durdur ve Yeniden Başlat',
-    deviceId: 'dev-urovo-dt50-001',
-    deviceName: 'Urovo DT50',
-    user: 'Mehmet Demir',
-    startedAt: '2026-07-11T19:00:00Z',
-    completedAt: '2026-07-11T19:00:08Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Uygulamayı durdur', status: 'completed' },
-      { step: 3, label: 'Bekleme', status: 'completed' },
-      { step: 4, label: 'Uygulamayı başlat', status: 'completed' },
-      { step: 5, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: { waitSec: 3 },
-    previousValues: {},
-    newValues: {},
-    terminalOutput: '$ am force-stop com.nesy.mobile\n$ sleep 3\n$ am start -n com.nesy.mobile/.MainActivity\nStarting: Intent { cmp=com.nesy.mobile/.MainActivity }\n\nUygulama yeniden başlatıldı',
-    linkedSessionId: null,
-    rollbackAvailable: false,
-  },
-  {
-    id: 'RUN-2026-0711-1630',
-    scenarioId: 'scn-grant-all-permissions',
-    scenarioName: 'Tüm İzinleri Ver',
-    deviceId: 'dev-pixel7-emu-003',
-    deviceName: 'Google Pixel 7 Emulator',
-    user: 'Ali Yılmaz',
-    startedAt: '2026-07-11T16:30:00Z',
-    completedAt: '2026-07-11T16:30:05Z',
-    status: 'success',
-    steps: [
-      { step: 1, label: 'Device validation', status: 'completed' },
-      { step: 2, label: 'Kamera izni', status: 'completed' },
-      { step: 3, label: 'Konum izni', status: 'completed' },
-      { step: 4, label: 'Depolama izni', status: 'completed' },
-      { step: 5, label: 'Telefon izni', status: 'completed' },
-      { step: 6, label: 'Result verification', status: 'completed' },
-    ],
-    parameters: {},
-    previousValues: {},
-    newValues: { camera: 'granted', location: 'granted', storage: 'granted', phone: 'granted' },
-    terminalOutput: '$ pm grant ... CAMERA -> OK\n$ pm grant ... ACCESS_FINE_LOCATION -> OK\n$ pm grant ... READ_EXTERNAL_STORAGE -> OK\n$ pm grant ... READ_PHONE_STATE -> OK\n\n4/4 izin verildi',
-    linkedSessionId: null,
-    rollbackAvailable: true,
-  },
-]
+/** Empty until real runs are recorded in the client session. */
+export const MOCK_EXECUTION_HISTORY: ExecutionRecord[] = []
 
 // ---------------------------------------------------------------------------
-// 6. HELPER FUNCTIONS
+// 5. HELPERS
 // ---------------------------------------------------------------------------
 
-/** Kategoriye göre senaryoları grupla */
 export function getScenariosByCategory(category: ScenarioCategory): ScenarioPackage[] {
-  return SCENARIO_PACKAGES.filter(s => s.category === category)
+  return SCENARIO_PACKAGES.filter((s) => s.category === category)
 }
 
-/** Arama ve filtreleme */
 export function filterScenarios(
   search: string,
   filter: string,
@@ -1055,45 +764,55 @@ export function filterScenarios(
 ): ScenarioPackage[] {
   let results = [...SCENARIO_PACKAGES]
 
-  // Kategori filtresi
   if (category) {
-    results = results.filter(s => s.category === category)
+    results = results.filter((s) => s.category === category)
   }
 
-  // Quick-view filtresi
   switch (filter) {
     case 'frequently-used':
-      results = results.filter(s => s.executionCount >= 30)
+      results = results.filter((s) => s.isFavorite)
       break
     case 'safe':
-      results = results.filter(s => s.riskLevel === 'safe')
+      results = results.filter((s) => s.riskLevel === 'safe')
       break
     case 'data-manipulation':
-      results = results.filter(s => ['shared-prefs', 'room-db'].includes(s.category))
+      results = results.filter((s) => ['schedule', 'shipment', 'auth'].includes(s.category))
       break
     case 'favorites':
-      results = results.filter(s => s.isFavorite)
+      results = results.filter((s) => s.isFavorite)
       break
     case 'debug-only':
-      results = results.filter(s => s.buildCompatibility === 'debug')
+      results = results.filter((s) => s.buildCompatibility === 'debug')
       break
   }
 
-  // Arama
   if (search.trim()) {
     const q = search.toLowerCase()
     results = results.filter(
-      s =>
+      (s) =>
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
-        s.tags.some(t => t.includes(q)),
+        s.tags.some((t) => t.includes(q)),
     )
   }
 
   return results
 }
 
-/** ID ye göre senaryo getir */
 export function getScenarioById(id: string): ScenarioPackage | undefined {
-  return SCENARIO_PACKAGES.find(s => s.id === id)
+  return SCENARIO_PACKAGES.find((s) => s.id === id)
+}
+
+/** Interpolate command preview with serial + params (display only). */
+export function interpolateCommand(
+  template: string,
+  serial: string,
+  packageName: string,
+  params: Record<string, unknown>,
+): string {
+  let out = template.replaceAll('{serial}', serial).replaceAll('{package}', packageName)
+  for (const [key, value] of Object.entries(params)) {
+    out = out.replaceAll(`{${key}}`, String(value ?? ''))
+  }
+  return out
 }

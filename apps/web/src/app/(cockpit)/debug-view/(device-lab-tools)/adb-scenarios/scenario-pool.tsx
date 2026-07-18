@@ -24,11 +24,10 @@ import type { ScenarioPackage, ScenarioCategory } from '@/data/engineering/devic
 
 /* ─── Category color tones ─── */
 const CATEGORY_TONE: Record<ScenarioCategory, string> = {
-  schedule: 'bg-blue-500',
+  network: 'bg-indigo-500',
   auth: 'bg-purple-500',
-  'shared-prefs': 'bg-amber-500',
-  'room-db': 'bg-teal-500',
-  'offline-sync': 'bg-indigo-500',
+  schedule: 'bg-blue-500',
+  shipment: 'bg-teal-500',
   lifecycle: 'bg-green-500',
   permission: 'bg-orange-500',
   diagnostic: 'bg-red-500',

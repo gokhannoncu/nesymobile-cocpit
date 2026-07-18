@@ -179,17 +179,6 @@ export const WORKSPACES: Workspace[] = [
             ],
           },
           {
-            title: 'Users & Experience',
-            icon: Users,
-            children: [
-              {
-                title: 'User Journeys',
-                path: '/product/user-journeys',
-                icon: Route,
-              },
-            ],
-          },
-          {
             title: 'Capabilities & Countries',
             icon: Globe,
             children: [
@@ -243,11 +232,6 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Edge Case Map',
                 path: '/engineering/edge-case-map',
                 icon: Radar,
-              },
-              {
-                title: 'Crashlytics',
-                path: '/engineering/crashlytics',
-                icon: Bug,
               },
               {
                 title: 'Performance Intelligence',

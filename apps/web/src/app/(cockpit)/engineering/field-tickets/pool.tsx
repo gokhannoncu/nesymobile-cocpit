@@ -68,14 +68,14 @@ export function FixTypeCell({ t }: { t: FieldTicket }) {
 export function ConfidenceCell({ value }: { value: number }) {
   const tone: Tone = value >= 80 ? 'green' : value >= 65 ? 'amber' : 'red'
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
+    <span className="inline-flex max-w-full items-center gap-1.5">
+      <span className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
         <span
           className={cn('block h-full rounded-full', toneDot[tone])}
           style={{ width: `${value}%` }}
         />
       </span>
-      <span className={cn('text-[11px] font-semibold tabular-nums', toneText[tone])}>{value}</span>
+      <span className={cn('shrink-0 text-[11px] font-semibold tabular-nums', toneText[tone])}>{value}</span>
     </span>
   )
 }
@@ -83,8 +83,8 @@ export function ConfidenceCell({ value }: { value: number }) {
 // ── Pool table ─────────────────────────────────────────────────
 
 const th =
-  'px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap'
-const td = 'px-3 py-2.5 align-middle text-xs text-foreground/85'
+  'overflow-hidden px-2.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground'
+const td = 'overflow-hidden px-2.5 py-2.5 align-middle text-xs text-foreground/85'
 
 export function TicketPoolTable({
   items,
@@ -104,13 +104,26 @@ export function TicketPoolTable({
   }
   return (
     <div className="overflow-x-auto rounded-xl border bg-background">
-      <table className="w-full min-w-[1180px] border-collapse text-sm">
+      <table className="w-full min-w-[1360px] table-fixed border-collapse text-sm">
+        <colgroup>
+          <col className="w-[64px]" />
+          <col className="w-[220px]" />
+          <col className="w-[96px]" />
+          <col className="w-[72px]" />
+          <col className="w-[96px]" />
+          <col className="w-[112px]" />
+          <col className="w-[200px]" />
+          <col className="w-[96px]" />
+          <col className="w-[112px]" />
+          <col className="w-[100px]" />
+          <col className="w-[88px]" />
+          <col className="w-[100px]" />
+          <col className="w-[96px]" />
+        </colgroup>
         <thead className="border-b bg-muted/40">
           <tr>
-            <th className={cn(th, 'sticky left-0 z-10 bg-muted/40 backdrop-blur')}>ID</th>
-            <th className={cn(th, 'sticky left-[72px] z-10 min-w-[240px] bg-muted/40 backdrop-blur')}>
-              Ticket
-            </th>
+            <th className={cn(th, 'sticky left-0 z-10 bg-muted/40')}>ID</th>
+            <th className={cn(th, 'sticky left-[64px] z-10 bg-muted/40')}>Ticket</th>
             <th className={th}>Severity</th>
             <th className={th}>Status</th>
             <th className={th}>Country</th>
@@ -131,13 +144,13 @@ export function TicketPoolTable({
               <tr
                 key={t.id}
                 onClick={() => onSelect(t)}
-                className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-muted/30"
+                className="group/row cursor-pointer border-b transition-colors last:border-b-0 hover:bg-muted/30"
               >
-                <td className={cn(td, 'sticky left-0 z-10 bg-background')}>
-                  <code className="text-xs font-bold text-foreground">{t.id}</code>
+                <td className={cn(td, 'sticky left-0 z-10 bg-background group-hover/row:bg-muted/30')}>
+                  <code className="block truncate text-xs font-bold text-foreground" title={t.id}>{t.id}</code>
                 </td>
-                <td className={cn(td, 'sticky left-[72px] z-10 bg-background font-semibold text-foreground')}>
-                  {t.title}
+                <td className={cn(td, 'sticky left-[64px] z-10 bg-background font-semibold text-foreground group-hover/row:bg-muted/30')}>
+                  <span className="block truncate" title={t.title}>{t.title}</span>
                 </td>
                 <td className={td}><SeverityCell t={t} /></td>
                 <td className={td}>
@@ -152,20 +165,24 @@ export function TicketPoolTable({
                     {t.status === 'open' ? 'Open' : 'Closed'}
                   </span>
                 </td>
-                <td className={cn(td, 'whitespace-nowrap')}>{t.country}</td>
-                <td className={cn(td, 'whitespace-nowrap')}>{t.screen}</td>
-                <td className={cn(td, 'max-w-[220px]')}>
+                <td className={td}>
+                  <span className="block truncate" title={t.country}>{t.country}</span>
+                </td>
+                <td className={td}>
+                  <span className="block truncate" title={t.screen}>{t.screen}</span>
+                </td>
+                <td className={td}>
                   {rc ? (
                     <button
                       type="button"
                       onClick={(ev) => { ev.stopPropagation(); onSelectRc(rc.id) }}
-                      className="group inline-flex items-center gap-1 text-left"
-                      title={rc.title}
+                      className="group flex w-full min-w-0 items-center gap-1 text-left"
+                      title={`${rc.id} — ${rc.title}`}
                     >
-                      <code className="text-[11px] font-bold text-indigo-600 group-hover:underline dark:text-indigo-400">
+                      <code className="shrink-0 text-[11px] font-bold text-indigo-600 group-hover:underline dark:text-indigo-400">
                         {rc.id}
                       </code>
-                      <span className="truncate text-xs text-foreground/80 group-hover:text-foreground">
+                      <span className="min-w-0 truncate text-xs text-foreground/80 group-hover:text-foreground">
                         {rc.title}
                       </span>
                     </button>
@@ -174,9 +191,9 @@ export function TicketPoolTable({
                 <td className={td}><ConfidenceCell value={t.confidence} /></td>
                 <td className={td}><RiskCell risk={t.repeatRisk} /></td>
                 <td className={td}><FixTypeCell t={t} /></td>
-                <td className={cn(td, 'whitespace-nowrap')}>
+                <td className={td}>
                   {t.edgeCases.length > 0 ? (
-                    <span className="flex gap-1">
+                    <span className="flex min-w-0 flex-wrap gap-1">
                       {t.edgeCases.map((e) => (
                         <Badge key={e} variant="secondary" appearance="outline" size="xs">{e}</Badge>
                       ))}
@@ -185,10 +202,16 @@ export function TicketPoolTable({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </td>
-                <td className={cn(td, 'whitespace-nowrap')}>
-                  {t.customerTicket || <span className="text-muted-foreground">—</span>}
+                <td className={td}>
+                  {t.customerTicket ? (
+                    <span className="block truncate" title={t.customerTicket}>{t.customerTicket}</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </td>
-                <td className={cn(td, 'whitespace-nowrap tabular-nums')}>{t.date}</td>
+                <td className={cn(td, 'tabular-nums')}>
+                  <span className="block truncate">{t.date}</span>
+                </td>
               </tr>
             )
           })}

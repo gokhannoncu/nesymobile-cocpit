@@ -1,38 +1,24 @@
 'use client'
 
 import {
-  Fragment,
-  Suspense,
-  useCallback,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  ArrowDown,
-  ArrowLeftRight,
-  ArrowUp,
   Archive,
   Bell,
-  BookOpen,
   Box,
   Building,
   Building2,
   Calendar,
   Car,
-  CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  Clock,
-  Code2,
   Container,
   DoorOpen,
   Euro,
-  GitBranch,
   Globe,
   GraduationCap,
   Headphones,
@@ -43,12 +29,10 @@ import {
   MapPinned,
   Monitor,
   Navigation,
-  Network,
   Package,
   PackageCheck,
   Receipt,
   Route,
-  Search,
   Store,
   Truck,
   User,
@@ -60,14 +44,11 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal } from '@nesy/metronic/components/ui/dialog'
-import { Input } from '@nesy/metronic/components/ui/input'
 import {
-  EASE,
   ProductPage,
   type Tone,
   toneCard,
@@ -82,16 +63,10 @@ import {
   ENTITY_CATEGORIES,
   ENTITY_CATEGORY,
   learningPath,
-  propagationRules,
   relations,
   type DomainEntity,
   type EntityCategory,
-  type PropagationRule,
 } from '@/data/product/domain-glossary'
-
-type GlossaryView = 'dictionary' | 'rules'
-type CategoryFilter = 'all' | EntityCategory
-type DirectionFilter = 'all' | 'up' | 'down' | 'horizontal'
 
 const ICONS: Record<string, LucideIcon> = {
   Calendar,
@@ -126,11 +101,6 @@ const ICONS: Record<string, LucideIcon> = {
   PackageCheck,
   Archive,
 }
-
-const VIEWS: { id: GlossaryView; label: string; icon: LucideIcon; tone: Tone }[] = [
-  { id: 'dictionary', label: 'Dictionary', icon: BookOpen, tone: 'indigo' },
-  { id: 'rules', label: 'State Rules', icon: ArrowLeftRight, tone: 'amber' },
-]
 
 const CATEGORY_TONE: Record<EntityCategory, Tone> = {
   planning: 'purple',
@@ -195,12 +165,6 @@ function entityTone(entity: DomainEntity): Tone {
   return ENTITY_TONE[entity.id] ?? 'indigo'
 }
 
-function directionMeta(direction: PropagationRule['direction']) {
-  if (direction === 'up') return { label: 'Upward', icon: ArrowUp, className: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900' }
-  if (direction === 'down') return { label: 'Downward', icon: ArrowDown, className: 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900' }
-  return { label: 'Horizontal', icon: ArrowLeftRight, className: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900' }
-}
-
 function entityById(id: string | null) {
   return entities.find((entity) => entity.id === id)
 }
@@ -235,44 +199,6 @@ function displayAliases(entity: DomainEntity) {
   return aliases
 }
 
-function normalize(value: string) {
-  return value.toLocaleLowerCase('en')
-}
-
-function searchableEntity(entity: DomainEntity) {
-  const entityRelations = relations.filter((relation) => relation.from === entity.id || relation.to === entity.id)
-  const category = categoryMeta(entityCategory(entity)).label
-  return normalize([
-    entity.name,
-    entity.id,
-    category,
-    ...entity.aliases,
-    entity.definition,
-    entity.businessContext,
-    entity.technicalContext,
-    ...entity.statuses.flatMap((status) => [status.code, status.label, status.description]),
-    ...entity.antiPatterns,
-    ...entityRelations.flatMap((relation) => [relation.label, relation.description, relation.cardinality]),
-  ].join(' '))
-}
-
-function entityMatches(entity: DomainEntity, query: string) {
-  return !query || searchableEntity(entity).includes(normalize(query))
-}
-
-function ruleMatches(rule: PropagationRule, query: string) {
-  const from = entityById(rule.fromEntity)
-  const to = entityById(rule.toEntity)
-  return !query || normalize([
-    rule.title,
-    rule.description,
-    rule.example,
-    rule.direction,
-    from?.name,
-    to?.name,
-  ].join(' ')).includes(normalize(query))
-}
-
 function relationshipRows(entity: DomainEntity) {
   const parent = entityById(entity.parentId)
   const children = entity.childIds.map((id) => entityById(id)).filter(Boolean) as DomainEntity[]
@@ -280,138 +206,6 @@ function relationshipRows(entity: DomainEntity) {
     .filter((relation) => relation.from === entity.id || relation.to === entity.id)
     .filter((relation) => relation.from !== parent?.id && !children.some((child) => child.id === relation.to))
   return { parent, children, related }
-}
-
-function GlossaryChrome({
-  query,
-  onQueryChange,
-  view,
-  onViewChange,
-}: {
-  query: string
-  onQueryChange: (query: string) => void
-  view: GlossaryView
-  onViewChange: (view: GlossaryView) => void
-}) {
-  const activeTone = VIEWS.find((item) => item.id === view)?.tone ?? 'indigo'
-  const chainLevels = new Set(CHAIN.map((entity) => entity.level)).size
-
-  return (
-    <motion.section
-      className={cn('sticky top-0 z-20 overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm', toneHero.indigo)}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: EASE }}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.28] dark:opacity-15 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:18px_18px] text-foreground/10"
-      />
-
-      <div className="relative space-y-3 p-3.5 sm:p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm', toneIconBox.indigo)}>
-              <BookOpen className={cn('size-5', toneIcon.indigo)} />
-            </span>
-            <div className="min-w-0">
-              <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.indigo)}>Product backbone</p>
-              <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Domain glossary</h1>
-              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-                Concept dictionary and state propagation rules — so everyone at Nesy Mobile speaks the same language.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { icon: Package, label: `${entities.length} concepts`, tone: 'indigo' as Tone },
-              { icon: GitBranch, label: `${chainLevels} levels`, tone: 'teal' as Tone },
-              { icon: Network, label: `${propagationRules.length} propagation rules`, tone: 'amber' as Tone },
-              { icon: Clock, label: 'Jul 13, 2026', tone: 'gray' as Tone },
-            ].map(({ icon: Icon, label, tone }) => (
-              <span
-                key={label}
-                className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold', toneCard[tone], toneText[tone])}
-              >
-                <Icon className="size-3" />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border border-indigo-200/50 bg-background/80 p-1.5 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-background/70 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-indigo-500 dark:text-indigo-400" />
-            <Input
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Concept name, alias, status code, or description…"
-              aria-label="Search domain glossary"
-              className="h-9 rounded-lg border-indigo-100/80 bg-indigo-50/40 ps-9 pe-9 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-indigo-500/50 dark:border-indigo-900/40 dark:bg-indigo-950/25"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => onQueryChange('')}
-                className="absolute end-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
-                aria-label="Clear search"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div
-            className="relative grid shrink-0 grid-cols-2 rounded-lg border border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-violet-50/30 to-amber-50/40 p-0.5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-violet-950/15 dark:to-amber-950/15 sm:w-[min(100%,18rem)]"
-            role="tablist"
-            aria-label="View selector"
-          >
-            <motion.span
-              aria-hidden
-              layoutId="glossary-tab-indicator"
-              className={cn('absolute inset-y-0.5 rounded-md shadow-sm ring-1 ring-black/5 dark:ring-white/10', toneCard[activeTone])}
-              style={{ left: `calc(${VIEWS.findIndex((item) => item.id === view) * 50}% + 2px)`, width: 'calc(50% - 4px)' }}
-              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-            />
-            {VIEWS.map(({ id, label, icon: Icon, tone }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={view === id}
-                onClick={() => onViewChange(id)}
-                className={cn(
-                  'relative z-10 flex min-w-0 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  view === id ? toneText[tone] : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Icon className={cn('size-3.5 shrink-0', view === id ? toneIcon[tone] : 'opacity-55')} />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.section>
-  )
-}
-
-function FilterButton({ active, tone = 'indigo', children, onClick }: { active: boolean; tone?: Tone; children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
-        active
-          ? cn(toneCard[tone], toneText[tone], 'shadow-sm ring-1 ring-black/5 dark:ring-white/10')
-          : 'border-border/70 bg-background text-muted-foreground hover:border-indigo-300/60 hover:bg-indigo-50/40 hover:text-foreground dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20',
-      )}
-    >
-      {children}
-    </button>
-  )
 }
 
 function learningContext(entityId: string) {
@@ -777,58 +571,13 @@ function EntityDictionaryTable({
   )
 }
 
-function EmptyState({ query }: { query: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-indigo-300/60 bg-gradient-to-br from-indigo-50/60 via-background to-violet-50/40 px-6 py-14 text-center dark:border-indigo-800 dark:from-indigo-950/30 dark:to-violet-950/20">
-      <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950/50">
-        <Search className="size-7 text-indigo-600 dark:text-indigo-400" />
-      </span>
-      <p className="mt-4 text-sm font-bold text-foreground">No matches found for "{query}"</p>
-      <p className="mt-1 text-xs text-muted-foreground">Try a different keyword or filter.</p>
-    </div>
-  )
-}
-
-function DictionaryView({ query }: { query: string }) {
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+function DictionaryView() {
   const [detailId, setDetailId] = useState<string | null>(null)
-
-  const filtered = useMemo(() => entities.filter((entity) => {
-    const category = entityCategory(entity)
-    const categoryMatches = categoryFilter === 'all' || category === categoryFilter
-    return categoryMatches && entityMatches(entity, query)
-  }), [categoryFilter, query])
-
   const detailEntity = entityById(detailId)
 
   return (
-    <section aria-labelledby="dictionary-title" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="dictionary-title" className="flex items-center gap-1.5 text-sm font-bold">
-          <BookOpen className="size-4 text-indigo-600 dark:text-indigo-400" />
-          All concepts
-          <span className="text-xs font-medium text-muted-foreground">({filtered.length})</span>
-        </h2>
-      </div>
-
-      <div className="rounded-lg border border-indigo-200/50 bg-gradient-to-r from-indigo-50/30 via-background to-violet-50/20 p-2 dark:border-indigo-900/40 dark:from-indigo-950/15 dark:to-violet-950/10">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cn('mr-1 text-[11px] font-bold uppercase tracking-wider', toneText.indigo)}>Category</span>
-          <FilterButton active={categoryFilter === 'all'} tone="indigo" onClick={() => setCategoryFilter('all')}>All</FilterButton>
-          {ENTITY_CATEGORIES.map(({ id, label }) => (
-            <FilterButton key={id} active={categoryFilter === id} tone={CATEGORY_TONE[id]} onClick={() => setCategoryFilter(id)}>
-              {label}
-            </FilterButton>
-          ))}
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState query={query || 'selected filters'} />
-      ) : (
-        <EntityDictionaryTable entities={filtered} onRowClick={setDetailId} />
-      )}
-
+    <section aria-label="Domain glossary dictionary">
+      <EntityDictionaryTable entities={entities} onRowClick={setDetailId} />
       <EntityDetailDialog
         entity={detailEntity ?? null}
         open={detailId !== null}
@@ -839,179 +588,12 @@ function DictionaryView({ query }: { query: string }) {
   )
 }
 
-function ruleEntities(rule: PropagationRule) {
-  const from = entityById(rule.fromEntity)
-  const to = entityById(rule.toEntity)
-  const source = rule.id === 'prop-up-completed' || rule.id === 'prop-cancel' ? `All ${from?.name ?? rule.fromEntity}s` : from?.name ?? rule.fromEntity
-  const trigger = rule.id === 'prop-up-completed' ? 'Final state' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'PENDING'
-  const affected = rule.id.startsWith('prop-up') ? 'Stop, Route, Schedule' : rule.id === 'prop-down-delivered' || rule.id === 'prop-down-failed' ? 'Shipment, ShipmentItem' : to?.name ?? rule.toEntity
-  const result = rule.id === 'prop-up-completed' ? 'COMPLETED' : rule.id === 'prop-up-progress' ? 'IN_PROGRESS' : rule.id === 'prop-down-delivered' ? 'DELIVERED' : rule.id === 'prop-down-failed' ? 'FAILED' : rule.id === 'prop-cancel' ? 'CANCELLED' : 'DELIVERED blocked'
-  return { source, trigger, affected, result }
-}
-
-function RuleFlow({ rule }: { rule: PropagationRule }) {
-  const ids = rule.direction === 'up'
-    ? CHAIN.slice(CHAIN.findIndex((entity) => entity.id === rule.toEntity), CHAIN.findIndex((entity) => entity.id === rule.fromEntity) + 1).reverse()
-    : rule.direction === 'down'
-      ? CHAIN.slice(CHAIN.findIndex((entity) => entity.id === rule.fromEntity), CHAIN.findIndex((entity) => entity.id === rule.toEntity) + 1)
-      : [entityById(rule.fromEntity), entityById(rule.toEntity)].filter(Boolean) as DomainEntity[]
-  const meta = directionMeta(rule.direction)
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
-      {ids.map((entity, index) => {
-        const tone = entityTone(entity)
-        return (
-          <Fragment key={entity.id}>
-            {index > 0 && <meta.icon className={cn('size-4', toneIcon[tone])} />}
-            <span className={cn('rounded-lg border px-3 py-2 text-xs shadow-sm', toneCard[tone])}>
-              <strong className={toneText[tone]}>{entity.name}</strong>
-              <span className="ml-1 text-muted-foreground">{ruleEntities(rule).result}</span>
-            </span>
-          </Fragment>
-        )
-      })}
-    </div>
-  )
-}
-
-function RuleDetail({ rule }: { rule: PropagationRule }) {
-  const detailBg =
-    rule.direction === 'up'
-      ? 'border-t border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20'
-      : rule.direction === 'down'
-        ? 'border-t border-rose-200/60 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20'
-        : 'border-t border-amber-200/60 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20'
-  return (
-    <div className={cn('p-4 sm:p-5', detailBg)}>
-      <h3 className="text-sm font-bold">{rule.title.replace(/\s*\([^)]*\)$/, '')}</h3>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground/85">{rule.description}</p>
-      <p className="mt-2 text-xs text-muted-foreground">This operation occurs automatically without requiring user action.</p>
-      <RuleFlow rule={rule} />
-    </div>
-  )
-}
-
-function StateRulesView({ query }: { query: string }) {
-  const [direction, setDirection] = useState<DirectionFilter>('all')
-  const [openId, setOpenId] = useState<string | null>(propagationRules[1]?.id ?? null)
-  const filtered = propagationRules.filter((rule) => {
-    const normalizedDirection = rule.direction === 'up' ? 'up' : rule.direction === 'down' ? 'down' : 'horizontal'
-    return (direction === 'all' || direction === normalizedDirection) && ruleMatches(rule, query)
-  })
-
-  return (
-    <section aria-labelledby="rules-title" className="space-y-3">
-      <h2 id="rules-title" className="flex items-center gap-1.5 text-sm font-bold">
-        <ArrowLeftRight className="size-4 text-amber-600 dark:text-amber-400" />
-        Status propagation
-      </h2>
-      <div className="flex flex-wrap gap-1.5 rounded-lg border border-amber-200/50 bg-gradient-to-r from-amber-50/40 via-background to-emerald-50/30 p-2 dark:border-amber-900/40 dark:from-amber-950/15 dark:to-emerald-950/10">
-        <FilterButton active={direction === 'all'} tone="amber" onClick={() => setDirection('all')}>All</FilterButton>
-        <FilterButton active={direction === 'up'} tone="green" onClick={() => setDirection('up')}>↑ Upward</FilterButton>
-        <FilterButton active={direction === 'down'} tone="red" onClick={() => setDirection('down')}>↓ Downward</FilterButton>
-        <FilterButton active={direction === 'horizontal'} tone="purple" onClick={() => setDirection('horizontal')}>↔ Horizontal</FilterButton>
-      </div>
-      {filtered.length === 0 ? <EmptyState query={query || 'selected direction'} /> : (
-        <div className="overflow-hidden rounded-2xl border border-amber-200/50 bg-card shadow-md dark:border-amber-900/40">
-          <table className="hidden w-full table-fixed text-left text-sm md:table">
-            <thead className="border-b border-amber-200/50 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-emerald-50/50 text-[11px] uppercase tracking-wide dark:border-amber-900/40 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-emerald-950/20">
-              <tr>
-                <th className="w-[19%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Source entity</th>
-                <th className="w-[18%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Trigger state</th>
-                <th className="w-[13%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Direction</th>
-                <th className="w-[27%] px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Affected entity</th>
-                <th className="px-4 py-3 font-bold text-amber-900/80 dark:text-amber-200">Result</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {filtered.map((rule) => {
-                const cells = ruleEntities(rule)
-                const meta = directionMeta(rule.direction)
-                const Icon = meta.icon
-                const open = openId === rule.id
-                return (
-                  <Fragment key={rule.id}>
-                    <tr onClick={() => setOpenId(open ? null : rule.id)} className={cn('cursor-pointer transition-colors hover:bg-amber-50/30 dark:hover:bg-amber-950/15', open && 'bg-amber-50/40 dark:bg-amber-950/20')}>
-                      <td className="px-4 py-3 font-semibold">{cells.source}</td>
-                      <td className="px-4 py-3"><code className="rounded-md border border-blue-200/70 bg-blue-50/60 px-1.5 py-0.5 text-xs font-bold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">{cells.trigger}</code></td>
-                      <td className="px-4 py-3"><span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold', meta.className)}><Icon className="size-3" />{meta.label}</span></td>
-                      <td className="px-4 py-3 text-muted-foreground">{cells.affected}</td>
-                      <td className="px-4 py-3"><span className="flex items-center justify-between gap-2"><code className="rounded-md border border-green-200/70 bg-green-50/60 px-1.5 py-0.5 text-xs font-bold text-green-800 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">{cells.result}</code><ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} /></span></td>
-                    </tr>
-                    {open && <tr><td colSpan={5} className="p-0"><RuleDetail rule={rule} /></td></tr>}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-
-          <div className="divide-y md:hidden">
-            {filtered.map((rule) => {
-              const cells = ruleEntities(rule)
-              const meta = directionMeta(rule.direction)
-              const Icon = meta.icon
-              const open = openId === rule.id
-              return (
-                <div key={rule.id}>
-                  <button type="button" onClick={() => setOpenId(open ? null : rule.id)} className="w-full p-4 text-left">
-                    <div className="flex items-center justify-between gap-3"><strong className="text-sm">{cells.source} → {cells.trigger}</strong><ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} /></div>
-                    <span className={cn('mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium', meta.className)}><Icon className="size-3" />{meta.label} propagation</span>
-                    <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-muted-foreground">Affected</dt><dd className="mt-0.5 font-medium">{cells.affected}</dd></div><div><dt className="text-muted-foreground">Result</dt><dd className="mt-0.5 font-mono font-medium">{cells.result}</dd></div></dl>
-                  </button>
-                  {open && <RuleDetail rule={rule} />}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function DomainGlossaryContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const requestedView = searchParams.get('view')
-
-  useEffect(() => {
-    if (requestedView === 'hierarchy') {
-      router.replace('/product/domain-model')
-    }
-  }, [requestedView, router])
-
-  const initialView: GlossaryView = requestedView === 'rules' ? 'rules' : 'dictionary'
-  const [view, setView] = useState<GlossaryView>(initialView)
-  const [query, setQuery] = useState('')
-
-  useEffect(() => {
-    const next = searchParams.get('view')
-    if (next === 'hierarchy') return
-    setView(next === 'rules' ? 'rules' : 'dictionary')
-  }, [searchParams])
-
-  const changeView = useCallback((nextView: GlossaryView) => {
-    setView(nextView)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('view', nextView)
-    router.replace(`?${params.toString()}`, { scroll: false })
-  }, [router, searchParams])
-
-  return (
-    <ProductPage path="/product/domain-glossary">
-      <GlossaryChrome query={query} onQueryChange={setQuery} view={view} onViewChange={changeView} />
-      <main className="pt-3">
-        {view === 'dictionary' && <DictionaryView query={query} />}
-        {view === 'rules' && <StateRulesView query={query} />}
-      </main>
-    </ProductPage>
-  )
-}
-
 export default function DomainGlossaryPage() {
   return (
-    <Suspense fallback={<div className="min-h-[60vh] animate-pulse rounded-2xl bg-muted/30" />}>
-      <DomainGlossaryContent />
-    </Suspense>
+    <ProductPage path="/product/domain-glossary">
+      <main>
+        <DictionaryView />
+      </main>
+    </ProductPage>
   )
 }
