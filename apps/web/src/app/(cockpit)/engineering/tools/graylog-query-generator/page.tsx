@@ -5,12 +5,9 @@ import {
   AlertTriangle,
   BookOpen,
   ChevronDown,
-  Clock,
   Eraser,
-  EyeOff,
   History,
   Loader2,
-  Search,
   Sparkles,
   Terminal,
 } from 'lucide-react'
@@ -46,9 +43,14 @@ import {
   IDENTIFIER_FIELDS,
   LOG_LEVELS,
   LOG_SOURCES,
+  MORE_IDENTIFIER_FIELDS,
+  normalizeTimeRange,
+  PRIMARY_IDENTIFIER_FIELDS,
   PRODUCTION_DEFAULT_TIME_RANGE,
   SERVICES,
   TIME_RANGES,
+  timeRangeLabel,
+  toIntentText,
   type SelectOption,
 } from '@/data/engineering/tools/graylog-generator'
 import {
@@ -209,6 +211,7 @@ export default function GraylogQueryGeneratorPage() {
   const [fields, setFields] = useState<GraylogField[]>([])
   const [fieldsError, setFieldsError] = useState<string | null>(null)
   const [fieldDictOpen, setFieldDictOpen] = useState(false)
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
   const [fieldFilter, setFieldFilter] = useState('')
   const [predefinedQueries, setPredefinedQueries] = useState<GraylogPredefinedQuery[]>([])
   const [predefinedTab, setPredefinedTab] = useState('top')
@@ -236,6 +239,38 @@ export default function GraylogQueryGeneratorPage() {
   )
   const showGuardrail = timeRange === '24h' && !hasIdentifier
 
+  const filterSummary = useMemo(() => {
+    const chips: string[] = [
+      country,
+      timeRangeLabel(timeRange),
+      service === 'any' ? 'All services' : service,
+    ]
+    if (application !== 'nesy-mobile') chips.push(application)
+    if (env !== 'production') chips.push(env)
+    if (logLevel !== 'any') chips.push(logLevel.toUpperCase())
+    if (device !== 'any') chips.push(`device ${device}`)
+    if (appVersion !== 'any') chips.push(`v${appVersion}`)
+    for (const f of IDENTIFIER_FIELDS) {
+      const v = identifiers[f.key]?.trim()
+      if (v) chips.push(`${f.label}: ${v}`)
+    }
+    if (sources.length && sources.length < LOG_SOURCES.length) {
+      chips.push(`${sources.length} sources`)
+    }
+    return chips
+  }, [
+    country,
+    timeRange,
+    service,
+    application,
+    env,
+    logLevel,
+    device,
+    appVersion,
+    identifiers,
+    sources,
+  ])
+
   const filteredFields = useMemo(() => {
     const q = fieldFilter.trim().toLowerCase()
     if (!q) return fields
@@ -256,10 +291,10 @@ export default function GraylogQueryGeneratorPage() {
   }, [predefinedQueries])
 
   const applyPredefined = (q: GraylogPredefinedQuery) => {
-    setRequest(q.text)
+    setRequest(toIntentText(q.text))
     setApplication(q.application || 'nesy-mobile')
     setService(q.service || 'any')
-    if (q.timeRange) setTimeRange(q.timeRange)
+    setTimeRange(normalizeTimeRange(q.timeRange))
     if (q.device) setDevice(q.device)
     if (q.appVersion) setAppVersion(q.appVersion)
     setIdentifiers({ ...EMPTY_IDENTIFIERS, ...(q.identifiers ?? {}) })
@@ -388,7 +423,7 @@ export default function GraylogQueryGeneratorPage() {
       const data = await executeGraylogQuery({
         query: result.query,
         country,
-        timeRange: result.timeRange || timeRange,
+        timeRange,
       })
       setExecuteResult(data)
     } catch (e) {
@@ -401,13 +436,13 @@ export default function GraylogQueryGeneratorPage() {
   }
 
   const reuseQuery = async (q: GraylogQueryRun) => {
-    setRequest(q.naturalLanguage)
+    setRequest(toIntentText(q.naturalLanguage))
     setEnv(q.environment || 'production')
     setCountry(q.country || 'HR')
     setApplication(q.application || 'nesy-mobile')
     setService(q.service || 'any')
     setLogLevel(q.logLevel || 'any')
-    setTimeRange(q.timeRange || PRODUCTION_DEFAULT_TIME_RANGE)
+    setTimeRange(normalizeTimeRange(q.timeRange))
     setDevice(q.device || 'any')
     setAppVersion(q.appVersion || 'any')
     setIdentifiers({ ...EMPTY_IDENTIFIERS, ...(q.identifiers ?? {}) })
@@ -457,19 +492,14 @@ export default function GraylogQueryGeneratorPage() {
         icon={Terminal}
         tone="orange"
         title="Graylog Query Generator"
-        lead="Describe the log signal you need in natural language; convert it into a safe Graylog query via Claude CLI (haiku) with time, service, and field constraints."
-        badges={[
-          { label: 'Search only', icon: Search, tone: 'green' },
-          { label: 'Time range required', icon: Clock, tone: 'blue' },
-          { label: 'Sensitive fields masked', icon: EyeOff, tone: 'gray' },
-        ]}
+        lead="Describe the signal you need. Filters below own country, time range, and identifiers — Generate/Run always use those."
       />
 
       <div className="space-y-6">
         <ToolCard
           step="1"
           title="Define your log needs"
-          description="Pick a predefined ops query or write your own prompt, then narrow with context, identifiers, and log sources."
+          description="Write what you need. Country, time range, and identifiers come from the filters — they are not read from the prompt text."
           className="w-full"
         >
           {predefinedQueries.length > 0 && (
@@ -501,9 +531,20 @@ export default function GraylogQueryGeneratorPage() {
             </div>
           )}
 
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <ContextSelect label="Country" value={country} onChange={setCountry} options={COUNTRIES} />
+            <ContextSelect
+              label="Time range"
+              value={timeRange}
+              onChange={setTimeRange}
+              options={TIME_RANGES}
+            />
+            <ContextSelect label="Service" value={service} onChange={setService} options={SERVICES} />
+          </div>
+
           <div className="space-y-2">
             <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Natural language
+              What are you looking for?
             </Label>
             <Textarea
               value={request}
@@ -511,50 +552,42 @@ export default function GraylogQueryGeneratorPage() {
                 setRequest(e.target.value)
                 setActivePredefinedId(null)
               }}
-              placeholder="Show the delivery, fiscal, and retry logs generated in the last 2 hours for shipment 45-40-20251224-1."
-              className="min-h-[120px] text-sm"
+              placeholder="DeliverParcels for this barcode — errors and retries"
+              className="min-h-[96px] text-sm"
             />
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Intent only. Time range, country, and IDs are taken from the filters below — changing a
+              filter updates the summary immediately.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-muted/30 px-3 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Applied
+            </span>
+            {filterSummary.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-md border border-orange-200/80 bg-orange-50/80 px-2 py-0.5 text-[11px] font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-200"
+              >
+                {chip}
+              </span>
+            ))}
           </div>
 
           {generateError && <AmberNotice>{generateError}</AmberNotice>}
 
-          <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Query context
-            </h3>
-            <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-              <ContextSelect label="Environment" value={env} onChange={handleEnvChange} options={ENVIRONMENTS} />
-              <ContextSelect label="Country" value={country} onChange={setCountry} options={COUNTRIES} />
-              <ContextSelect
-                label="Application"
-                value={application}
-                onChange={setApplication}
-                options={APPLICATIONS}
-              />
-              <ContextSelect label="Service" value={service} onChange={setService} options={SERVICES} />
-              <ContextSelect label="Log level" value={logLevel} onChange={setLogLevel} options={LOG_LEVELS} />
-              <ContextSelect label="Time range" value={timeRange} onChange={setTimeRange} options={TIME_RANGES} />
-              <ContextSelect label="Device" value={device} onChange={setDevice} options={DEVICES} />
-              <ContextSelect
-                label="App version"
-                value={appVersion}
-                onChange={setAppVersion}
-                options={APP_VERSIONS}
-              />
-            </div>
-          </div>
-
           <div className="rounded-lg border bg-muted/20 p-3">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Known Identifiers
+              Identifiers
               <span className="ms-1.5 font-medium normal-case tracking-normal">(optional)</span>
             </h3>
-            <div className="mt-2 grid grid-cols-2 gap-2.5">
-              {IDENTIFIER_FIELDS.map((f) => (
+            <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {PRIMARY_IDENTIFIER_FIELDS.map((f) => (
                 <Field key={f.key} label={f.label}>
                   <Input
                     variant="sm"
-                    value={identifiers[f.key]}
+                    value={identifiers[f.key] ?? ''}
                     placeholder={f.placeholder}
                     onChange={(e) =>
                       setIdentifiers((prev) => ({ ...prev, [f.key]: e.target.value }))
@@ -565,97 +598,163 @@ export default function GraylogQueryGeneratorPage() {
             </div>
           </div>
 
-          <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Log sources
-            </h3>
-            <ToggleGroup
-              type="multiple"
-              variant="outline"
-              size="sm"
-              value={sources}
-              onValueChange={(v: string[]) => setSources(v)}
-              className="mt-2 flex-wrap justify-start gap-1.5 data-[variant=outline]:gap-1.5 data-[variant=outline]:shadow-none"
-            >
-              {LOG_SOURCES.map((s) => (
-                <ToggleGroupItem
-                  key={s.id}
-                  value={s.id}
-                  className="rounded-full border data-[variant=outline]:rounded-full data-[variant=outline]:border-s data-[state=on]:border-orange-300 data-[state=on]:bg-orange-50/80 data-[state=on]:text-orange-700 dark:data-[state=on]:border-orange-800 dark:data-[state=on]:bg-orange-950/40 dark:data-[state=on]:text-orange-300"
-                >
-                  {s.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-
-          <Collapsible open={fieldDictOpen} onOpenChange={setFieldDictOpen}>
+          <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
             <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50">
-              <span className="inline-flex items-center gap-1.5">
-                <BookOpen className="size-3.5 text-muted-foreground" />
-                Field dictionary
-                {fields.length ? ` · ${fields.length} fields` : ''}
-              </span>
+              <span>More filters</span>
               <ChevronDown
                 className={cn(
                   'size-3.5 text-muted-foreground transition-transform',
-                  fieldDictOpen && 'rotate-180',
+                  moreFiltersOpen && 'rotate-180',
                 )}
               />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-2 space-y-2">
-                {fieldsError && <AmberNotice>{fieldsError}</AmberNotice>}
-                <Input
-                  variant="sm"
-                  value={fieldFilter}
-                  onChange={(e) => setFieldFilter(e.target.value)}
-                  placeholder="Search field, meaning, or source…"
-                  className="max-w-xs"
-                />
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full min-w-[560px] border-collapse text-xs">
-                    <thead className="border-b bg-muted/40">
-                      <tr>
-                        {['Field', 'Meaning', 'Example', 'Source'].map((h) => (
-                          <th key={h} className={th}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredFields.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="px-2.5 py-6 text-center text-muted-foreground">
-                            No fields match the filter.
-                          </td>
-                        </tr>
-                      )}
-                      {filteredFields.map((f) => (
-                        <tr
-                          key={f.field}
-                          onClick={() => appendField(f.field)}
-                          title={`${f.field}: append to your request`}
-                          className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
-                        >
-                          <td className={cn(td, 'whitespace-nowrap')}>
-                            <code className="font-bold text-orange-600 dark:text-orange-400">
-                              {f.field}
-                            </code>
-                          </td>
-                          <td className={cn(td, 'max-w-[280px]')}>{f.meaning}</td>
-                          <td className={cn(td, 'whitespace-nowrap')}>
-                            <code className="text-[11px] text-foreground/70">{f.example}</code>
-                          </td>
-                          <td className={cn(td, 'whitespace-nowrap text-muted-foreground')}>
-                            {f.source}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="mt-3 space-y-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
+                  <ContextSelect
+                    label="Environment"
+                    value={env}
+                    onChange={handleEnvChange}
+                    options={ENVIRONMENTS}
+                  />
+                  <ContextSelect
+                    label="Application"
+                    value={application}
+                    onChange={setApplication}
+                    options={APPLICATIONS}
+                  />
+                  <ContextSelect
+                    label="Log level"
+                    value={logLevel}
+                    onChange={setLogLevel}
+                    options={LOG_LEVELS}
+                  />
+                  <ContextSelect label="Device" value={device} onChange={setDevice} options={DEVICES} />
+                  <ContextSelect
+                    label="App version"
+                    value={appVersion}
+                    onChange={setAppVersion}
+                    options={APP_VERSIONS}
+                  />
                 </div>
+
+                <div className="rounded-lg border bg-card/40 p-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                    More identifiers
+                  </h3>
+                  <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {MORE_IDENTIFIER_FIELDS.map((f) => (
+                      <Field key={f.key} label={f.label}>
+                        <Input
+                          variant="sm"
+                          value={identifiers[f.key] ?? ''}
+                          placeholder={f.placeholder}
+                          onChange={(e) =>
+                            setIdentifiers((prev) => ({ ...prev, [f.key]: e.target.value }))
+                          }
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                    Log sources
+                  </h3>
+                  <ToggleGroup
+                    type="multiple"
+                    variant="outline"
+                    size="sm"
+                    value={sources}
+                    onValueChange={(v: string[]) => setSources(v)}
+                    className="mt-2 flex-wrap justify-start gap-1.5 data-[variant=outline]:gap-1.5 data-[variant=outline]:shadow-none"
+                  >
+                    {LOG_SOURCES.map((s) => (
+                      <ToggleGroupItem
+                        key={s.id}
+                        value={s.id}
+                        className="rounded-full border data-[variant=outline]:rounded-full data-[variant=outline]:border-s data-[state=on]:border-orange-300 data-[state=on]:bg-orange-50/80 data-[state=on]:text-orange-700 dark:data-[state=on]:border-orange-800 dark:data-[state=on]:bg-orange-950/40 dark:data-[state=on]:text-orange-300"
+                      >
+                        {s.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+
+                <Collapsible open={fieldDictOpen} onOpenChange={setFieldDictOpen}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50">
+                    <span className="inline-flex items-center gap-1.5">
+                      <BookOpen className="size-3.5 text-muted-foreground" />
+                      Field dictionary
+                      {fields.length ? ` · ${fields.length} fields` : ''}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'size-3.5 text-muted-foreground transition-transform',
+                        fieldDictOpen && 'rotate-180',
+                      )}
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="mt-2 space-y-2">
+                      {fieldsError && <AmberNotice>{fieldsError}</AmberNotice>}
+                      <Input
+                        variant="sm"
+                        value={fieldFilter}
+                        onChange={(e) => setFieldFilter(e.target.value)}
+                        placeholder="Search field, meaning, or source…"
+                        className="max-w-xs"
+                      />
+                      <div className="overflow-x-auto rounded-lg border">
+                        <table className="w-full min-w-[560px] border-collapse text-xs">
+                          <thead className="border-b bg-muted/40">
+                            <tr>
+                              {['Field', 'Meaning', 'Example', 'Source'].map((h) => (
+                                <th key={h} className={th}>
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredFields.length === 0 && (
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  className="px-2.5 py-6 text-center text-muted-foreground"
+                                >
+                                  No fields match the filter.
+                                </td>
+                              </tr>
+                            )}
+                            {filteredFields.map((f) => (
+                              <tr
+                                key={f.field}
+                                onClick={() => appendField(f.field)}
+                                title={`${f.field}: append to your request`}
+                                className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
+                              >
+                                <td className={cn(td, 'whitespace-nowrap')}>
+                                  <code className="font-bold text-orange-600 dark:text-orange-400">
+                                    {f.field}
+                                  </code>
+                                </td>
+                                <td className={cn(td, 'max-w-[280px]')}>{f.meaning}</td>
+                                <td className={cn(td, 'whitespace-nowrap')}>
+                                  <code className="text-[11px] text-foreground/70">{f.example}</code>
+                                </td>
+                                <td className={cn(td, 'whitespace-nowrap text-muted-foreground')}>
+                                  {f.source}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </CollapsibleContent>
           </Collapsible>

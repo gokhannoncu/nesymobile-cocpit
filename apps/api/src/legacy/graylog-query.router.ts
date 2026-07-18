@@ -79,7 +79,6 @@ function buildPrompt(input: {
     `- Time range hint (Graylog UI / API timerange, not Lucene): ${input.timeRange}`,
     `- Device (search in message if needed; no deviceId field): ${input.device}`,
     `- App version → ClientVersion when filtering: ${input.appVersion}`,
-    `- Log sources (context): ${input.sources.join(', ') || 'any'}`,
     '',
     'Known identifiers (map UI keys to real fields):',
     idLines || '- (none)',

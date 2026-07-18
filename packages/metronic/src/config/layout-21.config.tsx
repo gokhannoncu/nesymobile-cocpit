@@ -171,6 +171,11 @@ export const WORKSPACES: Workspace[] = [
                 path: '/product/domain-glossary',
                 icon: BookOpen,
               },
+              {
+                title: 'Domain Model',
+                path: '/product/domain-model',
+                icon: Network,
+              },
             ],
           },
           {
@@ -413,7 +418,7 @@ export const WORKSPACES: Workspace[] = [
             icon: Plug,
           },
           {
-            title: 'Management',
+            title: 'Shipment',
             icon: Truck,
             children: [
               {
@@ -422,18 +427,36 @@ export const WORKSPACES: Workspace[] = [
                 icon: Truck,
                 requiresNesyAuth: true,
               },
+            ],
+          },
+          {
+            title: 'Pickup',
+            icon: Calendar,
+            children: [
               {
                 title: 'Pickup Operations',
                 path: DATA_CENTER_PICKUP_PATH,
                 icon: Calendar,
                 requiresNesyAuth: true,
               },
+            ],
+          },
+          {
+            title: 'Happy Path',
+            icon: PackagePlus,
+            children: [
               {
                 title: 'Happy Path Operations',
                 path: DATA_CENTER_HAPPY_PATH_PATH,
                 icon: PackagePlus,
                 requiresNesyAuth: true,
               },
+            ],
+          },
+          {
+            title: 'User Management',
+            icon: Users,
+            children: [
               {
                 title: 'User Operations',
                 path: DATA_CENTER_USERS_PATH,

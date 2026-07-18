@@ -644,17 +644,9 @@ export function QueryWorkspace({
     return <EmptyState />
   }
 
-  const sourceCount = run.sources?.length ?? 0
-  const contextBar = [
-    run.environment,
-    run.country,
-    run.timeRange,
-    sourceCount ? `${sourceCount} sources` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const contextBar = [run.environment, run.country, run.timeRange].filter(Boolean).join(' · ')
 
-  const runDisabled = Boolean(executing) || !clusterConfigured || run.timeRange === 'custom'
+  const runDisabled = Boolean(executing) || !clusterConfigured
 
   return (
     <div className="space-y-4">
@@ -682,9 +674,7 @@ export function QueryWorkspace({
                 title={
                   !clusterConfigured
                     ? `Graylog ${country} token not configured`
-                    : run.timeRange === 'custom'
-                      ? 'Custom time range is not supported for Run'
-                      : `Run against ${country}`
+                    : `Run against ${country}`
                 }
               >
                 {executing ? (

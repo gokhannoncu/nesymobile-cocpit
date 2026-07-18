@@ -31,7 +31,7 @@ export const APPLICATIONS: SelectOption[] = [
 ]
 
 export const SERVICES: SelectOption[] = [
-  { value: 'any', label: 'All' },
+  { value: 'any', label: 'All services' },
   { value: 'RequestSenderService', label: 'RequestSenderService' },
   { value: 'DeliveryService', label: 'DeliveryService' },
   { value: 'FiscalService', label: 'FiscalService' },
@@ -52,8 +52,8 @@ export const TIME_RANGES: SelectOption[] = [
   { value: '15m', label: 'Last 15 minutes' },
   { value: '1h', label: 'Last 1 hour' },
   { value: '6h', label: 'Last 6 hours' },
+  { value: '12h', label: 'Last 12 hours' },
   { value: '24h', label: 'Last 24 hours' },
-  { value: 'custom', label: 'Custom' },
 ]
 
 /** Default time range in Production — limits broad search costs. */
@@ -81,15 +81,26 @@ export type IdentifierField = {
   placeholder: string
 }
 
-export const IDENTIFIER_FIELDS: IdentifierField[] = [
+/** Always visible — primary investigation keys. */
+export const PRIMARY_IDENTIFIER_FIELDS: IdentifierField[] = [
+  { key: 'barcode', label: 'Barcode', placeholder: 'N34807…GQ32511' },
   { key: 'shipmentId', label: 'Shipment ID', placeholder: '45-40-20251224-1' },
-  { key: 'courierId', label: 'Courier ID', placeholder: '3021' },
-  { key: 'scheduleId', label: 'Schedule ID', placeholder: 'SCH-2025-8841' },
-  { key: 'requestId', label: 'Request ID', placeholder: 'req_9f3c1a72' },
+  { key: 'scheduleId', label: 'Schedule ID', placeholder: '52-50-20260718-1' },
+  { key: 'courierId', label: 'Courier ID / username', placeholder: '3021 or J.BRALA' },
+]
+
+/** Hidden under More filters. */
+export const MORE_IDENTIFIER_FIELDS: IdentifierField[] = [
+  { key: 'requestId', label: 'Request / message ID', placeholder: 'req_9f3c1a72' },
   { key: 'deviceId', label: 'Device ID', placeholder: 'NX-4412' },
   { key: 'fiscalId', label: 'Fiscal ID', placeholder: 'FIS-HR-338291' },
   { key: 'errorCode', label: 'Error code', placeholder: 'FISCAL_TIMEOUT' },
   { key: 'customerTicketId', label: 'Customer ticket ID', placeholder: 'CT-10592' },
+]
+
+export const IDENTIFIER_FIELDS: IdentifierField[] = [
+  ...PRIMARY_IDENTIFIER_FIELDS,
+  ...MORE_IDENTIFIER_FIELDS,
 ]
 
 // ── Log sources ───────────────────────────────────────────────
@@ -97,24 +108,24 @@ export const IDENTIFIER_FIELDS: IdentifierField[] = [
 export type LogSource = { id: string; label: string }
 
 export const LOG_SOURCES: LogSource[] = [
-  { id: 'mobile', label: 'Mobile application' },
-  { id: 'backend', label: 'Backend API' },
-  { id: 'fiscal', label: 'Fiscal service' },
-  { id: 'd4me', label: 'D4Me / Locker' },
+  { id: 'mobile', label: 'Mobile' },
+  { id: 'backend', label: 'Backend' },
+  { id: 'fiscal', label: 'Fiscal' },
+  { id: 'd4me', label: 'D4Me' },
   { id: 'notification', label: 'Notification' },
-  { id: 'location', label: 'Location service' },
+  { id: 'location', label: 'Location' },
   { id: 'offline-queue', label: 'Offline queue' },
-  { id: 'auth', label: 'Authentication' },
+  { id: 'auth', label: 'Auth' },
 ]
 
 // ── Guardrail messages ──────────────────────────────────────────
 
 export const GUARDRAIL_BROAD_SCOPE =
-  'This search can generate a very broad log volume. Narrow the scope by adding a service, country, or identifier.'
+  'This search can generate a very broad log volume. Add a barcode, shipment, schedule, or courier id.'
 
 export const GUARDRAIL_SOFT_HINTS = [
-  'The query can work, but it looks very broad.',
-  'For faster results, add one of the shipmentId, requestId, or service fields.',
+  'Time range and identifiers come from the filters below — not from the prompt text.',
+  'For faster results, keep the time range short and add one strong identifier.',
 ]
 
 // ── Recent history helpers ────────────────────────────────────
@@ -144,4 +155,28 @@ export function formatLastUsed(iso: string): string {
   } catch {
     return iso
   }
+}
+
+export function timeRangeLabel(value: string): string {
+  return TIME_RANGES.find((t) => t.value === value)?.label ?? value
+}
+
+/** Strip time/country phrases so the prompt stays intent-only; filters own those. */
+export function toIntentText(text: string): string {
+  return text
+    .replace(/\bin the last \d+\s*(minutes?|hours?|days?)\b/gi, '')
+    .replace(/\bfor the last \d+\s*(minutes?|hours?|days?)\b/gi, '')
+    .replace(/\blast \d+\s*(minutes?|hours?|days?)\b/gi, '')
+    .replace(/\bon the [A-Z]{2} Graylog cluster\b/gi, '')
+    .replace(/\bin country [A-Z]{2}\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([.,;])/g, '$1')
+    .replace(/^[,;\s]+|[,;\s]+$/g, '')
+    .trim()
+}
+
+export function normalizeTimeRange(value: string | null | undefined): string {
+  if (!value || value === 'custom') return PRODUCTION_DEFAULT_TIME_RANGE
+  if (TIME_RANGES.some((t) => t.value === value)) return value
+  return PRODUCTION_DEFAULT_TIME_RANGE
 }

@@ -35,16 +35,19 @@ import {
   SegmentTabs,
   TagBadge,
 } from '@/components/product'
-import { COUNTRIES, MODULES, isSupported } from '@/data/product/nesy'
+import {
+  COUNTRIES,
+  getFeatureDomain,
+  isSupported,
+  listFeatureRecordsByDomain,
+} from '@/data/product/nesy'
 import { toFeatureSlug } from '@/data/product/feature-slug'
 import { toneCard, toneDot, toneIcon, toneIconBox, toneText } from '@/components/product/tones'
 
 const moduleIcons = [PackageCheck, PackageSearch, Route, Truck, Globe, Boxes] as const
 const moduleTones = ['orange', 'amber', 'teal', 'blue', 'purple', 'indigo'] as const
 
-const featureRecords = MODULES.flatMap((module, moduleIndex) =>
-  module.features.map((feature) => ({ feature, module, moduleIndex })),
-)
+const featureRecords = listFeatureRecordsByDomain()
 
 const scoreLabels: Record<string, string> = {
   bugProneness: 'Bug Risk',
@@ -92,6 +95,7 @@ export default function FeatureDetailPage() {
 
   const { feature, module, moduleIndex } = record
   const detail = feature.detail
+  const domain = getFeatureDomain(feature.domainId)
   const tone = moduleTones[moduleIndex % moduleTones.length]!
   const ModuleIcon = moduleIcons[moduleIndex % moduleIcons.length]!
   const activeCountries = COUNTRIES.filter((country) => country.id !== 'core')
@@ -100,6 +104,7 @@ export default function FeatureDetailPage() {
   ).length
   const previousFeature = featureRecords[recordIndex - 1]?.feature
   const nextFeature = featureRecords[recordIndex + 1]?.feature
+  const isCore = isSupported(feature.values.core)
 
   const countryRows = COUNTRIES.map((country) => {
     const value = feature.values[country.id]
@@ -126,13 +131,28 @@ export default function FeatureDetailPage() {
 
   return (
     <ProductPage path="/product/feature-library">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/product/feature-library">
-            <ArrowLeft className="size-4" />
-            Feature Library
-          </Link>
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/product/feature-library">
+              <ArrowLeft className="size-4" />
+              Feature Library
+            </Link>
+          </Button>
+          {domain && (
+            <>
+              <span className="text-muted-foreground">/</span>
+              <Link
+                href={`/product/feature-library#domain-${domain.id}`}
+                className="font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {domain.title}
+              </Link>
+              <span className="text-muted-foreground">/</span>
+              <span className="font-semibold text-foreground">{feature.title}</span>
+            </>
+          )}
+        </div>
         <span className="hidden text-xs text-muted-foreground sm:block">
           {recordIndex + 1} / {featureRecords.length}
         </span>
@@ -140,14 +160,14 @@ export default function FeatureDetailPage() {
 
       <HeroCallout
         icon={ModuleIcon}
-        eyebrow={`${module.title} · Feature Detail`}
+        eyebrow={domain ? `${domain.title} · Feature Detail` : `${module.title} · Feature Detail`}
         tone={tone}
         title={feature.title}
         lead={feature.desc}
         chips={[
-          feature.id,
-          isSupported(feature.values.core) ? 'CORE standard available' : 'CORE standard missing',
-          `Active in ${supportedCountryCount}/${activeCountries.length} countries`,
+          isCore ? 'CORE' : 'No CORE',
+          module.title,
+          `${supportedCountryCount}/${activeCountries.length} countries`,
           detail ? 'Detail document ready' : 'Detail pending',
         ]}
       >

@@ -14,7 +14,7 @@ import type { DiagramElement, DiagramNodeVariant } from '@/data/product/nesy-typ
 import type { Tone } from './tones'
 
 /* ─── Node variant styles ─── */
-const nodeStyles: Record<
+export const flowNodeStyles: Record<
   DiagramNodeVariant,
   { bg: string; border: string; text: string; icon: typeof Cog; iconBg: string }
 > = {
@@ -115,7 +115,7 @@ function FlowNode({
   variant: DiagramNodeVariant
   desc?: string
 }) {
-  const style = nodeStyles[variant]
+  const style = flowNodeStyles[variant]
   const Icon = style.icon
 
   return (

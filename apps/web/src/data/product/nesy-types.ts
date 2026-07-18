@@ -24,7 +24,7 @@ export type DiagramNodeVariant =
   | 'external' // External system — purple, link icon
 
 export type DiagramElement =
-  | { type: 'node'; label: string; variant: DiagramNodeVariant; desc?: string }
+  | { type: 'node'; id?: string; label: string; variant: DiagramNodeVariant; desc?: string }
   | { type: 'arrow'; label?: string }
   | {
       type: 'branch'
@@ -62,10 +62,25 @@ export interface FeatureDetail {
   apis?: { method: string; endpoint: string; desc: string }[]
 }
 
+export type FeatureDomainId =
+  | 'payments-fiscal'
+  | 'delivery-outcomes'
+  | 'pickup-operations'
+  | 'tour-stops'
+  | 'tracking-self-service'
+
+export interface FeatureDomain {
+  id: FeatureDomainId
+  title: string
+  desc: string
+}
+
 export interface Feature {
   id: string
   title: string
   desc: string
+  /** Capability domain — Feature Library primary grouping axis. */
+  domainId: FeatureDomainId
   /** Country-specific behavior — '—' means not yet available, 'N/A' means out of scope, anything else is a description. */
   values: Record<CountryId, string>
   /** Detailed information — displayed in popup */

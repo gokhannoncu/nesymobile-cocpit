@@ -22,7 +22,7 @@ const VALID_SERVICES = new Set([
   'NotificationService',
 ])
 
-const VALID_TIME_RANGES = new Set(['15m', '1h', '6h', '24h'])
+const VALID_TIME_RANGES = new Set(['15m', '1h', '6h', '12h', '24h'])
 
 const VALID_DEVICES = new Set(['any', 'NX-4412', 'NX-2087', 'NX-3155'])
 
@@ -40,6 +40,7 @@ const VALID_SOURCES = new Set([
 ])
 
 const VALID_IDENTIFIER_KEYS = new Set([
+  'barcode',
   'shipmentId',
   'courierId',
   'scheduleId',

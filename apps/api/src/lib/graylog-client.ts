@@ -12,6 +12,7 @@ const TIME_RANGE_SECONDS: Record<string, number> = {
   '15m': 15 * 60,
   '1h': 60 * 60,
   '6h': 6 * 60 * 60,
+  '12h': 12 * 60 * 60,
   '24h': 24 * 60 * 60,
 }
 
@@ -54,14 +55,14 @@ export function mapTimeRangeToSeconds(timeRange: string): number {
   const key = timeRange.trim()
   if (key === 'custom') {
     throw new GraylogClientError(
-      'Custom time range is not supported for Run yet. Choose 15m, 1h, 6h, or 24h.',
+      'Custom time range is not supported. Choose 15m, 1h, 6h, 12h, or 24h.',
       400,
     )
   }
   const seconds = TIME_RANGE_SECONDS[key]
   if (!seconds) {
     throw new GraylogClientError(
-      `Unsupported timeRange "${timeRange}". Use 15m, 1h, 6h, or 24h.`,
+      `Unsupported timeRange "${timeRange}". Use 15m, 1h, 6h, 12h, or 24h.`,
       400,
     )
   }

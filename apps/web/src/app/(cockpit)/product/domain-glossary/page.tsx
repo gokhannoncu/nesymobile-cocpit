@@ -89,7 +89,7 @@ import {
   type PropagationRule,
 } from '@/data/product/domain-glossary'
 
-type GlossaryView = 'dictionary' | 'hierarchy' | 'rules'
+type GlossaryView = 'dictionary' | 'rules'
 type CategoryFilter = 'all' | EntityCategory
 type DirectionFilter = 'all' | 'up' | 'down' | 'horizontal'
 
@@ -129,7 +129,6 @@ const ICONS: Record<string, LucideIcon> = {
 
 const VIEWS: { id: GlossaryView; label: string; icon: LucideIcon; tone: Tone }[] = [
   { id: 'dictionary', label: 'Dictionary', icon: BookOpen, tone: 'indigo' },
-  { id: 'hierarchy', label: 'Hierarchy', icon: GitBranch, tone: 'teal' },
   { id: 'rules', label: 'State Rules', icon: ArrowLeftRight, tone: 'amber' },
 ]
 
@@ -191,72 +190,9 @@ function categoryMeta(category: EntityCategory) {
   return { label, tone }
 }
 
-const STATUS_CHIP: Record<string, string> = {
-  gray: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  blue: 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
-  green: 'border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-300',
-  amber: 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
-  orange: 'border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-300',
-  red: 'border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300',
-  indigo: 'border-indigo-200 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300',
-}
-
-const TONE_RING: Record<Tone, string> = {
-  purple: 'ring-purple-400/70',
-  blue: 'ring-blue-400/70',
-  green: 'ring-green-400/70',
-  orange: 'ring-orange-400/70',
-  red: 'ring-red-400/70',
-  amber: 'ring-amber-400/70',
-  teal: 'ring-teal-400/70',
-  indigo: 'ring-indigo-400/70',
-  nesy: 'ring-nesy/70',
-  gray: 'ring-border',
-}
-
-const TECHNICAL_MAP: Record<string, { model: string; database: string; viewModel: string; api: string }> = {
-  schedule: { model: 'ScheduleEntity', database: 'schedule', viewModel: 'ScheduleViewModel', api: '/schedules' },
-  route: { model: 'RouteEntity', database: 'route', viewModel: 'RouteViewModel', api: '/routes' },
-  stop: { model: 'StopEntity', database: 'stop', viewModel: 'StopListViewModel', api: '/stops' },
-  task: { model: 'TaskEntity', database: 'task', viewModel: 'TaskListViewModel', api: '/tasks' },
-  shipment: { model: 'ShipmentEntity', database: 'shipment', viewModel: 'DeliveryViewModel', api: '/shipments' },
-  'shipment-item': { model: 'ShipmentItemEntity', database: 'shipment_item', viewModel: 'DeliveryViewModel', api: '/shipment-items' },
-  collection: { model: 'CollectionEntity', database: 'collection', viewModel: 'CollectionViewModel', api: '/collections' },
-  locker: { model: 'LockerEntity', database: 'locker', viewModel: 'LockerViewModel', api: '/lockers' },
-  // New entities — WebAPI microservice models
-  hub: { model: 'UnitModel', database: 'unit', viewModel: '—', api: '/geocode/units' },
-  branch: { model: 'UnitModel', database: 'unit', viewModel: '—', api: '/geocode/units' },
-  'transfer-center': { model: 'TransferCenterModel', database: 'transfer_center', viewModel: '—', api: '/transfer-center' },
-  linehaul: { model: 'LinehaulTour', database: 'linehaul', viewModel: '—', api: '/shipments/linehaul' },
-  trip: { model: 'TripModel', database: 'trip', viewModel: '—', api: '/transfer-center/trips' },
-  'event-tower': { model: 'EventModel', database: 'event', viewModel: '—', api: '/events' },
-  eurodis: { model: 'EurodisShipment', database: 'eurodis_shipment', viewModel: '—', api: '/eurodis' },
-  ebranch: { model: 'EBranchModel', database: 'ebranch', viewModel: '—', api: '/tracking/ebranch' },
-  notification: { model: 'NotificationModel', database: 'notification', viewModel: '—', api: '/notifications' },
-  webhook: { model: 'WebhookModel', database: 'webhook', viewModel: '—', api: '/notifications/webhooks' },
-  courier: { model: 'CourierModel', database: 'courier', viewModel: '—', api: '/tasks/couriers' },
-  customer: { model: 'CustomerModel', database: 'customer', viewModel: '—', api: '/customers' },
-  consignee: { model: 'ConsigneeModel', database: 'consignee', viewModel: '—', api: '/tracking/consignee' },
-  vehicle: { model: 'VehicleModel', database: 'vehicle', viewModel: '—', api: '/transfer-center/vehicles' },
-  dispatcher: { model: 'DispatcherModel', database: 'dispatcher', viewModel: '—', api: '/dispatchers' },
-  'parcel-shop': { model: 'CounterLocationModel', database: 'counter_location', viewModel: '—', api: '/lockers/counter-locations' },
-  'counter-location': { model: 'CounterLocationModel', database: 'counter_location', viewModel: '—', api: '/lockers/counter-locations' },
-  'fiscal-invoice': { model: 'FiscalInvoiceDocument', database: 'fiscal_invoice', viewModel: '—', api: '/shipments/fiscal-invoice' },
-  'cash-desk': { model: 'CashDeskModel', database: 'cash_desk', viewModel: '—', api: '/cash-desk' },
-  sepa: { model: 'SepaConverterModel', database: 'sepa', viewModel: '—', api: '/sepa' },
-  commissioning: { model: 'CommissioningModel', database: 'commissioning', viewModel: '—', api: '/commissioning' },
-  inventory: { model: 'InventoryModel', database: 'inventory', viewModel: '—', api: '/inventory' },
-}
-
 const CHAIN = entities.filter((entity) => entity.parentId !== null || entity.childIds.length > 0)
-const CROSS_CUTTING = entities.filter((entity) => entity.parentId === null && entity.childIds.length === 0)
-
 function entityTone(entity: DomainEntity): Tone {
   return ENTITY_TONE[entity.id] ?? 'indigo'
-}
-
-function entitySurface(entity: DomainEntity) {
-  return toneCard[entityTone(entity)]
 }
 
 function directionMeta(direction: PropagationRule['direction']) {
@@ -297,10 +233,6 @@ function displayAliases(entity: DomainEntity) {
   }
 
   return aliases
-}
-
-function relationFor(entity: DomainEntity) {
-  return relations.find((relation) => relation.from === entity.id)
 }
 
 function normalize(value: string) {
@@ -386,7 +318,7 @@ function GlossaryChrome({
               <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneIcon.indigo)}>Product backbone</p>
               <h1 className="mt-0.5 text-lg font-bold tracking-tight text-foreground sm:text-xl">Domain glossary</h1>
               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-                Concepts, hierarchy, and state propagation rules in one place — so everyone at Nesy Mobile speaks the same language.
+                Concept dictionary and state propagation rules — so everyone at Nesy Mobile speaks the same language.
               </p>
             </div>
           </div>
@@ -431,7 +363,7 @@ function GlossaryChrome({
           </div>
 
           <div
-            className="relative grid shrink-0 grid-cols-3 rounded-lg border border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-violet-50/30 to-amber-50/40 p-0.5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-violet-950/15 dark:to-amber-950/15 sm:w-[min(100%,24rem)]"
+            className="relative grid shrink-0 grid-cols-2 rounded-lg border border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-violet-50/30 to-amber-50/40 p-0.5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-violet-950/15 dark:to-amber-950/15 sm:w-[min(100%,18rem)]"
             role="tablist"
             aria-label="View selector"
           >
@@ -439,7 +371,7 @@ function GlossaryChrome({
               aria-hidden
               layoutId="glossary-tab-indicator"
               className={cn('absolute inset-y-0.5 rounded-md shadow-sm ring-1 ring-black/5 dark:ring-white/10', toneCard[activeTone])}
-              style={{ left: `calc(${VIEWS.findIndex((item) => item.id === view) * (100 / 3)}% + 2px)`, width: 'calc(33.333% - 4px)' }}
+              style={{ left: `calc(${VIEWS.findIndex((item) => item.id === view) * 50}% + 2px)`, width: 'calc(50% - 4px)' }}
               transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             />
             {VIEWS.map(({ id, label, icon: Icon, tone }) => (
@@ -746,6 +678,37 @@ function EntityDetailDialog({
   )
 }
 
+function EntityNavChip({
+  entityId,
+  onNavigate,
+}: {
+  entityId: string
+  onNavigate?: (id: string) => void
+}) {
+  const target = entityById(entityId)
+  if (!target) return null
+  const tone = entityTone(target)
+  const content = <span className="font-semibold">{target.name}</span>
+
+  if (!onNavigate) {
+    return (
+      <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px]', toneCard[tone], toneText[tone])}>
+        {content}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(entityId)}
+      className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px] transition-colors hover:shadow-sm', toneCard[tone], toneText[tone])}
+    >
+      {content}
+    </button>
+  )
+}
+
 function EntityDictionaryTable({
   entities: rows,
   onRowClick,
@@ -814,369 +777,6 @@ function EntityDictionaryTable({
   )
 }
 
-function DetailSection({
-  title,
-  hint,
-  tone = 'indigo',
-  children,
-}: {
-  title: string
-  hint?: string
-  tone?: Tone
-  children: ReactNode
-}) {
-  return (
-    <section className="space-y-2 border-t border-border/50 pt-4 first:border-0 first:pt-0">
-      <div>
-        <h3 className={cn('flex items-center gap-2 text-xs font-bold', toneText[tone])}>
-          <span aria-hidden className={cn('h-3.5 w-1 rounded-full', toneDot[tone])} />
-          {title}
-        </h3>
-        {hint && <p className="mt-1 ps-3 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function LearningPathBanner({ entity }: { entity: DomainEntity }) {
-  const ctx = learningContext(entity.id)
-  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
-  if (!ctx) {
-    return (
-      <div className={cn('rounded-xl border p-3', toneCard[categoryTone])}>
-        <p className={cn('text-[10px] font-bold uppercase tracking-wider', toneText[categoryTone])}>{categoryLabel}</p>
-        <p className="mt-1 text-xs leading-relaxed text-foreground/85">This concept operates in a cross-cutting context; it intersects the main chain during specific operations.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn('rounded-xl border bg-gradient-to-r p-3.5', toneHero.indigo)}>
-      <div className="flex items-start gap-3">
-        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', toneIconBox.indigo)}>
-          <GraduationCap className={cn('size-4', toneIcon.indigo)} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', toneCard.indigo, toneText.indigo)}>
-              Step {ctx.current.step}/{ctx.total}
-            </span>
-            <span className="text-xs font-bold text-foreground">{ctx.current.title}</span>
-            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', toneCard[categoryTone], toneText[categoryTone])}>
-              {categoryLabel}
-            </span>
-          </div>
-          <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">{ctx.current.hint}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ChainBreadcrumb({ entity }: { entity: DomainEntity }) {
-  const chainIndex = CHAIN.findIndex((item) => item.id === entity.id)
-  if (chainIndex < 0) return null
-
-  return (
-    <div className="flex flex-wrap items-center gap-1 rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-2 dark:border-teal-900/50 dark:bg-teal-950/20">
-      <GitBranch className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
-      {CHAIN.map((item, index) => (
-        <Fragment key={item.id}>
-          {index > 0 && <ChevronRight className="size-3 text-muted-foreground/50" />}
-          <span
-            className={cn(
-              'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
-              item.id === entity.id
-                ? 'bg-teal-600 text-white dark:bg-teal-500'
-                : 'text-muted-foreground',
-            )}
-          >
-            {item.name}
-          </span>
-        </Fragment>
-      ))}
-    </div>
-  )
-}
-
-function EntityNavChip({
-  entityId,
-  onNavigate,
-}: {
-  entityId: string
-  onNavigate?: (id: string) => void
-}) {
-  const target = entityById(entityId)
-  if (!target) return null
-  const tone = entityTone(target)
-  const content = <span className="font-semibold">{target.name}</span>
-
-  if (!onNavigate) {
-    return (
-      <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px]', toneCard[tone], toneText[tone])}>
-        {content}
-      </span>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => onNavigate(entityId)}
-      className={cn('inline-flex rounded-full border px-2.5 py-1 text-[11px] transition-colors hover:shadow-sm', toneCard[tone], toneText[tone])}
-    >
-      {content}
-    </button>
-  )
-}
-
-function EntityDetailPanel({
-  entity,
-  onNavigate,
-}: {
-  entity: DomainEntity
-  onNavigate?: (id: string) => void
-}) {
-  const Icon = ICONS[entity.icon] ?? Package
-  const tone = entityTone(entity)
-  const [technicalOpen, setTechnicalOpen] = useState(false)
-  const { parent, children, related } = relationshipRows(entity)
-  const technical = TECHNICAL_MAP[entity.id]
-  const relevantRules = propagationRules.filter((rule) => rule.fromEntity === entity.id || rule.toEntity === entity.id)
-  const isCross = CROSS_CUTTING.some((item) => item.id === entity.id)
-  const ctx = learningContext(entity.id)
-  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
-  const hasRulesTab = entity.prerequisiteIds.length > 0 || relevantRules.length > 0
-
-  const headerBlock = (
-    <header className="flex items-start gap-3">
-      <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
-        <Icon className={cn('size-5', toneIcon[tone])} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">{entity.name}</h2>
-          <Badge variant="secondary" appearance="outline" size="sm" className={cn(toneCard[categoryTone], toneText[categoryTone])}>
-            {categoryLabel}
-          </Badge>
-          {!isCross && (
-            <Badge variant="secondary" appearance="outline" size="xs" className={cn(toneCard[tone], toneText[tone])}>
-              L{entity.level}
-            </Badge>
-          )}
-        </div>
-        {entity.aliases.length > 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Also known in the field as: {entity.aliases.slice(0, 3).join(', ')}
-          </p>
-        )}
-      </div>
-    </header>
-  )
-
-  const definitionBlock = (
-    <>
-      <DetailSection title="What is this concept?" hint="One-sentence definition — use this in meetings." tone={tone}>
-        <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-6 text-foreground/90">
-          {entity.definition}
-        </p>
-      </DetailSection>
-
-      <DetailSection title="What does it mean in the field?" hint="What role does it play in courier operations?" tone="blue">
-        <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-950/20">
-          <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <p className="text-sm leading-6 text-foreground/90">{entity.businessContext}</p>
-        </div>
-      </DetailSection>
-
-      <DetailSection title="Common misconceptions" hint="Keep these in mind to avoid misunderstandings." tone="amber">
-        <ul className="space-y-2">
-          {entity.antiPatterns.slice(0, 3).map((item) => (
-            <li key={item} className="flex gap-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20">
-              <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              <span>{item.replace(/^[^\p{L}\p{N}]+/u, '').trim()}</span>
-            </li>
-          ))}
-        </ul>
-      </DetailSection>
-    </>
-  )
-
-  const structureBlock = (
-    <>
-      <DetailSection title="Position in the chain" hint="How does it connect to parent and child concepts?" tone="teal">
-        <ChainBreadcrumb entity={entity} />
-        <dl className="mt-2 grid gap-2 rounded-lg border border-teal-200/60 bg-teal-50/40 p-3 text-sm dark:border-teal-900/50 dark:bg-teal-950/20 sm:grid-cols-1">
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Parent concept</dt>
-            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Root — no parent'}</dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Child concepts</dt>
-            <dd className="mt-0.5 font-semibold">
-              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Leaf — no children'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Relationship type</dt>
-            <dd className="mt-0.5 font-semibold">{entity.cardinalityDesc}</dd>
-          </div>
-        </dl>
-        {related.length > 0 && (
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Horizontal link: {related.map((relation) => relation.description).join(' ')}
-          </p>
-        )}
-      </DetailSection>
-    </>
-  )
-
-  const statusesBlock = (
-    <DetailSection title="Possible states" hint="These are system enum values — use them as code, not display labels." tone="purple">
-      <div className="grid gap-2 sm:grid-cols-2">
-        {entity.statuses.map((status) => (
-          <div
-            key={status.code}
-            className={cn('rounded-lg border px-2.5 py-2', STATUS_CHIP[status.color] ?? STATUS_CHIP.gray)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs font-bold">{status.code}</code>
-              {status.isTerminal && (
-                <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">Terminal</span>
-              )}
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed opacity-90">{status.description}</p>
-          </div>
-        ))}
-      </div>
-    </DetailSection>
-  )
-
-  const rulesBlock = (
-    <>
-      {entity.prerequisiteIds.length > 0 && (
-        <DetailSection title="Prerequisites" hint="What you need to know before moving on to this concept." tone="indigo">
-          <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            Without understanding the concepts below, it is difficult to fully grasp the context of {entity.name}. Review them first.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {entity.prerequisiteIds.map((id) => (
-              <EntityNavChip key={id} entityId={id} onNavigate={onNavigate} />
-            ))}
-          </div>
-        </DetailSection>
-      )}
-
-      {relevantRules.length > 0 && (
-        <DetailSection title="Automatic rules" hint="What does the system do when a state changes?" tone="green">
-          <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            These rules run in the background without requiring courier action — critical for understanding status propagation.
-          </p>
-          <ul className="space-y-2">
-            {relevantRules.map((rule) => (
-              <li key={rule.id} className="flex gap-2 rounded-lg border border-green-200/70 bg-green-50/40 px-3 py-2 text-sm leading-6 dark:border-green-900/50 dark:bg-green-950/20">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" />
-                <span>{rule.description}</span>
-              </li>
-            ))}
-          </ul>
-        </DetailSection>
-      )}
-
-      {!hasRulesTab && (
-        <p className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
-          No specific prerequisites or propagation rules are defined for this concept.
-        </p>
-      )}
-    </>
-  )
-
-  const continueBlock = (
-    <>
-      {ctx?.next && (
-        <div className={cn('rounded-xl border p-3', toneCard.teal)}>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Next concept</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            The next step in the learning path — continue to complete the context.
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-bold text-foreground">{entityById(ctx.next.entityId)?.name ?? ctx.next.entityId}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{ctx.next.hint}</p>
-            </div>
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate(ctx.next!.entityId)}
-                className="inline-flex items-center gap-1 rounded-lg border border-teal-300/70 bg-background px-3 py-1.5 text-xs font-semibold text-teal-700 shadow-sm hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-950/30"
-              >
-                Continue
-                <ChevronRight className="size-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!ctx?.next && (
-        <p className="rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-3 text-xs leading-relaxed text-foreground/85 dark:border-teal-900/50 dark:bg-teal-950/20">
-          This concept is one of the final steps in the learning path — or it operates in a cross-cutting context. If you have completed the main chain, explore the other cross-cutting concepts.
-        </p>
-      )}
-
-      <DetailSection title="Developer note" hint="Code equivalent — for the curious." tone="gray">
-        <button
-          type="button"
-          onClick={() => setTechnicalOpen((open) => !open)}
-          className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-muted/25 px-3 py-2.5 text-left text-sm font-semibold hover:bg-muted/40"
-          aria-expanded={technicalOpen}
-        >
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Code2 className="size-4" />
-            Technical details {technicalOpen ? 'hide' : 'show'}
-          </span>
-          <ChevronDown className={cn('size-4 transition-transform', technicalOpen && 'rotate-180')} />
-        </button>
-        {technicalOpen && technical && (
-          <dl className="mt-2 grid gap-x-5 gap-y-3 rounded-lg bg-slate-950 p-4 font-mono text-xs text-slate-300 sm:grid-cols-2">
-            <div><dt className="text-slate-500">Model</dt><dd className="mt-0.5 text-slate-100">{technical.model}</dd></div>
-            <div><dt className="text-slate-500">Database</dt><dd className="mt-0.5 text-slate-100">{technical.database}</dd></div>
-            <div><dt className="text-slate-500">ViewModel</dt><dd className="mt-0.5 text-slate-100">{technical.viewModel}</dd></div>
-            <div><dt className="text-slate-500">API</dt><dd className="mt-0.5 text-slate-100">{technical.api}</dd></div>
-          </dl>
-        )}
-        {technicalOpen && (
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{entity.technicalContext}</p>
-        )}
-      </DetailSection>
-    </>
-  )
-
-  const stackedContent = (
-    <div className="space-y-4">
-      {definitionBlock}
-      {structureBlock}
-      {statusesBlock}
-      {rulesBlock}
-      {continueBlock}
-    </div>
-  )
-
-  return (
-    <article className="relative overflow-hidden rounded-xl border bg-card p-4 shadow-sm sm:p-5">
-      <div aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent opacity-70', toneHero[tone])} />
-      <span aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
-
-      <div className="relative space-y-4">
-        <LearningPathBanner entity={entity} />
-        {headerBlock}
-        {stackedContent}
-      </div>
-    </article>
-  )
-}
-
 function EmptyState({ query }: { query: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-indigo-300/60 bg-gradient-to-br from-indigo-50/60 via-background to-violet-50/40 px-6 py-14 text-center dark:border-indigo-800 dark:from-indigo-950/30 dark:to-violet-950/20">
@@ -1235,118 +835,6 @@ function DictionaryView({ query }: { query: string }) {
         onOpenChange={(open) => !open && setDetailId(null)}
         onNavigate={setDetailId}
       />
-    </section>
-  )
-}
-
-function HierarchyNode({ entity, selectedId, onSelect }: { entity: DomainEntity; selectedId: string; onSelect: (id: string) => void }) {
-  const Icon = ICONS[entity.icon] ?? Package
-  const tone = entityTone(entity)
-  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
-  const selectedIndex = CHAIN.findIndex((item) => item.id === selectedId)
-  const index = CHAIN.findIndex((item) => item.id === entity.id)
-  const distance = selectedIndex < 0 ? 0 : Math.abs(selectedIndex - index)
-  const isSelected = selectedId === entity.id
-  const relation = relationFor(entity)
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(entity.id)}
-      className={cn(
-        'w-full rounded-lg border p-2.5 text-left transition-all hover:shadow-md lg:min-h-28',
-        entitySurface(entity),
-        isSelected && cn('shadow-lg ring-2 ring-offset-2 ring-offset-background', TONE_RING[tone]),
-        selectedIndex >= 0 && distance > 1 && 'opacity-45',
-      )}
-    >
-      <span className={cn('text-[10px] font-bold uppercase tracking-widest', toneText[tone])}>L{entity.level}</span>
-      <span className={cn('mt-3 flex size-9 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
-        <Icon className={cn('size-4', toneIcon[tone])} />
-      </span>
-      <span className="mt-2 block text-sm font-bold">{entity.name}</span>
-      <span className={cn('block text-xs font-medium', toneText[categoryTone])}>{categoryLabel}</span>
-      <span className="mt-2 block text-[11px] leading-4 text-muted-foreground line-clamp-2">{relation?.description ?? entity.definition}</span>
-    </button>
-  )
-}
-
-function HierarchyConnector({ highlighted }: { highlighted: boolean }) {
-  return (
-    <div className={cn('flex shrink-0 items-center justify-center transition-colors', highlighted ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground/50')}>
-      <div className="hidden flex-col items-center lg:flex">
-        <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold font-mono', highlighted ? 'bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300' : 'bg-muted text-muted-foreground')}>1:N</span>
-        <ChevronRight className={cn('size-4', highlighted && 'animate-pulse')} />
-      </div>
-      <div className="flex items-center gap-2 py-1 lg:hidden">
-        <ArrowDown className={cn('size-4', highlighted && 'text-teal-600')} />
-        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono">1:N</span>
-      </div>
-    </div>
-  )
-}
-
-function HierarchyView({ query, selectedId, onSelect }: { query: string; selectedId: string; onSelect: (id: string) => void }) {
-  const selected = entityById(selectedId) ?? CHAIN[0]!
-  const selectedIndex = CHAIN.findIndex((entity) => entity.id === selected.id)
-  const visibleChain = query ? CHAIN.filter((entity) => entityMatches(entity, query)) : CHAIN
-
-  return (
-    <section aria-labelledby="hierarchy-title" className="space-y-3">
-      <h2 id="hierarchy-title" className="flex items-center gap-1.5 text-sm font-bold">
-        <GitBranch className="size-4 text-teal-600 dark:text-teal-400" />
-        Entity chain
-      </h2>
-      {visibleChain.length === 0 ? <EmptyState query={query} /> : (
-        <>
-          <div className="rounded-xl border border-teal-200/60 bg-gradient-to-br from-teal-50/50 via-background to-indigo-50/30 p-3 shadow-sm dark:border-teal-900/50 dark:from-teal-950/20 dark:to-indigo-950/15 sm:p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className={cn('text-xs font-bold uppercase tracking-wider', toneText.teal)}>Main chain</p>
-              <p className="hidden rounded-full border border-teal-200/70 bg-teal-50/60 px-2.5 py-1 text-xs font-medium text-teal-800 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-300 sm:block">
-                {entityById('schedule')?.name} → {entityById('shipment-item')?.name}
-              </p>
-            </div>
-            <div className="flex flex-col lg:grid lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr] lg:items-center lg:gap-1.5">
-              {CHAIN.map((entity, index) => (
-                <Fragment key={entity.id}>
-                  {index > 0 && <HierarchyConnector highlighted={selectedIndex >= 0 && (index === selectedIndex || index - 1 === selectedIndex)} />}
-                  <HierarchyNode entity={entity} selectedId={selected.id} onSelect={onSelect} />
-                </Fragment>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-dashed border-amber-300/60 bg-gradient-to-br from-amber-50/40 via-background to-green-50/30 p-4 dark:border-amber-800/50 dark:from-amber-950/20 dark:to-green-950/15 sm:p-5">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <ArrowLeftRight className="size-4 text-amber-600" />
-              Cross-cutting entities
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">Entities such as collections and smart lockers intersect the main chain horizontally during operations.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {CROSS_CUTTING.map((entity) => {
-                const rel = relations.find((relation) => relation.from === entity.id || relation.to === entity.id)
-                const peer = entityById(rel?.from === entity.id ? rel.to : rel?.from ?? null)
-                const tone = entityTone(entity)
-                return (
-                  <button
-                    key={entity.id}
-                    type="button"
-                    onClick={() => onSelect(entity.id)}
-                    className={cn('rounded-xl border p-4 text-left transition-all hover:shadow-md', entitySurface(entity), selected.id === entity.id && cn('shadow-lg ring-2', TONE_RING[tone]))}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <ArrowLeftRight className={cn('size-4', toneIcon[tone])} />
-                      {entity.name} <span className="text-muted-foreground">— {peer?.name}</span>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">{rel?.description}</p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <EntityDetailPanel key={`hierarchy-${selected.id}`} entity={selected} />
-        </>
-      )}
     </section>
   )
 }
@@ -1485,14 +973,21 @@ function DomainGlossaryContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedView = searchParams.get('view')
-  const initialView: GlossaryView = requestedView === 'hierarchy' || requestedView === 'rules' ? requestedView : 'dictionary'
+
+  useEffect(() => {
+    if (requestedView === 'hierarchy') {
+      router.replace('/product/domain-model')
+    }
+  }, [requestedView, router])
+
+  const initialView: GlossaryView = requestedView === 'rules' ? 'rules' : 'dictionary'
   const [view, setView] = useState<GlossaryView>(initialView)
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState('schedule')
 
   useEffect(() => {
     const next = searchParams.get('view')
-    setView(next === 'hierarchy' || next === 'rules' ? next : 'dictionary')
+    if (next === 'hierarchy') return
+    setView(next === 'rules' ? 'rules' : 'dictionary')
   }, [searchParams])
 
   const changeView = useCallback((nextView: GlossaryView) => {
@@ -1507,7 +1002,6 @@ function DomainGlossaryContent() {
       <GlossaryChrome query={query} onQueryChange={setQuery} view={view} onViewChange={changeView} />
       <main className="pt-3">
         {view === 'dictionary' && <DictionaryView query={query} />}
-        {view === 'hierarchy' && <HierarchyView query={query} selectedId={selectedId} onSelect={setSelectedId} />}
         {view === 'rules' && <StateRulesView query={query} />}
       </main>
     </ProductPage>

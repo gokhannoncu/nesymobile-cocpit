@@ -2,77 +2,107 @@
 
 import { useMemo, useState } from 'react'
 import {
+  Banknote,
   Boxes,
-  Globe,
   Grid3x3,
-  PackageCheck,
+  MapPinned,
   PackageSearch,
-  Route,
   Search,
-  Table2,
   Truck,
   X,
 } from 'lucide-react'
 import { Input } from '@nesy/metronic/components/ui/input'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
-  BoardGrid,
-  Callout,
-  DataTable,
+  FeatureDomainSection,
   HeroCallout,
   PageSection,
   ProductPage,
-  TagBadge,
 } from '@/components/product'
-import { COUNTRIES, MODULES, TOTAL_FEATURES, isSupported } from '@/data/product/nesy'
-import { toFeatureSlug } from '@/data/product/feature-slug'
+import type { Tone } from '@/components/product/tones'
+import {
+  COUNTRIES,
+  FEATURE_DOMAINS,
+  TOTAL_FEATURES,
+  isSupported,
+  listFeatureRecordsByDomain,
+} from '@/data/product/nesy'
+import type { FeatureDomainId } from '@/data/product/nesy'
 
-const moduleIcons = [PackageCheck, PackageSearch, Route, Truck, Globe, Boxes] as const
-const moduleTones = ['orange', 'amber', 'teal', 'blue', 'purple', 'indigo'] as const
+const domainMeta: Record<
+  FeatureDomainId,
+  { icon: typeof Banknote; tone: Tone }
+> = {
+  'payments-fiscal': { icon: Banknote, tone: 'orange' },
+  'delivery-outcomes': { icon: Truck, tone: 'amber' },
+  'pickup-operations': { icon: PackageSearch, tone: 'teal' },
+  'tour-stops': { icon: MapPinned, tone: 'blue' },
+  'tracking-self-service': { icon: Boxes, tone: 'purple' },
+}
 
 export default function FeatureLibraryPage() {
   const activeCountries = COUNTRIES.filter((country) => country.id !== 'core')
   const [query, setQuery] = useState('')
-  const [activeModule, setActiveModule] = useState('all')
+  const [coreOnly, setCoreOnly] = useState(false)
+  const catalogRecords = useMemo(() => listFeatureRecordsByDomain(), [])
 
-  const filteredModules = useMemo(() => {
+  const filteredDomains = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('tr-TR')
 
-    return MODULES.map((module) => ({
-      ...module,
-      features: module.features.filter((feature) => {
-        const matchesModule = activeModule === 'all' || module.id === activeModule
+    return FEATURE_DOMAINS.map((domain) => {
+      const records = catalogRecords.filter((record) => {
+        if (record.feature.domainId !== domain.id) return false
         const matchesQuery =
           normalizedQuery.length === 0 ||
-          `${feature.title} ${feature.desc}`.toLocaleLowerCase('tr-TR').includes(normalizedQuery)
+          `${record.feature.title} ${record.feature.desc}`
+            .toLocaleLowerCase('tr-TR')
+            .includes(normalizedQuery)
+        const matchesCore =
+          !coreOnly || isSupported(record.feature.values.core)
+        return matchesQuery && matchesCore
+      })
 
-        return matchesModule && matchesQuery
-      }),
-    })).filter((module) => module.features.length > 0)
-  }, [activeModule, query])
+      const coreFeatures = records.filter((record) =>
+        isSupported(record.feature.values.core),
+      )
+      const relatedFeatures = records.filter(
+        (record) => !isSupported(record.feature.values.core),
+      )
 
-  const visibleFeatureCount = filteredModules.reduce(
-    (total, module) => total + module.features.length,
+      return { domain, coreFeatures, relatedFeatures, total: records.length }
+    }).filter((entry) => entry.total > 0)
+  }, [catalogRecords, coreOnly, query])
+
+  const visibleFeatureCount = filteredDomains.reduce(
+    (total, entry) => total + entry.total,
     0,
   )
+
+  const scrollToDomain = (domainId: FeatureDomainId) => {
+    const el = document.getElementById(`domain-${domainId}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <ProductPage path="/product/feature-library">
       <HeroCallout
         icon={Grid3x3}
-        eyebrow="Capabilities & Countries"
+        eyebrow="Capabilities by domain"
         tone="orange"
-        title="Every product capability lives in a single inventory."
-        lead="The feature board consolidates all Nesy Mobile capabilities with their modules in one place. Compare country coverage; click a card to explore the workflow, APIs, risks, and tickets."
+        title="Every product capability, grouped by what it does — Core first."
+        lead="Browse Nesy Mobile features by capability domain. Core baseline sits at the top of each group; process module and country coverage stay on every card."
         chips={[
           `${TOTAL_FEATURES} features`,
-          `${MODULES.length} modules`,
+          `${FEATURE_DOMAINS.length} domains`,
           `${activeCountries.length} countries`,
-          'Single inventory',
+          'Core baseline',
         ]}
       />
 
-      <section aria-label="Feature filters" className="rounded-2xl border bg-card p-3 shadow-sm">
+      <section
+        aria-label="Feature filters"
+        className="sticky top-0 z-20 rounded-2xl border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80"
+      >
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative min-w-0 xl:w-80 xl:shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -95,110 +125,82 @@ export default function FeatureLibraryPage() {
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 xl:pb-0" role="group" aria-label="Module filter">
-            <button
-              type="button"
-              onClick={() => setActiveModule('all')}
-              aria-pressed={activeModule === 'all'}
-              className={cn(
-                'shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
-                activeModule === 'all'
-                  ? 'border-orange-500 bg-orange-500 text-white'
-                  : 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground',
-              )}
-            >
-              All · {TOTAL_FEATURES}
-            </button>
-            {MODULES.map((module) => (
+          <div
+            className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 xl:pb-0"
+            role="group"
+            aria-label="Jump to domain"
+          >
+            {FEATURE_DOMAINS.map((domain) => (
               <button
-                key={module.id}
+                key={domain.id}
                 type="button"
-                onClick={() => setActiveModule(module.id)}
-                aria-pressed={activeModule === module.id}
-                className={cn(
-                  'shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
-                  activeModule === module.id
-                    ? 'border-foreground bg-foreground text-background'
-                    : 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground',
-                )}
+                onClick={() => scrollToDomain(domain.id)}
+                className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
               >
-                {module.title} · {module.features.length}
+                {domain.title}
               </button>
             ))}
           </div>
 
-          <div className="hidden shrink-0 text-xs font-medium text-muted-foreground xl:block">
-            {visibleFeatureCount} results
+          <div className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCoreOnly((value) => !value)}
+              aria-pressed={coreOnly}
+              className={cn(
+                'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                coreOnly
+                  ? 'border-indigo-500 bg-indigo-500 text-white'
+                  : 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground',
+              )}
+            >
+              Core only
+            </button>
+            <div className="hidden text-xs font-medium text-muted-foreground xl:block">
+              {visibleFeatureCount} results
+            </div>
           </div>
         </div>
       </section>
 
       <PageSection
-        eyebrow="Capability Inventory"
-        title="Feature board — all capabilities by module"
+        eyebrow="Capability inventory"
+        title="Feature catalog — domains, Core first"
         icon={Grid3x3}
         tone="orange"
-        description="Each column represents a product module; each card represents a single user-facing feature. Badges on the card summarize CORE status and country coverage."
+        description="Each section is a capability domain. Core capabilities lead; related and country-scoped features follow. Cards keep process module, country dots, risk, and tickets."
       >
         {visibleFeatureCount > 0 ? (
-          <BoardGrid
-            columns={filteredModules.map((module) => {
-              const moduleIndex = MODULES.findIndex((item) => item.id === module.id)
-              const tone = moduleTones[moduleIndex % moduleTones.length]!
-
-              return {
-                title: module.title,
-                tone,
-                icon: moduleIcons[moduleIndex % moduleIcons.length],
-                cards: module.features.map((feature) => {
-                  const supportedCountryCount = activeCountries.filter((country) =>
-                    isSupported(feature.values[country.id]),
-                  ).length
-                  const detail = feature.detail
-                  const highRisk = detail ? detail.score.bugProneness >= 4 : false
-                  const ticketCount = detail?.tickets.length ?? 0
-
-                  return {
-                    title: feature.title,
-                    desc: feature.desc,
-                    icon: moduleIcons[moduleIndex % moduleIcons.length],
-                    badges: [
-                      {
-                        label: isSupported(feature.values.core) ? 'CORE' : 'No CORE',
-                        tone: isSupported(feature.values.core) ? ('indigo' as const) : ('gray' as const),
-                      },
-                      {
-                        label: `${supportedCountryCount}/${activeCountries.length} countries`,
-                        tone:
-                          supportedCountryCount === activeCountries.length
-                            ? ('teal' as const)
-                            : supportedCountryCount > 0
-                              ? ('amber' as const)
-                              : ('gray' as const),
-                      },
-                      ...(highRisk
-                        ? [{ label: `Risk ${detail!.score.bugProneness}/5`, tone: 'red' as const }]
-                        : []),
-                    ],
-                    meta: ticketCount > 0 ? `${ticketCount} tickets · View details` : 'View details',
-                    href: `/product/feature-library/${toFeatureSlug(feature.id)}`,
-                  }
-                }),
-              }
+          <div className="space-y-10">
+            {filteredDomains.map(({ domain, coreFeatures, relatedFeatures }) => {
+              const meta = domainMeta[domain.id]
+              return (
+                <FeatureDomainSection
+                  key={domain.id}
+                  id={`domain-${domain.id}`}
+                  title={domain.title}
+                  description={domain.desc}
+                  icon={meta.icon}
+                  tone={meta.tone}
+                  coreFeatures={coreFeatures}
+                  relatedFeatures={relatedFeatures}
+                  countries={COUNTRIES}
+                />
+              )
             })}
-          />
+          </div>
         ) : (
           <div className="rounded-2xl border border-dashed bg-muted/20 px-6 py-14 text-center">
             <Search className="mx-auto size-8 text-muted-foreground/50" />
             <h2 className="mt-3 text-sm font-bold text-foreground">No matching features found</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Try a different search term or select another module.
+              Try a different search term or turn off Core only.
             </p>
             <button
               type="button"
               onClick={() => {
                 setQuery('')
-                setActiveModule('all')
+                setCoreOnly(false)
               }}
               className="mt-4 rounded-lg bg-foreground px-3 py-2 text-xs font-semibold text-background"
             >
@@ -207,56 +209,6 @@ export default function FeatureLibraryPage() {
           </div>
         )}
       </PageSection>
-
-      <PageSection
-        eyebrow="Card Schema"
-        title="What fields does a feature card carry?"
-        icon={Table2}
-        tone="blue"
-        description="The feature card displays only decision-driving signals for quick scanning; operational details open when the card is clicked."
-      >
-        <DataTable
-          columns={[
-             { key: 'field', label: 'Field', className: 'min-w-40' },
-             { key: 'card', label: 'On Card', className: 'min-w-48' },
-             { key: 'detail', label: 'In Detail View', className: 'min-w-56' },
-             { key: 'purpose', label: 'Purpose', className: 'min-w-64' },
-          ]}
-          rows={[
-            {
-              field: <b>Feature identity</b>,
-              card: 'Title, short description, module',
-              detail: 'What it is, how it works, screens',
-              purpose: 'Defines what the feature is and its place within the product.',
-            },
-            {
-              field: <b>Country coverage</b>,
-              card: <TagBadge label={`Up to ${activeCountries.length} countries`} tone="amber" />,
-              detail: 'All CORE and country-specific behaviors',
-              purpose: 'Separates global standards from country-level customizations.',
-            },
-            {
-              field: <b>Technical context</b>,
-              card: 'Risk and open ticket count',
-              detail: 'APIs, parameters, domain experts, and test coverage',
-              purpose: 'Makes the cost of change and operational risk visible.',
-            },
-            {
-              field: <b>Workflow</b>,
-              card: <TagBadge label="View details" tone="teal" />,
-              detail: 'Steps, flow diagram, and implementation tips',
-              purpose: 'Keeps feature knowledge in a single record instead of scattered documents.',
-            },
-          ]}
-        />
-      </PageSection>
-
-      <Callout icon={Grid3x3} title="When adding a new feature" tone="orange">
-        A feature is first defined with its CORE behavior, then country differences are mapped into the matrix. Source
-        file: <code>src/data/product/nesy.ts</code> — card and matrix pages update automatically.
-        Detail data: <code>src/data/product/feature-details.ts</code>
-      </Callout>
-
     </ProductPage>
   )
 }
