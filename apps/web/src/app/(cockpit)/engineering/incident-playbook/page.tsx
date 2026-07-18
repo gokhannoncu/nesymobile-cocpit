@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import {
   Activity,
+  AlertOctagon,
   AlertTriangle,
   ArrowDown,
   ArrowRightLeft,
@@ -25,9 +26,11 @@ import {
   MonitorCheck,
   Radio,
   Search,
+  SearchCode,
   ShieldAlert,
   ShieldCheck,
   Siren,
+  Timer,
   Users,
   Zap,
 } from 'lucide-react'

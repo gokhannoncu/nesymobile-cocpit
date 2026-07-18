@@ -288,7 +288,7 @@ model GraylogQueryRun {
   @@map("graylog_query_runs")
 }
 
-/// Automation: field support courier login sessions (PIN never stored)
+/// Automation: field support courier login (1 row per courier / country / env; PIN never stored)
 model FieldCourierLogin {
   id               String   @id @default(cuid())
   country          String
@@ -310,8 +310,10 @@ model FieldCourierLogin {
   failedStep       String?
   maestroRunId     String?
   createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  @@index([country, environment, createdAt])
+  @@unique([country, environment, courierUserId])
+  @@index([country, environment, updatedAt])
   @@index([status])
   @@index([courierUsername])
   @@map("field_courier_logins")

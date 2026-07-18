@@ -1,0 +1,163 @@
+﻿
+> @nesy/web@1.0.0 typecheck C:\Users\Developer\Desktop\Projeler\NesyMobileCocpit\apps\web
+> tsc --noEmit
+
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(168,12): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(168,33): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(168,50): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(495,18): error TS2532: Object is possibly 'undefined'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(497,26): error TS2532: Object is possibly 'undefined'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(498,18): error TS2532: Object is possibly 'undefined'.
+src/app/(automation-editor)/automation/[id]/runs/[runId]/page.tsx(865,43): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(predicate: (value: unknown, index: number, obj: unknown[]) => value is { data?: { config?: Record<string, unknown> | undefined; } | undefined; }, thisArg?: any): { data?: { config?: Record<string, unknown> | undefined; } | undefined; } | undefined', gave the following error.
+    Argument of type '(n: { id: string; }) => boolean' is not assignable to parameter of type '(value: unknown, index: number, obj: unknown[]) => value is { data?: { config?: Record<string, unknown> | undefined; } | undefined; }'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'unknown' is not assignable to type '{ id: string; }'.
+  Overload 2 of 2, '(predicate: (value: unknown, index: number, obj: unknown[]) => unknown, thisArg?: any): unknown', gave the following error.
+    Argument of type '(n: { id: string; }) => boolean' is not assignable to parameter of type '(value: unknown, index: number, obj: unknown[]) => unknown'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'unknown' is not assignable to type '{ id: string; }'.
+src/app/(automation-editor)/automation/[id]/workflow-editor.tsx(1409,16): error TS18048: 'entry' is possibly 'undefined'.
+src/app/(automation-editor)/automation/[id]/workflow-editor.tsx(1410,17): error TS18048: 'entry' is possibly 'undefined'.
+src/app/(automation-editor)/automation/[id]/workflow-editor.tsx(1901,30): error TS2345: Argument of type '{ version: number; nodes: never[]; connections: never[]; selectedNodeId: null; }' is not assignable to parameter of type 'WorkflowSnapshot'.
+  Type '{ version: number; nodes: never[]; connections: never[]; selectedNodeId: null; }' is missing the following properties from type 'Pick<WorkflowState, "zoom" | "nodes" | "connections" | "selectedNodeId" | "pan">': zoom, pan
+src/app/(automation-editor)/automation/[id]/workflow-editor.tsx(1907,30): error TS2345: Argument of type '{ version: number; nodes: never[]; connections: never[]; selectedNodeId: null; }' is not assignable to parameter of type 'WorkflowSnapshot'.
+  Type '{ version: number; nodes: never[]; connections: never[]; selectedNodeId: null; }' is missing the following properties from type 'Pick<WorkflowState, "zoom" | "nodes" | "connections" | "selectedNodeId" | "pan">': zoom, pan
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(80,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(94,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(110,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(123,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(139,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(154,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(169,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(183,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(197,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(210,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(223,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(237,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(251,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(265,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(279,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(294,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(308,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(322,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(337,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(352,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(367,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(381,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(395,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(409,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(423,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(437,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(451,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(465,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(478,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(493,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(507,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(521,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(535,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(549,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(automation-editor)/automation/[id]/workflow-registry.ts(584,7): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/(cockpit)/automation/list/page.tsx(114,18): error TS2532: Object is possibly 'undefined'.
+src/app/(cockpit)/automation/list/page.tsx(114,30): error TS2532: Object is possibly 'undefined'.
+src/app/(cockpit)/automation/list/page.tsx(115,14): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number | "ellipsis"'.
+  Type 'undefined' is not assignable to type 'number | "ellipsis"'.
+src/app/(cockpit)/automation/list/page.tsx(945,21): error TS18047: 'part' is possibly 'null'.
+src/app/(cockpit)/engineering/github-pulse/page.tsx(81,15): error TS2304: Cannot find name 'GitCommitVertical'.
+src/app/(cockpit)/engineering/github-pulse/page.tsx(170,15): error TS2304: Cannot find name 'PlaySquare'.
+src/app/(cockpit)/engineering/incident-playbook/page.tsx(286,13): error TS2304: Cannot find name 'SearchCode'.
+src/app/(cockpit)/engineering/incident-playbook/page.tsx(358,13): error TS2304: Cannot find name 'AlertOctagon'.
+src/app/(cockpit)/engineering/incident-playbook/page.tsx(456,13): error TS2304: Cannot find name 'Timer'.
+src/app/(cockpit)/engineering/performance/page.tsx(524,150): error TS2339: Property 'actionStatus' does not exist on type '{ countries: string; versions: string; owner: string; status: string; notes: string; }'.
+src/app/(cockpit)/engineering/performance/page.tsx(525,141): error TS2339: Property 'actionNote' does not exist on type '{ countries: string; versions: string; owner: string; status: string; notes: string; }'.
+src/app/(cockpit)/engineering/performance/page.tsx(592,83): error TS2339: Property 'analystComment' does not exist on type 'KeyFinding'.
+src/app/(cockpit)/engineering/performance/page.tsx(626,92): error TS2339: Property 'deadline' does not exist on type 'PiAction'.
+src/app/(cockpit)/engineering/performance/page.tsx(627,134): error TS2339: Property 'expectedResult' does not exist on type 'PiAction'.
+src/app/(cockpit)/engineering/performance/page.tsx(704,20): error TS2339: Property 'stats' does not exist on type 'CountryPerfReport'.
+src/app/(cockpit)/engineering/performance/page.tsx(704,45): error TS2339: Property 'stats' does not exist on type 'CountryPerfReport'.
+src/app/(cockpit)/engineering/performance/page.tsx(704,73): error TS2339: Property 'stats' does not exist on type 'CountryPerfReport'.
+src/app/(cockpit)/engineering/performance/page.tsx(864,15): error TS2304: Cannot find name 'MapPin'.
+src/app/(cockpit)/engineering/performance/page.tsx(900,15): error TS2304: Cannot find name 'Smartphone'.
+src/app/(cockpit)/engineering/performance/page.tsx(926,15): error TS2304: Cannot find name 'Server'.
+src/app/(cockpit)/engineering/performance/page.tsx(952,15): error TS2304: Cannot find name 'Microscope'.
+src/app/(cockpit)/engineering/performance/page.tsx(979,11): error TS2741: Property '$$typeof' is missing in type 'MapConstructor' but required in type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>'.
+src/app/(cockpit)/engineering/performance/page.tsx(1006,15): error TS2304: Cannot find name 'GitCommitVertical'.
+src/app/(cockpit)/engineering/performance/page.tsx(1045,15): error TS2304: Cannot find name 'ShieldCheck'.
+src/app/(cockpit)/engineering/tools/graylog-query-generator/workspace.tsx(183,16): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/graylog-query-generator/workspace.tsx(183,47): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/graylog-query-generator/workspace.tsx(211,18): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/graylog-query-generator/workspace.tsx(223,27): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/graylog-query-generator/workspace.tsx(230,20): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/page.tsx(267,21): error TS2532: Object is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/workspace.tsx(190,16): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/workspace.tsx(190,47): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/workspace.tsx(218,18): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/workspace.tsx(230,27): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/engineering/tools/mongodb-query-generator/workspace.tsx(237,20): error TS18048: 'active' is possibly 'undefined'.
+src/app/(cockpit)/product/domain-glossary/page.tsx(204,7): error TS2741: Property 'nesy' is missing in type '{ purple: string; blue: string; green: string; orange: string; red: string; amber: string; teal: string; indigo: string; gray: string; }' but required in type 'Record<Tone, string>'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(116,31): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(123,31): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(124,26): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(142,23): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(153,31): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(154,26): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(167,31): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog.tsx(168,26): error TS18048: 'target' is possibly 'undefined'.
+src/components/data-center/happy-path/happy-path-view-dialog.tsx(190,9): error TS2322: Type '{ id: string; count: number; label: string; trackClass: string; }[]' is not assignable to type 'SegmentDef[]'.
+  Type '{ id: string; count: number; label: string; trackClass: string; }' is not assignable to type 'SegmentDef'.
+    Types of property 'id' are incompatible.
+      Type 'string' is not assignable to type 'StatusFilter'.
+src/components/product/collection.tsx(12,9): error TS2741: Property 'nesy' is missing in type '{ green: "success"; amber: "warning"; orange: "warning"; red: "destructive"; blue: "info"; indigo: "info"; purple: "primary"; teal: "success"; gray: "secondary"; }' but required in type 'Record<Tone, "info" | "warning" | "success" | "destructive" | "primary" | "secondary">'.
+src/components/product/journey.tsx(29,7): error TS2741: Property 'nesy' is missing in type '{ purple: string; blue: string; green: string; orange: string; red: string; amber: string; teal: string; indigo: string; gray: string; }' but required in type 'Record<Tone, string>'.
+src/components/product/journey.tsx(41,7): error TS2741: Property 'nesy' is missing in type '{ purple: string; blue: string; green: string; orange: string; red: string; amber: string; teal: string; indigo: string; gray: string; }' but required in type 'Record<Tone, string>'.
+src/services/nesy-mobile-env.ts(26,27): error TS2345: Argument of type 'NesyMobileEnvironment' is not assignable to parameter of type '"prod"'.
+  Type '"stage"' is not assignable to type '"prod"'.
+../../packages/metronic/src/components/ui/accordion-menu.tsx(128,10): error TS2322: Type '{ children: ReactNode; role: "menu"; value: string; type: "single"; key?: Key | null | undefined; title?: string | undefined; color?: string | undefined; suppressHydrationWarning?: boolean | undefined; ... 279 more ...; defaultValue: string | ... 1 more ... | undefined; }' is not assignable to type 'IntrinsicAttributes & ((AccordionSingleProps | AccordionMultipleProps) & RefAttributes<HTMLDivElement>)'.
+  Types of property 'defaultValue' are incompatible.
+    Type 'string | string[] | undefined' is not assignable to type 'string | undefined'.
+      Type 'string[]' is not assignable to type 'string'.
+../../packages/metronic/src/components/ui/accordion-menu.tsx(140,10): error TS2322: Type '{ children: ReactNode; role: "menu"; value: string[]; type: "multiple"; key?: Key | null | undefined; title?: string | undefined; color?: string | undefined; suppressHydrationWarning?: boolean | undefined; ... 278 more ...; defaultValue: string | ... 1 more ... | undefined; }' is not assignable to type 'IntrinsicAttributes & ((AccordionSingleProps | AccordionMultipleProps) & RefAttributes<HTMLDivElement>)'.
+  Types of property 'defaultValue' are incompatible.
+    Type 'string | string[] | undefined' is not assignable to type 'string[] | undefined'.
+      Type 'string' is not assignable to type 'string[]'.
+C:\Users\Developer\Desktop\Projeler\NesyMobileCocpit\apps\web:
+ΓÇëERR_PNPM_RECURSIVE_RUN_FIRST_FAILΓÇë @nesy/web@1.0.0 typecheck: `tsc --noEmit`
+Exit status 2

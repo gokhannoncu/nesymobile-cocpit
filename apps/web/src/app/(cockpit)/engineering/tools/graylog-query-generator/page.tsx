@@ -30,10 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@nesy/metronic/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nesy/metronic/components/ui/tabs'
 import { Textarea } from '@nesy/metronic/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@nesy/metronic/components/ui/toggle-group'
 import { PageSection, ProductPage } from '@/components/product'
-import { ExampleChip, ToolCard, ToolHeader } from '@/components/engineering/tools/shared'
+import { ToolCard, ToolHeader } from '@/components/engineering/tools/shared'
 import {
   APPLICATIONS,
   APP_VERSIONS,
@@ -46,7 +47,6 @@ import {
   LOG_LEVELS,
   LOG_SOURCES,
   PRODUCTION_DEFAULT_TIME_RANGE,
-  SCENARIO_CHIPS,
   SERVICES,
   TIME_RANGES,
   type SelectOption,
@@ -54,10 +54,12 @@ import {
 import {
   deleteGraylogQuery,
   fetchGraylogFields,
+  fetchGraylogPredefinedQueries,
   fetchRecentGraylogQueries,
   generateGraylogQuery,
   reuseGraylogQuery,
   type GraylogField,
+  type GraylogPredefinedQuery,
   type GraylogQueryRun,
 } from '@/services/graylog-query'
 import { QueryWorkspace } from './workspace'
@@ -70,6 +72,18 @@ const EMPTY_IDENTIFIERS: Record<string, string> = Object.fromEntries(
 )
 
 const DEFAULT_SOURCES = ['mobile', 'backend', 'fiscal']
+
+const PREDEFINED_TABS: { value: string; label: string }[] = [
+  { value: 'top', label: 'Top ops' },
+  { value: 'identity', label: 'Identity' },
+  { value: 'delivery', label: 'Delivery' },
+  { value: 'terminal', label: 'Terminal & offline' },
+  { value: 'auth', label: 'Auth' },
+  { value: 'scan', label: 'Scan & hub' },
+  { value: 'money', label: 'Fiscal & money' },
+  { value: 'locker', label: 'D4Me & locker' },
+  { value: 'support', label: 'Support & tickets' },
+]
 
 function AmberNotice({ children }: { children: ReactNode }) {
   return (
@@ -120,6 +134,62 @@ function ContextSelect({
   )
 }
 
+function PredefinedQueryPicker({
+  queries,
+  activeId,
+  onSelect,
+}: {
+  queries: GraylogPredefinedQuery[]
+  activeId?: number | null
+  onSelect: (q: GraylogPredefinedQuery) => void
+}) {
+  if (!queries.length) {
+    return (
+      <p className="rounded-lg border border-dashed bg-muted/20 px-3 py-6 text-center text-xs text-muted-foreground">
+        No predefined queries in this category.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {queries.map((q) => {
+        const selected = activeId === q.id
+        return (
+          <button
+            key={q.id}
+            type="button"
+            title={q.reason}
+            onClick={() => onSelect(q)}
+            className={cn(
+              'rounded-lg border px-3 py-2.5 text-left transition-colors',
+              selected
+                ? 'border-orange-300 bg-orange-50/80 dark:border-orange-800 dark:bg-orange-950/40'
+                : 'border-border bg-card hover:border-orange-200 hover:bg-muted/40 dark:hover:border-orange-900',
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-semibold leading-snug text-foreground">{q.label}</p>
+              {q.priority === 'P0' && (
+                <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                  P0
+                </span>
+              )}
+            </div>
+            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+              {q.application}
+              {q.service !== 'any' ? ` · ${q.service}` : ''}
+            </p>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+              {q.reason}
+            </p>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function GraylogQueryGeneratorPage() {
   const [request, setRequest] = useState('')
   const [env, setEnv] = useState('production')
@@ -136,6 +206,9 @@ export default function GraylogQueryGeneratorPage() {
   const [fieldsError, setFieldsError] = useState<string | null>(null)
   const [fieldDictOpen, setFieldDictOpen] = useState(false)
   const [fieldFilter, setFieldFilter] = useState('')
+  const [predefinedQueries, setPredefinedQueries] = useState<GraylogPredefinedQuery[]>([])
+  const [predefinedTab, setPredefinedTab] = useState('top')
+  const [activePredefinedId, setActivePredefinedId] = useState<number | null>(null)
   const [recent, setRecent] = useState<GraylogQueryRun[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
   const [recentError, setRecentError] = useState<string | null>(null)
@@ -156,6 +229,30 @@ export default function GraylogQueryGeneratorPage() {
       [f.field, f.meaning, f.example, f.source].some((s) => s.toLowerCase().includes(q)),
     )
   }, [fields, fieldFilter])
+
+  const queriesByTab = useMemo(() => {
+    const map: Record<string, GraylogPredefinedQuery[]> = {
+      top: predefinedQueries.filter((q) => q.priority === 'P0'),
+    }
+    for (const tab of PREDEFINED_TABS) {
+      if (tab.value === 'top') continue
+      map[tab.value] = predefinedQueries.filter((q) => q.category === tab.value)
+    }
+    return map
+  }, [predefinedQueries])
+
+  const applyPredefined = (q: GraylogPredefinedQuery) => {
+    setRequest(q.text)
+    setApplication(q.application || 'nesy-mobile')
+    setService(q.service || 'any')
+    if (q.timeRange) setTimeRange(q.timeRange)
+    if (q.device) setDevice(q.device)
+    if (q.appVersion) setAppVersion(q.appVersion)
+    setIdentifiers({ ...EMPTY_IDENTIFIERS, ...(q.identifiers ?? {}) })
+    setSources(q.sources?.length ? q.sources : DEFAULT_SOURCES)
+    setActivePredefinedId(q.id)
+    setGenerateError(null)
+  }
 
   const loadRecent = useCallback(async () => {
     setRecentLoading(true)
@@ -185,9 +282,13 @@ export default function GraylogQueryGeneratorPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const list = await fetchGraylogFields()
+        const [list, predefined] = await Promise.all([
+          fetchGraylogFields(),
+          fetchGraylogPredefinedQueries(),
+        ])
         if (!cancelled) {
           setFields(list)
+          setPredefinedQueries(predefined)
           setFieldsError(null)
         }
       } catch (e) {
@@ -219,6 +320,7 @@ export default function GraylogQueryGeneratorPage() {
     setAppVersion('any')
     setIdentifiers(EMPTY_IDENTIFIERS)
     setSources(DEFAULT_SOURCES)
+    setActivePredefinedId(null)
     setResult(null)
     setGenerateError(null)
   }
@@ -267,6 +369,7 @@ export default function GraylogQueryGeneratorPage() {
     setAppVersion(q.appVersion || 'any')
     setIdentifiers({ ...EMPTY_IDENTIFIERS, ...(q.identifiers ?? {}) })
     setSources(q.sources?.length ? q.sources : DEFAULT_SOURCES)
+    setActivePredefinedId(null)
     setResult(q)
     setGenerateError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -316,29 +419,51 @@ export default function GraylogQueryGeneratorPage() {
         <ToolCard
           step="1"
           title="Define your log needs"
-          description="Pick a scenario or write your own prompt, then narrow with context, identifiers, and log sources."
+          description="Pick a predefined ops query or write your own prompt, then narrow with context, identifiers, and log sources."
           className="w-full"
         >
+          {predefinedQueries.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Predefined queries
+              </p>
+              <Tabs value={predefinedTab} onValueChange={setPredefinedTab} className="w-full">
+                <TabsList
+                  variant="button"
+                  className="mb-3 flex h-auto w-full flex-wrap justify-start gap-1"
+                >
+                  {PREDEFINED_TABS.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {PREDEFINED_TABS.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} className="mt-0 outline-none">
+                    <PredefinedQueryPicker
+                      queries={queriesByTab[tab.value] ?? []}
+                      activeId={activePredefinedId}
+                      onSelect={applyPredefined}
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Natural language
             </Label>
             <Textarea
               value={request}
-              onChange={(e) => setRequest(e.target.value)}
+              onChange={(e) => {
+                setRequest(e.target.value)
+                setActivePredefinedId(null)
+              }}
               placeholder="Show the delivery, fiscal, and retry logs generated in the last 2 hours for shipment 45-40-20251224-1."
               className="min-h-[120px] text-sm"
             />
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {SCENARIO_CHIPS.map((c) => (
-              <ExampleChip
-                key={c.id}
-                label={c.label}
-                onClick={() => setRequest(c.text)}
-              />
-            ))}
           </div>
 
           {generateError && <AmberNotice>{generateError}</AmberNotice>}

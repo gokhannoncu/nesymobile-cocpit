@@ -1,6 +1,10 @@
 import { Router, type Router as RouterType } from 'express'
 import { prisma, type Prisma } from '@nesy/db'
-import { getFieldsPayload, getGraylogFields } from '../data/graylog-fields.js'
+import {
+  getFieldsPayload,
+  getGraylogFields,
+  GRAYLOG_MOBILE_REQUEST_TOKENS,
+} from '../data/graylog-fields.js'
 import { ClaudeCliError, extractJsonObject, runClaudePrompt } from '../lib/claude-cli.js'
 import {
   assertSearchOnlyQuery,
@@ -69,6 +73,9 @@ function buildPrompt(input: {
     '',
     'Field dictionary:',
     fieldLines,
+    '',
+    'Known mobile / terminal request tokens (prefer these in message/path filters when relevant):',
+    ...GRAYLOG_MOBILE_REQUEST_TOKENS.map((t) => `- ${t}`),
     '',
     'User request:',
     input.naturalLanguage,

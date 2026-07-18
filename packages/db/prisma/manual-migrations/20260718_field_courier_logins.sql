@@ -23,11 +23,14 @@ CREATE TABLE IF NOT EXISTS "field_courier_logins" (
     "failedStep" TEXT,
     "maestroRunId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "field_courier_logins_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "field_courier_logins_country_environment_createdAt_idx"
-  ON "field_courier_logins"("country", "environment", "createdAt");
+CREATE INDEX IF NOT EXISTS "field_courier_logins_country_environment_updatedAt_idx"
+  ON "field_courier_logins"("country", "environment", "updatedAt");
 CREATE INDEX IF NOT EXISTS "field_courier_logins_status_idx" ON "field_courier_logins"("status");
 CREATE INDEX IF NOT EXISTS "field_courier_logins_courierUsername_idx" ON "field_courier_logins"("courierUsername");
+CREATE UNIQUE INDEX IF NOT EXISTS "field_courier_logins_country_environment_courierUserId_key"
+  ON "field_courier_logins"("country", "environment", "courierUserId");

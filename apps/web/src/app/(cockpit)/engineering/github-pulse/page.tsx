@@ -5,8 +5,10 @@ import {
   CalendarDays,
   Flame,
   GitBranch,
+  GitCommitVertical,
   GitPullRequest,
   Info,
+  PlaySquare,
   Users,
   Workflow,
 } from 'lucide-react'

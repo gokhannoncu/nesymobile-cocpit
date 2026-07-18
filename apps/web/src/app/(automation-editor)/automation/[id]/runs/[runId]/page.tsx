@@ -76,7 +76,7 @@ function parseDeviceLabel(label: string | null | undefined) {
   }
 
   const single = parts[0];
-  if (/^[A-Z0-9]+$/i.test(single) && single.length >= 8) {
+  if (single && /^[A-Z0-9]+$/i.test(single) && single.length >= 8) {
     return { deviceId: single, model: null };
   }
 
@@ -165,7 +165,7 @@ function parseLogLine(line: string): { timestamp: string | null; level: string |
   if (!match) {
     return { timestamp: null, level: null, message: trimmed };
   }
-  return { timestamp: match[1], level: match[2], message: match[3] };
+  return { timestamp: match[1] ?? null, level: match[2] ?? null, message: match[3] ?? trimmed };
 }
 
 function buildRunReportExport(
@@ -491,11 +491,13 @@ function VideoPlayer({
   );
 
   const activeStepId = useMemo(() => {
-    if (executionSteps.length === 0) return null;
-    let active = executionSteps[0].id;
+    const first = executionSteps[0];
+    if (!first) return null;
+    let active = first.id;
     for (let i = 0; i < executionSteps.length; i++) {
-      if (currentTime >= executionSteps[i].startOffsetSeconds) {
-        active = executionSteps[i].id;
+      const step = executionSteps[i];
+      if (step && currentTime >= step.startOffsetSeconds) {
+        active = step.id;
       } else {
         break;
       }
@@ -862,7 +864,7 @@ export default function RunResultsPage() {
     const stepInfo = steps.find(s => s.id === selectedStepId);
     if (stepInfo && run.version?.nodes) {
       stepTitle = stepInfo.nodeTitle;
-      const node = run.version.nodes.find((n: { id: string }) => n.id === stepInfo.nodeId) as { data?: { config?: Record<string, unknown> } } | undefined;
+      const node = (run.version.nodes as Array<{ id: string; data?: { config?: Record<string, unknown> } }>).find((n) => n.id === stepInfo.nodeId);
       if (node?.data?.config) {
         stepParameters = node.data.config;
       }

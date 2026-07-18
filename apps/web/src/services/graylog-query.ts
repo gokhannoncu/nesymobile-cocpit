@@ -8,6 +8,22 @@ export type GraylogField = {
   source: string
 }
 
+export type GraylogPredefinedQuery = {
+  id: number
+  label: string
+  text: string
+  application: string
+  service: string
+  category: string
+  reason: string
+  priority: 'P0' | 'P1' | 'P2' | string
+  timeRange?: string
+  device?: string
+  appVersion?: string
+  identifiers?: Record<string, string>
+  sources?: string[]
+}
+
 export type GraylogValidationCheck = {
   id?: string
   label?: string
@@ -89,6 +105,19 @@ export async function fetchGraylogFields(): Promise<GraylogField[]> {
     return Array.isArray(json.data?.fields) ? json.data.fields : []
   } catch (e) {
     throw new Error(formatApiNetworkError(e, 'Failed to load Graylog fields'))
+  }
+}
+
+export async function fetchGraylogPredefinedQueries(): Promise<GraylogPredefinedQuery[]> {
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/fields`)
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as {
+      data: { fields?: GraylogField[]; predefinedQueries?: GraylogPredefinedQuery[] }
+    }
+    return Array.isArray(json.data?.predefinedQueries) ? json.data.predefinedQueries : []
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to load Graylog predefined queries'))
   }
 }
 

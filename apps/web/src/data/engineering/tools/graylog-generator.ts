@@ -3,58 +3,6 @@
 
 import type { Tone } from '@/components/product'
 
-// ── Scenario chips ────────────────────────────────────────────
-
-export type ScenarioChip = {
-  id: string
-  label: string
-  /** Natural language request placed in textarea when chip is clicked. */
-  text: string
-}
-
-export const SCENARIO_CHIPS: ScenarioChip[] = [
-  {
-    id: 'shipment-flow',
-    label: 'Track shipment flow',
-    text: 'Show delivery, fiscal, and retry logs generated in the last 2 hours for Shipment 45-40-20251224-1.',
-  },
-  {
-    id: 'courier-login',
-    label: 'Courier login problem',
-    text: "List this morning's login attempts and authentication errors for Courier 3021; include token refresh logs.",
-  },
-  {
-    label: 'Search fiscal error code',
-    id: 'fiscal-error',
-    text: 'Show fiscal service logs generating FISCAL_TIMEOUT or FISCAL_DUPLICATE error code in the last 6 hours for Croatia.',
-  },
-  {
-    id: 'offline-queue',
-    label: 'Offline queue requests',
-    text: 'Get offline request logs waiting or falling into retry status in RequestSenderService queue for the last 1 hour.',
-  },
-  {
-    id: 'barcode-scan',
-    label: 'Barcode scan logs',
-    text: 'Show barcode scan events and errors occurring after scan on Device NX-4412 for the last 15 minutes.',
-  },
-  {
-    id: 'd4me-callback',
-    label: 'D4Me callback chain',
-    text: 'Show D4Me locker callback chain for Shipment 45-40-20251218-7; match callback_received and callback_processed events.',
-  },
-  {
-    id: 'device-crash',
-    label: 'Pre-crash logs on specific device',
-    text: 'Get all application logs in chronological order for the 10 minutes before the last crash on Device NX-2087.',
-  },
-  {
-    id: 'api-401',
-    label: 'API 401 and logout flow',
-    text: 'Group API calls returning 401 and immediately following logout events by courier in the last 1 hour.',
-  },
-]
-
 // ── Query context options ────────────────────────────────────
 
 export type SelectOption = { value: string; label: string }

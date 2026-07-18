@@ -251,6 +251,29 @@ Collapsible UI: search filter + click-to-append field to NL textarea
 5. Remove mock generated/investigations constants from runtime path  
 6. Smoke-test Generate + Recent on localhost  
 
+## Predefined queries (Mongo parity)
+
+Static library of **50 NL intents** at
+`apps/api/src/data/graylog-predefined-queries.ts`, exposed on
+`GET /api/graylog-query/fields` as `predefinedQueries` alongside the field
+dictionary.
+
+| Field | Notes |
+| --- | --- |
+| `id`, `label`, `text` | NL prompt with sample placeholders |
+| `application`, `service` | Form context defaults (`nesy-mobile`, `RequestSenderService`, …) |
+| `category` | `identity` \| `delivery` \| `terminal` \| `auth` \| `scan` \| `money` \| `locker` \| `support` |
+| `priority` | `P0` \| `P1` \| `P2` — Top ops tab = all P0 |
+| `timeRange`, `device`, `appVersion`, `identifiers`, `sources` | Optional form defaults; identifier keys limited to UI `IDENTIFIER_FIELDS` |
+
+UI: tabbed card gallery inside the form card (same pattern as Mongo Query
+Generator). Former `SCENARIO_CHIPS` are absorbed into this library and removed
+from the page.
+
+Field dictionary also includes `barcode`, `deviceId`, `requestName`,
+`username`. Claude generate prompt lists known mobile/terminal request tokens
+(`Task/DeliverParcels/`, `X-Channel: Terminal`, offline `requestName`s, …).
+
 ## Open follow-ups (out of scope)
 
 - Live Graylog Open/search deep-link  

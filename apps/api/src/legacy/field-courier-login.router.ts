@@ -25,13 +25,28 @@ router.get("/", async (req, res) => {
     if (VALID_COUNTRIES.has(country)) where.country = country;
     if (VALID_ENVIRONMENTS.has(environment)) where.environment = environment;
 
-    const rows = await prisma.fieldCourierLogin.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
+    let rows;
+    try {
+      rows = await prisma.fieldCourierLogin.findMany({
+        where,
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+        take: 200,
+      });
+    } catch (orderErr) {
+      // Older DB / stale Prisma client without updatedAt — keep list working.
+      console.warn(
+        "[field-courier-login] orderBy updatedAt failed, falling back to createdAt:",
+        orderErr instanceof Error ? orderErr.message : orderErr,
+      );
+      rows = await prisma.fieldCourierLogin.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+    }
     res.json({ data: rows });
   } catch (error) {
+    console.error("[field-courier-login] history fetch failed", error);
     res.status(500).json({
       message: "Field courier login history could not be fetched.",
       error: error instanceof Error ? error.message : "Unknown error",
@@ -91,36 +106,62 @@ router.get("/sessions/:id/events", (req, res) => {
   }
 
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  // EventSource is cross-origin from the web app; Express under Fastify may omit CORS.
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin ?? "*");
   res.flushHeaders?.();
 
+  let closed = false;
   const send = (payload: unknown) => {
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    if (closed) return;
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch {
+      closed = true;
+    }
   };
 
   send(session);
 
   if (session.status !== "running") {
-    res.write("event: end\ndata: {}\n\n");
-    res.end();
+    try {
+      res.write("event: end\ndata: {}\n\n");
+      res.end();
+    } catch {
+      /* ignore */
+    }
     return;
   }
 
   const unsubscribe = subscribeFieldLoginSession(id, (next) => {
     send(next);
     if (next.status !== "running") {
-      res.write("event: end\ndata: {}\n\n");
+      try {
+        res.write("event: end\ndata: {}\n\n");
+        res.end();
+      } catch {
+        /* ignore */
+      }
       unsubscribe();
-      res.end();
+      closed = true;
     }
   });
 
   const heartbeat = setInterval(() => {
-    res.write(": ping\n\n");
+    if (closed) return;
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      closed = true;
+      clearInterval(heartbeat);
+      unsubscribe();
+    }
   }, 15_000);
 
   req.on("close", () => {
+    closed = true;
     clearInterval(heartbeat);
     unsubscribe();
   });

@@ -5,6 +5,8 @@
     "build": "turbo run build",
     "predev": "node scripts/kill-dev-ports.mjs",
     "dev": "turbo run dev",
+    "preprod": "node scripts/kill-dev-ports.mjs",
+    "prod": "turbo run start",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",

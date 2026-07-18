@@ -1405,6 +1405,7 @@ function useViewportController(
     };
 
     const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!entry) return;
       const size = {
         width: entry.contentRect.width,
         height: entry.contentRect.height,
@@ -1898,13 +1899,13 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       if (cancelled) return;
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) {
-        commitLoadedWorkflow({ version: STORAGE_VERSION, nodes: [], connections: [], selectedNodeId: null });
+        commitLoadedWorkflow(emptySnapshot);
         return;
       }
       try {
         commitLoadedWorkflow(JSON.parse(raw) as WorkflowSnapshot);
       } catch {
-        commitLoadedWorkflow({ version: STORAGE_VERSION, nodes: [], connections: [], selectedNodeId: null });
+        commitLoadedWorkflow(emptySnapshot);
       }
     }
 

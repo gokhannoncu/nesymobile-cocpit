@@ -50,7 +50,16 @@ export type WorkflowPaletteCategory = {
   subsections?: { title: string; items: PaletteItem[] }[];
 };
 
-export const nodeToneByType: Record<string, string> = {
+type NodeToneKey =
+  | 'action'
+  | 'condition'
+  | 'assertion'
+  | 'backend'
+  | 'integration'
+  | 'database'
+  | 'terminal'
+
+export const nodeToneByType: Record<NodeToneKey, string> = {
   action: "text-nesy-ink bg-nesy-soft border-nesy-muted",
   condition: "text-nesy-ink bg-nesy-soft border-nesy-muted",
   assertion: "text-emerald-600 bg-emerald-50 border-emerald-100",

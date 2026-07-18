@@ -21,6 +21,7 @@ export type FieldCourierLoginRecord = {
   failedStep: string | null
   maestroRunId: string | null
   createdAt: string
+  updatedAt?: string
 }
 
 export type FieldLoginStepId =
@@ -55,19 +56,23 @@ export type FieldLoginSession = {
 export type FieldLoginSessionInput = {
   country: string
   environment: string
+  mode?: 'create' | 'replay'
   trackingNumber?: string
   barcode?: string
   legacyBarcode?: string
   courierName?: string
   courierUsername?: string
+  courierUserId?: string
+  hubId?: string
+  hubName?: string
 }
 
 async function readJson(res: Response) {
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(
-      (json as { message?: string }).message ?? `Request failed (${res.status})`,
-    )
+    const body = json as { message?: string; error?: string }
+    const detail = [body.message, body.error].filter(Boolean).join(' — ')
+    throw new Error(detail || `Request failed (${res.status})`)
   }
   return json
 }
@@ -105,38 +110,55 @@ export async function startFieldCourierLoginSession(
   return json.data as FieldLoginSession
 }
 
+/**
+ * Poll session status (preferred over EventSource).
+ * Cross-origin SSE under Fastify+Express often fails with "Failed to fetch"
+ * and EventSource.onerror retriggers toast spam.
+ */
 export function subscribeFieldCourierLoginSession(
   sessionId: string,
   onUpdate: (session: FieldLoginSession) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  const url = `${API_BASE}/field-courier-login/sessions/${sessionId}/events`
-  const source = new EventSource(url)
+  let stopped = false
+  let consecutiveFailures = 0
+  let timer: ReturnType<typeof setTimeout> | null = null
 
-  source.onmessage = (event) => {
+  const tick = async () => {
+    if (stopped) return
     try {
-      const data = JSON.parse(event.data) as FieldLoginSession
-      onUpdate(data)
+      const res = await fetch(`${API_BASE}/field-courier-login/sessions/${sessionId}`)
+      if (!res.ok) {
+        throw new Error(`Session poll failed (${res.status})`)
+      }
+      const json = (await res.json()) as { data?: FieldLoginSession }
+      consecutiveFailures = 0
+      if (json.data) {
+        onUpdate(json.data)
+        if (json.data.status !== 'running') {
+          stopped = true
+          return
+        }
+      }
     } catch (err) {
-      onError?.(err instanceof Error ? err : new Error('Invalid SSE payload'))
+      consecutiveFailures += 1
+      // Ignore transient blips while API reloads; surface after a few failures.
+      if (consecutiveFailures >= 5) {
+        onError?.(err instanceof Error ? err : new Error('Session poll failed'))
+        consecutiveFailures = 0
+      }
+    }
+    if (!stopped) {
+      timer = setTimeout(() => {
+        void tick()
+      }, 1000)
     }
   }
 
-  source.addEventListener('end', () => {
-    source.close()
-  })
+  void tick()
 
-  source.onerror = () => {
-    // Fall back to poll once on stream error
-    void fetch(`${API_BASE}/field-courier-login/sessions/${sessionId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json?.data) onUpdate(json.data as FieldLoginSession)
-      })
-      .catch((err) => {
-        onError?.(err instanceof Error ? err : new Error('Session poll failed'))
-      })
+  return () => {
+    stopped = true
+    if (timer) clearTimeout(timer)
   }
-
-  return () => source.close()
 }

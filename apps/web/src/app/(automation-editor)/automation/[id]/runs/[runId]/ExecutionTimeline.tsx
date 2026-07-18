@@ -97,7 +97,7 @@ function computeStepStartOffsets(steps: WorkflowStepResult[]): number[] {
 
     let elapsedMs = 0;
     for (let i = 0; i < index; i++) {
-      elapsedMs += steps[i].duration ?? 0;
+      elapsedMs += steps[i]?.duration ?? 0;
     }
     return elapsedMs / 1000;
   });

@@ -1,3 +1,8 @@
+import {
+  GRAYLOG_PREDEFINED_QUERY_LIBRARY,
+  type GraylogPredefinedQuery,
+} from './graylog-predefined-queries.js'
+
 export type GraylogField = {
   field: string
   meaning: string
@@ -55,12 +60,77 @@ const GRAYLOG_FIELDS: GraylogField[] = [
     example: 'HR',
     source: 'All services',
   },
+  {
+    field: 'barcode',
+    meaning:
+      'Parcel barcode from scan or DeliverParcels BarcodeList — use when shipmentId is unknown.',
+    example: 'HR304418872299001',
+    source: 'Mobile · Scan · Delivery',
+  },
+  {
+    field: 'deviceId',
+    meaning: 'Handset device id (X-DeviceId) — device crash windows and version regressions.',
+    example: 'NX-4412',
+    source: 'Mobile',
+  },
+  {
+    field: 'requestName',
+    meaning:
+      'Offline queue / Firebase requestName token — e.g. deliverParcels, DeliveryFailed, SaveTerminalFailedRequests.',
+    example: 'deliverParcels',
+    source: 'Offline queue · Mobile',
+  },
+  {
+    field: 'username',
+    meaning: 'Courier username — correlates login, AskQuestion, and non-200 request analytics.',
+    example: 'courier.hr.3021',
+    source: 'Mobile · Authentication',
+  },
+]
+
+/** Known mobile API / queue tokens for Claude prompt enrichment. */
+export const GRAYLOG_MOBILE_REQUEST_TOKENS = [
+  'Task/DeliverParcels/',
+  'Task/DeliverParcelsFromParcelShop/',
+  'Task/DeliveryFailed/',
+  'Task/PickupFailed/',
+  'Task/LoadParcelToCourierVehicle/',
+  'Task/UnloadParcelFromCourierVehicle/',
+  'Task/ReleaseParcel/',
+  'Task/UpdateDeliveryRemark/',
+  'Task/GetMyScheduleByZoneCode/',
+  'Task/OrderStopListFromTerminal/',
+  'Task/CreateInstantTask',
+  'Auth/LoginMobile/',
+  'Auth/LoginDevice/',
+  'Tracking/SaveCourierLocation/',
+  'History/SaveTerminalFailedRequests/',
+  'History/SaveTerminalRequestDbSnapshot/',
+  'History/GetAskQuestion/',
+  'User/AskQuestion/',
+  'Shipment/CreateFiscalInvoice',
+  'Shipment/SaveNoDataScanLog',
+  'HubCompanion/ScanSpecial',
+  'requestName: deliverParcels',
+  'requestName: deliverParcelToParcelShop',
+  'requestName: DeliveryFailed',
+  'requestName: PickupFailed',
+  'requestName: SaveTerminalFailedRequests',
+  'header X-Channel: Terminal (ChannelType=9)',
+  'X-DeviceId',
+  'X-AppName (e.g. Nesy-Mobile-Prod)',
 ]
 
 export function getGraylogFields(): GraylogField[] {
   return GRAYLOG_FIELDS
 }
 
-export function getFieldsPayload(): { fields: GraylogField[] } {
-  return { fields: GRAYLOG_FIELDS }
+export function getFieldsPayload(): {
+  fields: GraylogField[]
+  predefinedQueries: GraylogPredefinedQuery[]
+} {
+  return {
+    fields: GRAYLOG_FIELDS,
+    predefinedQueries: GRAYLOG_PREDEFINED_QUERY_LIBRARY,
+  }
 }

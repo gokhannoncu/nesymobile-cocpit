@@ -57,11 +57,17 @@ export type FieldLoginSessionStatus = "running" | "success" | "failed";
 export type FieldLoginSessionInput = {
   country: string;
   environment: string;
+  /** Default create flow searches shipment/courier. Replay skips search. */
+  mode?: "create" | "replay";
   trackingNumber?: string;
   barcode?: string;
   legacyBarcode?: string;
   courierName?: string;
   courierUsername?: string;
+  /** Required for replay — known courier from history. */
+  courierUserId?: string;
+  hubId?: string;
+  hubName?: string;
 };
 
 export type FieldLoginSession = {
@@ -243,7 +249,8 @@ async function findUserRowByExactUsername(
   const maxSkipped = 20_000;
   while (skip < maxSkipped) {
     const body: Record<string, unknown> = {
-      IncludePassiveUsers: true,
+      // false = Active only (Nesy naming is inverted; see getAllUsers)
+      IncludePassiveUsers: false,
       FullName: usernameExact.trim(),
       Roles: [],
       SkipCount: skip,
@@ -271,13 +278,20 @@ async function findUserRowByExactUsername(
   return null;
 }
 
-function createInitialSteps(): FieldLoginStep[] {
-  return STEP_DEFS.map((s) => ({
-    id: s.id,
-    label: s.label,
-    detail: null,
-    status: "pending" as const,
-  }));
+function createInitialSteps(mode: "create" | "replay" = "create"): FieldLoginStep[] {
+  return STEP_DEFS.map((s) => {
+    let label = s.label;
+    if (mode === "replay") {
+      if (s.id === "resolve_courier") label = "Load courier";
+      if (s.id === "fetch_pin") label = "Verify courier PIN";
+    }
+    return {
+      id: s.id,
+      label,
+      detail: null,
+      status: "pending" as const,
+    };
+  });
 }
 
 function cloneSession(session: FieldLoginSession): FieldLoginSession {
@@ -543,10 +557,14 @@ function pinFromPayload(payload: unknown): string {
 
 function normalizeUserRow(raw: Record<string, unknown>) {
   return {
-    userId: pickStr(raw, "userId", "UserId"),
+    userId:
+      pickStr(raw, "userId", "UserId") ||
+      coerceMongoHex24(raw.id ?? raw.Id ?? raw._id) ||
+      "",
     username: pickStr(raw, "username", "Username", "userName", "UserName"),
     fullName: pickStr(raw, "fullName", "FullName"),
     hubName: pickStr(raw, "hubName", "HubName"),
+    // BranchId is an int on UserViewModel
     hubId: pickStr(raw, "branchId", "BranchId", "hubId", "HubId"),
     role: pickStr(raw, "role", "Role"),
     email: pickStr(raw, "email", "Email"),
@@ -560,8 +578,12 @@ async function getAllUsers(
   token: string,
   opts: { fullName?: string; userId?: string; maxResultCount?: number },
 ): Promise<Record<string, unknown>[]> {
+  // Nesy GetAllUsers quirk (UserOperation.ApplyFilter):
+  //   IncludePassiveUsers=false → Active users only
+  //   IncludePassiveUsers=true  → Passiveive users only (NOT "include both")
+  // Match Data Center Users default (active list).
   const body: Record<string, unknown> = {
-    IncludePassiveUsers: true,
+    IncludePassiveUsers: false,
     FullName: opts.fullName ?? "",
     Roles: [],
     SkipCount: 0,
@@ -574,9 +596,315 @@ async function getAllUsers(
   if (!result.ok) throw new Error(result.text);
   const payload = result.json.payload as
     | { items?: unknown[]; Items?: unknown[] }
+    | unknown[]
     | undefined;
-  const items = payload?.items ?? payload?.Items ?? [];
+  const items = Array.isArray(payload)
+    ? payload
+    : ((payload as { items?: unknown[]; Items?: unknown[] } | undefined)?.items ??
+      (payload as { Items?: unknown[] } | undefined)?.Items ??
+      []);
   return items.filter((i): i is Record<string, unknown> => !!i && typeof i === "object");
+}
+
+function stringifyObjectId(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (typeof o.$oid === "string" && o.$oid.trim()) return o.$oid.trim();
+    const nested = coerceMongoHex24(o.Timestamp ?? o.id ?? o.Id);
+    if (nested) return nested;
+  }
+  return "";
+}
+
+/**
+ * Same extraction as Data Center `normalizeTrackingResponse`
+ * (Get user with search dialog).
+ */
+function extractCourierFromTrackingEnvelope(envelope: Record<string, unknown>): {
+  courierName: string;
+  courierUserId: string;
+  scheduleId: string;
+} {
+  let payload = (envelope.payload ??
+    envelope.Payload ??
+    envelope) as Record<string, unknown> | unknown[];
+  // GetTrackingInfo can return a list; use the first hit (same as UI showing one card).
+  if (Array.isArray(payload)) {
+    payload = (payload[0] && typeof payload[0] === "object"
+      ? payload[0]
+      : {}) as Record<string, unknown>;
+  }
+  const courierInfo = (payload.courierInfo ??
+    payload.CourierInfo ??
+    {}) as Record<string, unknown>;
+
+  const courierName =
+    pickStr(courierInfo, "courierName", "CourierName") ||
+    pickStr(payload, "courierName", "CourierName");
+
+  const courierUserId =
+    stringifyObjectId(courierInfo.courierUserId ?? courierInfo.CourierUserId) ||
+    stringifyObjectId(payload.courierUserId ?? payload.CourierUserId) ||
+    coerceMongoHex24(courierInfo.courierUserId ?? courierInfo.CourierUserId) ||
+    coerceMongoHex24(payload.courierUserId ?? payload.CourierUserId) ||
+    "";
+
+  const scheduleId = pickStr(payload, "scheduleId", "ScheduleId");
+  return { courierName, courierUserId, scheduleId };
+}
+
+/** Soft name match like Users search after "Use this courier". */
+async function resolveCourierByDisplayName(
+  baseUrl: string,
+  token: string,
+  displayName: string,
+): Promise<CourierResolved | null> {
+  const needle = displayName.trim().toLowerCase();
+  if (!needle) return null;
+
+  const items = await getAllUsers(baseUrl, token, {
+    fullName: displayName.trim(),
+    maxResultCount: 100,
+  });
+  const normalized = items.map(normalizeUserRow).filter((u) => u.userId);
+  const exact = normalized.filter(
+    (u) => u.fullName.toLowerCase() === needle || u.username.toLowerCase() === needle,
+  );
+  const soft = normalized.filter(
+    (u) =>
+      u.fullName.toLowerCase().includes(needle) ||
+      needle.includes(u.fullName.toLowerCase()) ||
+      u.username.toLowerCase().includes(needle),
+  );
+  const list = exact.length > 0 ? exact : soft;
+  if (list.length === 1) {
+    const m = list[0]!;
+    return {
+      userId: m.userId,
+      username: m.username,
+      fullName: m.fullName || displayName.trim(),
+      hubId: m.hubId,
+      hubName: m.hubName,
+      raw: m.raw,
+    };
+  }
+  if (list.length > 1) {
+    throw new Error(
+      `Courier "${displayName}" matched ${list.length} users. Provide courier username.`,
+    );
+  }
+
+  // Paginated exact-username style fallback (FullName search can miss)
+  const byUsername = await findUserRowByExactUsername(baseUrl, token, displayName.trim());
+  if (byUsername) {
+    const m = normalizeUserRow(byUsername);
+    if (m.userId) {
+      return {
+        userId: m.userId,
+        username: m.username,
+        fullName: m.fullName || displayName.trim(),
+        hubId: m.hubId,
+        hubName: m.hubName,
+        raw: m.raw,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Tracking call matching Data Center proxy: do not hard-fail on non-200 resultCode
+ * when a payload with courier info is still present.
+ */
+async function fetchTrackingEnvelope(
+  baseUrl: string,
+  token: string,
+  waybill: string,
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`${baseUrl}/Tracking/GetTrackingInfoByTrackingNumber`, {
+    method: "POST",
+    headers: nesyPortalHeaders(token),
+    body: JSON.stringify({ TrackingNumber: waybill }),
+    signal: AbortSignal.timeout(45_000),
+  });
+  const text = await response.text();
+  let json: Record<string, unknown> = {};
+  try {
+    json = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    throw new Error("Invalid JSON from Nesy Tracking.");
+  }
+  if (!response.ok) {
+    throw new Error(text || `Tracking HTTP ${response.status}`);
+  }
+  return json;
+}
+
+type CachedCourierLogin = {
+  courierUserId: string;
+  courierUsername: string | null;
+  courierFullName: string | null;
+  hubId: string | null;
+  hubName: string | null;
+  waybillNumber: string | null;
+  legacyBarcode: string | null;
+  barcode: string | null;
+};
+
+/** Look up prior field-login row so we can skip shipment search for known couriers. */
+async function findCachedCourierLogin(
+  country: string,
+  environment: string,
+  input: FieldLoginSessionInput,
+): Promise<CachedCourierLogin | null> {
+  const or: Array<Record<string, unknown>> = [];
+  const userId = input.courierUserId?.trim();
+  const username = input.courierUsername?.trim();
+  const fullName = input.courierName?.trim();
+  const tracking = input.trackingNumber?.trim();
+  const barcode = input.barcode?.trim();
+  const legacy = input.legacyBarcode?.trim();
+
+  if (userId) or.push({ courierUserId: userId });
+  if (username) {
+    or.push({ courierUsername: { equals: username, mode: "insensitive" } });
+  }
+  if (fullName) {
+    or.push({ courierFullName: { equals: fullName, mode: "insensitive" } });
+  }
+  if (tracking) {
+    or.push(
+      { waybillNumber: tracking },
+      { barcode: tracking },
+      { legacyBarcode: tracking },
+    );
+  }
+  if (barcode) {
+    or.push({ barcode }, { waybillNumber: barcode }, { legacyBarcode: barcode });
+  }
+  if (legacy) {
+    or.push({ legacyBarcode: legacy }, { waybillNumber: legacy }, { barcode: legacy });
+  }
+  if (or.length === 0) return null;
+
+  const row = await prisma.fieldCourierLogin.findFirst({
+    where: {
+      country,
+      environment,
+      courierUserId: { not: null },
+      OR: or,
+    },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+  });
+  if (!row?.courierUserId) return null;
+  return {
+    courierUserId: row.courierUserId,
+    courierUsername: row.courierUsername,
+    courierFullName: row.courierFullName,
+    hubId: row.hubId,
+    hubName: row.hubName,
+    waybillNumber: row.waybillNumber,
+    legacyBarcode: row.legacyBarcode,
+    barcode: row.barcode,
+  };
+}
+
+async function upsertCourierLoginRow(data: {
+  country: string;
+  environment: string;
+  courierUserId: string | null;
+  courierUsername: string | null;
+  courierFullName: string | null;
+  hubId: string | null;
+  hubName: string | null;
+  waybillNumber: string | null;
+  legacyBarcode: string | null;
+  barcode: string | null;
+  deviceCode: string | null;
+  adbDeviceId: string | null;
+  adminUserId: string | null;
+  adminUsername: string | null;
+  status: string;
+  errorMessage?: string | null;
+  failedStep?: string | null;
+  maestroRunId: string | null;
+}) {
+  // One row per courier; anonymous failures (no userId) stay as plain inserts.
+  if (!data.courierUserId) {
+    return prisma.fieldCourierLogin.create({ data });
+  }
+
+  return prisma.fieldCourierLogin.upsert({
+    where: {
+      country_environment_courierUserId: {
+        country: data.country,
+        environment: data.environment,
+        courierUserId: data.courierUserId,
+      },
+    },
+    create: data,
+    update: {
+      courierUsername: data.courierUsername,
+      courierFullName: data.courierFullName,
+      hubId: data.hubId,
+      hubName: data.hubName,
+      waybillNumber: data.waybillNumber,
+      legacyBarcode: data.legacyBarcode,
+      barcode: data.barcode,
+      deviceCode: data.deviceCode,
+      adbDeviceId: data.adbDeviceId,
+      adminUserId: data.adminUserId,
+      adminUsername: data.adminUsername,
+      status: data.status,
+      errorMessage: data.status === "success" ? null : (data.errorMessage ?? null),
+      failedStep: data.status === "success" ? null : (data.failedStep ?? null),
+      maestroRunId: data.maestroRunId,
+    },
+  });
+}
+
+async function resolveCourierByUserId(
+  baseUrl: string,
+  token: string,
+  courierUserId: string,
+  fallback?: {
+    username?: string;
+    fullName?: string;
+    hubId?: string;
+    hubName?: string;
+  },
+): Promise<CourierResolved> {
+  const items = await getAllUsers(baseUrl, token, {
+    userId: courierUserId,
+    maxResultCount: 5,
+  });
+  const m = items[0] ? normalizeUserRow(items[0]) : null;
+  if (m?.userId) {
+    return {
+      userId: m.userId,
+      username: m.username || fallback?.username || "",
+      fullName: m.fullName || fallback?.fullName || "",
+      hubId: m.hubId || fallback?.hubId || "",
+      hubName: m.hubName || fallback?.hubName || "",
+      raw: m.raw,
+    };
+  }
+
+  // History may still have hub/name even if GetAllUsers misses (rare). Prefer live hub.
+  if (fallback?.hubId && fallback?.hubName) {
+    return {
+      userId: courierUserId,
+      username: fallback.username || "",
+      fullName: fallback.fullName || "",
+      hubId: fallback.hubId,
+      hubName: fallback.hubName,
+      raw: {},
+    };
+  }
+
+  throw new Error(`No courier found for userId "${courierUserId}".`);
 }
 
 async function resolveCourier(
@@ -589,6 +917,7 @@ async function resolveCourier(
   legacyBarcode: string | null;
   barcode: string | null;
 }> {
+  const courierUserId = input.courierUserId?.trim() ?? "";
   const courierUsername = input.courierUsername?.trim() ?? "";
   const courierName = input.courierName?.trim() ?? "";
   let waybill =
@@ -596,22 +925,27 @@ async function resolveCourier(
   const legacyBarcode = input.legacyBarcode?.trim() || "";
   const barcode = input.barcode?.trim() || "";
 
-  if (courierUsername) {
-    const items = await getAllUsers(baseUrl, token, {
-      fullName: courierUsername,
-      maxResultCount: 50,
+  if (courierUserId) {
+    const courier = await resolveCourierByUserId(baseUrl, token, courierUserId, {
+      username: courierUsername || undefined,
+      fullName: courierName || undefined,
+      hubId: input.hubId?.trim() || undefined,
+      hubName: input.hubName?.trim() || undefined,
     });
-    const needle = courierUsername.toLowerCase();
-    const matches = items
-      .map(normalizeUserRow)
-      .filter((u) => u.username.toLowerCase() === needle);
-    if (matches.length === 0) {
+    return {
+      courier,
+      waybillNumber: waybill || null,
+      legacyBarcode: legacyBarcode || null,
+      barcode: barcode || null,
+    };
+  }
+
+  if (courierUsername) {
+    const row = await findUserRowByExactUsername(baseUrl, token, courierUsername);
+    if (!row) {
       throw new Error(`No courier found with username "${courierUsername}".`);
     }
-    if (matches.length > 1) {
-      throw new Error(`Ambiguous username "${courierUsername}" (${matches.length} matches).`);
-    }
-    const m = matches[0]!;
+    const m = normalizeUserRow(row);
     if (!m.userId) throw new Error("Courier userId missing.");
     return {
       courier: {
@@ -629,40 +963,12 @@ async function resolveCourier(
   }
 
   if (courierName) {
-    const items = await getAllUsers(baseUrl, token, {
-      fullName: courierName,
-      maxResultCount: 50,
-    });
-    const needle = courierName.toLowerCase();
-    const matches = items
-      .map(normalizeUserRow)
-      .filter(
-        (u) =>
-          u.fullName.toLowerCase() === needle ||
-          u.fullName.toLowerCase().includes(needle) ||
-          u.username.toLowerCase() === needle,
-      );
-    const exact = matches.filter((u) => u.fullName.toLowerCase() === needle);
-    const list = exact.length > 0 ? exact : matches;
-    if (list.length === 0) {
+    const resolved = await resolveCourierByDisplayName(baseUrl, token, courierName);
+    if (!resolved) {
       throw new Error(`No courier found matching name "${courierName}".`);
     }
-    if (list.length > 1) {
-      throw new Error(
-        `Ambiguous courier name "${courierName}" (${list.length} matches). Provide username.`,
-      );
-    }
-    const m = list[0]!;
-    if (!m.userId) throw new Error("Courier userId missing.");
     return {
-      courier: {
-        userId: m.userId,
-        username: m.username,
-        fullName: m.fullName,
-        hubId: m.hubId,
-        hubName: m.hubName,
-        raw: m.raw,
-      },
+      courier: resolved,
       waybillNumber: waybill || null,
       legacyBarcode: legacyBarcode || null,
       barcode: barcode || null,
@@ -694,33 +1000,21 @@ async function resolveCourier(
     );
   }
 
-  const tracking = await postNesyJson(
-    baseUrl,
-    "Tracking/GetTrackingInfoByTrackingNumber",
-    token,
-    { TrackingNumber: waybill },
-  );
-  if (!tracking.ok) throw new Error(tracking.text);
-  const tPayload = (tracking.json.payload ?? {}) as Record<string, unknown>;
-  const courierInfo = (tPayload.courierInfo ??
-    tPayload.CourierInfo ??
-    {}) as Record<string, unknown>;
-  const courierUserId =
-    pickStr(courierInfo, "courierUserId", "CourierUserId") ||
-    pickStr(tPayload, "courierUserId", "CourierUserId");
-  const courierNameFromTrack =
-    pickStr(courierInfo, "courierName", "CourierName") ||
-    pickStr(tPayload, "courierName", "CourierName");
+  const trackingEnvelope = await fetchTrackingEnvelope(baseUrl, token, waybill);
+  const tracked = extractCourierFromTrackingEnvelope(trackingEnvelope);
 
-  if (courierUserId) {
-    const items = await getAllUsers(baseUrl, token, { userId: courierUserId, maxResultCount: 5 });
+  if (tracked.courierUserId) {
+    const items = await getAllUsers(baseUrl, token, {
+      userId: tracked.courierUserId,
+      maxResultCount: 5,
+    });
     const m = items[0] ? normalizeUserRow(items[0]) : null;
     if (m?.userId) {
       return {
         courier: {
           userId: m.userId,
           username: m.username,
-          fullName: m.fullName || courierNameFromTrack,
+          fullName: m.fullName || tracked.courierName,
           hubId: m.hubId,
           hubName: m.hubName,
           raw: m.raw,
@@ -732,40 +1026,29 @@ async function resolveCourier(
     }
   }
 
-  if (courierNameFromTrack) {
-    const items = await getAllUsers(baseUrl, token, {
-      fullName: courierNameFromTrack,
-      maxResultCount: 50,
-    });
-    const needle = courierNameFromTrack.toLowerCase();
-    const matches = items
-      .map(normalizeUserRow)
-      .filter((u) => u.fullName.toLowerCase() === needle || u.username.toLowerCase() === needle);
-    if (matches.length === 1 && matches[0]?.userId) {
-      const m = matches[0];
+  if (tracked.courierName) {
+    const resolved = await resolveCourierByDisplayName(
+      baseUrl,
+      token,
+      tracked.courierName,
+    );
+    if (resolved) {
       return {
-        courier: {
-          userId: m.userId,
-          username: m.username,
-          fullName: m.fullName,
-          hubId: m.hubId,
-          hubName: m.hubName,
-          raw: m.raw,
-        },
+        courier: resolved,
         waybillNumber: waybill,
         legacyBarcode: legacyBarcode || null,
         barcode: barcode || null,
       };
     }
-    if (matches.length > 1) {
-      throw new Error(
-        `Tracking found courier "${courierNameFromTrack}" but username is ambiguous. Provide courier username.`,
-      );
-    }
+    throw new Error(
+      `Tracking found courier "${tracked.courierName}"` +
+        (tracked.scheduleId ? ` (schedule ${tracked.scheduleId})` : "") +
+        ` but no unique dashboard user matched. Provide courier username.`,
+    );
   }
 
   throw new Error(
-    `Could not resolve courier for waybill "${waybill}". Tracking has no courier on tour.`,
+    `Could not resolve courier for waybill "${waybill}". Tracking response has no courier name/userId (same fields as Get user with search).`,
   );
 }
 
@@ -1101,23 +1384,48 @@ async function ensureAndRunMaestroLogin(params: {
 
   const deadline = Date.now() + 180_000;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const statusJson = (await automationJson(`/workflows/runs/${runId}/status`)) as {
-      data?: { runStatus?: string; status?: string };
-    };
-    const status =
-      statusJson.data?.runStatus ?? statusJson.data?.status ?? "";
-    if (status === "success" || status === "completed") return runId;
-    if (status === "failed" || status === "cancelled" || status === "error") {
+    await new Promise((r) => setTimeout(r, 1000));
+    const statusJson = (await automationJson(`/workflows/runs/${runId}/status`)) as Record<
+      string,
+      unknown
+    >;
+    const status = extractAutomationRunStatus(statusJson);
+
+    // Match workflow editor: anything except running/pending is terminal.
+    if (status && status !== "running" && status !== "pending") {
+      if (
+        status === "success" ||
+        status === "completed" ||
+        status === "complete" ||
+        status === "ok"
+      ) {
+        return runId;
+      }
       throw new Error(`Maestro run ended with status "${status}".`);
     }
   }
   throw new Error("Maestro run timed out after 180s.");
 }
 
+/** Automation status API may return top-level or `{ data: ... }` (same as web client). */
+function extractAutomationRunStatus(payload: Record<string, unknown>): string {
+  const nested =
+    payload.data && typeof payload.data === "object"
+      ? (payload.data as Record<string, unknown>)
+      : null;
+  const raw =
+    payload.runStatus ??
+    payload.status ??
+    nested?.runStatus ??
+    nested?.status ??
+    "";
+  return typeof raw === "string" ? raw.trim().toLowerCase() : "";
+}
+
 export function startFieldLoginSession(input: FieldLoginSessionInput): FieldLoginSession {
   const country = input.country?.trim().toUpperCase() ?? "";
   const environment = input.environment?.trim().toLowerCase() ?? "";
+  const mode = input.mode === "replay" ? "replay" : "create";
 
   if (!isNesyDashboardCountry(country) || !isNesyEnvironment(environment)) {
     throw new Error("country and environment are required (HR|SI|RS|BA|ME / stage|prod).");
@@ -1126,22 +1434,32 @@ export function startFieldLoginSession(input: FieldLoginSessionInput): FieldLogi
     throw new Error("country/environment must be a mobile-supported pair.");
   }
 
-  const hasCourier = Boolean(input.courierName?.trim() || input.courierUsername?.trim());
-  const hasShipment = Boolean(
-    input.trackingNumber?.trim() ||
-      input.barcode?.trim() ||
-      input.legacyBarcode?.trim(),
-  );
-  if (!hasCourier && !hasShipment) {
-    throw new Error(
-      "Provide at least one of: courier name, courier username, tracking, barcode, or legacy barcode.",
+  const courierUserId = input.courierUserId?.trim() || "";
+
+  if (mode === "replay") {
+    if (!courierUserId) {
+      throw new Error("Replay requires courierUserId from history.");
+    }
+  } else {
+    const hasCourier = Boolean(
+      input.courierName?.trim() || input.courierUsername?.trim() || courierUserId,
     );
+    const hasShipment = Boolean(
+      input.trackingNumber?.trim() ||
+        input.barcode?.trim() ||
+        input.legacyBarcode?.trim(),
+    );
+    if (!hasCourier && !hasShipment) {
+      throw new Error(
+        "Provide at least one of: courier name, courier username, tracking, barcode, or legacy barcode.",
+      );
+    }
   }
 
   const session: FieldLoginSession = {
     id: randomUUID(),
     status: "running",
-    steps: createInitialSteps(),
+    steps: createInitialSteps(mode),
     errorMessage: null,
     failedStep: null,
     historyId: null,
@@ -1150,11 +1468,15 @@ export function startFieldLoginSession(input: FieldLoginSessionInput): FieldLogi
     input: {
       country,
       environment,
+      mode,
       trackingNumber: input.trackingNumber?.trim() || undefined,
       barcode: input.barcode?.trim() || undefined,
       legacyBarcode: input.legacyBarcode?.trim() || undefined,
       courierName: input.courierName?.trim() || undefined,
       courierUsername: input.courierUsername?.trim() || undefined,
+      courierUserId: courierUserId || undefined,
+      hubId: input.hubId?.trim() || undefined,
+      hubName: input.hubName?.trim() || undefined,
     },
   };
   sessions.set(session.id, session);
@@ -1221,7 +1543,15 @@ async function runOrchestrator(
     adbDeviceId = await requireSingleAdbDevice();
     setStep(session, "validate_device", "done", adbDeviceId);
 
-    setStep(session, "resolve_courier", "active", "Logging into Nesy dashboard…");
+    const isReplay = session.input.mode === "replay";
+    setStep(
+      session,
+      "resolve_courier",
+      "active",
+      isReplay
+        ? "Loading known courier…"
+        : "Checking local history, then Nesy dashboard…",
+    );
     const login = await loginDashboard(country, environment);
     token = login.token;
     const admin = await resolveAdminProfile(baseUrl, token, login.user);
@@ -1231,16 +1561,48 @@ async function runOrchestrator(
     originalHubId = admin.hubId;
     originalHubName = admin.hubName;
 
-    const resolved = await resolveCourier(baseUrl, token, session.input);
-    courier = resolved.courier;
-    waybillNumber = resolved.waybillNumber;
-    legacyBarcode = resolved.legacyBarcode;
-    barcode = resolved.barcode;
+    // Prefer our DB (1 row / courier): skip shipment search when we already know them.
+    const cached = await findCachedCourierLogin(country, environment, session.input);
+    let resolveSource: "cache" | "replay" | "search" = "search";
+
+    if (cached?.courierUserId) {
+      resolveSource = isReplay ? "replay" : "cache";
+      const live = await resolveCourierByUserId(baseUrl, token, cached.courierUserId, {
+        username: cached.courierUsername || session.input.courierUsername || undefined,
+        fullName: cached.courierFullName || session.input.courierName || undefined,
+        hubId: cached.hubId || session.input.hubId || undefined,
+        hubName: cached.hubName || session.input.hubName || undefined,
+      });
+      courier = live;
+      waybillNumber =
+        session.input.trackingNumber?.trim() ||
+        cached.waybillNumber ||
+        null;
+      legacyBarcode =
+        session.input.legacyBarcode?.trim() ||
+        cached.legacyBarcode ||
+        null;
+      barcode = session.input.barcode?.trim() || cached.barcode || null;
+    } else {
+      const resolved = await resolveCourier(baseUrl, token, session.input);
+      courier = resolved.courier;
+      waybillNumber = resolved.waybillNumber;
+      legacyBarcode = resolved.legacyBarcode;
+      barcode = resolved.barcode;
+      if (isReplay) resolveSource = "replay";
+    }
+
+    const sourceLabel =
+      resolveSource === "cache"
+        ? "From history · "
+        : resolveSource === "replay"
+          ? "Replay · "
+          : "";
     setStep(
       session,
       "resolve_courier",
       "done",
-      `${courier.fullName || courier.username} · hub ${courier.hubName || courier.hubId || "—"}`,
+      `${sourceLabel}${courier.fullName || courier.username} · hub ${courier.hubName || courier.hubId || "—"}`,
     );
 
     if (!courier.hubId || !courier.hubName) {
@@ -1271,16 +1633,32 @@ async function runOrchestrator(
       setStep(session, "align_hub", "skipped", "Admin hub already matches courier hub");
     }
 
-    setStep(session, "fetch_pin", "active", "Requesting device PIN…");
+    setStep(
+      session,
+      "fetch_pin",
+      "active",
+      isReplay
+        ? "Checking whether courier PIN is still active…"
+        : "Requesting device PIN…",
+    );
     pinCode = await fetchCourierPin(baseUrl, token, courier.userId);
 
     if (!pinCode || !/^\d{4}$/.test(pinCode)) {
       throw Object.assign(
-        new Error("Courier PIN is empty or invalid after hub alignment."),
+        new Error(
+          isReplay
+            ? "Courier PIN is not active (empty or invalid). Generate/reset PIN in Data Center, then retry."
+            : "Courier PIN is empty or invalid after hub alignment.",
+        ),
         { step: "fetch_pin" as FieldLoginStepId },
       );
     }
-    setStep(session, "fetch_pin", "done", "PIN obtained");
+    setStep(
+      session,
+      "fetch_pin",
+      "done",
+      isReplay ? "PIN still active" : "PIN obtained",
+    );
 
     setStep(
       session,
@@ -1315,26 +1693,26 @@ async function runOrchestrator(
       setStep(session, "restore_hub", "skipped", "Hub was not changed");
     }
 
-    setStep(session, "persist", "active", "Writing history…");
-    const row = await prisma.fieldCourierLogin.create({
-      data: {
-        country,
-        environment,
-        courierUserId: courier.userId,
-        courierUsername: courier.username || null,
-        courierFullName: courier.fullName || null,
-        hubId: courier.hubId || null,
-        hubName: courier.hubName || null,
-        waybillNumber,
-        legacyBarcode,
-        barcode,
-        deviceCode,
-        adbDeviceId,
-        adminUserId,
-        adminUsername,
-        status: "success",
-        maestroRunId,
-      },
+    setStep(session, "persist", "active", "Upserting courier history…");
+    const row = await upsertCourierLoginRow({
+      country,
+      environment,
+      courierUserId: courier.userId,
+      courierUsername: courier.username || null,
+      courierFullName: courier.fullName || null,
+      hubId: courier.hubId || null,
+      hubName: courier.hubName || null,
+      waybillNumber,
+      legacyBarcode,
+      barcode,
+      deviceCode,
+      adbDeviceId,
+      adminUserId,
+      adminUsername,
+      status: "success",
+      errorMessage: null,
+      failedStep: null,
+      maestroRunId,
     });
     setStep(session, "persist", "done", row.id);
     updateSession(session, { status: "success", historyId: row.id });
@@ -1355,28 +1733,26 @@ async function runOrchestrator(
     }
 
     try {
-      setStep(session, "persist", "active", "Saving failed attempt…");
-      const row = await prisma.fieldCourierLogin.create({
-        data: {
-          country,
-          environment,
-          courierUserId: courier?.userId ?? null,
-          courierUsername: courier?.username ?? session.input.courierUsername ?? null,
-          courierFullName: courier?.fullName ?? session.input.courierName ?? null,
-          hubId: courier?.hubId ?? null,
-          hubName: courier?.hubName ?? null,
-          waybillNumber,
-          legacyBarcode,
-          barcode,
-          deviceCode,
-          adbDeviceId,
-          adminUserId,
-          adminUsername,
-          status: "failed",
-          errorMessage: message,
-          failedStep: active,
-          maestroRunId,
-        },
+      setStep(session, "persist", "active", "Upserting failed attempt…");
+      const row = await upsertCourierLoginRow({
+        country,
+        environment,
+        courierUserId: courier?.userId ?? null,
+        courierUsername: courier?.username ?? session.input.courierUsername ?? null,
+        courierFullName: courier?.fullName ?? session.input.courierName ?? null,
+        hubId: courier?.hubId ?? null,
+        hubName: courier?.hubName ?? null,
+        waybillNumber,
+        legacyBarcode,
+        barcode,
+        deviceCode,
+        adbDeviceId,
+        adminUserId,
+        adminUsername,
+        status: "failed",
+        errorMessage: message,
+        failedStep: active,
+        maestroRunId,
       });
       setStep(session, "persist", "done", row.id);
       updateSession(session, {

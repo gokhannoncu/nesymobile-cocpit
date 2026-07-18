@@ -111,8 +111,11 @@ function buildPaginationPages(current: number, total: number): Array<number | 'e
   const sorted = [...pages].sort((a, b) => a - b)
   const out: Array<number | 'ellipsis'> = []
   for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push('ellipsis')
-    out.push(sorted[i])
+    const value = sorted[i]
+    if (value === undefined) continue
+    const prev = sorted[i - 1]
+    if (i > 0 && prev !== undefined && value - prev > 1) out.push('ellipsis')
+    out.push(value)
   }
   return out
 }
@@ -866,7 +869,7 @@ function WorkflowCard({
     workflow.lastRun
       ? `Last run ${workflow.lastRun.status}`
       : 'No runs yet',
-  ].filter(Boolean)
+  ].filter((part): part is string => Boolean(part))
 
   const lastRunTone =
     workflow.lastRun?.status === 'success'
