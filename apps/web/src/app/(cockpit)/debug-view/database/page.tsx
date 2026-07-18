@@ -16,6 +16,8 @@ import {
   Layers,
   Loader2,
   Lock,
+  Pause,
+  Play,
   RefreshCw,
   Rows3,
   Search,
@@ -54,6 +56,9 @@ const DIFFICULTY_META: Record<DbAccessMethod['difficulty'], { label: string; ton
   blocked: { label: 'Blocked', tone: 'red' },
 }
 
+/** Full ADB DB+WAL pull is heavier than screen-state; 5s keeps the queue near-live without stacking pulls. */
+const POLL_MS = 5_000
+
 export default function DatabaseAccessPage() {
   const { selectedDevice } = useDebugView()
   const [query, setQuery] = useState('')
@@ -61,6 +66,7 @@ export default function DatabaseAccessPage() {
   const [snapshot, setSnapshot] = useState<LiveDatabaseSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paused, setPaused] = useState(false)
   const [selectedTable, setSelectedTable] = useState('Schedule')
   const [tableCatalogQuery, setTableCatalogQuery] = useState('')
   const [tableQuery, setTableQuery] = useState('')
@@ -69,8 +75,13 @@ export default function DatabaseAccessPage() {
   const [tableError, setTableError] = useState<string | null>(null)
   const requestSequence = useRef(0)
   const snapshotRef = useRef<LiveDatabaseSnapshot | null>(null)
+  const inFlightRef = useRef(false)
+  const selectedRequestIdRef = useRef<number | null>(null)
+  const selectedRowIndexRef = useRef<number | null>(null)
 
   const serial = selectedDevice?.serial ?? null
+  selectedRequestIdRef.current = selectedRequestId
+  selectedRowIndexRef.current = selectedRowIndex
 
   const handleTableSelect = useCallback((tableName: string) => {
     if (tableName === selectedTable) return
@@ -80,18 +91,28 @@ export default function DatabaseAccessPage() {
     setSelectedTable(tableName)
   }, [selectedTable])
 
-  const loadDatabase = useCallback(() => {
-    const sequence = ++requestSequence.current
+  const loadDatabase = useCallback((options?: { showSpinner?: boolean; resetSelection?: boolean }) => {
+    const showSpinner = options?.showSpinner ?? true
+    const resetSelection = options?.resetSelection ?? false
+    // Soft polls skip when a pull is already running; hard loads (table/device/manual) supersede.
+    const soft = !showSpinner && !resetSelection
     if (!serial) {
+      requestSequence.current += 1
+      inFlightRef.current = false
       setSnapshot(null)
       snapshotRef.current = null
       setError(null)
       setTableError(null)
       setLoading(false)
+      setSelectedRequestId(null)
+      setSelectedRowIndex(null)
       return
     }
+    if (soft && inFlightRef.current) return
+    inFlightRef.current = true
+    const sequence = ++requestSequence.current
     const preserveSnapshot = snapshotRef.current != null
-    setLoading(true)
+    if (showSpinner || !preserveSnapshot) setLoading(true)
     setError(null)
     setTableError(null)
     const params = new URLSearchParams({
@@ -109,8 +130,20 @@ export default function DatabaseAccessPage() {
         if (body.tableData) {
           setSelectedTable(body.tableData.tableName)
         }
-        setSelectedRequestId(null)
-        setSelectedRowIndex(null)
+        if (resetSelection) {
+          setSelectedRequestId(null)
+          setSelectedRowIndex(null)
+        } else {
+          const keptRequestId = selectedRequestIdRef.current
+          if (keptRequestId != null && !body.requestRows.some((row) => row.id === keptRequestId)) {
+            setSelectedRequestId(null)
+          }
+          const keptRowIndex = selectedRowIndexRef.current
+          const rowCount = body.tableData?.rows.length ?? 0
+          if (keptRowIndex != null && keptRowIndex >= rowCount) {
+            setSelectedRowIndex(null)
+          }
+        }
       })
       .catch((err: unknown) => {
         if (sequence !== requestSequence.current) return
@@ -124,13 +157,24 @@ export default function DatabaseAccessPage() {
         }
       })
       .finally(() => {
-        if (sequence === requestSequence.current) setLoading(false)
+        if (sequence === requestSequence.current) {
+          inFlightRef.current = false
+          setLoading(false)
+        }
       })
   }, [rowLimit, selectedTable, serial])
 
   useEffect(() => {
-    loadDatabase()
+    loadDatabase({ showSpinner: true, resetSelection: true })
   }, [loadDatabase])
+
+  useEffect(() => {
+    if (!serial || paused) return
+    const id = window.setInterval(() => {
+      loadDatabase({ showSpinner: false, resetSelection: false })
+    }, POLL_MS)
+    return () => window.clearInterval(id)
+  }, [serial, paused, loadDatabase])
 
   const liveRows = useMemo(() => snapshot?.requestRows ?? [], [snapshot])
 
@@ -164,21 +208,37 @@ export default function DatabaseAccessPage() {
       <DebugHeader
         icon={Table2}
         title="Database Access"
-        lead="Read-only live view of every table in the selected device's Room database over ADB."
+        lead="Read-only live view of every table in the selected device's Room database over ADB. The request queue refreshes every 5 seconds while this page is open."
         tone="orange"
         badges={[
           { label: snapshot ? `${snapshot.databaseName} · v${snapshot.version}` : 'Room database' },
           { label: 'Live ADB snapshot' },
+          { label: '5s live polling', tone: paused || !serial ? 'gray' : 'orange' },
           { label: 'Read-only + WAL/SHM' },
         ]}
         actions={
-          <>
-            <Button size="sm" variant="outline" onClick={loadDatabase} disabled={!serial || loading}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={paused ? 'outline' : 'primary'}
+              onClick={() => setPaused((value) => !value)}
+              disabled={!serial}
+            >
+              {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+              {paused ? 'Resume' : 'Pause'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => loadDatabase({ showSpinner: true, resetSelection: false })}
+              disabled={!serial || loading}
+            >
               {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
               Refresh
             </Button>
+            <div className="hidden h-6 w-px bg-border sm:block" aria-hidden />
             <DebugCrossLinks currentPath="/debug-view/database" />
-          </>
+          </div>
         }
       />
 
@@ -309,7 +369,7 @@ export default function DatabaseAccessPage() {
                                     <span className={cn('font-mono', row.tryCount >= 3 && 'font-bold text-red-600 dark:text-red-400')}>
                                       try {row.tryCount}/3
                                     </span>
-                                    <span>{new Date(row.timeStamp).toLocaleTimeString('en-US')}</span>
+                                    <span>{formatDeviceTime(row.timeStamp)}</span>
                                   </div>
                                 </button>
                               )
@@ -861,8 +921,8 @@ function RequestDetailPanel({ request }: { request: RequestRow }) {
       <div className="grid grid-cols-1 gap-3 rounded-xl border border-border/70 bg-muted/15 p-3 lg:grid-cols-2">
         <InfoRow label="userName" value={request.userName} mono />
         <InfoRow label="uniqueKey" value={request.uniqueKey} mono />
-        <InfoRow label="createdAt" value={new Date(request.createdAt).toLocaleString('en-US')} />
-        <InfoRow label="timeStamp" value={new Date(request.timeStamp).toLocaleString('en-US')} />
+        <InfoRow label="createdAt" value={formatEpochDateTime(request.createdAt)} />
+        <InfoRow label="timeStamp" value={formatDeviceDateTime(request.timeStamp)} />
         <InfoRow label="tryCount" value={`${request.tryCount}/3`} mono tone={request.tryCount >= 3 ? 'red' : undefined} />
         <InfoRow label="sendWithoutWaiting" value={request.sendWithoutWaiting ? 'true' : 'false'} />
         <InfoRow label="isProcessing" value={request.isProcessing ? '1' : '0'} />
@@ -910,6 +970,35 @@ function formatBytes(value: number): string {
   if (value < 1024) return `${value} B`
   if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`
   return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+/** NesyMobile often stores timestamps as `dd-MM-yyyy-HH:mm:ss`. */
+function parseDeviceDate(value: string): Date | null {
+  if (!value) return null
+  const deviceFormat = value.match(/^(\d{2})-(\d{2})-(\d{4})-(\d{2}):(\d{2}):(\d{2})$/)
+  const date = deviceFormat
+    ? new Date(`${deviceFormat[3]}-${deviceFormat[2]}-${deviceFormat[1]}T${deviceFormat[4]}:${deviceFormat[5]}:${deviceFormat[6]}`)
+    : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDeviceDateTime(value: string): string {
+  const date = parseDeviceDate(value)
+  return date ? date.toLocaleString('en-US') : value || '-'
+}
+
+function formatDeviceTime(value: string): string {
+  const date = parseDeviceDate(value)
+  return date
+    ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : value || '-'
+}
+
+function formatEpochDateTime(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '-'
+  const millis = value < 1_000_000_000_000 ? value * 1000 : value
+  const date = new Date(millis)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('en-US')
 }
 
 function DatabaseLoadingState({ deviceName }: { deviceName: string }) {

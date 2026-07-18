@@ -1,4 +1,5 @@
 import type { WorkflowRun } from '@/services/automation-api'
+import { isHiddenSystemWorkflow } from './system-workflows'
 
 export type RunHistoryStatusFilter =
   | 'all'
@@ -8,6 +9,12 @@ export type RunHistoryStatusFilter =
   | 'running'
   | 'pending'
   | 'cancelled'
+
+export function isVisibleHistoryRun(
+  run: Pick<WorkflowRun, 'workflow'>,
+): boolean {
+  return !isHiddenSystemWorkflow(run.workflow?.slug)
+}
 
 export function runMatchesStatusFilter(
   run: WorkflowRun,

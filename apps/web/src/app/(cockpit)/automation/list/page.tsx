@@ -70,6 +70,7 @@ import {
 import { ProductPage } from '@/components/product'
 import {
   formatWorkflowShare,
+  isVisibleLibraryWorkflow,
   workflowMatchesStatusFilter,
   type WorkflowLibraryStatusFilter,
 } from '@/lib/automation/workflow-library-filters'
@@ -294,11 +295,16 @@ export default function AutomationListPage() {
     loadWorkflows()
   }, [loadWorkflows])
 
+  const visibleWorkflows = useMemo(
+    () => workflows.filter(isVisibleLibraryWorkflow),
+    [workflows],
+  )
+
   const stats = useMemo(() => {
-    const total = workflows.length
-    const active = workflows.filter((w) => w.status === 'active').length
-    const draft = workflows.filter((w) => w.status === 'draft').length
-    const archived = workflows.filter((w) => w.status === 'archived').length
+    const total = visibleWorkflows.length
+    const active = visibleWorkflows.filter((w) => w.status === 'active').length
+    const draft = visibleWorkflows.filter((w) => w.status === 'draft').length
+    const archived = visibleWorkflows.filter((w) => w.status === 'archived').length
 
     const values: Record<WorkflowLibraryStatusFilter, number> = {
       all: total,
@@ -322,11 +328,14 @@ export default function AutomationListPage() {
       detail: details[card.filter],
       selected: statusFilter === card.filter,
     }))
-  }, [workflows, statusFilter])
+  }, [visibleWorkflows, statusFilter])
 
   const filteredWorkflows = useMemo(
-    () => workflows.filter((workflow) => workflowMatchesStatusFilter(workflow, statusFilter)),
-    [workflows, statusFilter],
+    () =>
+      visibleWorkflows.filter((workflow) =>
+        workflowMatchesStatusFilter(workflow, statusFilter),
+      ),
+    [visibleWorkflows, statusFilter],
   )
 
   const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / pageSize))

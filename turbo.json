@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
+  "ui": "stream",
   "globalEnv": ["ADB_PATH", "ADB_PATH_WINDOWS", "ADB_PATH_DARWIN", "ADB_PATH_MACOS", "ADB_PATH_LINUX", "SQLITE3_PATH", "SQLITE3_PATH_WINDOWS", "SQLITE3_PATH_DARWIN", "SQLITE3_PATH_LINUX"],
   "tasks": {
     "build": {

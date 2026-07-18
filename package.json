@@ -4,9 +4,9 @@
   "scripts": {
     "build": "turbo run build",
     "predev": "node scripts/kill-dev-ports.mjs",
-    "dev": "turbo run dev",
+    "dev": "node scripts/cockpit-runner.mjs --mode dev",
     "preprod": "node scripts/kill-dev-ports.mjs",
-    "prod": "turbo run start",
+    "prod": "node scripts/cockpit-runner.mjs --mode prod",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",

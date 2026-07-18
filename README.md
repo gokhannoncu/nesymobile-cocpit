@@ -41,7 +41,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` Turbo ile web + API’yi birlikte başlatır. `predev` dolu portları temizler.
+`pnpm dev` / `pnpm prod` sessiz NESY Cockpit status paneli açar (DB / API / Web). Ham Turbo logları için: `node scripts/cockpit-runner.mjs --mode dev --verbose`. `predev` / `preprod` dolu portları temizler.
 
 Bu katman yeterliyse: arayüz ve API çalışır. Shipment / Prisma verisi, ADB cihaz araçları ve Maestro koşuları için aşağıdaki katmanlar gerekir.
 

@@ -40,6 +40,7 @@ type Icon = ComponentType<SVGProps<SVGSVGElement>>
 
 import {
   formatRunShare,
+  isVisibleHistoryRun,
   runMatchesStatusFilter,
   type RunHistoryStatusFilter,
 } from '@/lib/automation/run-history-filters'
@@ -123,11 +124,16 @@ export default function AutomationHistoryPage() {
     loadRuns()
   }, [loadRuns])
 
+  const visibleRuns = useMemo(
+    () => runs.filter(isVisibleHistoryRun),
+    [runs],
+  )
+
   const stats = useMemo(() => {
-    const total = runs.length
-    const success = runs.filter((r) => r.status === 'success').length
-    const active = runs.filter((r) => r.status === 'running' || r.status === 'pending').length
-    const failed = runs.filter((r) => r.status === 'failed').length
+    const total = visibleRuns.length
+    const success = visibleRuns.filter((r) => r.status === 'success').length
+    const active = visibleRuns.filter((r) => r.status === 'running' || r.status === 'pending').length
+    const failed = visibleRuns.filter((r) => r.status === 'failed').length
     const passRate = total ? Math.round((success / total) * 100) : null
 
     const captions: Record<StatCardFilter, string> = {
@@ -154,7 +160,7 @@ export default function AutomationHistoryPage() {
         statusFilter === card.filter ||
         (card.filter === 'active' && (statusFilter === 'running' || statusFilter === 'pending')),
     }))
-  }, [runs, statusFilter])
+  }, [visibleRuns, statusFilter])
 
   const handleDeleteRun = async (workflowId: string, runId: string) => {
     try {
@@ -195,7 +201,7 @@ export default function AutomationHistoryPage() {
         <AutomationHistoryTableShimmer />
       ) : (
         <RunHistoryTable
-          runs={runs}
+          runs={visibleRuns}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           onDeleteRun={handleDeleteRun}

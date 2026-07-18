@@ -3,7 +3,7 @@ import {
   EVENT_LOOKUPS,
   EVENT_NAME_BY_DESC_KEY,
   EXTERNAL_EVENT_CODE_BY_NUMBER,
-} from "./nesy-event-labels.generated";
+} from "./nesy-event-labels.generated.js";
 
 const lookupByKey = new Map(
   EVENT_LOOKUPS.map((entry) => [
