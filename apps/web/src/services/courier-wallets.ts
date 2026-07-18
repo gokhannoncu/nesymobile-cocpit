@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { throwDataCenterApiError } from "@/services/api-errors";
 
 export type CourierWalletListItem = {
   id: string;
@@ -46,7 +47,7 @@ export async function createOrUpdateCourierWallet(body: {
   });
   const json = await readJson<{ message?: string; data?: CourierWalletSaved }>(res);
   if (!res.ok) {
-    throw new Error(json.message ?? `Save failed (${res.status})`);
+    throwDataCenterApiError(res, json, `Save failed (${res.status})`);
   }
   if (!json.data) throw new Error("Invalid response");
   return json.data;
@@ -60,7 +61,7 @@ export async function fetchCourierWalletList(
   const res = await fetch(`${API_BASE}/courier-wallets?${params.toString()}`);
   const json = await readJson<{ data?: CourierWalletListItem[]; message?: string }>(res);
   if (!res.ok) {
-    throw new Error(json.message ?? `List failed (${res.status})`);
+    throwDataCenterApiError(res, json, `List failed (${res.status})`);
   }
   return json.data ?? [];
 }
@@ -69,7 +70,7 @@ export async function fetchCourierWalletById(id: string): Promise<CourierWalletD
   const res = await fetch(`${API_BASE}/courier-wallets/${encodeURIComponent(id)}`);
   const json = await readJson<{ data?: CourierWalletDetail; message?: string }>(res);
   if (!res.ok) {
-    throw new Error(json.message ?? `Fetch failed (${res.status})`);
+    throwDataCenterApiError(res, json, `Fetch failed (${res.status})`);
   }
   if (!json.data) throw new Error("Invalid response");
   return json.data;
@@ -81,5 +82,5 @@ export async function deleteCourierWallet(id: string): Promise<void> {
   });
   if (res.status === 204) return;
   const json = await readJson<{ message?: string }>(res);
-  throw new Error(json.message ?? `Delete failed (${res.status})`);
+  throwDataCenterApiError(res, json, `Delete failed (${res.status})`);
 }

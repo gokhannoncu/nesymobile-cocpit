@@ -59,7 +59,7 @@ export function UserCourierSearchDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Search className="size-5 text-nesy" />
-            Get user with search
+            Get User With Search
           </DialogTitle>
         </DialogHeader>
         <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto">

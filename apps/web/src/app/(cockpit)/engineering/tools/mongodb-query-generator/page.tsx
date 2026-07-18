@@ -225,18 +225,19 @@ export default function MongodbQueryGeneratorPage() {
         setCatalogError(null)
         const paramDb = searchParams.get('database')
         const paramCol = searchParams.get('collection')
-        const fromLink =
+        if (
           paramDb &&
           paramCol &&
           data.collections.some((c) => c.database === paramDb && c.collection === paramCol)
-        if (fromLink) {
+        ) {
           setDatabase(paramDb)
           setCollection(paramCol)
         } else {
-          if (data.databases.length && !data.databases.includes(database)) {
-            setDatabase(data.databases[0])
+          const firstDb = data.databases[0]
+          if (firstDb && !data.databases.includes(database)) {
+            setDatabase(firstDb)
           }
-          const first = data.collections.find((c) => c.database === (data.databases[0] ?? database))
+          const first = data.collections.find((c) => c.database === (firstDb ?? database))
           if (
             first &&
             !data.collections.some((c) => c.database === database && c.collection === collection)

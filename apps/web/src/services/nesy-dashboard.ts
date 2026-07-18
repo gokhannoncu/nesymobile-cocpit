@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { throwDataCenterApiError } from "@/services/api-errors";
 import type { NesyCountry, NesyEnvironment } from "@/services/nesy-auth";
 
 export type NesyDashboardAuth = {
@@ -55,7 +56,7 @@ export function normalizeDashboardUser(raw: Record<string, unknown>) {
 async function readJson(res: Response) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((json as { message?: string }).message ?? `Request failed (${res.status})`);
+    throwDataCenterApiError(res, json, `Request failed (${res.status})`);
   }
   return json;
 }
@@ -834,9 +835,7 @@ export async function searchShipmentByLegacyBarcode(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Shipment search failed (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Shipment search failed (${res.status})`);
   }
   const json = await res.json();
   const payload = json?.payload ?? json?.Payload ?? json;
@@ -871,9 +870,7 @@ export async function searchTrackingByWaybill(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Tracking search failed (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Tracking search failed (${res.status})`);
   }
   const json = (await res.json()) as Record<string, unknown>;
   return normalizeTrackingResponse(json);

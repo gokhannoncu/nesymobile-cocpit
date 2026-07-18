@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { throwDataCenterApiError } from "@/services/api-errors";
 
 /** BFF `ClientSaveShipment` icin; apps/api `nesy-customer-payload` ile ayni alanlar */
 export interface BffCustomerPayload {
@@ -40,9 +41,7 @@ export async function searchCustomers(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Musteri aramasi basarisiz (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Musteri aramasi basarisiz (${res.status})`);
   }
   const json = (await res.json()) as { data: unknown };
   return json.data;
@@ -58,9 +57,7 @@ export async function getCustomerDetails(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Musteri detayi alinamadi (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Musteri detayi alinamadi (${res.status})`);
   }
   const json = (await res.json()) as { data: unknown };
   return json.data;

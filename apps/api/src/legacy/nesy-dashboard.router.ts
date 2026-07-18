@@ -121,7 +121,9 @@ router.post("/users", async (req, res) => {
 
     const result = await postNesyJson(baseUrl, "User/GetAllUsers", token, nesyBody);
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
 
@@ -162,7 +164,9 @@ router.post("/roles", async (req, res) => {
     }
     const result = await postNesyJson(baseUrl, "Role/GetRoles", token, {});
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? [] });
@@ -198,7 +202,9 @@ router.post("/hubs", async (req, res) => {
     };
     const result = await postNesyJson(baseUrl, "Geocode/GetAllHubs", token, nesyBody);
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? [] });
@@ -232,7 +238,9 @@ router.post("/user-devices", async (req, res) => {
       userId: userId.trim(),
     });
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     const payload = result.json.payload;
@@ -277,7 +285,9 @@ router.post("/courier-device-info", async (req, res) => {
       CourierUserId: userId.trim(),
     });
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });
@@ -335,7 +345,9 @@ router.post("/user-devices/set", async (req, res) => {
 
     const result = await postNesyJson(baseUrl, "User/SetUserDevice", token, nesyBody);
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });
@@ -363,7 +375,9 @@ router.post("/user-pin/my", async (req, res) => {
     }
     const result = await postNesyJson(baseUrl, "User/GetMyPinCode", token, {});
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     const raw = result.json.payload;
@@ -398,7 +412,9 @@ router.post("/user-pin/device", async (req, res) => {
       UserId: userId.trim(),
     });
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     const raw = result.json.payload;
@@ -427,7 +443,9 @@ router.post("/user-pin/generate", async (req, res) => {
     }
     const result = await postNesyJson(baseUrl, "User/GetUserGeneratePinCode", token, {});
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     const raw = result.json.payload;
@@ -469,7 +487,9 @@ router.post("/user-pin/set-generated", async (req, res) => {
       pinCode,
     });
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });
@@ -506,7 +526,9 @@ router.post("/user-pin/set", async (req, res) => {
       userPinCode,
     });
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });
@@ -534,7 +556,9 @@ router.post("/my-info", async (req, res) => {
     }
     const result = await postNesyJson(baseUrl, "User/GetMyInfo", token, {});
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });
@@ -569,7 +593,9 @@ router.post("/user/manage", async (req, res) => {
 
     const result = await postNesyJson(baseUrl, "User/ManageUser", token, nesyManage);
     if (!result.ok) {
-      res.status(502).json({ message: result.text, status: result.status });
+      res
+        .status(result.status === 401 ? 401 : 502)
+        .json({ message: result.text, status: result.status });
       return;
     }
     res.json({ data: result.json.payload ?? null });

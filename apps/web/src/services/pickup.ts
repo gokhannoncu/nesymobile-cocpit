@@ -1,5 +1,5 @@
 import { API_BASE } from "@/services/api";
-import { formatApiNetworkError } from "@/services/api-errors";
+import { formatApiNetworkError, throwDataCenterApiError } from "@/services/api-errors";
 import type { BffCustomerPayload } from "@/services/customer";
 
 export interface PickupRecord {
@@ -43,9 +43,7 @@ export async function createPickup(params: {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Pickup creation failed (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Pickup creation failed (${res.status})`);
   }
 
   const json = (await res.json()) as { data: PickupRecord };
@@ -69,9 +67,7 @@ export async function assignPickup(params: {
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
-    throw new Error(
-      (errBody as { message?: string }).message ?? `Assign failed (${res.status})`
-    );
+    throwDataCenterApiError(res, errBody, `Assign failed (${res.status})`);
   }
 
   const json = (await res.json()) as { data: { assignStatus: string; taskId: string } };
@@ -92,9 +88,7 @@ export async function deletePickups(ids: string[]): Promise<number> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Delete failed (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Delete failed (${res.status})`);
   }
 
   const json = (await res.json()) as { deleted: number };
@@ -116,10 +110,7 @@ export async function fetchPickups(scope?: PickupScope): Promise<PickupRecord[]>
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to load pickups (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to load pickups (${res.status})`);
   }
   const json = (await res.json()) as { data: PickupRecord[] };
   return json.data;
@@ -129,9 +120,7 @@ export async function getPickupNesyUrl(pickupDbId: string): Promise<string> {
   const res = await fetch(`${API_BASE}/pickups/${pickupDbId}/nesy-url`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Failed to build Nesy URL (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Failed to build Nesy URL (${res.status})`);
   }
   const json = (await res.json()) as { data: { url: string } };
   return json.data.url;
@@ -161,9 +150,7 @@ export async function getPickupTaskDetail(params: {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ?? `Pickup task detail failed (${res.status})`
-    );
+    throwDataCenterApiError(res, body, `Pickup task detail failed (${res.status})`);
   }
   const json = (await res.json()) as { data: PickupTaskDetailData };
   return json.data;

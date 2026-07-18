@@ -22,6 +22,7 @@ import {
   resolveSessionDashboardUserId,
   type NesyDashboardAuth,
 } from '@/services/nesy-dashboard'
+import { NESY_UNAUTHORIZED_EVENT } from '@/services/api-errors'
 
 type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'failed'
 
@@ -177,6 +178,14 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
     notifyAuthChanged()
     router.push(DATA_CENTER_CONNECTION_PATH)
   }, [router])
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      logout()
+    }
+    window.addEventListener(NESY_UNAUTHORIZED_EVENT, onUnauthorized)
+    return () => window.removeEventListener(NESY_UNAUTHORIZED_EVENT, onUnauthorized)
+  }, [logout])
 
   async function connect() {
     setStatus('connecting')

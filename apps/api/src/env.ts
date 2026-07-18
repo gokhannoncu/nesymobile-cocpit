@@ -12,6 +12,10 @@ export const envSchema = z.object({
   CLAUDE_MONGO_QUERY_MODEL: z.string().default('haiku'),
   /** Claude CLI timeout in ms. */
   CLAUDE_MONGO_QUERY_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
+  /** Claude model alias for Graylog query generation (default haiku). */
+  CLAUDE_GRAYLOG_QUERY_MODEL: z.string().default('haiku'),
+  /** Claude CLI timeout in ms for Graylog generation. */
+  CLAUDE_GRAYLOG_QUERY_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
 })
 
 export type Env = z.infer<typeof envSchema>

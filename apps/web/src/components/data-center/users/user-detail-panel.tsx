@@ -135,7 +135,7 @@ export function UserDetailPanel({
     <Card className="h-fit overflow-hidden">
       <CardHeader className="min-h-0 items-start gap-3 py-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-nesy/25 bg-nesy-soft text-nesy">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-nesy text-white">
             <UserRound className="size-5" strokeWidth={1.75} />
           </span>
           <CardHeading className="min-w-0 flex-1 space-y-1.5 pt-0.5">
@@ -193,17 +193,41 @@ export function UserDetailPanel({
           </div>
         ) : (
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList variant="line" className="mb-4 h-auto w-full flex-wrap justify-start gap-1">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="devices">Devices</TabsTrigger>
-            <TabsTrigger value="pins">PINs &amp; auth</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsList
+            variant="line"
+            size="md"
+            className="mb-4 h-auto w-full justify-start gap-6 bg-transparent p-0"
+          >
+            <TabsTrigger
+              value="overview"
+              className="rounded-none px-0 data-[state=active]:border-foreground data-[state=active]:text-foreground"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="devices"
+              className="rounded-none px-0 data-[state=active]:border-foreground data-[state=active]:text-foreground"
+            >
+              Devices
+            </TabsTrigger>
+            <TabsTrigger
+              value="pins"
+              className="rounded-none px-0 data-[state=active]:border-foreground data-[state=active]:text-foreground"
+            >
+              PINs &amp; Auth
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="rounded-none px-0 data-[state=active]:border-foreground data-[state=active]:text-foreground"
+            >
+              Activity Log
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-0">
             <section className="rounded-lg border p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="text-xs font-semibold">User information</h3>
+                <h3 className="text-sm font-semibold text-foreground">User Information</h3>
                 <Button
                   type="button"
                   variant="outline"
@@ -212,7 +236,7 @@ export function UserDetailPanel({
                   onClick={onSetCourierHub}
                 >
                   <Building2 className={cn("size-3.5", hubSwitchOpen && "animate-pulse")} />
-                  Set courier hub to me
+                  Set Courier Hub to Me
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
@@ -225,7 +249,7 @@ export function UserDetailPanel({
                   <p className="mt-1 font-medium">{selectedUser?.phoneNumber || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">App version</p>
+                  <p className="text-muted-foreground">Version</p>
                   <p className="mt-1 flex min-h-5 items-center gap-1 font-medium">
                     {panelDeviceInfoLoading ? (
                       <>
@@ -431,7 +455,7 @@ export function UserDetailPanel({
 
           <TabsContent value="activity" className="mt-0">
             <section className="rounded-lg border p-4">
-              <h3 className="text-xs font-semibold">Activity log</h3>
+              <h3 className="text-xs font-semibold">Activity Log</h3>
               <p className="mt-2 text-xs text-muted-foreground">
                 User update / device / password logs can be wired to Nesy User/GetUserUpdateLogs.
               </p>

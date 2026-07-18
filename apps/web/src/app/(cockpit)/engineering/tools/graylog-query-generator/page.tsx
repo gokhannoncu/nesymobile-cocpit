@@ -1,24 +1,26 @@
 'use client'
 
-// Graylog Query Generator — converts natural language requests into safe Graylog queries (mock).
-// Left: request + context form · Right: query result tabs · Bottom: field dictionary + saved investigations.
-
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   BookOpen,
-  Braces,
+  ChevronDown,
   Clock,
   Eraser,
   EyeOff,
-  FolderSearch,
-  Map,
+  History,
+  Loader2,
   Search,
   Sparkles,
   Terminal,
 } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Button } from '@nesy/metronic/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@nesy/metronic/components/ui/collapsible'
 import { Input } from '@nesy/metronic/components/ui/input'
 import { Label } from '@nesy/metronic/components/ui/label'
 import {
@@ -38,7 +40,6 @@ import {
   COUNTRIES,
   DEVICES,
   ENVIRONMENTS,
-  GRAYLOG_FIELDS,
   GUARDRAIL_BROAD_SCOPE,
   GUARDRAIL_SOFT_HINTS,
   IDENTIFIER_FIELDS,
@@ -48,18 +49,43 @@ import {
   SCENARIO_CHIPS,
   SERVICES,
   TIME_RANGES,
-  type SavedInvestigation,
   type SelectOption,
 } from '@/data/engineering/tools/graylog-generator'
-import { ResultPanel } from './result-panel'
-import { SavedInvestigations } from './investigations'
+import {
+  deleteGraylogQuery,
+  fetchGraylogFields,
+  fetchRecentGraylogQueries,
+  generateGraylogQuery,
+  reuseGraylogQuery,
+  type GraylogField,
+  type GraylogQueryRun,
+} from '@/services/graylog-query'
+import { QueryWorkspace } from './workspace'
+import { RecentQueriesTable } from './recent-queries'
 
-// ── Small form helpers ──────────────────────────────────────────────────────
+const PATH = '/engineering/tools/graylog-query-generator'
+
+const EMPTY_IDENTIFIERS: Record<string, string> = Object.fromEntries(
+  IDENTIFIER_FIELDS.map((f) => [f.key, '']),
+)
+
+const DEFAULT_SOURCES = ['mobile', 'backend', 'fiscal']
+
+function AmberNotice({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+      <AlertTriangle className="mt-px size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+      <div className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">{children}</div>
+    </div>
+  )
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] font-semibold text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </Label>
       {children}
     </div>
   )
@@ -94,12 +120,6 @@ function ContextSelect({
   )
 }
 
-const EMPTY_IDENTIFIERS: Record<string, string> = Object.fromEntries(
-  IDENTIFIER_FIELDS.map((f) => [f.key, '']),
-)
-
-const DEFAULT_SOURCES = ['mobile', 'backend', 'fiscal']
-
 export default function GraylogQueryGeneratorPage() {
   const [request, setRequest] = useState('')
   const [env, setEnv] = useState('production')
@@ -112,25 +132,67 @@ export default function GraylogQueryGeneratorPage() {
   const [appVersion, setAppVersion] = useState('any')
   const [identifiers, setIdentifiers] = useState<Record<string, string>>(EMPTY_IDENTIFIERS)
   const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES)
-  const [generated, setGenerated] = useState(false)
+  const [fields, setFields] = useState<GraylogField[]>([])
+  const [fieldsError, setFieldsError] = useState<string | null>(null)
+  const [fieldDictOpen, setFieldDictOpen] = useState(false)
   const [fieldFilter, setFieldFilter] = useState('')
+  const [recent, setRecent] = useState<GraylogQueryRun[]>([])
+  const [recentLoading, setRecentLoading] = useState(true)
+  const [recentError, setRecentError] = useState<string | null>(null)
+  const [result, setResult] = useState<GraylogQueryRun | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
 
   const hasIdentifier = useMemo(
     () => Object.values(identifiers).some((v) => v.trim().length > 0),
     [identifiers],
   )
-  // Amber guardrail: warns when using a 24-hour broad range with no identifier.
   const showGuardrail = timeRange === '24h' && !hasIdentifier
 
-  const contextBar = useMemo(() => {
-    const envLabel = ENVIRONMENTS.find((e) => e.value === env)?.label ?? env
-    const trLabel = TIME_RANGES.find((t) => t.value === timeRange)?.label ?? timeRange
-    return `${envLabel} · ${country} · ${trLabel} · ${sources.length} sources`
-  }, [env, country, timeRange, sources])
+  const filteredFields = useMemo(() => {
+    const q = fieldFilter.trim().toLowerCase()
+    if (!q) return fields
+    return fields.filter((f) =>
+      [f.field, f.meaning, f.example, f.source].some((s) => s.toLowerCase().includes(q)),
+    )
+  }, [fields, fieldFilter])
+
+  const loadRecent = useCallback(async () => {
+    setRecentLoading(true)
+    setRecentError(null)
+    try {
+      const rows = await fetchRecentGraylogQueries()
+      setRecent(rows)
+    } catch (e) {
+      setRecentError(e instanceof Error ? e.message : 'Failed to load recent queries')
+    } finally {
+      setRecentLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const list = await fetchGraylogFields()
+        if (!cancelled) {
+          setFields(list)
+          setFieldsError(null)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setFieldsError(e instanceof Error ? e.message : 'Failed to load field dictionary')
+        }
+      }
+    })()
+    void loadRecent()
+    return () => {
+      cancelled = true
+    }
+  }, [loadRecent])
 
   const handleEnvChange = (v: string) => {
     setEnv(v)
-    // When switching to production, the default time range is reduced to 1 hour.
     if (v === 'production') setTimeRange(PRODUCTION_DEFAULT_TIME_RANGE)
   }
 
@@ -146,95 +208,156 @@ export default function GraylogQueryGeneratorPage() {
     setAppVersion('any')
     setIdentifiers(EMPTY_IDENTIFIERS)
     setSources(DEFAULT_SOURCES)
-    setGenerated(false)
-  }
-
-  const handleReuse = (inv: SavedInvestigation) => {
-    setRequest(inv.objective)
-    setCountry(inv.country)
-    setGenerated(true)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    setResult(null)
+    setGenerateError(null)
   }
 
   const appendField = (field: string) => {
     setRequest((prev) => (prev.trim() ? `${prev.trimEnd()} ${field}:` : `${field}:`))
-    setGenerated(false)
   }
 
-  const filteredFields = GRAYLOG_FIELDS.filter((f) => {
-    const q = fieldFilter.trim().toLowerCase()
-    if (!q) return true
-    return [f.field, f.meaning, f.example, f.source].some((s) => s.toLowerCase().includes(q))
-  })
+  const onGenerate = async () => {
+    if (!request.trim() || generating) return
+    setResult(null)
+    setGenerateError(null)
+    setGenerating(true)
+    try {
+      const run = await generateGraylogQuery({
+        naturalLanguage: request.trim(),
+        environment: env,
+        country,
+        application,
+        service,
+        logLevel,
+        timeRange,
+        device,
+        appVersion,
+        identifiers,
+        sources,
+      })
+      setResult(run)
+      await loadRecent()
+    } catch (e) {
+      setGenerateError(e instanceof Error ? e.message : 'Generate failed')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const reuseQuery = async (q: GraylogQueryRun) => {
+    setRequest(q.naturalLanguage)
+    setEnv(q.environment || 'production')
+    setCountry(q.country || 'HR')
+    setApplication(q.application || 'nesy-mobile')
+    setService(q.service || 'any')
+    setLogLevel(q.logLevel || 'any')
+    setTimeRange(q.timeRange || PRODUCTION_DEFAULT_TIME_RANGE)
+    setDevice(q.device || 'any')
+    setAppVersion(q.appVersion || 'any')
+    setIdentifiers({ ...EMPTY_IDENTIFIERS, ...(q.identifiers ?? {}) })
+    setSources(q.sources?.length ? q.sources : DEFAULT_SOURCES)
+    setResult(q)
+    setGenerateError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    try {
+      const updated = await reuseGraylogQuery(q.id)
+      setRecent((prev) => {
+        const rest = prev.filter((r) => r.id !== updated.id)
+        return [updated, ...rest]
+      })
+    } catch {
+      // reuse bump is optional
+    }
+  }
+
+  const deleteQuery = async (q: GraylogQueryRun) => {
+    try {
+      await deleteGraylogQuery(q.id)
+      setRecent((prev) => prev.filter((r) => r.id !== q.id))
+      if (result?.id === q.id) setResult(null)
+      setRecentError(null)
+    } catch (e) {
+      setRecentError(e instanceof Error ? e.message : 'Failed to delete query')
+      throw e
+    }
+  }
 
   const th =
-    'px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap'
-  const td = 'px-3 py-2.5 align-middle text-xs text-foreground/85'
+    'px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-muted-foreground'
+  const td = 'px-2.5 py-2 align-middle text-xs text-foreground/85'
 
   return (
-    <ProductPage path="/engineering/tools/graylog-query-generator">
+    <ProductPage path={PATH}>
       <ToolHeader
-        path="/engineering/tools/graylog-query-generator"
+        path={PATH}
         icon={Terminal}
         tone="orange"
         title="Graylog Query Generator"
-        lead="Describe the log signal you need in natural language; convert it into a safe Graylog query with time, service, and technical field constraints."
+        lead="Describe the log signal you need in natural language; convert it into a safe Graylog query via Claude CLI (haiku) with time, service, and field constraints."
         badges={[
           { label: 'Search only', icon: Search, tone: 'green' },
           { label: 'Time range required', icon: Clock, tone: 'blue' },
           { label: 'Sensitive fields masked', icon: EyeOff, tone: 'gray' },
-          { label: 'Graylog syntax aware', icon: Braces, tone: 'orange' },
-          { label: 'Source map synced', icon: Map, tone: 'teal' },
         ]}
       />
 
-      {/* Main layout: left form 45% / right result 55% */}
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[45fr_55fr]">
-        {/* ── Left column ── */}
+      <div className="space-y-6">
         <ToolCard
           step="1"
-          title="What logs are you looking for?"
-          description="Describe your request in natural language or start from a ready-made scenario; context fields narrow the query."
+          title="Define your log needs"
+          description="Pick a scenario or write your own prompt, then narrow with context, identifiers, and log sources."
+          className="w-full"
         >
-          <Textarea
-            value={request}
-            onChange={(e) => setRequest(e.target.value)}
-            placeholder="Show the delivery, fiscal, and retry logs generated in the last 2 hours for shipment 45-40-20251224-1."
-            className="min-h-[96px]"
-            variant="sm"
-          />
+          <div className="space-y-2">
+            <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Natural language
+            </Label>
+            <Textarea
+              value={request}
+              onChange={(e) => setRequest(e.target.value)}
+              placeholder="Show the delivery, fiscal, and retry logs generated in the last 2 hours for shipment 45-40-20251224-1."
+              className="min-h-[120px] text-sm"
+            />
+          </div>
 
           <div className="flex flex-wrap gap-1.5">
             {SCENARIO_CHIPS.map((c) => (
               <ExampleChip
                 key={c.id}
                 label={c.label}
-                onClick={() => {
-                  setRequest(c.text)
-                  setGenerated(false)
-                }}
+                onClick={() => setRequest(c.text)}
               />
             ))}
           </div>
 
-          {/* Query context */}
+          {generateError && <AmberNotice>{generateError}</AmberNotice>}
+
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Query context
             </h3>
-            <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
               <ContextSelect label="Environment" value={env} onChange={handleEnvChange} options={ENVIRONMENTS} />
               <ContextSelect label="Country" value={country} onChange={setCountry} options={COUNTRIES} />
-              <ContextSelect label="Application" value={application} onChange={setApplication} options={APPLICATIONS} />
+              <ContextSelect
+                label="Application"
+                value={application}
+                onChange={setApplication}
+                options={APPLICATIONS}
+              />
               <ContextSelect label="Service" value={service} onChange={setService} options={SERVICES} />
               <ContextSelect label="Log level" value={logLevel} onChange={setLogLevel} options={LOG_LEVELS} />
               <ContextSelect label="Time range" value={timeRange} onChange={setTimeRange} options={TIME_RANGES} />
               <ContextSelect label="Device" value={device} onChange={setDevice} options={DEVICES} />
-              <ContextSelect label="App version" value={appVersion} onChange={setAppVersion} options={APP_VERSIONS} />
+              <ContextSelect
+                label="App version"
+                value={appVersion}
+                onChange={setAppVersion}
+                options={APP_VERSIONS}
+              />
             </div>
           </div>
 
-          {/* Known identifiers */}
           <div className="rounded-lg border bg-muted/20 p-3">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Known Identifiers
@@ -256,7 +379,6 @@ export default function GraylogQueryGeneratorPage() {
             </div>
           </div>
 
-          {/* Log sources */}
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Log sources
@@ -273,7 +395,7 @@ export default function GraylogQueryGeneratorPage() {
                 <ToggleGroupItem
                   key={s.id}
                   value={s.id}
-                  className="rounded-full border data-[variant=outline]:rounded-full data-[variant=outline]:border-s data-[state=on]:border-blue-300 data-[state=on]:bg-blue-50/80 data-[state=on]:text-blue-700 dark:data-[state=on]:border-blue-800 dark:data-[state=on]:bg-blue-950/40 dark:data-[state=on]:text-blue-300"
+                  className="rounded-full border data-[variant=outline]:rounded-full data-[variant=outline]:border-s data-[state=on]:border-orange-300 data-[state=on]:bg-orange-50/80 data-[state=on]:text-orange-700 dark:data-[state=on]:border-orange-800 dark:data-[state=on]:bg-orange-950/40 dark:data-[state=on]:text-orange-300"
                 >
                   {s.label}
                 </ToggleGroupItem>
@@ -281,101 +403,121 @@ export default function GraylogQueryGeneratorPage() {
             </ToggleGroup>
           </div>
 
-          {/* Amber guardrail */}
-          {showGuardrail && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900/60 dark:bg-amber-950/30">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <div className="text-xs leading-relaxed">
-                <p className="font-bold text-amber-700 dark:text-amber-300">{GUARDRAIL_BROAD_SCOPE}</p>
-                <p className="mt-1 text-foreground/75">
-                  {GUARDRAIL_SOFT_HINTS[0]} {GUARDRAIL_SOFT_HINTS[1]}
-                </p>
+          <Collapsible open={fieldDictOpen} onOpenChange={setFieldDictOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50">
+              <span className="inline-flex items-center gap-1.5">
+                <BookOpen className="size-3.5 text-muted-foreground" />
+                Field dictionary
+                {fields.length ? ` · ${fields.length} fields` : ''}
+              </span>
+              <ChevronDown
+                className={cn(
+                  'size-3.5 text-muted-foreground transition-transform',
+                  fieldDictOpen && 'rotate-180',
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 space-y-2">
+                {fieldsError && <AmberNotice>{fieldsError}</AmberNotice>}
+                <Input
+                  variant="sm"
+                  value={fieldFilter}
+                  onChange={(e) => setFieldFilter(e.target.value)}
+                  placeholder="Search field, meaning, or source…"
+                  className="max-w-xs"
+                />
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-[560px] border-collapse text-xs">
+                    <thead className="border-b bg-muted/40">
+                      <tr>
+                        {['Field', 'Meaning', 'Example', 'Source'].map((h) => (
+                          <th key={h} className={th}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredFields.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-2.5 py-6 text-center text-muted-foreground">
+                            No fields match the filter.
+                          </td>
+                        </tr>
+                      )}
+                      {filteredFields.map((f) => (
+                        <tr
+                          key={f.field}
+                          onClick={() => appendField(f.field)}
+                          title={`${f.field}: append to your request`}
+                          className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
+                        >
+                          <td className={cn(td, 'whitespace-nowrap')}>
+                            <code className="font-bold text-orange-600 dark:text-orange-400">
+                              {f.field}
+                            </code>
+                          </td>
+                          <td className={cn(td, 'max-w-[280px]')}>{f.meaning}</td>
+                          <td className={cn(td, 'whitespace-nowrap')}>
+                            <code className="text-[11px] text-foreground/70">{f.example}</code>
+                          </td>
+                          <td className={cn(td, 'whitespace-nowrap text-muted-foreground')}>
+                            {f.source}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {showGuardrail && (
+            <AmberNotice>
+              <p className="font-bold">{GUARDRAIL_BROAD_SCOPE}</p>
+              <p className="mt-1 text-foreground/75">
+                {GUARDRAIL_SOFT_HINTS[0]} {GUARDRAIL_SOFT_HINTS[1]}
+              </p>
+            </AmberNotice>
           )}
 
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-            <Button variant="primary" onClick={() => setGenerated(true)}>
-              <Sparkles className="size-4" />
-              Generate Graylog Query
+            <Button
+              variant="primary"
+              onClick={() => void onGenerate()}
+              disabled={!request.trim() || generating}
+            >
+              {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {generating ? 'Generating…' : 'Generate Query'}
             </Button>
-            <Button variant="outline" onClick={handleClear}>
+            <Button variant="outline" onClick={handleClear} disabled={generating}>
               <Eraser className="size-4" />
-              Clear fields
+              Clear form
             </Button>
           </div>
         </ToolCard>
 
-        {/* ── Right column ── */}
-        <ResultPanel generated={generated} contextBar={contextBar} strong={hasIdentifier} />
+        <div className="w-full">
+          <QueryWorkspace run={result} loading={generating} />
+        </div>
       </div>
 
-      {/* ── Common Graylog Fields ── */}
       <PageSection
-        eyebrow="Dictionary"
-        title="Common Graylog Fields"
-        icon={BookOpen}
+        eyebrow="History"
+        title="Recent Queries"
+        icon={History}
         tone="orange"
-        description="Meanings and sources of frequently used fields. Click a row to append the field to your request."
+        description="Queries auto-saved to Postgres on every Generate — click a row to open details and reuse."
       >
-        <div className="space-y-3">
-          <Input
-            variant="sm"
-            value={fieldFilter}
-            onChange={(e) => setFieldFilter(e.target.value)}
-            placeholder="Search field, meaning, or source…"
-            className="max-w-xs"
-          />
-          <div className="overflow-x-auto rounded-xl border bg-card">
-            <table className="w-full min-w-[760px] border-collapse text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr>
-                  <th className={th}>Field</th>
-                  <th className={th}>Meaning</th>
-                  <th className={th}>Example</th>
-                  <th className={th}>Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFields.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                      No fields match the filter.
-                    </td>
-                  </tr>
-                )}
-                {filteredFields.map((f) => (
-                  <tr
-                    key={f.field}
-                    onClick={() => appendField(f.field)}
-                    title={`${f.field}: append to your request`}
-                    className="cursor-pointer border-b transition-colors last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
-                  >
-                    <td className={cn(td, 'whitespace-nowrap')}>
-                      <code className="text-xs font-bold text-orange-600 dark:text-orange-400">{f.field}</code>
-                    </td>
-                    <td className={cn(td, 'max-w-[420px]')}>{f.meaning}</td>
-                    <td className={cn(td, 'whitespace-nowrap')}>
-                      <code className="text-[11px] text-foreground/70">{f.example}</code>
-                    </td>
-                    <td className={cn(td, 'whitespace-nowrap text-muted-foreground')}>{f.source}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </PageSection>
-
-      {/* ── Saved Investigations ── */}
-      <PageSection
-        eyebrow="Archive"
-        title="Saved Investigations"
-        icon={FolderSearch}
-        tone="orange"
-        description="Investigation queries previously run by the team. Click a row for details; use 'Reuse query' to populate the form."
-      >
-        <SavedInvestigations onReuse={handleReuse} />
+        <RecentQueriesTable
+          queries={recent}
+          loading={recentLoading}
+          error={recentError}
+          onReuse={(q) => void reuseQuery(q)}
+          onDelete={deleteQuery}
+        />
       </PageSection>
     </ProductPage>
   )

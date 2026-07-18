@@ -60,6 +60,7 @@ export async function buildApp(env: Env) {
       path.startsWith('/api/mobile-devices') ||
       path.startsWith('/api/nesy/mobile-auth') ||
       path.startsWith('/api/mongo-query') ||
+      path.startsWith('/api/graylog-query') ||
       path.startsWith('/api/data-locator')
     ) {
       return express.json()(req, res, next)
@@ -75,12 +76,14 @@ export async function buildApp(env: Env) {
   const { default: mobileDevicesRouter } = await import('./legacy/mobile-devices.router.js')
   const { default: nesyMobileAuthRouter } = await import('./legacy/nesy-mobile-auth.router.js')
   const { default: mongoQueryRouter } = await import('./legacy/mongo-query.router.js')
+  const { default: graylogQueryRouter } = await import('./legacy/graylog-query.router.js')
   const { default: dataLocatorRouter } = await import('./legacy/data-locator.router.js')
   dataCenterApi.use('/api/nesy/dashboard', nesyDashboardRouter)
   dataCenterApi.use('/api/courier-wallets', courierWalletsRouter)
   dataCenterApi.use('/api/mobile-devices', mobileDevicesRouter)
   dataCenterApi.use('/api/nesy/mobile-auth', nesyMobileAuthRouter)
   dataCenterApi.use('/api/mongo-query', mongoQueryRouter)
+  dataCenterApi.use('/api/graylog-query', graylogQueryRouter)
   dataCenterApi.use('/api/data-locator', dataLocatorRouter)
   app.use(dataCenterApi)
 

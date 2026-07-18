@@ -253,3 +253,37 @@ model MongoQueryRun {
   @@index([environment])
   @@map("mongo_query_runs")
 }
+
+/// Engineering tools: Graylog Query Generator history (auto-saved on Generate)
+model GraylogQueryRun {
+  id              String   @id @default(cuid())
+  name            String
+  naturalLanguage String
+  query           String
+  environment     String
+  country         String?
+  application     String
+  service         String?
+  logLevel        String?
+  timeRange       String
+  device          String?
+  appVersion      String?
+  identifiers     Json?
+  sources         Json?
+  status          String
+  explanation     Json
+  validation      Json
+  quality         Json?
+  expectedSignals Json?
+  summary         String?
+  model           String?
+  createdBy       String   @default("local")
+  relatedIncident String?
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+
+  @@index([lastUsedAt])
+  @@index([environment])
+  @@index([country])
+  @@map("graylog_query_runs")
+}

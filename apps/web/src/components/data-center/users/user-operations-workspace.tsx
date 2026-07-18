@@ -835,7 +835,7 @@ export function UserOperationsWorkspace({ refreshKey }: { refreshKey?: number })
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="nesy" size="sm" disabled={!connected || !authUser?.username} onClick={handleSearchMe}>
                   <UserSearch className="size-4" />
-                  Search me
+                  Search Me
                 </Button>
                 <Button
                   type="button"
@@ -852,7 +852,7 @@ export function UserOperationsWorkspace({ refreshKey }: { refreshKey?: number })
                   }}
                 >
                   <Search className="size-4" />
-                  Courier search
+                  Get User With Search
                 </Button>
                 <Button type="button" variant="outline" size="sm" disabled={!connected || listLoading} onClick={() => void loadUsers()}>
                   <RefreshCw className={cn("size-4", listLoading && "animate-spin")} />

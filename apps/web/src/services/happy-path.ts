@@ -1,4 +1,5 @@
 import { API_BASE } from "@/services/api";
+import { throwDataCenterApiError } from "@/services/api-errors";
 import type { GenerationJob } from "@/lib/happy-path/happy-path-generation";
 
 export type HappyPathPoolStatus = "Draft" | "Generating" | "Created" | "Failed";
@@ -66,10 +67,7 @@ export async function fetchHappyPathPools(
   const res = await fetch(`${API_BASE}/happy-path/pools?${params}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to load happy path pools (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to load happy path pools (${res.status})`);
   }
   const json = (await res.json()) as { data: HappyPathPoolListItem[] };
   return Array.isArray(json.data) ? json.data : [];
@@ -79,10 +77,7 @@ export async function fetchHappyPathPoolById(id: string): Promise<HappyPathPoolD
   const res = await fetch(`${API_BASE}/happy-path/pools/${id}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to load happy path pool (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to load happy path pool (${res.status})`);
   }
   const json = (await res.json()) as { data: HappyPathPoolDetail };
   return json.data;
@@ -99,10 +94,7 @@ export async function updateHappyPathPool(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to update happy path pool (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to update happy path pool (${res.status})`);
   }
   const json = (await res.json()) as { data: HappyPathPoolListItem };
   return json.data;
@@ -125,10 +117,7 @@ export async function createHappyPathPool(params: {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to save happy path pool (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to save happy path pool (${res.status})`);
   }
   const json = (await res.json()) as { data: HappyPathPoolListItem };
   return json.data;
@@ -140,10 +129,7 @@ export async function deleteHappyPathPool(id: string): Promise<void> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { message?: string }).message ??
-        `Failed to delete happy path pool (${res.status})`,
-    );
+    throwDataCenterApiError(res, body, `Failed to delete happy path pool (${res.status})`);
   }
 }
 
