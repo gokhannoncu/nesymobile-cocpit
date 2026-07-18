@@ -13,10 +13,25 @@ describe('graylog-query-guardrails', () => {
     expect(() => assertSearchOnlyQuery('| delete')).toThrow(UnsafeGraylogQueryError)
   })
 
-  it('allows normal Lucene search', () => {
+  it('allows Lucene using verified Graylog fields', () => {
     expect(() =>
-      assertSearchOnlyQuery('application:nesy-mobile AND shipmentId:"45-40-20251224-1"'),
+      assertSearchOnlyQuery(
+        'Channel:Terminal AND To:DeliverParcels AND Log_ScheduleId:"52-50-20260718-1"',
+      ),
     ).not.toThrow()
+  })
+
+  it('rejects invented field aliases that Graylog does not index', () => {
+    expect(() => assertSearchOnlyQuery('barcode:"N34B…" AND country:HR')).toThrow(
+      UnsafeGraylogQueryError,
+    )
+    expect(() => assertSearchOnlyQuery('requestName:deliverParcels')).toThrow(
+      UnsafeGraylogQueryError,
+    )
+    expect(() => assertSearchOnlyQuery('X-Channel:Terminal')).toThrow(UnsafeGraylogQueryError)
+    expect(() => assertSearchOnlyQuery('shipmentId:"45-40-20251224-1"')).toThrow(
+      UnsafeGraylogQueryError,
+    )
   })
 
   it('detects identifiers', () => {

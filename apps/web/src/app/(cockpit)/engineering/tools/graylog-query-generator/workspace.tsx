@@ -6,16 +6,25 @@ import {
   BookOpen,
   Braces,
   CheckCircle2,
+  ChevronDown,
+  Download,
   Gauge,
+  Loader2,
+  Play,
   ShieldCheck,
   Sparkles,
   Terminal,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@nesy/metronic/lib/utils'
+import { Button } from '@nesy/metronic/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nesy/metronic/components/ui/tabs'
 import { CodeBlock } from '@/components/engineering/tools/shared'
-import type { GraylogQueryRun } from '@/services/graylog-query'
+import type {
+  GraylogExecuteMessage,
+  GraylogExecuteResult,
+  GraylogQueryRun,
+} from '@/services/graylog-query'
 
 const GENERATE_STEPS = [
   {
@@ -60,9 +69,9 @@ const CLI_STEP = 2
 const FINISH_STEP_MS = 480
 
 const SAMPLE_QUERY_LINES = [
-  'application:nesy-mobile',
-  'AND country:HR',
-  'AND shipmentId:"45-40-20251224-1"',
+  'Channel:Terminal',
+  'AND To:DeliverParcels',
+  'AND Log_ScheduleId:"52-50-20260718-1"',
 ]
 
 function formatElapsed(ms: number): string {
@@ -453,14 +462,168 @@ function QueryQuality({ run }: { run: GraylogQueryRun }) {
   )
 }
 
+function csvEscape(value: string): string {
+  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`
+  return value
+}
+
+function downloadText(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function ResultsTab({ result }: { result: GraylogExecuteResult }) {
+  const [selectedId, setSelectedId] = useState<string | null>(result.messages[0]?.id ?? null)
+
+  useEffect(() => {
+    setSelectedId(result.messages[0]?.id ?? null)
+  }, [result])
+
+  const selected: GraylogExecuteMessage | undefined =
+    result.messages.find((m) => m.id === selectedId) ?? result.messages[0]
+
+  const th =
+    'px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-muted-foreground'
+  const td = 'px-2.5 py-2 align-top text-xs text-foreground/85'
+
+  const downloadCsv = () => {
+    const header = ['timestamp', 'source', 'message', 'index', 'id']
+    const rows = result.messages.map((m) =>
+      [m.timestamp, m.source, m.message, m.index, m.id].map(csvEscape).join(','),
+    )
+    downloadText(
+      `graylog-${result.country}-${Date.now()}.csv`,
+      [header.join(','), ...rows].join('\n'),
+      'text/csv;charset=utf-8',
+    )
+  }
+
+  const downloadJson = () => {
+    downloadText(
+      `graylog-${result.country}-${Date.now()}.json`,
+      JSON.stringify(result, null, 2),
+      'application/json',
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+        <span className="font-bold text-foreground">{result.country}</span>
+        <span className="text-muted-foreground">
+          {result.messages.length} / {result.totalResults.toLocaleString()} msgs
+        </span>
+        <span className="text-muted-foreground">{result.durationMs}ms</span>
+        {result.effectiveFrom && result.effectiveTo && (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {result.effectiveFrom} → {result.effectiveTo}
+          </span>
+        )}
+        <div className="ms-auto flex items-center gap-1">
+          <Button type="button" variant="outline" size="sm" onClick={downloadCsv}>
+            <Download className="size-3.5" />
+            CSV
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={downloadJson}>
+            <Download className="size-3.5" />
+            JSON
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full min-w-[640px] border-collapse">
+          <thead className="border-b bg-muted/40">
+            <tr>
+              {['Timestamp', 'Source', 'Message'].map((h) => (
+                <th key={h} className={th}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {result.messages.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-2.5 py-8 text-center text-xs text-muted-foreground">
+                  No messages in this page.
+                </td>
+              </tr>
+            )}
+            {result.messages.map((m) => {
+              const active = selected?.id === m.id
+              return (
+                <tr
+                  key={m.id}
+                  onClick={() => setSelectedId(m.id)}
+                  className={cn(
+                    'cursor-pointer border-b transition-colors last:border-b-0',
+                    active
+                      ? 'bg-orange-50/80 dark:bg-orange-950/30'
+                      : 'hover:bg-muted/40',
+                  )}
+                >
+                  <td className={cn(td, 'whitespace-nowrap font-mono text-[11px]')}>
+                    {m.timestamp || '—'}
+                  </td>
+                  <td className={cn(td, 'whitespace-nowrap font-medium')}>{m.source || '—'}</td>
+                  <td className={cn(td, 'max-w-[420px]')}>
+                    <span className="line-clamp-2 break-all">{m.message || '—'}</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {selected && (
+        <details open className="rounded-xl border bg-card">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs font-bold text-foreground">
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+            Parsed fields · {selected.id}
+          </summary>
+          <pre className="max-h-[360px] overflow-auto border-t bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed text-emerald-300/90">
+            {JSON.stringify(selected.fields, null, 2)}
+          </pre>
+        </details>
+      )}
+    </div>
+  )
+}
+
 export function QueryWorkspace({
   run,
   loading,
+  country,
+  clusterConfigured,
+  executing,
+  executeError,
+  executeResult,
+  onRun,
+  tab,
+  onTabChange,
 }: {
   run: GraylogQueryRun | null
   loading?: boolean
+  country: string
+  clusterConfigured: boolean
+  executing?: boolean
+  executeError?: string | null
+  executeResult?: GraylogExecuteResult | null
+  onRun?: () => void
+  tab?: string
+  onTabChange?: (tab: string) => void
 }) {
   const [showResult, setShowResult] = useState(false)
+  const [internalTab, setInternalTab] = useState('query')
+  const activeTab = tab ?? internalTab
+  const setActiveTab = onTabChange ?? setInternalTab
 
   useEffect(() => {
     if (loading) setShowResult(false)
@@ -491,19 +654,62 @@ export function QueryWorkspace({
     .filter(Boolean)
     .join(' · ')
 
+  const runDisabled = Boolean(executing) || !clusterConfigured || run.timeRange === 'custom'
+
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="query">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="query">Generated Query</TabsTrigger>
           <TabsTrigger value="explanation">Explanation</TabsTrigger>
           <TabsTrigger value="validation">Validation</TabsTrigger>
+          <TabsTrigger value="results" disabled={!executeResult && !executing}>
+            Results
+            {executeResult ? ` · ${executeResult.messages.length}` : ''}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="query" className="mt-3 space-y-3">
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
             <Sparkles className="size-3.5 text-orange-600 dark:text-orange-400" />
             <span className="text-xs font-semibold text-foreground/85">{contextBar}</span>
+            <div className="ms-auto">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={runDisabled}
+                onClick={() => onRun?.()}
+                title={
+                  !clusterConfigured
+                    ? `Graylog ${country} token not configured`
+                    : run.timeRange === 'custom'
+                      ? 'Custom time range is not supported for Run'
+                      : `Run against ${country}`
+                }
+              >
+                {executing ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Play className="size-3.5" />
+                )}
+                {executing ? 'Running…' : `Run against ${country}`}
+              </Button>
+            </div>
           </div>
+          {executeError && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+              <AlertTriangle className="mt-px size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                {executeError}
+              </p>
+            </div>
+          )}
+          {!clusterConfigured && (
+            <p className="text-xs text-muted-foreground">
+              Cluster {country} is not configured. Set <code>GRAYLOG_{country}_TOKEN</code> in the
+              API <code>.env</code> and restart the API.
+            </p>
+          )}
           <CodeBlock
             code={run.query}
             label="graylog"
@@ -519,6 +725,21 @@ export function QueryWorkspace({
         </TabsContent>
         <TabsContent value="validation" className="mt-3">
           <ValidationTab run={run} />
+        </TabsContent>
+        <TabsContent value="results" className="mt-3">
+          {executing && !executeResult ? (
+            <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-8 text-center">
+              <Loader2 className="size-6 animate-spin text-orange-600" />
+              <p className="text-sm font-semibold text-foreground">Running against {country}…</p>
+              <p className="text-xs text-muted-foreground">Views Search sync in progress</p>
+            </div>
+          ) : executeResult ? (
+            <ResultsTab result={executeResult} />
+          ) : (
+            <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-10 text-center text-xs text-muted-foreground">
+              Run the generated query to see parsed results here.
+            </div>
+          )}
         </TabsContent>
       </Tabs>
       <QueryQuality run={run} />

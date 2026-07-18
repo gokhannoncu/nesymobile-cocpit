@@ -18,6 +18,9 @@ export const COUNTRIES: SelectOption[] = [
   { value: 'RS', label: 'RS — Serbia' },
   { value: 'BA', label: 'BA — Bosnia and Herzegovina' },
   { value: 'ME', label: 'ME — Montenegro' },
+  { value: 'SK', label: 'SK — Slovakia' },
+  { value: 'AZ', label: 'AZ — Azerbaijan' },
+  { value: 'BG', label: 'BG — Bulgaria' },
 ]
 
 export const APPLICATIONS: SelectOption[] = [

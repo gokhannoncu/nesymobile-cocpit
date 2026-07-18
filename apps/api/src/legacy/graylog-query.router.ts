@@ -3,9 +3,12 @@ import { prisma, type Prisma } from '@nesy/db'
 import {
   getFieldsPayload,
   getGraylogFields,
+  GRAYLOG_IDENTIFIER_FIELD_MAP,
   GRAYLOG_MOBILE_REQUEST_TOKENS,
 } from '../data/graylog-fields.js'
+import { listGraylogClusters } from '../graylog-env.js'
 import { ClaudeCliError, extractJsonObject, runClaudePrompt } from '../lib/claude-cli.js'
+import { executeGraylogSearch, GraylogClientError } from '../lib/graylog-client.js'
 import {
   assertSearchOnlyQuery,
   buildQuality,
@@ -45,7 +48,10 @@ function buildPrompt(input: {
 
   const idLines = Object.entries(input.identifiers)
     .filter(([, v]) => String(v ?? '').trim())
-    .map(([k, v]) => `- ${k}: ${v}`)
+    .map(([k, v]) => {
+      const mapHint = GRAYLOG_IDENTIFIER_FIELD_MAP[k] ?? 'message:"<value>"'
+      return `- UI key ${k}=${v} → Lucene: ${mapHint.replace(/<value>/g, v)}`
+    })
     .join('\n')
 
   return [
@@ -55,26 +61,33 @@ function buildPrompt(input: {
     'quality ({verdict:strong|broad, explanation}), expectedSignals (string[], optional).',
     'Rules:',
     '- Search-only Lucene / Graylog query string. Never delete streams, drop indexes, or remove messages.',
-    '- Prefer fields from the dictionary below. Do not invent wild field names.',
-    '- Narrow with application, country, service, and identifiers when provided.',
+    '- ONLY use fields from the dictionary below. Invented fields (barcode, requestName, X-Channel, country, shipmentId, courierId, scheduleId, deviceId, appVersion, username) are REJECTED by Graylog.',
+    '- Country is selected by which Graylog cluster runs the query — NEVER emit country: in Lucene.',
+    '- Mobile APIs: prefer To:DeliverParcels / From:… / message:"Task/DeliverParcels" — never requestName:.',
+    '- Terminal channel: Channel:Terminal or Log_Request_Channel:Terminal — never X-Channel:.',
+    '- Barcodes: Log_Data_Barcode:"…" or message:"…" — never barcode:.',
+    '- Shipments: Log_ShipmentId / Log_Data_ShipmentId / message:"…" — never shipmentId:.',
+    '- Schedules: Log_ScheduleId — never scheduleId:.',
+    '- App version: ClientVersion — never appVersion:.',
+    '- Avoid bare wildcards on analyzed text fields (*token*) — prefer exact To:Name or quoted message:"…".',
     '- Sensitive values (tokens, passwords, full PII) must not appear unmasked in the query.',
     `- Environment: ${input.environment}`,
-    `- Country: ${input.country}`,
-    `- Application: ${input.application}`,
-    `- Service: ${input.service}`,
-    `- Log level: ${input.logLevel}`,
-    `- Time range hint (apply in Graylog UI if not expressible in Lucene): ${input.timeRange}`,
-    `- Device: ${input.device}`,
-    `- App version: ${input.appVersion}`,
-    `- Log sources: ${input.sources.join(', ') || 'any'}`,
+    `- Country cluster context (do NOT put in query): ${input.country}`,
+    `- Application (context only unless expressible via source/message): ${input.application}`,
+    `- Service (context): ${input.service}`,
+    `- Log level: prefer stringLevel:${input.logLevel === 'any' ? '…' : input.logLevel} when filtering`,
+    `- Time range hint (Graylog UI / API timerange, not Lucene): ${input.timeRange}`,
+    `- Device (search in message if needed; no deviceId field): ${input.device}`,
+    `- App version → ClientVersion when filtering: ${input.appVersion}`,
+    `- Log sources (context): ${input.sources.join(', ') || 'any'}`,
     '',
-    'Known identifiers:',
+    'Known identifiers (map UI keys to real fields):',
     idLines || '- (none)',
     '',
-    'Field dictionary:',
+    'Field dictionary (ONLY these field names are valid):',
     fieldLines,
     '',
-    'Known mobile / terminal request tokens (prefer these in message/path filters when relevant):',
+    'Known mobile / terminal request patterns:',
     ...GRAYLOG_MOBILE_REQUEST_TOKENS.map((t) => `- ${t}`),
     '',
     'User request:',
@@ -159,6 +172,61 @@ function mapRow(row: {
 
 router.get('/fields', (_req, res) => {
   res.json({ data: getFieldsPayload() })
+})
+
+router.get('/clusters', (_req, res) => {
+  const clusters = listGraylogClusters().map(({ country, baseUrl, configured }) => ({
+    country,
+    baseUrl,
+    configured,
+  }))
+  res.json({ data: clusters })
+})
+
+router.post('/execute', async (req, res) => {
+  try {
+    const body = req.body as Record<string, unknown>
+    const query = typeof body.query === 'string' ? body.query.trim() : ''
+    const country = typeof body.country === 'string' ? body.country.trim() : ''
+    const timeRange = typeof body.timeRange === 'string' ? body.timeRange.trim() : '1h'
+    const limitRaw = typeof body.limit === 'number' ? body.limit : Number(body.limit)
+
+    if (!query) {
+      res.status(400).json({ message: 'query is required.' })
+      return
+    }
+    if (!country) {
+      res.status(400).json({ message: 'country is required.' })
+      return
+    }
+
+    assertSearchOnlyQuery(query)
+
+    const result = await executeGraylogSearch({
+      country,
+      query,
+      timeRange,
+      limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
+    })
+
+    res.json({ data: result })
+  } catch (error) {
+    if (error instanceof UnsafeGraylogQueryError) {
+      res.status(422).json({ message: error.message })
+      return
+    }
+    if (error instanceof GraylogClientError) {
+      res.status(error.status).json({
+        message: error.message,
+        details: error.details,
+      })
+      return
+    }
+    res.status(500).json({
+      message: 'Graylog query could not be executed.',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 })
 
 router.get('/recent', async (req, res) => {

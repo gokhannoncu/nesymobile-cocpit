@@ -167,3 +167,68 @@ export async function deleteGraylogQuery(id: string): Promise<void> {
     throw new Error(formatApiNetworkError(e, 'Failed to delete Graylog query'))
   }
 }
+
+export type GraylogCluster = {
+  country: string
+  baseUrl: string
+  configured: boolean
+}
+
+export type GraylogExecuteMessage = {
+  id: string
+  timestamp: string
+  source: string
+  message: string
+  index: string
+  fields: Record<string, unknown>
+}
+
+export type GraylogExecuteResult = {
+  country: string
+  baseUrl: string
+  query: string
+  timerangeSeconds: number
+  limit: number
+  totalResults: number
+  durationMs: number
+  executedAt: string
+  effectiveFrom: string | null
+  effectiveTo: string | null
+  messages: GraylogExecuteMessage[]
+}
+
+export type ExecuteGraylogInput = {
+  query: string
+  country: string
+  timeRange: string
+  limit?: number
+}
+
+export async function fetchGraylogClusters(): Promise<GraylogCluster[]> {
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/clusters`)
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: GraylogCluster[] }
+    return Array.isArray(json.data) ? json.data : []
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to load Graylog clusters'))
+  }
+}
+
+export async function executeGraylogQuery(input: ExecuteGraylogInput): Promise<GraylogExecuteResult> {
+  try {
+    const res = await fetch(`${API_BASE}/graylog-query/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) throw new Error(await readError(res))
+    const json = (await res.json()) as { data: GraylogExecuteResult }
+    return {
+      ...json.data,
+      messages: Array.isArray(json.data?.messages) ? json.data.messages : [],
+    }
+  } catch (e) {
+    throw new Error(formatApiNetworkError(e, 'Failed to execute Graylog query'))
+  }
+}

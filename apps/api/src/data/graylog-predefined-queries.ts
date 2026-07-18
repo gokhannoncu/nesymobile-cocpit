@@ -32,16 +32,16 @@ export type GraylogPredefinedQuery = {
  * Canonical library of 50 Graylog NL intents for NESY mobile / terminal /
  * delivery / fiscal / D4Me / support investigations.
  *
- * Sample placeholders match cockpit conventions:
- * shipment 45-40-20251224-1, courier 3021, device NX-4412,
- * schedule SCH-2025-8841, barcode HR304418872299001, country HR.
+ * Sample placeholders match cockpit conventions.
+ * Lucene must use real Graylog fields (Log_ShipmentId, Log_Data_Barcode,
+ * Channel, To/From, Log_ScheduleId) — never barcode:/requestName:/country:.
  */
 export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   // ── Identity (1–8) ────────────────────────────────────────────
   {
     id: 1,
     label: 'Shipment flow last 2h',
-    text: 'Show delivery, fiscal, and retry logs generated in the last 2 hours for shipmentId 45-40-20251224-1.',
+    text: 'Show delivery, fiscal, and retry logs generated in the last 2 hours for Log_ShipmentId 45-40-20251224-1.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -54,7 +54,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 2,
     label: 'Barcode in message',
-    text: 'Show logs mentioning barcode HR304418872299001 in the last 1 hour for application nesy-mobile; include DeliverParcels and scan-related messages.',
+    text: 'Show logs mentioning Log_Data_Barcode (or message) HR304418872299001 in the last 1 hour for application nesy-mobile; include DeliverParcels and scan-related messages.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'identity',
@@ -66,7 +66,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 3,
     label: 'Waybill / tracking number',
-    text: 'Find logs for waybill or tracking number TRK-1001 in the last 6 hours across mobile and backend; prefer shipmentId or barcode fields when present.',
+    text: 'Find logs for waybill or tracking number TRK-1001 in the last 6 hours across mobile and backend; prefer Log_ShipmentId / Log_Data_Barcode / message when present.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -78,7 +78,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 4,
     label: 'ScheduleId chain',
-    text: 'Show all logs for scheduleId SCH-2025-8841 in the last 6 hours — schedule load, stop list, deliver, and terminal failed requests.',
+    text: 'Show all logs for Log_ScheduleId SCH-2025-8841 in the last 6 hours — schedule load, stop list, deliver, and terminal failed requests.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -91,7 +91,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 5,
     label: 'Device + appVersion',
-    text: 'Show nesy-mobile logs for deviceId NX-4412 and appVersion 4.12.0 in the last 1 hour; include errors and RequestSenderService activity.',
+    text: 'Show nesy-mobile logs for device token in message NX-4412 and ClientVersion 4.12.0 in the last 1 hour; include errors and RequestSenderService activity.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -106,7 +106,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 6,
     label: 'Courier + country',
-    text: 'List logs for courierId 3021 in country HR for the last 1 hour; include login, schedule, and delivery activity.',
+    text: 'List logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 on the HR Graylog cluster for the last 1 hour; include login, schedule, and delivery activity.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -119,7 +119,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 7,
     label: 'Multi-piece shipment',
-    text: 'Show logs for shipmentId 45-40-20251224-1 that mention multiple barcodes or multi-piece delivery in the last 6 hours.',
+    text: 'Show logs for Log_ShipmentId 45-40-20251224-1 that mention multiple barcodes or multi-piece delivery in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'identity',
@@ -132,7 +132,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 8,
     label: 'Customer ticket correlation',
-    text: 'Correlate logs for customerTicketId CT-10592 or ticket ref UAT-HR#1583 with shipmentId 45-40-20251224-1 in the last 24 hours.',
+    text: 'Correlate logs for customerTicketId CT-10592 or ticket ref UAT-HR#1583 with Log_ShipmentId 45-40-20251224-1 in the last 24 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'identity',
@@ -150,7 +150,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 9,
     label: 'DeliverParcels for barcode',
-    text: 'Show Task/DeliverParcels and requestName deliverParcels logs for barcode HR304418872299001 or shipmentId 45-40-20251224-1 in the last 1 hour; include X-Channel Terminal traffic.',
+    text: 'Show Task/DeliverParcels and To:DeliverParcels logs for Log_Data_Barcode (or message) HR304418872299001 or shipmentId 45-40-20251224-1 in the last 1 hour; include Channel:Terminal traffic.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -163,7 +163,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 10,
     label: 'Parcel-shop vs home delivery',
-    text: 'Compare DeliverParcels vs DeliverParcelsFromParcelShop / deliverParcelToParcelShop logs for courierId 3021 in the last 6 hours.',
+    text: 'Compare DeliverParcels vs DeliverParcelsFromParcelShop / deliverParcelToParcelShop logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -176,7 +176,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 11,
     label: 'DeliveryFailed',
-    text: 'Show Task/DeliveryFailed and requestName DeliveryFailed logs for barcode HR304418872299001 or scheduleId SCH-2025-8841 in the last 6 hours.',
+    text: 'Show Task/DeliveryFailed and To:DeliveryFailed logs for Log_Data_Barcode (or message) HR304418872299001 or Log_ScheduleId SCH-2025-8841 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -189,7 +189,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 12,
     label: 'PickupFailed',
-    text: 'Show Task/PickupFailed and requestName PickupFailed logs for courierId 3021 in country HR in the last 6 hours.',
+    text: 'Show Task/PickupFailed and To:PickupFailed logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 on the HR Graylog cluster in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -202,7 +202,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 13,
     label: 'Load parcel to vehicle',
-    text: 'Show Task/LoadParcelToCourierVehicle and requestName loadParcelToCourierVehicle logs for scheduleId SCH-2025-8841 in the last 6 hours.',
+    text: 'Show Task/LoadParcelToCourierVehicle and To:LoadParcelToCourierVehicle logs for Log_ScheduleId SCH-2025-8841 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -215,7 +215,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 14,
     label: 'Unload parcel from vehicle',
-    text: 'Show Task/UnloadParcelFromCourierVehicle and UnloadParcelToCourierVehicle queue logs for courierId 3021 in the last 6 hours.',
+    text: 'Show Task/UnloadParcelFromCourierVehicle and UnloadParcelToCourierVehicle queue logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -228,7 +228,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 15,
     label: 'ReleaseParcel',
-    text: 'Show Task/ReleaseParcel and requestName ReleaseParcel logs for shipmentId 45-40-20251224-1 in the last 6 hours.',
+    text: 'Show Task/ReleaseParcel and To:ReleaseParcel logs for Log_ShipmentId 45-40-20251224-1 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -241,7 +241,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 16,
     label: 'UpdateDeliveryRemark',
-    text: 'Show Task/UpdateDeliveryRemark and UpdateDeliveryRemarkRequest logs for shipmentId 45-40-20251224-1 in the last 6 hours.',
+    text: 'Show Task/UpdateDeliveryRemark and UpdateDeliveryRemarkRequest logs for Log_ShipmentId 45-40-20251224-1 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -254,7 +254,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 17,
     label: 'Deliver then fiscal',
-    text: 'Show DeliverParcels followed by CreateFiscalInvoice or fiscal errors for shipmentId 45-40-20251224-1 in the last 6 hours.',
+    text: 'Show DeliverParcels followed by CreateFiscalInvoice or fiscal errors for Log_ShipmentId 45-40-20251224-1 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'delivery',
@@ -267,7 +267,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 18,
     label: 'Protected DeliverParcels failures',
-    text: 'Show failures around Task/DeliverParcels or GetMyScheduleByZoneCode that mention X-Protected-Request-Key or protected request for courierId 3021 in the last 1 hour.',
+    text: 'Show failures around Task/DeliverParcels or GetMyScheduleByZoneCode that mention X-Protected-Request-Key or protected request for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 1 hour.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'delivery',
@@ -282,11 +282,11 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 19,
     label: 'Courier Terminal channel last requests',
-    text: 'Show last Terminal-channel requests for courierId 3021 in the last 1 hour — messages with X-Channel Terminal or ChannelType Terminal, including Task/DeliverParcels and schedule APIs.',
+    text: 'Show last Terminal-channel requests for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 1 hour — messages with Channel:Terminal or ChannelType Terminal, including Task/DeliverParcels and schedule APIs.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'terminal',
-    reason: 'Mobile always sends X-Channel: Terminal (ChannelType=9)',
+    reason: 'Mobile always sends Channel:Terminal',
     priority: 'P0',
     timeRange: '1h',
     identifiers: { courierId: '3021' },
@@ -295,7 +295,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 20,
     label: 'SaveTerminalFailedRequests',
-    text: 'Show History/SaveTerminalFailedRequests logs for courierId 3021 or scheduleId SCH-2025-8841 in the last 6 hours; include requestName values in the payload.',
+    text: 'Show History/SaveTerminalFailedRequests logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 or Log_ScheduleId SCH-2025-8841 in the last 6 hours; include To/From handler names in the payload.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -308,7 +308,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 21,
     label: 'RequestSenderService retries',
-    text: 'Get offline request logs waiting or falling into retry status in RequestSenderService for the last 1 hour; include requestName and scheduleId when present.',
+    text: 'Get offline request logs waiting or falling into retry status in RequestSenderService for the last 1 hour; include To/From handler names and scheduleId when present.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -320,7 +320,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 22,
     label: 'deliverParcels queue failures',
-    text: 'Show RequestSenderService or SaveTerminalFailedRequests logs where requestName is deliverParcels for courierId 3021 in the last 6 hours.',
+    text: 'Show RequestSenderService or SaveTerminalFailedRequests logs where To:DeliverParcels for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -333,7 +333,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 23,
     label: 'OrderStopListFromTerminal',
-    text: 'Show Task/OrderStopListFromTerminal logs for scheduleId SCH-2025-8841 or courierId 3021 in the last 6 hours.',
+    text: 'Show Task/OrderStopListFromTerminal logs for Log_ScheduleId SCH-2025-8841 or courierId 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'terminal',
@@ -346,7 +346,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 24,
     label: 'Terminal DB snapshot errors',
-    text: 'Show History/SaveTerminalRequestDbSnapshot errors for courierId 3021 in the last 6 hours.',
+    text: 'Show History/SaveTerminalRequestDbSnapshot errors for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -359,7 +359,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 25,
     label: 'Offline → online burst',
-    text: 'Show a burst of RequestSenderService send attempts for courierId 3021 after reconnect in the last 1 hour; group by requestName.',
+    text: 'Show a burst of RequestSenderService send attempts for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 after reconnect in the last 1 hour; group by To/From handler.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -371,8 +371,8 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   },
   {
     id: 26,
-    label: 'HTTP not 200 requestName',
-    text: 'Show logs related to requestHttpStatusNot200 or non-200 HTTP responses with requestName and username for courierId 3021 in the last 1 hour.',
+    label: 'HTTP not 200 by To/From',
+    text: 'Show logs related to requestHttpStatusNot200 or non-200 HTTP responses with To/From and Log_Request_User_Username for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 1 hour.',
     application: 'nesy-mobile',
     service: 'RequestSenderService',
     category: 'terminal',
@@ -387,7 +387,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 27,
     label: 'Courier login morning',
-    text: "List this morning's Auth/LoginMobile attempts and authentication errors for courierId 3021; include token refresh logs.",
+    text: "List this morning's Auth/LoginMobile attempts and authentication errors for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021; include token refresh logs.",
     application: 'nesy-mobile',
     service: 'AuthService',
     category: 'auth',
@@ -400,7 +400,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 28,
     label: 'LoginDevice',
-    text: 'Show Auth/LoginDevice attempts and failures for deviceId NX-4412 in the last 6 hours.',
+    text: 'Show Auth/LoginDevice attempts and failures for device token in message NX-4412 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'AuthService',
     category: 'auth',
@@ -426,7 +426,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 30,
     label: 'Password change failures',
-    text: 'Show Auth/LoggedInUserChangeOwnPassword or LoggedOutUserChangePassword failures for courierId 3021 in the last 24 hours.',
+    text: 'Show Auth/LoggedInUserChangeOwnPassword or LoggedOutUserChangePassword failures for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 24 hours.',
     application: 'nesy-mobile',
     service: 'AuthService',
     category: 'auth',
@@ -439,7 +439,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 31,
     label: 'Token refresh errors',
-    text: 'Show token refresh or bearer auth errors for courierId 3021 in the last 1 hour on nesy-mobile.',
+    text: 'Show token refresh or bearer auth errors for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 1 hour on nesy-mobile.',
     application: 'nesy-mobile',
     service: 'AuthService',
     category: 'auth',
@@ -480,7 +480,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 34,
     label: 'HubCompanion scan events',
-    text: 'Show HubCompanion ScanSpecial, ProcessAndLogEventParcels, or GetShipmentEventHistory logs for barcode HR304418872299001 in the last 1 hour.',
+    text: 'Show HubCompanion ScanSpecial, ProcessAndLogEventParcels, or GetShipmentEventHistory logs for Log_Data_Barcode (or message) HR304418872299001 in the last 1 hour.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'scan',
@@ -492,7 +492,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 35,
     label: 'SaveNoDataScanLog',
-    text: 'Show Shipment/SaveNoDataScanLog entries for courierId 3021 or device NX-4412 in the last 6 hours.',
+    text: 'Show Shipment/SaveNoDataScanLog entries for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 or device NX-4412 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'scan',
@@ -506,7 +506,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 36,
     label: 'CreateInstantTask after scan',
-    text: 'Show Task/CreateInstantTask logs after a barcode scan for barcode HR304418872299001 in the last 1 hour.',
+    text: 'Show Task/CreateInstantTask logs after a barcode scan for Log_Data_Barcode (or message) HR304418872299001 in the last 1 hour.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'scan',
@@ -547,7 +547,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 39,
     label: 'CreateFiscalInvoice after deliver',
-    text: 'Show Shipment/CreateFiscalInvoice and related fiscal logs for shipmentId 45-40-20251224-1 or fiscalId FIS-HR-338291 in the last 6 hours.',
+    text: 'Show Shipment/CreateFiscalInvoice and related fiscal logs for Log_ShipmentId 45-40-20251224-1 or fiscalId FIS-HR-338291 in the last 6 hours.',
     application: 'nesy-fiscal',
     service: 'FiscalService',
     category: 'money',
@@ -563,7 +563,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 40,
     label: 'SoftPOS / RaiPay bind failures',
-    text: 'Show RaiPayBindMobilDeviceToPaymentTerminal or SoftPOS payment bind/token failures for courierId 3021 in the last 6 hours.',
+    text: 'Show RaiPayBindMobilDeviceToPaymentTerminal or SoftPOS payment bind/token failures for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'money',
@@ -576,7 +576,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 41,
     label: 'Refund fiscal',
-    text: 'Show RefundFiscalInvoice or fiscal refund errors for shipmentId 45-40-20251224-1 in the last 24 hours.',
+    text: 'Show RefundFiscalInvoice or fiscal refund errors for Log_ShipmentId 45-40-20251224-1 in the last 24 hours.',
     application: 'nesy-fiscal',
     service: 'FiscalService',
     category: 'money',
@@ -589,7 +589,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 42,
     label: 'COD / payment errors',
-    text: 'Show COD collection or payment-related errors for shipmentId 45-40-20251224-1 in the last 6 hours across mobile and fiscal.',
+    text: 'Show COD collection or payment-related errors for Log_ShipmentId 45-40-20251224-1 in the last 6 hours across mobile and fiscal.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'money',
@@ -604,7 +604,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 43,
     label: 'D4Me callback chain',
-    text: 'Show D4Me locker callback chain for shipmentId 45-40-20251218-7; match callback_received and callback_processed events.',
+    text: 'Show D4Me locker callback chain for Log_ShipmentId 45-40-20251218-7; match callback_received and callback_processed events.',
     application: 'nesy-d4me',
     service: 'any',
     category: 'locker',
@@ -617,7 +617,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 44,
     label: 'Locker reservation',
-    text: 'Show Task/MakeLockerReservation or CancelLockerReservation logs for shipmentId 45-40-20251224-1 in the last 6 hours.',
+    text: 'Show Task/MakeLockerReservation or CancelLockerReservation logs for Log_ShipmentId 45-40-20251224-1 in the last 6 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'locker',
@@ -630,7 +630,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 45,
     label: 'CompleteD4MShipments',
-    text: 'Show CompleteD4MShipments or CreateD4MReservation logs for shipmentId 45-40-20251224-1 in the last 6 hours.',
+    text: 'Show CompleteD4MShipments or CreateD4MReservation logs for Log_ShipmentId 45-40-20251224-1 in the last 6 hours.',
     application: 'nesy-d4me',
     service: 'any',
     category: 'locker',
@@ -643,7 +643,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 46,
     label: 'DeliveredToParcelTerminal',
-    text: 'Show logs mentioning DeliveredToParcelTerminal or parcel terminal status 64 for shipmentId 45-40-20251224-1 in the last 24 hours.',
+    text: 'Show logs mentioning DeliveredToParcelTerminal or parcel terminal status 64 for Log_ShipmentId 45-40-20251224-1 in the last 24 hours.',
     application: 'nesy-mobile',
     service: 'DeliveryService',
     category: 'locker',
@@ -658,7 +658,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 47,
     label: 'AskQuestion thread',
-    text: 'Show User/AskQuestion and History/GetAskQuestion logs for courierId 3021 or username of that courier in the last 24 hours.',
+    text: 'Show User/AskQuestion and History/GetAskQuestion logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 or username of that courier in the last 24 hours.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'support',
@@ -685,7 +685,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 49,
     label: 'Courier location trail',
-    text: 'Show Tracking/SaveCourierLocation logs for courierId 3021 in the last 1 hour; include deviceId when present.',
+    text: 'Show Tracking/SaveCourierLocation logs for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 in the last 1 hour; include deviceId when present.',
     application: 'nesy-mobile',
     service: 'LocationService',
     category: 'support',
@@ -698,7 +698,7 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
   {
     id: 50,
     label: 'GetMyScheduleByZoneCode failures',
-    text: 'Show Task/GetMyScheduleByZoneCode failures for courierId 3021 or zone-related errors in the last 6 hours; include protected-request failures.',
+    text: 'Show Task/GetMyScheduleByZoneCode failures for courier (Log_Request_User_Username / Log_RequestData_CourierId) 3021 or zone-related errors in the last 6 hours; include protected-request failures.',
     application: 'nesy-mobile',
     service: 'any',
     category: 'support',

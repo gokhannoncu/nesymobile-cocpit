@@ -53,11 +53,15 @@ import {
 } from '@/data/engineering/tools/graylog-generator'
 import {
   deleteGraylogQuery,
+  executeGraylogQuery,
+  fetchGraylogClusters,
   fetchGraylogFields,
   fetchGraylogPredefinedQueries,
   fetchRecentGraylogQueries,
   generateGraylogQuery,
   reuseGraylogQuery,
+  type GraylogCluster,
+  type GraylogExecuteResult,
   type GraylogField,
   type GraylogPredefinedQuery,
   type GraylogQueryRun,
@@ -215,6 +219,16 @@ export default function GraylogQueryGeneratorPage() {
   const [result, setResult] = useState<GraylogQueryRun | null>(null)
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [clusters, setClusters] = useState<GraylogCluster[]>([])
+  const [executing, setExecuting] = useState(false)
+  const [executeError, setExecuteError] = useState<string | null>(null)
+  const [executeResult, setExecuteResult] = useState<GraylogExecuteResult | null>(null)
+  const [workspaceTab, setWorkspaceTab] = useState('query')
+
+  const clusterConfigured = useMemo(
+    () => clusters.some((c) => c.country === country && c.configured),
+    [clusters, country],
+  )
 
   const hasIdentifier = useMemo(
     () => Object.values(identifiers).some((v) => v.trim().length > 0),
@@ -282,13 +296,15 @@ export default function GraylogQueryGeneratorPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const [list, predefined] = await Promise.all([
+        const [list, predefined, clusterList] = await Promise.all([
           fetchGraylogFields(),
           fetchGraylogPredefinedQueries(),
+          fetchGraylogClusters().catch(() => [] as GraylogCluster[]),
         ])
         if (!cancelled) {
           setFields(list)
           setPredefinedQueries(predefined)
+          setClusters(clusterList)
           setFieldsError(null)
         }
       } catch (e) {
@@ -323,6 +339,9 @@ export default function GraylogQueryGeneratorPage() {
     setActivePredefinedId(null)
     setResult(null)
     setGenerateError(null)
+    setExecuteResult(null)
+    setExecuteError(null)
+    setWorkspaceTab('query')
   }
 
   const appendField = (field: string) => {
@@ -333,6 +352,9 @@ export default function GraylogQueryGeneratorPage() {
     if (!request.trim() || generating) return
     setResult(null)
     setGenerateError(null)
+    setExecuteResult(null)
+    setExecuteError(null)
+    setWorkspaceTab('query')
     setGenerating(true)
     try {
       const run = await generateGraylogQuery({
@@ -357,6 +379,27 @@ export default function GraylogQueryGeneratorPage() {
     }
   }
 
+  const onRun = async () => {
+    if (!result?.query || executing) return
+    setExecuting(true)
+    setExecuteError(null)
+    setWorkspaceTab('results')
+    try {
+      const data = await executeGraylogQuery({
+        query: result.query,
+        country,
+        timeRange: result.timeRange || timeRange,
+      })
+      setExecuteResult(data)
+    } catch (e) {
+      setExecuteResult(null)
+      setExecuteError(e instanceof Error ? e.message : 'Execute failed')
+      setWorkspaceTab('query')
+    } finally {
+      setExecuting(false)
+    }
+  }
+
   const reuseQuery = async (q: GraylogQueryRun) => {
     setRequest(q.naturalLanguage)
     setEnv(q.environment || 'production')
@@ -372,6 +415,9 @@ export default function GraylogQueryGeneratorPage() {
     setActivePredefinedId(null)
     setResult(q)
     setGenerateError(null)
+    setExecuteResult(null)
+    setExecuteError(null)
+    setWorkspaceTab('query')
     window.scrollTo({ top: 0, behavior: 'smooth' })
     try {
       const updated = await reuseGraylogQuery(q.id)
@@ -388,7 +434,11 @@ export default function GraylogQueryGeneratorPage() {
     try {
       await deleteGraylogQuery(q.id)
       setRecent((prev) => prev.filter((r) => r.id !== q.id))
-      if (result?.id === q.id) setResult(null)
+      if (result?.id === q.id) {
+        setResult(null)
+        setExecuteResult(null)
+        setExecuteError(null)
+      }
       setRecentError(null)
     } catch (e) {
       setRecentError(e instanceof Error ? e.message : 'Failed to delete query')
@@ -636,7 +686,18 @@ export default function GraylogQueryGeneratorPage() {
         </ToolCard>
 
         <div className="w-full">
-          <QueryWorkspace run={result} loading={generating} />
+          <QueryWorkspace
+            run={result}
+            loading={generating}
+            country={country}
+            clusterConfigured={clusterConfigured}
+            executing={executing}
+            executeError={executeError}
+            executeResult={executeResult}
+            onRun={() => void onRun()}
+            tab={workspaceTab}
+            onTabChange={setWorkspaceTab}
+          />
         </div>
       </div>
 

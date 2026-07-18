@@ -116,10 +116,40 @@ describe('GRAYLOG_PREDEFINED_QUERY_LIBRARY', () => {
     expect(payload.fields.length).toBeGreaterThanOrEqual(12)
   })
 
-  it('includes barcode, deviceId, requestName, username in field dictionary', () => {
+  it('includes verified Graylog schema fields (not invented aliases)', () => {
     const fields = new Set(getGraylogFields().map((f) => f.field))
-    for (const name of ['barcode', 'deviceId', 'requestName', 'username']) {
-      expect(fields.has(name)).toBe(true)
+    for (const name of [
+      'Log_Data_Barcode',
+      'Log_ShipmentId',
+      'Log_ScheduleId',
+      'Channel',
+      'To',
+      'From',
+      'ClientVersion',
+      'Log_Request_User_Username',
+      'message',
+    ]) {
+      expect(fields.has(name), name).toBe(true)
+    }
+    for (const bad of ['barcode', 'requestName', 'X-Channel', 'country', 'shipmentId']) {
+      expect(fields.has(bad), bad).toBe(false)
+    }
+  })
+
+  it('predefined NL texts avoid unknown Graylog field aliases', () => {
+    const banned = [
+      /\brequestName\b/i,
+      /\bX-Channel\b/i,
+      /\bcountry:\s*HR\b/i,
+      /\bshipmentId:/i,
+      /\bcourierId:/i,
+      /\bscheduleId:/i,
+      /\bbarcode:/i,
+    ]
+    for (const q of GRAYLOG_PREDEFINED_QUERY_LIBRARY) {
+      for (const pattern of banned) {
+        expect(pattern.test(q.text), `${q.id} ${pattern} in: ${q.text}`).toBe(false)
+      }
     }
   })
 

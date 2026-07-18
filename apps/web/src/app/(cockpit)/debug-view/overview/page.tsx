@@ -30,17 +30,55 @@ import {
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
-import { ProductPage, PageSection, StatCard, StatGrid, EASE, toneCard, toneIcon, toneIconBox, toneText } from '@/components/product'
+import {
+  ProductPage,
+  PageSection,
+  StatCard,
+  StatGrid,
+  EASE,
+  toneIcon,
+  toneIconBox,
+  toneText,
+  type Tone,
+} from '@/components/product'
 import { DebugHeader, DebugCrossLinks, InfoRow, NoDeviceState, DebugOverviewShimmer } from '@/components/debug-view/shared'
 import { useDebugView } from '@/components/debug-view/debug-context'
 import { signalLabel } from '@/data/debug-view/mock-runtime'
 import type { LiveDeviceRuntime } from '@/data/debug-view/live-types'
 
 const DASH = '-'
+const PANEL = 'rounded-xl border border-border bg-card p-4'
+const PANEL_HEADER = 'flex items-center gap-2 border-b border-border/80 bg-muted/30 px-4 py-2.5'
 
 function fmt(value: string | number | null | undefined, suffix = ''): string {
   if (value == null || value === '') return DASH
   return `${value}${suffix}`
+}
+
+function latencyTone(ms: number | null | undefined): Tone {
+  if (ms == null) return 'gray'
+  if (ms <= 80) return 'green'
+  if (ms <= 200) return 'amber'
+  return 'red'
+}
+
+function batteryTone(level: number | null | undefined): Tone {
+  if (level == null) return 'gray'
+  if (level <= 15) return 'red'
+  if (level <= 50) return 'amber'
+  return 'green'
+}
+
+function appTone(installed: boolean, processId: number | null | undefined): Tone {
+  if (!installed) return 'red'
+  if (processId) return 'green'
+  return 'amber'
+}
+
+function usageBarClass(pct: number): string {
+  if (pct >= 90) return 'bg-red-500'
+  if (pct >= 85) return 'bg-amber-500'
+  return 'bg-foreground/50'
 }
 
 export default function DeviceOverviewPage() {
@@ -81,11 +119,11 @@ export default function DeviceOverviewPage() {
         icon={MonitorSmartphone}
         title="Device Overview"
         lead="Instant status of the selected device over ADB: network connection, ping, OS, application process and Firebase credentials on a single screen."
-        tone="orange"
+        tone="teal"
         badges={[
-          { label: 'Live snapshot', tone: 'orange' },
-          { label: 'ADB + dumpsys', tone: 'orange' },
-          { label: 'run-as Firebase', tone: 'orange' },
+          { label: 'Live snapshot' },
+          { label: 'ADB + dumpsys' },
+          { label: 'run-as Firebase' },
         ]}
         actions={
           <>
@@ -107,22 +145,50 @@ export default function DeviceOverviewPage() {
       ) : !runtime ? (
         <NoDeviceState />
       ) : (
-        <>
-          <RuntimeMetaStrip
-            deviceName={selectedDevice.name}
-            serial={selectedDevice.serial}
-            runtime={runtime}
-            loading={loading}
-          />
+        <OverviewBody deviceName={selectedDevice.name} serial={selectedDevice.serial} runtime={runtime} loading={loading} />
+      )}
+    </ProductPage>
+  )
+}
 
-          {/* --- KPI bar --- */}
-          <StatGrid cols={4}>
+function OverviewBody({
+  deviceName,
+  serial,
+  runtime,
+  loading,
+}: {
+  deviceName: string
+  serial: string
+  runtime: LiveDeviceRuntime
+  loading: boolean
+}) {
+  const ramPct =
+    runtime.os.totalRamMb > 0
+      ? ((runtime.os.totalRamMb - runtime.os.availableRamMb) / runtime.os.totalRamMb) * 100
+      : 0
+  const storagePct =
+    runtime.os.storageTotalGb > 0
+      ? ((runtime.os.storageTotalGb - runtime.os.storageFreeGb) / runtime.os.storageTotalGb) * 100
+      : 0
+  const pingTone = latencyTone(runtime.ping.latencyMs)
+
+  return (
+    <>
+      <RuntimeMetaStrip
+        deviceName={deviceName}
+        serial={serial}
+        runtime={runtime}
+        loading={loading}
+      />
+
+      {/* --- KPI bar --- */}
+      <StatGrid cols={4}>
             <StatCard
               icon={runtime.network === 'wifi' ? Wifi : runtime.network === 'cellular' ? Radio : WifiOff}
               label="Connection"
               value={runtime.network === 'wifi' ? 'Wi-Fi' : runtime.network === 'cellular' ? 'Cellular' : 'Offline'}
               hint={runtime.network === 'wifi' ? runtime.wifi.ssid ?? '' : runtime.cellular.carrier ?? ''}
-              tone={runtime.network === 'offline' ? 'red' : 'orange'}
+              tone={runtime.network === 'offline' ? 'red' : 'green'}
             />
             <StatCard
               icon={Activity}
@@ -134,7 +200,7 @@ export default function DeviceOverviewPage() {
                   ? `Jitter ${fmt(runtime.ping.jitterMs, ' ms')} · Loss ${fmt(runtime.ping.packetLossPct, '%')}`
                   : 'Ping could not be measured'
               }
-              tone="orange"
+              tone={pingTone}
             />
             <StatCard
               icon={runtime.battery.charging ? BatteryCharging : Battery}
@@ -146,15 +212,7 @@ export default function DeviceOverviewPage() {
                   ? 'Battery level could not be measured'
                   : `${runtime.battery.charging ? 'Charging' : 'Not charging'}${runtime.battery.temperatureC != null ? ` · ${runtime.battery.temperatureC.toFixed(1)}°C` : ''}`
               }
-              tone={
-                runtime.battery.level == null
-                  ? 'gray'
-                  : runtime.battery.level <= 15
-                    ? 'red'
-                    : runtime.battery.level <= 50
-                      ? 'amber'
-                      : 'orange'
-              }
+              tone={batteryTone(runtime.battery.level)}
             />
             <StatCard
               icon={Package}
@@ -167,7 +225,7 @@ export default function DeviceOverviewPage() {
                     : 'Process is not running'
                   : ''
               }
-              tone={runtime.app.installed ? (runtime.app.processId ? 'orange' : 'amber') : 'red'}
+              tone={appTone(runtime.app.installed, runtime.app.processId)}
             />
           </StatGrid>
 
@@ -177,15 +235,19 @@ export default function DeviceOverviewPage() {
             title="Connection & Ping"
             description={`cmd wifi status + getprop + dumpsys telephony.registry · Snapshot: ${new Date(runtime.capturedAt).toLocaleTimeString('en-US')}`}
             icon={Signal}
-            tone="orange"
+            tone="blue"
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
               {/* WiFi */}
-              <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard[runtime.wifi.connected ? 'orange' : 'gray'])}>
+              <div className={PANEL}>
                 <div className="flex items-center gap-2">
-                  <Wifi className={cn('size-4', toneIcon[runtime.wifi.connected ? 'orange' : 'gray'])} />
+                  <Wifi className={cn('size-4', toneIcon[runtime.wifi.connected ? 'blue' : 'gray'])} />
                   <h3 className="text-sm font-bold text-foreground">Wi-Fi</h3>
-                  <Badge variant="secondary" size="xs" className={cn('ms-auto', runtime.wifi.connected && toneText.orange)}>
+                  <Badge
+                    variant="secondary"
+                    size="xs"
+                    className={cn('ms-auto', runtime.wifi.connected ? toneText.green : toneText.gray)}
+                  >
                     {runtime.wifi.connected ? signalLabel(runtime.wifi.signalLevel) : 'Not connected'}
                   </Badge>
                 </div>
@@ -202,12 +264,12 @@ export default function DeviceOverviewPage() {
               </div>
 
               {/* Cellular */}
-              <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard[runtime.cellular.connected ? 'orange' : 'gray'])}>
+              <div className={PANEL}>
                 <div className="flex items-center gap-2">
-                  <Radio className={cn('size-4', toneIcon[runtime.cellular.connected ? 'orange' : 'gray'])} />
+                  <Radio className={cn('size-4', toneIcon[runtime.cellular.connected ? 'blue' : 'gray'])} />
                   <h3 className="text-sm font-bold text-foreground">Cellular</h3>
                   {runtime.cellular.generation ? (
-                    <Badge variant="secondary" size="xs" className={cn('ms-auto', toneText.orange)}>
+                    <Badge variant="secondary" size="xs" className={cn('ms-auto', toneText.blue)}>
                       {runtime.cellular.generation}
                     </Badge>
                   ) : null}
@@ -222,14 +284,16 @@ export default function DeviceOverviewPage() {
               </div>
 
               {/* Ping */}
-              <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard.orange)}>
+              <div className={PANEL}>
                 <div className="flex items-center gap-2">
-                  <Gauge className={cn('size-4', toneIcon.orange)} />
+                  <Gauge className={cn('size-4', toneIcon[pingTone])} />
                   <h3 className="text-sm font-bold text-foreground">Ping Measurement</h3>
                 </div>
                 <div className="mt-3 flex items-end gap-4">
                   <div>
-                    <div className={cn('text-2xl font-bold tabular-nums', toneText.orange)}>{fmt(runtime.ping.latencyMs)}</div>
+                    <div className={cn('text-2xl font-bold tabular-nums', toneText[pingTone])}>
+                      {fmt(runtime.ping.latencyMs)}
+                    </div>
                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Latency ms</div>
                   </div>
                   <div>
@@ -251,11 +315,11 @@ export default function DeviceOverviewPage() {
           </PageSection>
 
           {/* --- OS & hardware --- */}
-          <PageSection eyebrow="System" title="Operating System & Hardware" icon={Cpu} tone="orange">
+          <PageSection eyebrow="System" title="Operating System & Hardware" icon={Cpu} tone="indigo">
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-              <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard.orange)}>
+              <div className={PANEL}>
                 <div className="flex items-center gap-2">
-                  <Smartphone className={cn('size-4', toneIcon.orange)} />
+                  <Smartphone className={cn('size-4', toneIcon.indigo)} />
                   <h3 className="text-sm font-bold text-foreground">Device & OS</h3>
                 </div>
                 <div className="mt-2 divide-y divide-border/50">
@@ -270,71 +334,65 @@ export default function DeviceOverviewPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard.orange)}>
-                  <MemoryStick className={cn('size-4', toneIcon.orange)} />
+                <div className={PANEL}>
+                  <MemoryStick className={cn('size-4', toneIcon.indigo)} />
                   <div className="mt-2 text-xl font-bold tabular-nums text-foreground">
                     {((runtime.os.totalRamMb - runtime.os.availableRamMb) / 1024).toFixed(1)} / {(runtime.os.totalRamMb / 1024).toFixed(0)} GB
                   </div>
                   <div className="text-[11px] text-muted-foreground">RAM usage</div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-orange-500"
-                      style={{ width: `${runtime.os.totalRamMb > 0 ? ((runtime.os.totalRamMb - runtime.os.availableRamMb) / runtime.os.totalRamMb) * 100 : 0}%` }}
-                    />
+                    <div className={cn('h-full rounded-full', usageBarClass(ramPct))} style={{ width: `${ramPct}%` }} />
                   </div>
                 </div>
-                <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard.amber)}>
-                  <HardDrive className={cn('size-4', toneIcon.amber)} />
+                <div className={PANEL}>
+                  <HardDrive className={cn('size-4', toneIcon.indigo)} />
                   <div className="mt-2 text-xl font-bold tabular-nums text-foreground">
                     {(runtime.os.storageTotalGb - runtime.os.storageFreeGb).toFixed(0)} / {runtime.os.storageTotalGb} GB
                   </div>
                   <div className="text-[11px] text-muted-foreground">Storage (/data)</div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-amber-500"
-                      style={{ width: `${runtime.os.storageTotalGb > 0 ? ((runtime.os.storageTotalGb - runtime.os.storageFreeGb) / runtime.os.storageTotalGb) * 100 : 0}%` }}
-                    />
+                    <div className={cn('h-full rounded-full', usageBarClass(storagePct))} style={{ width: `${storagePct}%` }} />
                   </div>
                 </div>
                 <div className="overflow-hidden rounded-xl border border-border bg-card sm:col-span-2">
-                  <div className="flex items-center gap-2 border-b border-border/80 bg-orange-50/40 px-4 py-2.5 dark:bg-orange-950/15">
-                    <span className="flex size-7 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
-                      <Package className="size-3.5 text-orange-600 dark:text-orange-400" />
+                  <div className={PANEL_HEADER}>
+                    <span className={cn('flex size-7 items-center justify-center rounded-lg', toneIconBox.gray)}>
+                      <Package className={cn('size-3.5', toneIcon.gray)} />
                     </span>
                     <h4 className="text-sm font-bold text-foreground">Application process</h4>
                     {runtime.app.installed && runtime.app.processId ? (
-                      <Badge variant="secondary" appearance="outline" size="xs" className={cn('ms-auto font-mono', toneText.orange)}>
+                      <Badge variant="secondary" appearance="outline" size="xs" className={cn('ms-auto font-mono', toneText.green)}>
                         PID {runtime.app.processId}
                       </Badge>
                     ) : null}
                   </div>
                   <div className="p-4">
-                  {!runtime.app.installed ? (
-                    <p className="text-xs text-muted-foreground">NesyMobile is not installed on this device.</p>
-                  ) : (
-                    <div className="divide-y divide-border/50">
-                      <InfoRow label="Package" value={fmt(runtime.app.packageName)} mono />
-                      <InfoRow label="Version" value={`${fmt(runtime.app.versionName)} (${fmt(runtime.app.versionCode)})`} />
-                      <InfoRow
-                        label="Build"
-                        value={runtime.app.debuggable ? 'debuggable' : 'release'}
-                        tone={runtime.app.debuggable ? 'green' : undefined}
-                      />
-                      <InfoRow label="Installation" value={runtime.app.firstInstall ? new Date(runtime.app.firstInstall).toLocaleString('en-US') : DASH} />
-                      <InfoRow label="Last update" value={runtime.app.lastUpdate ? new Date(runtime.app.lastUpdate).toLocaleString('en-US') : DASH} />
-                      <InfoRow label="Installer" value={fmt(runtime.app.installer) === DASH ? 'adb / sideload' : fmt(runtime.app.installer)} mono />
-                      <InfoRow
-                        label="PID / Memory"
-                        value={runtime.app.processId ? `${runtime.app.processId} · ${fmt(runtime.app.memoryUsageMb, ' MB')}` : 'Process is not running'}
-                        tone={runtime.app.processId ? undefined : 'amber'}
-                      />
-                      <InfoRow
-                        label="Battery optimization"
-                        value={runtime.app.batteryOptimized == null ? DASH : runtime.app.batteryOptimized ? 'Enabled' : 'Disabled (whitelist)'}
-                        tone={runtime.app.batteryOptimized ? 'amber' : 'green'}
-                      />
-                    </div>
-                  )}
+                    {!runtime.app.installed ? (
+                      <p className="text-xs text-muted-foreground">NesyMobile is not installed on this device.</p>
+                    ) : (
+                      <div className="divide-y divide-border/50">
+                        <InfoRow label="Package" value={fmt(runtime.app.packageName)} mono />
+                        <InfoRow label="Version" value={`${fmt(runtime.app.versionName)} (${fmt(runtime.app.versionCode)})`} />
+                        <InfoRow
+                          label="Build"
+                          value={runtime.app.debuggable ? 'debuggable' : 'release'}
+                          tone={runtime.app.debuggable ? 'green' : undefined}
+                        />
+                        <InfoRow label="Installation" value={runtime.app.firstInstall ? new Date(runtime.app.firstInstall).toLocaleString('en-US') : DASH} />
+                        <InfoRow label="Last update" value={runtime.app.lastUpdate ? new Date(runtime.app.lastUpdate).toLocaleString('en-US') : DASH} />
+                        <InfoRow label="Installer" value={fmt(runtime.app.installer) === DASH ? 'adb / sideload' : fmt(runtime.app.installer)} mono />
+                        <InfoRow
+                          label="PID / Memory"
+                          value={runtime.app.processId ? `${runtime.app.processId} · ${fmt(runtime.app.memoryUsageMb, ' MB')}` : 'Process is not running'}
+                          tone={runtime.app.processId ? undefined : 'amber'}
+                        />
+                        <InfoRow
+                          label="Battery optimization"
+                          value={runtime.app.batteryOptimized == null ? DASH : runtime.app.batteryOptimized ? 'Enabled' : 'Disabled (whitelist)'}
+                          tone={runtime.app.batteryOptimized ? 'amber' : 'green'}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -347,7 +405,7 @@ export default function DeviceOverviewPage() {
             title="Firebase & Analytics"
             description="Real credentials read from shared_prefs on the device with run-as (debuggable build only)."
             icon={Flame}
-            tone="orange"
+            tone="teal"
           >
             {!runtime.firebase.available ? (
               <div className="flex items-start gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-4 dark:border-amber-900 dark:bg-amber-950/20">
@@ -362,9 +420,9 @@ export default function DeviceOverviewPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
-                <div className={cn('rounded-xl border p-4', toneCard.orange)}>
+                <div className={PANEL}>
                   <div className="flex items-center gap-2">
-                    <Flame className={cn('size-4', toneIcon.orange)} />
+                    <Flame className={cn('size-4', toneIcon.teal)} />
                     <h3 className="text-sm font-bold text-foreground">Credentials & FCM</h3>
                   </div>
                   <div className="mt-2 divide-y divide-border/50">
@@ -389,9 +447,9 @@ export default function DeviceOverviewPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border bg-card p-4">
+                <div className={PANEL}>
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className={cn('size-4', toneIcon.red)} />
+                    <ShieldCheck className={cn('size-4', toneIcon.gray)} />
                     <h3 className="text-sm font-bold text-foreground">Crashlytics credentials</h3>
                   </div>
                   <div className="mt-2 divide-y divide-border/50">
@@ -404,13 +462,13 @@ export default function DeviceOverviewPage() {
                   </div>
                 </div>
 
-                <div className={cn('rounded-xl border p-4 transition-colors hover:border-orange-500/25', toneCard.orange)}>
+                <div className={PANEL}>
                   <div className="flex items-center gap-2">
-                    <Activity className={cn('size-4', toneIcon.orange)} />
+                    <Activity className={cn('size-4', toneIcon.teal)} />
                     <h3 className="text-sm font-bold text-foreground">FCM Token</h3>
                   </div>
                   {runtime.firebase.fcmToken ? (
-                    <code className="mt-2 block break-all rounded-md border border-orange-500/15 bg-orange-500/[0.04] p-2.5 font-mono text-[10px] leading-relaxed text-foreground">
+                    <code className="mt-2 block break-all rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[10px] leading-relaxed text-foreground">
                       {runtime.firebase.fcmToken}
                     </code>
                   ) : (
@@ -435,10 +493,10 @@ export default function DeviceOverviewPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, ease: EASE }}
               >
-                <div className="flex items-center gap-2 border-b border-border/80 bg-orange-50/40 px-4 py-2.5 dark:bg-orange-950/15">
-                  <ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" />
+                <div className={PANEL_HEADER}>
+                  <ShieldCheck className={cn('size-4', toneIcon.gray)} />
                   <h3 className="text-sm font-bold text-foreground">Runtime permissions</h3>
-                  <Badge variant="secondary" appearance="outline" size="xs" className={cn('ms-auto', toneText.orange)}>
+                  <Badge variant="secondary" appearance="outline" size="xs" className="ms-auto text-muted-foreground">
                     {runtime.permissions.filter((p) => p.granted).length}/{runtime.permissions.length} granted
                   </Badge>
                 </div>
@@ -458,9 +516,7 @@ export default function DeviceOverviewPage() {
               </motion.div>
             ) : null}
           </PageSection>
-        </>
-      )}
-    </ProductPage>
+    </>
   )
 }
 
@@ -494,15 +550,15 @@ function RuntimeMetaStrip({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: EASE }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 bg-orange-50/40 px-4 py-2.5 dark:bg-orange-950/15">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className={cn('flex size-7 items-center justify-center rounded-lg', toneIconBox.orange)}>
-            <MonitorSmartphone className={cn('size-3.5', toneIcon.orange)} />
+          <span className={cn('flex size-7 items-center justify-center rounded-lg', toneIconBox.gray)}>
+            <MonitorSmartphone className={cn('size-3.5', toneIcon.gray)} />
           </span>
           <span className="text-[11px] font-semibold text-foreground">Live device snapshot</span>
         </div>
         {loading ? (
-          <span className="flex items-center gap-1 text-[10px] text-orange-600 dark:text-orange-400">
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Loader2 className="size-3 animate-spin" />
             Refreshing
           </span>
@@ -514,9 +570,9 @@ function RuntimeMetaStrip({
       </div>
       <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-5">
         {items.map((item) => (
-          <div key={item.label} className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition-colors hover:border-orange-500/25">
+          <div key={item.label} className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition-colors hover:border-border">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <item.icon className={cn('size-3', toneIcon.orange)} />
+              <item.icon className={cn('size-3', toneIcon.gray)} />
               {item.label}
             </div>
             <div className="mt-1 truncate text-sm font-semibold text-foreground">{item.value}</div>
@@ -524,14 +580,14 @@ function RuntimeMetaStrip({
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t border-border/70 px-4 py-3 text-[10px] text-muted-foreground">
-        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-orange-700 dark:text-orange-300">
+        <Badge variant="secondary" appearance="outline" size="xs" className="font-mono text-muted-foreground">
           {serial}
         </Badge>
         <span>
           Android {runtime.os.androidVersion} · API {runtime.os.apiLevel}
         </span>
         {runtime.app.processId ? (
-          <Badge variant="secondary" appearance="outline" size="xs" className={cn('ms-auto font-mono', toneText.orange)}>
+          <Badge variant="secondary" appearance="outline" size="xs" className={cn('ms-auto font-mono', toneText.green)}>
             PID {runtime.app.processId} · {runtime.app.foreground ? 'Foreground' : 'Background'}
           </Badge>
         ) : null}
