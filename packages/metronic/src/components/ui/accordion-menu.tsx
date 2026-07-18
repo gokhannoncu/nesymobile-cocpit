@@ -130,7 +130,7 @@ function AccordionMenu({
           value={singleValue}
           className={cn('w-full', classNames?.root, className)}
           onValueChange={(value: string) => setNestedStates((prev) => ({ ...prev, root: value }))}
-          defaultValue={defaultValue}
+          defaultValue={defaultValue as string | undefined}
           {...props}
           role="menu"
         >
@@ -142,7 +142,7 @@ function AccordionMenu({
           value={multipleValue}
           className={cn('w-full', classNames?.root, className)}
           onValueChange={(value: string | string[]) => setNestedStates((prev) => ({ ...prev, root: value }))}
-          defaultValue={defaultValue}
+          defaultValue={defaultValue as string[] | undefined}
           {...props}
           role="menu"
         >

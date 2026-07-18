@@ -179,7 +179,7 @@ function GeneratingAnimation({
     return () => window.clearInterval(typeTimer)
   }, [fullSample])
 
-  const active = GENERATE_STEPS[stepIndex]
+  const active = GENERATE_STEPS[stepIndex] ?? GENERATE_STEPS[0]!
   const hint = active.idleHints[hintIndex] ?? active.label
   const progress = ((stepIndex + (complete ? 1 : 0.35)) / GENERATE_STEPS.length) * 100
 

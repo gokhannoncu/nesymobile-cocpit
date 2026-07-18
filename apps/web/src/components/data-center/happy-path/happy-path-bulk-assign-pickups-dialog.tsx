@@ -113,6 +113,7 @@ export function HappyPathBulkAssignPickupsDialog({
 
     for (let i = 0; i < targets.length; i += 1) {
       const target = targets[i];
+      if (!target) continue;
       const record = byId.get(target.pickupDbId);
 
       if (record?.assignStatus === "Assigned") {

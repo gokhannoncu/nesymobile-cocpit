@@ -263,8 +263,9 @@ export default function MongodbQueryGeneratorPage() {
 
   useEffect(() => {
     if (!collectionsForDb.length) return
-    if (!collectionsForDb.some((c) => c.collection === collection)) {
-      setCollection(collectionsForDb[0].collection)
+    const first = collectionsForDb[0]
+    if (first && !collectionsForDb.some((c) => c.collection === collection)) {
+      setCollection(first.collection)
     }
   }, [collectionsForDb, collection])
 

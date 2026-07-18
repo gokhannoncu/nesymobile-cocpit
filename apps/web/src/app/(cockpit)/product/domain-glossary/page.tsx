@@ -210,6 +210,7 @@ const TONE_RING: Record<Tone, string> = {
   amber: 'ring-amber-400/70',
   teal: 'ring-teal-400/70',
   indigo: 'ring-indigo-400/70',
+  nesy: 'ring-nesy/70',
   gray: 'ring-border',
 }
 

@@ -21,6 +21,7 @@ export function TagBadge({ label, tone = 'gray' }: { label: string; tone?: Tone 
     indigo: 'info',
     purple: 'primary',
     teal: 'success',
+    nesy: 'primary',
     gray: 'secondary',
   }
 

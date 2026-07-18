@@ -23,7 +23,9 @@ export function coerceNesyMobileEnvironment(
   environment: NesyMobileEnvironment,
 ): NesyMobileEnvironment {
   const allowed = NESY_MOBILE_COUNTRY_ENVIRONMENTS[country]
-  return allowed.includes(environment) ? environment : allowed[0]
+  return (allowed as readonly NesyMobileEnvironment[]).includes(environment)
+    ? environment
+    : allowed[0]
 }
 
 export const NESY_MOBILE_BASE_URLS: Record<

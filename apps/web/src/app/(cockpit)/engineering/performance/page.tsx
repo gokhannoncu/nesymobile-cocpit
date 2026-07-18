@@ -528,8 +528,8 @@ function PriorityEndpointTable({ engineering, print }: { engineering: boolean; p
                         <div><span className="font-semibold text-foreground">Country distribution:</span> <span className="text-muted-foreground">{e.detail.countries}</span></div>
                         <div><span className="font-semibold text-foreground">Version:</span> <span className="text-muted-foreground">{e.detail.versions}</span></div>
                         <div className="my-1.5 h-px w-full bg-border" />
-                        <div><span className="font-semibold text-foreground">Action status:</span> <span className="text-muted-foreground">{e.detail.actionStatus}</span></div>
-                        <div><span className="font-semibold text-foreground">Note:</span> <span className="text-muted-foreground">{e.detail.actionNote}</span></div>
+                        <div><span className="font-semibold text-foreground">Action status:</span> <span className="text-muted-foreground">{e.detail.status}</span></div>
+                        <div><span className="font-semibold text-foreground">Note:</span> <span className="text-muted-foreground">{e.detail.notes}</span></div>
                       </div>
                     </td>
                   </tr>
@@ -596,7 +596,7 @@ function KeyFindings() {
           <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{f.scope}</div>
           <p className="mt-2 text-xs leading-relaxed text-foreground/85">{f.body}</p>
           <div className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground border-l-2 border-indigo-500/30 pl-2 ml-1">
-            <span className="font-semibold text-foreground/80">Comment:</span> {f.analystComment}
+            <span className="font-semibold text-foreground/80">Comment:</span> {f.comment}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
             <EvidenceRef
@@ -630,8 +630,8 @@ function ActionCard({ a }: { a: PiAction }) {
         </Badge>
       </div>
       <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-        <div className="text-[11px] text-muted-foreground">owner: {a.owner} · deadline: {a.deadline}</div>
-        <div className="text-[11px] text-muted-foreground mt-1"><span className="font-medium text-foreground/80">Expected:</span> {a.expectedResult}</div>
+        <div className="text-[11px] text-muted-foreground">owner: {a.owner} · deadline: {a.due}</div>
+        <div className="text-[11px] text-muted-foreground mt-1"><span className="font-medium text-foreground/80">Expected:</span> {a.expected}</div>
       </div>
       <div className="mt-2">
         <EvidenceRef level={a.level} label={a.evidence} />
@@ -708,7 +708,7 @@ function CountryEngineeringDetail({ r }: { r: CountryPerfReport }) {
         </div>
         <div className="mt-1.5 text-sm font-semibold text-foreground">{r.headline}</div>
         <div className="text-xs text-muted-foreground mb-4">
-          Data: {r.stats.volPct} share · {r.stats.userCount} users · {r.stats.sessionCount} sessions
+          Data: {r.appStart.versionShare} share · {r.appStart.dominantVersion} · {r.appStart.samples} samples
           {r.appStart.lowSample && ' · low sample'}
         </div>
         {r.appStart.spikeNote && <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">{r.appStart.spikeNote}</div>}

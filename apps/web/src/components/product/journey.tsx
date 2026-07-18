@@ -35,6 +35,7 @@ const curveStroke: Record<Tone, string> = {
   amber: 'stroke-amber-500',
   teal: 'stroke-teal-500',
   indigo: 'stroke-indigo-500',
+  nesy: 'stroke-nesy',
   gray: 'stroke-muted-foreground',
 }
 
@@ -47,6 +48,7 @@ const curveFill: Record<Tone, string> = {
   amber: 'fill-amber-500',
   teal: 'fill-teal-500',
   indigo: 'fill-indigo-500',
+  nesy: 'fill-nesy',
   gray: 'fill-muted-foreground',
 }
 

@@ -187,26 +187,28 @@ function GenerationTrack({
     trackClass: string;
   };
 
-  const segments: SegmentDef[] = [
-    {
-      id: "success",
-      count: stats.success,
-      label: "created",
-      trackClass: "bg-emerald-500 hover:bg-emerald-600",
-    },
-    {
-      id: "failed",
-      count: stats.failed,
-      label: "failed",
-      trackClass: "bg-destructive hover:bg-destructive/90",
-    },
-    {
-      id: "skipped",
-      count: stats.skipped,
-      label: "skipped",
-      trackClass: "bg-zinc-400/90 hover:bg-zinc-500/90",
-    },
-  ].filter((s) => s.count > 0);
+  const segments: SegmentDef[] = (
+    [
+      {
+        id: "success",
+        count: stats.success,
+        label: "created",
+        trackClass: "bg-emerald-500 hover:bg-emerald-600",
+      },
+      {
+        id: "failed",
+        count: stats.failed,
+        label: "failed",
+        trackClass: "bg-destructive hover:bg-destructive/90",
+      },
+      {
+        id: "skipped",
+        count: stats.skipped,
+        label: "skipped",
+        trackClass: "bg-zinc-400/90 hover:bg-zinc-500/90",
+      },
+    ] satisfies SegmentDef[]
+  ).filter((s) => s.count > 0);
 
   const createdPct = Math.round((stats.success / stats.total) * 100);
   const summaryInTrack =
