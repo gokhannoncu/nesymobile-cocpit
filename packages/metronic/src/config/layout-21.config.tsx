@@ -307,6 +307,27 @@ export const WORKSPACES: Workspace[] = [
               },
             ],
           },
+          {
+            title: 'Mobile Knowledge',
+            icon: Smartphone,
+            children: [
+              {
+                title: 'Backend Handbook',
+                path: '/engineering/backend-handbook',
+                icon: BookOpen,
+              },
+              {
+                title: 'Screen Manual',
+                path: '/engineering/screen-manual',
+                icon: MonitorSmartphone,
+              },
+              {
+                title: 'Mobile Service Atlas',
+                path: '/engineering/mobile-service-atlas',
+                icon: Globe,
+              },
+            ],
+          },
         ],
       },
     ],
