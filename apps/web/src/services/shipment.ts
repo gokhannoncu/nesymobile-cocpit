@@ -152,6 +152,21 @@ export async function fetchShipments(scope?: ShipmentScope): Promise<ShipmentRec
   return json.data;
 }
 
+export async function getShipment(shipmentDbId: string): Promise<ShipmentRecord> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/shipments/${shipmentDbId}`);
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Failed to load shipment."));
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throwDataCenterApiError(res, body, `Failed to fetch shipment (${res.status})`);
+  }
+  const json = (await res.json()) as { data: ShipmentRecord };
+  return json.data;
+}
+
 export async function getShipmentNesyUrl(shipmentDbId: string): Promise<string> {
   const res = await fetch(`${API_BASE}/shipments/${shipmentDbId}/nesy-url`);
   if (!res.ok) {

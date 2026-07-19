@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -56,7 +56,6 @@ import type { CreateSetReconfigureSeed } from "./create-set-dialog";
 
 type HappyPathSet = HappyPathPoolListItem;
 
-const DEFAULT_FILTER_COUNTRY: NesyDashboardToolbarCountry = "HR";
 const DEFAULT_FILTER_ENVIRONMENT = "STAGE";
 
 const HAPPY_PATH_ENVIRONMENTS = ["STAGE", "TEST", "PROD"] as const;
@@ -221,11 +220,10 @@ export function HappyPathListTable({
 }) {
   const { country: authCountry, environment: authEnvironment } = useNesyAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCountry, setFilterCountry] = useState<NesyDashboardToolbarCountry>(
-    DEFAULT_FILTER_COUNTRY,
-  );
+  const [filterCountry, setFilterCountry] =
+    useState<NesyDashboardToolbarCountry>(authCountry);
   const [filterEnvironment, setFilterEnvironment] = useState<string>(
-    DEFAULT_FILTER_ENVIRONMENT,
+    authEnvironment.toUpperCase(),
   );
   const [sets, setSets] = useState<HappyPathSet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,6 +233,7 @@ export function HappyPathListTable({
   const [editPool, setEditPool] = useState<HappyPathSet | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const loadSeqRef = useRef(0);
 
   const openView = useCallback((row: HappyPathSet) => {
     setViewPool(row);
@@ -257,6 +256,7 @@ export function HappyPathListTable({
   }, [authCountry, authEnvironment]);
 
   const loadPools = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     setLoadError(null);
     try {
@@ -264,14 +264,18 @@ export function HappyPathListTable({
         country: filterCountry,
         environment: filterEnvironment,
       });
+      if (seq !== loadSeqRef.current) return;
       setSets(rows);
     } catch (error) {
+      if (seq !== loadSeqRef.current) return;
       setSets([]);
       setLoadError(
         error instanceof Error ? error.message : "Could not load happy path sets.",
       );
     } finally {
-      setLoading(false);
+      if (seq === loadSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [filterCountry, filterEnvironment]);
 

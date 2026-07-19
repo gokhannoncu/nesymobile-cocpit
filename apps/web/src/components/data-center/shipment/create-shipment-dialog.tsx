@@ -271,6 +271,15 @@ export function CreateShipmentDialog({
   const showConsigneeSection = !distinctStops;
   const showBatchOptions = distinctStops ? shipperFilled : consigneeFilled;
 
+  const clearCustomerSelection = useCallback(() => {
+    setSelectedCustomer(null);
+    setCustomerDetails(null);
+    setShipperSelection(null);
+    setConsigneeSelection(null);
+    setSelectedType(null);
+    setShowProgressResult(false);
+  }, []);
+
   const resetForm = useCallback(() => {
     setSearchValue("");
     setDebouncedQuery("");
@@ -691,8 +700,11 @@ export function CreateShipmentDialog({
                     className="h-11 w-full pe-10 ps-3 text-sm"
                     value={searchValue}
                     onChange={(event) => {
-                      setSearchValue(event.target.value);
-                      setShowProgressResult(false);
+                      const next = event.target.value;
+                      setSearchValue(next);
+                      if (selectedCustomer) {
+                        clearCustomerSelection();
+                      }
                     }}
                     placeholder="Search by customer no, name, or account..."
                     disabled={!isConnected || !!loadDetailId || isProcessing || isCreationDone}
@@ -717,8 +729,7 @@ export function CreateShipmentDialog({
                 )}
 
                 {(searchLoading || isWaitingDebounce) &&
-                  searchValue.trim().length >= MIN_SEARCH_LENGTH &&
-                  !selectedCustomer && (
+                  searchValue.trim().length >= MIN_SEARCH_LENGTH && (
                     <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
                       <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">Searching...</span>
@@ -729,7 +740,7 @@ export function CreateShipmentDialog({
                   <p className="text-xs text-destructive">{searchError}</p>
                 )}
 
-                {searchResults.length > 0 && !selectedCustomer && (
+                {searchResults.length > 0 && (
                   <div className="space-y-2">
                     {searchResults.map((row, index) => {
                       const id = pickRowId(row);
@@ -774,12 +785,7 @@ export function CreateShipmentDialog({
                     className="flex w-full items-center gap-2 rounded-lg border border-nesy bg-background p-2 text-left shadow-[0_0_0_1px_var(--nesy-orange)]"
                     onClick={() => {
                       if (isProcessing || isCreationDone) return;
-                      setSelectedCustomer(null);
-                      setCustomerDetails(null);
-                      setShipperSelection(null);
-                      setConsigneeSelection(null);
-                      setSelectedType(null);
-                      setShowProgressResult(false);
+                      clearCustomerSelection();
                     }}
                     disabled={isProcessing || isCreationDone}
                   >

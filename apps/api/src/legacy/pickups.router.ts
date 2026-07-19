@@ -850,6 +850,26 @@ router.get("/:id/nesy-url", async (req, res) => {
   }
 });
 
+// ─── GET /:id ───────────────────────────────────────────────────
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pickup = await prisma.pickup.findUnique({ where: { id } });
+
+    if (!pickup) {
+      res.status(404).json({ message: "Pickup not found." });
+      return;
+    }
+
+    res.json({ data: pickup });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch pickup.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
 async function handlePickupBulkDelete(
   req: { body: unknown },
   res: {

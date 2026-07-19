@@ -116,6 +116,21 @@ export async function fetchPickups(scope?: PickupScope): Promise<PickupRecord[]>
   return json.data;
 }
 
+export async function getPickup(pickupDbId: string): Promise<PickupRecord> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/pickups/${pickupDbId}`);
+  } catch (error) {
+    throw new Error(formatApiNetworkError(error, "Failed to load pickup."));
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throwDataCenterApiError(res, body, `Failed to fetch pickup (${res.status})`);
+  }
+  const json = (await res.json()) as { data: PickupRecord };
+  return json.data;
+}
+
 export async function getPickupNesyUrl(pickupDbId: string): Promise<string> {
   const res = await fetch(`${API_BASE}/pickups/${pickupDbId}/nesy-url`);
   if (!res.ok) {

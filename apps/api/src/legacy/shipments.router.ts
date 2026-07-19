@@ -1317,6 +1317,26 @@ router.get("/:id/nesy-url", async (req, res) => {
   }
 });
 
+// ─── GET /:id ───────────────────────────────────────────────────
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shipment = await prisma.shipment.findUnique({ where: { id } });
+
+    if (!shipment) {
+      res.status(404).json({ message: "Shipment not found." });
+      return;
+    }
+
+    res.json({ data: shipment });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch shipment.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
 // ─── DELETE /bulk ───────────────────────────────────────────────
 async function handleShipmentBulkDelete(
   req: { body: unknown },

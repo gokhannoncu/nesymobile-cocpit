@@ -44,12 +44,16 @@ import {
   HappyPathViewDialogListShimmer,
 } from "@/components/data-center/happy-path/happy-path-view-dialog-list-shimmer";
 import { HappyPathBulkAssignPickupsDialog } from "@/components/data-center/happy-path/happy-path-bulk-assign-pickups-dialog";
+import { PickupViewDialog } from "@/components/data-center/pickup/pickup-view-dialog";
+import { ShipmentViewSheet } from "@/components/data-center/shipment/shipment-view-sheet";
 import { useNesyAuth } from "@/contexts/nesy-auth-context";
-import { getPickupNesyUrl } from "@/services/pickup";
+import { getPickup, getPickupNesyUrl, type PickupRecord } from "@/services/pickup";
 import {
   base64PdfToObjectUrl,
   getBulkShipmentDisplayLabel,
+  getShipment,
   getShipmentNesyUrl,
+  type ShipmentRecord,
 } from "@/services/shipment";
 
 type StatusFilter = "all" | "success" | "failed" | "skipped" | "issues";
@@ -357,13 +361,15 @@ function EntryListItem({
   index,
   entry,
   displayShipmentId,
-  openingNesy,
+  busy,
+  onOpenDetail,
   onOpenNesy,
 }: {
   index: number;
   entry: HappyPathPoolEntry;
   displayShipmentId: string | null;
-  openingNesy: boolean;
+  busy: boolean;
+  onOpenDetail: (entry: HappyPathPoolEntry) => void;
   onOpenNesy: (entry: HappyPathPoolEntry) => void;
 }) {
   const recordId = getEntryRecordId(entry);
@@ -382,13 +388,13 @@ function EntryListItem({
           entry.status === "failed" && "bg-destructive/[0.03]",
         )}
         onClick={() => {
-          if (hasRecord && !openingNesy) onOpenNesy(entry);
+          if (hasRecord && !busy) onOpenDetail(entry);
         }}
         onKeyDown={(e) => {
           if (!hasRecord) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            if (!openingNesy) onOpenNesy(entry);
+            if (!busy) onOpenDetail(entry);
           }
         }}
       >
@@ -435,10 +441,21 @@ function EntryListItem({
           {entry.error && !hasRecord ? (
             <AlertCircle className="size-4 text-destructive" aria-label={entry.error} />
           ) : hasRecord ? (
-            openingNesy ? (
+            busy ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             ) : (
-              <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Open in Nesy"
+                title="Open in Nesy"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenNesy(entry);
+                }}
+              >
+                <ExternalLink className="size-4" aria-hidden />
+              </button>
             )
           ) : null}
         </div>
@@ -477,6 +494,11 @@ export function HappyPathViewDialog({
   const [bulkDisplayingLabels, setBulkDisplayingLabels] = useState(false);
   const [assignPickupsOpen, setAssignPickupsOpen] = useState(false);
   const [openingNesyKey, setOpeningNesyKey] = useState<string | null>(null);
+  const [openingDetailKey, setOpeningDetailKey] = useState<string | null>(null);
+  const [selectedShipment, setSelectedShipment] = useState<ShipmentRecord | null>(null);
+  const [isShipmentViewOpen, setIsShipmentViewOpen] = useState(false);
+  const [selectedPickup, setSelectedPickup] = useState<PickupRecord | null>(null);
+  const [isPickupViewOpen, setIsPickupViewOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [routeFilter, setRouteFilter] = useState<RouteFilter>("all");
@@ -488,6 +510,12 @@ export function HappyPathViewDialog({
       setActionError(null);
       setBulkDisplayingLabels(false);
       setAssignPickupsOpen(false);
+      setOpeningNesyKey(null);
+      setOpeningDetailKey(null);
+      setSelectedShipment(null);
+      setIsShipmentViewOpen(false);
+      setSelectedPickup(null);
+      setIsPickupViewOpen(false);
       setLoading(false);
       setQuery("");
       setStatusFilter("all");
@@ -584,6 +612,29 @@ export function HappyPathViewDialog({
       setError(err instanceof Error ? err.message : "Could not open Nesy Dashboard.");
     } finally {
       setOpeningNesyKey(null);
+    }
+  }, []);
+
+  const handleOpenDetail = useCallback(async (entry: HappyPathPoolEntry) => {
+    const recordId = getEntryRecordId(entry);
+    if (!recordId) return;
+
+    setOpeningDetailKey(entry.id);
+    setError(null);
+    try {
+      if (entry.route === "pickup") {
+        const pickup = await getPickup(recordId);
+        setSelectedPickup(pickup);
+        setIsPickupViewOpen(true);
+      } else {
+        const shipment = await getShipment(recordId);
+        setSelectedShipment(shipment);
+        setIsShipmentViewOpen(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open record details.");
+    } finally {
+      setOpeningDetailKey(null);
     }
   }, []);
 
@@ -881,7 +932,11 @@ export function HappyPathViewDialog({
                                 index={displayIndex}
                                 entry={entry}
                                 displayShipmentId={getEntryNesyShipmentDisplayId(entry)}
-                                openingNesy={openingNesyKey === entry.id}
+                                busy={
+                                  openingNesyKey === entry.id ||
+                                  openingDetailKey === entry.id
+                                }
+                                onOpenDetail={handleOpenDetail}
                                 onOpenNesy={handleOpenNesy}
                               />
                             );
@@ -902,7 +957,7 @@ export function HappyPathViewDialog({
 
         <DialogFooter className="shrink-0 flex-row flex-wrap items-center gap-2 border-t px-4 py-2 sm:justify-between sm:px-5">
           <p className="me-auto hidden text-[11px] text-muted-foreground sm:block">
-            Row click opens Nesy · Copy Nesy shipment id from chip
+            Row click opens detail · External icon opens Nesy
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -957,6 +1012,27 @@ export function HappyPathViewDialog({
         targets={pickupAssignTargets}
         country={scopeCountry}
         environment={scopeEnvironment}
+      />
+
+      <ShipmentViewSheet
+        open={isShipmentViewOpen}
+        onOpenChange={(nextOpen) => {
+          setIsShipmentViewOpen(nextOpen);
+          if (!nextOpen) setSelectedShipment(null);
+        }}
+        shipment={selectedShipment}
+        token={token}
+        country={scopeCountry}
+        environment={scopeEnvironment}
+      />
+
+      <PickupViewDialog
+        open={isPickupViewOpen}
+        onOpenChange={(nextOpen) => {
+          setIsPickupViewOpen(nextOpen);
+          if (!nextOpen) setSelectedPickup(null);
+        }}
+        pickup={selectedPickup}
       />
     </>
   );
