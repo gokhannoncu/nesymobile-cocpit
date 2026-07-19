@@ -5,59 +5,6 @@
 import type { Tone } from '@/components/product'
 
 // ---------------------------------------------------------------------------
-// 0. Live incident top bar — demo incident
-// ---------------------------------------------------------------------------
-
-export const INCIDENT_STATUSES = [
-  'Assessing',
-  'Investigating',
-  'Cause identified',
-  'Mitigation in progress',
-  'Monitoring',
-  'Resolved',
-] as const
-
-export type IncidentStatus = (typeof INCIDENT_STATUSES)[number]
-
-export const LIVE_INCIDENT = {
-  id: 'INC-2026-0712-03',
-  title: 'Payment completed but delivery not saved',
-  status: 'Investigating' as IncidentStatus,
-  sev: 'SEV-1',
-  startedAt: '10:07',
-  elapsed: '00:28:42',
-  scope: 'HR + RS · v8.4.60',
-  commander: 'M. Kovac',
-  lastUpdate: '10:32',
-  nextComms: '10:45',
-  objective: 'Stop the double-charge risk and extract the list of affected shipments.',
-  impact: [
-    { label: 'Country', value: '2' },
-    { label: 'Courier', value: '34' },
-    { label: 'Shipment', value: '87' },
-    { label: 'Payment record', value: '12' },
-    { label: 'Version', value: '8.4.60' },
-  ],
-  team: [
-    { role: 'IC', name: 'M. Kovac' },
-    { role: 'Ops Lead', name: 'A. Yilmaz' },
-    { role: 'Comms', name: 'S. Novak' },
-    { role: 'Scribe', name: 'D. Horvat' },
-    { role: 'SME', name: 'Backend fiscal · Mobile payment' },
-  ],
-  lastDecision: '10:32 — Payment retry temporarily disabled.',
-  nextCheck: '10:45 — Error rate and queue status will be checked.',
-  timeline: [
-    { time: '10:04', event: 'First operations report' },
-    { time: '10:07', event: 'Incident declared' },
-    { time: '10:09', event: 'Classified as SEV-1' },
-    { time: '10:13', event: 'Double-charge risk confirmed' },
-    { time: '10:18', event: 'Retry flow stopped' },
-    { time: '10:26', event: 'Affected shipment list extracted' },
-  ],
-}
-
-// ---------------------------------------------------------------------------
 // 1. Is this an incident? — triage questions
 // ---------------------------------------------------------------------------
 
@@ -71,49 +18,49 @@ export interface TriageQuestion {
 export const TRIAGE_QUESTIONS: TriageQuestion[] = [
   {
     id: 'ongoing',
-    question: 'Is the impact currently ongoing?',
+    question: 'Etki şu anda devam ediyor mu?',
     options: [
-      { label: 'Yes, users are still affected', weight: 2 },
-      { label: 'No, the event appears to have ended', weight: 0 },
-      { label: 'Not sure', weight: 1 },
+      { label: 'Evet, kullanıcılar hâlâ etkileniyor', weight: 2 },
+      { label: 'Hayır, olay sona ermiş görünüyor', weight: 0 },
+      { label: 'Emin değilim', weight: 1 },
     ],
   },
   {
     id: 'blocked',
-    question: 'Is the workflow blocked?',
+    question: 'İş akışı engellendi mi?',
     options: [
-      { label: 'Deliveries cannot be made', weight: 3 },
-      { label: 'Payment/fiscal operations cannot be completed', weight: 3 },
-      { label: 'Shipments cannot be saved', weight: 2 },
-      { label: 'Application is unusable', weight: 3 },
-      { label: 'Workaround available', weight: 1 },
-      { label: 'Cosmetic/UI issue only', weight: 0 },
+      { label: 'Teslimatlar yapılamıyor', weight: 3 },
+      { label: 'Ödeme/fiscal işlemler tamamlanamıyor', weight: 3 },
+      { label: 'Gönderiler kaydedilemiyor', weight: 2 },
+      { label: 'Uygulama kullanılamıyor', weight: 3 },
+      { label: 'Workaround mevcut', weight: 1 },
+      { label: 'Yalnızca görsel/UI sorunu var', weight: 0 },
     ],
   },
   {
     id: 'scope',
-    question: 'What is the scope of impact?',
+    question: 'Etkinin kapsamı nedir?',
     options: [
-      { label: 'Single device/user', weight: 0 },
-      { label: 'Multiple couriers', weight: 1 },
-      { label: 'Single branch/hub', weight: 1 },
-      { label: 'Single country', weight: 2 },
-      { label: 'Multiple countries', weight: 3 },
-      { label: 'Entire field', weight: 3 },
+      { label: 'Tek cihaz/kullanıcı', weight: 0 },
+      { label: 'Birden fazla kurye', weight: 1 },
+      { label: 'Tek şube/hub', weight: 1 },
+      { label: 'Tek ülke', weight: 2 },
+      { label: 'Birden fazla ülke', weight: 3 },
+      { label: 'Tüm saha', weight: 3 },
     ],
   },
   {
     id: 'risk',
-    question: 'Is there a risk type?',
+    question: 'Bir risk türü var mı?',
     options: [
-      { label: 'Financial loss', weight: 3 },
+      { label: 'Mali kayıp', weight: 3 },
       { label: 'Double charge', weight: 3 },
-      { label: 'Fiscal record inconsistency', weight: 3 },
-      { label: 'Data loss', weight: 3 },
-      { label: 'Operations halted', weight: 3 },
-      { label: 'Security risk', weight: 3 },
-      { label: 'Legal/compliance risk', weight: 2 },
-      { label: 'None/unknown', weight: 0 },
+      { label: 'Fiscal kayıt tutarsızlığı', weight: 3 },
+      { label: 'Veri kaybı', weight: 3 },
+      { label: 'Operasyonların durması', weight: 3 },
+      { label: 'Güvenlik riski', weight: 3 },
+      { label: 'Yasal/uyumluluk riski', weight: 2 },
+      { label: 'Yok/bilinmiyor', weight: 0 },
     ],
   },
 ]
@@ -126,15 +73,15 @@ export const FINGERPRINT_SIGNALS = [
   'Error code',
   'Exception / stack trace',
   'Crash fingerprint',
-  'Screen',
-  'Incident group',
-  'Country',
+  'Ekran',
+  'Incident grubu',
+  'Ülke',
   'App version',
-  'Device / scanner model',
-  'Shipment ID behavior',
+  'Cihaz / scanner modeli',
+  'Gönderi ID davranışı',
   'API endpoint',
   'Last deploy',
-  'Ticket keywords',
+  'Ticket anahtar kelimeleri',
 ]
 
 export interface MatchResult {
@@ -150,62 +97,62 @@ export interface MatchResult {
 export const MATCH_RESULTS: MatchResult[] = [
   {
     kind: 'open',
-    title: 'A · Matches an open incident',
+    title: 'A · Açık bir incident ile eşleşiyor',
     tone: 'red',
-    example: '92% match — INC-2026-0712-01 · same error code, same version, same screen',
+    example: '%92 eşleşme — INC-2026-0712-01 · aynı error code, aynı version, aynı ekran',
     detail:
-      'No separate resolution effort is started; the new ticket is linked to the existing incident and impact counts are updated.',
+      'Ayrı bir çözüm çalışması başlatılmaz; yeni ticket mevcut incident ile ilişkilendirilir ve etki sayıları güncellenir.',
     actions: [
-      'Link to this incident',
-      'Make the new ticket a child/related issue',
-      'Add affected user count to the incident',
+      'Bu incident ile ilişkilendir',
+      'Yeni ticket’ı child/related issue yap',
+      'Etkilenen kullanıcı sayısını incident’a ekle',
     ],
   },
   {
     kind: 'known',
-    title: 'B · Previously occurred, resolution is known',
+    title: 'B · Daha önce yaşandı, çözümü biliniyor',
     tone: 'amber',
-    detail: 'A known issue record is opened; incident assessment continues while the workaround is applied.',
+    detail: 'Bir Known Issue kaydı açılır; workaround uygulanırken incident değerlendirmesi sürer.',
     shows: [
-      'Past incident + root cause',
-      'Applied workaround and permanent fix',
-      'Related playbook',
-      'Recurrence conditions',
+      'Geçmiş incident + root cause',
+      'Uygulanan workaround ve permanent fix',
+      'İlgili playbook',
+      'Tekrarlama koşulları',
     ],
     actions: [
-      'Apply known workaround',
-      'Re-open the incident',
-      'Log as new occurrence',
-      'Create a similar but separate incident',
+      'Bilinen workaround’u uygula',
+      'Incident’ı yeniden aç',
+      'Yeni oluşum olarak kaydet',
+      'Benzer ancak ayrı bir incident oluştur',
     ],
   },
   {
     kind: 'none',
-    title: 'C · No match found',
+    title: 'C · Eşleşme bulunamadı',
     tone: 'blue',
     detail:
-      'The search does not delay incident response — if there is no match, the system continues with the new incident flow.',
+      'Arama incident müdahalesini geciktirmez; eşleşme yoksa sistem yeni incident akışıyla devam eder.',
     actions: [
-      'Create new incident',
-      'Save initial fingerprint',
-      'Select related group and screen',
-      'Create provisional tag for new playbook entry',
+      'Yeni incident oluştur',
+      'İlk fingerprint’i kaydet',
+      'İlgili grup ve ekranı seç',
+      'Yeni playbook kaydı için geçici tag oluştur',
     ],
   },
 ]
 
-export const ROUTING_TREE = `Is there active impact?
-├─ No → Normal ticket triage
-└─ Yes
-   ├─ Same as an open incident?
-   │  └─ Yes → Link to existing incident
-   └─ No
-      ├─ Known issue/playbook available?
-      │  ├─ Yes → Workaround + incident assessment
-      │  └─ No → Declare new incident
-      └─ Financial/fiscal/data loss risk?
-         ├─ Yes → SEV-1 assessment
-         └─ No → SEV-2/SEV-3 based on impact scope`
+export const ROUTING_TREE = `Aktif etki var mı?
+├─ Hayır → Normal ticket triage
+└─ Evet
+   ├─ Açık bir incident ile aynı mı?
+   │  └─ Evet → Mevcut incident ile ilişkilendir
+   └─ Hayır
+      ├─ Known Issue/playbook mevcut mu?
+      │  ├─ Evet → Workaround + incident değerlendirmesi
+      │  └─ Hayır → Yeni incident ilan et
+      └─ Mali/fiscal/veri kaybı riski var mı?
+         ├─ Evet → SEV-1 değerlendirmesi
+         └─ Hayır → Etki kapsamına göre SEV-2/SEV-3`
 
 // ---------------------------------------------------------------------------
 // 3. Severity calculator
@@ -213,22 +160,22 @@ export const ROUTING_TREE = `Is there active impact?
 
 // checked=true → score towards SEV-1. threshold: >=4 SEV-1, >=2 SEV-2, else SEV-3.
 export const SEVERITY_QUESTIONS = [
-  { id: 'halted', label: 'Has field or critical workflow completely halted?', points: 3 },
-  { id: 'fiscal', label: 'Are financial/fiscal operations affected?', points: 3 },
-  { id: 'dataloss', label: 'Is there a possibility of data loss or inconsistency?', points: 3 },
-  { id: 'retry', label: 'Would retrying the operation increase the damage?', points: 2 },
-  { id: 'multi', label: 'Are multiple countries affected?', points: 2 },
-  { id: 'many', label: 'Are 10+ couriers/users affected?', points: 1 },
-  { id: 'deploy', label: 'Is there a strong correlation with the last deploy?', points: 1 },
-  { id: 'noWorkaround', label: 'Is there NO workaround?', points: 2 },
+  { id: 'halted', label: 'Saha veya kritik iş akışı tamamen durdu mu?', points: 3 },
+  { id: 'fiscal', label: 'Mali/fiscal işlemler etkileniyor mu?', points: 3 },
+  { id: 'dataloss', label: 'Veri kaybı veya tutarsızlık olasılığı var mı?', points: 3 },
+  { id: 'retry', label: 'İşlemi retry etmek zararı artırır mı?', points: 2 },
+  { id: 'multi', label: 'Birden fazla ülke etkileniyor mu?', points: 2 },
+  { id: 'many', label: '10+ kurye/kullanıcı etkileniyor mu?', points: 1 },
+  { id: 'deploy', label: 'Son deploy ile güçlü bir ilişki var mı?', points: 1 },
+  { id: 'noWorkaround', label: 'Workaround YOK mu?', points: 2 },
 ]
 
 export const SEV1_ACTIONS = [
-  'Incident Commander is assigned',
-  'Incident room is opened',
-  'Operations and backend/mobile are called together',
-  'Harmful operation is stopped',
-  'Regular status communication is started',
+  'Incident Commander atanır',
+  'Incident room açılır',
+  'Operasyon, backend ve mobile birlikte çağrılır',
+  'Zararlı işlem durdurulur',
+  'Düzenli durum iletişimi başlatılır',
 ]
 
 // ---------------------------------------------------------------------------
@@ -247,37 +194,37 @@ export const INCIDENT_ROLES: IncidentRole[] = [
     role: 'Incident Commander',
     tone: 'red',
     duties: [
-      'Makes overall decisions, sets priorities',
-      'Delegates tasks',
-      'Ensures the incident progresses toward resolution',
+      'Genel kararları verir ve öncelikleri belirler',
+      'Görevleri devreder',
+      'Incident’ın çözüme doğru ilerlemesini sağlar',
     ],
-    antiPattern: 'Should not code/debug alone — coordination and deep debugging should not be combined in one person.',
+    antiPattern: 'Tek başına code/debug yapmamalıdır; koordinasyon ve derin debugging aynı kişide birleşmemelidir.',
   },
   {
     role: 'Operations Lead',
     tone: 'orange',
     duties: [
-      'Manages the technical investigation',
-      'Coordinates mobile, backend, fiscal, and operations specialists',
-      'Manages hypotheses and tests',
+      'Teknik incelemeyi yönetir',
+      'Mobile, backend, fiscal ve operasyon uzmanlarını koordine eder',
+      'Hipotezleri ve testleri yönetir',
     ],
   },
   {
     role: 'Communications Lead',
     tone: 'blue',
     duties: [
-      'Informs operations, management, support, and customers if needed',
-      'Does not speculate on unknown topics',
-      'Ensures messages come from a single source',
+      'Gerektiğinde operasyonu, yönetimi, support ekibini ve müşterileri bilgilendirir',
+      'Bilinmeyen konularda tahminde bulunmaz',
+      'Mesajların tek kaynaktan çıkmasını sağlar',
     ],
   },
   {
     role: 'Scribe / Timeline Owner',
     tone: 'teal',
     duties: [
-      'Records decisions made and actions attempted',
-      'Creates the incident timeline',
-      'Collects data for postmortem',
+      'Alınan kararları ve denenen eylemleri kaydeder',
+      'Incident timeline’ını oluşturur',
+      'Postmortem için veri toplar',
     ],
   },
 ]
@@ -291,31 +238,31 @@ export const SMALL_INCIDENT_STRUCTURE = `Incident Commander
 // ---------------------------------------------------------------------------
 
 export const IMPACT_FIELDS = [
-  'First seen time',
-  'Last seen time',
-  'Affected country',
-  'Affected version',
-  'Affected device models',
-  'Affected scanner type',
-  'Affected screen',
-  'Number of affected shipments',
-  'Number of affected couriers',
-  'Failed operation rate',
-  'Financial/fiscal impact',
-  'Online/offline status',
-  'Is there a backend counterpart?',
-  'Trend: increasing / stable / decreasing',
+  'İlk görülme zamanı',
+  'Son görülme zamanı',
+  'Etkilenen ülke',
+  'Etkilenen version',
+  'Etkilenen cihaz modelleri',
+  'Etkilenen scanner türü',
+  'Etkilenen ekran',
+  'Etkilenen gönderi sayısı',
+  'Etkilenen kurye sayısı',
+  'Başarısız işlem oranı',
+  'Mali/fiscal etki',
+  'Online/offline durumu',
+  'Backend karşılığı var mı?',
+  'Eğilim: artıyor / sabit / azalıyor',
 ]
 
 export const IMPACT_COMPARISONS = [
-  'Error rate compared to previous version',
-  'Before/after the last deploy',
-  'Distribution across countries',
-  'Device/scanner distribution',
-  'API error rates',
-  'Crash-free user change',
-  'Offline queue size',
-  'Successful and failed event chains',
+  'Önceki version’a göre error rate',
+  'Son deploy öncesi/sonrası',
+  'Ülkelere göre dağılım',
+  'Cihaz/scanner dağılımı',
+  'API error rate’leri',
+  'Crash-free user değişimi',
+  'Offline queue boyutu',
+  'Başarılı ve başarısız event chain’leri',
 ]
 
 // ---------------------------------------------------------------------------
@@ -333,47 +280,47 @@ export interface ProtocolPhase {
 export const FIRST_15_PROTOCOL: ProtocolPhase[] = [
   {
     window: '0-5 min',
-    title: 'Take control',
+    title: 'Kontrolü ele al',
     tone: 'red',
     steps: [
-      'Declare the incident',
-      'Determine severity',
-      'Assign Incident Commander and resolver',
-      'Open incident channel/call',
-      'Inform affected operations',
-      'Block user actions that could escalate the problem',
+      'Incident’ı ilan et',
+      'Severity seviyesini belirle',
+      'Incident Commander ve resolver ata',
+      'Incident channel/call aç',
+      'Etkilenen operasyonları bilgilendir',
+      'Sorunu büyütebilecek kullanıcı eylemlerini engelle',
     ],
-    warning: 'If financial/fiscal risk exists: "Critical warning — do not retry the operation."',
+    warning: 'Mali/fiscal risk varsa: "Kritik uyarı — işlemi retry etmeyin."',
   },
   {
     window: '5-10 min',
-    title: 'Contain the impact',
+    title: 'Etkiyi sınırla',
     tone: 'orange',
     steps: [
-      'Which countries are affected?',
-      'Which versions are affected?',
-      'How many couriers and shipments are affected?',
-      'Was there a recent deploy or feature flag change?',
-      'What is the offline queue status? (Is RequestSenderService locked — E8, is isOfflineMode stuck — E7)',
-      'Do backend and mobile records show the same result?',
+      'Hangi ülkeler etkileniyor?',
+      'Hangi version’lar etkileniyor?',
+      'Kaç kurye ve gönderi etkileniyor?',
+      'Yakın zamanda deploy veya feature flag değişikliği yapıldı mı?',
+      'Offline queue durumu nedir? (RequestSenderService kilitli mi — E8, isOfflineMode takılı mı — E7)',
+      'Backend ve mobile kayıtları aynı sonucu mu gösteriyor?',
     ],
   },
   {
     window: '10-15 min',
-    title: 'Evidence and mitigation',
+    title: 'Evidence ve mitigation',
     tone: 'amber',
     steps: [
-      'Collect device logs',
-      'Record Crashlytics event/stack trace',
-      'Preserve shipment and transaction IDs',
-      'Take a screenshot before clearing state',
-      'Decide on rollback / feature flag / workaround',
-      'Publish the first incident status update',
+      'Cihaz loglarını topla',
+      'Crashlytics event/stack trace kaydını al',
+      'Gönderi ve transaction ID’lerini koru',
+      'State temizlenmeden önce screenshot al',
+      'Rollback / feature flag / workaround kararını ver',
+      'İlk incident durum güncellemesini yayınla',
     ],
   },
 ]
 
-export const CHECKLIST_COLUMNS = ['Owner', 'Start', 'End', 'Result', 'Evidence'] as const
+export const CHECKLIST_COLUMNS = ['Owner', 'Başlangıç', 'Bitiş', 'Sonuç', 'Evidence'] as const
 
 // ---------------------------------------------------------------------------
 // 8. Evidence Gate
@@ -381,68 +328,68 @@ export const CHECKLIST_COLUMNS = ['Owner', 'Start', 'End', 'Result', 'Evidence']
 
 export const EVIDENCE_ITEMS = [
   'Crashlytics stack trace',
-  'Device logcat',
-  'Backend request/response logs',
-  'Shipment ID · Courier ID',
+  'Cihaz logcat',
+  'Backend request/response logları',
+  'Gönderi ID · Kurye ID',
   'Transaction/fiscal ID',
   'Event ordering',
-  'Offline queue records',
+  'Offline queue kayıtları',
   'Room data',
   'SharedPreferences state',
   'App version',
-  'Device/scanner model',
-  'Network status',
-  'Screen recording',
-  'Last successful and first failed operation',
+  'Cihaz/scanner modeli',
+  'Network durumu',
+  'Ekran kaydı',
+  'Son başarılı ve ilk başarısız işlem',
 ]
 
 export const DESTRUCTIVE_ACTIONS = [
-  'Restart the application',
-  'Clear cache',
-  'Log out/log in',
-  'Delete data',
-  'Reset the queue',
-  'Resend the operation',
+  'Uygulamayı yeniden başlat',
+  'Cache’i temizle',
+  'Log out/log in yap',
+  'Verileri sil',
+  'Queue’yu resetle',
+  'İşlemi yeniden gönder',
 ]
 
 // ---------------------------------------------------------------------------
 // 9. Hypothesis and experiment area
 // ---------------------------------------------------------------------------
 
-export type HypothesisStatus = 'New' | 'Testing' | 'Strong signal' | 'Confirmed' | 'Eliminated'
+export type HypothesisStatus = 'Yeni' | 'Test ediliyor' | 'Güçlü sinyal' | 'Doğrulandı' | 'Elendi'
 
 export const HYPOTHESIS_STATUS_TONE: Record<HypothesisStatus, Tone> = {
-  New: 'gray',
-  'Testing': 'blue',
-  'Strong signal': 'amber',
-  Confirmed: 'green',
-  Eliminated: 'gray',
+  Yeni: 'gray',
+  'Test ediliyor': 'blue',
+  'Güçlü sinyal': 'amber',
+  Doğrulandı: 'green',
+  Elendi: 'gray',
 }
 
 export const HYPOTHESES = [
   {
     time: '10:14',
-    hypothesis: 'Latest version regression',
-    test: 'Try with previous APK',
+    hypothesis: 'Son version regression’ı',
+    test: 'Önceki APK ile dene',
     owner: 'Mobile',
-    result: 'Issue not present in previous version',
-    status: 'Strong signal' as HypothesisStatus,
+    result: 'Önceki version’da sorun yok',
+    status: 'Güçlü sinyal' as HypothesisStatus,
   },
   {
     time: '10:18',
-    hypothesis: 'Offline queue locked',
-    test: 'Check queue records',
+    hypothesis: 'Offline queue kilitli',
+    test: 'Queue kayıtlarını kontrol et',
     owner: 'Backend',
-    result: '87 records pending',
-    status: 'Confirmed' as HypothesisStatus,
+    result: '87 kayıt bekliyor',
+    status: 'Doğrulandı' as HypothesisStatus,
   },
   {
     time: '10:24',
-    hypothesis: 'Scanner dependent',
-    test: 'Compare with camera',
+    hypothesis: 'Scanner’a bağlı',
+    test: 'Kamera ile karşılaştır',
     owner: 'QA',
-    result: 'Present in both',
-    status: 'Eliminated' as HypothesisStatus,
+    result: 'Her ikisinde de var',
+    status: 'Elendi' as HypothesisStatus,
   },
 ]
 
@@ -451,25 +398,25 @@ export const HYPOTHESES = [
 // ---------------------------------------------------------------------------
 
 export const MITIGATION_OPTIONS = [
-  'Rollback the last deploy',
-  'Disable feature flag',
-  'Halt the affected country flow',
-  'Block specific version',
-  'Temporarily restrict the backend endpoint',
-  'Stop offline queue consumption',
-  'Publish manual operation/workaround',
-  'Disable the problematic scanner integration',
-  'Send "Do not retry the operation" notification',
-  'Redirect to the old stable flow',
+  'Son deploy’u rollback et',
+  'Feature flag’i devre dışı bırak',
+  'Etkilenen ülke akışını durdur',
+  'Belirli version’ı engelle',
+  'Backend endpoint’i geçici olarak kısıtla',
+  'Offline queue tüketimini durdur',
+  'Manuel işlem/workaround yayınla',
+  'Sorunlu scanner entegrasyonunu devre dışı bırak',
+  '"İşlemi retry etmeyin" bildirimi gönder',
+  'Eski kararlı akışa yönlendir',
 ]
 
 export const MITIGATION_CARD_FIELDS = [
-  'Expected benefit',
+  'Beklenen fayda',
   'Risk',
-  'Affected users',
-  'Rollback method',
-  'Implementer / approver',
-  'Implementation time · result',
+  'Etkilenen kullanıcılar',
+  'Rollback yöntemi',
+  'Uygulayan / onaylayan',
+  'Uygulama zamanı · sonuç',
 ]
 
 // ---------------------------------------------------------------------------
@@ -477,33 +424,33 @@ export const MITIGATION_CARD_FIELDS = [
 // ---------------------------------------------------------------------------
 
 export const COMMS_AUDIENCES = [
-  'Country operations',
-  'Mobile team',
-  'Backend team',
+  'Ülke operasyonları',
+  'Mobile ekibi',
+  'Backend ekibi',
   'Support',
-  'Management',
-  'Finance/fiscal owners',
-  'Customer / external stakeholder',
+  'Yönetim',
+  'Finans/fiscal sorumluları',
+  'Müşteri / dış paydaş',
 ]
 
 export const COMMS_TEMPLATE = [
   {
-    label: 'What happened?',
-    text: 'Some couriers are not getting a delivery record created after payment is completed.',
+    label: 'Ne oldu?',
+    text: 'Bazı kuryeler için ödeme tamamlandıktan sonra teslimat kaydı oluşturulmuyor.',
   },
   {
-    label: 'Impact',
-    text: 'A portion of users on version 8.4.60 across HR and RS are affected.',
+    label: 'Etki',
+    text: 'HR ve RS ülkelerinde 8.4.60 version’ını kullanan bazı kullanıcılar etkileniyor.',
   },
   {
-    label: 'What are we doing?',
-    text: 'Payment and delivery records are being compared. Retrying operations in the affected flow has been temporarily stopped.',
+    label: 'Ne yapıyoruz?',
+    text: 'Ödeme ve teslimat kayıtları karşılaştırılıyor. Etkilenen akışta işlemlerin retry edilmesi geçici olarak durduruldu.',
   },
   {
-    label: 'What should the user do?',
-    text: 'Do not retry the payment operation for the same shipment.',
+    label: 'Kullanıcı ne yapmalı?',
+    text: 'Aynı gönderi için ödeme işlemini retry etmeyin.',
   },
-  { label: 'Next update', text: 'Next status update: 10:45.' },
+  { label: 'Sonraki güncelleme', text: 'Sonraki durum güncellemesi: 10:45.' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -511,40 +458,40 @@ export const COMMS_TEMPLATE = [
 // ---------------------------------------------------------------------------
 
 export const EXIT_CRITERIA = [
-  'No new errors occurring',
-  'Error rate returned to normal levels',
-  'Failed queue is decreasing, not completely stuck',
-  'Payment and fiscal records are reconciled',
-  'Shipment states are validated',
-  'Affected country operations gave approval',
-  'At least one real/controlled operation completed successfully',
-  'No new regression seen after rollback/feature flag change',
-  'Designated monitoring period completed',
+  'Yeni error oluşmuyor',
+  'Error rate normal seviyelere döndü',
+  'Başarısız queue azalıyor, tamamen takılı değil',
+  'Ödeme ve fiscal kayıtlar uzlaştırıldı',
+  'Gönderi state’leri doğrulandı',
+  'Etkilenen ülke operasyonları onay verdi',
+  'En az bir gerçek/kontrollü işlem başarıyla tamamlandı',
+  'Rollback/feature flag değişikliğinden sonra yeni regression görülmedi',
+  'Belirlenen monitoring süresi tamamlandı',
 ]
 
-export const STATUS_FLOW = ['Investigating', 'Identified', 'Mitigating', 'Monitoring', 'Resolved']
+export const STATUS_FLOW = ['İnceleniyor', 'Belirlendi', 'Mitigation uygulanıyor', 'İzleniyor', 'Çözüldü']
 
 // ---------------------------------------------------------------------------
 // 13. Closing
 // ---------------------------------------------------------------------------
 
 export const CLOSING_OPERATIONAL = [
-  'Has the impact ended?',
-  'Have all affected countries confirmed?',
-  'Has the pending queue been processed?',
-  'Is financial reconciliation needed?',
-  'Was a final notification sent to users?',
-  'Is the temporary mitigation still active?',
-  'Could the incident recur?',
+  'Etki sona erdi mi?',
+  'Etkilenen tüm ülkeler onay verdi mi?',
+  'Bekleyen queue işlendi mi?',
+  'Mali uzlaştırma gerekiyor mu?',
+  'Kullanıcılara son bildirim gönderildi mi?',
+  'Geçici mitigation hâlâ aktif mi?',
+  'Incident tekrarlanabilir mi?',
 ]
 
 export const CLOSING_TECHNICAL = [
-  'Is the root cause known?',
-  'If unknown, was a follow-up ticket created?',
-  'Was a permanent fix ticket created?',
-  'Was test coverage determined?',
-  'Was monitoring/alert gap recorded?',
-  'Was the related risk map updated?',
+  'Root cause biliniyor mu?',
+  'Bilinmiyorsa follow-up ticket oluşturuldu mu?',
+  'Permanent fix ticket’ı oluşturuldu mu?',
+  'Test coverage belirlendi mi?',
+  'Monitoring/alert açığı kaydedildi mi?',
+  'İlgili Risk Map güncellendi mi?',
 ]
 
 // ---------------------------------------------------------------------------
@@ -552,29 +499,29 @@ export const CLOSING_TECHNICAL = [
 // ---------------------------------------------------------------------------
 
 export const POSTMORTEM_STRUCTURE = [
-  'Incident summary',
-  'User and business impact',
+  'Incident özeti',
+  'Kullanıcı ve iş etkisi',
   'Timeline',
-  'Detection method',
+  'Tespit yöntemi',
   'Root cause',
-  'Contributing factors',
-  'Why was it not caught earlier?',
-  'What worked well?',
-  'What did not work well?',
-  'Permanent actions',
-  'Owner and due dates',
-  'Signals to prevent recurrence',
+  'Katkıda bulunan etkenler',
+  'Neden daha önce yakalanmadı?',
+  'Neler iyi çalıştı?',
+  'Neler iyi çalışmadı?',
+  'Kalıcı aksiyonlar',
+  'Owner ve son tarihler',
+  'Tekrarı önleyecek sinyaller',
 ]
 
 export const AUTO_UPDATED_SYSTEMS = [
-  'Known Issue library',
+  'Known Issue kütüphanesi',
   'Reproduce Lab',
   'Risk Map',
-  'First check list',
-  'Similar ticket matching fingerprint',
-  'Monitoring/alert rules',
+  'First check listesi',
+  'Benzer ticket eşleştirme fingerprint’i',
+  'Monitoring/alert kuralları',
   'Modernization Plan',
-  'Regression test list',
+  'Regression test listesi',
 ]
 
 // ---------------------------------------------------------------------------

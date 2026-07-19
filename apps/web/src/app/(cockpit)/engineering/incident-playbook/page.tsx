@@ -10,22 +10,17 @@ import {
   BookOpenCheck,
   CheckCircle2,
   ClipboardCheck,
-  Clock,
   Code2,
-  Crosshair,
   FileSearch,
   FlaskConical,
-  Gauge,
   GitBranch,
   History,
   Landmark,
-  Link2,
   Lock,
   MapPin,
   Megaphone,
   MonitorCheck,
   Radio,
-  Search,
   SearchCode,
   ShieldAlert,
   ShieldCheck,
@@ -36,7 +31,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Button } from '@nesy/metronic/components/ui/button'
+import {
+  IncidentLiveRail,
+  IncidentSessionPanel,
+  useEngineeringIncidentSession,
+} from '@/components/engineering/incident-session'
 import {
   Callout,
   CardGrid,
@@ -74,8 +73,6 @@ import {
   IMPACT_COMPARISONS,
   IMPACT_FIELDS,
   INCIDENT_ROLES,
-  INCIDENT_STATUSES,
-  LIVE_INCIDENT,
   MATCH_RESULTS,
   MITIGATION_CARD_FIELDS,
   MITIGATION_OPTIONS,
@@ -87,163 +84,6 @@ import {
   STATUS_FLOW,
   TRIAGE_QUESTIONS,
 } from '@/data/engineering/incident-command'
-
-// ---------------------------------------------------------------------------
-// 0. Fixed incident top bar
-// ---------------------------------------------------------------------------
-
-function IncidentTopBar() {
-  const inc = LIVE_INCIDENT
-  const statusIdx = INCIDENT_STATUSES.indexOf(inc.status)
-
-  return (
-    <div className="sticky top-0 z-40 -mx-2 rounded-xl border border-red-200/80 bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85 dark:border-red-900/60">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-2">
-          <span className="relative flex size-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-red-500" />
-          </span>
-          <span className="font-mono text-xs font-bold text-red-600 dark:text-red-400">{inc.id}</span>
-          <Badge variant="destructive" size="xs">{inc.sev}</Badge>
-        </div>
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{inc.title}</div>
-        <div className="flex items-center gap-1.5">
-          <Button size="sm" className="h-7 bg-red-600 text-xs text-white hover:bg-red-700">
-            <Megaphone className="size-3.5" /> Send operational announcement
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs">
-            <Link2 className="size-3.5" /> Link to existing incident
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs">
-            <ArrowRightLeft className="size-3.5" /> Devret
-          </Button>
-        </div>
-      </div>
-
-      {/* Status stepper */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1">
-        {INCIDENT_STATUSES.map((s, i) => (
-          <div key={s} className="flex items-center gap-1">
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-[10px] font-bold',
-                i < statusIdx && 'bg-muted text-muted-foreground line-through decoration-1',
-                i === statusIdx && 'bg-red-600 text-white',
-                i > statusIdx && 'bg-muted/50 text-muted-foreground/60',
-              )}
-            >
-              {s}
-            </span>
-            {i < INCIDENT_STATUSES.length - 1 && (
-              <span className="text-[10px] text-muted-foreground/40">›</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-        <span>Start <b className="text-foreground">{inc.startedAt}</b></span>
-        <span>Elapsed <b className="font-mono text-foreground">{inc.elapsed}</b></span>
-        <span>Kapsam <b className="text-foreground">{inc.scope}</b></span>
-        <span>IC <b className="text-foreground">{inc.commander}</b></span>
-        <span>Last update <b className="text-foreground">{inc.lastUpdate}</b></span>
-        <span>Next comms <b className="text-red-600 dark:text-red-400">{inc.nextComms}</b></span>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Right fixed panel — Live Incident Rail
-// ---------------------------------------------------------------------------
-
-function LiveIncidentRail() {
-  const inc = LIVE_INCIDENT
-  return (
-    <div className="space-y-3">
-      {/* Durum */}
-      <div className={cn('rounded-xl border p-3.5', toneCard.red)}>
-        <div className="flex items-center justify-between">
-          <Badge variant="destructive" size="sm">{inc.sev}</Badge>
-          <span className="text-xs font-semibold text-red-700 dark:text-red-300">{inc.status}</span>
-        </div>
-        <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-foreground">{inc.elapsed}</div>
-        <div className="text-[11px] text-muted-foreground">elapsed · start {inc.startedAt}</div>
-      </div>
-
-      {/* Current objective */}
-      <div className={cn('rounded-xl border p-3.5', toneCard.amber)}>
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-          <Crosshair className="size-3.5" /> Current objective
-        </div>
-        <p className="mt-1.5 text-sm font-medium leading-snug text-foreground">{inc.objective}</p>
-      </div>
-
-      {/* Impact summary */}
-      <div className="mt-8">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Impact summary</div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {inc.impact.map((m) => (
-            <div key={m.label} className="rounded-lg bg-muted/50 px-2 py-1.5">
-              <div className="text-sm font-bold tabular-nums text-foreground">{m.value}</div>
-              <div className="text-[10px] text-muted-foreground">{m.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Incident team */}
-      <div className="rounded-xl border border-border bg-background p-3.5">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-          <Users className="size-3.5" /> Incident team
-        </div>
-        <ul className="mt-2 space-y-1.5 text-xs">
-          {inc.team.map((t) => (
-            <li key={t.role} className="flex items-baseline justify-between gap-2">
-              <span className="shrink-0 font-bold text-foreground/70">{t.role}</span>
-              <span className="truncate text-right text-foreground">{t.name}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Latest decision + next check */}
-      <div className={cn('rounded-xl border p-3.5', toneCard.blue)}>
-        <div className="text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">Latest decision</div>
-        <p className="mt-1 text-xs leading-relaxed text-foreground">{inc.lastDecision}</p>
-        <div className="mt-2.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">Next check</div>
-        <p className="mt-1 text-xs leading-relaxed text-foreground">{inc.nextCheck}</p>
-      </div>
-
-      {/* Live timeline */}
-      <div className="mt-8 border-t border-border/60 pt-6">
-        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-          <History className="size-3.5" /> Live timeline
-        </div>
-        <ol className="mt-2.5 space-y-0">
-          {inc.timeline.map((t, i) => (
-            <li key={t.time} className="relative flex gap-2.5 pb-2.5 last:pb-0">
-              {i < inc.timeline.length - 1 && (
-                <span className="absolute left-[3px] top-3 h-full w-px bg-border" />
-              )}
-              <span
-                className={cn(
-                  'relative mt-1.5 size-[7px] shrink-0 rounded-full',
-                  i === inc.timeline.length - 1 ? 'bg-red-500' : 'bg-muted-foreground/40',
-                )}
-              />
-              <div className="min-w-0 text-xs">
-                <span className="font-mono font-semibold text-muted-foreground">{t.time}</span>{' '}
-                <span className="text-foreground/90">{t.event}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // 1. Is this an incident? — interactive triage
@@ -263,32 +103,32 @@ function TriageSection() {
     if (total <= 2) {
       return {
         tone: 'gray' as Tone,
-        title: 'Not an incident',
-        text: 'Normal Ticket Triage → backlog priority → related team. You can leave this page.',
+        title: 'Incident değil',
+        text: 'Normal Ticket Triage → backlog önceliği → ilgili ekip. Bu sayfadan ayrılabilirsiniz.',
       }
     }
     if (max >= 3) {
       return {
         tone: 'red' as Tone,
-        title: 'Strong incident signal — SEV-1 candidate',
-        text: 'Next step: "Has this happened before?" check. If financial/fiscal/data loss risk exists, proceed directly to SEV-1 evaluation.',
+        title: 'Güçlü incident sinyali — SEV-1 adayı',
+        text: 'Sonraki adım: "Bu daha önce yaşandı mı?" kontrolü. Mali/fiscal/veri kaybı riski varsa doğrudan SEV-1 değerlendirmesine geçin.',
       }
     }
     return {
       tone: 'orange' as Tone,
-      title: 'Incident possible',
-      text: 'Next step: "Has this happened before?" check — if no match, SEV-2/SEV-3 depending on impact scope.',
+      title: 'Incident olasılığı var',
+      text: 'Sonraki adım: "Bu daha önce yaşandı mı?" kontrolü — eşleşme yoksa etki kapsamına göre SEV-2/SEV-3.',
     }
   }, [answers])
 
   return (
     <PageSection
       id="triage"
-      eyebrow="Step 1 · Detect"
-      title="Is this an incident?"
+      eyebrow="Adım 1 · Detect"
+      title="Bu bir incident mı?"
       icon={SearchCode}
       tone="blue"
-      description="Four questions to answer before group and file selection: is the impact ongoing, is the flow blocked, what is the scope, is there a risk type?"
+      description="Grup ve dosya seçiminden önce dört soruyu yanıtlayın: Etki sürüyor mu, akış engellendi mi, kapsam nedir, bir risk türü var mı?"
     >
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {TRIAGE_QUESTIONS.map((q, qi) => (
@@ -332,9 +172,9 @@ function TriageSection() {
           {verdict.text}
         </Callout>
       ) : (
-        <Callout icon={AlertTriangle} title="System decision" tone="gray">
-          Answer all four questions — the system will direct you either to <b>normal ticket triage</b> or{' '}
-          <b>&quot;has this happened before?&quot;</b> step.
+        <Callout icon={AlertTriangle} title="Sistem kararı" tone="gray">
+          Dört sorunun tamamını yanıtlayın — sistem sizi ya <b>normal ticket triage</b> akışına ya da{' '}
+          <b>&quot;bu daha önce yaşandı mı?&quot;</b> adımına yönlendirecek.
         </Callout>
       )}
     </PageSection>
@@ -356,16 +196,16 @@ function SeveritySection() {
   return (
     <PageSection
       id="severity"
-      eyebrow="Step 3 · Declare"
-      title="Severity calculator"
+      eyebrow="Adım 3 · Declare"
+      title="Severity hesaplayıcı"
       icon={AlertOctagon}
       tone="red"
-      description="Question-based calculator instead of static card: what you mark is scored, the recommended SEV level appears. If unsure, start with a high level, then lower it."
+      description="Statik bir kart yerine soru tabanlı hesaplayıcı: İşaretledikleriniz puanlanır ve önerilen SEV seviyesi gösterilir. Emin değilseniz yüksek seviyeden başlayıp daha sonra düşürün."
     >
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-xl border border-border bg-background p-4">
           <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Decision questions — mark the valid ones
+            Karar soruları — geçerli olanları işaretleyin
           </div>
           <ul className="mt-2.5 space-y-1.5">
             {SEVERITY_QUESTIONS.map((q) => (
@@ -398,11 +238,11 @@ function SeveritySection() {
 
         <div className="space-y-3">
           <div className={cn('rounded-xl border p-4', toneCard[anyAnswered ? suggestedTone : 'gray'])}>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Recommended level</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Önerilen seviye</div>
             {anyAnswered ? (
               <>
                 <div className={cn('mt-1 text-3xl font-bold', toneText[suggestedTone])}>{suggested}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Score: {score} points</div>
+                <div className="mt-1 text-xs text-muted-foreground">Puan: {score}</div>
                 {suggested === 'SEV-1' && (
                   <ul className="mt-3 space-y-1 text-xs text-foreground/90">
                     {SEV1_ACTIONS.map((a) => (
@@ -416,7 +256,7 @@ function SeveritySection() {
               </>
             ) : (
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                As you mark the questions, the recommendation appears here. In uncertainty, starting with a high severity is safe
+                Soruları işaretledikçe öneri burada görünür. Belirsizlik durumunda yüksek severity ile başlamak güvenlidir
                 (PagerDuty severity guide).
               </p>
             )}
@@ -430,10 +270,10 @@ function SeveritySection() {
                   <span className="text-xs font-semibold text-foreground">{s.label}</span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                  <b className="text-foreground/80">Example:</b> {s.examples}
+                  <b className="text-foreground/80">Örnek:</b> {s.examples}
                 </p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-foreground/85">
-                  <b>Intervention:</b> {s.response}
+                  <b>Müdahale:</b> {s.response}
                 </p>
               </div>
             ))}
@@ -454,11 +294,11 @@ function First15Section() {
   return (
     <PageSection
       id="first-15"
-      eyebrow="Step 6 · Contain"
-      title="First 15 minutes protocol"
+      eyebrow="Adım 6 · Contain"
+      title="İlk 15 dakika protokolü"
       icon={Timer}
       tone="orange"
-      description="Executed in order; no steps skipped. The goal is not to fix, but to contain the impact. Owner, start/end time, result and evidence link are added to each item."
+      description="Sırayla uygulanır; hiçbir adım atlanmaz. Amaç fix yapmak değil, etkiyi sınırlamaktır. Her maddeye Owner, başlangıç/bitiş zamanı, sonuç ve evidence linki eklenir."
     >
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
         {FIRST_15_PROTOCOL.map((phase) => (
@@ -507,7 +347,7 @@ function First15Section() {
       </div>
       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
         <ClipboardCheck className="size-3.5" />
-        Each item is recorded with these fields:
+        Her madde şu alanlarla kaydedilir:
         {CHECKLIST_COLUMNS.map((c) => (
           <Badge key={c} variant="secondary" appearance="outline" size="xs">{c}</Badge>
         ))}
@@ -521,36 +361,38 @@ function First15Section() {
 // ---------------------------------------------------------------------------
 
 export default function IncidentCommandCenterPage() {
+  const incidentSession = useEngineeringIncidentSession()
+
   return (
     <ProductPage path="/engineering/incident-playbook">
       <HeroCallout
         icon={Siren}
-        eyebrow="Reliability & Operations"
+        eyebrow="Güvenilirlik ve Operasyonlar"
         tone="red"
-        title="Incident Command Center"
-        lead="Detect → Declare → Contain → Diagnose → Recover → Learn. When an engineer arrives at this page, they first get answers to 'what should I stop, who should I inform, has this happened before?'; file and code diagnosis (Diagnosis Workspace) comes after these."
+        title="Incident Komuta Merkezi"
+        lead="Detect → Declare → Contain → Diagnose → Recover → Learn. Bir mühendis bu sayfaya geldiğinde önce 'neyi durdurmalıyım, kimi bilgilendirmeliyim, bu daha önce yaşandı mı?' sorularının yanıtını alır; dosya ve code diagnosis (Diagnosis Workspace) bunlardan sonra gelir."
         chips={[
-          `${INCIDENT_STATS.totalTickets} ticket analysis`,
-          `${INCIDENT_STATS.openTickets} open`,
-          `Highest risk: ${INCIDENT_STATS.riskiestGroup}`,
+          `${INCIDENT_STATS.totalTickets} ticket analizi`,
+          `${INCIDENT_STATS.openTickets} açık`,
+          `En yüksek risk: ${INCIDENT_STATS.riskiestGroup}`,
         ]}
       />
 
-      <IncidentTopBar />
+      <IncidentSessionPanel session={incidentSession} />
 
       <div className="flex flex-col gap-6 xl:flex-row">
         {/* Left main area — hierarchical incident flow */}
-        <div className="min-w-0 flex-1 space-y-8 xl:max-w-[74%]">
+        <div className={cn('min-w-0 flex-1 space-y-8', incidentSession.incident && 'xl:max-w-[74%]')}>
           <TriageSection />
 
           {/* 2. Has this happened before? */}
           <PageSection
             id="dedup"
-            eyebrow="Step 2 · Detect"
-            title="Has this happened before?"
+            eyebrow="Adım 2 · Detect"
+            title="Bu daha önce yaşandı mı?"
             icon={History}
             tone="purple"
-            description="The system scans open incidents and the known issue library with fingerprint signals. The search is kept short — does not delay the intervention; if no match, new incident flow continues."
+            description="Sistem, fingerprint sinyalleriyle açık incident’ları ve Known Issue kütüphanesini tarar. Arama kısa tutulur ve müdahaleyi geciktirmez; eşleşme yoksa yeni incident akışı devam eder."
           >
             <div className="flex flex-wrap gap-1.5">
               {FINGERPRINT_SIGNALS.map((s) => (
@@ -597,7 +439,7 @@ export default function IncidentCommandCenterPage() {
 
             <div className="rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                <GitBranch className="size-3.5" /> Critical routing rule
+                <GitBranch className="size-3.5" /> Kritik yönlendirme kuralı
               </div>
               <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85">
                 {ROUTING_TREE}
@@ -610,11 +452,11 @@ export default function IncidentCommandCenterPage() {
           {/* 4. Roller */}
           <PageSection
             id="roles"
-            eyebrow="Step 4 · Declare"
-            title="Incident declaration and team organization"
+            eyebrow="Adım 4 · Declare"
+            title="Incident ilanı ve ekip organizasyonu"
             icon={Users}
             tone="purple"
-            description="After Severity is determined, an incident record is opened and roles are assigned (Google SRE + PagerDuty role model). In small incidents roles can be merged — but the IC should not do both coordination and intense debugging."
+            description="Severity belirlendikten sonra incident kaydı açılır ve roller atanır (Google SRE + PagerDuty rol modeli). Küçük incident’larda roller birleştirilebilir; ancak IC hem koordinasyonu hem de yoğun debugging’i üstlenmemelidir."
           >
             <CardGrid cols={4}>
               {INCIDENT_ROLES.map((r) => (
@@ -638,7 +480,7 @@ export default function IncidentCommandCenterPage() {
             </CardGrid>
             <div className="rounded-xl border border-border bg-muted/30 p-4">
               <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Merged structure in small incident
+                Küçük incident’ta birleştirilmiş yapı
               </div>
               <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground/85">{SMALL_INCIDENT_STRUCTURE}</pre>
             </div>
@@ -647,15 +489,15 @@ export default function IncidentCommandCenterPage() {
           {/* 5. Impact Snapshot */}
           <PageSection
             id="impact"
-            eyebrow="Step 5 · Contain"
-            title="Determine the impact area — Impact Snapshot"
+            eyebrow="Adım 5 · Contain"
+            title="Etki alanını belirleyin — Impact Snapshot"
             icon={Activity}
             tone="blue"
-            description="Mandatory fields are filled, automatic comparisons are opened. Risk Map comes into play here — it's not the main process, but a supporting component for impact classification."
+            description="Zorunlu alanlar doldurulur ve otomatik karşılaştırmalar açılır. Risk Map burada devreye girer; ana süreç değil, etki sınıflandırmasını destekleyen bir bileşendir."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-background p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Mandatory fields</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Zorunlu alanlar</div>
                 <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                   {IMPACT_FIELDS.map((f) => (
                     <div key={f} className="rounded-lg bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-foreground/85">
@@ -666,7 +508,7 @@ export default function IncidentCommandCenterPage() {
               </div>
               <div className={cn('rounded-xl border p-4', toneCard.blue)}>
                 <div className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-                  Automatic comparisons
+                  Otomatik karşılaştırmalar
                 </div>
                 <ul className="mt-2.5 space-y-1.5 text-xs text-foreground/85">
                   {IMPACT_COMPARISONS.map((c) => (
@@ -685,14 +527,14 @@ export default function IncidentCommandCenterPage() {
           {/* 7. Diagnosis Workspace */}
           <PageSection
             id="diagnosis"
-            eyebrow="Step 7 · Diagnose"
-            title="Diagnosis Workspace — group and screen routing"
+            eyebrow="Adım 7 · Diagnose"
+            title="Diagnosis Workspace — grup ve ekran yönlendirmesi"
             icon={Zap}
             tone="red"
-            description="Technical diagnosis starts after initial security and containment steps are completed. Group and screen selection; followed by the first files to check, log queries, known race conditions and similar past tickets. Reproduce Lab is the tool under this workspace."
+            description="Teknik diagnosis, ilk güvenlik ve containment adımları tamamlandıktan sonra başlar. Grup ve ekran seçimini; ilk kontrol edilecek dosyalar, log query’leri, bilinen race condition’lar ve benzer geçmiş ticket’lar izler. Bu workspace altındaki araç Reproduce Lab’dir."
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Select screen:</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Ekran seçin:</span>
               {DIAGNOSIS_SCREENS.map((s) => (
                 <Badge key={s} variant="secondary" appearance="outline" size="sm">
                   <MapPin className="size-3 text-red-500" /> {s}
@@ -706,15 +548,15 @@ export default function IncidentCommandCenterPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className={cn('text-sm font-bold', toneText[g.tone])}>{g.name}</div>
                     <div className="flex gap-1">
-                      <Badge variant="secondary" appearance="outline" size="xs">{g.tickets} tickets</Badge>
-                      <Badge variant="secondary" appearance="outline" size="xs">{g.open} open</Badge>
-                      <Badge variant="secondary" appearance="outline" size="xs">{g.highRisk} high risk</Badge>
+                      <Badge variant="secondary" appearance="outline" size="xs">{g.tickets} ticket</Badge>
+                      <Badge variant="secondary" appearance="outline" size="xs">{g.open} açık</Badge>
+                      <Badge variant="secondary" appearance="outline" size="xs">{g.highRisk} yüksek risk</Badge>
                     </div>
                   </div>
 
                   <div className="mt-3">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      <Code2 className="size-3.5" /> First checks
+                      <Code2 className="size-3.5" /> İlk kontroller
                     </div>
                     <ul className="mt-1.5 space-y-1.5">
                       {g.firstChecks.map((c) => (
@@ -728,7 +570,7 @@ export default function IncidentCommandCenterPage() {
 
                   <div className="mt-3">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      <CheckCircle2 className="size-3.5" /> Quick actions
+                      <CheckCircle2 className="size-3.5" /> Hızlı aksiyonlar
                     </div>
                     <ul className="mt-1.5 space-y-1 text-xs text-foreground/85">
                       {g.quickActions.map((a) => (
@@ -754,16 +596,16 @@ export default function IncidentCommandCenterPage() {
           {/* 8. Evidence Gate */}
           <PageSection
             id="evidence"
-            eyebrow="Step 8 · Diagnose"
-            title="Protect evidences — Evidence Gate"
+            eyebrow="Adım 8 · Diagnose"
+            title="Evidence’ları koruyun — Evidence Gate"
             icon={Lock}
             tone="amber"
-            description="Evidences are collected before the Reproduce process. In state/race, offline queue and fiscal incidents, evidence loss is irreversible."
+            description="Evidence’lar Reproduce sürecinden önce toplanır. State/race, offline queue ve fiscal incident’larda evidence kaybı geri döndürülemez."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-background p-4">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  <FileSearch className="size-3.5" /> Evidences to collect
+                  <FileSearch className="size-3.5" /> Toplanacak evidence’lar
                 </div>
                 <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                   {EVIDENCE_ITEMS.map((e) => (
@@ -775,7 +617,7 @@ export default function IncidentCommandCenterPage() {
               </div>
               <div className={cn('rounded-xl border p-4', toneCard.red)}>
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-red-700 dark:text-red-300">
-                  <AlertTriangle className="size-3.5" /> Approval is required before these operations
+                  <AlertTriangle className="size-3.5" /> Bu işlemlerden önce onay gerekir
                 </div>
                 <ul className="mt-2.5 space-y-1.5 text-xs text-foreground/90">
                   {DESTRUCTIVE_ACTIONS.map((a) => (
@@ -786,7 +628,7 @@ export default function IncidentCommandCenterPage() {
                   ))}
                 </ul>
                 <div className="mt-3 rounded-lg bg-background/70 p-2.5 text-xs font-semibold leading-relaxed text-red-700 dark:text-red-300">
-                  &quot;This operation may change evidence or temporary state. Are evidences saved?&quot;
+                  &quot;Bu işlem evidence’ı veya geçici state’i değiştirebilir. Evidence’lar kaydedildi mi?&quot;
                 </div>
               </div>
             </div>
@@ -795,17 +637,17 @@ export default function IncidentCommandCenterPage() {
           {/* 9. Hypothesis and experiment area */}
           <PageSection
             id="hypotheses"
-            eyebrow="Step 9 · Diagnose"
-            title="Hypothesis and experiment area"
+            eyebrow="Adım 9 · Diagnose"
+            title="Hipotez ve deney alanı"
             icon={FlaskConical}
             tone="teal"
-            description="Structured record instead of experiments lost in chat. Owner is mandatory in active tasks — the same experiment is not done twice."
+            description="Chat içinde kaybolan deneyler yerine yapılandırılmış kayıt tutulur. Aktif görevlerde Owner zorunludur; aynı deney iki kez yapılmaz."
           >
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full min-w-[640px] text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-left">
-                    {['Time', 'Hypothesis', 'Test', 'Owner', 'Result', 'Status'].map((h) => (
+                    {['Zaman', 'Hipotez', 'Test', 'Owner', 'Sonuç', 'Durum'].map((h) => (
                       <th key={h} className="px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                         {h}
                       </th>
@@ -837,8 +679,8 @@ export default function IncidentCommandCenterPage() {
               </table>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-              Statuses:
-              {(['New', 'Testing', 'Strong signal', 'Verified', 'Eliminated'] as const).map((s) => (
+              Durumlar:
+              {(['Yeni', 'Test ediliyor', 'Güçlü sinyal', 'Doğrulandı', 'Elendi'] as const).map((s) => (
                 <Badge key={s} variant="secondary" appearance="outline" size="xs">{s}</Badge>
               ))}
             </div>
@@ -847,15 +689,15 @@ export default function IncidentCommandCenterPage() {
           {/* 10. Containment / mitigasyon */}
           <PageSection
             id="mitigation"
-            eyebrow="Step 10 · Contain"
-            title="Containment and mitigation"
+            eyebrow="Adım 10 · Contain"
+            title="Containment ve mitigation"
             icon={ShieldCheck}
             tone="orange"
-            description="The question is not 'what is the root cause?': how do we stop the impact in the safest way? Mitigation stops the impact now; permanent fix eliminates the root cause later."
+            description="Soru 'root cause nedir?' değil, etkiyi en güvenli şekilde nasıl durdururuz sorusudur. Mitigation etkiyi şimdi durdurur; permanent fix root cause’u daha sonra ortadan kaldırır."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-background p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Mitigation options</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Mitigation seçenekleri</div>
                 <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {MITIGATION_OPTIONS.map((m) => (
                     <div key={m} className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-foreground/85">
@@ -868,7 +710,7 @@ export default function IncidentCommandCenterPage() {
               <div className="space-y-3">
                 <div className={cn('rounded-xl border p-4', toneCard.orange)}>
                   <div className="text-[11px] font-bold uppercase tracking-wide text-orange-700 dark:text-orange-300">
-                    In every mitigation card
+                    Her mitigation kartında
                   </div>
                   <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                     {MITIGATION_CARD_FIELDS.map((f) => (
@@ -881,11 +723,11 @@ export default function IncidentCommandCenterPage() {
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs leading-relaxed">
                   <div className="flex items-center gap-2 font-bold text-orange-700 dark:text-orange-300">
                     <Zap className="size-3.5" /> Mitigation
-                    <span className="font-normal text-foreground/85">— stops the incident impact now.</span>
+                    <span className="font-normal text-foreground/85">— incident etkisini şimdi durdurur.</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2 font-bold text-teal-700 dark:text-teal-300">
                     <Landmark className="size-3.5" /> Permanent fix
-                    <span className="font-normal text-foreground/85">— eliminates the root cause, planned later.</span>
+                    <span className="font-normal text-foreground/85">— root cause’u ortadan kaldırır, daha sonra planlanır.</span>
                   </div>
                 </div>
               </div>
@@ -895,21 +737,21 @@ export default function IncidentCommandCenterPage() {
           {/* 11. Communication center */}
           <PageSection
             id="comms"
-            eyebrow="Step 11 · Contain"
-            title="Communication center"
+            eyebrow="Adım 11 · Contain"
+            title="İletişim merkezi"
             icon={Megaphone}
             tone="blue"
-            description="Communication flow independent of technical solution. Unverified root cause is not written; if information is missing, it is stated as 'unknown', no guessing."
+            description="İletişim akışı teknik çözümden bağımsızdır. Doğrulanmamış root cause yazılmaz; bilgi eksikse 'bilinmiyor' denir, tahmin yürütülmez."
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Target groups:</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Hedef gruplar:</span>
               {COMMS_AUDIENCES.map((a) => (
                 <Badge key={a} variant="secondary" appearance="outline" size="sm">{a}</Badge>
               ))}
             </div>
             <div className={cn('rounded-xl border p-4', toneCard.blue)}>
               <div className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-                Status message format
+                Durum mesajı formatı
               </div>
               <dl className="mt-2.5 space-y-2.5">
                 {COMMS_TEMPLATE.map((c) => (
@@ -925,11 +767,11 @@ export default function IncidentCommandCenterPage() {
           {/* 12. Recovery and validation */}
           <PageSection
             id="recovery"
-            eyebrow="Step 12 · Recover"
-            title="Recovery and validation"
+            eyebrow="Adım 12 · Recover"
+            title="Recovery ve doğrulama"
             icon={MonitorCheck}
             tone="green"
-            description="After mitigation, the incident is not immediately marked as 'resolved'. It is closed not because the system is working again, but because exit criteria are measured (Google SRE — exit criteria)."
+            description="Mitigation sonrasında incident hemen 'çözüldü' olarak işaretlenmez. Sistem yeniden çalıştığı için değil, exit criteria ölçülüp karşılandığı için kapatılır (Google SRE — exit criteria)."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.3fr_1fr]">
               <div className={cn('rounded-xl border p-4', toneCard.green)}>
@@ -946,7 +788,7 @@ export default function IncidentCommandCenterPage() {
                 </ul>
               </div>
               <div className="rounded-xl border border-border bg-background p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Status transition</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Durum geçişi</div>
                 <div className="mt-3 flex flex-col items-center gap-1">
                   {STATUS_FLOW.map((s, i) => (
                     <div key={s} className="flex flex-col items-center gap-1">
@@ -971,16 +813,16 @@ export default function IncidentCommandCenterPage() {
           {/* 13. Kapatma */}
           <PageSection
             id="closing"
-            eyebrow="Step 13 · Recover"
-            title="Incident closing"
+            eyebrow="Adım 13 · Recover"
+            title="Incident kapatma"
             icon={ClipboardCheck}
             tone="teal"
-            description="Two mandatory blocks in the closing screen: operational and technical closing. If there is an unanswered question, the incident is not closed."
+            description="Kapatma ekranında iki zorunlu blok bulunur: operasyonel ve teknik kapatma. Yanıtlanmamış soru varsa incident kapatılmaz."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               {[
-                { title: 'Operational closing', items: CLOSING_OPERATIONAL, tone: 'teal' as Tone },
-                { title: 'Technical closing', items: CLOSING_TECHNICAL, tone: 'indigo' as Tone },
+                { title: 'Operasyonel kapatma', items: CLOSING_OPERATIONAL, tone: 'teal' as Tone },
+                { title: 'Teknik kapatma', items: CLOSING_TECHNICAL, tone: 'indigo' as Tone },
               ].map((block) => (
                 <div key={block.title} className={cn('rounded-xl border p-4', toneCard[block.tone])}>
                   <div className={cn('text-[11px] font-bold uppercase tracking-wide', toneText[block.tone])}>
@@ -1002,15 +844,15 @@ export default function IncidentCommandCenterPage() {
           {/* 14. Postmortem */}
           <PageSection
             id="postmortem"
-            eyebrow="Step 14 · Learn"
-            title="Post-incident learning"
+            eyebrow="Adım 14 · Learn"
+            title="Incident sonrası öğrenme"
             icon={BookOpenCheck}
             tone="purple"
-            description="Activates after the incident is resolved. The goal is not to close the issue, but to feed the Detect–Respond–Recover–Improve cycle (NIST SP 800-61r3)."
+            description="Incident çözüldükten sonra etkinleşir. Amaç issue’yu kapatmak değil, Detect–Respond–Recover–Improve döngüsünü beslemektir (NIST SP 800-61r3)."
           >
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-background p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Postmortem structure</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Postmortem yapısı</div>
                 <ol className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {POSTMORTEM_STRUCTURE.map((p, i) => (
                     <li key={p} className="flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1.5 text-[11px] text-foreground/85">
@@ -1024,7 +866,7 @@ export default function IncidentCommandCenterPage() {
               </div>
               <div className={cn('rounded-xl border p-4', toneCard.purple)}>
                 <div className="text-[11px] font-bold uppercase tracking-wide text-purple-700 dark:text-purple-300">
-                  Auto-updated systems
+                  Otomatik güncellenen sistemler
                 </div>
                 <ul className="mt-2.5 space-y-1.5 text-xs text-foreground/90">
                   {AUTO_UPDATED_SYSTEMS.map((s) => (
@@ -1039,27 +881,28 @@ export default function IncidentCommandCenterPage() {
           </PageSection>
 
           <StatGrid cols={4}>
-            <StatCard label="Total Tickets" value={INCIDENT_STATS.totalTickets} tone="gray" hint="HR 21 · RS 12 · General 11 · CEE 4" />
-            <StatCard label="Critical" value={INCIDENT_STATS.bySeverity.critical} tone="red" hint="Double TOUR event · scan crash" />
-            <StatCard label="High" value={INCIDENT_STATS.bySeverity.high} tone="orange" hint="Majority Finance & Payment" />
-            <StatCard label="Most Risky Screens" value="16" tone="amber" hint={INCIDENT_STATS.riskiestScreens} />
+            <StatCard label="Toplam Ticket" value={INCIDENT_STATS.totalTickets} tone="gray" hint="HR 21 · RS 12 · Genel 11 · CEE 4" />
+            <StatCard label="Kritik" value={INCIDENT_STATS.bySeverity.critical} tone="red" hint="Double TOUR event · scan crash" />
+            <StatCard label="Yüksek" value={INCIDENT_STATS.bySeverity.high} tone="orange" hint="Çoğunluk Finance & Payment" />
+            <StatCard label="En Riskli Ekranlar" value="16" tone="amber" hint={INCIDENT_STATS.riskiestScreens} />
           </StatGrid>
 
-          <Callout icon={Siren} title="Layer separation" tone="red">
-            Reproduce Lab is a technical diagnosis tool, Risk Map is a classification view, playbook remains as an information
-            source. This page — Incident Command Center — is the decision-making,
-            coordination, containment, communication and recovery layer above them. At every SEV-1/SEV-2 closure, root
-            cause is linked to Edge Case Map, recurrence risk is written to Modernization Plan and first
-            checks are updated. Playbook is a living document.
+          <Callout icon={Siren} title="Katman ayrımı" tone="red">
+            Reproduce Lab teknik bir diagnosis aracı, Risk Map bir sınıflandırma görünümü, playbook ise bilgi
+            kaynağıdır. Bu sayfa — Incident Komuta Merkezi — bunların üzerindeki karar verme,
+            koordinasyon, containment, iletişim ve recovery katmanıdır. Her SEV-1/SEV-2 kapanışında root
+            cause Edge Case Map ile ilişkilendirilir, tekrarlama riski Modernization Plan’a yazılır ve first
+            check’ler güncellenir. Playbook yaşayan bir dokümandır.
           </Callout>
         </div>
 
-        {/* Right fixed panel */}
-        <aside className="shrink-0 xl:w-[290px]">
-          <div className="xl:sticky xl:top-[150px]">
-            <LiveIncidentRail />
-          </div>
-        </aside>
+        {incidentSession.incident && (
+          <aside className="shrink-0 xl:w-[290px]">
+            <div className="xl:sticky xl:top-[150px]">
+              <IncidentLiveRail incident={incidentSession.incident} />
+            </div>
+          </aside>
+        )}
       </div>
     </ProductPage>
   )

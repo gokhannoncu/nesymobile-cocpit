@@ -14,7 +14,11 @@ function resolvePrismaClient(): PrismaClient {
   if (cached) {
     const hasGraylog = typeof (cached as { graylogQueryRun?: unknown }).graylogQueryRun !== "undefined";
     const hasMongo = typeof (cached as { mongoQueryRun?: unknown }).mongoQueryRun !== "undefined";
-    if (hasGraylog && hasMongo) return cached;
+    const hasEngineeringIncidents =
+      typeof (cached as { engineeringIncident?: unknown }).engineeringIncident !== "undefined";
+    const hasEngineeringIncidentEvents =
+      typeof (cached as { engineeringIncidentEvent?: unknown }).engineeringIncidentEvent !== "undefined";
+    if (hasGraylog && hasMongo && hasEngineeringIncidents && hasEngineeringIncidentEvents) return cached;
     void cached.$disconnect().catch(() => undefined);
   }
   const client = createPrismaClient();

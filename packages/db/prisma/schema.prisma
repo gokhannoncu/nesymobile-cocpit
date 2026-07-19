@@ -288,6 +288,64 @@ model GraylogQueryRun {
   @@map("graylog_query_runs")
 }
 
+/// Engineering: Incident Command Center active and historical incident records
+model EngineeringIncident {
+  id                     String    @id @default(uuid())
+  incidentNumber         String    @unique
+  title                  String
+  summary                String?
+  severity               String
+  status                 String    @default("ASSESSING")
+  objective              String
+  countries              String[]
+  environment            String
+  appVersion             String
+  affectedScreen         String
+  riskTypes              String[]
+  reporterName           String
+  incidentCommander      String
+  operationsLead         String?
+  communicationsLead     String?
+  scribe                 String?
+  affectedCouriers       Int       @default(0)
+  affectedShipments      Int       @default(0)
+  affectedPaymentRecords Int       @default(0)
+  relatedTicket          String?
+  nextCommunicationAt    DateTime?
+  resolutionSummary      String?
+  rootCause              String?
+  startedAt              DateTime  @default(now())
+  endedAt                DateTime?
+  durationSeconds        Int?
+  lastUpdateAt           DateTime  @default(now())
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  events EngineeringIncidentEvent[]
+
+  @@index([status, startedAt])
+  @@index([endedAt, startedAt])
+  @@map("engineering_incidents")
+}
+
+/// Engineering: immutable Incident Command Center timeline entries
+model EngineeringIncidentEvent {
+  id         String   @id @default(uuid())
+  incidentId String
+  eventType  String
+  fromStatus String?
+  toStatus   String?
+  message    String
+  createdBy  String?
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  incident EngineeringIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, occurredAt])
+  @@map("engineering_incident_events")
+}
+
 /// Automation: field support courier login (1 row per courier / country / env; PIN never stored)
 model FieldCourierLogin {
   id               String   @id @default(cuid())

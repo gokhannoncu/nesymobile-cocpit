@@ -68,14 +68,14 @@ export const AUTOMATION_FIELD_LOGIN_PATH = '/automation/field-login' as const
 export const WORKSPACES: Workspace[] = [
   {
     id: 'home',
-    label: 'Home',
+    label: 'Ana Sayfa',
     icon: Home,
     className: 'border-white bg-orange-500 hover:bg-orange-600 text-white hover:text-white',
     path: '/',
     basePaths: ['/', '/home'],
     menu: [
       {
-        title: 'Home',
+        title: 'Ana Sayfa',
         children: [
           {
             title: 'Command Center',
@@ -203,14 +203,14 @@ export const WORKSPACES: Workspace[] = [
   },
   {
     id: 'pm',
-    label: 'Project Management',
+    label: 'Proje Yönetimi',
     icon: FolderKanban,
     className: 'border-white bg-violet-500 hover:bg-violet-600 text-white hover:text-white',
     path: '/pm/tickets',
     basePaths: ['/pm'],
     menu: [
       {
-        title: 'Project Management',
+        title: 'Proje Yönetimi',
         children: [
           {
             title: 'Ticket Management',
@@ -271,11 +271,11 @@ export const WORKSPACES: Workspace[] = [
         title: 'Engineering',
         children: [
           {
-            title: 'Reliability & Operations',
+            title: 'Güvenilirlik ve Operasyonlar',
             icon: Activity,
             children: [
               {
-                title: 'Incident Command Center',
+                title: 'Incident Komuta Merkezi',
                 path: '/engineering/incident-playbook',
                 icon: Siren,
               },

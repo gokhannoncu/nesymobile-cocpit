@@ -7,7 +7,7 @@ export function SidebarSearch() {
   return (
     <div className="flex w-full px-2.5 pt-3.5 shrink-0">
       <InputWrapper className="w-full">
-        <Input type="search" placeholder="Search" onChange={handleInputChange} />
+        <Input type="search" placeholder="Ara" onChange={handleInputChange} />
         <Badge variant="outline" className="whitespace-nowrap" size="sm">⌘ K</Badge>
       </InputWrapper>
     </div>
