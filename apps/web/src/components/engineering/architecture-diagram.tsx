@@ -8,6 +8,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Info, Pause, Play } from 'lucide-react'
 
 const O = '#ea6a1e'   // orange
 const B = '#1f5fe0'   // blue
@@ -27,6 +28,14 @@ const THEMES: Record<ThemeKey, { fill: string; stroke: string; icon: string; tit
 
 type Health = 'good' | 'warn' | 'bad'
 const HEALTH: Record<Health, string> = { good: '#16a34a', warn: '#d9810a', bad: '#dc2626' }
+const HEALTH_LABEL: Record<Health, string> = { good: 'Healthy', warn: 'Warning', bad: 'Critical' }
+
+type FlowSummaryDef = {
+  steps: string[]
+  highlightsTitle: string
+  highlights: { label: string; health: Health }[]
+  footer?: string
+}
 const TRAIL = 7
 const DUR = 22000
 
@@ -270,21 +279,65 @@ function TargetContent() {
 interface FlowProps {
   eyebrow: string; title: string; sub: string
   waypoints: WP; stations: StationDef[]
-  summary: React.ReactNode
+  summary: FlowSummaryDef
   children: React.ReactNode
 }
+
+function FlowSummaryPanel({ summary }: { summary: FlowSummaryDef }) {
+  return (
+    <div className="arch-flow-summary">
+      <div className="arch-flow-summary-head">
+        <Info className="arch-flow-summary-icon" aria-hidden />
+        <span className="arch-flow-summary-title">Flow summary</span>
+      </div>
+      <div className="arch-flow-steps" aria-label="Flow pipeline">
+        {summary.steps.map((step, i) => (
+          <span key={step} className="arch-flow-step-wrap">
+            {i > 0 ? <span className="arch-flow-arrow" aria-hidden>→</span> : null}
+            <span className="arch-flow-step">{step}</span>
+          </span>
+        ))}
+      </div>
+      <div className="arch-flow-highlights">
+        <div className="arch-flow-highlight-title">{summary.highlightsTitle}</div>
+        <div className="arch-flow-tags">
+          {summary.highlights.map((item) => (
+            <span key={item.label} className="arch-flow-tag" data-health={item.health}>
+              {item.label}
+            </span>
+          ))}
+        </div>
+        {summary.footer ? <p className="arch-flow-footer">{summary.footer}</p> : null}
+      </div>
+    </div>
+  )
+}
+
 function FlowDiagram({ eyebrow, title, sub, waypoints, stations, summary, children }: FlowProps) {
   const [paused, setPaused] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [pinned, setPinned] = useState(false)
   const pausedRef = useRef(false)
+  const pinnedRef = useRef(false)
   useEffect(() => { pausedRef.current = paused }, [paused])
+  useEffect(() => { pinnedRef.current = pinned }, [pinned])
 
   const haloRef = useRef<SVGCircleElement>(null)
   const headRef = useRef<SVGCircleElement>(null)
   const ringRef = useRef<SVGCircleElement>(null)
   const trailRefs = useRef<(SVGCircleElement | null)[]>([])
   const barRef = useRef<HTMLDivElement>(null)
-  const labelRef = useRef<HTMLSpanElement>(null)
-  const noteRef = useRef<HTMLSpanElement>(null)
+
+  const activeStation = stations[activeIdx]
+  const activeColor = HEALTH[activeStation.health]
+
+  useEffect(() => {
+    const [x, y] = waypoints[activeStation.wp]
+    ringRef.current?.setAttribute('cx', '' + x)
+    ringRef.current?.setAttribute('cy', '' + y)
+    ringRef.current?.setAttribute('stroke', activeColor)
+    barRef.current?.style.setProperty('--hc', activeColor)
+  }, [activeIdx, activeColor, activeStation.wp, waypoints])
 
   useEffect(() => {
     const WPv = waypoints
@@ -321,11 +374,8 @@ function FlowDiagram({ eyebrow, title, sub, waypoints, stations, summary, childr
       }
       let idx = 0; for (let i = 0; i < st.length; i++) if (st[i].s <= s + 0.5) idx = i
       if (idx !== lastStation) {
-        lastStation = idx; const station = st[idx]; const hc = HEALTH[station.health]
-        ringRef.current?.setAttribute('cx', '' + WPv[station.wp][0]); ringRef.current?.setAttribute('cy', '' + WPv[station.wp][1]); ringRef.current?.setAttribute('stroke', hc)
-        if (labelRef.current) labelRef.current.textContent = station.label
-        if (noteRef.current) noteRef.current.textContent = station.note
-        barRef.current?.style.setProperty('--hc', hc)
+        lastStation = idx
+        if (!pinnedRef.current) setActiveIdx(idx)
       }
     }
 
@@ -342,6 +392,21 @@ function FlowDiagram({ eyebrow, title, sub, waypoints, stations, summary, childr
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [waypoints, stations])
+
+  const selectStation = (idx: number) => {
+    setActiveIdx(idx)
+    setPinned(true)
+    setPaused(true)
+  }
+
+  const togglePlayback = () => {
+    if (paused) {
+      setPinned(false)
+      setPaused(false)
+      return
+    }
+    setPaused(true)
+  }
 
   return (
     <div className="arch-card">
@@ -367,14 +432,59 @@ function FlowDiagram({ eyebrow, title, sub, waypoints, stations, summary, childr
           </g>
         </svg>
       </div>
-      <div className="arch-anim-bar" ref={barRef}>
-        <button className="arch-anim-play" type="button" onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'}>{paused ? '▶' : '❚❚'}</button>
-        <span className="arch-anim-dot" />
-        <span className="arch-anim-label" ref={labelRef}>{stations[0].label}</span>
-        <span className="arch-anim-note" ref={noteRef}>{stations[0].note}</span>
-        <span className="arch-anim-legend"><i style={{ background: HEALTH.good }} />healthy<i style={{ background: HEALTH.warn }} />warning<i style={{ background: HEALTH.bad }} />critical</span>
+
+      <div className="arch-anim-panel">
+        <div className="arch-anim-bar" ref={barRef}>
+          <button
+            className="arch-anim-play"
+            type="button"
+            onClick={togglePlayback}
+            aria-label={paused ? 'Play animation' : 'Pause animation'}
+            aria-pressed={paused}
+          >
+            {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+          </button>
+          <span className="arch-anim-dot" aria-hidden />
+          <div className="arch-anim-body">
+            <div className="arch-anim-label-row">
+              <span className="arch-anim-index">{activeIdx + 1}/{stations.length}</span>
+              <span className="arch-anim-label">{activeStation.label}</span>
+            </div>
+            <p className="arch-anim-note">{activeStation.note}</p>
+          </div>
+          <span className="arch-anim-badge" data-health={activeStation.health}>
+            {HEALTH_LABEL[activeStation.health]}
+          </span>
+        </div>
+
+        <div className="arch-anim-stations" role="tablist" aria-label="Flow stops">
+          {stations.map((station, idx) => (
+            <button
+              key={station.label}
+              type="button"
+              role="tab"
+              aria-selected={idx === activeIdx}
+              className={`arch-station-chip${idx === activeIdx ? ' active' : ''}`}
+              data-health={station.health}
+              onClick={() => selectStation(idx)}
+            >
+              <span className="arch-station-chip-index">{idx + 1}</span>
+              {station.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="arch-anim-legend" aria-label="Health legend">
+          {(Object.keys(HEALTH) as Health[]).map((health) => (
+            <span key={health} className="arch-legend-item">
+              <i style={{ background: HEALTH[health] }} aria-hidden />
+              {HEALTH_LABEL[health]}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="arch-summary"><span className="arch-summary-icon">i</span><p>{summary}</p></div>
+
+      <FlowSummaryPanel summary={summary} />
     </div>
   )
 }
@@ -411,7 +521,16 @@ export function ArchitectureDiagram() {
           sub="Event generation, offline queue and synchronization flow in the current structure"
           waypoints={CURRENT_WP}
           stations={CURRENT_STATIONS}
-          summary={<><strong>Flow summary:</strong> UI event reaches SharedViewModel, orchestration writes JSON-chunk to Room via repository, polling-based service sends to remote; critical points (no SSoT, main-thread queries, unreliable queue) generate operational risk.</>}
+          summary={{
+            steps: ['UI event', 'SharedViewModel', 'Room (JSON-chunk)', 'RequestSenderService', 'Backend'],
+            highlightsTitle: 'Operational risk',
+            highlights: [
+              { label: 'no SSoT', health: 'bad' },
+              { label: 'main-thread queries', health: 'bad' },
+              { label: 'unreliable queue', health: 'warn' },
+            ],
+            footer: 'Polling-based sync; state updates are manual and can lag or miss screens.',
+          }}
         ><CurrentContent /></FlowDiagram>
       ) : (
         <FlowDiagram
@@ -421,7 +540,17 @@ export function ArchitectureDiagram() {
           sub="UDF flow, normalized single source of truth and guaranteed synchronization via Outbox/WorkManager"
           waypoints={TARGET_WP}
           stations={TARGET_STATIONS}
-          summary={<><strong>Flow summary:</strong> Action → reduce → UseCase (Mediator/Policy) → Repository → <strong>Room SSoT</strong> + <strong>OutboxEvent</strong>; core:sync + WorkManager sends with idempotency and backoff; response is written to SSoT, screen reactively updates via Room → Flow → UiState. Every critical flaw (duplicate collection, data loss, ANR, zombie requests) is structurally eliminated.</>}
+          summary={{
+            steps: ['UiAction', 'reduce()', 'UseCase', 'Room SSoT + OutboxEvent', 'WorkManager', 'Backend → Flow → UI'],
+            highlightsTitle: 'Structurally resolved',
+            highlights: [
+              { label: 'duplicate collection', health: 'good' },
+              { label: 'data loss', health: 'good' },
+              { label: 'ANR', health: 'good' },
+              { label: 'zombie requests', health: 'good' },
+            ],
+            footer: 'Idempotency, backoff and reactive Room → Flow → UiState replace polling and manual refresh.',
+          }}
         ><TargetContent /></FlowDiagram>
       )}
     </div>

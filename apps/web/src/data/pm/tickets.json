@@ -1,0 +1,2380 @@
+[
+  {
+    "id": 6352,
+    "title": "Stop listten taranan gönderide teslim edilemedi statüsü seçilemiyor ve \"barcode empty\" hatası alınıyor.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "CEE",
+    "date": "2026-05-12",
+    "labels": [
+      "Team:telefunken"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "Montenegro'da shipment stop listten taratılıp delivery failed seçildiğinde \"Shipment not found, barcode empty\" hatası alınıyor [Nesy Mobile - Unable to select non-delivery status]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "437",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/437"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#437",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/6352",
+    "screen": "Delivery Failed",
+    "group": "Barcode & Scan",
+    "original_title": "CEE | Shipment Failed Yapılamıyor #437",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "MainActivity.onNewIntent() → Fragment dispatch (StopDetailFragment ↔ DeliveryFragment geçişi). Barkod, ScheduleStopChunk içinde JSON string olarak gömülü; DB kolonu/index yok.",
+      "rootCause": "K2 — Scan dispatch belirsizliği (Edge Case E31). Stop listten taranan barkod, MainActivity üzerinden hangi fragment'e gideceği navigation geçişi anında belirsiz kalıyor; eski fragment henüz destroy olmadan onNewIntent tetikleniyor. 'barcode empty' hatası, scan event'in yanlış/ölmekte olan fragment'e düşmesinden doğuyor.",
+      "pastAttempts": "Fragment aktiflik kontrolü eklendi; ancak lifecycle timing yapısal olarak belirsiz olduğu için bazı race'ler azaldı, kök neden kapanmadı.",
+      "recurrenceRisk": "high",
+      "verdict": "Tek seferlik fix ile kapanmaz. Dispatch tek giriş noktası (ScanCoordinator) olmadan, geçiş anındaki scan kaybı farklı ekranlarda tekrar görünür. Yapı aynı kaldıkça bug gelmeye devam eder.",
+      "fix": "ScanCoordinator (ADR-05) — tek scan giriş noktası, screen-scoped BarcodeHandler. ShipmentItemEntity ile barkod DB kolonu + index (NESY-ARCH-001).",
+      "edgeCases": [
+        "E31"
+      ]
+    }
+  },
+  {
+    "id": 6218,
+    "title": "Teslimat sırasında barkod tarama işlemi yavaş çalışmakta ve uygulama donabilmektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "General",
+    "date": "2026-04-28",
+    "labels": [
+      "enhancement"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "HR Prod ortamında, sürücülerin Nesy Mobile uygulamasında delivery süreci sırasında performans problemleri yaşadıkları bildirilmiştir. Bildirilen sorunlar: - Shipment scan işlemleri beklenenden daha uzun sürmektedir. [Nesy Mobile - list creation]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "170",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/170"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#170",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/6218",
+    "screen": "Stop List",
+    "group": "Barcode & Scan",
+    "original_title": "Nesy Mobile - Shipment Scan Yavaşlığı ve Uygulama Donma Problemi #170",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "LockerReservationHelper / scan arama yolu — barkod ScheduleStopChunk JSON blob'unda; her aramada tüm JSON parse + lineer tarama (allowMainThreadQueries → ANR riski).",
+      "rootCause": "K1 — JSON-chunk yapısı (Edge Case E34). Barkod için DB index yok; her tarama O(n) lineer JSON parse gerektiriyor. Büyük schedule'larda main thread'de parse → uygulama donması (ANR).",
+      "pastAttempts": "JSON parse optimizasyonu denendi; performans biraz arttı ama O(n) lineer tarama değişmediği için büyük listelerde donma sürüyor.",
+      "recurrenceRisk": "high",
+      "verdict": "Performans sorunu 'dikkatli kodlama' ile çözülemez — veri yapısı değişmelidir. Index'li sorgu olmadan büyük schedule'larda donma tekrar eder.",
+      "fix": "ShipmentItemEntity: barcode UNIQUE INDEX, O(log n) sorgu. JSON chunk → normalize ilişkisel yapı (NESY-ARCH-001).",
+      "edgeCases": [
+        "E34"
+      ]
+    }
+  },
+  {
+    "id": 5874,
+    "title": "Kurye navigasyon uygulamasına doğru koordinatlarla yönlendirilememektedir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "CEE",
+    "date": "2026-03-12",
+    "labels": [
+      "Team:telefunken"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "Mobil uygulamada bir shipment için navigasyon butonuna basıldığında 0.0.0.0 koordinatları ile yönlendiriyor. [NESY Maps opens location 0.0.0.0 instead of shipment destination address]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "28",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/28"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#28",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5874",
+    "screen": "Map / Navigation",
+    "group": "Konum & GPS",
+    "original_title": "CEE | Nesy Mobile Navigasyon Yönlendirmesi #28",
+    "analysis": {
+      "report": "Konum & GPS",
+      "location": "LocationService (399 LOC) + navigasyon intent — koordinat 0.0.0.0 / lat-lng okuma. Assign tab'da tüm shipment'larda lat/lng 0.0.",
+      "rootCause": "KN-3 / Outlier + SSoT. Navigasyon butonu shipment koordinatını okurken default 0.0 değeri geliyor; konum verisi memory-only ve outlier filtresi yok, geçersiz koordinat ayıklanmıyor.",
+      "pastAttempts": "Koordinat null kontrolü denendi; ancak 0.0.0.0 'geçerli' kabul edildiği ve filtre katmanı olmadığı için yanlış yönlendirme sürdü.",
+      "recurrenceRisk": "high",
+      "verdict": "OutlierFilter ve geçerli-koordinat validasyonu olmadan 0.0.0.0 yönlendirmesi tekrar eder. Yapısal olarak konum altyapısı buna açık.",
+      "fix": "OutlierFilter (speed+distance+accuracy) + stop.latitude/longitude normalize kolon + geçersiz koordinat ayıklama (ADR-10).",
+      "edgeCases": [
+        "E25"
+      ]
+    }
+  },
+  {
+    "id": 5683,
+    "title": "Merged stop altındaki gönderiler için toplu işlem yapılamamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2026-02-16",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Kurye merge stop fonksiyonunu kullanarak elle stopları birleştirdiğinde, aynı stop altında olan shipmentların toplu olarak DELY, DEPS veya FAILED yapılabilmesi isteniyor. 2 farklı stop olacak şekilde shipmentlar yaratılır Zimmete alındıktan sonra tura çıkmadan stoplar birleştirlir [Nesy Mobile - merged stop closing] [Nesy Mobile - merged stop closing]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2682",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2682"
+      },
+      {
+        "repo": "NESY_CEE",
+        "num": "296",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/296"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2682, NESY_CEE#296",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5683",
+    "screen": "Delivery Failed",
+    "group": "Barcode & Scan",
+    "original_title": "HR | Merged Stop Altında Toplu İşlem Yapılması #2682 , CEE #296",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "DeliveryFragment merge-stop akışı + SharedViewModel stop birleştirme state. Toplu DELY/DEPS/FAILED işlemi.",
+      "rootCause": "K3 — Kopya eşleştirme tutarsızlığı (Edge Case E32) + God Object. Merge edilen stop altındaki shipment'ların toplu durum güncellemesi, 5+ farklı yerdeki eşleştirme kopyaları arasında tutarsız çalışıyor; atomik toplu güncelleme yapılamıyor.",
+      "pastAttempts": "Tekil noktada düzeltme yapıldı (ticket UAT-HR#2682 ve CEE#296 kapatıldı), ancak diğer kopyalar etkilenmedi.",
+      "recurrenceRisk": "medium",
+      "verdict": "Müşteri tarafı kapalı görünse de toplu işlem atomik transaction'a oturmadığı için merge senaryoları farklı kombinasyonlarda tekrar açılabilir.",
+      "fix": "BarcodeNormalizer tek normalize noktası + atomik Room transaction (CompleteDeliveryUseCase, withTransaction).",
+      "edgeCases": [
+        "E32"
+      ]
+    }
+  },
+  {
+    "id": 5091,
+    "title": "Aynı stop altındaki gönderiler için fiscal fiş mükerrer basılmaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-11-20",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Ayno stop altında 26 parcel var. Hepsi için ayrı ayrı CPP toplanıyor. Total amount cash deskte ve mobilde doğru görünüyor ancak fiscal sadece 1. parcel için oluşturuluyor. Basılan fiscalde bütün parcellerin listelenmesi gerekiyor. [Fiscal is no created for all shipments]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "346",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/346"
+      }
+    ],
+    "customer_ticket": "UAT-RS#346",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5091",
+    "screen": "End of Day",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Aynı Stop Altındaki Shipmentlar için Fiscal Basılması #346",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Sırbistan'da bir kurye aynı stop altındaki 26 parseli tek tek tahsil ediyor. Kasada ve mobilde toplam tutar doğru görünüyor; ama basılan fiscal fişte yalnızca ilk parselin numarası yer alıyor, kalan 25'i fişe hiç düşmüyor. Müşteri açık: fişte bütün parseller listelensin."
+        },
+        {
+          "k": "cause",
+          "text": "Fiscal fişi üreten kod stop bazında değil, tek shipment üzerinden çalışıyor. Hangi parsellerin tek fişte birleşeceğine dair atomik bir kural yok. Üstüne 'aynı işi iki kez yapma' güvencesi olmadığı için ekran döndüğünde fiscal ikinci kez tetiklenebiliyor — duruma göre eksik veya mükerrer fiş çıkıyor."
+        },
+        {
+          "k": "fix",
+          "text": "Bu fiscal sorunu için arka arkaya birçok hotfix geçildi. 27 Kas 2025'te `rs_multiple_fiscal_print_fix` ile PrinterManager ve DeliveryFragment'taki fiş basım akışı düzeltildi; 2 Oca 2026'da `rs_multi_fiscal_event_issue` ile TaskListFragment'ta barkodlar shipment'a göre gruplanıp her shipment için ayrı CPP/CollectionType kararıyla ayrı request üretildi. Ticket kapatıldı — ama bu, aynı 'fiscal' problemini yamayan 77 commit'ten ve 13 ayrı 'multi-fiscal' hotfix branch'inden sadece birkaçıydı."
+        },
+        {
+          "k": "state",
+          "text": "Şu an aynı stoptaki parseller için fiş tek tek değil gruplanarak basılıyor; tipik akışta sorunsuz çalışıyor. Ama fiscal üretimi hâlâ dev TaskListFragment içindeki if/else'lere ve bellekteki schedule nesnesine bağlı. Ekran döndüğünde ya da 26 gibi yüksek parsel sayısında gruplama yine şaşabilir — mükerrer veya eksik fiş ihtimali tam olarak sıfırlanmış değil.",
+          "confidence": 60,
+          "screenCase": "Gün sonu / fiscal basımı — aynı stop altında çok sayıda parsel",
+          "detectability": {
+            "level": "medium",
+            "note": "Eksik/mükerrer fiş ancak kasa mutabakatında veya müşteri şikayetiyle fark edilir; anlık bir alarm yok."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Kalıcı çözüm fiscal üretimini god object'ten çıkarıp atomik bir kuyruğa taşımayı gerektiriyor — büyük iş."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Fiscal üretiminin veritabanı kilidi ile korunması ve çoklu parsellerin sıralı/atomik şekilde tek fişte toplanması gerekiyor. Böylece hiçbir zaman eksik veya mükerrer fiş çıkmaz."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5062,
+    "title": "Teslimat işlemi tamamlandığında fiscal fiş oluşturulamamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-11-18",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Exworks servisi olan shipment DELY yapılıyor ancak Fiscal basılamıyor. [Nesy didnt create fiscal]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "340",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/340"
+      }
+    ],
+    "customer_ticket": "UAT-RS#340",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5062",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Nesy didnt create fiscal #340",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Sırbistan'da Exworks (gönderici ödediği) servisli gönderi başarıyla teslim ediliyor, ama fiscal fiş basılamıyor. Teslimat tamam ama mali tarafı eksik kalıyor."
+        },
+        {
+          "k": "cause",
+          "text": "Fiscal fişin sırası koda gömülü sabit; doğru sıra: teslim onaylansın, tahsilat işlensin, sonra fiscal kesilsin. Mevcut yapıda bu sıra garanti değil — Exworks gibi farklı servislerde akış kopuyor ve fiscal adımına hiç gelinemiyor."
+        },
+        {
+          "k": "fix",
+          "text": "7 Oca 2026'da `rs_missing_fiscal_fix` ile fiscal akışı elden geçirildi (277d099b): SharedViewModel'e `revertShipmentFiscalCreated()` fonksiyonu eklendi — fiscal flag'i geri almak için tüm schedule JSON'u bellekte gezip ilgili shipment'ı bulup işaretliyor, sonra tekrar diske yazıyor. Öncesinde 28 Kas'ta `rs_collection_check_service_fix` ile servis isteği parametresi düzeltilmişti. Hepsi noktasal müdahaleler."
+        },
+        {
+          "k": "state",
+          "text": "Exworks gibi tahsilatın farklı işlediği servislerde fiscal akışı eklenen kontrollerle çoğu durumda tamamlanıyor. Ancak teslim → tahsilat → fiscal sırası hâlâ kod içinde elle tutulduğu için, yeni bir servis tipi veya ülke kombinasyonu geldiğinde fiscal adımına hiç gelinememe riski sürüyor.",
+          "confidence": 62,
+          "screenCase": "Delivery — Exworks servisli gönderinin teslimi",
+          "detectability": {
+            "level": "medium",
+            "note": "Fiş yokluğu teslimden sonra fark edilir; mobil o anda kullanıcıyı uyarmıyor."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Sırayı garanti eden yapısal bir kuyruk gerekiyor; noktasal yama yetmiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Teslim → tahsilat → fiscal sırasını zorunlu kılmak gerekiyor. Böylece teslim onaylanmadan fiscal asla kesilmez, kesilmesi gereken yerde de atlanmaz."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5055,
+    "title": "EXW tutarlı gönderiler COD olarak yanlış gösterilmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-11-18",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Yukarıdaki shipmentta exworks servisi olmasına rağmen COD toplandığı bildiriliyor. Logların incelenmesi gerekiyor [Nesy see Exw as COD]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "322",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/322"
+      }
+    ],
+    "customer_ticket": "UAT-RS#322",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5055",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Nesy see Exw as COD #322",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Exworks olması gereken gönderide kuryeden COD toplatılıyor. Yani alıcıdan para istenmemesi gereken yerde para isteniyor."
+        },
+        {
+          "k": "cause",
+          "text": "Servis tipinin nereden okunduğu net değil — bellek ve JSON karışımından okunuyor. Üç ayrı yer (bellek, tercihler, sunucu) bağımsız güncellenince yanlış servis tipi gösteriliyor."
+        },
+        {
+          "k": "fix",
+          "text": "Exworks/COD karışması için birden çok kez 'switch to exworks' yaması geçildi: 27 Eki 2025 'Skip Exworks Update', 2 Oca 2026 `rs_switchtoexworks_fix` (TaskListFragment'ta görünürlük kararı düzeltildi), `feat/iss-4653` 'Switch To EXW'. Bir noktada eklenen düzeltme başka yerde yeni durum açtığı için süreç birkaç tura yayıldı (hatta bir 'reverted skip exwork' commit'i bile var)."
+        },
+        {
+          "k": "state",
+          "text": "Servis tipi kontrolleri eklendiği için çoğu gönderide Exworks/COD ayrımı doğru çalışıyor. Fakat tip bilgisi tek bir güvenilir kaynaktan değil, bellek ve JSON karışımından okunuyor; veri tutarsız geldiğinde yanlış COD talebi yeniden ortaya çıkabilir.",
+          "confidence": 65,
+          "screenCase": "Delivery — tahsilat ekranı, Exworks gönderi",
+          "detectability": {
+            "level": "low",
+            "note": "Yanlış tahsilat genelde ancak kurye veya müşteri itirazıyla anlaşılır; sessiz ilerler."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "Servis tipini normalize edip tahsilat kararını tek noktaya almak görece uygulanabilir."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Servis tipini normalize bir kaynaktan okumak ve tahsilat kararını tek bir iş mantığında vermek gerekiyor. Karar tek yerde verilince Exworks/COD karışması biter."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4858,
+    "title": "Delivery işlemi sonrası fiscal (fiş) basılamamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-10-21",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Shipment dely sırasında VAT oluşturulması gerekirken mobilde süreç devam etmiyor ancak shipmentta VPFR (Fiscal Created) eventi mevcut. [VPFR without DELY]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "280",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/280"
+      }
+    ],
+    "customer_ticket": "UAT-RS#280",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4858",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Dely Sonrası Fiscal Yaratılamıyor #280",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Teslimat sırasında VAT/fiscal oluşması gerekirken mobilde süreç ilerlemiyor; sistemde 'fiş kesildi' yazıyor ama teslimat tamamlanmamış — fiş havada kalmış."
+        },
+        {
+          "k": "cause",
+          "text": "Fiscal, teslim onayından önce ya da ondan bağımsız tetikleniyor. Sıralama garantisi olmadığı için 'fiş var ama teslim yok' tutarsızlığı oluşuyor."
+        },
+        {
+          "k": "fix",
+          "text": "27 Eki 2025'te `rs_fiscal_flow_update` ile DeliveryFragment'taki fiscal invoice akışı yeniden düzenlendi (a2000ba9), 6 Oca 2026'da `rs_auto_fiscal_fix` ile TaskListFragment'a 226 satırlık otomatik fiscal mantığı eklendi (c2f40ae9). Teslim ile fiscal'in sırasını kod içinde tutmaya çalışan büyük if/else blokları eklendi."
+        },
+        {
+          "k": "state",
+          "text": "Teslim ile fiscal sırasını tutan otomatik mantık eklendi; normal akışta fiş teslimden sonra kesiliyor. Ama sıra büyük if/else bloklarıyla yönetildiği için zamanlama kenarlarında VPFR (fiscal created) event'inin DELY'den önce veya ondan ayrık düşmesi tekrar mümkün.",
+          "confidence": 60,
+          "screenCase": "Delivery — DELY sırasında fiscal / VAT üretimi",
+          "detectability": {
+            "level": "medium",
+            "note": "'VPFR var ama DELY yok' tutarsızlığı event loglarında görülebilir."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Sıralama garantisi ancak yapısal kuyrukla gelir; mevcut yapıda kırılgan."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Teslim → tahsilat → fiscal sırasını mutlak kılmak. Teslim onaylanmadan fiscal asla kesilmez."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4800,
+    "title": "RaiPay ile alınan ödeme Nesy sisteminde görünmemektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-10-13",
+    "labels": [
+      "Epic: Mobile",
+      "Bug",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Consignee kredi kartıyla ödeme yapıyor ancak ödeme nesy'ye yansımıyor. [Detalji transakcije_HR39 2340 0093 1038 7633 7.pdf]( Shipment: 54502340915106 [Raipay - payment not seen in Nesy]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2352",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2352"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2352",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4800",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "HR | Raipay - payment not seen in Nesy #2352",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Müşteri kredi kartıyla ödüyor, POS 'başarılı' diyor; ama ödeme NESY'ye yansımıyor. Kurye açısından işlem bitti, sistemde hiç ödeme yok."
+        },
+        {
+          "k": "cause",
+          "text": "Ödeme sonucu bellekte kalıyor, veritabanına yazılmıyor. Telefon kapanırsa veya uygulama öldürülürse o bilgi tamamen kayboluyor. Gönderim memoryden yapıldığı için app kill = kuyruk komple kayıp."
+        },
+        {
+          "k": "fix",
+          "text": "Haziran 2025'te RaiPay entegrasyonu (`feat/raipay-integration`) devreye alındı, ardından 'Raipay shipment id fix' geçildi. Ödeme prod'da sorun çıkarınca 12 Eyl 2025'te `raipay_enable_fix` hotfix'iyle özellik yeniden etkinleştirildi. Bunlar bağlantı/etkinleştirme yamaları — ödemenin kalıcı kaydedilmesini sağlayan yapısal bir değişiklik değil."
+        },
+        {
+          "k": "state",
+          "text": "RaiPay etkin ve normal koşulda ödeme geçiyor. Fakat ödeme sonucu hâlâ önce belleğe yazılıp oradan gönderildiği için telefon kapanması, app kill veya zayıf ağda ödemenin NESY'ye hiç ulaşmama ihtimali açık. Üstelik bu sessiz bir hata — kurye işlemi başarılı sanıyor.",
+          "confidence": 55,
+          "screenCase": "Delivery — kredi kartı (RaiPay) ile tahsilat",
+          "detectability": {
+            "level": "low",
+            "note": "Sessiz kayıp; ne kurye ne sistem anında fark eder, ancak gün sonu mutabakatında açık verir."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "POS'a göndermeden önce DB kaydı + güvenilir kuyruk (ödeme FSM) gerekiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Ödemeyi POS'a göndermeden ÖNCE veritabanına kaydetmek ve uygulama açılışında yarım kalanları tamamlamak gerekiyor. Böylece çift tahsilat yapısal olarak imkânsız hale geliyor."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4776,
+    "title": "Kurye bildirime tıkladığında ilgili stop detayına yönlendirilememektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-10-09",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Bildirime tıklandığında, sadece bildirimler kapatılabiliyor. Bildirime tıklandığında, kuryenin, bildirimi ilgilendiren stop detayına yönlendirilmesi isteniyor. - Farklı stoplardan oluşan iş listesine sahip bir kurye için, ilgili stop taskları üzerinde değişiklik yaparak bildirim alması sağlanmalı. Gelen her bildirim için, bildirime tıkladığında, il [Nesy Mobile - opening stop after click on messag...",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1873",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1873"
+      },
+      {
+        "repo": "UAT-HR",
+        "num": "1822",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1822"
+      },
+      {
+        "repo": "UAT-HR",
+        "num": "1501",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1501"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1873, UAT-HR#1822, UAT-HR#1501",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4776",
+    "screen": "Stop List",
+    "group": "Bildirim",
+    "original_title": "HR - Nesy Mobile - Kurye bildirime tıkladığında, ilgili stop detayına yönlendirilebilmesi talebi/ UAT: 1873_1822_1501",
+    "analysis": {
+      "report": "State / Race + Bildirim",
+      "location": "FCM notification handler + StopListFragment navigation. Bildirime tıklanınca stop detayına yönlendirme yok.",
+      "rootCause": "Enhancement + UiEffect eksikliği. Bildirim → ekran navigasyonu tek seferlik UiEffect yerine LiveData observe zinciriyle yapıldığında kayıp/yanlış yönlenme riski.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement; UiEffect (one-shot) Channel ile yapıldığında stabil. Mevcut observe zincirinde rotation/geri tuşu kenarları riskli.",
+      "fix": "UiEffect sealed class, tek tüketim (Faz 2 MVI) + deep-link to stop detail.",
+      "edgeCases": [
+        "ES6"
+      ]
+    }
+  },
+  {
+    "id": 4772,
+    "title": "Kurye time frame seçemediği için consignee'ye giden mesaj içeriği net değildir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-10-09",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Şu anda time frameler otomatik olarak set ediliyor. Bu da consignee'ye giden mesaj içeriğinin net olmamasına neden oluyor. Time frame seçildikten sonra, bu bilgi, ilgili mesaj içeriğinde yer almalıdır. - Kurye shipmentları zimmete alırken time frame seçebilmelidir. Sonrasında consignee'ye giden bildirimlerde, seçilen time frame'e uygun içerik yer a [NESY mobile testing issue #2 notification, time ...",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "511",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/511"
+      }
+    ],
+    "customer_ticket": "UAT-HR#511",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4772",
+    "screen": "Delivery",
+    "group": "Bildirim",
+    "original_title": "HR - BUG: Nesy Mobilde kurye time frame seçemediği için, consigneeye gönderilen mesaj içeriği net olmuyor / UAT: 511",
+    "analysis": {
+      "report": "Bildirim",
+      "location": "DeliveryFragment time frame + consignee bildirim içeriği. Time frame otomatik set ediliyor.",
+      "rootCause": "İş mantığı + içerik üretimi. Time frame seçimi kuryeye bırakılmadığı için bildirim içeriği net değil; içerik üretimi tek UseCase'te değil.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement/bug karışımı; time frame seçimi + içerik üretimi tek yere alındığında stabil olur.",
+      "fix": "Time frame seçim UI + notification içerik UseCase.",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 4771,
+    "title": "Consignee'ye giden bildirim içerikleri hatalı veya eksik gösterilebilmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-10-09",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Müşteriden iletilen bulgular ve 96595301995890 örnek shipment ile yapılan test notları şu şekildedir: 1. Farklı durumlarda (örn: PS çalışanı shipmentı aldığında veya delivery date değiştiğinde) gelen bildirimlerde, adresin değiştiği yazıyor. 1.1. Bir shipmenta COD eklediğimde, hem collection amount added hem de congisnee address updated şeklinde 2  [Nesy mobile - wrong information in notifications...",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1657",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1657"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1657",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4771",
+    "screen": "End of Day",
+    "group": "Bildirim",
+    "original_title": "HR - BUG: Nesy Mobilde bildirim içerikleri yanlış olabiliyor / UAT: 1657",
+    "analysis": {
+      "report": "Bildirim + Offline",
+      "location": "FCM bildirim içerik üretimi — yanlış/eksik içerik (örn. COD eklenince hem collection hem adres değişti mesajı).",
+      "rootCause": "E35 — Sessiz kuyruk/observability + içerik mantığı. Bildirim tetikleyici durumlar tek yerde yönetilmediği için yanlış içerik üretiliyor; sessiz hata, metrik yok.",
+      "pastAttempts": "İçerik şablonları düzeltildi (kapatıldı); merkezi içerik mantığı olmadan başka tetikleyicilerde tekrar riskli.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; bildirim içeriği tek UseCase + observability olmadan farklı event kombinasyonlarında yanlış içerik tekrar üretilebilir.",
+      "fix": "Notification içerik UseCase + structured logging/metrics (NESY-ARCH-004F).",
+      "edgeCases": [
+        "E35"
+      ]
+    }
+  },
+  {
+    "id": 4575,
+    "title": "Aynı gönderi için çift TOUR eventi tetiklenmektedir.",
+    "type": "Bug",
+    "severity": "Critical",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-09-22",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Shipment zaten tourdayken tekrar zimmete alınmış, 2 tour eventi atılmış ve 2 kere dely yapılmış Son trigger eventi tour olan shipmentların tekrar zimmete alınmaması Shipment yaratılır [Nesy Mobile - double TOUR?]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2504",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2504"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2504",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4575",
+    "screen": "Route Selection",
+    "group": "State & Race",
+    "original_title": "HR | Nesy Mobile - double TOUR #2504",
+    "analysis": {
+      "report": "State / Race",
+      "location": "SharedViewModel (3.450 LOC) + Room JSON chunk + FCM handler. Tour'daki shipment tekrar zimmete alınıp 2 TOUR + 2 DELY.",
+      "rootCause": "ES1/ES3 — FCM × UI race condition. Shipment zaten TOUR'dayken eş zamanlı yazma 'last-writer-wins' ile çift event üretiyor; son trigger event kontrolü atomik değil.",
+      "pastAttempts": "Tekrar zimmete alma kontrolü eklendi; thread güvenliği (Mutex/transaction) olmadığı için race tekrarladı.",
+      "recurrenceRisk": "high",
+      "verdict": "Critical. WorkManager serialize + Room transaction olmadan çift TOUR/DELY race'i tekrar eder — yapısal sorun, dikkatli kodlamayla çözülmez.",
+      "fix": "WorkManager serialized FCM + Room transaction + idempotent event (NESY-ARCH-001/005).",
+      "edgeCases": [
+        "ES1",
+        "ES3"
+      ]
+    }
+  },
+  {
+    "id": 4571,
+    "title": "Kurye turu mobil uygulama üzerinden erteleyememektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-22",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Şu anda bir shipment scan edildiği gün teslim edilmesi bekleniyor. Teslimat adresinin uzak (adada vs.) olması durumunda, shipment scan edildiği gün teslim edilmeyecek olabiliyor. Bu durumda kurye, o shipmenta bugün TOUR eventi atıyor ama bu, gerçek teslim tarihini yansıtmıyor. Bu nedenle, kuryenin bir shipment için scan haricindeki işlemleri ertele [Nesy Mobile - Postponement of the tour]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "110",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/110"
+      }
+    ],
+    "customer_ticket": "UAT-HR#110",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4571",
+    "screen": "Route Selection",
+    "group": "Tour & Teslimat",
+    "original_title": "HR - Nesy Mobile - Kuryenin turu erteleyebilmesi / UAT: 110",
+    "analysis": {
+      "report": "State / Race + Barkod",
+      "location": "Route Selection — scan dışı işlemlerin (TOUR) ertelenmesi. Scan günü TOUR atılıyor; SharedViewModel event üretimi.",
+      "rootCause": "E31 + event mantığı. TOUR eventi scan anında atomik üretiliyor; ertelenmiş teslim tarihi gerçek durumu yansıtmıyor, event üretimi tek UseCase'te değil.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "medium",
+      "verdict": "Açık enhancement; event üretimi ScanCoordinator/UseCase ile yönetilmedikçe TOUR tarih tutarsızlığı sürer.",
+      "fix": "ScanCoordinator + postpone UseCase, TOUR event tek yer.",
+      "edgeCases": [
+        "E31"
+      ]
+    }
+  },
+  {
+    "id": 4506,
+    "title": "Tekrar okutulan pickup barkodu iki ayrı parsel olarak görünmektedir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-09-12",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Bir task pickup yapılırken barkodu 2 kez okutuluyor ve bu durumda task 2 parsel olarak görünüyor. Task trackingde de 2 parsel pickup yapılmış olarak görünüyor. Tek shipment için bir barkod 1'den fazla kez okutulsa bile doğru işlem yapmalı ve fazla okutulması durumunda uyarı vermeli. - Pickup task barkodu 2 kez okutulmalı ve bu durumda kuryenin bir  [Nesy Mobile - warning for already scanned pick u...",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2342",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2342"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2342",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4506",
+    "screen": "Pick Up",
+    "group": "Barcode & Scan",
+    "original_title": "HR - BUG: Nesy Mobilde tekrar okutulan pickup barkodu 2 parsel olarak görünmesine neden oluyor Talep / UAT: 2342",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "PickupFragment scan dedup — okutulmuş barkod listesi SharedPreferences'ta saklanıyor.",
+      "rootCause": "K4 — Dedup bayatlama (Edge Case E33). Aynı pickup barkodu 2 kez okutulduğunda 2 parsel oluşuyor çünkü dedup state SharedPreferences'ta; restart sonrası bayatlıyor ve mükerrer uyarı verilemiyor.",
+      "pastAttempts": "SharedPreferences temizleme eklendi; ancak restart sonrası state yine kaybolduğu için tekrarlı okutma koruması güvenilir değil.",
+      "recurrenceRisk": "medium",
+      "verdict": "Müşteri tarafı kapatıldı ama dedup mekanizması SP'de kaldıkça farklı cihaz/restart senaryolarında çift parsel tekrar görülebilir.",
+      "fix": "Coordinator-scoped in-memory dedup Set (ADR-09) — restart = temiz başlangıç.",
+      "edgeCases": [
+        "E33"
+      ]
+    }
+  },
+  {
+    "id": 4502,
+    "title": "Konum servisleri kapalıyken kuryeye uyarı mesajı gösterilmemektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-11",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Mobilde konum servisleri kapalı olabiliyor. Mobilin düzgün çalışabilmesi için konum servislerinin açık olması gerektiğinden, login sırasında kapalı olması durumunda uyarı verilmesi isteniyor. - Konum servisleri kapalı olan kurye ile app login denenmeli ve uyarı mesajı geldiği görülmeli. [Nesy Mobile - location services enabling warning message]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2254",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2254"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2254",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4502",
+    "screen": "Login / Settings",
+    "group": "Konum & GPS",
+    "original_title": "HR - Nesy Mobilde konum servisleri kapalı olduğunda uyarı verilmesi talebi / UAT: 2254",
+    "analysis": {
+      "report": "Konum & GPS",
+      "location": "Login akışı + LocationService — konum servisi kapalıyken uyarı. PermissionWatcher yok.",
+      "rootCause": "KN-4 — Permission/servis durumu izlenmiyor. Konum servisi kapalıyken sessiz kalınıyor; UI bilgilendirilmiyor.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement; PermissionWatcher eklendiğinde kalıcı çözülür. Mevcut yapıda revoke/kapalı durumu sessiz kaldığı için kullanıcı habersiz kalır.",
+      "fix": "PermissionWatcher (ADR-13) — runtime izleme, revoke/kapalı → UI uyarı + yeniden talep.",
+      "edgeCases": [
+        "KN-4"
+      ]
+    }
+  },
+  {
+    "id": 4494,
+    "title": "DDSP yönlendirmeli gönderiler için kuryeye bilgilendirme uyarısı gösterilmemektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-11",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "INIT sırasında consigneelere, başka bir adres için shipment planlama imkanı eklenmiştir. Bu durum için, kuryelerin scan sırasında, TOUR auth öncesinde bilgi mesajı görmesi gerekecektir. 1. Bu durum TOUR eventi ilk kez atılan shipmentlar için geçerli olacaktır, bu shipment için önceden eklenmiş bir TOUR eventi bulunmamalıdır. 2. Nesy, 1 aydan eski s [Nesy Mobile - warning for shipments with DDSP]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1697",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1697"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1697",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4494",
+    "screen": "Route Selection",
+    "group": "Barcode & Scan",
+    "original_title": "HR - Nesy Mobilde DDSP shipmentlar için uyarı verilmesi talebi / UAT: 1697",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "Route Selection / TOUR auth öncesi scan akışı — DDSP shipment'ları için bilgi mesajı.",
+      "rootCause": "Enhancement; ancak 'ilk TOUR eventi' kontrolü event sıralaması ve durum kaynağına bağlı. DDSP uyarısı atomik değilse yanlış tetiklenebilir.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement; doğru yapıldığında stabil. TOUR event geçmişi normalize tabloda tutulursa güvenilir çalışır.",
+      "fix": "shipment event geçmişi normalize sorgu + ScanCoordinator uyarı hook'u.",
+      "edgeCases": [
+        "E31"
+      ]
+    }
+  },
+  {
+    "id": 4491,
+    "title": "NLOC eventi öncesinde kuryeye onay ekranı gösterilmesi gerekmektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-11",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Dispatcher Management",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Dispatcher Management",
+      "Delivery"
+    ],
+    "summary": "Kurye NLOC eventi eklemek istediğinde, bu eventi atmak için dispatcherdan onay talep edebileceği bir modal açılmalı. Dispatcherdan onay almadığı sürece EOD yapamaması sağlanmalı. Soru: Bu işlem için dispatcher onayı Inventory'den mi yoksa başka bir yerden mi verilecek? - 2 shipment yaratılarak zimmete alınmalı. Bunlardan biri deliver edilirken, diğ [Nesy Mobile - NLOC authorization requests]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1639",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1639"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1639",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4491",
+    "screen": "End of Day",
+    "group": "Barcode & Scan",
+    "original_title": "HR - Nesy Mobilde NLOC eventi için onay ekranı talebi / UAT: 1639",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "End of Day / NLOC event akışı — dispatcher onay modalı + EOD bloklama.",
+      "rootCause": "Enhancement; onay durumunun (authorization) güvenilir tutulması gerekiyor. Memory/SP'de tutulursa restart'ta kaybolur.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement; onay state'i Room'da tutulursa stabil olur. Aksi halde process ölümünde NLOC onayı kaybolabilir.",
+      "fix": "Onay state app_config/Room persist + outbox event.",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 4484,
+    "title": "Bildirim sonrası barkod tarama sırasında uygulama çökmektedir.",
+    "type": "Bug",
+    "severity": "Critical",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-11",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Notification aldıktan sonra, shipment scan sırasında app crash yaşanabiliyor. [Nesy Mobile - app crashing]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1583",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1583"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1583",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4484",
+    "screen": "Stop List",
+    "group": "UI & Crash",
+    "original_title": "HR - BUG: Nesy Mobile - Notification sonrası App Crash / UAT: 1583",
+    "analysis": {
+      "report": "State / Race + UI",
+      "location": "StopListFragment scan + FCM notification — bildirim sonrası scan'de app crash. God Object + race.",
+      "rootCause": "ES3/ES4 — God Object tek paylaşılan state + FCM×UI race. Notification state ile scan state aynı SharedViewModel'de çakışıyor → crash.",
+      "pastAttempts": "Null/crash guard eklendi; God Object parçalanmadığı için crash farklı timing'de tekrarladı.",
+      "recurrenceRisk": "high",
+      "verdict": "Critical. AÇIK. God object parçalama (Faz 2 MVI) + WorkManager serialize olmadan crash tekrar eder.",
+      "fix": "Ekran başına ViewModel (ADR-02) + WorkManager serialized FCM + UiEffect Channel.",
+      "edgeCases": [
+        "ES3",
+        "ES4"
+      ]
+    }
+  },
+  {
+    "id": 4457,
+    "title": "Toplanan COD tutarı gün sonu ekranında yanlış görüntülenmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-09-10",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Aynı stop altında olan 2 tane COD'li shipmenttan (10 EUR + 15 EUR) 1 tanesi dely yapılıyor ve 1 tanesi fail yapılıyor Stop listte 25 EUR yeşil görünüyor Aynı stop altında 2 tane CODli shipmenttan sadece 1 tanesi dely yapıldıysa [Nesy Mobile - separating tasks from stops manually]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1615",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1615"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1615",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4457",
+    "screen": "Delivery Failed",
+    "group": "Finans & Ödeme",
+    "original_title": "HR | Toplanan COD Amount Yanlış Görünüyor #1615",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Aynı stop altında iki COD (10 EUR + 15 EUR) var. Biri teslim ediliyor, biri başarısız — ama stop listinde hâlâ 25 EUR yeşil görünüyor, tamamı tahsil edilmiş gibi."
+        },
+        {
+          "k": "cause",
+          "text": "Tahsil edilen tutar bellekteki bir sete bakılarak hesaplanıyor. Bu set kalıcı değil ve kısmi durumu (biri tamam, biri başarısız) ayrıştıramıyor."
+        },
+        {
+          "k": "fix",
+          "text": "20 Eki 2025'te `feat/iss-4457` branch'iyle 'Toplanan COD Gösterimi' geçildi (01a48fab): StopsAdapter ve StopCard.kt'de stop kartına toplanan COD bilgisi eklendi, view_stop_card_new.xml layout'u yeniden düzenlendi. Yani çözüm ağırlıkla görünüm (UI) tarafında kaldı; tutarın hangi veriden hesaplandığı değişmedi."
+        },
+        {
+          "k": "state",
+          "text": "Stop kartında toplanan COD gösterimi eklendi ve görsel olarak çalışıyor. Fakat kısmi teslim durumunda (biri dely, biri fail) tutar hâlâ bellekteki setten hesaplandığı için yeşil/kırmızı durumu yanlış kalabilir. Hata ekranda görünür olduğundan fark edilmesi kolay.",
+          "confidence": 80,
+          "screenCase": "Stop list kartı — aynı stopta kısmi tahsilat (biri teslim, biri başarısız)",
+          "detectability": {
+            "level": "high",
+            "note": "Yanlış tutar/renk doğrudan stop kartında görünür."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "Tahsilatı shipment bazında kalıcı sorguya bağlamak orta zorlukta."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Tahsilat kaydını veritabanında tutup tutarı shipment bazında sorgulamak gerekiyor. Kısmi teslim durumları o zaman doğru yansır."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4452,
+    "title": "Pickup order gönderilerine hatalı TOUR eventi eklenmektedir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-09-09",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Nesy mobilde bazı pickuplara, TOUR eventi eklendiği görülüyor. Pickuplara TOUR eventi yerine PTOU eventi eklenmesi. Create pickup sonrası oluşan eventler kontrol edilmeli [NESY Mobile set TOUR on pick up orders]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1442",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1442"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1442",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4452",
+    "screen": "Pick Up",
+    "group": "State & Race",
+    "original_title": "HR - BUG: Nesy Mobilde pickup orderlara TOUR eventi ekleniyor / UAT: 1442",
+    "analysis": {
+      "report": "State / Race",
+      "location": "PickupFragment event üretimi — pickup'lara TOUR yerine PTOU eventi atanmalı.",
+      "rootCause": "ES7 + event mantığı. Create pickup sonrası event tipi yanlış (TOUR) üretiliyor; event üretimi tek UseCase'te değil, state temizliği eksik.",
+      "pastAttempts": "Event tipi haritalama düzeltildi; merkezi UseCase olmadan benzer akışta risk sürüyor.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; event üretimi CompletePickupUseCase gibi tek yere alınmadıkça yanlış event tipi tekrar üretilebilir.",
+      "fix": "CompletePickupUseCase + outbox.enqueue(PTOU) tek yer.",
+      "edgeCases": [
+        "ES7"
+      ]
+    }
+  },
+  {
+    "id": 4446,
+    "title": "Kurye ilgili stop için time frame seçebilmeli ve seçim bildirimde yer almalıdır.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-09",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Delivery",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile",
+      "Delivery"
+    ],
+    "summary": "Şu anda time frameler otomatik olarak set ediliyor. Hesaplanan time frame seçili olarak gelebilir fakat yine de kuryenin manuel seçim yapma imkanı olması bekleniyor. RS'teki örnek akış (her shipmentın ilk parcelinde time frame sorulması) örnek olarak eklenmiş, müşteriden gelecek dönüşe göre HR prod'a alınabilir. [Nesy Mobile - Time frame]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "83",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/83"
+      }
+    ],
+    "customer_ticket": "UAT-HR#83",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4446",
+    "screen": "Delivery",
+    "group": "Bildirim",
+    "original_title": "HR - Nesy Mobile - Kuryenin ilgili stop için time frame seçebilmesi / UAT: 83",
+    "analysis": {
+      "report": "Bildirim",
+      "location": "DeliveryFragment time frame seçimi — kurye manuel seçim + bildirimde yer alması.",
+      "rootCause": "Enhancement; otomatik time frame'in yanı sıra manuel seçim akışı yok.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement; tasarım netleştiğinde stabil. RS akışı referans alınabilir.",
+      "fix": "Time frame seçim UI + içerik UseCase entegrasyonu.",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 4426,
+    "title": "Geçerli consignee GSM numarası varsa mobil ve E-Branch üzerinden D4Me rezervasyonu yapılabilmelidir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-09-08",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Ebranch",
+      "Epic: D4ME",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "Ebranch",
+      "D4ME"
+    ],
+    "summary": "Mobilden ya da Ebranch'ten D4me rezervasyonu yapılırken, Consignee GSM kontrolü olmalıdır : - Eğer Consignee. GSM alanındaki değer, Croatian mobile phone number değil ise ya da valid bir mobile phone number değil ise --> Mobilden ya da ebranch'ten d4Me rezervasyonuna izin verilmemelidir, aşağıdaki uygun hata mesajı ebranch'te/mobilde gösterilmelidi [Parcel locker shipments with wrong number]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2249",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2249"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2249",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4426",
+    "screen": "D4Me / Locker",
+    "group": "D4Me & Locker",
+    "original_title": "HR - Mobil & Ebranch - Consignee GSM alanı valid bir değer ise D4me Rezervasyonu yapılabilmeli / UAT: 2249",
+    "analysis": {
+      "report": "D4Me & Locker",
+      "location": "DeliveryFragment (4074 LOC) + Ebranch D4Me rezervasyon — Consignee GSM validasyonu. God Object içinde dağınık.",
+      "rootCause": "ED8 (K3) — God Object validasyon karmaşıklığı. GSM valid olsa bile rezervasyon engelleniyor; validasyon mantığı 8 dosyada dağınık.",
+      "pastAttempts": "GSM kontrol koşulları eklendi; God Object içinde olduğu için kenar durumlar tutarsız.",
+      "recurrenceRisk": "medium",
+      "verdict": "Açık; ayrık LockerCapacityValidator/GSM validator olmadan GSM rezervasyon engeli tekrar eder.",
+      "fix": "Ayrık validator sınıfı (ADR-08) + Strategy pattern provider.",
+      "edgeCases": [
+        "ED8"
+      ]
+    }
+  },
+  {
+    "id": 4405,
+    "title": "Hub Companion üzerinden DELY eventi gönderilememektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-09-05",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: Hub Companion"
+    ],
+    "topics": [
+      "Mobile",
+      "Hub Companion"
+    ],
+    "summary": "Hubco ile bir return shipmenta dely atılamıyor Hubco ile dely atılabilmesi Bir shipment return edilir [New HC - DELY not sent]",
+    "customer_refs": [
+      {
+        "repo": "HubCompanion-HR",
+        "num": "61",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/HubCompanion-HR/issues/61"
+      }
+    ],
+    "customer_ticket": "HubCompanion-HR#61",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4405",
+    "screen": "Hub Companion",
+    "group": "Tour & Teslimat",
+    "original_title": "New HC - DELY not sent #61",
+    "analysis": {
+      "report": "Offline / Sync",
+      "location": "Hub Companion (HubCompanion-HR) — return shipment'a DELY eventi gönderilemiyor. RequestSenderService.",
+      "rootCause": "E7/E9 — Outbox yok. DELY eventi memory queue'da; return akışında backend'e güvenilir gönderilemiyor.",
+      "pastAttempts": "Gönderim retry; outbox/FIFO olmadan tekrarladı.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; Outbox + SyncWorker olmadan HubCo DELY gönderimi başka koşulda tekrar başarısız olabilir.",
+      "fix": "OutboxEventEntity + SyncWorker (NESY-ARCH-004).",
+      "edgeCases": [
+        "E7",
+        "E9"
+      ]
+    }
+  },
+  {
+    "id": 4344,
+    "title": "Pickup order gönderilerinde fiscal fiş basılamamaktadır.",
+    "type": "Enhancement",
+    "severity": "High",
+    "status": "open",
+    "country": "RS",
+    "date": "2025-09-01",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken",
+      "enhancement"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Gray/Red Label shipmentlarda shipment scan edildiğinde CPP amountın toplanması. CPP amount Calculator screen'de shipment ve tahmini ağırlık aralığı seçildikten sonra hesaplanacak. Ağırlık rangeleri: [Fiscalisation for pickups (CPP)]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "70",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/70"
+      }
+    ],
+    "customer_ticket": "UAT-RS#70",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4344",
+    "screen": "Pick Up",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Pickup Fiscalization - 70",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Sırbistan'da Gray/Red Label gönderilerinde, tarama sırasında CPP tutarının toplanması ve pickup için fiscal kesimi isteniyor — açık bir özellik talebi."
+        },
+        {
+          "k": "cause",
+          "text": "Fiscal mantığı delivery akışına göre kurulu; pickup (CPP) tarafı da aynı sıralama eksikliğini paylaşıyor. Doğru sıra ve atomiklik olmadan pickup'a eklenmesi, delivery'deki sorunları pickup'ta birebir yaratır."
+        },
+        {
+          "k": "fix",
+          "text": "Pickup fiscalization için birden çok parça halinde geliştirme yapıldı: Eyl 2025 `graylabel-fiscal` (GrayLabelSignatureFragment'a 107 satır), 13 Eki `feat/iss-4653` ile GrayLabelCalculatorFragment'a CPP hesabı, 28 Ara 2025 `rs-pickup-cpp-issues` ile pickup CPP fiscal düzeltmeleri (Shipment ve AppDatabase dahil). Talep büyük ölçüde karşılandı ama delivery fiscal'iyle aynı altyapıyı paylaştığı için aynı kırılganlıkları taşıyor."
+        },
+        {
+          "k": "state",
+          "text": "Pickup CPP fiscalization büyük ölçüde geliştirildi ama ticket hâlâ açık. Gray/red label akışı çalışıyor olsa da delivery fiscal'iyle aynı kırılgan altyapıyı paylaşıyor; tam oturmadığı için güven düşük.",
+          "confidence": 50,
+          "screenCase": "Pickup — gray/red label CPP tahsilatı ve fiscal",
+          "detectability": {
+            "level": "medium",
+            "note": "Eksik/yanlış pickup fişi mutabakatta görülür."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Önce ortak fiscal sıralama altyapısı kurulmadan kalıcı oturmaz."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Fiscal sıralamasını her iki akışta da garanti etmek, sonra CPP hesabını uygulamada entegre etmek gerekiyor."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4252,
+    "title": "Shipper adı stop list ekranında görüntülenmemektedir.",
+    "type": "Enhancement",
+    "severity": "Medium",
+    "status": "open",
+    "country": "RS",
+    "date": "2025-08-20",
+    "labels": [
+      "enhancement"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "Stoplistte dely shipmentına ait kart üzerine \"Shipper Name\" eklenmesi Dely taskı yaratılır Task kuryenin zimmetine alınır [NESY RS 24-25.07 Workshop]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "154",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/154"
+      }
+    ],
+    "customer_ticket": "UAT-RS#154",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4252",
+    "screen": "Stop List",
+    "group": "Barcode & Scan",
+    "original_title": "RS | Shipper İsminin Stoplist Ekranında Görünmesi",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "StopListFragment kart render — shipper name alanı stop chunk JSON'dan okunuyor.",
+      "rootCause": "Enhancement; ancak shipper bilgisi normalize tabloda olmadığı için JSON parse gerektiriyor. Doğrudan bir hata değil, veri yapısı eksikliği.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Enhancement niteliğinde; normalize shipment tablosu eklendiğinde alan doğrudan render edilebilir, tekrar riski düşük.",
+      "fix": "shipment.sender kolonu (NESY-ARCH-001) — JSON parse olmadan kart üzerinde gösterim.",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 3886,
+    "title": "Aynı pickup kaydı mükerrer oluşturulabilmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-06-26",
+    "labels": [
+      "Team : Brew"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "Kuryenin üzerine aynı pickup taskı 1'den fazla defa geliyor. [VVARJACIC Log.txt]( Sorun pickup assign edilirken save tuşuna tekrar tekrar basılabiliyor olması olabilir [Nesy Mobile - duplicated pickups]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2118",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2118"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2118",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/3886",
+    "screen": "Pick Up",
+    "group": "Barcode & Scan",
+    "original_title": "Nesy Mobile - duplicated pickups #2118",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "Pickup assign akışı — save tuşu debounce yok + dedup SharedPreferences + memory queue (RequestSenderService).",
+      "rootCause": "K4 + Offline E10. Aynı pickup taskı 1'den fazla geliyor: save tuşuna tekrar basılabiliyor (UI debounce yok) ve idempotency key olmadığı için aynı event mükerrer gönderiliyor.",
+      "pastAttempts": "UI tarafında çift tıklama önleme tartışıldı; idempotency olmadan duplicate engellenemedi.",
+      "recurrenceRisk": "high",
+      "verdict": "Müşteri kapalı ama idempotency key yok — mükerrer pickup farklı ağ/timing koşullarında tekrar üretilebilir.",
+      "fix": "UUID idempotency_key per event (NESY-ARCH-004) + UI debounce + coordinator dedup.",
+      "edgeCases": [
+        "E10",
+        "E33"
+      ]
+    }
+  },
+  {
+    "id": 3420,
+    "title": "Assign tab ekranında görev listesi doğru yüklenmemektedir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-03-25",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Bağlantısı verilen issue’daki shipment örneklerine bakıldığında, tüm shipmentlar için ortak olarak Latitude ve Longitude değerlerinin 0.0 geldiği görülmektedir. Aşağıdaki ekran görüntüsünde de bu durum görünmektedir: Bu değerlerin sistemde default olarak mı atanıyor yoksa ilgili shipment’lar için konum bilgisi hiç mi alınamıyor konusu net değil. An [Nesy Mobile - stop not moving to finished]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1959",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1959"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1959",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/3420",
+    "screen": "Shipment Tracking",
+    "group": "State & Race",
+    "original_title": "Assign Tab Sorunu #1959",
+    "analysis": {
+      "report": "State / Race",
+      "location": "Assign tab / shipment tracking — SharedViewModel._currentTask temizlenmiyor; lat/lng 0.0.",
+      "rootCause": "ES7 — Stale currentTask. Tamamlanan task bellekte temizlenmediği için assign tab'da kalıyor; ayrıca koordinatlar 0.0 (konum + state karışık).",
+      "pastAttempts": "Manuel state temizleme denendi; God Object'te tek paylaşılan state olduğu için eksik/unutulmuş temizleme tekrarladı.",
+      "recurrenceRisk": "high",
+      "verdict": "Kapalı görünüyor; _currentTask Room DAO sorgusuna taşınmadıkça stale task tekrar görülür.",
+      "fix": "UseCase'te currentTask=null + Room DAO sorgusu (NESY-ARCH-003), bellek state kaldırılır.",
+      "edgeCases": [
+        "ES7"
+      ]
+    }
+  },
+  {
+    "id": 3393,
+    "title": "Teslim edilmeme nedeni kurye mobil uygulamasından seçilememektedir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-03-21",
+    "labels": [
+      "Team: Quantum"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "1. **Teslim Edilemeyen (Undelivery) Nedenlerinin Güncellenmesi** - Kurye mobil uygulamasında teslim edilemeyen nedenleri güncellenmeli. - RS Tarafı güncellenecek neden listesini sağlayacak. [Undelivery Reason Set - Courier Mobile App]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "115",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/115"
+      }
+    ],
+    "customer_ticket": "UAT-RS#115",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/3393",
+    "screen": "Delivery Failed",
+    "group": "Tour & Teslimat",
+    "original_title": "Teslim Edilmeme Nedeni - Kurye Mobil App / UAT: 115",
+    "analysis": {
+      "report": "Tour & Teslimat",
+      "location": "Delivery Failed — undelivery reason set kurye mobilden seçilemiyor. RS reason listesi.",
+      "rootCause": "Config + reason kaynağı. Undelivery reason listesi normalize/config olarak yönetilmediği için seçim güncellenemiyor.",
+      "pastAttempts": "Reason listesi güncellendi (kapatıldı); merkezi config olmadan ülke bazlı güncelleme zor.",
+      "recurrenceRisk": "low",
+      "verdict": "Kapalı; reason set app_config/Room'a alınırsa stabil. Aksi halde ülke bazlı güncellemeler tekrar sorun olur.",
+      "fix": "Reason set → app_config tablosu (NESY-ARCH-003).",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 3349,
+    "title": "Parsel numarası girişinde numerik klavye açılmamaktadır.",
+    "type": "Feature",
+    "severity": "Medium",
+    "status": "open",
+    "country": "HR",
+    "date": "2025-03-19",
+    "labels": [
+      "New Feature",
+      "Epic: Delivery"
+    ],
+    "topics": [
+      "Delivery"
+    ],
+    "summary": "legacy giriş ekranında sadece nümerik karakterlerin kabul edilmesi fakat alfanümerik karakterlerin kabul edilmemesi gerekmektedir. [Nesy Mobile - numeric keyboard for parcel number]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1930",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1930"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1930",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/3349",
+    "screen": "Task List",
+    "group": "UI & Crash",
+    "original_title": "HR- Nesy Mobile - numeric keyboard for parcel number / UAT : 1930",
+    "analysis": {
+      "report": "UI & Crash",
+      "location": "Task List / parcel number giriş ekranı — legacy giriş, numerik klavye açılmıyor.",
+      "rootCause": "UI input tipi. Legacy ekranda input type alfanumerik; sadece numerik kabul/numerik klavye ayarı yapılmamış.",
+      "pastAttempts": "—",
+      "recurrenceRisk": "low",
+      "verdict": "Açık feature; izole UI düzeltmesi, mimariyle ilişkisi düşük. Compose geçişinde kalıcı stabil olur.",
+      "fix": "Input type=number + validation (Compose ekranında kalıcı).",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 3249,
+    "title": "Sözleşmeli müşteriden ExWorks ödemesi hatalı şekilde talep edilebilmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-03-13",
+    "labels": [
+      "Epic: Data Management"
+    ],
+    "topics": [
+      "Data Management"
+    ],
+    "summary": "Analizi yapılacaktır. - [ ] Baslik / UAT: X - [ ] Baslik / UAT: X [Nesy Mobile - ExWorks payment requested from contracted customer]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1593",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1593"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1593",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/3249",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "HR - Nesy Mobile - ExWorks payment requested from contracted customer / UAT : 1593",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Hırvatistan'da sözleşmeli (faturası merkezden kesilen) müşteriden ExWorks ödemesi isteniyor. Sözleşmeli müşteriden kurye para istememesi gerekir."
+        },
+        {
+          "k": "cause",
+          "text": "Müşteri tipi (sözleşmeli mi, peşin mi) tek kaynaktan okunmuyor; bellek/JSON karışımından verildiği için yanlış ödeme talebi çıkıyor."
+        },
+        {
+          "k": "fix",
+          "text": "Sözleşmeli müşteri/ExWorks ayrımı için 'Switch To EXW' geliştirmeleri geçildi (`feat/iss-4653`, 13 Eki 2025) ve 27 Eki'de 'switch to exworks visibility changed' ile görünürlük kararı düzeltildi. Müşteri tipine göre ödeme talebini gizleyen/gösteren kontroller eklendi."
+        },
+        {
+          "k": "state",
+          "text": "Müşteri tipine göre Exworks görünürlüğü düzeltildi; sözleşmeli müşteride çoğu durumda doğru çalışıyor. Ancak müşteri tipi tek kaynaktan okunmadığı için veri tutarsızlığında yanlış ödeme talebi tekrar çıkabilir.",
+          "confidence": 68,
+          "screenCase": "Delivery — sözleşmeli müşteri tahsilat ekranı",
+          "detectability": {
+            "level": "medium",
+            "note": "Yanlış talep genelde müşteri itirazıyla anlaşılır."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "Müşteri tipini normalize edip kararı tek iş kuralına almak uygulanabilir."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Müşteri tipini normalize kaynaktan okumak ve ödeme kararını tek iş mantığında vermek gerekiyor."
+        }
+      ]
+    }
+  },
+  {
+    "id": 2970,
+    "title": "Gönderi detay ekranında fiscal ekleme ve iptal işlemleri yapılamamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-02-19",
+    "labels": [
+      "Epic: Mobile",
+      "Team: Quantum",
+      "Fiscalization"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "RS Mobil ortamda tespit edilmiştir. Mobil uygulamanın kendi içinde fiscalization için reprint ve cancel yapılmaktadır. [Adding fiscal reprint and cancel in shipment detail on Mobile]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "51",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/51"
+      }
+    ],
+    "customer_ticket": "UAT-RS#51",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/2970",
+    "screen": "Shipment Detail",
+    "group": "Finans & Ödeme",
+    "original_title": "Mobil shipment detail- fiscal eklemeleri / UAT: 51",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "RS mobil'de, gönderi detay ekranından fiscal reprint (yeniden bas) ve cancel (iptal) işlemleri yapılması isteniyor."
+        },
+        {
+          "k": "cause",
+          "text": "Reprint/cancel işlemleri tekrar etme koruması olmadan kuruluyor. Ekran döndüğünde aynı işlem iki kez tetiklenebiliyor."
+        },
+        {
+          "k": "fix",
+          "text": "Fiscal reprint/cancel için 28 Eki 2025'te `rs_fiscal_cancel_button` ile iptal butonu davranışı düzeltildi (GrayLabelSignatureFragment), 12 Ara 2025'te 'multi fiscal cancel update' ile FiscalInvoiceDataDao ve DeliveryFragment'a çoklu fiscal iptali eklendi (613e717a, RefundFiscalizationReq dahil). Özellik çalışır hale getirildi ama tekrar-tetik koruması olmadan."
+        },
+        {
+          "k": "state",
+          "text": "Fiscal reprint/cancel özelliği çalışır durumda; normal kullanımda sorun yok. Ama tekrar-tetik koruması olmadığı için ekran döndüğünde ya da observer yeniden bağlandığında mükerrer iptal/fiş riski sürüyor.",
+          "confidence": 70,
+          "screenCase": "Shipment detail — fiscal yeniden bas / iptal",
+          "detectability": {
+            "level": "medium",
+            "note": "Mükerrer fiş ancak kayıt incelenince görülür."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "DB kilidi / idempotency eklemek görece düşük maliyetli."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Reprint/cancel işlemlerini veritabanı kilidi ile korumak gerekiyor. Aynı işlem iki kez tetiklense bile sonuçta tek fiş etkisi oluşur."
+        }
+      ]
+    }
+  },
+  {
+    "id": 1878,
+    "title": "Görev listesinin üst kısmına arama çubuğu eklenmelidir.",
+    "type": "Feature",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "General",
+    "date": "2024-08-16",
+    "labels": [],
+    "topics": [
+      "General"
+    ],
+    "summary": "Search Bar boyutunda düzenleme yapılması. Search boyutunda revize yapıldı. Genel ekran üzerinde tasarım çalışması yapıldı. (Mevcut ekran tam olarak bulunmadığı için ve göze çarpan ufak detayların düzeltilmesi) [Nesy Mobile - search bar at the top]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "1486",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/1486"
+      }
+    ],
+    "customer_ticket": "UAT-HR#1486",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/1878",
+    "screen": "Task List",
+    "group": "UI & Crash",
+    "original_title": "[Request] Nesy Mobile - search bar at the top / UAT: #1486  ",
+    "analysis": {
+      "report": "UI & Crash",
+      "location": "Task List üst kısmı — arama çubuğu eklenmesi/boyutlandırma. UI tasarım.",
+      "rootCause": "UI feature; arama çubuğu yok/boyut sorunu. Mimari kök neden değil.",
+      "pastAttempts": "Search boyutu revize edildi (kapatıldı).",
+      "recurrenceRisk": "low",
+      "verdict": "Kapalı; izole UI işi, tekrar riski düşük.",
+      "fix": "Compose search bar bileşeni.",
+      "edgeCases": []
+    }
+  },
+  {
+    "id": 6099,
+    "title": "Delivery ve RDOC gönderileri ayrı stop kayıtlarında gösterilmelidir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "CEE",
+    "date": "2026-04-10",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Return documentlı shipment 24.03 tarihinde tura çıkarılıyor ve CDBD eventi atılıyor Sonrasında delivery failed (FDLY) yapılıyor ve ileri bir tarih seçiliyor 26.03 tarihinde tekrar zimmete alındığında return document ve dely taskı ayrı stoplara gidiyor [Nesy Mobile - delivery and RDOC on different stop]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "176",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/176"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#176",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/6099",
+    "screen": "Delivery Failed",
+    "group": "Tour & Teslimat",
+    "original_title": "CEE | Delivery ve Rdoc Ayrı Stoplarda #176",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "Delivery Failed akışı — return document + dely taskı ayrı stoplara gidiyor (FDLY sonrası yeniden zimmet).",
+      "rootCause": "E32 — Kopya eşleştirme + stop gruplama. RDOC ve dely taskları aynı stopta gruplanması gerekirken eşleştirme tutarsızlığı ayrı stoplara bölüyor.",
+      "pastAttempts": "Stop gruplama düzeltmesi (kapatıldı); merkezi normalize olmadan benzer FDLY senaryosunda risk.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; BarcodeNormalizer + stop gruplama tek yer olmadan tekrar açılabilir.",
+      "fix": "BarcodeNormalizer + stop normalize gruplama (NESY-ARCH-001/003).",
+      "edgeCases": [
+        "E32"
+      ]
+    }
+  },
+  {
+    "id": 6157,
+    "title": "Kurye gönderileri zimmete alırken hata almaktadır.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "CEE",
+    "date": "2026-04-16",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Shipmentlar zimmete alınmak için scan edildiğinde \"stop not found\" hatası alınıyor. (Channel: Eurodis) (Channel: I-net) [Nesy Mobile. Stop not found or could not be created.]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "195",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/195"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#195",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/6157",
+    "screen": "Stop List",
+    "group": "Barcode & Scan",
+    "original_title": "CEE | Kurye Zimmete Alırken Hata Alıyor #195",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "MainActivity scan dispatch + ScheduleIngestor (stop oluşturma). 'Stop not found or could not be created'.",
+      "rootCause": "K2 + SSoT. Zimmete alma sırasında scan, stop bellekte/JSON'da bulunamıyor — 3 doğruluk kaynağı arasında desync; stop chunk yazımı atomik değil.",
+      "pastAttempts": "Stop oluşturma retry'leri eklendi; desync kök nedeni (SSoT yokluğu) sürdüğü için belirli kanallarda (Eurodis, I-net) tekrar etti.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı görünüyor; ancak stop verisi atomik bir SSoT'ye oturmadığı için yeni kanal/akış kombinasyonlarında 'stop not found' tekrar açılabilir.",
+      "fix": "ScheduleIngestor atomik replace (NESY-ARCH-002) + ScanCoordinator.",
+      "edgeCases": [
+        "E31",
+        "ES1"
+      ]
+    }
+  },
+  {
+    "id": 5278,
+    "title": "Rota değiştikten sonra önceki rota seçim listesinde görünmemelidir.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "open",
+    "country": "General",
+    "date": "2025-12-22",
+    "labels": [
+      "Bug"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "Kurye rota değişikliği yaptıktan sonra bir önceki seçtiği rota hala kuryenin üzerinde görünmektedir. Bu sebeple rota bir başka kurye tarafından seçilememektedir. MRUSIJAN, Pazin hub'ınde önce 6. rotayı seçiyor, daha sonra 22. rotayı seçiyor ancak 6. rota boşa çıkmıyor. (örnek hotline'dan geldi ve workaround bir çözüm uygulandı) Problemin kök nedeni [Nesy Mobile - route not available after changing...",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2716",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2716"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2716",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5278",
+    "screen": "Route Selection",
+    "group": "Tour & Teslimat",
+    "original_title": "Rota Değişikliğinden Sonra Önceki Rotanın Seçilebilir Olmaması#2716",
+    "analysis": {
+      "report": "State / Race",
+      "location": "Route Selection — rota değişince eski rota kuryede kalıyor; SP'de selectedTourId.",
+      "rootCause": "ES1/ES2 — SSoT yok. Rota değişikliği sonrası eski chunk/SP değeri kalıyor; başka kurye rotayı seçemiyor. SP ↔ DB mismatch.",
+      "pastAttempts": "Workaround (hotline) uygulandı; kök neden (3 doğruluk kaynağı) sürüyor.",
+      "recurrenceRisk": "high",
+      "verdict": "AÇIK olmalı (Gitea'da hala açık). SP iş verisi kaldırılıp AppConfig/DataStore atomik olana dek rota takılması tekrar eder.",
+      "fix": "selectedTourId → app_config/DataStore atomik + ScheduleIngestor replace (NESY-ARCH-002/003).",
+      "edgeCases": [
+        "ES1",
+        "ES2"
+      ]
+    }
+  },
+  {
+    "id": 6087,
+    "title": "RDOC gönderilerde parcel terminal teslimatı engellenmelidir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2026-04-10",
+    "labels": [
+      "Mobile"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "RODC içeren shipmentlar PS'PT'ye teslim edilememelidir. Mevcut durumda mobilde ve Ebranch'te yapı bu şekilde kurgulanmıştır. Şu anda RDOC servisi olan shipment’lar PT’ye teslim edilebiliyor. RDOC varsa, D4ME butonu görünür olmamalıdır. - RDOC’lu shipment PT teslimatı deneme senaryosu, teslimat seçeneklerinde PT option olarak gösterilmemelidir. [Nesy Mobile - RDOC delivery to D4M]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "168",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/168"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#168",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/6087",
+    "screen": "Delivery Failed",
+    "group": "D4Me & Locker",
+    "original_title": "RDOC olan Gönderiler için PT Teslimatının Engellenmesi #168",
+    "analysis": {
+      "report": "D4Me & Locker",
+      "location": "Delivery Failed / D4Me — RDOC içeren shipment PT'ye teslim edilebiliyor; D4ME butonu gizlenmeli.",
+      "rootCause": "K3 — God Object UI dallanması. RDOC kontrolü if/else zincirinde dağınık; D4ME option yanlış gösteriliyor.",
+      "pastAttempts": "RDOC kontrolü eklendi (kapatıldı); merkezi policy olmadan benzer servis kombinasyonunda risk.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; LockerProviderPolicy + ayrık UI mantığı olmadan RDOC/PT kuralları tekrar bozulabilir.",
+      "fix": "LockerProviderPolicy (Strategy) + UI state machine (ADR-08).",
+      "edgeCases": [
+        "ED6"
+      ]
+    }
+  },
+  {
+    "id": 5944,
+    "title": "İleri tarihli boş schedule hatası nedeniyle D4Me akışı başarısız olmaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2026-03-24",
+    "labels": [
+      "Team:telefunken"
+    ],
+    "topics": [
+      "General"
+    ],
+    "summary": "HR Prod : 1910051452260318 Mobilden D4Me dolap rezervasyonu sırasında hata alındığı iletildi. (Kurye hesabıyla login olup denediğimde aynı hatayı ben de aldım.) [Nesy Mobile - reservation wasn't sent to D4M]",
+    "customer_refs": [
+      {
+        "repo": "NESY_CEE",
+        "num": "123",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/NESY_CEE/issues/123"
+      }
+    ],
+    "customer_ticket": "NESY_CEE#123",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5944",
+    "screen": "D4Me / Locker",
+    "group": "Finans & Ödeme",
+    "original_title": "HR - İleri tarihli oluşan boş schedule hatası - Fix / UAT: 123",
+    "analysis": {
+      "report": "Finans & Ödeme (D4Me)",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Hırvatistan prod'da mobilden D4Me dolap rezervasyonu yapılırken hata alınıyor; rezervasyon D4M'e gitmiyor. Kök tetikleyici ileri tarihli oluşan boş schedule."
+        },
+        {
+          "k": "cause",
+          "text": "Rezervasyon verisi sorgulanamayan yapıda depolanıyor ve gönderim bellek kuyruğuna bağlı. İleri tarihli sorun akışı bozunca rezervasyon güvenilir gönderilemiyor."
+        },
+        {
+          "k": "fix",
+          "text": "D4Me rezervasyon ve boş schedule sorunu için arka arkaya yamalar geçildi: 19 Mar 2026 'login error & duplicate create empty schedule issue fixes' (8f61aa4f), 3 Nis 2026 'd4me and los reservation fix' (04ddb385), 21 Haz 2026 'schedule errors fixed' (e9e30328). Boş schedule üreten hata kapatıldı, ama rezervasyon verisinin saklanma ve gönderim yapısı değişmedi — bu yüzden müdahaleler aylara yayıldı."
+        },
+        {
+          "k": "state",
+          "text": "Boş schedule üreten hata kapatıldı ve rezervasyon çoğu durumda gidiyor. Ama rezervasyon verisinin saklanma ve gönderim yapısı değişmediği için farklı tarih/schedule kombinasyonunda yeniden takılabilir; müdahalelerin aylara yayılması da bunu gösteriyor.",
+          "confidence": 63,
+          "screenCase": "D4Me — dolap rezervasyonu (ileri tarihli / boş schedule)",
+          "detectability": {
+            "level": "medium",
+            "note": "Rezervasyonun gitmemesi kurye denemesinde belli olur."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "Rezervasyonu ilişkisel tabloya alıp kuyrukla göndermek orta zorlukta."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Rezervasyon verisini veritabanında kalıcı tutmak ve gönderiyi telefon kapansa da devam eden bir kuyruk sistemiyle garantilemek gerekiyor."
+        }
+      ]
+    }
+  },
+  {
+    "id": 4903,
+    "title": "Teslim edilmiş gönderiler tracking ekranında \"Not Delivered\" olarak görünmektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-10-30",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Driver: Marko Bekcic Shipment historyde dely görünüyor Task trackingde Not Delivered [Delivered parcel not showing up]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "313",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/313"
+      }
+    ],
+    "customer_ticket": "UAT-RS#313",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4903",
+    "screen": "Shipment Tracking",
+    "group": "Barcode & Scan",
+    "original_title": "RS | Dely Shipment Task Trackingde Not Delivered Görünüyor #313",
+    "analysis": {
+      "report": "Barkod & Scan",
+      "location": "Task tracking ekranı — shipment status okuma; history DELY gösterirken tracking 'Not Delivered'.",
+      "rootCause": "3 Doğruluk Kaynağı desync. Shipment history (bir kaynak) DELY, task tracking (başka kaynak) eski durumu gösteriyor — Room/bellek/SP arasında senkron garantisi yok.",
+      "pastAttempts": "Manuel refresh/yeniden çekme uygulandı; reactive tek kaynak olmadığı için tutarsızlık tekrar etti.",
+      "recurrenceRisk": "medium",
+      "verdict": "Müşteri kapalı; fakat ekranlar farklı kaynaklardan okudukça aynı 'görünüm tutarsızlığı' başka durumlarda yeniden çıkar.",
+      "fix": "Room SSoT + DAO Flow<List<T>> — UI tek kaynaktan reaktif güncellenir (NESY-ARCH-003).",
+      "edgeCases": [
+        "ES1",
+        "ES7"
+      ]
+    }
+  },
+  {
+    "id": 5013,
+    "title": "DELY iptal edildiğinde fiscal kuralları doğru uygulanmamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "open",
+    "country": "RS",
+    "date": "2025-11-12",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Delivery yapılan ve fiscali basılan bir shipment 2 dakika sona ermeden DELY işlemi geri alınır ve delivery failed yapılırsa cancel fiscalinin otomatik basılması ve shipmenta SFSC  eventinin atılması gerekiyor. Test Senaryoları: EXW shipment yaratılır [Fiscal Rules - DELY + Cancel]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "114",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/114"
+      }
+    ],
+    "customer_ticket": "UAT-RS#114",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5013",
+    "screen": "Delivery Failed",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Fiscal Rules - DELY + Cancel #114",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Sırbistan'da şu kural: teslim + fiscal yapılmış gönderiye, 2 dakika içinde geri dönülüp delivery failed yapılırsa; otomatik cancel fiscal basılmalı ve SFSC eventi atılmalı."
+        },
+        {
+          "k": "cause",
+          "text": "Kural ödeme/fiscal sırasına ve olayların garantili atılmasına dayanıyor. FIFO kuyruk olmadan sıra bozulması ve iptal akışında cancel fiscal atlanır/mükerrer kesilir."
+        },
+        {
+          "k": "fix",
+          "text": "23 Eyl 2025'te `rs_2minute_delay_fix` ile DeliveryFragment'taki '2 dakikalık gecikme' kuralı düzeltildi (f5c6b53b) ve item_tasks.xml güncellendi; iptal/cancel fiscal tarafı da 'multi fiscal cancel update' içinde elden geçti. Kural koda eklendi ama zamanlamaya dayalı kenar durumlara karşı garanti getirilmedi."
+        },
+        {
+          "k": "state",
+          "text": "DELY iptali + otomatik cancel fiscal kuralı eklendi ama ticket açık. Kural 2 dakikalık bir zaman penceresine dayandığı için, zamanlama kenarlarında cancel fiscal atlanabilir veya mükerrer kesilebilir.",
+          "confidence": 58,
+          "screenCase": "Delivery failed — DELY geri alma sonrası cancel fiscal (2 dk penceresi)",
+          "detectability": {
+            "level": "medium",
+            "note": "Eksik/fazla cancel fiscal event geçmişinde görülür."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Zamanlamaya değil, sıralama garantisine dayanan bir akış gerekiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Teslim → tahsilat → fiscal sırasını garantilemek gerekiyor. Böylece iptal akışında cancel fiscal da doğru şekilde yürür."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5033,
+    "title": "Cihazda bitmemiş görev kaydı hatalı şekilde kalmaktadır.",
+    "type": "Bug",
+    "severity": "Medium",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-11-14",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Shipment DELY yapılmasına rağmen assign tab'da kalıyor. [not finished task in device]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "335",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/335"
+      }
+    ],
+    "customer_ticket": "UAT-RS#335",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5033",
+    "screen": "Shipment Tracking",
+    "group": "State & Race",
+    "original_title": "RS | not finished task in device #335",
+    "analysis": {
+      "report": "State / Race",
+      "location": "Shipment tracking — shipment DELY yapılmasına rağmen assign tab'da kalıyor.",
+      "rootCause": "ES7 — Stale currentTask. DELY sonrası state temizliği yapılmadığı için task cihazda 'bitmemiş' kalıyor.",
+      "pastAttempts": "State temizleme yaması (kapatıldı); bellek state kaynaklı tekrar riski sürüyor.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; FK tutarlılık + DAO sorgusu olmadan benzer 'bitmemiş task' tekrar açılabilir.",
+      "fix": "Foreign key zinciri + currentTask=null UseCase (NESY-ARCH-003).",
+      "edgeCases": [
+        "ES7"
+      ]
+    }
+  },
+  {
+    "id": 4545,
+    "title": "Multicolli gönderiler D4Me parcel locker'a bırakılamamalıdır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-09-17",
+    "labels": [],
+    "topics": [
+      "General"
+    ],
+    "summary": "HR - Mobile & Ebranch - Multicolli shipments should not be left to D4me lockers / UAT: 2487 [Parcel lockers - multicolli shipments]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2487",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2487"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2487",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4545",
+    "screen": "D4Me / Locker",
+    "group": "D4Me & Locker",
+    "original_title": "HR - Mobile & Ebranch - Multicolli shipments should not be left to D4me lockers / UAT: 2487",
+    "analysis": {
+      "report": "D4Me & Locker",
+      "location": "D4Me / Locker — multicolli shipment locker'a bırakılmamalı. Validasyon eksik.",
+      "rootCause": "ED2 (K3) — Multicolli boyut validasyonu yok. Çoklu paket dolap boyutunu aşıyor; otomatik kontrol yok.",
+      "pastAttempts": "Manuel kontrol eklendi (kapatıldı); kapsamlı validator olmadan eksik senaryolar açık.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; LockerCapacityValidator olmadan multicolli kenar senaryoları tekrar açılabilir.",
+      "fix": "LockerCapacityValidator (ADR-08) — otomatik boyut kontrolü.",
+      "edgeCases": [
+        "ED2"
+      ]
+    }
+  },
+  {
+    "id": 5058,
+    "title": "LCR, DEPT, EXPI ve COPT sonrası TOUR alınırken delivery hatası oluşmaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "open",
+    "country": "RS",
+    "date": "2025-11-18",
+    "labels": [
+      "Epic: Mobile",
+      "Epic: D4ME",
+      "Epic: Delivery",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile",
+      "D4ME",
+      "Delivery"
+    ],
+    "summary": "6880015670913512 6880015670913611 6880015670913413 [D4Me - shipments on TOUR after expiry on locker]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "345",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/345"
+      }
+    ],
+    "customer_ticket": "UAT-RS#345",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5058",
+    "screen": "Delivery Failed",
+    "group": "D4Me & Locker",
+    "original_title": "RS - LCR+DEPT+EXPI+COPT sonrası TOUR'a alındığında dely&delyFailed hatası / UAT: 345",
+    "analysis": {
+      "report": "D4Me & Locker",
+      "location": "Delivery Failed — LCR+DEPT+EXPI+COPT sonrası TOUR'a alındığında dely/delyFailed hatası. EventProcessor sıralama.",
+      "rootCause": "ED3 (K2) — LCR+DDSP event sıralama race. Event'ler paralel geldiğinde sıra bozuluyor (DDSP→LCR), rezervasyon/teslim durumu hatalı.",
+      "pastAttempts": "Event akış kontrolü (kapatıldı); Outbox FIFO olmadan paralel event sırası garanti değil.",
+      "recurrenceRisk": "high",
+      "verdict": "AÇIK olmalı (Gitea'da hala açık). Outbox FIFO olmadan locker event sıralaması tekrar bozulur.",
+      "fix": "Outbox FIFO event zinciri (ADR-07) — LCR→DDSP sıra garantisi.",
+      "edgeCases": [
+        "ED3"
+      ]
+    }
+  },
+  {
+    "id": 5539,
+    "title": "NFC kredi kartı ödemesi sonrası CODC ile birlikte otomatik CASH eventi atılmalıdır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2026-01-27",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Sahadan gelen bir bulgu : SI Prod - Örnek : 7050015101148319 - Mobilden NFC ile credit card ödemesi sonrası CODC ile birlikte otomatik CASH atılmıyor görünüyor, atılmalı. [Missing CASH event RaiPay]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2770",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2770"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2770",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5539",
+    "screen": "End of Day",
+    "group": "Finans & Ödeme",
+    "original_title": "Mobilden NFC CreditCard ödeme sonrası CODC ile birlikte auto CASH atılmalı / UAT : 2770",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Slovenya'da mobilden NFC ile kredi kartı ödemesi yapılıyor, CODC kaydı oluşuyor ama otomatik atılması gereken CASH eventi atılmıyor."
+        },
+        {
+          "k": "cause",
+          "text": "CASH ile CODC'nin eşleşmesi bellekteki ödeme durumuna bağlı. Bu durum kalıcı değil, restart'ta sıfırlanıyor. Sıralama da garanti değil — ikili olaydan biri düşmeden kalabiliyor."
+        },
+        {
+          "k": "fix",
+          "text": "Bu en yeni müdahalelerden: 30 May 2026'da 'missing cash desk event issue' üzerinde çalışıldı (f6713992) — DeliveryFragment'a 180 satır eklendi ve RequestSenderService'e CASH eventini tetikleyen 38 satırlık ek kod konuldu. Otomatik CASH atımı koda gömüldü; ama hâlâ aynı eski gönderim servisi üzerinden."
+        },
+        {
+          "k": "state",
+          "text": "Otomatik CASH atımı koda gömüldü ve son düzenlemeyle çoğu durumda çalışıyor. Ancak CASH–CODC eşleşmesi hâlâ uçucu bellek state'ine ve eski gönderim servisine bağlı; restart veya kötü zamanlama kenarlarında eksik CASH event'i yine olabilir.",
+          "confidence": 58,
+          "screenCase": "Gün sonu — NFC kredi kartı sonrası CODC + otomatik CASH",
+          "detectability": {
+            "level": "medium",
+            "note": "Eksik CASH event'i kasa mutabakatında fark edilir."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Tahsilatın kalıcılaşması ve event'lerin sıralı/garantili gitmesi gerekiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Tahsilat kaydını veritabanına kalıcılaştırmak ve CODC → CASH ikilisini sıralı/garantili gönderen bir sistem kurulması gerekiyor. Restart sonrası bile durum korunur."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5312,
+    "title": "Pickup order gönderilerinde çoklu fiscal fiş basılamamaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-12-25",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken",
+      "Sprint1-Telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Sırbistanda çoklu pick yapılan pickup orderlarda fiscal basılırken fiscalin içinde sadece 1. shipmentın numarası yazıyor. Birlikte teslim edilen bütün shipmentlarda aynı fiscal içinde bütün shipmentidlerin yazması gerekiyor 1)PAC taskı yaratılır Birden fazla shipment taratılarak multi pick yapılır [Fiscal is no created for all shipments]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "346",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/346"
+      }
+    ],
+    "customer_ticket": "UAT-RS#346",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5312",
+    "screen": "Pick Up",
+    "group": "Finans & Ödeme",
+    "original_title": "RS | Pickup Orderlarda Multi Fiscal Basılmıyor #346",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Çoklu pickup'larda fiscal basılırken yalnızca ilk gönderinin numarası yazılıyor. Birlikte alınan diğerleri fişte görünmüyor."
+        },
+        {
+          "k": "cause",
+          "text": "Fiscal üretimi çoklu gönderimi tek fişte toplamayacak şekilde kurulu. Hangi gönderilerin birleşeceği atomik bir şekilde yönetilmiyor."
+        },
+        {
+          "k": "fix",
+          "text": "31 Ara 2025'te `rs_multi_pickup_fiscal_fix` branch'iyle TaskListFragment'a 400 satırlık bir değişiklik geçildi (6f08e7fa): çoklu pickup'ta her shipment için ayrı fiscal request üretilecek şekilde döngü yeniden yazıldı. Ardından 'multi fiscal event' ve 'pac fiscal' hotfix'leri geldi. Yani tek bir temiz çözüm değil, üst üste binen yamalar."
+        },
+        {
+          "k": "state",
+          "text": "Çoklu pickup'ta artık her shipment için ayrı fiscal request üretiliyor; normal akışta hepsi fişe giriyor. Yine de mantık god object içinde olduğundan farklı multi-pick kombinasyonlarında eksik veya mükerrer fiş tekrar mümkün.",
+          "confidence": 62,
+          "screenCase": "Pickup — çoklu (multi) pick fiscal basımı",
+          "detectability": {
+            "level": "medium",
+            "note": "Fişte eksik shipment ancak fiş incelenince ya da mutabakatta görülür."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Çoklu toplama + tekrar koruması yapısal değişiklik istiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Çoklu gönderimi sıralı/toplu işlemek ve her işlemi tekrar etme koruması ile tutmak gerekiyor."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5257,
+    "title": "Kredi kartı ödeme toplamı \"Collected Cash\" alanına dahil edilmemelidir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "General",
+    "date": "2025-12-18",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Bir schedule'da aşağıdaki ödemelerin olduğunu düşünelim : - Total Expected COD : 20 EUR = - Mobilden nakit tahsil edilen : 6 EUR [Nesy Mobile - calculating CODC in end of the day summary]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2679",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2679"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2679",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5257",
+    "screen": "End of Day",
+    "group": "Finans & Ödeme",
+    "original_title": "Mobile - End of Day Summary - CreditCard ödeme toplamı, \"Collected Cash\" alanına dahil edilmemeli / UAT: 2679",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "medium",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "Gün sonu özetinde kredi kartı ödeme tutarı 'toplanan nakit' alanına dahil ediliyor. Nakit/kart ayrı kalemler olması gerekir."
+        },
+        {
+          "k": "cause",
+          "text": "Ödeme tipleri normalize değil — bellekteki karışık veriden gün sonu hesabı yapılıyor. Nakdi karttan ayıracak net kaynak yok."
+        },
+        {
+          "k": "fix",
+          "text": "Gün sonu özet ekranı için iki ayrı tur yama geçildi: 5 Oca 2026 `hr_endofday_overview_fix` ile StopListFragment'taki toplam COD hesabı yeniden yazıldı (735b5c63, 146 satır), 23 Oca 2026 `cashoverview_fix` ve SI için ayrı `cashoverview_fix_si` ile nakit/kart gösterimi düzeltildi. Aynı ekranın birden çok kez elden geçmesi, hesabın tek bir doğru kaynaktan gelmediğini gösteriyor."
+        },
+        {
+          "k": "state",
+          "text": "Gün sonu özetinde nakit/kart ayrımı düzeltildi ve ekran artık doğru gösteriyor. Ama tutar hâlâ normalize olmayan veriden hesaplandığı için yeni bir ödeme tipi kombinasyonu girdiğinde toplam yine şaşabilir. İyi tarafı: hata doğrudan ekranda göründüğü için anında fark edilir.",
+          "confidence": 78,
+          "screenCase": "Gün sonu özeti — Collected Cash / kart toplamı",
+          "detectability": {
+            "level": "high",
+            "note": "Yanlış toplam doğrudan özet ekranında görünür; tespiti kolay."
+          },
+          "fixability": {
+            "level": "medium",
+            "note": "Ödeme tipini normalize edip mutabakatı tek sorguya indirmek uygulanabilir."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Ödeme tiplerini normalize kaynaktan okumak ve gün sonu tutarını tek bir sorguya indirgemek gerekiyor. Nakit/kart ayrımı kaynakta net olunca özet doğru çıkar."
+        }
+      ]
+    }
+  },
+  {
+    "id": 5339,
+    "title": "DEPS sonrası gönderi TOUR'a alınırken hata oluşmaktadır.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "RS",
+    "date": "2025-12-29",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "RS Prod - Örnekler : 001-52283621  --> Tif ile DEPS var 6880015381500513 --> Nesy Mobil'den DEPS var [TOUR after DEPS]",
+    "customer_refs": [
+      {
+        "repo": "UAT-RS",
+        "num": "408",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-RS/issues/408"
+      }
+    ],
+    "customer_ticket": "UAT-RS#408",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/5339",
+    "screen": "Route Selection",
+    "group": "Tour & Teslimat",
+    "original_title": "RS - DEPS sonrası TOUR'a alırken hata / UAT: 408",
+    "analysis": {
+      "report": "Barkod & Scan + State",
+      "location": "Route Selection — DEPS sonrası TOUR'a alırken hata. Scan dispatch + event sıralama.",
+      "rootCause": "E31 + event sıralama. DEPS sonrası TOUR scan'i, dispatch belirsizliği ve event sırası garantisizliğiyle hata veriyor.",
+      "pastAttempts": "DEPS→TOUR akış kontrolü (kapatıldı); ScanCoordinator/FIFO olmadan risk sürüyor.",
+      "recurrenceRisk": "medium",
+      "verdict": "Kapalı; ScanCoordinator + Outbox FIFO olmadan DEPS sonrası TOUR hatası tekrar açılabilir.",
+      "fix": "ScanCoordinator + Outbox FIFO event sıralama.",
+      "edgeCases": [
+        "E31"
+      ]
+    }
+  },
+  {
+    "id": 4824,
+    "title": "RaiPay kredi kartı ödemesi NESY kayıtlarında görünmemektedir.",
+    "type": "Bug",
+    "severity": "High",
+    "status": "closed",
+    "country": "HR",
+    "date": "2025-10-16",
+    "labels": [
+      "Epic: Mobile",
+      "Team:telefunken"
+    ],
+    "topics": [
+      "Mobile"
+    ],
+    "summary": "Yukarıdaki shipment için kredi kartıyla ödeme yapılıyor ancak ödeme NESY'de görünmüyor. [Raipay - CASH status not sent to Nesy]",
+    "customer_refs": [
+      {
+        "repo": "UAT-HR",
+        "num": "2188",
+        "url": "https://arasdigitalnesy.arasdx.com/ArasDigital-NeSy/UAT-HR/issues/2188"
+      }
+    ],
+    "customer_ticket": "UAT-HR#2188",
+    "gh_url": "https://github.com/aras-digital/nesy-analysis/issues/4824",
+    "screen": "Delivery",
+    "group": "Finans & Ödeme",
+    "original_title": "HR | Raipay - Kredi Kartı Ödemesi NESY'de Görünmüyor #2188",
+    "analysis": {
+      "report": "Finans & Ödeme",
+      "recurrenceRisk": "high",
+      "edgeCases": [],
+      "story": [
+        {
+          "k": "symptom",
+          "text": "NFC kredi kartı ödemesi yapılıyor ama ödeme NESY'ye gönderilmiyor; kaydı hiç görünmüyor."
+        },
+        {
+          "k": "cause",
+          "text": "Ödeme bilgisi bellek kuyruğunda bekliyor, sunucuya güvenilir gidemiyor. FIFO sırası yok (olay yanlış sırada gidebilir), idempotency yok (mükerrer olabilir), app kill = olay kayıp."
+        },
+        {
+          "k": "fix",
+          "text": "RaiPay akışında 5 Ağu 2025'te 'Update Raipay CollectionType' ile tahsilat tipi eşlemesi düzeltildi (a00fc8c4) ve entegrasyon commit'leri içinde CASH durumu gönderimi elden geçirildi. Yine gönderim/eşleme seviyesinde müdahale; olayların güvenilir kuyruğa yazılması sağlanmadı."
+        },
+        {
+          "k": "state",
+          "text": "RaiPay tahsilat tipi eşlemesi düzeltildi ve normal akışta kart ödemesi geçiyor. Ama CASH durumunun gönderimi yine bellek kuyruğuna bağlı; sıra bozulması veya app kill durumunda ödeme NESY'ye düşmeyebiliyor.",
+          "confidence": 55,
+          "screenCase": "Delivery — NFC / RaiPay kredi kartı ödemesi",
+          "detectability": {
+            "level": "low",
+            "note": "Ödemenin düşmemesi sessiz kalır; mutabakata kadar görünmez."
+          },
+          "fixability": {
+            "level": "low",
+            "note": "Olayların önce DB'ye yazılıp güvenilir kuyrukla gönderilmesi gerekiyor."
+          }
+        },
+        {
+          "k": "todo",
+          "text": "Olayları veritabanına yazıp, telefon kapansa da gönderim devam eden ve tekrarlı olmayan bir kuyruk sistemi kurulması gerekiyor. Bu sistem tüm ödeme ve scan işlemlerinin temelini oluşturacak."
+        }
+      ]
+    }
+  }
+]

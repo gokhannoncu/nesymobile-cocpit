@@ -15,13 +15,18 @@ import { Input } from '@nesy/metronic/components/ui/input'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
   FeatureDomainSection,
+  HeroCallout,
   PageSection,
   ProductPage,
+  toneCard,
+  toneIcon,
+  toneText,
 } from '@/components/product'
 import type { Tone } from '@/components/product/tones'
 import {
   COUNTRIES,
   FEATURE_DOMAINS,
+  TOTAL_FEATURES,
   isSupported,
   listFeatureRecordsByDomain,
 } from '@/data/product/nesy'
@@ -80,11 +85,27 @@ export default function FeatureLibraryPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const countryCount = COUNTRIES.filter((country) => country.id !== 'core').length
+
   return (
-    <ProductPage path="/product/feature-library">
+    <ProductPage path="/product/feature-library" hideToolbar>
+      <HeroCallout
+        compact
+        icon={Grid3x3}
+        eyebrow="Product · Capabilities"
+        tone="orange"
+        title="Feature Library"
+        lead="Capability domains, Core-first. Search and jump by domain — each card keeps module, countries, risk, and tickets."
+        chips={[
+          `${TOTAL_FEATURES} features`,
+          `${FEATURE_DOMAINS.length} domains`,
+          `${countryCount} countries + Core`,
+        ]}
+      />
+
       <section
         aria-label="Feature filters"
-        className="sticky top-0 z-20 rounded-2xl border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80"
+        className="sticky top-0 z-20 rounded-lg border-2 border-orange-300/90 bg-orange-50/40 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-orange-50/70 dark:border-orange-700/60 dark:bg-orange-950/30 dark:supports-[backdrop-filter]:bg-orange-950/50"
       >
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative min-w-0 xl:w-80 xl:shrink-0">
@@ -94,14 +115,14 @@ export default function FeatureLibraryPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search features..."
               aria-label="Search features"
-              className="h-10 bg-background pl-9 pr-9"
+              className="h-10 rounded-lg border-orange-200/90 bg-background pl-9 pr-9 dark:border-orange-800/60"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3.5" />
               </button>
@@ -109,37 +130,46 @@ export default function FeatureLibraryPage() {
           </div>
 
           <div
-            className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 xl:pb-0"
+            className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Jump to domain"
           >
-            {FEATURE_DOMAINS.map((domain) => (
-              <button
-                key={domain.id}
-                type="button"
-                onClick={() => scrollToDomain(domain.id)}
-                className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-              >
-                {domain.title}
-              </button>
-            ))}
+            {FEATURE_DOMAINS.map((domain) => {
+              const meta = domainMeta[domain.id]
+              const Icon = meta.icon
+              return (
+                <button
+                  key={domain.id}
+                  type="button"
+                  onClick={() => scrollToDomain(domain.id)}
+                  className={cn(
+                    'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition-all hover:brightness-[0.97] active:scale-[0.98] dark:hover:brightness-110',
+                    toneCard[meta.tone],
+                    toneText[meta.tone],
+                  )}
+                >
+                  <Icon className={cn('size-3.5 shrink-0', toneIcon[meta.tone])} />
+                  {domain.title}
+                </button>
+              )
+            })}
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2.5">
             <button
               type="button"
               onClick={() => setCoreOnly((value) => !value)}
               aria-pressed={coreOnly}
               className={cn(
-                'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                'inline-flex h-8 items-center rounded-lg border px-2.5 text-[11px] font-semibold transition-colors',
                 coreOnly
-                  ? 'border-indigo-500 bg-indigo-500 text-white'
-                  : 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground',
+                  ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
+                  : cn(toneCard.orange, toneText.orange, 'hover:brightness-[0.97]'),
               )}
             >
               Core only
             </button>
-            <div className="hidden text-xs font-medium text-muted-foreground xl:block">
+            <div className="hidden rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1.5 text-[11px] font-semibold tabular-nums text-orange-700 xl:block dark:border-orange-800/50 dark:bg-orange-950/40 dark:text-orange-300">
               {visibleFeatureCount} results
             </div>
           </div>

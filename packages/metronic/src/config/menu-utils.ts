@@ -55,16 +55,22 @@ export function findWorkspaceMenuItem(path: string): MenuItem | undefined {
  * Falls back to the first workspace (Home) if no match is found.
  */
 export function getActiveWorkspace(pathname: string): Workspace {
+  let bestMatch: { workspace: Workspace; baseLength: number } | null = null
+
   for (const ws of WORKSPACES) {
     for (const base of ws.basePaths) {
       const matches =
-        base === '/' ? pathname === '/' : pathname === base || pathname.startsWith(base + '/');
-      if (matches) {
-        return ws;
+        base === '/' ? pathname === '/' : pathname === base || pathname.startsWith(base + '/')
+      if (!matches) continue
+
+      const baseLength = base === '/' ? 1 : base.length
+      if (!bestMatch || baseLength > bestMatch.baseLength) {
+        bestMatch = { workspace: ws, baseLength }
       }
     }
   }
-  return WORKSPACES[0]!;
+
+  return bestMatch?.workspace ?? WORKSPACES[0]!
 }
 
 function findMenuChain(

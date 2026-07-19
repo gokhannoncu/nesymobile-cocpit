@@ -27,6 +27,9 @@ export function HeroCallout({
   tone = 'purple',
   chips,
   children,
+  compact = false,
+  /** `split` = stats beside title (default). `stack` = full-width stats under the lead. */
+  layout = 'split',
 }: {
   icon: LucideIcon
   eyebrow: string
@@ -38,11 +41,16 @@ export function HeroCallout({
   chips?: string[]
   /** Optional content aligned to the right (mini statistics, etc.) */
   children?: ReactNode
+  /** Tighter padding and type scale for denser page headers. */
+  compact?: boolean
+  layout?: 'split' | 'stack'
 }) {
+  const stack = layout === 'stack'
   return (
     <motion.section
       className={cn(
-        'relative overflow-hidden rounded-2xl border bg-gradient-to-br p-6 lg:p-8',
+        'relative overflow-hidden border bg-gradient-to-br',
+        compact ? 'rounded-lg p-4 lg:p-5' : 'rounded-2xl p-6 lg:p-8',
         toneHero[tone],
       )}
       initial={{ opacity: 0, y: 10 }}
@@ -54,16 +62,23 @@ export function HeroCallout({
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-20 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:22px_22px] text-foreground/10"
       />
-      <div className="relative flex flex-col lg:flex-row lg:items-start gap-6">
+      <div
+        className={cn(
+          'relative flex flex-col',
+          compact ? 'gap-4' : 'gap-6',
+          !stack && 'lg:flex-row lg:items-start',
+        )}
+      >
         <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-4">
+          <div className={cn('flex items-start', compact ? 'gap-3' : 'gap-4')}>
             <span
               className={cn(
-                'flex size-12 shrink-0 items-center justify-center rounded-2xl',
+                'flex shrink-0 items-center justify-center',
+                compact ? 'size-9 rounded-lg' : 'size-12 rounded-2xl',
                 toneIconBox[tone],
               )}
             >
-              <Icon className={cn('size-6', toneIcon[tone])} />
+              <Icon className={cn(compact ? 'size-4' : 'size-6', toneIcon[tone])} />
             </span>
             <div className="min-w-0">
               <div
@@ -74,16 +89,26 @@ export function HeroCallout({
               >
                 {eyebrow}
               </div>
-              <h1 className="mt-1 text-2xl lg:text-3xl font-bold text-foreground text-balance">
+              <h1
+                className={cn(
+                  'mt-1 font-bold text-foreground text-balance',
+                  compact ? 'text-xl lg:text-2xl' : 'text-2xl lg:text-3xl',
+                )}
+              >
                 {title}
               </h1>
             </div>
           </div>
-          <p className="mt-4 max-w-3xl text-sm lg:text-[15px] leading-relaxed text-foreground/85">
+          <p
+            className={cn(
+              'max-w-3xl leading-relaxed text-foreground/85',
+              compact ? 'mt-2 text-sm' : 'mt-4 text-sm lg:text-[15px]',
+            )}
+          >
             {lead}
           </p>
           {chips && chips.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
+            <div className={cn('flex flex-wrap gap-1.5', compact ? 'mt-2.5' : 'mt-4')}>
               {chips.map((c) => (
                 <Badge key={c} variant="secondary" appearance="outline" size="sm">
                   {c}
@@ -92,7 +117,9 @@ export function HeroCallout({
             </div>
           )}
         </div>
-        {children && <div className="shrink-0 lg:max-w-sm">{children}</div>}
+        {children && (
+          <div className={cn(stack ? 'w-full' : 'shrink-0 lg:max-w-sm')}>{children}</div>
+        )}
       </div>
     </motion.section>
   )

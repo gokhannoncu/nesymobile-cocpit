@@ -80,45 +80,45 @@ export interface EdgeOps {
 
 export const EDGE_OPS: Record<string, EdgeOps> = {
   E1: {
-    flow: 'Schedule Download', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Schedule Download', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 2,
     mechanisms: ['Race condition', 'Lost state'], environments: ['Flaky network'],
     envCoverage: { online: 'none', offline: 'none', flaky: 'none' },
-    expected: 'When FCM refresh and local delivery write conflict on the same chunk, both changes should be preserved.',
-    actual: 'Last writer wins; delivery record may silently disappear.',
+    expected: 'FCM refresh ve yerel delivery yazımı aynı chunk\'ta çakıştığında her iki değişiklik de korunmalı.',
+    actual: 'Son yazan kazanır; delivery kaydı sessizce kaybolabilir.',
     reproduceReliability: 2,
-    recovery: 'Lost deliveries are restored by diffing CompletedRequest records against the schedule chunk.',
-    permanentFix: 'Chunk to relational row model (Modernization Phase 1).',
+    recovery: 'Kayıp delivery\'ler CompletedRequest kayıtları schedule chunk ile diff edilerek geri yüklenir.',
+    permanentFix: 'Chunk\'tan ilişkisel satır modeline geçiş (Modernization Phase 1).',
   },
   E2: {
-    flow: 'Schedule Download', likelihood: 'rare', exposure: 'All countries',
+    flow: 'Schedule Download', likelihood: 'rare', exposure: 'Tüm ülkeler',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 0, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 3, recoverability: 2,
     mechanisms: ['Data corruption', 'Partial success'], environments: ['Process killed', 'Low memory'],
   },
   E3: {
-    flow: 'Schedule Download', likelihood: 'rare', exposure: 'All devices receiving upgrades',
+    flow: 'Schedule Download', likelihood: 'rare', exposure: 'Güncelleme alan tüm cihazlar',
     status: 'test-ready', testStatus: 'failed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 1, lastVerified: '2026-05-19', owner: 'Data & Sync', releaseRisk: true,
     detectability: 4, recoverability: 1,
     mechanisms: ['Migration failure', 'Data corruption'], environments: ['Version upgrade'],
     envCoverage: { upgrade: 'fail' },
-    expected: 'Missing migrations should be caught at compile/CI stage; production data should not be deleted.',
-    actual: 'fallbackToDestructiveMigration() deletes all local data (including pending queue).',
+    expected: 'Eksik migration\'lar compile/CI aşamasında yakalanmalı; production verisi silinmemeli.',
+    actual: 'fallbackToDestructiveMigration() tüm yerel veriyi siler (bekleyen kuyruk dahil).',
     reproduceReliability: 5,
     reproduceSteps: [
-      'Install a migration-less v241 build on a device with v240 schema.',
-      'Open the app — Room destructive fallback triggers.',
-      'Verify that Schedule and PendingRequest tables are emptied.',
+      'v240 schema\'lı cihaza migration\'sız v241 build kur.',
+      'Uygulamayı aç — Room destructive fallback tetiklenir.',
+      'Schedule ve PendingRequest tablolarının boşaldığını doğrula.',
     ],
-    recovery: 'Schedule is re-downloaded from the server; unsent offline events cannot be recovered.',
-    permanentFix: 'Remove destructive fallback + add migration test suite (Phase 0).',
+    recovery: 'Schedule server\'dan yeniden indirilir; gönderilmemiş offline event\'ler kurtarılamaz.',
+    permanentFix: 'Destructive fallback kaldır + migration test suite ekle (Phase 0).',
   },
   E4: {
-    flow: 'Stop List', likelihood: 'likely', exposure: 'Routes with 200+ stops',
+    flow: 'Stop List', likelihood: 'likely', exposure: '200+ duraklı rotalar',
     status: 'validated', testStatus: 'passed', automation: ['integration'], mitigationStatus: 'partial',
     incidents: 2, lastVerified: '2026-06-21', owner: 'Mobile Core', releaseRisk: false,
     detectability: 5, recoverability: 5,
@@ -126,27 +126,27 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', offline: 'pass' },
   },
   E5: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries using POS',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'POS kullanan tüm ülkeler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 2, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 1, recoverability: 2,
     mechanisms: ['Lost state', 'Process death'], environments: ['Process killed', 'Restart'],
     envCoverage: { restart: 'none' },
-    expected: 'Payment status is persistent; shipment appears "paid" after restart.',
-    actual: 'paidShipments only in memory — payment flow reopens after restart.',
+    expected: 'Payment durumu kalıcıdır; restart sonrası shipment "paid" görünür.',
+    actual: 'paidShipments yalnızca bellekte — restart sonrası payment akışı yeniden açılır.',
     reproduceReliability: 5,
-    recovery: 'Shipment list is reconciled with POS provider records; double charges are refunded.',
-    permanentFix: 'Payment state machine is moved to Room (with E30).',
+    recovery: 'Shipment listesi POS provider kayıtları ile uzlaştırılır; çift tahsilatlar iade edilir.',
+    permanentFix: 'Payment state machine Room\'a taşınır (E30 ile birlikte).',
   },
   E6: {
-    flow: 'Schedule Download', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Schedule Download', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 2, recoverability: 3,
     mechanisms: ['Stale state'], environments: ['Restart'],
   },
   E7: {
-    flow: 'End of Day', likelihood: 'likely', exposure: 'Weak coverage areas',
+    flow: 'End of Day', likelihood: 'likely', exposure: 'Zayıf kapsama alanları',
     status: 'validated', testStatus: 'passed', automation: ['integration'], mitigationStatus: 'yes',
     incidents: 3, lastVerified: '2026-06-30', owner: 'Data & Sync', releaseRisk: true,
     detectability: 3, recoverability: 4,
@@ -154,44 +154,44 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', offline: 'pass', flaky: 'warn' },
   },
   E8: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'test-ready', testStatus: 'failed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 4, lastVerified: '2026-06-14', owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 3,
     mechanisms: ['Lost state', 'Process death', 'Retry failure'], environments: ['Process killed', 'Doze'],
     envCoverage: { online: 'pass', restart: 'fail', background: 'warn' },
-    expected: 'Even if the service dies, a record being processed should not remain locked; the queue self-recovers.',
-    actual: 'isProcessing=true persists; the queue is permanently stuck.',
+    expected: 'Service ölse bile işlenen kayıt kilitli kalmamalı; kuyruk kendini toparlamalı.',
+    actual: 'isProcessing=true kalıcı; kuyruk kalıcı olarak takılır.',
     reproduceReliability: 4,
-    recovery: 'Stale isProcessing records are manually reset on the device (support procedure SOP-12).',
+    recovery: 'Stale isProcessing kayıtları cihazda manuel sıfırlanır (destek prosedürü SOP-12).',
   },
   E9: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries · financial events',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler · finansal event\'ler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 2, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 2, recoverability: 2,
     mechanisms: ['Duplicate event', 'Idempotency failure', 'Retry failure'], environments: ['Flaky network'],
     envCoverage: { flaky: 'none' },
-    expected: 'Regardless of how many times the same delivery/collection event is sent, it is processed once on the server.',
-    actual: 'No server-side idempotency; retry can produce duplicate transaction.',
+    expected: 'Aynı delivery/collection event kaç kez gönderilirse gönderilsin server\'da bir kez işlenmeli.',
+    actual: 'Server-side idempotency yok; retry çift transaction üretebilir.',
     reproduceReliability: 3,
     reproduceSteps: [
-      'Send delivery event; disconnect before response returns (timeout).',
-      'Wait for retry mechanism to resend the same event.',
-      'Verify that two transaction records are created for the same shipment in backoffice.',
+      'Delivery event gönder; response dönmeden bağlantıyı kes (timeout).',
+      'Retry mekanizmasının aynı event\'i yeniden göndermesini bekle.',
+      'Backoffice\'te aynı shipment için iki transaction kaydı oluştuğunu doğrula.',
     ],
-    recovery: 'Duplicate events are deduplicated via uniqueKey and reversed in backoffice.',
-    permanentFix: 'End-to-end idempotency key (backend collaboration, Phase 1).',
+    recovery: 'Çift event\'ler uniqueKey ile dedup edilir ve backoffice\'te tersine çevrilir.',
+    permanentFix: 'Uçtan uca idempotency key (backend iş birliği, Phase 1).',
   },
   E10: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: true,
     detectability: 2, recoverability: 3,
     mechanisms: ['Out-of-order event'], environments: ['Offline', 'Flaky network'],
   },
   E11: {
-    flow: 'End of Day', likelihood: 'frequent', exposure: 'Entire fleet simultaneously',
+    flow: 'End of Day', likelihood: 'frequent', exposure: 'Tüm filo eşzamanlı',
     status: 'validated', testStatus: 'passed', automation: ['integration'], mitigationStatus: 'partial',
     incidents: 1, lastVerified: '2026-04-02', owner: 'Data & Sync', releaseRisk: false,
     detectability: 4, recoverability: 4,
@@ -199,68 +199,68 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', flaky: 'warn' },
   },
   E12: {
-    flow: 'End of Day', likelihood: 'likely', exposure: 'Android 14+ devices',
+    flow: 'End of Day', likelihood: 'likely', exposure: 'Android 14+ cihazlar',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 0, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 3, recoverability: 4,
     mechanisms: ['Silent failure', 'Timeout'], environments: ['Doze', 'Battery saver', 'Background'],
   },
   E13: {
-    flow: 'Stop List', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Stop List', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 2, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 2, recoverability: 3,
     mechanisms: ['Stale state', 'Lost state'], environments: ['Offline'],
-    expected: 'Server cancellation reflects on courier screen in all conditions.',
-    actual: 'Offline delivery queue hides cancellation during refresh; courier goes to cancelled package.',
+    expected: 'Server iptali tüm koşullarda kurye ekranına yansır.',
+    actual: 'Offline delivery kuyruğu refresh sırasında iptali gizler; kurye iptal edilmiş pakete gider.',
     reproduceReliability: 3,
-    recovery: 'Dispatch calls and redirects courier; package is put into return flow.',
+    recovery: 'Dispatch arar ve kuryeyi yönlendirir; paket return akışına alınır.',
   },
   E14: {
-    flow: 'Delivery', likelihood: 'rare', exposure: 'All countries',
+    flow: 'Delivery', likelihood: 'rare', exposure: 'Tüm ülkeler',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 3, recoverability: 4,
     mechanisms: ['Out-of-order event', 'Stale state'], environments: ['Flaky network'],
   },
   E15: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'Routes receiving heavy push',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'Yoğun push alan rotalar',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 2, recoverability: 3,
     mechanisms: ['Race condition', 'Lost state'], environments: ['Online'],
   },
   E16: {
-    flow: 'Fiscal', likelihood: 'likely', exposure: 'RS · BA (fiscal countries)',
+    flow: 'Fiscal', likelihood: 'likely', exposure: 'RS · BA (fiscal ülkeler)',
     status: 'test-ready', testStatus: 'failed', automation: [], mitigationStatus: 'partial',
     incidents: 2, lastVerified: '2026-06-08', owner: 'Payments', releaseRisk: true,
     detectability: 3, recoverability: 2,
     mechanisms: ['Lifecycle duplication', 'Duplicate event', 'Idempotency failure'],
     environments: ['Rotation'],
     envCoverage: { rotation: 'fail', online: 'pass' },
-    expected: 'Rotation does not retrigger fiscal request; request runs exactly once.',
-    actual: 'Observer reconnects, createFiscalInvoice runs second time → double fiscal record.',
+    expected: 'Rotation fiscal request\'i yeniden tetiklemez; request tam bir kez çalışır.',
+    actual: 'Observer yeniden bağlanır, createFiscalInvoice ikinci kez çalışır → çift fiscal kayıt.',
     reproduceReliability: 4,
     reproduceSteps: [
-      'Rotate device while fiscal dialog is open.',
-      'Verify two requests for the same collection in fiscal service logs.',
+      'Fiscal dialog açıkken cihazı döndür.',
+      'Fiscal service loglarında aynı collection için iki request olduğunu doğrula.',
     ],
-    recovery: 'void/SSC compensation flow runs for second fiscal record.',
-    permanentFix: 'Transition to SingleLiveEvent/Flow + fiscal idempotency key.',
+    recovery: 'İkinci fiscal kayıt için void/SSC compensation akışı çalıştırılır.',
+    permanentFix: 'SingleLiveEvent/Flow\'a geçiş + fiscal idempotency key.',
   },
   E17: {
-    flow: 'Delivery', likelihood: 'rare', exposure: 'All countries',
+    flow: 'Delivery', likelihood: 'rare', exposure: 'Tüm ülkeler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 2, recoverability: 2,
     mechanisms: ['Stale state', 'Lifecycle duplication'], environments: ['Rotation', 'Restart'],
-    expected: 'Active task is always verified at screen entry; flow does not work with old task.',
-    actual: 'If currentTask is not cleared, delivery confirmation can be taken with old task at another stop.',
+    expected: 'Aktif task ekran girişinde her zaman doğrulanır; akış eski task ile çalışmaz.',
+    actual: 'currentTask temizlenmezse başka durakta eski task ile delivery confirmation alınabilir.',
     reproduceReliability: 2,
-    recovery: 'Incorrect delivery record is fixed from backoffice; correct shipment is reopened.',
+    recovery: 'Hatalı delivery kaydı backoffice\'ten düzeltilir; doğru shipment yeniden açılır.',
   },
   E18: {
-    flow: 'Delivery Failed', likelihood: 'likely', exposure: 'All countries',
+    flow: 'Delivery Failed', likelihood: 'likely', exposure: 'Tüm ülkeler',
     status: 'covered', testStatus: 'passed', automation: ['unit', 'integration'], mitigationStatus: 'yes',
     incidents: 1, lastVerified: '2026-06-25', owner: 'Mobile Core', releaseRisk: false,
     detectability: 5, recoverability: 5,
@@ -268,7 +268,7 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { rotation: 'pass', background: 'pass' },
   },
   E19: {
-    flow: 'Delivery', likelihood: 'rare', exposure: 'Devices with call permission',
+    flow: 'Delivery', likelihood: 'rare', exposure: 'Call permission\'lı cihazlar',
     status: 'covered', testStatus: 'passed', automation: ['unit'], mitigationStatus: 'yes',
     incidents: 0, lastVerified: '2026-05-30', owner: 'Mobile Core', releaseRisk: false,
     detectability: 3, recoverability: 4,
@@ -276,47 +276,47 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { background: 'pass' },
   },
   E20: {
-    flow: 'Login', likelihood: 'frequent', exposure: 'All countries · long shifts',
+    flow: 'Login', likelihood: 'frequent', exposure: 'Tüm ülkeler · uzun vardiyalar',
     status: 'reopened', testStatus: 'failed', automation: ['integration'], mitigationStatus: 'partial',
     incidents: 5, lastVerified: '2026-07-03', owner: 'Platform', releaseRisk: true,
     detectability: 4, recoverability: 3,
     mechanisms: ['Silent failure', 'Permission change'], environments: ['Online', 'Offline'],
     envCoverage: { online: 'pass', offline: 'fail', flaky: 'warn' },
-    expected: 'Session silently refreshes when token expires; queued requests are not left without token.',
-    actual: 'User is silently logged out after 401; half delivery and tokenless queue remain.',
+    expected: 'Token süresi dolduğunda session sessizce yenilenir; kuyruktaki request\'ler tokensız kalmaz.',
+    actual: '401 sonrası kullanıcı sessizce logout olur; yarım delivery ve tokensız kuyruk kalır.',
     reproduceReliability: 5,
     reproduceSteps: [
-      'Shorten token TTL (test backend).',
-      'Make any call in middle of shift — 401 → silent logout.',
-      'Verify offline queue is left without token.',
+      'Token TTL\'yi kısalt (test backend).',
+      'Vardiya ortasında herhangi bir çağrı yap — 401 → sessiz logout.',
+      'Offline kuyruğun tokensız kaldığını doğrula.',
     ],
-    recovery: 'Queue is flushed with new token after re-login; half flows are completed manually.',
-    permanentFix: 'Refresh token flow (Phase 0 — in scope of this release).',
+    recovery: 'Yeniden login sonrası kuyruk yeni token ile flush edilir; yarım akışlar manuel tamamlanır.',
+    permanentFix: 'Refresh token flow (Phase 0 — bu release kapsamında).',
   },
   E21: {
-    flow: 'Login', likelihood: 'rare', exposure: 'All countries · security',
+    flow: 'Login', likelihood: 'rare', exposure: 'Tüm ülkeler · güvenlik',
     status: 'accepted-risk', testStatus: 'untested', automation: [], mitigationStatus: 'partial',
     incidents: 0, lastVerified: null, owner: 'Platform', releaseRisk: false,
     detectability: 1, recoverability: 2,
     mechanisms: ['Silent failure'], environments: ['Online'],
-    permanentFix: 'Host allowlist + TrustAllCerts removal — in security sprint (acceptance: 2026-Q3 end).',
+    permanentFix: 'Host allowlist + TrustAllCerts kaldırma — security sprint\'te (kabul: 2026-Q3 sonu).',
   },
   E22: {
-    flow: 'Schedule Download', likelihood: 'rare', exposure: 'Flows using signed endpoint',
+    flow: 'Schedule Download', likelihood: 'rare', exposure: 'İmzalı endpoint kullanan akışlar',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Platform', releaseRisk: false,
     detectability: 2, recoverability: 4,
     mechanisms: ['Silent failure'], environments: ['Online'],
   },
   E23: {
-    flow: 'Shipment Tracking', likelihood: 'rare', exposure: 'Weak network areas',
+    flow: 'Shipment Tracking', likelihood: 'rare', exposure: 'Zayıf ağ alanları',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 0, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 3, recoverability: 4,
     mechanisms: ['Silent failure'], environments: ['Offline'],
   },
   E24: {
-    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Entire fleet',
+    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Tüm filo',
     status: 'validated', testStatus: 'passed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 1, lastVerified: '2026-03-18', owner: 'Mobile Core', releaseRisk: false,
     detectability: 3, recoverability: 5,
@@ -324,48 +324,48 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { restart: 'warn' },
   },
   E25: {
-    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Entire fleet',
+    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Tüm filo',
     status: 'test-ready', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Mobile Core', releaseRisk: false,
     detectability: 2, recoverability: 5,
     mechanisms: ['Permission change', 'Silent failure'], environments: ['Background'],
   },
   E26: {
-    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Reporting · all countries',
+    flow: 'Shipment Tracking', likelihood: 'likely', exposure: 'Raporlama · tüm ülkeler',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 0, lastVerified: null, owner: 'Data & Sync', releaseRisk: false,
     detectability: 2, recoverability: 3,
     mechanisms: ['Data corruption'], environments: ['Online'],
   },
   E27: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries using POS · financial',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'POS kullanan tüm ülkeler · finansal',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'partial',
     incidents: 2, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 1, recoverability: 2,
     mechanisms: ['Partial success', 'Process death'], environments: ['Process killed', 'Restart'],
     envCoverage: { online: 'pass', offline: 'pass', flaky: 'warn', restart: 'none', background: 'warn' },
-    expected: 'If payment is successful, delivery state and fiscal record match atomically.',
-    actual: 'If process dies after POS success, delivery record is not created; system does not know the payment.',
+    expected: 'Payment başarılıysa delivery state ve fiscal kayıt atomik olarak eşleşmeli.',
+    actual: 'POS success sonrası process ölürse delivery kaydı oluşmaz; sistem ödemeyi bilmez.',
     reproduceReliability: 3,
     reproduceSteps: [
-      'Complete POS payment (right before success callback returns).',
-      'Kill process before handleDelivery() is called (adb shell am kill).',
-      'Open app: shipment appears "unpaid"; verify divergence with POS record.',
+      'POS payment tamamla (success callback dönmeden hemen önce).',
+      'handleDelivery() çağrılmadan process\'i öldür (adb shell am kill).',
+      'Uygulamayı aç: shipment "unpaid" görünür; POS kaydı ile sapmayı doğrula.',
     ],
-    recovery: 'POS records are reconciled with delivery records; double charges are refunded.',
-    permanentFix: '"Payment received / pending delivery" intermediate state is atomically written to Room (Phase 0).',
+    recovery: 'POS kayıtları delivery kayıtları ile uzlaştırılır; çift tahsilatlar iade edilir.',
+    permanentFix: '"Payment received / pending delivery" ara durumu atomik olarak Room\'a yazılır (Phase 0).',
   },
   E28: {
-    flow: 'Fiscal', likelihood: 'likely', exposure: 'RS · BA (legal audit)',
+    flow: 'Fiscal', likelihood: 'likely', exposure: 'RS · BA (yasal denetim)',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 1, recoverability: 1,
     mechanisms: ['Partial success', 'Silent failure'], environments: ['Flaky network', 'Process killed'],
-    expected: 'Fiscal record is created only dependent on delivery confirmation; no unbacked invoice remains.',
-    actual: 'If delivery fails, orphaned invoice remains in fiscal system — no crash, no signal.',
+    expected: 'Fiscal kayıt yalnızca delivery confirmation\'a bağlı oluşturulmalı; desteksiz invoice kalmamalı.',
+    actual: 'Delivery başarısız olursa fiscal sistemde yetim invoice kalır — crash yok, sinyal yok.',
     reproduceReliability: 3,
-    recovery: 'Fiscal records are reconciled daily with delivery records; void/SSC applied to orphaned invoices.',
-    permanentFix: 'Binding fiscal to delivery confirmation + compensation flow (Phase 0).',
+    recovery: 'Fiscal kayıtlar günlük delivery kayıtları ile uzlaştırılır; yetim invoice\'lara void/SSC uygulanır.',
+    permanentFix: 'Fiscal\'i delivery confirmation\'a bağlama + compensation akışı (Phase 0).',
   },
   E29: {
     flow: 'Fiscal', likelihood: 'likely', exposure: 'RS · BA',
@@ -374,22 +374,22 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     detectability: 3, recoverability: 2,
     mechanisms: ['Lifecycle duplication', 'Idempotency failure'], environments: ['Rotation'],
     envCoverage: { rotation: 'fail', restart: 'warn', background: 'pass' },
-    recovery: 'Double fiscal record is voided (shared with E16 compensation flow).',
+    recovery: 'Çift fiscal kayıt iptal edilir (E16 compensation akışı ile paylaşımlı).',
   },
   E30: {
-    flow: 'Delivery', likelihood: 'likely', exposure: 'All countries using POS',
+    flow: 'Delivery', likelihood: 'likely', exposure: 'POS kullanan tüm ülkeler',
     status: 'test-design-needed', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 2, lastVerified: null, owner: 'Payments', releaseRisk: true,
     detectability: 1, recoverability: 2,
     mechanisms: ['Lost state', 'Process death'], environments: ['Restart', 'Process killed'],
-    expected: 'Payment status is restored from persistent storage after restart.',
-    actual: 'Payment info is in memory/callback — shipment appears "unpaid" after restart.',
+    expected: 'Restart sonrası payment durumu kalıcı depolamadan geri yüklenir.',
+    actual: 'Payment bilgisi bellek/callback\'te — restart sonrası shipment "unpaid" görünür.',
     reproduceReliability: 5,
-    recovery: 'Reconcile with POS provider records (shared procedure with E5/E27).',
-    permanentFix: 'Payment state machine is moved to Room (Phase 0).',
+    recovery: 'POS provider kayıtları ile uzlaştırma (E5/E27 ile paylaşımlı prosedür).',
+    permanentFix: 'Payment state machine Room\'a taşınır (Phase 0).',
   },
   E31: {
-    flow: 'Stop List', likelihood: 'likely', exposure: 'Devices with hardware scanner',
+    flow: 'Stop List', likelihood: 'likely', exposure: 'Hardware scanner\'lı cihazlar',
     status: 'test-ready', testStatus: 'passed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 2, lastVerified: '2026-06-27', owner: 'Mobile Core', releaseRisk: false,
     detectability: 3, recoverability: 4,
@@ -397,7 +397,7 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass', offline: 'warn', flaky: 'pass' },
   },
   E32: {
-    flow: 'Delivery', likelihood: 'frequent', exposure: 'All countries',
+    flow: 'Delivery', likelihood: 'frequent', exposure: 'Tüm ülkeler',
     status: 'validated', testStatus: 'passed', automation: ['unit'], mitigationStatus: 'partial',
     incidents: 3, lastVerified: '2026-07-01', owner: 'Mobile Core', releaseRisk: false,
     detectability: 4, recoverability: 5,
@@ -405,7 +405,7 @@ export const EDGE_OPS: Record<string, EdgeOps> = {
     envCoverage: { online: 'pass' },
   },
   E33: {
-    flow: 'Pick Up', likelihood: 'likely', exposure: 'Devices logged in for a long time',
+    flow: 'Pick Up', likelihood: 'likely', exposure: 'Uzun süre oturum açık cihazlar',
     status: 'triaged', testStatus: 'untested', automation: [], mitigationStatus: 'no',
     incidents: 1, lastVerified: null, owner: null, releaseRisk: false,
     detectability: 3, recoverability: 4,
@@ -426,28 +426,28 @@ export const TODAY = '2026-07-12'
 const STALE_BEFORE = '2026-04-13' // 90 days
 
 export const LIKELIHOOD_META: Record<Likelihood, { label: string; order: number }> = {
-  frequent: { label: 'Frequent', order: 3 },
-  likely: { label: 'Likely', order: 2 },
-  rare: { label: 'Rare', order: 1 },
+  frequent: { label: 'Sık', order: 3 },
+  likely: { label: 'Muhtemel', order: 2 },
+  rare: { label: 'Nadir', order: 1 },
 }
 
 export const LIFECYCLE_META: Record<Lifecycle, { label: string; tone: 'red' | 'orange' | 'amber' | 'blue' | 'teal' | 'green' | 'gray' | 'purple' }> = {
-  discovered: { label: 'Discovered', tone: 'purple' },
-  triaged: { label: 'Triaged', tone: 'blue' },
-  'test-design-needed': { label: 'Test Design Needed', tone: 'orange' },
-  'test-ready': { label: 'Test Ready', tone: 'amber' },
-  validated: { label: 'Validated', tone: 'teal' },
-  covered: { label: 'Covered', tone: 'green' },
-  monitoring: { label: 'Monitoring', tone: 'blue' },
-  resolved: { label: 'Resolved', tone: 'green' },
-  'accepted-risk': { label: 'Accepted Risk', tone: 'gray' },
-  reopened: { label: 'Reopened', tone: 'red' },
+  discovered: { label: 'Keşfedildi', tone: 'purple' },
+  triaged: { label: 'Triyajlandı', tone: 'blue' },
+  'test-design-needed': { label: 'Test Tasarımı Gerekli', tone: 'orange' },
+  'test-ready': { label: 'Test Hazır', tone: 'amber' },
+  validated: { label: 'Doğrulandı', tone: 'teal' },
+  covered: { label: 'Kapsandı', tone: 'green' },
+  monitoring: { label: 'İzleniyor', tone: 'blue' },
+  resolved: { label: 'Çözüldü', tone: 'green' },
+  'accepted-risk': { label: 'Kabul Edilen Risk', tone: 'gray' },
+  reopened: { label: 'Yeniden Açıldı', tone: 'red' },
 }
 
 export const TEST_STATUS_META: Record<TestStatus, { label: string; symbol: string; cls: string }> = {
-  passed: { label: 'Passed', symbol: '✓', cls: 'text-green-600 dark:text-green-400' },
-  failed: { label: 'Failed', symbol: '×', cls: 'text-red-600 dark:text-red-400' },
-  untested: { label: 'Untested', symbol: '○', cls: 'text-muted-foreground' },
+  passed: { label: 'Geçti', symbol: '✓', cls: 'text-green-600 dark:text-green-400' },
+  failed: { label: 'Başarısız', symbol: '×', cls: 'text-red-600 dark:text-red-400' },
+  untested: { label: 'Test Edilmedi', symbol: '○', cls: 'text-muted-foreground' },
 }
 
 export const ENV_COLUMNS: { key: EnvKey; label: string }[] = [
@@ -496,17 +496,17 @@ export interface TestNextItem {
 }
 
 const SUGGESTED_TESTS: Record<string, string> = {
-  E27: 'Kill process after POS success; open app and check payment/delivery state reconciliation.',
-  E9: 'Retry delivery event interrupted by timeout; verify single transaction record is created on server.',
-  E5: 'App restart after payment; verify shipment remains "paid".',
-  E30: 'Restart after payment callback; verify POS flow cannot be restarted.',
-  E28: 'Intentionally fail delivery; verify no orphaned invoice remains in fiscal system.',
-  E20: 'Shorten token TTL; verify session silently refreshes after mid-shift 401 and queue flows.',
-  E16: 'Rotation while fiscal dialog is open; verify fiscal request is triggered exactly once.',
-  E29: 'Rotation + restart combination while fiscal dialog is open; verify idempotency key.',
-  E1: 'Race FCM refresh with local delivery write on the same chunk; verify both changes are preserved.',
-  E8: 'Kill service mid-transaction; verify stale isProcessing lock is cleared on restart.',
-  E13: 'Cancel shipment on server while offline delivery is queued; verify cancellation remains visible after refresh.',
+  E27: 'POS success sonrası process\'i öldür; uygulamayı aç ve payment/delivery state uzlaşmasını kontrol et.',
+  E9: 'Timeout ile kesilen delivery event\'ini retry et; server\'da tek transaction kaydı oluştuğunu doğrula.',
+  E5: 'Payment sonrası uygulama restart; shipment\'ın "paid" kaldığını doğrula.',
+  E30: 'Payment callback sonrası restart; POS akışının yeniden başlatılamadığını doğrula.',
+  E28: 'Delivery\'yi kasıtlı başarısız bırak; fiscal sistemde yetim invoice kalmadığını doğrula.',
+  E20: 'Token TTL\'yi kısalt; vardiya ortası 401 sonrası session\'ın sessizce yenilendiğini ve kuyruğun aktığını doğrula.',
+  E16: 'Fiscal dialog açıkken rotation; fiscal request\'in tam bir kez tetiklendiğini doğrula.',
+  E29: 'Fiscal dialog açıkken rotation + restart kombinasyonu; idempotency key\'i doğrula.',
+  E1: 'FCM refresh ile yerel delivery yazımını aynı chunk\'ta yarıştır; her iki değişikliğin korunduğunu doğrula.',
+  E8: 'Transaction ortasında service\'i öldür; restart\'ta stale isProcessing kilidinin temizlendiğini doğrula.',
+  E13: 'Offline delivery kuyruktayken shipment\'ı server\'da iptal et; refresh sonrası iptalin görünür kaldığını doğrula.',
 }
 
 export function testNextQueue(limit = 5): TestNextItem[] {
@@ -516,41 +516,41 @@ export function testNextQueue(limit = 5): TestNextItem[] {
       const reasons: string[] = []
       let score = SEV_W[e.severity] * LIKELIHOOD_META[e.likelihood].order
 
-      if (e.severity === 'critical') reasons.push('Critical impact')
+      if (e.severity === 'critical') reasons.push('Kritik etki')
       if (e.incidents > 0) {
         score += e.incidents * 2
-        reasons.push(`${e.incidents} past incidents`)
+        reasons.push(`${e.incidents} geçmiş incident`)
       }
       if (e.releaseRisk) {
         score += 4
-        reasons.push(`Code changed in ${RELEASE_VERSION} scope`)
+        reasons.push(`${RELEASE_VERSION} kapsamında kod değişti`)
       }
       if (e.testStatus === 'untested') {
         score += 3
-        reasons.push('Never tested')
+        reasons.push('Hiç test edilmedi')
       }
       if (e.testStatus === 'failed') {
         score += 4
-        reasons.push('Last test failed')
+        reasons.push('Son test başarısız')
       }
       if (e.automation.length === 0) {
         score += 2
-        reasons.push('No automatic regression')
+        reasons.push('Otomatik regresyon yok')
       }
       if (e.mitigationStatus === 'no') {
         score += 2
-        reasons.push('No mitigation')
+        reasons.push('Mitigation yok')
       }
       if (e.detectability <= 2) {
         score += 2
-        reasons.push('Low detectability — silent failure')
+        reasons.push('Düşük tespit edilebilirlik — sessiz hata')
       }
       return {
         edge: e,
         score,
         reasons,
         suggestedTest:
-          SUGGESTED_TESTS[e.id] ?? `Reproduce ${e.trigger.replace(/\.$/, '')} scenario in ${e.flow} flow.`,
+          SUGGESTED_TESTS[e.id] ?? `${e.flow} akışında ${e.trigger.replace(/\.$/, '')} senaryosunu yeniden üretin.`,
       }
     })
     .sort((a, b) => b.score - a.score)
@@ -566,14 +566,14 @@ export interface QuickFilter {
 }
 
 export const QUICK_FILTERS: QuickFilter[] = [
-  { id: 'critical-untested', label: 'Critical & untested', match: (e) => e.severity === 'critical' && e.testStatus === 'untested' },
-  { id: 'incident', label: 'Produced incident', match: (e) => e.incidents > 0 },
-  { id: 'no-mitigation', label: 'No mitigation', match: (e) => e.mitigationStatus === 'no' },
-  { id: 'no-automation', label: 'No automatic test', match: (e) => e.automation.length === 0 },
-  { id: 'release-risk', label: `${RELEASE_VERSION} impact`, match: (e) => e.releaseRisk },
-  { id: 'failed', label: 'Last test failed', match: (e) => e.testStatus === 'failed' },
-  { id: 'no-owner', label: 'No owner assigned', match: (e) => !e.owner },
-  { id: 'stale', label: 'Unverified for 90+ days', match: isStale },
+  { id: 'critical-untested', label: 'Kritik & test edilmemiş', match: (e) => e.severity === 'critical' && e.testStatus === 'untested' },
+  { id: 'incident', label: 'Incident üretti', match: (e) => e.incidents > 0 },
+  { id: 'no-mitigation', label: 'Mitigation yok', match: (e) => e.mitigationStatus === 'no' },
+  { id: 'no-automation', label: 'Otomatik test yok', match: (e) => e.automation.length === 0 },
+  { id: 'release-risk', label: `${RELEASE_VERSION} etkisi`, match: (e) => e.releaseRisk },
+  { id: 'failed', label: 'Son test başarısız', match: (e) => e.testStatus === 'failed' },
+  { id: 'no-owner', label: 'Sahip atanmamış', match: (e) => !e.owner },
+  { id: 'stale', label: '90+ gündür doğrulanmadı', match: isStale },
 ]
 
 // ── Saved views ──────────────────────────────────────────────────
@@ -588,26 +588,26 @@ export interface SavedView {
 export const SAVED_VIEWS: SavedView[] = [
   {
     id: 'release-blockers',
-    label: 'Release Blockers',
-    desc: 'Critical/high + in release scope + untested or failed',
+    label: 'Release Blocker\'lar',
+    desc: 'Kritik/yüksek + release kapsamında + test edilmemiş veya başarısız',
     match: (e) =>
       e.severity !== 'medium' && e.releaseRisk && e.testStatus !== 'passed',
   },
   {
     id: 'incident-candidates',
-    label: 'Incident Candidates',
-    desc: 'Records with incident history and still unprotected',
+    label: 'Incident Adayları',
+    desc: 'Incident geçmişi olan ve hâlâ korunmasız kayıtlar',
     match: (e) => e.incidents > 0 && e.status !== 'covered' && e.status !== 'resolved',
   },
   {
     id: 'coverage-gaps',
-    label: 'Coverage Gaps',
-    desc: 'No automation · old verification · no owner',
+    label: 'Kapsam Boşlukları',
+    desc: 'Otomasyon yok · eski doğrulama · sahip yok',
     match: (e) => e.automation.length === 0 || isStale(e) || !e.owner,
   },
   {
     id: 'financial-safety',
-    label: 'Financial Safety',
+    label: 'Finansal Güvenlik',
     desc: 'Payment, fiscal, delivery state, idempotency',
     match: (e) =>
       e.category === 'payment' ||
@@ -616,8 +616,8 @@ export const SAVED_VIEWS: SavedView[] = [
   },
   {
     id: 'offline-reliability',
-    label: 'Offline Reliability',
-    desc: 'Queue, retry, process death, network transitions',
+    label: 'Offline Güvenilirlik',
+    desc: 'Kuyruk, retry, process death, ağ geçişleri',
     match: (e) =>
       e.category === 'offline' ||
       e.environments.some((env) => ['Offline', 'Flaky network', 'Doze', 'Process killed'].includes(env)),
@@ -625,7 +625,7 @@ export const SAVED_VIEWS: SavedView[] = [
   {
     id: 'state-lifecycle',
     label: 'State & Lifecycle',
-    desc: 'Rotation, observer, SharedViewModel, process recreation',
+    desc: 'Rotation, observer, SharedViewModel, process yeniden oluşturma',
     match: (e) =>
       e.category === 'state' ||
       e.category === 'ui' ||
@@ -633,8 +633,8 @@ export const SAVED_VIEWS: SavedView[] = [
   },
   {
     id: 'accepted-risks',
-    label: 'Accepted Risks',
-    desc: 'Records left open intentionally',
+    label: 'Kabul Edilen Riskler',
+    desc: 'Kasıtlı olarak açık bırakılan kayıtlar',
     match: (e) => e.status === 'accepted-risk',
   },
 ]

@@ -3,28 +3,28 @@ import type { FeatureDomain, FeatureDomainId } from './nesy-types'
 export const FEATURE_DOMAINS: FeatureDomain[] = [
   {
     id: 'payments-fiscal',
-    title: 'Payments & Fiscal',
-    desc: 'Cash/card collection, skip rules, and fiscal receipt printing at delivery or pickup.',
+    title: 'Ödemeler & Fiskal',
+    desc: 'Nakit/kart tahsilatı, skip kuralları ve teslimat veya pickup sırasında fiskal fiş yazdırma.',
   },
   {
     id: 'delivery-outcomes',
-    title: 'Delivery Outcomes',
-    desc: 'Doorstep completion: failure evidence, consignee, signature, and alternate delivery points.',
+    title: 'Teslimat sonuçları',
+    desc: 'Kapı teslimatı tamamlama: başarısızlık kanıtı, alıcı, imza ve alternatif teslimat noktaları.',
   },
   {
     id: 'pickup-operations',
-    title: 'Pickup Operations',
-    desc: 'Pickup assignment, on-site variants, failed reasons, and next-day reassignment.',
+    title: 'Pickup operasyonları',
+    desc: 'Pickup ataması, saha varyantları, başarısızlık nedenleri ve ertesi gün yeniden atama.',
   },
   {
     id: 'tour-stops',
-    title: 'Tour & Stops',
-    desc: 'Stop creation/merge, beginning-of-day tour approval, and HC event list.',
+    title: 'Tour & Stop',
+    desc: 'Stop oluşturma/birleştirme, beginning-of-day tour onayı ve HC event listesi.',
   },
   {
     id: 'tracking-self-service',
-    title: 'Tracking & Self-service',
-    desc: 'Shipment tracking UI, Ebranch delivery options, and D4Me locker flows.',
+    title: 'Tracking & self-service',
+    desc: 'Shipment tracking UI, Ebranch teslimat seçenekleri ve D4Me locker akışları.',
   },
 ]
 

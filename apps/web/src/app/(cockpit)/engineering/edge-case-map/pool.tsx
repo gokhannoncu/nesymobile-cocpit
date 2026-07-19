@@ -35,8 +35,6 @@ import {
   type EdgeCaseFull,
 } from '@/data/engineering/edge-case-ops'
 
-// ── Common small indicators ──────────────────────────────────────
-
 export function SeverityCell({ severity }: { severity: Severity }) {
   const meta = SEVERITY_META[severity]
   return (
@@ -59,7 +57,7 @@ export function TestStatusCell({ e }: { e: EdgeCaseFull }) {
 
 function AutomationCell({ e }: { e: EdgeCaseFull }) {
   if (e.automation.length === 0)
-    return <span className="text-xs text-muted-foreground">○ None</span>
+    return <span className="text-xs text-muted-foreground">○ Yok</span>
   return (
     <span className="flex flex-wrap gap-1">
       {e.automation.map((a) => (
@@ -73,14 +71,12 @@ function AutomationCell({ e }: { e: EdgeCaseFull }) {
 
 function MitigationCell({ e }: { e: EdgeCaseFull }) {
   const map = {
-    yes: { txt: '✓ Yes', cls: 'text-green-600 dark:text-green-400' },
-    partial: { txt: '◐ Partial', cls: 'text-amber-600 dark:text-amber-400' },
-    no: { txt: '○ None', cls: 'text-red-600 dark:text-red-400' },
+    yes: { txt: '✓ Var', cls: 'text-green-600 dark:text-green-400' },
+    partial: { txt: '◐ Kısmi', cls: 'text-amber-600 dark:text-amber-400' },
+    no: { txt: '○ Yok', cls: 'text-red-600 dark:text-red-400' },
   }[e.mitigationStatus]
   return <span className={cn('text-xs font-semibold whitespace-nowrap', map.cls)}>{map.txt}</span>
 }
-
-// ── Pool table ─────────────────────────────────────────────────
 
 const th =
   'px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap'
@@ -96,7 +92,7 @@ export function PoolTable({
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        No records match the filter. Simplify your search or clear the quick filters.
+        Filtreye uyan kayıt yok. Aramayı sadeleştirin veya hızlı filtreleri temizleyin.
       </div>
     )
   }
@@ -113,12 +109,12 @@ export function PoolTable({
             <th className={th}>Test</th>
             <th className={th}>Domain</th>
             <th className={th}>Flow</th>
-            <th className={th}>Likelihood</th>
+            <th className={th}>Olasılık</th>
             <th className={th}>Automation</th>
             <th className={th}>Mitigation</th>
             <th className={th}>Incident</th>
             <th className={th}>Release</th>
-            <th className={th}>Last Verified</th>
+            <th className={th}>Son doğrulama</th>
             <th className={th}>Owner</th>
           </tr>
         </thead>
@@ -161,7 +157,7 @@ export function PoolTable({
                 )}
               </td>
               <td className={cn(td, 'whitespace-nowrap tabular-nums')}>
-                {e.lastVerified ?? <span className="text-muted-foreground">Never</span>}
+                {e.lastVerified ?? <span className="text-muted-foreground">Hiç</span>}
                 {isStale(e) && (
                   <span className="ml-1.5 text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">
                     stale
@@ -170,7 +166,7 @@ export function PoolTable({
               </td>
               <td className={cn(td, 'whitespace-nowrap')}>
                 {e.owner ?? (
-                  <span className="font-semibold text-red-600 dark:text-red-400">Unassigned</span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">Atanmamış</span>
                 )}
               </td>
             </tr>
@@ -180,8 +176,6 @@ export function PoolTable({
     </div>
   )
 }
-
-// ── Detail Drawer ────────────────────────────────────────────────
 
 function DrawerSection({
   icon: Icon,
@@ -245,27 +239,27 @@ export function EdgeCaseDrawer({
                 </Badge>
                 {e.releaseRisk && (
                   <Badge variant="destructive" appearance="outline" size="xs">
-                    {RELEASE_VERSION} impact
+                    {RELEASE_VERSION} etkisi
                   </Badge>
                 )}
               </div>
             </SheetHeader>
             <SheetBody className="h-[calc(100vh-96px)] space-y-6 overflow-y-auto px-5 py-5">
-              <DrawerSection icon={Target} title="1 · Summary" tone="blue">
+              <DrawerSection icon={Target} title="1 · Özet" tone="blue">
                 <div className="space-y-1.5">
-                  <Fact label="Likelihood">{LIKELIHOOD_META[e.likelihood].label}</Fact>
+                  <Fact label="Olasılık">{LIKELIHOOD_META[e.likelihood].label}</Fact>
                   <Fact label="Exposure">{e.exposure}</Fact>
-                  <Fact label="Owner">{e.owner ?? 'Unassigned'}</Fact>
-                  <Fact label="Last Verified">
-                    {e.lastVerified ?? 'Never verified'}
+                  <Fact label="Owner">{e.owner ?? 'Atanmamış'}</Fact>
+                  <Fact label="Son doğrulama">
+                    {e.lastVerified ?? 'Hiç doğrulanmadı'}
                     {isStale(e) && ' · stale'}
                   </Fact>
-                  <Fact label="Detectability">{e.detectability}/5 {e.detectability <= 2 && '· silent corruption risk'}</Fact>
+                  <Fact label="Detectability">{e.detectability}/5 {e.detectability <= 2 && '· silent corruption riski'}</Fact>
                   <Fact label="Recoverability">{e.recoverability}/5</Fact>
                 </div>
               </DrawerSection>
 
-              <DrawerSection icon={AlertTriangle} title="2 · Trigger & Preconditions" tone="orange">
+              <DrawerSection icon={AlertTriangle} title="2 · Tetikleyici & Önkoşullar" tone="orange">
                 <p>{e.trigger}</p>
                 {(e.mechanisms.length > 0 || e.environments.length > 0) && (
                   <div className="mt-2 flex flex-wrap gap-1">
@@ -298,7 +292,7 @@ export function EdgeCaseDrawer({
                 </DrawerSection>
               )}
 
-              <DrawerSection icon={AlertTriangle} title="4 · Impact & Risk" tone="red">
+              <DrawerSection icon={AlertTriangle} title="4 · Etki & Risk" tone="red">
                 <p>{e.impact}</p>
               </DrawerSection>
 
@@ -311,8 +305,8 @@ export function EdgeCaseDrawer({
                   </ol>
                   {e.reproduceReliability && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Reproduce reliability: <strong>{e.reproduceReliability}/5</strong>
-                      {e.reproduceReliability <= 3 && ' — race/timing condition, may not reproduce on every attempt.'}
+                      Reproduce güvenilirliği: <strong>{e.reproduceReliability}/5</strong>
+                      {e.reproduceReliability <= 3 && ' — race/timing koşulu, her denemede reproduce olmayabilir.'}
                     </p>
                   )}
                 </DrawerSection>
@@ -320,9 +314,9 @@ export function EdgeCaseDrawer({
 
               <DrawerSection icon={FlaskConical} title="6 · Test Coverage" tone="teal">
                 <div className="space-y-1.5">
-                  <Fact label="Last Result"><TestStatusCell e={e} /></Fact>
+                  <Fact label="Son sonuç"><TestStatusCell e={e} /></Fact>
                   <Fact label="Automation">
-                    {e.automation.length > 0 ? e.automation.join(' · ') : 'None — no regression protection'}
+                    {e.automation.length > 0 ? e.automation.join(' · ') : 'Yok — regression koruması yok'}
                   </Fact>
                 </div>
               </DrawerSection>
@@ -331,12 +325,12 @@ export function EdgeCaseDrawer({
                 <p>
                   {e.mitigationStatus === 'no' && (
                     <span className="mb-1 block text-xs font-semibold text-red-600 dark:text-red-400">
-                      No interim protection — there is no mechanism to halt impact during an incident. Target approach:
+                      Geçici koruma yok — incident sırasında etkiyi durduracak mekanizma yok. Hedef yaklaşım:
                     </span>
                   )}
                   {e.mitigationStatus === 'partial' && (
                     <span className="mb-1 block text-xs font-semibold text-amber-600 dark:text-amber-400">
-                      Partial protection in place. Approach:
+                      Kısmi koruma mevcut. Yaklaşım:
                     </span>
                   )}
                   {e.mitigation}
@@ -355,9 +349,9 @@ export function EdgeCaseDrawer({
                 </DrawerSection>
               )}
 
-              <DrawerSection icon={History} title="10 · Incidents & History" tone="gray">
+              <DrawerSection icon={History} title="10 · Incident & Geçmiş" tone="gray">
                 <div className="space-y-1.5">
-                  <Fact label="Linked incidents">{e.incidents > 0 ? `${e.incidents} records` : 'None'}</Fact>
+                  <Fact label="Bağlı incident">{e.incidents > 0 ? `${e.incidents} kayıt` : 'Yok'}</Fact>
                   <Fact label="Lifecycle">{LIFECYCLE_META[e.status].label}</Fact>
                 </div>
               </DrawerSection>

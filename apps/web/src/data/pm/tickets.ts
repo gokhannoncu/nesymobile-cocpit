@@ -1,1036 +1,153 @@
 // ─── Project Management — Ticket Data ────────────────────────────────────────
-// Cockpit integration of 48 ticket data from the NesyArchitectureReport project.
+// Canonical 48-ticket dataset from NesyArchitectureReport (`tickets.json`).
 
-import type { Ticket } from './types'
+import ticketsData from './tickets.json'
+import type { Filters, SortColumn, Ticket } from './types'
 
-// ═══ Group and Screen Constants ═════════════════════════════════════════════
+export const tickets = ticketsData as Ticket[]
 
-export const ALL_GROUPS = [
-  'Finance & Payment',
+/** Mimari kök-neden grup sırası (Architecture Report ile aynı) */
+export const GROUP_ORDER = [
+  'Finans & Ödeme',
   'Barcode & Scan',
-  'Tour & Delivery',
-  'Notification',
-  'State & Race',
   'D4Me & Locker',
-  'Location & GPS',
+  'State & Race',
+  'Tour & Teslimat',
+  'Bildirim',
+  'Offline & Sync',
+  'Konum & GPS',
   'UI & Crash',
+  'Güvenlik',
+  'Ülke & Config',
+  'Genel',
 ] as const
 
-export const ALL_SCREENS = [
-  'Delivery Failed',
-  'Delivery',
-  'Stop List',
-  'End of Day',
-  'Route Selection',
-  'Pick Up',
-  'D4Me/Locker',
-  'Shipment Tracking',
-  'Task List',
-  'Map/Navigation',
-  'Login/Settings',
-  'Hub Companion',
-  'Shipment Detail',
-] as const
+export const ALL_GROUPS = (() => {
+  const present = new Set(tickets.map((t) => t.group))
+  const ordered = GROUP_ORDER.filter((g) => present.has(g))
+  const extras = [...present].filter((g) => !GROUP_ORDER.includes(g as (typeof GROUP_ORDER)[number])).sort()
+  return [...ordered, ...extras]
+})()
 
-// ═══ Ticket Data ═════════════════════════════════════════════════════════
+export const ALL_SCREENS = [...new Set(tickets.map((t) => t.screen))].sort((a, b) =>
+  a.localeCompare(b, 'tr'),
+)
 
-export const tickets: Ticket[] = [
-  // ─── Finance & Payment (15 tickets) ────────────────────────────────────────
-  {
-    id: 437,
-    title: 'Fiscalization timeout — payment confirmation delayed',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'HR',
-    date: '2026-05-12',
-    labels: ['Team:telefunken', 'Epic: Mobile'],
-    topics: ['Fiscalization', 'Payment'],
-    summary: 'Call to fiscalization service takes over 30 seconds. User cannot receive payment confirmation, delivery cannot be completed.',
-    customer_refs: [{ repo: 'NESY_CEE', num: '437', url: 'https://github.com/nesyCEE/issues/437' }],
-    customer_ticket: 'NESY_CEE#437',
-    gh_url: 'https://github.com/nesyCEE/issues/437',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: {
-      report: 'Fiscalization call is synchronous; UI thread is blocked during network delays.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E31', 'E34'],
-      story: [
-        { k: 'symptom', text: 'Courier waits 30+ seconds on the payment collection screen.' },
-        { k: 'cause', text: 'FiscalizationService.sendReceipt() makes a synchronous HTTP call on the main thread.' },
-        { k: 'fix', text: 'Should be moved to Dispatchers.IO with Coroutine, timeout policy should be added.' },
-        { k: 'why', text: 'Async pattern was not used in the initial implementation; not noticed because the network was fast in the test environment.' },
-        { k: 'state', text: 'Synchronous call is still active. Occurs 5-10 times/day during peak hours in HR and RS.', confidence: 85 },
-        { k: 'todo', text: 'To be included in Sprint 24 plan — P0 priority.' },
-      ],
-    },
-    testCases: [
-      { id: 'TC-437-01', title: 'Fiscalization timeout test (>30s)', status: 'failed', type: 'integration' },
-      { id: 'TC-437-02', title: 'Fallback behavior on network interruption', status: 'pending', type: 'integration' },
-    ],
-  },
-  {
-    id: 438,
-    title: 'Double payment record — concurrent access issue',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'RS',
-    date: '2026-05-14',
-    labels: ['Team:telefunken', 'Bug: Critical'],
-    topics: ['Payment', 'Race Condition'],
-    summary: 'Two separate payment records are created on rapid double-tap. Inconsistency in accounting reports.',
-    customer_refs: [{ repo: 'UAT-RS', num: '215', url: 'https://github.com/UAT-RS/issues/215' }],
-    customer_ticket: 'UAT-RS#215',
-    gh_url: 'https://github.com/UAT-RS/issues/438',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: {
-      report: 'No debounce/mutex on the payment button. Double POST is sent during network delay.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E12', 'E15'],
-      story: [
-        { k: 'symptom', text: 'Double charge is being made from customer balance.' },
-        { k: 'cause', text: 'PaymentFragment.submitPayment() is not idempotent; UI is not disabled on button tap.' },
-        { k: 'fix', text: 'Button disable + idempotency key + backend deduplicate.' },
-        { k: 'why', text: 'Payment flow was written with single-threaded assumption.' },
-        { k: 'state', text: 'Open. 12 cases reported in RS in the last month.', confidence: 90 },
-        { k: 'todo', text: 'Urgent hotfix needed. Sprint 23 scope.' },
-      ],
-    },
-    testCases: [
-      { id: 'TC-438-01', title: 'Double-tap guard test', status: 'failed', type: 'e2e' },
-    ],
-  },
-  {
-    id: 441,
-    title: 'Payment type selection — cash/card switch error',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'CEE',
-    date: '2026-05-18',
-    labels: ['Epic: Mobile'],
-    topics: ['Payment'],
-    summary: 'When switching from cash to card, the previous cash amount is not reset.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#441',
-    gh_url: 'https://github.com/nesyCEE/issues/441',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: {
-      report: 'PaymentViewModel state management is stateful; clearAmount() is not called on type change.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E18'],
-    },
-  },
-  {
-    id: 445,
-    title: 'Tax calculation rounding difference',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'closed',
-    country: 'SI',
-    date: '2026-04-22',
-    labels: ['Team:telefunken'],
-    topics: ['Tax', 'Fiscalization'],
-    summary: 'Cent-level rounding difference occurs in SI tax calculation.',
-    customer_refs: [],
-    customer_ticket: 'NESY_SI#112',
-    gh_url: 'https://github.com/nesyCEE/issues/445',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: {
-      report: 'Float arithmetic is used. BigDecimal migration is needed.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-445-01', title: 'BigDecimal tax calculation', status: 'passed', type: 'unit' },
-    ],
-  },
-  {
-    id: 448,
-    title: 'Receipt printing Bluetooth connection drop',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'BA',
-    date: '2026-05-25',
-    labels: ['Bug: High', 'Epic: Mobile'],
-    topics: ['Printer', 'Bluetooth'],
-    summary: 'Bluetooth printer connection drops during printing, receipt is left incomplete.',
-    customer_refs: [],
-    customer_ticket: 'NESY_BA#88',
-    gh_url: 'https://github.com/nesyCEE/issues/448',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: {
-      report: 'No Bluetooth reconnect mechanism. Print job queue should be implemented.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E22'],
-    },
-  },
-  // ─── Barcode & Scan (10 ticket) ────────────────────────────────────────────
-  {
-    id: 501,
-    title: 'Barcode scanning O(n^4) performance issue',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-10',
-    labels: ['Bug: Critical', 'Performance'],
-    topics: ['Barcode', 'Performance'],
-    summary: 'Barcode dispatch path passes through 18 fragments. JSON blob scanning has O(n^4) complexity.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#501',
-    gh_url: 'https://github.com/nesyCEE/issues/501',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: {
-      report: 'ScanCoordinator is missing. Barcode data is stored as JSON blob, no DB index.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E01', 'E02', 'E03'],
-      story: [
-        { k: 'symptom', text: 'Barcode scanning takes 8-12 seconds on tours with 200+ packages, ANR risk.' },
-        { k: 'cause', text: 'Barcode data is stored as JSON chunk in a string column in Room DB. On each scan, entire JSON is parsed and linearly searched.' },
-        { k: 'fix', text: 'Normalized table + index. ScanCoordinator as central dispatcher.' },
-        { k: 'why', text: 'JSON blob was chosen as a quick solution in MVP, never refactored.' },
-        { k: 'state', text: 'Active issue in all countries. ANR rate is 3% on large tours.', confidence: 95, detectability: { level: 'high', note: 'Visible in ANR reports' }, fixability: { level: 'medium', note: 'DB migration + 18 fragment refactor required' } },
-        { k: 'todo', text: 'Included in Phase 1 architecture migration scope.' },
-      ],
-    },
-    testCases: [
-      { id: 'TC-501-01', title: '200 package barcode scan performance', status: 'failed', type: 'integration' },
-      { id: 'TC-501-02', title: '500 package stress test', status: 'pending', type: 'integration' },
-    ],
-  },
-  {
-    id: 502,
-    title: 'Scanning wrong shipment — validation missing',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'HR',
-    date: '2026-04-15',
-    labels: ['Bug: High'],
-    topics: ['Barcode', 'Validation'],
-    summary: 'Courier can scan barcode of a shipment not belonging to their tour, no warning is shown.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#302',
-    gh_url: 'https://github.com/nesyCEE/issues/502',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: {
-      report: 'No tour matching check after barcode scan. Cross-tour validation is needed.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E05'],
-    },
-  },
-  {
-    id: 505,
-    title: 'Crash when camera permission denied',
-    type: 'Bug',
-    severity: 'High',
-    status: 'closed',
-    country: 'General',
-    date: '2026-03-20',
-    labels: ['Bug: High', 'Crash'],
-    topics: ['Camera', 'Permission'],
-    summary: 'NullPointerException crash occurs when camera permission is denied.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#505',
-    gh_url: 'https://github.com/nesyCEE/issues/505',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: {
-      report: 'CameraFragment nullable check is missing. No graceful fallback on permission denied.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-505-01', title: 'Permission denied graceful fallback', status: 'passed', type: 'e2e' },
-    ],
-  },
-  {
-    id: 508,
-    title: 'Multiple barcode scan — rapid successive reading issue',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'RS',
-    date: '2026-05-02',
-    labels: ['Bug: Medium'],
-    topics: ['Barcode'],
-    summary: 'Same barcode is recorded multiple times during rapid successive scanning.',
-    customer_refs: [],
-    customer_ticket: 'UAT-RS#220',
-    gh_url: 'https://github.com/nesyCEE/issues/508',
-    screen: 'Pick Up',
-    group: 'Barcode & Scan',
-    analysis: {
-      report: 'Scan debounce duration is too short (100ms). Should be 500ms.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E07'],
-    },
-  },
-  {
-    id: 510,
-    title: 'Manual barcode entry — character limit issue',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'closed',
-    country: 'General',
-    date: '2026-02-18',
-    labels: ['Enhancement'],
-    topics: ['Barcode', 'UX'],
-    summary: 'Manual barcode entry field is limited to 20 characters, some international barcodes are 24+ characters.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#510',
-    gh_url: 'https://github.com/nesyCEE/issues/510',
-    screen: 'Pick Up',
-    group: 'Barcode & Scan',
-    analysis: {
-      report: 'Hardcoded maxLength=20. Should be dynamic.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-510-01', title: '24 character barcode entry test', status: 'passed', type: 'unit' },
-    ],
-  },
-  // ─── Tour & Delivery (6 tickets) ─────────────────────────────────────────
-  {
-    id: 601,
-    title: 'Tour ordering — non-optimized route',
-    type: 'Enhancement',
-    severity: 'High',
-    status: 'open',
-    country: 'General',
-    date: '2026-05-05',
-    labels: ['Enhancement', 'Epic: Mobile'],
-    topics: ['Routing', 'Optimization'],
-    summary: 'Tour stops are not optimized by GPS order. Couriers are manually sorting.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#601',
-    gh_url: 'https://github.com/nesyCEE/issues/601',
-    screen: 'Route Selection',
-    group: 'Tour & Delivery',
-    analysis: {
-      report: 'Tour optimization is done on the backend but the result is not transmitted to mobile.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E40'],
-    },
-  },
-  {
-    id: 602,
-    title: 'Delivery completion — photo upload error',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'ME',
-    date: '2026-06-01',
-    labels: ['Bug: High'],
-    topics: ['Photo', 'Upload'],
-    summary: 'No retry mechanism when connection drops during delivery photo upload.',
-    customer_refs: [],
-    customer_ticket: 'NESY_ME#45',
-    gh_url: 'https://github.com/nesyCEE/issues/602',
-    screen: 'Delivery',
-    group: 'Tour & Delivery',
-    analysis: {
-      report: 'WorkManager is not used. Photo upload is implemented as fire-and-forget.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E41', 'E42'],
-    },
-  },
-  {
-    id: 605,
-    title: 'Delivery failed — reason code outdated',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'closed',
-    country: 'HR',
-    date: '2026-03-15',
-    labels: ['Bug: Medium'],
-    topics: ['Delivery', 'Config'],
-    summary: 'Delivery failure reason codes are stuck on the 2024 list, new codes have not been added.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#310',
-    gh_url: 'https://github.com/nesyCEE/issues/605',
-    screen: 'Delivery Failed',
-    group: 'Tour & Delivery',
-    analysis: {
-      report: 'Reason codes are hardcoded. Should be backend-driven.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-605-01', title: 'Reason code synchronization', status: 'passed', type: 'integration' },
-    ],
-  },
-  // ─── Notification (4 tickets) ────────────────────────────────────────────────
-  {
-    id: 701,
-    title: 'Push notification delay — FCM token refresh',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-28',
-    labels: ['Bug: Medium'],
-    topics: ['Push', 'FCM'],
-    summary: 'When FCM token expires, refresh is not performed, notifications can be delayed up to 24 hours.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#701',
-    gh_url: 'https://github.com/nesyCEE/issues/701',
-    screen: 'Login/Settings',
-    group: 'Notification',
-    analysis: {
-      report: 'Token refresh callback is not implemented. FirebaseMessagingService.onNewToken() is empty.',
-      recurrenceRisk: 'medium',
-      edgeCases: [],
-    },
-  },
-  {
-    id: 703,
-    title: 'Notification channel — sound/vibration settings missing',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'closed',
-    country: 'General',
-    date: '2026-02-10',
-    labels: ['Enhancement'],
-    topics: ['Notification', 'UX'],
-    summary: 'All notifications come through the same channel. No tour/payment/general separation.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#703',
-    gh_url: 'https://github.com/nesyCEE/issues/703',
-    screen: 'Login/Settings',
-    group: 'Notification',
-    analysis: {
-      report: 'Single NotificationChannel. Should be categorized for Android O+.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-703-01', title: 'Notification channel separation', status: 'passed', type: 'manual' },
-    ],
-  },
-  // ─── State & Race (4 ticket) ──────────────────────────────────────────────
-  {
-    id: 801,
-    title: 'SharedViewModel god object — 3602 lines',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'General',
-    date: '2026-03-05',
-    labels: ['Bug: Critical', 'Architecture'],
-    topics: ['Architecture', 'State'],
-    summary: 'SharedViewModel.kt is 3602 lines, 100+ public methods. Every fragment depends on this single ViewModel.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#801',
-    gh_url: 'https://github.com/nesyCEE/issues/801',
-    screen: 'Stop List',
-    group: 'State & Race',
-    analysis: {
-      report: 'God object anti-pattern. Feature-based ViewModel separation is needed.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E50', 'E51', 'E52'],
-      story: [
-        { k: 'symptom', text: 'Every new feature adds methods to SharedViewModel. Merge conflicts are increasing.' },
-        { k: 'cause', text: 'Initially, a single ViewModel was considered sufficient and was never separated.' },
-        { k: 'fix', text: 'Should be split into feature-based ViewModels (DeliveryVM, ScanVM, PaymentVM, etc.)' },
-        { k: 'why', text: 'Single responsibility violation. Init time is 800ms+.' },
-        { k: 'state', text: 'Active. Growing every sprint. 200 lines added in the last 3 months.', confidence: 95, detectability: { level: 'high', note: 'File size can be tracked as a metric' }, fixability: { level: 'low', note: 'All fragment dependencies must change — major refactor' } },
-        { k: 'todo', text: 'Phase 2 architecture migration: ViewModel decomposition.' },
-      ],
-    },
-  },
-  {
-    id: 803,
-    title: 'StopListFragment monster — 7059 lines',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'General',
-    date: '2026-03-08',
-    labels: ['Bug: Critical', 'Architecture'],
-    topics: ['Architecture', 'Fragment'],
-    summary: 'StopListFragment.kt is 7059 lines, 30+ mutable fields. Cannot be tested.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#803',
-    gh_url: 'https://github.com/nesyCEE/issues/803',
-    screen: 'Stop List',
-    group: 'State & Race',
-    analysis: {
-      report: 'Monster fragment. Should be split into Compose UI + feature modules.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E53'],
-    },
-  },
-  {
-    id: 805,
-    title: 'Race condition — tour state synchronization',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'RS',
-    date: '2026-05-20',
-    labels: ['Bug: High', 'Race Condition'],
-    topics: ['State', 'Sync'],
-    summary: 'Data inconsistency when two different fragments update tour state simultaneously.',
-    customer_refs: [],
-    customer_ticket: 'UAT-RS#230',
-    gh_url: 'https://github.com/nesyCEE/issues/805',
-    screen: 'Route Selection',
-    group: 'State & Race',
-    analysis: {
-      report: 'No synchronized block in SharedViewModel. Concurrent LiveData emission.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E54'],
-    },
-    testCases: [
-      { id: 'TC-805-01', title: 'Concurrent state mutation testi', status: 'failed', type: 'integration' },
-    ],
-  },
-  // ─── D4Me & Locker (4 ticket) ─────────────────────────────────────────────
-  {
-    id: 901,
-    title: 'Locker reservation timeout — slot loss',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'HR',
-    date: '2026-05-28',
-    labels: ['Bug: High'],
-    topics: ['Locker', 'Reservation'],
-    summary: 'When locker slot reservation times out, user is not informed, slot is assigned to another courier.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#315',
-    gh_url: 'https://github.com/nesyCEE/issues/901',
-    screen: 'D4Me/Locker',
-    group: 'D4Me & Locker',
-    analysis: {
-      report: 'Reservation TTL is 5 minutes on the backend but countdown is not shown on mobile.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E60'],
-    },
-  },
-  {
-    id: 903,
-    title: 'D4Me QR code — low-light reading failure',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'closed',
-    country: 'SI',
-    date: '2026-04-05',
-    labels: ['Bug: Medium'],
-    topics: ['D4Me', 'QR'],
-    summary: 'D4Me QR code cannot be read in low-light environments. Flash does not turn on automatically.',
-    customer_refs: [],
-    customer_ticket: 'NESY_SI#120',
-    gh_url: 'https://github.com/nesyCEE/issues/903',
-    screen: 'D4Me/Locker',
-    group: 'D4Me & Locker',
-    analysis: {
-      report: 'CameraX torch mode is not automatic. Ambient light sensor integration is needed.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-903-01', title: 'Low-light QR reading + flash', status: 'passed', type: 'manual' },
-    ],
-  },
-  // ─── Location & GPS (2 tickets) ─────────────────────────────────────────────
-  {
-    id: 1001,
-    title: '0.0.0.0 coordinate error — no GPS lock',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-20',
-    labels: ['Bug: High', 'Location'],
-    topics: ['GPS', 'Location'],
-    summary: 'When GPS fix cannot be obtained, coordinates are sent as 0,0. Delivery location is recorded incorrectly.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1001',
-    gh_url: 'https://github.com/nesyCEE/issues/1001',
-    screen: 'Map/Navigation',
-    group: 'Location & GPS',
-    analysis: {
-      report: 'LocationProvider fallback returns 0,0. Last known location or error state should be used.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E70', 'E71'],
-      story: [
-        { k: 'symptom', text: 'Delivery location appears as off the coast of Africa (0°N 0°E) in the backend.' },
-        { k: 'cause', text: 'When LocationManager.getLastKnownLocation() returns null, default Location(0.0, 0.0) is used.' },
-        { k: 'fix', text: 'Null-safe location + "location unavailable" UI state + retry mechanism.' },
-        { k: 'why', text: 'Location class was designed as non-nullable, null guard was skipped.' },
-        { k: 'state', text: 'In all countries. Especially 8% rate in indoor deliveries.', confidence: 80 },
-        { k: 'todo', text: 'Sprint 24 scope.' },
-      ],
-    },
-  },
-  // ─── UI & Crash (3 ticket) ────────────────────────────────────────────────
-  {
-    id: 1101,
-    title: 'Memory leak — observeForever temizlenmiyor',
-    type: 'Bug',
-    severity: 'Critical',
-    status: 'open',
-    country: 'General',
-    date: '2026-03-25',
-    labels: ['Bug: Critical', 'Memory'],
-    topics: ['Memory', 'Leak'],
-    summary: 'observeForever is used in Camera, Damage, and CaseDetection fragments, not lifecycle-aware.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1101',
-    gh_url: 'https://github.com/nesyCEE/issues/1101',
-    screen: 'Shipment Detail',
-    group: 'UI & Crash',
-    analysis: {
-      report: 'observeForever calls are not cleaned up with removeObserver in onDestroyView. OOM crash.',
-      recurrenceRisk: 'high',
-      edgeCases: ['E80'],
-      story: [
-        { k: 'symptom', text: 'App slows down during extended use (8+ hours) and crashes with OOM.' },
-        { k: 'cause', text: 'There are 12 observeForever calls across 3 fragments, none have removeObserver.' },
-        { k: 'fix', text: 'observeForever -> observe(viewLifecycleOwner) migration. LeakCanary integration.' },
-        { k: 'why', text: 'Fragment lifecycle awareness is missing. observeForever was preferred over observe.' },
-        { k: 'state', text: '15-20 OOM reports daily in Crashlytics.', confidence: 92 },
-        { k: 'todo', text: 'Hotfix — Sprint 23.' },
-      ],
-    },
-    testCases: [
-      { id: 'TC-1101-01', title: 'LeakCanary integration test', status: 'pending', type: 'integration' },
-    ],
-  },
-  {
-    id: 1103,
-    title: 'Deprecated API usage — Android 14+ incompatibility',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'General',
-    date: '2026-06-05',
-    labels: ['Bug: High', 'Compatibility'],
-    topics: ['Android', 'API'],
-    summary: 'Deprecated APIs do not work on Android 14+ devices. ForegroundService, exact alarm are affected.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1103',
-    gh_url: 'https://github.com/nesyCEE/issues/1103',
-    screen: 'Login/Settings',
-    group: 'UI & Crash',
-    analysis: {
-      report: 'API calls written for targetSdkVersion 33 are not compatible with SDK 34+ behavior changes.',
-      recurrenceRisk: 'medium',
-      edgeCases: ['E81'],
-    },
-  },
-  {
-    id: 1105,
-    title: 'Dark mode — color contrast issues',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'closed',
-    country: 'General',
-    date: '2026-01-20',
-    labels: ['Enhancement', 'UX'],
-    topics: ['UI', 'DarkMode'],
-    summary: 'Some text colors blend with background in dark mode. WCAG AA contrast ratio is not met.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1105',
-    gh_url: 'https://github.com/nesyCEE/issues/1105',
-    screen: 'Task List',
-    group: 'UI & Crash',
-    analysis: {
-      report: 'Hardcoded color values do not support dark mode. Theme-aware colors should be used.',
-      recurrenceRisk: 'low',
-      edgeCases: [],
-    },
-    testCases: [
-      { id: 'TC-1105-01', title: 'WCAG AA contrast test', status: 'passed', type: 'manual' },
-    ],
-  },
-  // ─── Additional tickets — various groups ────────────────────────────────────
-  {
-    id: 442,
-    title: 'POS device integration — COM port error',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'HR',
-    date: '2026-06-08',
-    labels: ['Bug: High'],
-    topics: ['POS', 'Hardware'],
-    summary: 'COM port connection cannot be established on some POS devices.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#320',
-    gh_url: 'https://github.com/nesyCEE/issues/442',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: { report: 'USB serial library is not up to date.', recurrenceRisk: 'medium', edgeCases: ['E19'] },
-  },
-  {
-    id: 443,
-    title: 'Cash on delivery — partial amount calculation error',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'RS',
-    date: '2026-05-30',
-    labels: ['Bug: Medium'],
-    topics: ['COD', 'Payment'],
-    summary: 'When partial payment is made, remaining amount is calculated incorrectly.',
-    customer_refs: [],
-    customer_ticket: 'UAT-RS#225',
-    gh_url: 'https://github.com/nesyCEE/issues/443',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: { report: 'Float arithmetic + currency rounding issue.', recurrenceRisk: 'medium', edgeCases: ['E20'] },
-  },
-  {
-    id: 503,
-    title: 'Multiple barcode format support missing',
-    type: 'Enhancement',
-    severity: 'Medium',
-    status: 'open',
-    country: 'General',
-    date: '2026-05-10',
-    labels: ['Enhancement'],
-    topics: ['Barcode', 'Format'],
-    summary: 'Formats other than QR, DataMatrix, and Code128 are not supported.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#503',
-    gh_url: 'https://github.com/nesyCEE/issues/503',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: { report: 'MLKit barcode scanner configuration should be expanded.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 506,
-    title: 'Barcode history — last 50 scan records',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-01',
-    labels: ['Enhancement'],
-    topics: ['Barcode', 'History'],
-    summary: 'No list of recently scanned barcodes for the courier. Cannot verify after a wrong scan.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#506',
-    gh_url: 'https://github.com/nesyCEE/issues/506',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: { report: 'No scan history log feature. Last 50 records should be kept with a ring buffer.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 603,
-    title: 'Tour start — vehicle plate validation',
-    type: 'Enhancement',
-    severity: 'Medium',
-    status: 'open',
-    country: 'HR',
-    date: '2026-05-15',
-    labels: ['Enhancement'],
-    topics: ['Tour', 'Validation'],
-    summary: 'Vehicle plate is not validated at tour start. Departure with the wrong vehicle is possible.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#325',
-    gh_url: 'https://github.com/nesyCEE/issues/603',
-    screen: 'Route Selection',
-    group: 'Tour & Delivery',
-    analysis: { report: 'Vehicle validation backend API exists but mobile is not using it.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 702,
-    title: 'Notification tap — redirecting to wrong screen',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-30',
-    labels: ['Bug: Medium'],
-    topics: ['Notification', 'Navigation'],
-    summary: 'Deep link to correct screen is not performed when notification is tapped. Falls back to home screen.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#702',
-    gh_url: 'https://github.com/nesyCEE/issues/702',
-    screen: 'Login/Settings',
-    group: 'Notification',
-    analysis: { report: 'PendingIntent deep link configuration is missing.', recurrenceRisk: 'medium', edgeCases: [] },
-  },
-  {
-    id: 704,
-    title: 'Notification — read/unread tracking',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'open',
-    country: 'General',
-    date: '2026-03-12',
-    labels: ['Enhancement'],
-    topics: ['Notification'],
-    summary: 'Notification history and read/unread status are not tracked.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#704',
-    gh_url: 'https://github.com/nesyCEE/issues/704',
-    screen: 'Login/Settings',
-    group: 'Notification',
-    analysis: { report: 'No notification inbox feature. Room DB table + badge count needed.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 804,
-    title: 'LiveData event loss — SingleLiveEvent missing',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-12',
-    labels: ['Bug: High', 'Architecture'],
-    topics: ['Architecture', 'LiveData'],
-    summary: 'Navigation and snackbar events are transmitted via LiveData. They are re-triggered on configuration changes.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#804',
-    gh_url: 'https://github.com/nesyCEE/issues/804',
-    screen: 'Stop List',
-    group: 'State & Race',
-    analysis: { report: 'LiveData event wrapper or Channel/Flow should be used.', recurrenceRisk: 'high', edgeCases: ['E55'] },
-  },
-  {
-    id: 902,
-    title: 'Locker pin code — security vulnerability',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'HR',
-    date: '2026-06-10',
-    labels: ['Bug: High', 'Security'],
-    topics: ['Locker', 'Security'],
-    summary: 'Locker pin code is printed as plaintext in logcat.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#330',
-    gh_url: 'https://github.com/nesyCEE/issues/902',
-    screen: 'D4Me/Locker',
-    group: 'D4Me & Locker',
-    analysis: { report: 'Sensitive data is not masked in debug logs. Should be stripped by ProGuard/R8.', recurrenceRisk: 'medium', edgeCases: ['E61'] },
-  },
-  {
-    id: 904,
-    title: 'D4Me door not opening — Bluetooth LE timeout',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'SI',
-    date: '2026-05-22',
-    labels: ['Bug: Medium'],
-    topics: ['D4Me', 'BLE'],
-    summary: 'Timeout occurs when trying to open D4Me locker door via Bluetooth LE.',
-    customer_refs: [],
-    customer_ticket: 'NESY_SI#125',
-    gh_url: 'https://github.com/nesyCEE/issues/904',
-    screen: 'D4Me/Locker',
-    group: 'D4Me & Locker',
-    analysis: { report: 'BLE connection timeout is 5 seconds. Should retry with 3 attempts.', recurrenceRisk: 'medium', edgeCases: [] },
-  },
-  {
-    id: 1002,
-    title: 'Map marker update — flicker issue',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'closed',
-    country: 'General',
-    date: '2026-03-01',
-    labels: ['Bug: Medium'],
-    topics: ['Map', 'UI'],
-    summary: 'Delivery markers on the map flicker on every location update.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1002',
-    gh_url: 'https://github.com/nesyCEE/issues/1002',
-    screen: 'Map/Navigation',
-    group: 'Location & GPS',
-    analysis: { report: 'Marker is removed + added on every update. Position update is sufficient.', recurrenceRisk: 'low', edgeCases: [] },
-    testCases: [
-      { id: 'TC-1002-01', title: 'Marker smooth update test', status: 'passed', type: 'manual' },
-    ],
-  },
-  {
-    id: 1102,
-    title: 'RecyclerView — scroll performance on large lists',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'General',
-    date: '2026-04-18',
-    labels: ['Bug: Medium', 'Performance'],
-    topics: ['UI', 'Performance'],
-    summary: 'Scroll performance degrades on stop lists with 500+ items. Frame drop is 15%+.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#1102',
-    gh_url: 'https://github.com/nesyCEE/issues/1102',
-    screen: 'Stop List',
-    group: 'UI & Crash',
-    analysis: { report: 'ViewHolder recycling is not optimized. DiffUtil is not used.', recurrenceRisk: 'medium', edgeCases: ['E82'] },
-  },
-  // Additional tickets — general
-  {
-    id: 446,
-    title: 'Change calculation — rounding policy',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'open',
-    country: 'BA',
-    date: '2026-06-12',
-    labels: ['Enhancement'],
-    topics: ['Payment', 'UX'],
-    summary: 'Country-specific rounding policy is not applied in change calculation.',
-    customer_refs: [],
-    customer_ticket: 'NESY_BA#90',
-    gh_url: 'https://github.com/nesyCEE/issues/446',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: { report: 'Country-specific rounding rules should be read from config.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 447,
-    title: 'Invoice PDF generation — encoding issue',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'closed',
-    country: 'HR',
-    date: '2026-02-28',
-    labels: ['Bug: Medium'],
-    topics: ['PDF', 'Encoding'],
-    summary: 'Turkish/Croatian special characters appear corrupted in invoice PDF.',
-    customer_refs: [],
-    customer_ticket: 'NESY_HR#335',
-    gh_url: 'https://github.com/nesyCEE/issues/447',
-    screen: 'Delivery',
-    group: 'Finance & Payment',
-    analysis: { report: 'UTF-8 font is not embedded. iText configuration should be updated.', recurrenceRisk: 'low', edgeCases: [] },
-    testCases: [
-      { id: 'TC-447-01', title: 'UTF-8 character PDF render test', status: 'passed', type: 'unit' },
-    ],
-  },
-  {
-    id: 509,
-    title: 'Barcode scanning — ambient noise rejection',
-    type: 'Enhancement',
-    severity: 'Low',
-    status: 'open',
-    country: 'General',
-    date: '2026-03-18',
-    labels: ['Enhancement'],
-    topics: ['Barcode', 'Quality'],
-    summary: 'Reading success rate is low on blurry or partially damaged barcodes.',
-    customer_refs: [],
-    customer_ticket: 'NESY_CEE#509',
-    gh_url: 'https://github.com/nesyCEE/issues/509',
-    screen: 'Stop List',
-    group: 'Barcode & Scan',
-    analysis: { report: 'ML Kit confidence threshold is too high (0.95). Can be lowered to 0.85.', recurrenceRisk: 'low', edgeCases: [] },
-  },
-  {
-    id: 604,
-    title: 'End of Day report — missing shipment count',
-    type: 'Bug',
-    severity: 'High',
-    status: 'open',
-    country: 'RS',
-    date: '2026-06-15',
-    labels: ['Bug: High'],
-    topics: ['EOD', 'Report'],
-    summary: 'Count of undeliverable shipments is not included in the End of Day report total.',
-    customer_refs: [],
-    customer_ticket: 'UAT-RS#240',
-    gh_url: 'https://github.com/nesyCEE/issues/604',
-    screen: 'End of Day',
-    group: 'Tour & Delivery',
-    analysis: { report: 'EOD query only filters status=delivered. failed_delivery should be included.', recurrenceRisk: 'medium', edgeCases: ['E43'] },
-  },
-  {
-    id: 606,
-    title: 'Delivery window — timezone issue',
-    type: 'Bug',
-    severity: 'Medium',
-    status: 'open',
-    country: 'SI',
-    date: '2026-05-08',
-    labels: ['Bug: Medium'],
-    topics: ['Delivery', 'Timezone'],
-    summary: 'Delivery time window is saved as UTC, causing a 1-2 hour difference in local time display.',
-    customer_refs: [],
-    customer_ticket: 'NESY_SI#130',
-    gh_url: 'https://github.com/nesyCEE/issues/606',
-    screen: 'Delivery',
-    group: 'Tour & Delivery',
-    analysis: { report: 'Backend is UTC, mobile is local time. Timezone conversion is missing.', recurrenceRisk: 'medium', edgeCases: ['E44'] },
-  },
-]
-
-// ═══ Helper Functions ═══════════════════════════════════════════════════════
-
-export function countBy<T>(items: T[], fn: (item: T) => string): Map<string, number> {
-  const map = new Map<string, number>()
-  items.forEach((item) => {
-    const key = fn(item)
-    map.set(key, (map.get(key) || 0) + 1)
-  })
-  return map
+const sevOrder: Record<string, number> = {
+  Critical: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
 }
 
-export function sortedEntries(map: Map<string, number>): [string, number][] {
-  return [...map.entries()].sort((a, b) => b[1] - a[1])
-}
-
-export function filterTickets(
+export function countBy(
   items: Ticket[],
-  filters: import('./types').Filters,
-  search: string,
-): Ticket[] {
-  return items.filter((t) => {
-    if (filters.severity && t.severity !== filters.severity) return false
-    if (filters.status && t.status !== filters.status) return false
-    if (filters.group && t.group !== filters.group) return false
-    if (filters.type && t.type !== filters.type) return false
-    if (filters.screen && t.screen !== filters.screen) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        t.title.toLowerCase().includes(q) ||
-        t.summary.toLowerCase().includes(q) ||
-        t.customer_ticket.toLowerCase().includes(q) ||
-        String(t.id).includes(q)
-      )
+  getKey: (ticket: Ticket) => string | string[],
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const item of items) {
+    const keys = getKey(item)
+    for (const key of Array.isArray(keys) ? keys : [keys]) {
+      counts[key] = (counts[key] || 0) + 1
+    }
+  }
+  return counts
+}
+
+export function sortedEntries(counts: Record<string, number>): [string, number][] {
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])
+}
+
+export function sortGroupEntries(entries: [string, number][]): [string, number][] {
+  const order = Object.fromEntries(GROUP_ORDER.map((g, i) => [g, i]))
+  return [...entries].sort((a, b) => {
+    const diff = (order[a[0]] ?? 99) - (order[b[0]] ?? 99)
+    return diff !== 0 ? diff : b[1] - a[1]
+  })
+}
+
+export function filterTickets(items: Ticket[], filters: Filters, search: string): Ticket[] {
+  const q = search.toLowerCase().trim()
+
+  return items.filter((ticket) => {
+    if (filters.severity && ticket.severity !== filters.severity) return false
+    if (filters.status && ticket.status !== filters.status) return false
+    if (filters.group && ticket.group !== filters.group) return false
+    if (filters.type && ticket.type !== filters.type) return false
+    if (filters.screen && ticket.screen !== filters.screen) return false
+    if (
+      q &&
+      !ticket.title.toLowerCase().includes(q) &&
+      !String(ticket.id).includes(q) &&
+      !ticket.summary.toLowerCase().includes(q) &&
+      !(ticket.customer_ticket || '').toLowerCase().includes(q) &&
+      !ticket.group.toLowerCase().includes(q) &&
+      !ticket.screen.toLowerCase().includes(q)
+    ) {
+      return false
     }
     return true
   })
 }
 
-const sevOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-
-export function sortTickets(
-  items: Ticket[],
-  col: import('./types').SortColumn,
-  dir: 1 | -1,
-): Ticket[] {
+export function sortTickets(items: Ticket[], sortCol: SortColumn, sortDir: 1 | -1): Ticket[] {
   return [...items].sort((a, b) => {
-    let cmp = 0
-    switch (col) {
-      case 'severity': cmp = (sevOrder[a.severity] ?? 4) - (sevOrder[b.severity] ?? 4); break
-      case 'id': cmp = a.id - b.id; break
-      case 'title': cmp = a.title.localeCompare(b.title, 'en'); break
-      case 'status': cmp = a.status.localeCompare(b.status); break
-      case 'group': cmp = a.group.localeCompare(b.group, 'en'); break
-      case 'type': cmp = a.type.localeCompare(b.type); break
-      case 'date': cmp = a.date.localeCompare(b.date); break
-      case 'customer': cmp = a.customer_ticket.localeCompare(b.customer_ticket); break
+    let va: string | number
+    let vb: string | number
+
+    switch (sortCol) {
+      case 'severity':
+        va = sevOrder[a.severity] ?? 4
+        vb = sevOrder[b.severity] ?? 4
+        break
+      case 'id':
+        va = a.id
+        vb = b.id
+        break
+      case 'date':
+        va = a.date
+        vb = b.date
+        break
+      case 'status':
+        va = a.status
+        vb = b.status
+        break
+      case 'group':
+        va = a.group
+        vb = b.group
+        break
+      case 'type':
+        va = a.type
+        vb = b.type
+        break
+      case 'customer':
+        va = a.customer_ticket
+        vb = b.customer_ticket
+        break
+      default:
+        va = a.title
+        vb = b.title
     }
-    return cmp * dir
+
+    if (va < vb) return -1 * sortDir
+    if (va > vb) return 1 * sortDir
+    return 0
   })
+}
+
+export function ticketStats(items: Ticket[] = tickets) {
+  const counts = {
+    total: items.length,
+    open: 0,
+    closed: 0,
+    Critical: 0,
+    High: 0,
+    Medium: 0,
+    Low: 0,
+  }
+  for (const ticket of items) {
+    counts[ticket.status]++
+    counts[ticket.severity]++
+  }
+  return counts
 }

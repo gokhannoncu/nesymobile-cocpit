@@ -12,16 +12,15 @@ import {
   Database,
   FileText,
   Flag,
+  FolderKanban,
   Gauge,
   GitBranch,
   Globe,
   Grid3x3,
   History,
   Home,
-  KanbanSquare,
   Layers,
   LayoutDashboard,
-  ListTodo,
   PackagePlus,
   Plug,
   Map,
@@ -35,7 +34,6 @@ import {
   Rocket,
   Route,
   ScrollText,
-  Search,
   ShieldCheck,
   Siren,
   Smartphone,
@@ -204,21 +202,74 @@ export const WORKSPACES: Workspace[] = [
     ],
   },
   {
+    id: 'pm',
+    label: 'Project Management',
+    icon: FolderKanban,
+    className: 'border-white bg-violet-500 hover:bg-violet-600 text-white hover:text-white',
+    path: '/pm/tickets',
+    basePaths: ['/pm'],
+    menu: [
+      {
+        title: 'Project Management',
+        children: [
+          {
+            title: 'Ticket Management',
+            icon: Bug,
+            children: [
+              {
+                title: 'Ticket Board',
+                path: '/pm/tickets',
+                icon: Ticket,
+              },
+            ],
+          },
+          {
+            title: 'Release & Versions',
+            icon: GitBranch,
+            children: [
+              {
+                title: 'Release History',
+                path: '/pm/releases',
+                icon: Rocket,
+              },
+              {
+                title: 'Version Tracker',
+                path: '/pm/versions',
+                icon: Tag,
+              },
+            ],
+          },
+          {
+            title: 'Planning',
+            icon: Calendar,
+            children: [
+              {
+                title: 'Sprint Calendar',
+                path: '/pm/calendar',
+                icon: CalendarDays,
+              },
+              {
+                title: 'Roadmap',
+                path: '/pm/roadmap',
+                icon: Map,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'engineering',
     label: 'Engineering',
     icon: Cpu,
     className: 'border-white bg-blue-500 hover:bg-blue-600 text-white hover:text-white',
-    path: '/engineering/overview',
+    path: '/engineering/incident-playbook',
     basePaths: ['/engineering'],
     menu: [
       {
         title: 'Engineering',
         children: [
-          {
-            title: 'Overview',
-            path: '/engineering/overview',
-            icon: LayoutDashboard,
-          },
           {
             title: 'Reliability & Operations',
             icon: Activity,
@@ -232,11 +283,6 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Edge Case Map',
                 path: '/engineering/edge-case-map',
                 icon: Radar,
-              },
-              {
-                title: 'Performance Intelligence',
-                path: '/engineering/performance',
-                icon: Gauge,
               },
               {
                 title: 'Field Ticket Intelligence',
@@ -259,48 +305,6 @@ export const WORKSPACES: Workspace[] = [
                 path: '/engineering/modernization-plan',
                 icon: Route,
               },
-              {
-                title: 'Technical Debt',
-                path: '/engineering/technical-debt',
-                icon: ListTodo,
-              },
-            ],
-          },
-          {
-            title: 'Delivery & Security',
-            icon: GitBranch,
-            children: [
-              {
-                title: 'GitHub Pulse',
-                path: '/engineering/github-pulse',
-                icon: GitBranch,
-              },
-              {
-                title: 'Security Posture',
-                path: '/engineering/security',
-                icon: ShieldCheck,
-              },
-            ],
-          },
-          {
-            title: 'Engineering Tools',
-            icon: Bolt,
-            children: [
-              {
-                title: 'Data Locator',
-                path: '/engineering/tools/data-locator',
-                icon: Compass,
-              },
-              {
-                title: 'MongoDB Query Generator',
-                path: '/engineering/tools/mongodb-query-generator',
-                icon: Database,
-              },
-              {
-                title: 'Graylog Query Generator',
-                path: '/engineering/tools/graylog-query-generator',
-                icon: Terminal,
-              },
             ],
           },
         ],
@@ -313,7 +317,7 @@ export const WORKSPACES: Workspace[] = [
     icon: Bug,
     className: 'border-white bg-teal-500 hover:bg-teal-600 text-white hover:text-white',
     path: '/debug-view/overview',
-    basePaths: ['/debug-view'],
+    basePaths: ['/debug-view', '/engineering/tools'],
     menu: [
       {
         title: 'Debug View',
@@ -378,6 +382,27 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Device Log Explorer',
                 path: '/debug-view/log-explorer',
                 icon: ScrollText,
+              },
+            ],
+          },
+          {
+            title: 'Engineering Tools',
+            icon: Bolt,
+            children: [
+              {
+                title: 'Data Locator',
+                path: '/engineering/tools/data-locator',
+                icon: Compass,
+              },
+              {
+                title: 'MongoDB Query Generator',
+                path: '/engineering/tools/mongodb-query-generator',
+                icon: Database,
+              },
+              {
+                title: 'Graylog Query Generator',
+                path: '/engineering/tools/graylog-query-generator',
+                icon: Terminal,
               },
             ],
           },
@@ -482,84 +507,6 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Field Courier Login',
                 path: AUTOMATION_FIELD_LOGIN_PATH,
                 icon: UserRoundCog,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'pm',
-    label: 'Project Management',
-    icon: KanbanSquare,
-    className: 'border-white bg-violet-500 hover:bg-violet-600 text-white hover:text-white',
-    path: '/pm/overview',
-    basePaths: ['/pm'],
-    menu: [
-      {
-        title: 'Project Management',
-        children: [
-          {
-            title: 'Overview',
-            path: '/pm/overview',
-            icon: LayoutDashboard,
-          },
-          {
-            title: 'Ticket Management',
-            icon: Bug,
-            children: [
-              {
-                title: 'Ticket Board',
-                path: '/pm/tickets',
-                icon: KanbanSquare,
-              },
-              {
-                title: 'Root Cause Analysis',
-                path: '/pm/root-cause',
-                icon: Search,
-              },
-              {
-                title: 'Test Coverage',
-                path: '/pm/test-coverage',
-                icon: ShieldCheck,
-              },
-            ],
-          },
-          {
-            title: 'Release & Versions',
-            icon: GitBranch,
-            children: [
-              {
-                title: 'Release History',
-                path: '/pm/releases',
-                icon: Rocket,
-              },
-              {
-                title: 'Version Tracker',
-                path: '/pm/versions',
-                icon: Tag,
-              },
-              {
-                title: 'Changelog',
-                path: '/pm/changelog',
-                icon: ScrollText,
-              },
-            ],
-          },
-          {
-            title: 'Planning',
-            icon: Calendar,
-            children: [
-              {
-                title: 'Sprint Calendar',
-                path: '/pm/calendar',
-                icon: CalendarDays,
-              },
-              {
-                title: 'Roadmap',
-                path: '/pm/roadmap',
-                icon: Map,
               },
             ],
           },

@@ -8,6 +8,7 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { findWorkspaceMenuItem, getActiveWorkspace } from '@nesy/metronic/config/menu-utils'
 import {
   Toolbar,
+  ToolbarActions,
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
@@ -26,12 +27,21 @@ const GroupPdfButton = dynamic(
 export function ProductPage({
   path,
   title,
+  hideToolbar = false,
+  toolbarHeading,
+  toolbarActions,
   children,
 }: {
   /** Route path — e.g. "/product/solution-overview". Title is resolved from config. */
   path: string
   /** Fallback title if not found in config. */
   title?: string
+  /** Hide the default page title toolbar when the page provides its own header banner. */
+  hideToolbar?: boolean
+  /** Custom toolbar heading — e.g. back link + breadcrumb on detail pages. */
+  toolbarHeading?: ReactNode
+  /** Optional right-side toolbar content. */
+  toolbarActions?: ReactNode
   children: ReactNode
 }) {
   const item = findWorkspaceMenuItem(path)
@@ -39,7 +49,10 @@ export function ProductPage({
   const workspace = getActiveWorkspace(path)
   const isGroupOverview = workspace.path === path && path !== '/'
   // Debug View / Data Center use their own page headers; skip the generic toolbar.
-  const showToolbar = workspace.id !== 'data-center' && workspace.id !== 'debug-view'
+  const showToolbar =
+    (!hideToolbar || toolbarHeading != null) &&
+    workspace.id !== 'data-center' &&
+    workspace.id !== 'debug-view'
 
   return (
     <div className="container-fluid min-w-0 max-w-full">
@@ -47,20 +60,27 @@ export function ProductPage({
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
-            <ToolbarPageTitle>{item?.title ?? title ?? 'Product'}</ToolbarPageTitle>
+            {toolbarHeading ?? (
+              <ToolbarPageTitle>{item?.title ?? title ?? 'Product'}</ToolbarPageTitle>
+            )}
           </ToolbarHeading>
-          {isGroupOverview &&
+          {toolbarActions ? (
+            <ToolbarActions>{toolbarActions}</ToolbarActions>
+          ) : (
+            isGroupOverview &&
+            workspace.id !== 'product' &&
             workspace.id !== 'data-center' &&
             workspace.id !== 'automation' &&
             workspace.id !== 'debug-view' && (
-            <div className="flex items-center gap-2">
-              <GroupPdfButton workspace={workspace} />
-            </div>
+              <div className="flex items-center gap-2">
+                <GroupPdfButton workspace={workspace} />
+              </div>
+            )
           )}
         </ToolbarWrapper>
       </Toolbar>
       )}
-      <div className={showToolbar ? 'space-y-8 pb-12' : 'pb-12'}>{children}</div>
+      <div className={showToolbar ? 'space-y-8 pb-12' : 'space-y-8 pb-12 pt-2'}>{children}</div>
     </div>
   )
 }

@@ -13,7 +13,6 @@ describe('resolveFeatureDetailSections', () => {
     expect(resolveFeatureDetailSections({ hasDetail: true, hasDiagram: false }).map((s) => s.id)).toEqual([
       'overview',
       'countries',
-      'tech',
       'ops',
     ])
   })
@@ -23,13 +22,12 @@ describe('resolveFeatureDetailSections', () => {
       'overview',
       'flow',
       'countries',
-      'tech',
       'ops',
     ])
   })
 
   it('uses stable labels', () => {
     const labels = resolveFeatureDetailSections({ hasDetail: true, hasDiagram: true }).map((s) => s.label)
-    expect(labels).toEqual(['Overview', 'Flow', 'Countries', 'Tech', 'Ops'])
+    expect(labels).toEqual(['Genel bakış', 'İş akışı', 'Ülkeler', 'Saha notları'])
   })
 })

@@ -1,0 +1,342 @@
+/* NESY Ticket Table — calm flat list in a single rounded container */
+
+.nesy-ticket-table {
+  --ntt-border: rgb(228 228 231 / 0.9);
+  --ntt-card: #ffffff;
+  --ntt-row-border: rgb(228 228 231 / 0.55);
+  --ntt-head: rgb(250 250 250 / 0.9);
+  --ntt-hover: rgb(255 122 26 / 0.04);
+  --ntt-text: rgb(24 24 27);
+  --ntt-text2: rgb(82 82 91);
+  --ntt-text3: rgb(161 161 170);
+  --ntt-chip: rgb(244 244 245);
+  --ntt-orange: var(--nesy-orange, #ff7a1a);
+  --ntt-orange-ink: var(--nesy-orange-ink, #c2410c);
+  --ntt-orange-soft: var(--nesy-orange-soft, #fff4ed);
+
+  border: 1px solid var(--ntt-border);
+  border-radius: 0.75rem;
+  background: var(--ntt-card);
+  overflow: hidden;
+}
+
+.dark .nesy-ticket-table {
+  --ntt-border: rgb(39 39 42 / 0.95);
+  --ntt-card: rgb(9 9 11);
+  --ntt-row-border: rgb(39 39 42 / 0.6);
+  --ntt-head: rgb(24 24 27 / 0.75);
+  --ntt-hover: rgb(255 122 26 / 0.06);
+  --ntt-text: rgb(244 244 245);
+  --ntt-text2: rgb(161 161 170);
+  --ntt-text3: rgb(113 113 122);
+  --ntt-chip: rgb(39 39 42 / 0.85);
+  --ntt-orange-soft: rgb(255 122 26 / 0.12);
+}
+
+/* Neutralize legacy .pm-td table styles that bleed into this component.
+   Kept above the base rules so equal-specificity base rules below win. */
+.pm-td .nesy-ticket-table th,
+.pm-td .nesy-ticket-table td {
+  border: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: inherit;
+}
+.pm-td .nesy-ticket-table thead th {
+  background: var(--ntt-head);
+}
+.pm-td .nesy-ticket-table th:hover {
+  background: var(--ntt-head);
+  color: inherit;
+}
+.pm-td .nesy-ticket-table tbody tr:nth-child(n) {
+  background: transparent;
+}
+
+.nesy-ticket-table .ntt-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.nesy-ticket-table .ntt-scroll table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+/* ---------- Header ---------- */
+
+.nesy-ticket-table thead .ntt-th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.5rem 0.625rem;
+  text-align: left;
+  background: var(--ntt-head);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ntt-border);
+}
+
+.nesy-ticket-table thead .ntt-th:first-child {
+  padding-left: 0.875rem;
+}
+
+.nesy-ticket-table thead .ntt-th-index {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ntt-text3);
+  text-align: center;
+}
+
+.nesy-ticket-table .ntt-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ntt-text3);
+  transition: color 120ms ease;
+}
+
+.nesy-ticket-table .ntt-sort:hover {
+  color: var(--ntt-text);
+}
+
+.nesy-ticket-table .ntt-sort-active {
+  color: var(--ntt-orange-ink);
+}
+
+.dark .nesy-ticket-table .ntt-sort-active {
+  color: var(--ntt-orange);
+}
+
+/* ---------- Rows ---------- */
+
+.nesy-ticket-table tbody tr.ntt-row {
+  cursor: pointer;
+}
+
+.nesy-ticket-table tbody .ntt-td {
+  position: relative;
+  padding: 0.5625rem 0.625rem;
+  vertical-align: middle;
+  background: transparent;
+  border-bottom: 1px solid var(--ntt-row-border);
+  transition: background-color 120ms ease;
+}
+
+.nesy-ticket-table tbody tr.ntt-row:last-child .ntt-td {
+  border-bottom: 0;
+}
+
+.nesy-ticket-table tbody tr.ntt-row:hover .ntt-td {
+  background: var(--ntt-hover);
+}
+
+/* severity rail — thin bar on the row's left edge */
+.nesy-ticket-table tbody .ntt-td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ntt-rail, transparent);
+}
+
+.nesy-ticket-table tbody tr.sev-critical { --ntt-rail: rgb(239 68 68 / 0.8); --ntt-sev-bg: rgb(239 68 68 / 0.1); --ntt-sev-fg: rgb(220 38 38); }
+.nesy-ticket-table tbody tr.sev-high     { --ntt-rail: rgb(255 122 26 / 0.8); --ntt-sev-bg: rgb(255 122 26 / 0.12); --ntt-sev-fg: var(--ntt-orange-ink); }
+.nesy-ticket-table tbody tr.sev-medium   { --ntt-rail: rgb(245 158 11 / 0.8); --ntt-sev-bg: rgb(245 158 11 / 0.12); --ntt-sev-fg: rgb(180 83 9); }
+.nesy-ticket-table tbody tr.sev-low      { --ntt-rail: rgb(34 197 94 / 0.7); --ntt-sev-bg: rgb(34 197 94 / 0.11); --ntt-sev-fg: rgb(21 128 61); }
+
+.dark .nesy-ticket-table tbody tr.sev-critical { --ntt-sev-fg: rgb(248 113 113); }
+.dark .nesy-ticket-table tbody tr.sev-high     { --ntt-sev-fg: rgb(251 146 60); }
+.dark .nesy-ticket-table tbody tr.sev-medium   { --ntt-sev-fg: rgb(251 191 36); }
+.dark .nesy-ticket-table tbody tr.sev-low      { --ntt-sev-fg: rgb(74 222 128); }
+
+.nesy-ticket-table tbody tr.ntt-row-closed .ntt-td > :not(.ntt-go) {
+  opacity: 0.75;
+}
+
+.nesy-ticket-table tbody tr.ntt-row-closed:hover .ntt-td > :not(.ntt-go) {
+  opacity: 1;
+}
+
+/* ---------- Cell content ---------- */
+
+.nesy-ticket-table .ntt-td-index { text-align: center; }
+
+.nesy-ticket-table .ntt-index {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ntt-text3);
+}
+
+.nesy-ticket-table .ntt-sev {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.3125rem;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--ntt-sev-bg);
+  color: var(--ntt-sev-fg);
+}
+
+.nesy-ticket-table .ntt-title {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ntt-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nesy-ticket-table .ntt-meta {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--ntt-text2);
+  background: var(--ntt-chip);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nesy-ticket-table .ntt-meta:first-child {
+  color: var(--ntt-orange-ink);
+  background: var(--ntt-orange-soft);
+  font-weight: 600;
+}
+
+.dark .nesy-ticket-table .ntt-meta:first-child {
+  color: var(--ntt-orange);
+}
+
+.nesy-ticket-table .ntt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.nesy-ticket-table .ntt-status-dot {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.nesy-ticket-table .ntt-status-open { color: rgb(220 38 38); }
+.dark .nesy-ticket-table .ntt-status-open { color: rgb(248 113 113); }
+
+.nesy-ticket-table .ntt-status-closed { color: rgb(21 128 61); }
+.dark .nesy-ticket-table .ntt-status-closed { color: rgb(74 222 128); }
+
+.nesy-ticket-table .ntt-group {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--ntt-text2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nesy-ticket-table .ntt-date {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ntt-text2);
+}
+
+.nesy-ticket-table .ntt-customer {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--ntt-text2);
+  word-break: break-all;
+}
+
+.nesy-ticket-table .ntt-customer em {
+  font-style: normal;
+  margin-left: 0.25rem;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ntt-orange-ink);
+}
+
+.dark .nesy-ticket-table .ntt-customer em { color: var(--ntt-orange); }
+
+.nesy-ticket-table .ntt-none { color: var(--ntt-text3); }
+
+/* trailing chevron — fades in on hover */
+.nesy-ticket-table .ntt-td-go { text-align: center; }
+
+.nesy-ticket-table .ntt-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ntt-orange-ink);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.dark .nesy-ticket-table .ntt-go { color: var(--ntt-orange); }
+
+.nesy-ticket-table tbody tr.ntt-row:hover .ntt-go {
+  opacity: 1;
+}
+
+/* ---------- Empty state ---------- */
+
+.nesy-ticket-table .ntt-row-empty td {
+  background: transparent;
+  border: none;
+}
+
+.nesy-ticket-table .ntt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  font-size: 11px;
+  color: var(--ntt-text3);
+}
+
+.nesy-ticket-table .ntt-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  color: var(--ntt-orange-ink);
+  background: var(--ntt-orange-soft);
+}
+
+.dark .nesy-ticket-table .ntt-empty-icon { color: var(--ntt-orange); }
+
+@media (max-width: 768px) {
+  .nesy-ticket-table tbody .ntt-td { padding: 0.5rem; }
+}

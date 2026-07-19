@@ -10,8 +10,8 @@ const routes = [
   '/data-center/users',
   '/data-center/shipment',
   '/debug-view/overview',
-  '/engineering/overview',
-  '/pm/overview',
+  '/engineering/incident-playbook',
+  '/pm/tickets',
   '/product',
 ]
 

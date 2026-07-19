@@ -27,14 +27,18 @@ import { tickets, ALL_GROUPS, ALL_SCREENS } from '@/data/pm/tickets'
 
 // ═══ Group icon map ══════════════════════════════════════════════════════
 const groupIcons: Record<string, typeof Search> = {
-  'Finance & Payment': ShieldCheck,
+  'Finans & Ödeme': ShieldCheck,
   'Barcode & Scan': Search,
-  'Tour & Delivery': AlertTriangle,
-  'Notification': Lightbulb,
+  'Tour & Teslimat': AlertTriangle,
+  Bildirim: Lightbulb,
   'State & Race': AlertTriangle,
   'D4Me & Locker': ShieldCheck,
-  'Location & GPS': Search,
+  'Konum & GPS': Search,
   'UI & Crash': AlertTriangle,
+  'Offline & Sync': FileQuestion,
+  Güvenlik: ShieldCheck,
+  'Ülke & Config': Info,
+  Genel: Lightbulb,
 }
 
 const groupTones = [

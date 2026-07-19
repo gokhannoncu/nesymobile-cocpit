@@ -208,16 +208,16 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
   return (
     <div
       className={cn(
-        'flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 shadow-sm backdrop-blur-sm',
+        'flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2 backdrop-blur-sm',
         STATUS_SHELL[status],
       )}
     >
-      <span className="relative flex size-4 shrink-0 items-center justify-center">
+      <span className="relative flex size-2.5 shrink-0 items-center justify-center">
         <motion.span
-          className={cn('size-2.5 rounded-full', toneDot[meta.tone])}
+          className={cn('size-1.5 rounded-full', toneDot[meta.tone])}
           animate={
             isLive
-              ? { y: [0, -2.5, 0], scale: [1, 1.12, 1] }
+              ? { y: [0, -1.5, 0], scale: [1, 1.15, 1] }
               : { y: 0, scale: 1 }
           }
           transition={
@@ -228,7 +228,7 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
         />
       </span>
 
-      <span className="min-w-[5.75rem] text-sm font-medium leading-none">
+      <span className="min-w-[4.5rem] text-[11px] font-medium leading-none">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={meta.label}
@@ -279,7 +279,7 @@ export function NesyConnectionPanel() {
     >
       {/* Hero */}
       <div className="relative border-b border-nesy-muted/70 bg-gradient-to-r from-nesy-soft/80 via-background to-background px-5 py-5 lg:px-6 dark:border-nesy/25 dark:from-nesy-soft/10">
-        <div className="flex items-start gap-4 min-w-0 pe-28 sm:pe-32">
+        <div className="flex items-start gap-4 min-w-0 pe-24 sm:pe-28">
           <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', toneIconBox.nesy)}>
             <Globe2 className={cn('size-5.5', toneIcon.nesy)} />
           </span>

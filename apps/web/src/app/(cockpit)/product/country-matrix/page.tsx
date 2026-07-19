@@ -68,6 +68,7 @@ export default function CountryMatrixPage() {
   return (
     <ProductPage path="/product/country-matrix">
       <HeroCallout
+        compact
         icon={Table2}
         eyebrow="Capabilities & Countries"
         tone="orange"

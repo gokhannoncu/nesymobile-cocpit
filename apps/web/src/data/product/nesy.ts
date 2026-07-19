@@ -3,6 +3,7 @@
 // Country IDs match field names in Feature records.
 
 import { FEATURE_DETAILS } from './feature-details'
+import { resolveFeatureTickets } from './resolve-feature-tickets'
 
 // Type definitions come from nesy-types.ts — avoids circular dependency.
 export type {
@@ -32,13 +33,13 @@ export const COUNTRIES: Country[] = [
 export const MODULES: Module[] = [
   {
     id: 'delivery-process',
-    title: 'Delivery Process',
-    desc: 'Doorstep delivery flow: collection, fiscalization, signature, failed delivery, and alternative delivery points.',
+    title: 'Teslimat süreci',
+    desc: 'Kapı teslimat akışı: tahsilat, fiscalization, imza, başarısız teslimat ve alternatif teslimat noktaları.',
     features: [
       {
         id: 'collect_cod',
         title: 'Collect COD',
-        desc: 'Cash and credit card collection at the door (cash on delivery).',
+        desc: 'Kapıda nakit ve kredi kartı tahsilatı (cash on delivery).',
         domainId: 'payments-fiscal',
         values: {
           core: 'Cash and credit card payments supported',
@@ -53,7 +54,7 @@ export const MODULES: Module[] = [
       {
         id: 'collect_exw',
         title: 'Collect ExW',
-        desc: 'Ex-works collection at the pickup point.',
+        desc: 'Pickup noktasında Ex-works tahsilatı.',
         domainId: 'payments-fiscal',
         values: {
           core: 'Cash and credit card payments supported',
@@ -68,7 +69,7 @@ export const MODULES: Module[] = [
       {
         id: 'skip_exwork',
         title: 'Skip Exwork',
-        desc: 'Courier can skip the expected exwork amount.',
+        desc: 'Kurye beklenen exwork tutarını atlayabilir.',
         domainId: 'payments-fiscal',
         values: {
           core: 'Expected exwork amount can be skipped by courier; shipment is updated and invoiced to customer.',
@@ -83,7 +84,7 @@ export const MODULES: Module[] = [
       {
         id: 'fiscalization_dp',
         title: 'Fiscalization',
-        desc: 'Fiscal receipt is triggered and printed on delivery.',
+        desc: 'Teslimat sırasında fiskal fiş tetiklenir ve yazdırılır.',
         domainId: 'payments-fiscal',
         values: {
           core: 'VPFR is triggered on delivery and receipt is printed',
@@ -98,7 +99,7 @@ export const MODULES: Module[] = [
       {
         id: 'failed_reasons',
         title: 'Delivery Failed Reasons / Photo',
-        desc: 'Failed delivery reason selection and mandatory photo evidence.',
+        desc: 'Başarısız teslimat nedeni seçimi ve zorunlu fotoğraf kanıtı.',
         domainId: 'delivery-outcomes',
         values: {
           core: 'Full failed reason list + mandatory photo in some cases',
@@ -113,7 +114,7 @@ export const MODULES: Module[] = [
       {
         id: 'consignee_info',
         title: 'Consignee Information',
-        desc: 'Pre-fill and edit behavior of consignee name on delivery.',
+        desc: 'Teslimat sırasında alıcı adının önceden doldurulması ve düzenleme davranışı.',
         domainId: 'delivery-outcomes',
         values: {
           core: 'Name pre-filled, editable',
@@ -128,7 +129,7 @@ export const MODULES: Module[] = [
       {
         id: 'signature_dp',
         title: 'Signature',
-        desc: 'Digital and physical signature collection on delivery.',
+        desc: 'Teslimat sırasında dijital ve fiziksel imza toplama.',
         domainId: 'delivery-outcomes',
         values: {
           core: 'Digital signature mandatory\nPhysical document downloadable and signed',
@@ -143,7 +144,7 @@ export const MODULES: Module[] = [
       {
         id: 'delivery_parcelshop',
         title: 'Delivery to Parcelshop',
-        desc: 'Delivery of shipments to parcel shop / pick-up point.',
+        desc: 'Shipment\'ların parcel shop / pick-up noktasına teslimi.',
         domainId: 'delivery-outcomes',
         values: {
           core: 'RDOC and OVSZ shipments cannot be delivered',
@@ -158,7 +159,7 @@ export const MODULES: Module[] = [
       {
         id: 'delivery_locker',
         title: 'Delivery to Locker',
-        desc: 'D4ME integration for smart locker deliveries.',
+        desc: 'Akıllı locker teslimatları için D4ME entegrasyonu.',
         domainId: 'delivery-outcomes',
         values: {
           core: 'D4ME integration\nRDOC and OVSZ shipments cannot be delivered',
@@ -174,13 +175,13 @@ export const MODULES: Module[] = [
   },
   {
     id: 'pickup-process',
-    title: 'Pickup Process',
-    desc: 'Pickup flow: task assignment, CPP collection, failed pickup reasons, and auto re-assignment.',
+    title: 'Pickup süreci',
+    desc: 'Pickup akışı: görev ataması, CPP tahsilatı, başarısız pickup nedenleri ve otomatik yeniden atama.',
     features: [
       {
         id: 'pickup_assignment',
         title: 'Pickup Assignment',
-        desc: 'How pickup tasks are assigned to couriers.',
+        desc: 'Pickup görevlerinin kuryelere nasıl atandığı.',
         domainId: 'pickup-operations',
         values: {
           core: 'Pickup tasks auto-assigned via job (every 3 minutes)',
@@ -195,7 +196,7 @@ export const MODULES: Module[] = [
       {
         id: 'collect_cpp',
         title: 'Collect CPP',
-        desc: 'Cash and credit card collection at the pickup point.',
+        desc: 'Pickup noktasında nakit ve kredi kartı tahsilatı.',
         domainId: 'payments-fiscal',
         values: {
           core: 'Cash and credit card payments supported',
@@ -210,7 +211,7 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_fiscalization',
         title: 'Pickup Fiscalization (Print Fiscal)',
-        desc: 'Fiscal receipt is triggered and printed on pickup for CPP shipments.',
+        desc: 'CPP shipment\'ları için pickup sırasında fiskal fiş tetiklenir ve yazdırılır.',
         domainId: 'payments-fiscal',
         values: {
           core: 'VPFR is triggered on pickup for CPP shipments and receipt is printed',
@@ -225,7 +226,7 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_at_customer',
         title: 'Pickup at Customer',
-        desc: 'PAC task behavior and end-of-day blocking rules.',
+        desc: 'PAC görev davranışı ve End of Day engelleme kuralları.',
         domainId: 'pickup-operations',
         values: {
           core: 'Unactioned PAC task blocks end of day',
@@ -240,7 +241,7 @@ export const MODULES: Module[] = [
       {
         id: 'remote_pickup',
         title: 'Remote Pickup',
-        desc: 'Display of sender and receiver information in the mobile app.',
+        desc: 'Mobil uygulamada gönderici ve alıcı bilgilerinin gösterimi.',
         domainId: 'pickup-operations',
         values: {
           core: 'Sender information displayed in mobile app',
@@ -255,7 +256,7 @@ export const MODULES: Module[] = [
       {
         id: 'red_label',
         title: 'Red Label',
-        desc: 'Red label shipment pickup flow via mobile app.',
+        desc: 'Mobil uygulama üzerinden red label shipment pickup akışı.',
         domainId: 'pickup-operations',
         values: {
           core: 'Red label shipments are picked up via mobile app\n\nProcess flow:\n- Pickup at Customer task is created\n- Courier picks up the parcel\n- Parcel is dropped off at Npoint\n- Shipment is created\n- Backoffice completes missing data',
@@ -270,7 +271,7 @@ export const MODULES: Module[] = [
       {
         id: 'pickup_failed_non_rdoc',
         title: 'Pickup Failed Reason (Non-RDOC)',
-        desc: 'Failed reason codes for non-RDOC pickup tasks.',
+        desc: 'RDOC olmayan pickup görevleri için başarısızlık neden kodları.',
         domainId: 'pickup-operations',
         values: {
           core: 'NOPC, NPNP, NRDY, NSYS, PABS, PADU, PTIM',
@@ -285,7 +286,7 @@ export const MODULES: Module[] = [
       {
         id: 'rdoc_failed_reasons',
         title: 'RDOC Failed Reasons',
-        desc: 'Failed reason codes for RDOC pickup tasks.',
+        desc: 'RDOC pickup görevleri için başarısızlık neden kodları.',
         domainId: 'pickup-operations',
         values: {
           core: 'NOPC',
@@ -300,7 +301,7 @@ export const MODULES: Module[] = [
       {
         id: 'auto_reassignment',
         title: 'Auto Reassignment to Next Working Day',
-        desc: 'Trigger codes for auto re-assignment after failed pickup.',
+        desc: 'Başarısız pickup sonrası otomatik yeniden atama tetikleme kodları.',
         domainId: 'pickup-operations',
         values: {
           core: 'After failed reasons (NPNP, NRDY, PABS, PTIM)',
@@ -316,13 +317,13 @@ export const MODULES: Module[] = [
   },
   {
     id: 'tour-stop-management',
-    title: 'Tour & Stop Management',
-    desc: 'Tour and stop management: stop creation/merge rules, beginning-of-day tour approval, and event list.',
+    title: 'Tour & Stop yönetimi',
+    desc: 'Tour ve stop yönetimi: stop oluşturma/birleştirme kuralları, beginning-of-day tour onayı ve event listesi.',
     features: [
       {
         id: 'creation_of_stops',
         title: 'Creation of Stops (Merge Shipments)',
-        desc: 'Automatic and manual stop creation with shipment merge rules.',
+        desc: 'Shipment birleştirme kurallarıyla otomatik ve manuel stop oluşturma.',
         domainId: 'tour-stops',
         values: {
           core: '- If receiver name and address match → shipments auto-merge under same stop (dely)\n- If sender name and address match → auto-merge (pickup)\n- After tour approval, new shipments are added as new stops if no matching stop exists\n- Before tour start approval, courier can manually merge stops',
@@ -337,7 +338,7 @@ export const MODULES: Module[] = [
       {
         id: 'merge_stops_manual',
         title: 'Merge Stops (Manual)',
-        desc: 'Select a main stop and manually merge sub-stops under it.',
+        desc: 'Ana stop seçilerek alt stop\'ların manuel olarak birleştirilmesi.',
         domainId: 'tour-stops',
         values: {
           core: 'User selects a main stop and merges different stops under it by selecting sub-stops',
@@ -352,7 +353,7 @@ export const MODULES: Module[] = [
       {
         id: 'tour_start_approval',
         title: 'Tour Start Approval (Beginning of Day)',
-        desc: 'Beginning-of-day parcel scan and tour approval flow.',
+        desc: 'Beginning-of-day parcel tarama ve tour onay akışı.',
         domainId: 'tour-stops',
         values: {
           core: 'Courier selects route, scans parcels, and sends approval request\nTour start approval is mandatory in all cases',
@@ -367,7 +368,7 @@ export const MODULES: Module[] = [
       {
         id: 'app_hc_event_list',
         title: 'Application HC – Event List',
-        desc: 'Available events in the mobile app event list.',
+        desc: 'Mobil uygulama event listesinde kullanılabilir event\'ler.',
         domainId: 'tour-stops',
         values: {
           core: 'Core event list',
@@ -383,13 +384,13 @@ export const MODULES: Module[] = [
   },
   {
     id: 'shipment-tracking',
-    title: 'Shipment Tracking',
-    desc: 'Shipment tracking screen: ID, location, last event, party information, and fiscal details.',
+    title: 'Shipment tracking',
+    desc: 'Shipment tracking ekranı: ID, konum, son event, taraf bilgileri ve fiskal detaylar.',
     features: [
       {
         id: 'shipment_tracking_screen',
         title: 'Shipment Tracking Screen',
-        desc: 'Information displayed on the shipment tracking screen and fiscal details.',
+        desc: 'Shipment tracking ekranında gösterilen bilgiler ve fiskal detaylar.',
         domainId: 'tracking-self-service',
         values: {
           core: 'Tracking screen shows ShipmentID, Current Location, Last Event, Sender and Receiver\n\nFiscal details visible on ExW / CPP shipments. If fiscal is cancelled, SSC is triggered',
@@ -405,13 +406,13 @@ export const MODULES: Module[] = [
   },
   {
     id: 'ebranch-delivery-options',
-    title: 'Ebranch & Delivery Options',
-    desc: 'Tracking link sent to receiver and pre/post-tour self-service delivery options.',
+    title: 'Ebranch & teslimat seçenekleri',
+    desc: 'Alıcıya gönderilen tracking link ve pre/post-tour self-service teslimat seçenekleri.',
     features: [
       {
         id: 'ebranch_tracking_link',
         title: 'Ebranch Tracking Link & Delivery Options',
-        desc: 'Tracking link generation and pre/post-tour delivery options.',
+        desc: 'Tracking link oluşturma ve pre/post-tour teslimat seçenekleri.',
         domainId: 'tracking-self-service',
         values: {
           core: '• Branch link is generated after shipment creation\n\nPre-TOUR:\n• Deliver to Parcel Shop\n• Deliver to D4Me Locker\n• Deliver to D4Me Private Locker\n\nIf shipment is auto-redirected (DSSA):\n• Pick up from branch\n• Reject delivery\n\nPost-TOUR:\n• At home\n• Change delivery date\n• Change address\n• Pick up from branch\n• Reject delivery\n• Deliver to Parcel Shop / D4Me Locker / Private Locker\n\n• If COD/ExW → "Pay with Link" appears after INIT\n• Branch link expires after DELY / RETS / STOR / DELR',
@@ -428,12 +429,12 @@ export const MODULES: Module[] = [
   {
     id: 'd4me-locker',
     title: 'D4Me Locker',
-    desc: 'D4Me integration for locker reservation, delivery, and timeout management.',
+    desc: 'Locker rezervasyonu, teslimat ve timeout yönetimi için D4Me entegrasyonu.',
     features: [
       {
         id: 'd4me_locker_delivery',
         title: 'D4Me Locker Delivery Process',
-        desc: 'Locker reservation, delivery, and timeout management via D4Me integration.',
+        desc: 'D4Me entegrasyonu ile locker rezervasyonu, teslimat ve timeout yönetimi.',
         domainId: 'tracking-self-service',
         values: {
           core: '• Courier can create D4Me Locker reservation (LCR) via Nesy Mobile\n• OR receiver can create reservation via Ebranch (LCR + DDP)\n• Legacy ID is sent to D4Me at the reservation step\n• Courier drops parcel into locker → DEPT event is sent via D4MeCallback\n• If receiver picks up on time → DELY is received via callback\n• If not picked up → Locker Pickup task is created\n• If courier picks up expired parcel → COPT event is assigned',
@@ -496,6 +497,12 @@ for (const mod of MODULES) {
   for (const feat of mod.features) {
     if (!feat.detail && FEATURE_DETAILS[feat.id]) {
       feat.detail = FEATURE_DETAILS[feat.id]
+    }
+    if (feat.detail) {
+      feat.detail = {
+        ...feat.detail,
+        tickets: resolveFeatureTickets(feat.id),
+      }
     }
   }
 }

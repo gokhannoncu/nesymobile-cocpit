@@ -4,10 +4,10 @@ import { ReactNode, useEffect, useRef, useState } from 'react'
 import { animate, motion, useInView, useMotionValue } from 'framer-motion'
 import { type LucideIcon } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
-import { EASE, type Tone, toneCard, toneDot, toneIcon } from './tones'
+import { EASE, type Tone, toneCard, toneDot, toneIcon, toneText } from './tones'
 
 /** Animated count-up number that starts counting when in view (Calm Tech — ease-out). */
-function CountUp({ to, format }: { to: number; format?: (v: number) => string }) {
+export function CountUp({ to, format }: { to: number; format?: (v: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, margin: '-40px' })
   const mv = useMotionValue(0)
@@ -39,6 +39,8 @@ export function StatCard({
   hint,
   tone = 'blue',
   format,
+  onClick,
+  active = false,
 }: {
   icon?: LucideIcon
   label: string
@@ -48,10 +50,34 @@ export function StatCard({
   hint?: string
   tone?: Tone
   format?: (v: number) => string
+  /** Makes the card a toggle control (e.g. filter by status). */
+  onClick?: () => void
+  active?: boolean
 }) {
+  const interactive = Boolean(onClick)
   return (
     <motion.div
-      className={cn('relative overflow-hidden rounded-xl border p-4', toneCard[tone])}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-pressed={interactive ? active : undefined}
+      onClick={onClick}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick?.()
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'relative overflow-hidden rounded-xl border p-4 outline-none transition-[box-shadow,opacity]',
+        toneCard[tone],
+        interactive && 'cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40',
+        interactive && !active && 'opacity-80 hover:opacity-100',
+        active && 'ring-2 ring-primary/35 shadow-sm',
+      )}
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
@@ -59,19 +85,88 @@ export function StatCard({
       whileHover={{ y: -2 }}
     >
       <span className={cn('absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+      <div className="flex h-5 items-center justify-between gap-2">
+        <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
           {label}
         </div>
         {Icon && <Icon className={cn('size-4 shrink-0', toneIcon[tone])} />}
       </div>
-      <div className="mt-2 text-2xl lg:text-[28px] font-bold text-foreground tabular-nums leading-none">
+      <div className="mt-2 min-h-[1.75rem] text-2xl lg:text-[28px] font-bold text-foreground tabular-nums leading-none">
         {prefix}
         {typeof value === 'number' ? <CountUp to={value} format={format} /> : value}
         {suffix && <span className="ml-0.5 text-base font-semibold text-foreground/70">{suffix}</span>}
       </div>
-      {hint && <div className="mt-2 text-xs text-muted-foreground leading-relaxed">{hint}</div>}
+      {hint && (
+        <div className="mt-2 min-h-[1rem] text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          {hint}
+        </div>
+      )}
     </motion.div>
+  )
+}
+
+/** Compact inline KPI pill — filter toggles, dense stat strips. */
+export function StatPill({
+  label,
+  value,
+  pct,
+  tone = 'gray',
+  active = false,
+  onClick,
+  delay = 0,
+  title,
+}: {
+  label: string
+  value: number
+  pct?: number
+  tone?: Tone
+  active?: boolean
+  onClick?: () => void
+  delay?: number
+  title?: string
+}) {
+  const interactive = Boolean(onClick)
+  return (
+    <motion.button
+      type="button"
+      layout
+      title={title}
+      aria-pressed={interactive ? active : undefined}
+      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: active ? 1.02 : 1 }}
+      transition={{ duration: 0.32, ease: EASE, delay }}
+      whileHover={interactive ? { y: -1 } : undefined}
+      whileTap={interactive ? { scale: 0.96 } : undefined}
+      onClick={onClick}
+      className={cn(
+        'group relative inline-flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border px-2 py-1',
+        'text-left outline-none transition-[box-shadow,opacity] duration-200',
+        toneCard[tone],
+        interactive && 'cursor-pointer hover:shadow-sm',
+        interactive && !active && 'opacity-70 hover:opacity-100',
+        active && 'ring-2 ring-primary/25 shadow-sm',
+      )}
+    >
+      {pct != null && pct > 0 && (
+        <motion.span
+          aria-hidden
+          className={cn('absolute inset-y-0 left-0 opacity-[0.12]', toneDot[tone])}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: EASE, delay: delay + 0.15 }}
+        />
+      )}
+      <span className={cn('relative size-1.5 shrink-0 rounded-full', toneDot[tone])} />
+      <span className="relative truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className={cn('relative text-sm font-bold tabular-nums leading-none', toneText[tone])}>
+        <CountUp to={value} />
+      </span>
+      {pct != null && (
+        <span className="relative text-[10px] tabular-nums text-muted-foreground">%{pct}</span>
+      )}
+    </motion.button>
   )
 }
 

@@ -12,15 +12,15 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   collect_cod: {
     whatIs:
-      'Cash on Delivery (COD) collection. The courier collects payment from the receiver at the time of delivery via cash or credit card. The payment amount is determined from the COD field on the shipment. Cash collection is processed directly, while credit card collection is handled through different payment systems (RaiPay, SoftPos, WSPay) depending on the country.',
+      'Kapıda ödeme (COD) tahsilatı. Kurye, teslimat sırasında alıcıdan nakit veya kredi kartı ile ödeme alır. Tutar, shipment üzerindeki COD field\'ından belirlenir. Nakit tahsilat doğrudan işlenir; kredi kartı tahsilatı ülkeye göre farklı ödeme sistemleri (RaiPay, SoftPos, WSPay) üzerinden yürür.',
     howItWorks: [
-      'Courier selects the shipment on the stop screen',
-      'If the shipment has a COD amount, the collection screen opens',
-      'Payment method is selected: Cash or Credit Card',
-      'If cash is selected, the amount is entered and confirmed',
-      'If credit card is selected, the relevant payment app (RaiPay/SoftPos) is triggered',
-      'If payment succeeds, the shipment continues through the delivery flow',
-      'If payment fails, the delivery can be marked as failed',
+      'Kurye stop ekranından shipment\'ı seçer',
+      'Shipment\'ta COD tutarı varsa collection ekranı açılır',
+      'Ödeme yöntemi seçilir: Cash veya Credit Card',
+      'Cash seçilirse tutar girilir ve onaylanır',
+      'Credit Card seçilirse ilgili ödeme uygulaması (RaiPay/SoftPos) tetiklenir',
+      'Ödeme başarılı olursa shipment delivery akışına devam eder',
+      'Ödeme başarısız olursa teslimat failed olarak işaretlenebilir',
     ],
     screens: [
       'DeliveryFragment — Main delivery screen',
@@ -35,43 +35,43 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.paymentProvider', desc: 'Payment provider by country', type: 'enum' },
     ],
     diagram: [
-      { type: 'node', label: 'Courier selects shipment', variant: 'start' },
+      { type: 'node', label: 'Kurye shipment’ı seçer', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Has COD?', variant: 'decision' },
+      { type: 'node', label: 'COD var mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Collection screen opens', variant: 'process' },
+            { type: 'node', label: 'Collection ekranı açılır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Payment method?', variant: 'decision' },
+            { type: 'node', label: 'Ödeme yöntemi?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
-                label: 'Cash',
+                label: 'Nakit',
                 steps: [
-                  { type: 'node', label: 'Amount is entered', variant: 'process' },
+                  { type: 'node', label: 'Tutar girilir', variant: 'process' },
                 ],
               },
               no: {
-                label: 'Credit Card',
+                label: 'Kredi kartı',
                 steps: [
-                  { type: 'node', label: 'Payment app opens', variant: 'external' },
+                  { type: 'node', label: 'Ödeme uygulaması açılır', variant: 'external' },
                   { type: 'arrow' },
-                  { type: 'node', label: 'Successful?', variant: 'decision' },
+                  { type: 'node', label: 'Başarılı mı?', variant: 'decision' },
                   {
                     type: 'branch',
                     yes: {
-                      label: 'Yes',
+                      label: 'Evet',
                       steps: [
-                        { type: 'node', label: 'Continue', variant: 'process' },
+                        { type: 'node', label: 'Devam eder', variant: 'process' },
                       ],
                     },
                     no: {
-                      label: 'No',
+                      label: 'Hayır',
                       steps: [
-                        { type: 'node', label: 'Retry', variant: 'error' },
+                        { type: 'node', label: 'Tekrar dene', variant: 'error' },
                       ],
                     },
                   },
@@ -79,35 +79,31 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
               },
             },
             { type: 'arrow' },
-            { type: 'node', label: 'Collection is confirmed', variant: 'process' },
+            { type: 'node', label: 'Tahsilat onaylanır', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Direct delivery', variant: 'process' },
+            { type: 'node', label: 'Doğrudan teslimat', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Delivery continues', variant: 'end' },
+      { type: 'node', label: 'Teslimat devam eder', variant: 'end' },
     ],
     tips: [
-      'In HR, credit card payments are processed through RaiPay — the RaiPay app must be installed and connected on the device',
-      'SoftPos is used in SI and RS — integration in RS is not yet completed',
-      'Only cash collection is supported in BA and ME; there is no credit card infrastructure',
-      'Collection can be performed in offline mode but is validated after synchronization',
-      'If COD amount is 0, the collection screen is skipped',
-      'Multiple shipments in the same status can be collected in bulk',
+      'HR\'de kredi kartı ödemeleri RaiPay üzerinden işlenir — cihazda RaiPay uygulamasının kurulu ve bağlı olması gerekir',
+      'SI ve RS\'de SoftPos kullanılır — RS\'de entegrasyon henüz tamamlanmadı',
+      'BA ve ME\'de yalnızca nakit tahsilat desteklenir; kredi kartı altyapısı yok',
+      'Tahsilat offline mode\'da yapılabilir ancak synchronization sonrası doğrulanır',
+      'COD tutarı 0 ise collection ekranı atlanır',
+      'Aynı statüdeki birden fazla shipment toplu olarak tahsil edilebilir',
     ],
-    tickets: [
-      { id: 'NESY-142', title: 'Amount mismatch after COD collection', status: 'open' },
-      { id: 'NESY-87', title: 'RaiPay connection error fails on retry', status: 'closed' },
-      { id: 'NESY-201', title: 'Race condition in offline COD collection', status: 'open' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Finance Team', role: 'Payment Integrations' },
-      { name: 'Mobile Developer', role: 'Android Payment Flow' },
+      { name: 'Finance Team', role: 'Ödeme entegrasyonları' },
+      { name: 'Mobile Developer', role: 'Android ödeme akışı' },
     ],
     score: { bugProneness: 4, boilerplate: 3, complexity: 4, testCoverage: 1 },
     apis: [
@@ -123,14 +119,14 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   collect_exw: {
     whatIs:
-      'Ex-works collection at the pickup point. The courier collects payment from the sender at the pickup location. For ExW (Ex Works) shipments, payment is made at the time of pickup, not at delivery.',
+      'Toplama noktasında Ex-works tahsilatı. Kurye, pickup konumunda göndericiden ödeme alır. ExW (Ex Works) shipment\'larda ödeme teslimat sırasında değil, pickup sırasında yapılır.',
     howItWorks: [
-      'Courier selects the pickup task',
-      'If the shipment is ExW, the collection screen opens',
-      'Payment method is selected (Cash / Credit Card)',
-      'Collection is completed',
-      'The shipment pickup process continues',
-      'If a fiscal receipt is required, it is triggered automatically (RS)',
+      'Kurye pickup task\'ını seçer',
+      'Shipment ExW ise collection ekranı açılır',
+      'Ödeme yöntemi seçilir (Cash / Credit Card)',
+      'Tahsilat tamamlanır',
+      'Pickup süreci devam eder',
+      'Fiskal fiş gerekliyse otomatik tetiklenir (RS)',
     ],
     screens: [
       'PickupFragment — Pickup screen',
@@ -142,58 +138,56 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.paymentProvider', desc: 'Payment provider', type: 'enum' },
     ],
     diagram: [
-      { type: 'node', label: 'Pickup task is selected', variant: 'start' },
+      { type: 'node', label: 'Pickup görevi seçilir', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Is it an ExW shipment?', variant: 'decision' },
+      { type: 'node', label: 'ExW shipment mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Collection screen opens', variant: 'process' },
+            { type: 'node', label: 'Collection ekranı açılır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Payment method is selected', variant: 'process' },
+            { type: 'node', label: 'Ödeme yöntemi seçilir', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Collection is saved', variant: 'process' },
+            { type: 'node', label: 'Collection kaydedilir', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Is fiscal receipt required?', variant: 'decision' },
+            { type: 'node', label: 'Fiskal fiş gerekli mi?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
-                label: 'Yes',
+                label: 'Evet',
                 steps: [
-                  { type: 'node', label: 'VPFR is triggered', variant: 'external' },
+                  { type: 'node', label: 'VPFR tetiklenir', variant: 'external' },
                 ],
               },
               no: {
-                label: 'No',
+                label: 'Hayır',
                 steps: [
-                  { type: 'node', label: 'Continue', variant: 'process' },
+                  { type: 'node', label: 'Devam eder', variant: 'process' },
                 ],
               },
             },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
             { type: 'node', label: 'Normal pickup', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Continue', variant: 'end' },
+      { type: 'node', label: 'Devam eder', variant: 'end' },
     ],
     tips: [
-      'ExW and COD collection use the same payment infrastructure but trigger different events',
-      'ExW fiscalization is mandatory only in RS',
-      'ExW collection can be skipped (see skip_exwork feature)',
+      'ExW ve COD collection aynı payment infrastructure\'ı kullanır ancak farklı event\'ler tetikler',
+      'ExW fiscalization yalnızca RS\'de zorunludur',
+      'ExW collection atlanabilir (skip_exwork feature\'ına bakın)',
     ],
-    tickets: [
-      { id: 'NESY-156', title: 'Fiscal receipt not generated after ExW collection', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Finance Team', role: 'Collection Flows' },
+      { name: 'Finance Team', role: 'Tahsilat akışları' },
     ],
     score: { bugProneness: 3, boilerplate: 3, complexity: 3, testCoverage: 1 },
     apis: [
@@ -204,13 +198,13 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   skip_exwork: {
     whatIs:
-      'The courier can skip the expected ExW amount. In this case, the shipment is updated and invoiced to the customer. This feature is active only in RS; ExW cannot be skipped in other countries.',
+      'Kurye beklenen ExW tutarını atlayabilir (skip). Bu durumda shipment güncellenir ve müşteriye faturalandırılır. Bu özellik yalnızca RS\'de aktiftir; diğer ülkelerde ExW atlanamaz.',
     howItWorks: [
-      'Courier presses the "Skip" button on the ExW collection screen',
-      'System shows a confirmation dialog',
-      'After confirmation, the shipment ExW amount is reset to zero',
-      'The shipment is updated and customer invoicing is handled on the backend',
-      'The pickup flow continues',
+      'Kurye ExW collection ekranında "Skip" butonuna basar',
+      'Sistem onay dialog\'u gösterir',
+      'Onay sonrası shipment ExW tutarı sıfırlanır',
+      'Shipment güncellenir ve müşteri faturalandırması backend\'de yönetilir',
+      'Pickup akışı devam eder',
     ],
     screens: [
       'PickupFragment — ExW skip button',
@@ -220,55 +214,55 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'shipment.exwAmount', desc: 'Skipped ExW amount', type: 'decimal' },
     ],
     diagram: [
-      { type: 'node', label: 'ExW collection screen', variant: 'start' },
+      { type: 'node', label: 'ExW collection ekranı', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Skip button is pressed', variant: 'process' },
+      { type: 'node', label: 'Skip butonuna basılır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Confirmed?', variant: 'decision' },
+      { type: 'node', label: 'Onaylandı mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Amount is reset to zero', variant: 'process' },
+            { type: 'node', label: 'Tutar sıfırlanır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Shipment is updated', variant: 'process' },
+            { type: 'node', label: 'Shipment güncellenir', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Continue', variant: 'process' },
+            { type: 'node', label: 'Devam eder', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Go back', variant: 'process' },
+            { type: 'node', label: 'Geri dön', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow is completed', variant: 'end' },
+      { type: 'node', label: 'Akış tamamlanır', variant: 'end' },
     ],
     tips: [
-      'Active only in RS — this button is not visible in other countries',
-      'Shipment status changes after skip, cannot be undone',
-      'Tracked separately as "skipped ExW" in financial reporting',
+      'Yalnızca RS\'de aktif — diğer ülkelerde bu buton görünmez',
+      'Skip sonrası shipment status değişir, geri alınamaz',
+      'Finansal raporlamada ayrı olarak "skipped ExW" olarak izlenir',
     ],
     tickets: [],
     experts: [
-      { name: 'RS Operations Team', role: 'Serbia-Specific Rules' },
+      { name: 'RS Operations Team', role: 'Sırbistan\'a özel kurallar' },
     ],
     score: { bugProneness: 2, boilerplate: 1, complexity: 2, testCoverage: 1 },
   },
 
   fiscalization_dp: {
     whatIs:
-      'VPFR (Virtual Fiscal Printer) is triggered during delivery and a fiscal receipt is printed. Fiscalization is a state-mandated financial document issuance process. A fiscal receipt must be generated for every COD/ExW payment. Mandatory in RS; not yet active in other countries.',
+      'Teslimat sırasında VPFR (Virtual Fiscal Printer) tetiklenir ve fiskal fiş yazdırılır. Fiskalizasyon, devlet zorunluluğu olan mali belge düzenleme sürecidir. Her COD/ExW ödemesi için fiskal fiş oluşturulmalıdır. RS\'de zorunludur; diğer ülkelerde henüz aktif değildir.',
     howItWorks: [
-      'Payment is received during delivery or pickup',
-      'After successful payment, VPFR is triggered',
-      'Receipt data is sent to the backend (CreateFiscalInvoice)',
-      'Backend receives the response from VPFR and returns the receipt number',
-      'Receipt is printed (Bluetooth printer or digital)',
-      'In case of fiscal cancellation, an SSC (Status Change) event is triggered',
+      'Teslimat veya pickup sırasında ödeme alınır',
+      'Başarılı ödeme sonrası VPFR tetiklenir',
+      'Fiş verisi backend\'e gönderilir (CreateFiscalInvoice)',
+      'Backend VPFR yanıtını alır ve fiş numarasını döner',
+      'Fiş yazdırılır (Bluetooth printer veya dijital)',
+      'Fiskal iptal durumunda SSC (Status Change) event\'i tetiklenir',
     ],
     screens: [
       'FiscalPrintFragment — Receipt printing screen',
@@ -281,59 +275,55 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'fiscal.vpfrUrl', desc: 'VPFR endpoint URL', type: 'string' },
     ],
     diagram: [
-      { type: 'node', label: 'Payment is completed', variant: 'start' },
+      { type: 'node', label: 'Ödeme tamamlanır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Fiscal required?', variant: 'decision' },
+      { type: 'node', label: 'Fiskal gerekli mi?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
             { type: 'node', label: 'CreateFiscalInvoice API', variant: 'external' },
             { type: 'arrow' },
-            { type: 'node', label: 'Successful?', variant: 'decision' },
+            { type: 'node', label: 'Başarılı mı?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
-                label: 'Yes',
+                label: 'Evet',
                 steps: [
-                  { type: 'node', label: 'Receipt is printed', variant: 'process' },
+                  { type: 'node', label: 'Fiş yazdırılır', variant: 'process' },
                 ],
               },
               no: {
-                label: 'No',
+                label: 'Hayır',
                 steps: [
-                  { type: 'node', label: 'Retry', variant: 'error' },
+                  { type: 'node', label: 'Tekrar dene', variant: 'error' },
                 ],
               },
             },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Continue', variant: 'process' },
+            { type: 'node', label: 'Devam eder', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow is completed', variant: 'end' },
+      { type: 'node', label: 'Akış tamamlanır', variant: 'end' },
     ],
     tips: [
-      'VPFR connection may timeout — retry mechanism exists (RetryFiscalInvoice)',
-      'If a fiscal receipt is cancelled after creation, RefundFiscalInvoice is called and an SSC event is triggered',
-      'Fiscalization is currently mandatory only in RS, planned for BA (with Bulgaria expansion)',
-      'Bluetooth printer connection frequently drops — device pairing check is important',
-      'Fiscal receipts cannot be created in offline mode; they wait in queue',
+      'VPFR bağlantısı timeout olabilir — retry mekanizması vardır (RetryFiscalInvoice)',
+      'Fiskal fiş oluşturulduktan sonra iptal edilirse RefundFiscalInvoice çağrılır ve SSC event tetiklenir',
+      'Fiscalization şu an yalnızca RS\'de zorunlu, BA için planlanıyor (Bulgaria expansion ile)',
+      'Bluetooth printer bağlantısı sık kopar — cihaz eşleştirme kontrolü önemli',
+      'Fiskal fişler offline mode\'da oluşturulamaz; kuyrukta bekler',
     ],
-    tickets: [
-      { id: 'NESY-103', title: 'Infinite loop during fiscal receipt retry', status: 'open' },
-      { id: 'NESY-178', title: 'Receipt number lost after VPFR timeout', status: 'open' },
-      { id: 'NESY-45', title: 'Crash on Bluetooth printer connection loss', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Finance Team', role: 'Fiscal Integration' },
-      { name: 'RS Operations', role: 'VPFR Processes' },
+      { name: 'Finance Team', role: 'Fiskal entegrasyon' },
+      { name: 'RS Operations', role: 'VPFR süreçleri' },
     ],
     score: { bugProneness: 5, boilerplate: 4, complexity: 5, testCoverage: 1 },
     apis: [
@@ -347,15 +337,15 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   failed_reasons: {
     whatIs:
-      'When a delivery fails, the courier selects a reason and in some cases takes photo evidence. Failed delivery reasons are customized by country. Photo requirement also depends on the reason code and country.',
+      'Teslimat başarısız olduğunda kurye bir neden seçer ve bazı durumlarda fotoğraf kanıtı alır. Başarısız teslimat nedenleri ülkeye göre özelleştirilir. Fotoğraf zorunluluğu da neden koduna ve ülkeye bağlıdır.',
     howItWorks: [
-      'Courier presses the "Delivery Failed" button',
-      'Reason list opens (filtered by country)',
-      'Courier selects a reason',
-      'Depending on the selected reason, a photo may be required',
-      'If a photo is taken, CameraFragment opens',
-      'Photo is uploaded to the server (SaveImageFile)',
-      'DeliveryFailed API is called and the shipment status is updated',
+      'Kurye "Delivery Failed" butonuna basar',
+      'Neden listesi açılır (ülkeye göre filtrelenir)',
+      'Kurye bir neden seçer',
+      'Seçilen nedene göre fotoğraf gerekebilir',
+      'Fotoğraf çekilirse CameraFragment açılır',
+      'Fotoğraf sunucuya yüklenir (SaveImageFile)',
+      'DeliveryFailed API çağrılır ve shipment durumu güncellenir',
     ],
     screens: [
       'DeliveryFailedFragment — Failed reason selection screen',
@@ -367,48 +357,45 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.photoMandatory', desc: 'Is photo mandatory?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'Delivery failed', variant: 'start' },
+      { type: 'node', label: 'Teslimat başarısız', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Reason list opens', variant: 'process' },
+      { type: 'node', label: 'Neden listesi açılır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Reason is selected', variant: 'process' },
+      { type: 'node', label: 'Neden seçilir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Photo required?', variant: 'decision' },
+      { type: 'node', label: 'Fotoğraf gerekli mi?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Camera opens', variant: 'process' },
+            { type: 'node', label: 'Kamera açılır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Photo is uploaded', variant: 'process' },
+            { type: 'node', label: 'Fotoğraf yüklenir', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Continue directly', variant: 'process' },
+            { type: 'node', label: 'Doğrudan devam eder', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
       { type: 'node', label: 'DeliveryFailed API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Shipment status is updated', variant: 'end' },
+      { type: 'node', label: 'Shipment status güncellenir', variant: 'end' },
     ],
     tips: [
-      'A limited reason list is used in SI — fewer options compared to CORE',
-      'In BA, photos cannot be taken — photo step is skipped despite camera permission',
-      'In RS and ME, photos are optional — couriers can skip if they choose',
-      'CameraFragment ~35K lines — largest fragment, high refactoring need',
-      'Photo upload stays in queue in offline mode',
+      'SI\'da sınırlı reason listesi kullanılır — CORE\'a göre daha az seçenek',
+      'BA\'da fotoğraf çekilemez — camera permission olsa bile fotoğraf adımı atlanır',
+      'RS ve ME\'de fotoğraflar opsiyonel — kurye isterse atlayabilir',
+      'CameraFragment ~35K satır — en büyük fragment, yüksek refactoring ihtiyacı',
+      'Fotoğraf upload offline mode\'da kuyrukta kalır',
     ],
-    tickets: [
-      { id: 'NESY-89', title: 'Out of memory during photo upload', status: 'open' },
-      { id: 'NESY-134', title: 'Failed reason list filtering by country not working', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Mobile Developer', role: 'Camera & Photo Flow' },
+      { name: 'Mobile Developer', role: 'Kamera ve fotoğraf akışı' },
     ],
     score: { bugProneness: 4, boilerplate: 3, complexity: 3, testCoverage: 1 },
     apis: [
@@ -419,12 +406,12 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   consignee_info: {
     whatIs:
-      'Displaying and editability of the consignee name at the time of delivery. In CORE behavior, the consignee name comes pre-filled from shipment data and is editable. In HR, the name is not pre-filled; it is communicated externally (via SMS/phone).',
+      'Teslimat anında alıcı (consignee) adının gösterimi ve düzenlenebilirliği. CORE davranışında consignee adı shipment verisinden önceden doldurulmuş gelir ve düzenlenebilir. HR\'de ad önceden doldurulmaz; harici olarak (SMS/telefon ile) iletilir.',
     howItWorks: [
-      'Courier navigates to the delivery screen',
-      'Consignee name field comes filled or empty from shipment data (by country)',
-      'Courier can edit the name if needed',
-      'Consignee name is saved when the delivery is completed',
+      'Kurye delivery ekranına gider',
+      'Consignee ad alanı shipment verisinden dolu veya boş gelir (ülkeye göre)',
+      'Gerekirse kurye adı düzenleyebilir',
+      'Teslimat tamamlandığında consignee adı kaydedilir',
     ],
     screens: [
       'DeliveryFragment — Consignee info field',
@@ -434,49 +421,49 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.consigneeEditable', desc: 'Is consignee name editable?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'Delivery screen opens', variant: 'start' },
+      { type: 'node', label: 'Teslimat ekranı açılır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Pre-filled?', variant: 'decision' },
+      { type: 'node', label: 'Önceden dolu mu?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Displayed as filled', variant: 'process' },
+            { type: 'node', label: 'Dolu olarak gösterilir', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Courier enters it', variant: 'process' },
+            { type: 'node', label: 'Kurye girer', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Edited', variant: 'process' },
+      { type: 'node', label: 'Düzenlendi', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Saved', variant: 'end' },
+      { type: 'node', label: 'Kaydedildi', variant: 'end' },
     ],
     tips: [
-      'In HR, consignee name is not pre-filled — courier asks and enters it at the time of delivery',
-      'This behavior is specific to HR; all other countries follow CORE behavior',
+      'HR\'de consignee adı önceden doldurulmaz — kurye teslimat anında sorar ve girer',
+      'Bu davranış HR\'e özgüdür; diğer tüm ülkeler CORE davranışını izler',
     ],
     tickets: [],
     experts: [
-      { name: 'HR Operations', role: 'Croatia-Specific Rules' },
+      { name: 'HR Operations', role: 'Hırvatistan\'a özel kurallar' },
     ],
     score: { bugProneness: 1, boilerplate: 1, complexity: 1, testCoverage: 1 },
   },
 
   signature_dp: {
     whatIs:
-      'Digital (on-screen) and physical (printed document) signature collection at the time of delivery. Digital signature is captured on the courier device screen. For physical signature, the delivery list (dely list) is downloaded, printed, and signed by the customer.',
+      'Teslimat anında dijital (ekran üzerinde) ve fiziksel (basılı belge) imza toplama. Dijital imza kurye cihaz ekranında alınır. Fiziksel imza için delivery list (dely list) indirilir, yazdırılır ve müşteri tarafından imzalanır.',
     howItWorks: [
-      'Signature screen opens at the delivery confirmation step',
-      'Receiver signs digitally using their finger',
-      'Signature image is saved as base64 (SaveSignature API)',
-      'Delivery list (dely list) can be downloaded and physically signed',
-      'Signature requirement varies by country',
+      'Teslimat onay adımında imza ekranı açılır',
+      'Alıcı parmağıyla dijital imza atar',
+      'İmza görseli base64 olarak kaydedilir (SaveSignature API)',
+      'Delivery list (dely list) indirilebilir ve fiziksel olarak imzalanabilir',
+      'İmza zorunluluğu ülkeye göre değişir',
     ],
     screens: [
       'SignaturePadFragment — Digital signature screen',
@@ -487,33 +474,33 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.delyListEnabled', desc: 'Is dely list download active?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'Delivery confirmation', variant: 'start' },
+      { type: 'node', label: 'Teslimat onayı', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Mandatory?', variant: 'decision' },
+      { type: 'node', label: 'Zorunlu mu?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Signature screen opens', variant: 'process' },
+            { type: 'node', label: 'İmza ekranı açılır', variant: 'process' },
           ],
         },
         no: {
-          label: 'Optional',
+          label: 'Opsiyonel',
           steps: [
-            { type: 'node', label: 'Does courier want to?', variant: 'decision' },
+            { type: 'node', label: 'Kurye istiyor mu?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
-                label: 'Yes',
+                label: 'Evet',
                 steps: [
-                  { type: 'node', label: 'Signature screen opens', variant: 'process' },
+                  { type: 'node', label: 'İmza ekranı açılır', variant: 'process' },
                 ],
               },
               no: {
-                label: 'No',
+                label: 'Hayır',
                 steps: [
-                  { type: 'node', label: 'Continue', variant: 'process' },
+                  { type: 'node', label: 'Devam eder', variant: 'process' },
                 ],
               },
             },
@@ -521,22 +508,20 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Receiver signs', variant: 'process' },
+      { type: 'node', label: 'Alıcı imzalar', variant: 'process' },
       { type: 'arrow' },
       { type: 'node', label: 'SaveSignature API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Continue', variant: 'end' },
+      { type: 'node', label: 'Devam eder', variant: 'end' },
     ],
     tips: [
-      'In RS, BA, and ME, digital signature is optional — courier can skip',
-      'Dely list became active in HR after code merge',
-      'Signature pad touch sensitivity varies by device — issues may occur on some Zebra devices',
+      'RS, BA ve ME\'de dijital imza opsiyonel — kurye atlayabilir',
+      'Dely list HR\'de code merge sonrası aktif oldu',
+      'İmza pad dokunma hassasiyeti cihaza göre değişir — bazı Zebra cihazlarda sorun olabilir',
     ],
-    tickets: [
-      { id: 'NESY-67', title: 'Very thin line issue on signature pad', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Mobile Developer', role: 'UI Components' },
+      { name: 'Mobile Developer', role: 'UI bileşenleri' },
     ],
     score: { bugProneness: 2, boilerplate: 2, complexity: 2, testCoverage: 1 },
     apis: [
@@ -546,13 +531,13 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   delivery_parcelshop: {
     whatIs:
-      'Delivery of shipments to a parcel shop (pick-up point) or branch. The courier delivers to a parcel shop location instead of the receiver. RDOC and OVSZ (oversized) shipments cannot be delivered to parcel shops.',
+      'Shipment\'ların parcel shop (pick-up point) veya şubeye teslimi. Kurye, alıcı yerine parcel shop konumuna teslim eder. RDOC ve OVSZ (oversized) shipment\'lar parcel shop\'lara teslim edilemez.',
     howItWorks: [
-      'Delivery task is assigned to a parcel shop address',
-      'Courier arrives at the parcel shop',
-      'Shipments are delivered (ReleaseParcel API)',
-      'RDOC and OVSZ check is performed — these types are blocked',
-      'DEPT event is created for delivered shipments',
+      'Delivery task parcel shop adresine atanır',
+      'Kurye parcel shop\'a gelir',
+      'Shipment\'lar teslim edilir (ReleaseParcel API)',
+      'RDOC ve OVSZ kontrolü yapılır — bu tipler engellenir',
+      'Teslim edilen shipment\'lar için DEPT event\'i oluşturulur',
     ],
     screens: [
       'ParcelReleaseFragment — Parcel release screen',
@@ -564,17 +549,17 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'counterLocation.type', desc: 'Delivery point type (parcelshop/locker)', type: 'enum' },
     ],
     diagram: [
-      { type: 'node', label: 'Task is assigned', variant: 'start' },
+      { type: 'node', label: 'Görev atanır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Arrives at PS', variant: 'process' },
+      { type: 'node', label: 'PS’e varır', variant: 'process' },
       { type: 'arrow' },
       { type: 'node', label: 'RDOC/OVSZ?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Blocked',
+          label: 'Bloklandı',
           steps: [
-            { type: 'node', label: 'Cannot be delivered', variant: 'error' },
+            { type: 'node', label: 'Teslim edilemez', variant: 'error' },
           ],
         },
         no: {
@@ -582,23 +567,23 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
           steps: [
             { type: 'node', label: 'ReleaseParcel API', variant: 'external' },
             { type: 'arrow' },
-            { type: 'node', label: 'DEPT event is created', variant: 'process' },
+            { type: 'node', label: 'DEPT event oluşur', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Completed', variant: 'process' },
+            { type: 'node', label: 'Tamamlandı', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow ends', variant: 'end' },
+      { type: 'node', label: 'Akış biter', variant: 'end' },
     ],
     tips: [
-      'RDOC shipments cannot be delivered to parcel shops in any country',
-      'OVSZ shipments are also blocked — size check is performed on the frontend',
-      'Parcel shop infrastructure does not exist in BA and ME (N/A)',
+      'RDOC shipment\'lar hiçbir ülkede parcel shop\'lara teslim edilemez',
+      'OVSZ shipment\'lar da engellenir — boyut kontrolü frontend\'de yapılır',
+      'Parcel shop altyapısı BA ve ME\'de yok (N/A)',
     ],
     tickets: [],
     experts: [
-      { name: 'Operations Team', role: 'Parcel Shop Processes' },
+      { name: 'Operations Team', role: 'Parcel shop süreçleri' },
     ],
     score: { bugProneness: 2, boilerplate: 2, complexity: 2, testCoverage: 1 },
     apis: [
@@ -609,14 +594,14 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   delivery_locker: {
     whatIs:
-      'Locker delivery via D4ME (Direct4Me) smart locker integration. The courier places the shipment in a smart locker and the receiver picks it up. Integrates with the D4ME application.',
+      'D4ME (Direct4Me) smart locker entegrasyonu ile locker teslimatı. Kurye shipment\'ı smart locker\'a bırakır, alıcı alır. D4ME uygulaması ile entegre çalışır.',
     howItWorks: [
-      'Courier arrives at locker location',
-      'D4ME application opens (via intent)',
-      'Locker reservation is checked or created',
-      'Courier places parcel in the locker',
-      'DEPT event is sent via D4MeCallback',
-      'If receiver picks up → DELY; otherwise Locker Pickup task is created',
+      'Kurye locker konumuna gelir',
+      'D4ME uygulaması açılır (intent ile)',
+      'Locker rezervasyonu kontrol edilir veya oluşturulur',
+      'Kurye koliyi locker\'a bırakır',
+      'DEPT event\'i D4MeCallback ile gönderilir',
+      'Alıcı alırsa → DELY; aksi halde Locker Pickup task\'ı oluşturulur',
     ],
     screens: [
       'LeanLockerFragment — Locker interaction screen',
@@ -628,66 +613,62 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'shipment.isRDOC', desc: 'RDOC shipments cannot be placed in lockers', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'Arrives at locker location', variant: 'start' },
+      { type: 'node', label: 'Locker konumuna varır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'D4ME opens', variant: 'external' },
+      { type: 'node', label: 'D4ME açılır', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Reservation exists?', variant: 'decision' },
+      { type: 'node', label: 'Rezervasyon var mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Door opens', variant: 'process' },
+            { type: 'node', label: 'Kapı açılır', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
             { type: 'node', label: 'CreateD4MReservation', variant: 'external' },
             { type: 'arrow' },
-            { type: 'node', label: 'Door opens', variant: 'process' },
+            { type: 'node', label: 'Kapı açılır', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Parcel is placed', variant: 'process' },
+      { type: 'node', label: 'Koli yerleştirilir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'DEPT callback is sent', variant: 'external' },
+      { type: 'node', label: 'DEPT callback gönderilir', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Receiver picked up?', variant: 'decision' },
+      { type: 'node', label: 'Alıcı aldı mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
             { type: 'node', label: 'DELY callback', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Locker Pickup task is created', variant: 'process' },
+            { type: 'node', label: 'Locker Pickup görevi oluşur', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow is completed', variant: 'end' },
+      { type: 'node', label: 'Akış tamamlanır', variant: 'end' },
     ],
     tips: [
-      'D4ME application must be installed on the device — otherwise redirected to Google Play',
-      'RDOC and OVSZ shipments cannot be placed in lockers',
-      'In RS, matching is done with the first 14 digits of the Legacy ID — a truncated ID is sent instead of the full ID',
-      'D4ME callbacks arrive asynchronously — may take multiple days',
-      'Locker may be full — capacity check is performed on the D4ME side',
+      'D4ME uygulamasının cihazda kurulu olması gerekir — aksi halde Google Play\'e yönlendirilir',
+      'RDOC ve OVSZ shipment\'lar locker\'a bırakılamaz',
+      'RS\'de eşleme Legacy ID\'nin ilk 14 hanesi ile yapılır — tam ID yerine kısaltılmış ID gönderilir',
+      'D4ME callback\'leri async gelir — birkaç gün sürebilir',
+      'Locker dolu olabilir — kapasite kontrolü D4ME tarafında yapılır',
     ],
-    tickets: [
-      { id: 'NESY-112', title: 'Shipment status not updated after D4ME callback', status: 'open' },
-      { id: 'NESY-198', title: '14-digit ID matching error in RS', status: 'open' },
-      { id: 'NESY-76', title: 'D4ME app version incompatibility', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'D4ME Integration Team', role: 'Locker Integration' },
+      { name: 'D4ME Integration Team', role: 'Locker entegrasyonu' },
     ],
     score: { bugProneness: 5, boilerplate: 4, complexity: 5, testCoverage: 1 },
     apis: [
@@ -705,13 +686,13 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   pickup_assignment: {
     whatIs:
-      'Mechanism for assigning pickup tasks to couriers. In CORE behavior, pickup tasks are automatically assigned by a job that runs every 3 minutes. In some countries, assignments are made manually by the dispatcher.',
+      'Pickup task\'larının kuryelere atanma mekanizması. CORE davranışında pickup task\'ları her 3 dakikada çalışan bir job ile otomatik atanır. Bazı ülkelerde atamalar dispatcher tarafından manuel yapılır.',
     howItWorks: [
-      'GeneratePickupTaskJob runs every 3 minutes on the backend (CORE)',
-      'Or the dispatcher manually assigns by selecting a courier from the backoffice',
-      'The assigned task is added to the courier\'s schedule',
-      'Courier sees the new task in their task list',
-      'Courier is notified via push notification',
+      'GeneratePickupTaskJob backend\'de her 3 dakikada çalışır (CORE)',
+      'Veya dispatcher backoffice\'ten kurye seçerek manuel atama yapar',
+      'Atanan task kurye schedule\'ine eklenir',
+      'Kurye yeni task\'ı task listesinde görür',
+      'Kurye push notification ile bilgilendirilir',
     ],
     screens: [
       'TaskListFragment — Task list',
@@ -722,39 +703,39 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'job.interval', desc: 'Auto-assignment job run interval (min)', type: 'number' },
     ],
     diagram: [
-      { type: 'node', label: 'Assignment type is determined', variant: 'start' },
+      { type: 'node', label: 'Atama türü belirlenir', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Assignment type?', variant: 'decision' },
+      { type: 'node', label: 'Atama türü?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Automatic',
+          label: 'Otomatik',
           steps: [
-            { type: 'node', label: 'Job runs', variant: 'process', desc: 'GeneratePickupTaskJob' },
+            { type: 'node', label: 'Job çalışır', variant: 'process', desc: 'GeneratePickupTaskJob' },
           ],
         },
         no: {
           label: 'Manuel',
           steps: [
-            { type: 'node', label: 'Dispatcher selects', variant: 'process' },
+            { type: 'node', label: 'Dispatcher seçer', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Added to schedule', variant: 'process' },
+      { type: 'node', label: 'Schedule’a eklenir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Notification is sent', variant: 'process' },
+      { type: 'node', label: 'Bildirim gönderilir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Appears in list', variant: 'end' },
+      { type: 'node', label: 'Listede görünür', variant: 'end' },
     ],
     tips: [
-      'In HR, RS, and BA, the dispatcher assigns manually — auto-assignment is disabled',
-      'In SI and ME, same as CORE — auto-assignment is active',
-      'In manual assignment, the dispatcher can view the courier\'s current workload',
+      'HR, RS ve BA\'da dispatcher manuel atama yapar — auto-assignment kapalı',
+      'SI ve ME\'de CORE ile aynı — auto-assignment aktif',
+      'Manuel atamada dispatcher kuryenin mevcut workload\'unu görebilir',
     ],
     tickets: [],
     experts: [
-      { name: 'Backend Team', role: 'Task Assignment Engine' },
+      { name: 'Backend Team', role: 'Task atama motoru' },
     ],
     score: { bugProneness: 2, boilerplate: 1, complexity: 2, testCoverage: 1 },
     apis: [
@@ -764,14 +745,14 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   collect_cpp: {
     whatIs:
-      'Collection for CPP (Cash Pre-Paid) shipments at the pickup point. Payment is collected from the sender at the time of pickup via cash or credit card. Unlike COD, payment occurs during pickup, not delivery.',
+      'Pickup noktasında CPP (Cash Pre-Paid) shipment\'lar için tahsilat. Ödeme, pickup sırasında göndericiden nakit veya kredi kartı ile alınır. COD\'dan farklı olarak ödeme teslimat sırasında değil pickup sırasında yapılır.',
     howItWorks: [
-      'Courier selects the pickup task',
-      'If the shipment is CPP, the collection screen opens',
-      'Payment method is selected',
-      'Collection is completed',
-      'If a fiscal receipt is required, it is triggered (RS)',
-      'Pickup process continues',
+      'Kurye pickup task\'ını seçer',
+      'Shipment CPP ise collection ekranı açılır',
+      'Ödeme yöntemi seçilir',
+      'Tahsilat tamamlanır',
+      'Fiskal fiş gerekliyse tetiklenir (RS)',
+      'Pickup süreci devam eder',
     ],
     screens: [
       'PickupFragment — Pickup screen',
@@ -782,58 +763,56 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'shipment.cppAmount', desc: 'CPP collection amount', type: 'decimal' },
     ],
     diagram: [
-      { type: 'node', label: 'Pickup task is selected', variant: 'start' },
+      { type: 'node', label: 'Pickup görevi seçilir', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'CPP shipment?', variant: 'decision' },
+      { type: 'node', label: 'CPP shipment mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Collection screen opens', variant: 'process' },
+            { type: 'node', label: 'Collection ekranı açılır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Payment method is selected', variant: 'process' },
+            { type: 'node', label: 'Ödeme yöntemi seçilir', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Collection is completed', variant: 'process' },
+            { type: 'node', label: 'Collection tamamlanır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Fiscal receipt required?', variant: 'decision' },
+            { type: 'node', label: 'Fiskal fiş gerekli mi?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
-                label: 'Yes',
+                label: 'Evet',
                 steps: [
-                  { type: 'node', label: 'VPFR is triggered', variant: 'external' },
+                  { type: 'node', label: 'VPFR tetiklenir', variant: 'external' },
                 ],
               },
               no: {
-                label: 'No',
+                label: 'Hayır',
                 steps: [
-                  { type: 'node', label: 'Continue', variant: 'process' },
+                  { type: 'node', label: 'Devam eder', variant: 'process' },
                 ],
               },
             },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
             { type: 'node', label: 'Normal pickup', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Continue', variant: 'end' },
+      { type: 'node', label: 'Devam eder', variant: 'end' },
     ],
     tips: [
-      'CPP collection is not supported in SI, BA, and ME (N/A)',
-      'In HR, credit card collection is processed through RaiPay',
-      'In RS, SoftPos integration is planned but not yet integrated',
+      'CPP collection SI, BA ve ME\'de desteklenmez (N/A)',
+      'HR\'de kredi kartı tahsilatı RaiPay üzerinden işlenir',
+      'RS\'de SoftPos entegrasyonu planlanıyor ancak henüz entegre edilmedi',
     ],
-    tickets: [
-      { id: 'NESY-167', title: 'Incorrect amount on fiscal receipt after CPP pickup', status: 'open' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Finance Team', role: 'Collection Flows' },
+      { name: 'Finance Team', role: 'Tahsilat akışları' },
     ],
     score: { bugProneness: 3, boilerplate: 3, complexity: 3, testCoverage: 1 },
     apis: [
@@ -844,12 +823,12 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   pickup_fiscalization: {
     whatIs:
-      'Fiscal receipt generation during pickup for CPP shipments. Uses the same VPFR infrastructure as delivery fiscalization but is triggered only for CPP shipments. Currently active only in RS.',
+      'CPP shipment\'lar için pickup sırasında fiskal fiş oluşturma. Delivery fiskalizasyonu ile aynı VPFR altyapısını kullanır ancak yalnızca CPP shipment\'lar için tetiklenir. Şu anda yalnızca RS\'de aktiftir.',
     howItWorks: [
-      'CPP pickup is completed',
-      'If payment is successful, VPFR is triggered',
-      'CreateFiscalInvoice API is called',
-      'Receipt number is obtained and printed',
+      'CPP pickup tamamlanır',
+      'Ödeme başarılıysa VPFR tetiklenir',
+      'CreateFiscalInvoice API çağrılır',
+      'Fiş numarası alınır ve yazdırılır',
     ],
     screens: [
       'FiscalPrintFragment — Receipt printing',
@@ -859,41 +838,41 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.pickupFiscalEnabled', desc: 'Is pickup fiscalization active?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'CPP pickup is completed', variant: 'start' },
+      { type: 'node', label: 'CPP pickup tamamlanır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Payment successful', variant: 'process' },
+      { type: 'node', label: 'Ödeme başarılı', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'VPFR is triggered', variant: 'external' },
+      { type: 'node', label: 'VPFR tetiklenir', variant: 'external' },
       { type: 'arrow' },
       { type: 'node', label: 'CreateFiscalInvoice API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Successful?', variant: 'decision' },
+      { type: 'node', label: 'Başarılı mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Receipt is printed', variant: 'process' },
+            { type: 'node', label: 'Fiş yazdırılır', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Retry', variant: 'error' },
+            { type: 'node', label: 'Tekrar dene', variant: 'error' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Continue', variant: 'end' },
+      { type: 'node', label: 'Devam eder', variant: 'end' },
     ],
     tips: [
-      'Active only in RS — N/A in all other countries',
-      'Uses the same APIs as delivery fiscalization',
-      'Not triggered for non-CPP shipments',
+      'Yalnızca RS\'de aktif — diğer tüm ülkelerde N/A',
+      'Delivery fiscalization ile aynı API\'leri kullanır',
+      'CPP olmayan shipment\'lar için tetiklenmez',
     ],
     tickets: [],
     experts: [
-      { name: 'RS Operations', role: 'VPFR Processes' },
+      { name: 'RS Operations', role: 'VPFR süreçleri' },
     ],
     score: { bugProneness: 3, boilerplate: 4, complexity: 4, testCoverage: 1 },
     apis: [
@@ -904,14 +883,14 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   pickup_at_customer: {
     whatIs:
-      'PAC (Pickup at Customer) task behavior. Parcel pickup task from customer location. An unactioned PAC task blocks end of day (CORE) or does not block it (SI). This rule directly affects the End of Day flow.',
+      'PAC (Pickup at Customer) task davranışı. Müşteri konumundan parcel pickup task\'ı. İşlem görmemiş PAC task end of day\'i engeller (CORE) veya engellemez (SI). Bu kural End of Day akışını doğrudan etkiler.',
     howItWorks: [
-      'PAC task is assigned to the courier\'s schedule',
-      'Courier goes to the customer location',
-      'Collects parcels and confirms them by scanning in the vehicle',
-      'If the PAC task is left unactioned:',
-      '  - CORE/HR/RS/BA/ME: Blocks end of day',
-      '  - SI: Does NOT block end of day',
+      'PAC task kurye schedule\'ine atanır',
+      'Kurye müşteri konumuna gider',
+      'Kolileri toplar ve araçta tarama ile onaylar',
+      'PAC task işlem görmeden bırakılırsa:',
+      '  - CORE/HR/RS/BA/ME: End of day\'i engeller',
+      '  - SI: End of day\'i engellemez',
     ],
     screens: [
       'PickupFragment — Pickup screen',
@@ -921,68 +900,68 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.pacBlocksEod', desc: 'Does PAC task block end of day?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'PAC task is assigned', variant: 'start' },
+      { type: 'node', label: 'PAC görevi atanır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Goes to location', variant: 'process' },
+      { type: 'node', label: 'Konuma gider', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Parcels are collected', variant: 'process' },
+      { type: 'node', label: 'Koliler toplanır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Scanning is performed', variant: 'process' },
+      { type: 'node', label: 'Tarama yapılır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Unactioned?', variant: 'decision' },
+      { type: 'node', label: 'Aksiyon alınmadı mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Does it block EOD?', variant: 'decision' },
+            { type: 'node', label: 'EOD’u bloklar mı?', variant: 'decision' },
             {
               type: 'branch',
               yes: {
                 label: 'CORE',
                 steps: [
-                  { type: 'node', label: 'Blocks', variant: 'error' },
+                  { type: 'node', label: 'Bloklar', variant: 'error' },
                 ],
               },
               no: {
                 label: 'SI',
                 steps: [
-                  { type: 'node', label: 'Does not block', variant: 'process' },
+                  { type: 'node', label: 'Bloklamaz', variant: 'process' },
                 ],
               },
             },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Completed', variant: 'process' },
+            { type: 'node', label: 'Tamamlandı', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow ends', variant: 'end' },
+      { type: 'node', label: 'Akış biter', variant: 'end' },
     ],
     tips: [
-      'In SI, an unactioned PAC task does not block end of day — courier can leave it for the next day',
-      'In all other countries, end of day cannot proceed until PAC is completed',
-      'Difference between PAC and PickupAtCustomer: PAC depends on customer request, Pickup depends on schedule',
+      'SI\'da işlem görmemiş PAC task End of Day\'i engellemez — kurye ertesi güne bırakabilir',
+      'Diğer tüm ülkelerde PAC tamamlanmadan End of Day yapılamaz',
+      'PAC ile PickupAtCustomer farkı: PAC müşteri talebine bağlı, Pickup schedule\'e bağlı',
     ],
     tickets: [],
     experts: [
-      { name: 'Operations Team', role: 'Task Management' },
+      { name: 'Operations Team', role: 'Task yönetimi' },
     ],
     score: { bugProneness: 2, boilerplate: 1, complexity: 2, testCoverage: 1 },
   },
 
   remote_pickup: {
     whatIs:
-      'Display of sender and receiver information in the mobile app. In the remote pickup scenario, sender information is displayed in the courier app. In BA, receiver information is also displayed.',
+      'Mobil uygulamada gönderici ve alıcı bilgilerinin gösterimi. Remote pickup senaryosunda gönderici bilgisi kurye uygulamasında görüntülenir. BA\'da alıcı bilgisi de gösterilir.',
     howItWorks: [
-      'Pickup task is assigned',
-      'Courier opens the task details',
-      'Sender information (name, address, phone) is displayed',
-      'In BA, receiver information is also visible',
+      'Pickup task atanır',
+      'Kurye task detaylarını açar',
+      'Gönderici bilgisi (ad, adres, telefon) gösterilir',
+      'BA\'da alıcı bilgisi de görünür',
     ],
     screens: [
       'PickupFragment — Pickup detail screen',
@@ -992,52 +971,52 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.showReceiverInPickup', desc: 'Show receiver info in pickup?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'Task is assigned', variant: 'start' },
+      { type: 'node', label: 'Görev atanır', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Details are opened', variant: 'process' },
+      { type: 'node', label: 'Detaylar açılır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Sender information is displayed', variant: 'process' },
+      { type: 'node', label: 'Gönderici bilgisi gösterilir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Is it BA?', variant: 'decision' },
+      { type: 'node', label: 'BA mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Receiver info is also displayed', variant: 'process' },
+            { type: 'node', label: 'Alıcı bilgisi de gösterilir', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Only sender is displayed', variant: 'process' },
+            { type: 'node', label: 'Yalnızca gönderici gösterilir', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Pickup begins', variant: 'end' },
+      { type: 'node', label: 'Pickup başlar', variant: 'end' },
     ],
     tips: [
-      'In BA, receiver information is also displayed — courier can route the parcel to the correct address',
-      'In other countries, only sender information is visible',
+      'BA\'da alıcı bilgisi de gösterilir — kurye koliyi doğru adrese yönlendirebilir',
+      'Diğer ülkelerde yalnızca gönderici bilgisi görünür',
     ],
     tickets: [],
     experts: [
-      { name: 'BA Operations', role: 'Bosnia-Specific Rules' },
+      { name: 'BA Operations', role: 'Bosna\'ya özel kurallar' },
     ],
     score: { bugProneness: 1, boilerplate: 1, complexity: 1, testCoverage: 1 },
   },
 
   red_label: {
     whatIs:
-      'Pickup of red label (red-tagged) shipments via the mobile app. Red label is used for shipments with missing label information. The courier collects the parcel, drops it off at the Npoint, the shipment is created, and the backoffice completes the missing data.',
+      'Mobil uygulama üzerinden red label (kırmızı etiketli) shipment pickup\'ı. Red label, etiket bilgisi eksik shipment\'lar için kullanılır. Kurye koliyi toplar, Npoint\'e bırakır, shipment oluşturulur ve backoffice eksik veriyi tamamlar.',
     howItWorks: [
-      'Pickup at customer task is created (red label)',
-      'Courier goes to the customer and collects the parcel',
-      'Parcel is dropped off at the Npoint (hub)',
-      'CreateRedGreyLabelShipmentWithoutDetails API is called',
-      'Shipment is created in the system (with missing details)',
-      'Backoffice operator completes the missing information',
+      'Pickup at customer task oluşturulur (red label)',
+      'Kurye müşteriye gider ve koliyi toplar',
+      'Koli Npoint\'e (hub) bırakılır',
+      'CreateRedGreyLabelShipmentWithoutDetails API çağrılır',
+      'Shipment sistemde oluşturulur (eksik detaylarla)',
+      'Backoffice operatörü eksik bilgileri tamamlar',
     ],
     screens: [
       'GrayLabelFragment — Red/gray label pickup screen',
@@ -1048,30 +1027,28 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.redLabelEnabled', desc: 'Is red label pickup active?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'PAC task is created', variant: 'start' },
+      { type: 'node', label: 'PAC görevi oluşur', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Goes to customer', variant: 'process' },
+      { type: 'node', label: 'Müşteriye gider', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Parcel is collected', variant: 'process' },
+      { type: 'node', label: 'Koli toplanır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Dropped off at Npoint', variant: 'process' },
+      { type: 'node', label: 'Npoint’e bırakılır', variant: 'process' },
       { type: 'arrow' },
       { type: 'node', label: 'CreateRedGreyLabel API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Shipment is created', variant: 'process', desc: 'With missing details' },
+      { type: 'node', label: 'Shipment oluşur', variant: 'process', desc: 'With missing details' },
       { type: 'arrow' },
-      { type: 'node', label: 'Backoffice completes', variant: 'end' },
+      { type: 'node', label: 'Backoffice tamamlar', variant: 'end' },
     ],
     tips: [
-      'Red label pickup is not supported in SI and ME (N/A)',
-      'Red label and gray label use the same fragment (GrayLabelFragment)',
-      'Delivery cannot be made until the shipment is completed in the backoffice',
+      'Red label pickup SI ve ME\'de desteklenmez (N/A)',
+      'Red label ve gray label aynı fragment\'ı kullanır (GrayLabelFragment)',
+      'Backoffice\'te shipment tamamlanmadan delivery yapılamaz',
     ],
-    tickets: [
-      { id: 'NESY-155', title: 'Timeout during red label shipment creation', status: 'open' },
-    ],
+    tickets: [],
     experts: [
-      { name: 'Operations Team', role: 'Red Label Processes' },
+      { name: 'Operations Team', role: 'Red label süreçleri' },
     ],
     score: { bugProneness: 3, boilerplate: 2, complexity: 3, testCoverage: 1 },
     apis: [
@@ -1081,13 +1058,13 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   pickup_failed_non_rdoc: {
     whatIs:
-      'Failed reason codes for non-RDOC pickup tasks. When a courier cannot complete a pickup, they select an appropriate reason code. Reason codes: NOPC, NPNP, NRDY, NSYS, PABS, PADU, PTIM.',
+      'RDOC olmayan pickup task\'ları için başarısızlık neden kodları. Kurye pickup\'ı tamamlayamazsa uygun bir neden kodu seçer. Neden kodları: NOPC, NPNP, NRDY, NSYS, PABS, PADU, PTIM.',
     howItWorks: [
-      'Courier selects "Pickup Failed"',
-      'Reason code list opens',
-      'Appropriate code is selected',
-      'PickupFailed API is called',
-      'Depending on the selected code, automatic reassignment may be triggered',
+      'Kurye "Pickup Failed" seçer',
+      'Neden kodu listesi açılır',
+      'Uygun kod seçilir',
+      'PickupFailed API çağrılır',
+      'Seçilen koda göre otomatik reassignment tetiklenebilir',
     ],
     screens: [
       'PickupFailedFragment — Failed pickup reason screen',
@@ -1096,41 +1073,41 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'failedReason.code', desc: 'Failed reason code (NOPC/NPNP/NRDY/NSYS/PABS/PADU/PTIM)', type: 'enum' },
     ],
     diagram: [
-      { type: 'node', label: 'Failed is selected', variant: 'start' },
+      { type: 'node', label: 'Başarısız seçilir', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Reason list opens', variant: 'process' },
+      { type: 'node', label: 'Neden listesi açılır', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Code is selected', variant: 'process' },
+      { type: 'node', label: 'Kod seçilir', variant: 'process' },
       { type: 'arrow' },
       { type: 'node', label: 'PickupFailed API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Automatic reassignment?', variant: 'decision' },
+      { type: 'node', label: 'Otomatik yeniden atama?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Assigned for next day', variant: 'process' },
+            { type: 'node', label: 'Ertesi güne atanır', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Closed', variant: 'process' },
+            { type: 'node', label: 'Kapalı', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow is completed', variant: 'end' },
+      { type: 'node', label: 'Akış tamamlanır', variant: 'end' },
     ],
     tips: [
-      'All countries use the same reason codes as CORE',
-      'Some reason codes trigger automatic reassignment (see auto_reassignment)',
+      'Tüm ülkeler CORE ile aynı reason code\'ları kullanır',
+      'Bazı reason code\'lar otomatik reassignment tetikler (auto_reassignment\'a bakın)',
       'NOPC: No Parcel / NPNP: Not at Pickup Point / NRDY: Not Ready / NSYS: System / PABS: Absent / PADU: Address Unknown / PTIM: Past Time',
     ],
     tickets: [],
     experts: [
-      { name: 'Operations Team', role: 'Pickup Processes' },
+      { name: 'Operations Team', role: 'Pickup süreçleri' },
     ],
     score: { bugProneness: 1, boilerplate: 1, complexity: 1, testCoverage: 1 },
     apis: [
@@ -1140,11 +1117,11 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   rdoc_failed_reasons: {
     whatIs:
-      'Failed reason codes for RDOC (Return Document) pickup tasks. RDOC tasks can only be failed with the NOPC reason code — other codes cannot be used.',
+      'RDOC (Return Document) pickup task\'ları için başarısızlık neden kodları. RDOC task\'ları yalnızca NOPC neden kodu ile failed yapılabilir — diğer kodlar kullanılamaz.',
     howItWorks: [
-      'Courier marks the RDOC pickup task as failed',
-      'Only NOPC is shown as an option',
-      'PickupFailed API is called',
+      'Kurye RDOC pickup task\'ını failed olarak işaretler',
+      'Yalnızca NOPC seçenek olarak gösterilir',
+      'PickupFailed API çağrılır',
     ],
     screens: [
       'PickupFailedFragment — Failed RDOC screen',
@@ -1153,23 +1130,23 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'task.isRDOC', desc: 'Is the task RDOC type?', type: 'boolean' },
     ],
     diagram: [
-      { type: 'node', label: 'RDOC failed', variant: 'start' },
+      { type: 'node', label: 'RDOC başarısız', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Single option: NOPC', variant: 'process' },
+      { type: 'node', label: 'Tek seçenek: NOPC', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'NOPC is selected', variant: 'process' },
+      { type: 'node', label: 'NOPC seçilir', variant: 'process' },
       { type: 'arrow' },
       { type: 'node', label: 'PickupFailed API', variant: 'external' },
       { type: 'arrow' },
-      { type: 'node', label: 'Closed', variant: 'end' },
+      { type: 'node', label: 'Kapalı', variant: 'end' },
     ],
     tips: [
-      'Only NOPC can be used for RDOC tasks — UI shows a single option',
-      'Same behavior in all countries',
+      'RDOC task\'lar için yalnızca NOPC kullanılabilir — UI tek seçenek gösterir',
+      'Tüm ülkelerde aynı davranış',
     ],
     tickets: [],
     experts: [
-      { name: 'Operations Team', role: 'RDOC Processes' },
+      { name: 'Operations Team', role: 'RDOC süreçleri' },
     ],
     score: { bugProneness: 1, boilerplate: 1, complexity: 1, testCoverage: 1 },
     apis: [
@@ -1179,12 +1156,12 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
 
   auto_reassignment: {
     whatIs:
-      'Automatic reassignment after a failed pickup. Certain failed reason codes trigger automatic reassignment to the next business day. Triggering codes vary by country.',
+      'Başarısız pickup sonrası otomatik yeniden atama. Belirli başarısızlık neden kodları bir sonraki iş gününe otomatik yeniden atamayı tetikler. Tetikleyen kodlar ülkeye göre değişir.',
     howItWorks: [
-      'Pickup fails',
-      'Selected reason code is checked',
-      'If the code is in the triggering list, automatic reassignment is scheduled',
-      'The task is reassigned to the courier on the next business day',
+      'Pickup başarısız olur',
+      'Seçilen neden kodu kontrol edilir',
+      'Kod tetikleyici listedeyse otomatik reassignment planlanır',
+      'Task bir sonraki iş günü kuryeye yeniden atanır',
     ],
     screens: [
       'Background Service — Automatic reassignment (backend side)',
@@ -1193,40 +1170,40 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       { name: 'country.autoReassignCodes', desc: 'Codes that trigger automatic reassignment', type: 'string[]' },
     ],
     diagram: [
-      { type: 'node', label: 'Pickup fails', variant: 'start' },
+      { type: 'node', label: 'Pickup başarısız', variant: 'start' },
       { type: 'arrow' },
-      { type: 'node', label: 'Code is checked', variant: 'process' },
+      { type: 'node', label: 'Kod kontrol edilir', variant: 'process' },
       { type: 'arrow' },
-      { type: 'node', label: 'Is it a trigger?', variant: 'decision' },
+      { type: 'node', label: 'Trigger mı?', variant: 'decision' },
       {
         type: 'branch',
         yes: {
-          label: 'Yes',
+          label: 'Evet',
           steps: [
-            { type: 'node', label: 'Reassignment is scheduled', variant: 'process' },
+            { type: 'node', label: 'Yeniden atama planlanır', variant: 'process' },
             { type: 'arrow' },
-            { type: 'node', label: 'Assigned for next day', variant: 'process' },
+            { type: 'node', label: 'Ertesi güne atanır', variant: 'process' },
           ],
         },
         no: {
-          label: 'No',
+          label: 'Hayır',
           steps: [
-            { type: 'node', label: 'Closed', variant: 'process' },
+            { type: 'node', label: 'Kapalı', variant: 'process' },
           ],
         },
       },
       { type: 'arrow' },
-      { type: 'node', label: 'Flow is completed', variant: 'end' },
+      { type: 'node', label: 'Akış tamamlanır', variant: 'end' },
     ],
     tips: [
       'CORE: NPNP, NRDY, PABS, PTIM',
       'SI: NPNP, NRDY, PABS, PADU, PTIM (+PADU)',
       'RS: NPNP, NRDY, NSYS, PABS, PADU, PTIM (+NSYS, +PADU)',
-      'BA and ME do not have automatic reassignment',
+      'BA ve ME\'de otomatik reassignment yok',
     ],
     tickets: [],
     experts: [
-      { name: 'Backend Team', role: 'Task Management' },
+      { name: 'Backend Team', role: 'Task yönetimi' },
     ],
     score: { bugProneness: 2, boilerplate: 1, complexity: 2, testCoverage: 1 },
   },
@@ -1298,9 +1275,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'Adres eşleşmesi case-insensitive yapılır',
       'Tur onayından sonra otomatik birleştirme devam eder ama manuel birleştirme yapılamaz',
     ],
-    tickets: [
-      { id: 'NESY-91', title: 'Farklı adreslerin yanlışlıkla birleşmesi', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
       { name: 'Backend Ekibi', role: 'Durak Yönetimi' },
     ],
@@ -1407,10 +1382,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'Barkod okutma Zebra DataWedge, Honeywell ve kamera (MLKit) ile desteklenir',
       'Scan fragment barkod routing mantığı oldukça karmaşık — farklı barkod formatları farklı akışlar tetikler',
     ],
-    tickets: [
-      { id: 'NESY-203', title: 'Tur onayı bekleme sırasında schedule kaybolması', status: 'open' },
-      { id: 'NESY-58', title: 'Barkod okutma sırasında çift okutma sorunu', status: 'open' },
-    ],
+    tickets: [],
     experts: [
       { name: 'Mobile Geliştirici', role: 'Barkod/Scan Akışları' },
       { name: 'Operasyon Ekibi', role: 'Tur Yönetimi' },
@@ -1517,9 +1489,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'Fiskal iptal edilirse SSC (Status Change) event\'i otomatik tetiklenir',
       'Tracking ekranı hem teslimat hem pickup gönderileri için kullanılır',
     ],
-    tickets: [
-      { id: 'NESY-129', title: 'Takip ekranında eski event verisi gösterilmesi', status: 'closed' },
-    ],
+    tickets: [],
     experts: [
       { name: 'Mobile Geliştirici', role: 'Takip Ekranı' },
     ],
@@ -1678,12 +1648,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'Dolap dolu olabilir — kapasite kontrolü D4Me API\'sinde yapılır',
       'LeanLocker (LOS) entegrasyonu da ayrıca mevcut — D4Me\'den farklı bir dolap sistemi',
     ],
-    tickets: [
-      { id: 'NESY-112', title: 'D4Me callback sonrası gönderi durumu güncellenmemesi', status: 'open' },
-      { id: 'NESY-198', title: 'RS 14 haneli ID eşleme hatası', status: 'open' },
-      { id: 'NESY-76', title: 'D4Me uygulama versiyonu uyumsuzluğu', status: 'closed' },
-      { id: 'NESY-221', title: 'Locker Pickup görevi timeout hesaplama hatası', status: 'open' },
-    ],
+    tickets: [],
     experts: [
       { name: 'D4Me Entegrasyon Ekibi', role: 'Dolap Entegrasyonu' },
       { name: 'RS Operasyon', role: 'Legacy ID Eşleme' },

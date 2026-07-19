@@ -35,7 +35,7 @@ import { FlowDiagram } from './flow-diagram'
 
 /* ─── Tab definitions ─── */
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: Info },
+  { id: 'overview', label: 'Genel bakış', icon: Info },
   { id: 'scope', label: 'Country Coverage', icon: Globe },
   { id: 'diagram', label: 'Flow Diagram', icon: GitBranch },
   { id: 'params', label: 'Parameters & API', icon: Settings },
@@ -185,7 +185,7 @@ export function FeatureDetailDialog({
                       <>
                         {/* What Is It */}
                         <Section
-                          title="What Is It?"
+                          title="Nedir?"
                           icon={Info}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4 lg:col-span-2"
@@ -197,7 +197,7 @@ export function FeatureDetailDialog({
 
                         {/* How It Works */}
                         <Section
-                          title="How Does It Work?"
+                          title="Nasıl çalışır?"
                           icon={GitBranch}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4"
@@ -221,7 +221,7 @@ export function FeatureDetailDialog({
 
                         {/* Screens */}
                         <Section
-                          title="Which Screen Does It Run On?"
+                          title="Hangi ekranda çalışır?"
                           icon={Code2}
                           tone={tone}
                           className="rounded-xl border border-border/60 bg-muted/20 p-4"
@@ -245,7 +245,7 @@ export function FeatureDetailDialog({
                         </Section>
                       </>
                     ) : (
-                      <EmptyState message="No detail information has been added for this feature yet." />
+                      <EmptyState message="Bu feature için henüz detay bilgisi eklenmedi." />
                     )}
                   </motion.div>
                 </AnimatePresence>
@@ -465,7 +465,18 @@ export function FeatureDetailDialog({
                           <Ticket className="size-4 shrink-0 text-muted-foreground" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <code className="text-xs font-bold text-foreground">{ticket.id}</code>
+                              {ticket.url ? (
+                                <a
+                                  href={ticket.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-bold text-primary hover:underline"
+                                >
+                                  #{ticket.id}
+                                </a>
+                              ) : (
+                                <code className="text-xs font-bold text-foreground">#{ticket.id}</code>
+                              )}
                               <Badge
                                 variant="secondary"
                                 size="xs"

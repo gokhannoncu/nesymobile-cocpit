@@ -5,6 +5,7 @@ import {
   Callout,
   CardGrid,
   ComparisonTable,
+  HeroCallout,
   InfoCard,
   PageSection,
   ProductPage,
@@ -58,8 +59,25 @@ const highlights: Record<string, string[]> = {
 }
 
 export default function CountryProfilesPage() {
+  const countryCount = COUNTRIES.filter((country) => country.id !== 'core').length
+  const activeCount = COUNTRIES.filter((country) => country.status === 'Active').length
+
   return (
-    <ProductPage path="/product/country-profiles">
+    <ProductPage path="/product/country-profiles" hideToolbar>
+      <HeroCallout
+        compact
+        icon={MapPin}
+        eyebrow="Product · Packages"
+        tone="orange"
+        title="Country Profiles"
+        lead="Country packages at a glance — scope, payment, and fiscal differences versus Core. Drill into the matrix for feature-level detail."
+        chips={[
+          `${countryCount} countries + Core`,
+          `${activeCount} active`,
+          `${TOTAL_FEATURES} features tracked`,
+        ]}
+      />
+
       <PageSection
         eyebrow="Packages"
         title="Country Packages"

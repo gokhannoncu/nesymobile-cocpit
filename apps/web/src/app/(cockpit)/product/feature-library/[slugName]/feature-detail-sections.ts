@@ -1,4 +1,4 @@
-export type FeatureDetailSectionId = 'overview' | 'flow' | 'countries' | 'tech' | 'ops'
+export type FeatureDetailSectionId = 'overview' | 'flow' | 'countries' | 'ops'
 
 export type FeatureDetailSection = {
   id: FeatureDetailSectionId
@@ -6,11 +6,10 @@ export type FeatureDetailSection = {
 }
 
 const LABELS: Record<FeatureDetailSectionId, string> = {
-  overview: 'Overview',
-  flow: 'Flow',
-  countries: 'Countries',
-  tech: 'Tech',
-  ops: 'Ops',
+  overview: 'Genel bakış',
+  flow: 'İş akışı',
+  countries: 'Ülkeler',
+  ops: 'Saha notları',
 }
 
 export function resolveFeatureDetailSections(input: {
@@ -19,8 +18,8 @@ export function resolveFeatureDetailSections(input: {
 }): FeatureDetailSection[] {
   const ids: FeatureDetailSectionId[] = input.hasDetail
     ? input.hasDiagram
-      ? ['overview', 'flow', 'countries', 'tech', 'ops']
-      : ['overview', 'countries', 'tech', 'ops']
+      ? ['overview', 'flow', 'countries', 'ops']
+      : ['overview', 'countries', 'ops']
     : ['overview', 'countries']
 
   return ids.map((id) => ({ id, label: LABELS[id] }))

@@ -2,12 +2,14 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react'
 import {
   Archive,
   Bell,
+  BookOpen,
   Box,
   Building,
   Building2,
@@ -24,6 +26,7 @@ import {
   Headphones,
   Info,
   Landmark,
+  Layers,
   Lightbulb,
   MapPin,
   MapPinned,
@@ -52,7 +55,6 @@ import {
   ProductPage,
   type Tone,
   toneCard,
-  toneDot,
   toneHero,
   toneIcon,
   toneIconBox,
@@ -220,22 +222,17 @@ function learningContext(entityId: string) {
 function DialogSection({
   title,
   hint,
-  tone = 'indigo',
   children,
 }: {
   title: string
   hint?: string
-  tone?: Tone
   children: ReactNode
 }) {
   return (
     <section className="space-y-2.5">
       <div>
-        <h3 className={cn('flex items-center gap-2 text-xs font-bold', toneText[tone])}>
-          <span aria-hidden className={cn('h-3.5 w-1 rounded-full', toneDot[tone])} />
-          {title}
-        </h3>
-        {hint && <p className="mt-1 ps-3 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+        <h3 className="text-xs font-semibold text-foreground">{title}</h3>
+        {hint && <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>
@@ -269,8 +266,7 @@ function EntityDetailDialog({
 
   const ctx = learningContext(entity.id)
   const Icon = ICONS[entity.icon] ?? Package
-  const tone = entityTone(entity)
-  const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
+  const { label: categoryLabel } = categoryMeta(entityCategory(entity))
   const chainIndex = CHAIN.findIndex((item) => item.id === entity.id)
   const hasNav = onNavigate && ctx && (ctx.previous || ctx.next)
   const aliases = displayAliases(entity)
@@ -289,33 +285,27 @@ function EntityDetailDialog({
         showCloseButton={false}
         className="fixed top-1/2 left-1/2 z-50 flex h-[min(90vh,720px)] max-h-[min(90vh,720px)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border/80 bg-card p-0 shadow-2xl"
       >
-        <div className={cn('relative shrink-0 overflow-hidden border-b', toneHero[tone])}>
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-[0.22] dark:opacity-10 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:16px_16px] text-foreground/10"
-          />
-          <span aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
-
-          <div className="relative px-5 py-4 sm:px-6 sm:py-5">
+        <div className="relative shrink-0 border-b border-border/70 bg-card">
+          <div className="px-5 py-4 sm:px-6 sm:py-5">
             {ctx && (
               <div className="mb-4">
-                <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
                     <GraduationCap className="size-3" />
-                    Learning path
+                    Öğrenme yolu
                   </span>
-                  <span className="tabular-nums">Step {ctx.current.step} / {ctx.total}</span>
+                  <span className="tabular-nums">Adım {ctx.current.step} / {ctx.total}</span>
                 </div>
                 <div
-                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10"
+                  className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
                   role="progressbar"
                   aria-valuenow={ctx.current.step}
                   aria-valuemin={1}
                   aria-valuemax={ctx.total}
-                  aria-label={`Learning path progress: step ${ctx.current.step} of ${ctx.total}`}
+                  aria-label={`Öğrenme yolu ilerlemesi: adım ${ctx.current.step} / ${ctx.total}`}
                 >
                   <div
-                    className={cn('h-full rounded-full transition-all duration-300', toneDot[tone])}
+                    className="h-full rounded-full bg-foreground/35 transition-all duration-300"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -324,24 +314,24 @@ function EntityDetailDialog({
 
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className={cn('text-[10px] font-bold uppercase tracking-[0.2em]', toneText[tone])}>
-                  Domain term
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Domain kavramı
                 </p>
                 <div className="mt-2 flex items-start gap-3">
-                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl border shadow-sm', toneIconBox[tone])}>
-                    <Icon className={cn('size-5', toneIcon[tone])} />
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/40">
+                    <Icon className="size-5 text-foreground/70" />
                   </span>
                   <div className="min-w-0 pt-0.5">
                     <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground sm:text-[22px]">
                       {entity.name}
                     </h2>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="secondary" appearance="outline" size="sm" className={cn(toneCard[categoryTone], toneText[categoryTone])}>
+                      <Badge variant="secondary" appearance="outline" size="sm">
                         {categoryLabel}
                       </Badge>
                       {chainIndex >= 0 && (
-                        <Badge variant="secondary" appearance="outline" size="xs" className={cn(toneCard[tone], toneText[tone])}>
-                          Level {entity.level}
+                        <Badge variant="secondary" appearance="outline" size="xs">
+                          Seviye {entity.level}
                         </Badge>
                       )}
                     </div>
@@ -350,11 +340,11 @@ function EntityDetailDialog({
 
                 {aliases.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-muted-foreground">Also known as</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">Ayrıca bilinen adlar</span>
                     {aliases.map((alias) => (
                       <span
                         key={alias}
-                        className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
+                        className="rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
                       >
                         {alias}
                       </span>
@@ -364,8 +354,8 @@ function EntityDetailDialog({
               </div>
 
               <DialogClose
-                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border/70 bg-background/80 text-muted-foreground outline-none transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
-                aria-label="Close"
+                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border/70 bg-background text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Kapat"
               >
                 <X className="size-4" />
               </DialogClose>
@@ -374,38 +364,38 @@ function EntityDetailDialog({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="space-y-5 px-5 py-5 sm:px-6">
+          <div className="space-y-6 px-5 py-5 sm:px-6">
             {ctx && (
-              <div className={cn('rounded-xl border p-3.5', toneCard.indigo)}>
-                <p className={cn('text-[10px] font-bold uppercase tracking-wide', toneText.indigo)}>
+              <div className="rounded-lg border border-border/60 bg-muted/30 px-3.5 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {ctx.current.title}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-foreground/90">{ctx.current.hint}</p>
               </div>
             )}
 
-            <DialogSection title="What is this concept?" hint="One-sentence definition — use this in meetings." tone={tone}>
-              <p className="rounded-lg border border-border/60 bg-muted/25 px-3.5 py-3 text-sm leading-7 text-foreground/90">
+            <DialogSection title="Bu kavram nedir?" hint="Tek cümlelik tanım — toplantılarda bu dili kullanın.">
+              <p className="text-sm leading-7 text-foreground/90">
                 {entity.definition}
               </p>
             </DialogSection>
 
-            <DialogSection title="What does it mean in the field?" hint="What role does it play in courier operations?" tone="blue">
-              <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3.5 py-3 dark:border-blue-900/50 dark:bg-blue-950/20">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            <DialogSection title="Sahada ne anlama gelir?" hint="Kurye operasyonunda hangi rolü oynar?">
+              <div className="flex gap-2.5">
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <p className="text-sm leading-7 text-foreground/90">{entity.businessContext}</p>
               </div>
             </DialogSection>
 
             {entity.antiPatterns.length > 0 && (
-              <DialogSection title="Common misconceptions" hint="Keep these in mind to avoid misunderstandings." tone="amber">
-                <ul className="space-y-2">
+              <DialogSection title="Sık görülen yanlış anlamalar" hint="Karışıklığı önlemek için bunları aklınızda tutun.">
+                <ul className="space-y-2.5">
                   {entity.antiPatterns.slice(0, 3).map((item) => (
                     <li
                       key={item}
-                      className="flex gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3.5 py-2.5 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20"
+                      className="flex gap-2.5 text-sm leading-6 text-foreground/85"
                     >
-                      <Info className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       <span>{item.replace(/^[^\p{L}\p{N}]+/u, '').trim()}</span>
                     </li>
                   ))}
@@ -414,7 +404,7 @@ function EntityDetailDialog({
             )}
 
             {(parent || children.length > 0) && onNavigate && (
-              <DialogSection title="Related concepts" hint="Jump to connected terms in the domain chain." tone="teal">
+              <DialogSection title="İlgili kavramlar" hint="Domain zincirindeki bağlı terimlere atlayın.">
                 <div className="flex flex-wrap gap-2">
                   {parent && <EntityNavChip entityId={parent.id} onNavigate={onNavigate} />}
                   {children.map((child) => (
@@ -448,7 +438,7 @@ function EntityDetailDialog({
               {' '}
               <kbd className="rounded border border-border/70 bg-background px-1 py-0.5 font-mono text-[9px]">→</kbd>
               {' '}
-              to navigate
+              ile gezin
             </p>
 
             {ctx!.next ? (
@@ -459,7 +449,7 @@ function EntityDetailDialog({
                 onClick={() => onNavigate!(ctx!.next!.entityId)}
                 className="max-w-full gap-1.5 sm:max-w-[44%]"
               >
-                Continue to {nextEntity?.name}
+                Devam: {nextEntity?.name}
                 <ChevronRight className="size-3.5 shrink-0" />
               </Button>
             ) : (
@@ -503,94 +493,231 @@ function EntityNavChip({
   )
 }
 
-function EntityDictionaryTable({
+function ConceptRow({
+  entity,
+  tone,
+  onClick,
+}: {
+  entity: DomainEntity
+  tone: Tone
+  onClick: () => void
+}) {
+  const Icon = ICONS[entity.icon] ?? Package
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/35 focus-visible:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 sm:gap-4 sm:px-5"
+    >
+      <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border', toneIconBox[tone], toneCard[tone])}>
+        <Icon className={cn('size-4', toneIcon[tone])} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">{entity.name}</span>
+          {entity.level === 0 && (
+            <span className={cn('rounded border px-1.5 py-px text-[10px] font-medium', toneCard[tone], toneText[tone])}>
+              Root
+            </span>
+          )}
+        </span>
+        <span className="mt-1 block text-[13px] leading-5 text-muted-foreground">
+          {entity.definition}
+        </span>
+      </span>
+      <ChevronRight className="mt-2 size-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
+    </button>
+  )
+}
+
+function CategoryGroupCard({
+  id,
+  label,
+  tone,
+  items,
+  onRowClick,
+}: {
+  id: EntityCategory
+  label: string
+  tone: Tone
+  items: DomainEntity[]
+  onRowClick: (id: string) => void
+}) {
+  return (
+    <section
+      id={`glossary-${id}`}
+      aria-labelledby={`glossary-heading-${id}`}
+      className={cn('scroll-mt-28 overflow-hidden rounded-lg border bg-card', toneCard[tone])}
+    >
+      <div className={cn('flex items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5', toneCard[tone])}>
+        <div>
+          <p className={cn('text-[10px] font-medium uppercase tracking-[0.16em]', toneText[tone])}>
+            Kategori
+          </p>
+          <h2 id={`glossary-heading-${id}`} className="mt-0.5 text-base font-semibold text-foreground">
+            {label}
+          </h2>
+        </div>
+        <span className={cn('rounded-md border px-2 py-1 text-[11px] font-medium tabular-nums', toneCard[tone], toneText[tone])}>
+          {items.length} kavram
+        </span>
+      </div>
+      <ul className="divide-y divide-border/40 bg-card/80">
+        {items.map((entity) => (
+          <li key={entity.id}>
+            <ConceptRow
+              entity={entity}
+              tone={entityTone(entity)}
+              onClick={() => onRowClick(entity.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function GlossaryCatalog({
   entities: rows,
   onRowClick,
 }: {
   entities: DomainEntity[]
   onRowClick: (id: string) => void
 }) {
-  const th = 'border border-indigo-200/60 bg-indigo-50/70 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wide text-indigo-900/80 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-200'
-  const td = 'h-9 max-h-9 max-w-0 border border-indigo-200/50 px-2.5 py-0 align-middle dark:border-indigo-900/40'
-  const clip = 'block min-w-0 truncate whitespace-nowrap text-xs'
+  const grouped = useMemo(
+    () =>
+      ENTITY_CATEGORIES
+        .map((category) => ({
+          ...category,
+          items: rows.filter((entity) => entityCategory(entity) === category.id),
+        }))
+        .filter((group) => group.items.length > 0),
+    [rows],
+  )
 
   return (
-    <div className="overflow-hidden rounded-lg border border-indigo-200/50 bg-card shadow-sm dark:border-indigo-900/40">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] table-fixed border-collapse text-left">
-          <thead>
-            <tr>
-              <th className={cn(th, 'w-9 text-center')}>#</th>
-              <th className={cn(th, 'w-[30%]')}>Concept</th>
-              <th className={cn(th, 'w-[20%]')}>Category</th>
-              <th className={cn(th, 'w-[46%]')}>Definition</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((entity, index) => {
-              const tone = entityTone(entity)
-              const Icon = ICONS[entity.icon] ?? Package
-              const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
-
-              return (
-                <tr
-                  key={entity.id}
-                  onClick={() => onRowClick(entity.id)}
-                  title={entity.name}
-                  className="group cursor-pointer transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-950/25"
-                >
-                  <td className={cn(td, 'w-9 text-center')}>
-                    <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-                  </td>
-                  <td className={td}>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Icon className={cn('size-3.5 shrink-0', toneIcon[tone])} />
-                      <span className={cn(clip, 'font-semibold text-foreground')}>{entity.name}</span>
-                    </div>
-                  </td>
-                  <td className={td}>
-                    <span className={cn(clip, 'font-semibold', toneText[categoryTone])} title={categoryLabel}>
-                      {categoryLabel}
-                    </span>
-                  </td>
-                  <td className={td}>
-                    <span className={cn(clip, 'text-muted-foreground')} title={entity.definition}>
-                      {entity.definition}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t border-indigo-200/50 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground dark:border-indigo-900/40">
-        {rows.length} concepts · click a row for details
-      </div>
+    <div className="space-y-5">
+      {grouped.map((group) => (
+        <CategoryGroupCard
+          key={group.id}
+          id={group.id}
+          label={group.label}
+          tone={CATEGORY_TONE[group.id]}
+          items={group.items}
+          onRowClick={onRowClick}
+        />
+      ))}
     </div>
+  )
+}
+
+function GlossaryHeaderBanner({
+  onStartLearning,
+}: {
+  onStartLearning: () => void
+}) {
+  const stats = [
+    { label: 'Kavram', value: entities.length },
+    { label: 'Kategori', value: ENTITY_CATEGORIES.length },
+    { label: 'Öğrenme adımı', value: learningPath.length },
+  ]
+
+  return (
+    <header className={cn('relative overflow-hidden rounded-lg border bg-gradient-to-br p-5 sm:p-6', toneHero.indigo)}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.28] dark:opacity-15 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:20px_20px] text-foreground/10"
+      />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 max-w-2xl">
+          <div className="flex items-start gap-3.5">
+            <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-lg border', toneIconBox.indigo, toneCard.indigo)}>
+              <BookOpen className={cn('size-5', toneIcon.indigo)} />
+            </span>
+            <div className="min-w-0">
+              <p className={cn('text-[11px] font-medium uppercase tracking-[0.18em]', toneText.indigo)}>
+                Product Foundation
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
+                Domain Glossary
+              </h1>
+            </div>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-foreground/80 sm:text-[15px]">
+            Kurye operasyonu için ortak dil — bir kavramı açıp tanımını, sahadaki anlamını
+            ve teslimat zincirindeki yerini öğrenin.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium', toneCard.indigo, toneText.indigo)}>
+              <Layers className="size-3" />
+              Ubiquitous language
+            </span>
+            <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium', toneCard.purple, toneText.purple)}>
+              <GraduationCap className="size-3" />
+              Rehberli öğrenme yolu
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end lg:flex-col lg:items-stretch">
+          <dl className="grid grid-cols-3 gap-2.5 sm:min-w-[280px]">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className={cn('rounded-lg border px-3 py-2.5 text-center', toneCard.indigo)}
+              >
+                <dt className={cn('text-[10px] font-medium uppercase tracking-wide', toneText.indigo)}>
+                  {stat.label}
+                </dt>
+                <dd className="mt-1 text-lg font-bold tabular-nums text-foreground">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={onStartLearning}
+            className="gap-1.5 self-start sm:self-auto"
+          >
+            Öğrenme yolunu başlat
+            <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+    </header>
   )
 }
 
 function DictionaryView() {
   const [detailId, setDetailId] = useState<string | null>(null)
   const detailEntity = entityById(detailId)
+  const firstLearningId = learningPath[0]?.entityId ?? entities[0]?.id ?? null
 
   return (
-    <section aria-label="Domain glossary dictionary">
-      <EntityDictionaryTable entities={entities} onRowClick={setDetailId} />
-      <EntityDetailDialog
-        entity={detailEntity ?? null}
-        open={detailId !== null}
-        onOpenChange={(open) => !open && setDetailId(null)}
-        onNavigate={setDetailId}
+    <div className="space-y-6">
+      <GlossaryHeaderBanner
+        onStartLearning={() => {
+          if (firstLearningId) setDetailId(firstLearningId)
+        }}
       />
-    </section>
+      <section aria-label="Kategoriye göre domain glossary">
+        <GlossaryCatalog entities={entities} onRowClick={setDetailId} />
+        <EntityDetailDialog
+          entity={detailEntity ?? null}
+          open={detailId !== null}
+          onOpenChange={(open) => !open && setDetailId(null)}
+          onNavigate={setDetailId}
+        />
+      </section>
+    </div>
   )
 }
 
 export default function DomainGlossaryPage() {
   return (
-    <ProductPage path="/product/domain-glossary">
+    <ProductPage path="/product/domain-glossary" hideToolbar>
       <main>
         <DictionaryView />
       </main>

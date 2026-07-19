@@ -29,6 +29,7 @@ import {
   MapPinned,
   Monitor,
   Navigation,
+  Network,
   Package,
   PackageCheck,
   Receipt,
@@ -306,7 +307,7 @@ function LearningPathBanner({ entity }: { entity: DomainEntity }) {
     return (
       <div className={cn('rounded-xl border p-3', toneCard[categoryTone])}>
         <p className={cn('text-[10px] font-bold uppercase tracking-wider', toneText[categoryTone])}>{categoryLabel}</p>
-        <p className="mt-1 text-xs leading-relaxed text-foreground/85">This concept operates in a cross-cutting context; it intersects the main chain during specific operations.</p>
+        <p className="mt-1 text-xs leading-relaxed text-foreground/85">Bu kavram cross-cutting bağlamda çalışır; belirli operasyonlarda ana zincirle kesişir.</p>
       </div>
     )
   }
@@ -320,7 +321,7 @@ function LearningPathBanner({ entity }: { entity: DomainEntity }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', toneCard.indigo, toneText.indigo)}>
-              Step {ctx.current.step}/{ctx.total}
+              Adım {ctx.current.step}/{ctx.total}
             </span>
             <span className="text-xs font-bold text-foreground">{ctx.current.title}</span>
             <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', toneCard[categoryTone], toneText[categoryTone])}>
@@ -428,7 +429,7 @@ function EntityDetailPanel({
         </div>
         {entity.aliases.length > 0 && (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Also known in the field as: {entity.aliases.slice(0, 3).join(', ')}
+            Sahada ayrıca: {entity.aliases.slice(0, 3).join(', ')}
           </p>
         )}
       </div>
@@ -437,20 +438,20 @@ function EntityDetailPanel({
 
   const definitionBlock = (
     <>
-      <DetailSection title="What is this concept?" hint="One-sentence definition — use this in meetings." tone={tone}>
+      <DetailSection title="Bu kavram nedir?" hint="Tek cümlelik tanım — toplantılarda bu dili kullanın." tone={tone}>
         <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-6 text-foreground/90">
           {entity.definition}
         </p>
       </DetailSection>
 
-      <DetailSection title="What does it mean in the field?" hint="What role does it play in courier operations?" tone="blue">
+      <DetailSection title="Sahada ne anlama gelir?" hint="Kurye operasyonunda hangi rolü oynar?" tone="blue">
         <div className="flex gap-2.5 rounded-lg border border-blue-200/70 bg-blue-50/50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-950/20">
           <Lightbulb className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <p className="text-sm leading-6 text-foreground/90">{entity.businessContext}</p>
         </div>
       </DetailSection>
 
-      <DetailSection title="Common misconceptions" hint="Keep these in mind to avoid misunderstandings." tone="amber">
+      <DetailSection title="Sık görülen yanlış anlamalar" hint="Karışıklığı önlemek için bunları aklınızda tutun." tone="amber">
         <ul className="space-y-2">
           {entity.antiPatterns.slice(0, 3).map((item) => (
             <li key={item} className="flex gap-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2 text-sm leading-6 text-foreground/85 dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -465,27 +466,27 @@ function EntityDetailPanel({
 
   const structureBlock = (
     <>
-      <DetailSection title="Position in the chain" hint="How does it connect to parent and child concepts?" tone="teal">
+      <DetailSection title="Zincirdeki konum" hint="Üst ve alt kavramlarla nasıl bağlanır?" tone="teal">
         <ChainBreadcrumb entity={entity} />
         <dl className="mt-2 grid gap-2 rounded-lg border border-teal-200/60 bg-teal-50/40 p-3 text-sm dark:border-teal-900/50 dark:bg-teal-950/20 sm:grid-cols-1">
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Parent concept</dt>
-            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Root — no parent'}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Üst kavram</dt>
+            <dd className="mt-0.5 font-semibold">{parent?.name ?? 'Root — üst yok'}</dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Child concepts</dt>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Alt kavramlar</dt>
             <dd className="mt-0.5 font-semibold">
-              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Leaf — no children'}
+              {children.length > 0 ? children.map((child) => child.name).join(', ') : 'Leaf — alt yok'}
             </dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Relationship type</dt>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">İlişki tipi</dt>
             <dd className="mt-0.5 font-semibold">{entity.cardinalityDesc}</dd>
           </div>
         </dl>
         {related.length > 0 && (
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Horizontal link: {related.map((relation) => relation.description).join(' ')}
+            Yatay bağlantı: {related.map((relation) => relation.description).join(' ')}
           </p>
         )}
       </DetailSection>
@@ -493,7 +494,7 @@ function EntityDetailPanel({
   )
 
   const statusesBlock = (
-    <DetailSection title="Possible states" hint="These are system enum values — use them as code, not display labels." tone="purple">
+    <DetailSection title="Olası durumlar" hint="Bunlar sistem enum değerleridir — display label değil, kod olarak kullanın." tone="purple">
       <div className="grid gap-2 sm:grid-cols-2">
         {entity.statuses.map((status) => (
           <div
@@ -516,9 +517,9 @@ function EntityDetailPanel({
   const rulesBlock = (
     <>
       {entity.prerequisiteIds.length > 0 && (
-        <DetailSection title="Prerequisites" hint="What you need to know before moving on to this concept." tone="indigo">
+        <DetailSection title="Ön koşullar" hint="Bu kavrama geçmeden önce bilmeniz gerekenler." tone="indigo">
           <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            Without understanding the concepts below, it is difficult to fully grasp the context of {entity.name}. Review them first.
+            Aşağıdaki kavramlar anlaşılmadan {entity.name} bağlamını tam kavramak zordur. Önce bunları gözden geçirin.
           </p>
           <div className="flex flex-wrap gap-2">
             {entity.prerequisiteIds.map((id) => (
@@ -529,9 +530,9 @@ function EntityDetailPanel({
       )}
 
       {relevantRules.length > 0 && (
-        <DetailSection title="Automatic rules" hint="What does the system do when a state changes?" tone="green">
+        <DetailSection title="Otomatik kurallar" hint="Durum değişince sistem ne yapar?" tone="green">
           <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-            These rules run in the background without requiring courier action — critical for understanding status propagation.
+            Bu kurallar kurye aksiyonu olmadan arka planda çalışır — status propagation’ı anlamak için kritiktir.
           </p>
           <ul className="space-y-2">
             {relevantRules.map((rule) => (
@@ -546,7 +547,7 @@ function EntityDetailPanel({
 
       {!hasRulesTab && (
         <p className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
-          No specific prerequisites or propagation rules are defined for this concept.
+          Bu kavram için özel ön koşul veya propagation kuralı tanımlı değil.
         </p>
       )}
     </>
@@ -556,9 +557,9 @@ function EntityDetailPanel({
     <>
       {ctx?.next && (
         <div className={cn('rounded-xl border p-3', toneCard.teal)}>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Next concept</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Sonraki kavram</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            The next step in the learning path — continue to complete the context.
+            Öğrenme yolundaki sonraki adım — bağlamı tamamlamak için devam edin.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -571,7 +572,7 @@ function EntityDetailPanel({
                 onClick={() => onNavigate(ctx.next!.entityId)}
                 className="inline-flex items-center gap-1 rounded-lg border border-teal-300/70 bg-background px-3 py-1.5 text-xs font-semibold text-teal-700 shadow-sm hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-950/30"
               >
-                Continue
+                Devam
                 <ChevronRight className="size-3.5" />
               </button>
             )}
@@ -581,11 +582,11 @@ function EntityDetailPanel({
 
       {!ctx?.next && (
         <p className="rounded-lg border border-teal-200/60 bg-teal-50/40 px-3 py-3 text-xs leading-relaxed text-foreground/85 dark:border-teal-900/50 dark:bg-teal-950/20">
-          This concept is one of the final steps in the learning path — or it operates in a cross-cutting context. If you have completed the main chain, explore the other cross-cutting concepts.
+          Bu kavram öğrenme yolunun son adımlarından biri — veya cross-cutting bağlamda çalışır. Ana zinciri tamamladıysanız diğer cross-cutting kavramlara bakın.
         </p>
       )}
 
-      <DetailSection title="Developer note" hint="Code equivalent — for the curious." tone="gray">
+      <DetailSection title="Geliştirici notu" hint="Kod karşılığı — merak edenler için." tone="gray">
         <button
           type="button"
           onClick={() => setTechnicalOpen((open) => !open)}
@@ -594,7 +595,7 @@ function EntityDetailPanel({
         >
           <span className="flex items-center gap-2 text-muted-foreground">
             <Code2 className="size-4" />
-            Technical details {technicalOpen ? 'hide' : 'show'}
+            Technical details {technicalOpen ? 'gizle' : 'göster'}
           </span>
           <ChevronDown className={cn('size-4 transition-transform', technicalOpen && 'rotate-180')} />
         </button>
@@ -649,9 +650,6 @@ function ChainNavRow({
   const tone = entityTone(entity)
   const { label: categoryLabel, tone: categoryTone } = categoryMeta(entityCategory(entity))
   const isSelected = selectedId === entity.id
-  const selectedIndex = CHAIN.findIndex((item) => item.id === selectedId)
-  const index = CHAIN.findIndex((item) => item.id === entity.id)
-  const distance = selectedIndex < 0 ? 0 : Math.abs(selectedIndex - index)
 
   return (
     <button
@@ -662,7 +660,6 @@ function ChainNavRow({
         isSelected
           ? cn('border-transparent shadow-sm ring-2', TONE_RING[tone], toneCard[tone])
           : 'border-border/60 bg-card hover:bg-muted/30',
-        selectedIndex >= 0 && distance > 1 && !isSelected && 'opacity-50',
       )}
     >
       <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg border', toneIconBox[tone])}>
@@ -757,7 +754,7 @@ function DomainModelSplitView({
       <div className="min-w-0">
         <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <GitBranch className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
-          Main chain
+          Ana zincir
         </h2>
         <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
           {CHAIN.map((entity) => (
@@ -788,10 +785,10 @@ function DomainModelSplitView({
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start">
-      <aside className="min-w-0 overflow-x-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
+      <aside className="min-w-0">
         {nav}
       </aside>
-      <div className="min-w-0 overflow-x-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
+      <div className="min-w-0">
         {selected && (
           <EntityDetailPanel key={`detail-${selected.id}`} entity={selected} onNavigate={onSelect} />
         )}
@@ -800,12 +797,75 @@ function DomainModelSplitView({
   )
 }
 
+function DomainModelHeaderBanner() {
+  const stats: { label: string; value: number; tone: Tone }[] = [
+    { label: 'Zincir', value: CHAIN.length, tone: 'teal' },
+    { label: 'Cross-cutting', value: CROSS_CUTTING.length, tone: 'amber' },
+    { label: 'İlişki', value: relations.length, tone: 'blue' },
+  ]
+
+  return (
+    <header className={cn('relative overflow-hidden rounded-lg border bg-gradient-to-br p-5 sm:p-6', toneHero.teal)}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.28] dark:opacity-15 [background-image:radial-gradient(circle,currentColor_1px,transparent_1px)] [background-size:20px_20px] text-foreground/10"
+      />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 max-w-2xl">
+          <div className="flex items-start gap-3.5">
+            <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-lg border', toneIconBox.teal, toneCard.teal)}>
+              <Network className={cn('size-5', toneIcon.teal)} />
+            </span>
+            <div className="min-w-0">
+              <p className={cn('text-[11px] font-medium uppercase tracking-[0.18em]', toneText.teal)}>
+                Product Foundation
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
+                Domain Model
+              </h1>
+            </div>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-foreground/80 sm:text-[15px]">
+            Domain entity’lerin nasıl bağlandığını keşfedin — ana teslimat zinciri, cross-cutting kavramlar
+            ve status değişikliklerinin model boyunca nasıl yayıldığı.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium', toneCard.teal, toneText.teal)}>
+              <GitBranch className="size-3" />
+              Ana zincir
+            </span>
+            <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium', toneCard.amber, toneText.amber)}>
+              <ArrowLeftRight className="size-3" />
+              Cross-cutting bağlantılar
+            </span>
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-3 gap-2.5 sm:min-w-[280px]">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className={cn('rounded-lg border px-3 py-2.5 text-center', toneCard[stat.tone])}
+            >
+              <dt className={cn('text-[10px] font-medium uppercase tracking-wide', toneText[stat.tone])}>
+                {stat.label}
+              </dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-foreground">{stat.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </header>
+  )
+}
+
 export default function DomainModelPage() {
   const [selectedId, setSelectedId] = useState('schedule')
 
   return (
-    <ProductPage path="/product/domain-model">
-      <main>
+    <ProductPage path="/product/domain-model" hideToolbar>
+      <main className="space-y-6">
+        <DomainModelHeaderBanner />
         <DomainModelSplitView selectedId={selectedId} onSelect={setSelectedId} />
       </main>
     </ProductPage>
