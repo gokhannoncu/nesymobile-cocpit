@@ -261,6 +261,7 @@ export function NesyConnectionPanel() {
     setCountry,
     setEnvironment,
     connect,
+    testConnect,
     logout,
   } = useNesyAuth()
 
@@ -389,9 +390,14 @@ export function NesyConnectionPanel() {
                   </Button>
 
                   {!isConnected && displayStatus !== 'connecting' && (
-                    <span className="text-[11px] text-muted-foreground">
-                      Server-side credentials for selected target.
-                    </span>
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => testConnect()}>
+                        Test Connect
+                      </Button>
+                      <span className="text-[11px] text-muted-foreground">
+                        Server-side credentials for selected target.
+                      </span>
+                    </>
                   )}
                 </div>
               </div>

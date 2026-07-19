@@ -42,9 +42,18 @@ interface NesyAuthState {
   setEnvironment: (environment: NesyEnvironment) => void
   logout: () => void
   connect: () => Promise<string | null>
+  /** Unlocks Data Center menus without a real Dashboard login (local UI bypass). */
+  testConnect: () => void
 }
 
 const STORAGE_KEY = 'nesy-auth'
+const TEST_CONNECT_TOKEN = '__nesy_test_connect__'
+
+const TEST_CONNECT_USER: NesyUser = {
+  fullName: 'Test Connect',
+  username: 'test-connect',
+  role: 'TEST',
+}
 
 interface PersistedState {
   country: string
@@ -237,6 +246,22 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function testConnect() {
+    setError(null)
+    setToken(TEST_CONNECT_TOKEN)
+    setUser(TEST_CONNECT_USER)
+    setSessionUserId(null)
+    setStatus('connected')
+    persistState({
+      country,
+      environment,
+      token: TEST_CONNECT_TOKEN,
+      user: TEST_CONNECT_USER,
+      sessionUserId: null,
+    })
+    notifyAuthChanged()
+  }
+
   const contextValue = useMemo(
     () => ({
       country,
@@ -252,6 +277,7 @@ export function NesyAuthProvider({ children }: { children: ReactNode }) {
       setEnvironment,
       logout,
       connect,
+      testConnect,
     }),
     [
       country,
