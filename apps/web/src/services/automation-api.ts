@@ -68,6 +68,13 @@ export interface WorkflowVersion {
   createdAt: string
 }
 
+export interface RunSpan {
+  name: string
+  startMs: number
+  durationMs: number
+  attrs?: Record<string, string | number | boolean>
+}
+
 export interface WorkflowRun {
   id: string
   workflowId: string
@@ -84,6 +91,7 @@ export interface WorkflowRun {
   screenshotDir?: string | null
   createdAt: string
   maestroOutput?: string | null
+  spans?: RunSpan[] | null
   stepResults?: WorkflowStepResult[]
   version?: { version: number; nodes?: unknown[] }
   workflow?: {

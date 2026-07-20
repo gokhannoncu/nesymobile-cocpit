@@ -191,6 +191,8 @@ model WorkflowRun {
   duration      Int?
   screenshotDir String?
   maestroOutput String?
+  /// Span telemetry: array of { name, startMs, durationMs, attrs? } relative to run start
+  spans         Json?
 
   createdAt DateTime @default(now())
 

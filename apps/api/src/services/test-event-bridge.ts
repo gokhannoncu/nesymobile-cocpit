@@ -144,15 +144,28 @@ export async function setRunIdProperty(deviceId: string, runId: string): Promise
  * SET_RUN broadcast — tags an already-running app process with the runId (the sysprop
  * is only read at process start). Best-effort: an app that is not yet installed/running
  * still gets the runId from the sysprop on its next cold start.
+ *
+ * `wsEnabled` additionally instructs the app to (re)connect its WebSocket test
+ * event sink to the host (through `adb reverse`) without waiting for a cold start.
  */
-export async function broadcastSetRun(deviceId: string, appId: string, runId: string): Promise<boolean> {
+export async function broadcastSetRun(
+  deviceId: string,
+  appId: string,
+  runId: string,
+  options?: { wsEnabled?: boolean; wsPort?: number },
+): Promise<boolean> {
   try {
-    const stdout = await adbShell(deviceId, [
+    const args = [
       "am", "broadcast",
       "-n", `${appId}/${RECEIVER_CLASS}`,
       "-a", ACTION_SET_RUN,
       "--es", "run_id", runId === "" ? "''" : runId,
-    ]);
+    ];
+    if (options?.wsEnabled) {
+      args.push("--es", "ws_enabled", "true");
+      args.push("--es", "ws_port", String(options.wsPort ?? 8765));
+    }
+    const stdout = await adbShell(deviceId, args);
     return stdout.includes("result=-1"); // Activity.RESULT_OK
   } catch (err) {
     console.warn(`[TestEventBridge] SET_RUN broadcast failed:`, err instanceof Error ? err.message : err);

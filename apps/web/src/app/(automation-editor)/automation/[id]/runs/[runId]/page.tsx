@@ -30,18 +30,19 @@ import { Button } from "@nesy/metronic/components/ui/button";
 import { cn } from "@nesy/metronic/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import { Fragment, useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { fetchWorkflow, fetchRunDetail, type WorkflowDetail, type WorkflowRun, type WorkflowStepResult } from "@/services/automation-api";
+import { fetchWorkflow, fetchRunDetail, type WorkflowDetail, type WorkflowRun, type WorkflowStepResult, type RunSpan } from "@/services/automation-api";
 import { toast } from "sonner";
 import { ExecutionTimeline, toExecutionTimelineSteps, type ExecutionTimelineStep } from "./ExecutionTimeline";
 import { playVideoElement } from "@/lib/safe-video-play";
 
-type RunDetailTab = "summary" | "parameters" | "logs" | "video";
+type RunDetailTab = "summary" | "parameters" | "logs" | "video" | "spans";
 
 const RUN_DETAIL_TABS: { id: RunDetailTab; label: string }[] = [
   { id: "summary", label: "Summary" },
   { id: "parameters", label: "Parameters" },
   { id: "logs", label: "Logs" },
   { id: "video", label: "Video" },
+  { id: "spans", label: "Spans" },
 ];
 
 type TraceStatus = "passed" | "warning" | "failed" | "skipped" | "running" | "pending";
@@ -262,6 +263,57 @@ function mapStatus(status: string, runStatus?: string): TraceStatus {
   return "pending";
 }
 
+interface OracleEvidenceRow {
+  oracle: string;
+  status: string;
+  detail: string;
+}
+
+function parseOracleOutput(output: string | null | undefined): { summary?: string; oracles: OracleEvidenceRow[] } | null {
+  if (!output || !output.trim().startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(output) as { summary?: string; oracles?: OracleEvidenceRow[] };
+    if (!Array.isArray(parsed.oracles) || parsed.oracles.length === 0) return null;
+    return { summary: parsed.summary, oracles: parsed.oracles };
+  } catch {
+    return null;
+  }
+}
+
+function OracleEvidenceTable({ oracles }: { oracles: OracleEvidenceRow[] }) {
+  return (
+    <table className="mt-2 w-full text-[11px]">
+      <thead className="text-slate-500">
+        <tr>
+          <th className="py-1 text-left font-medium">Oracle</th>
+          <th className="py-1 text-left font-medium">Result</th>
+          <th className="py-1 text-left font-medium">Evidence</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {oracles.map((row, index) => (
+          <tr key={index}>
+            <td className="py-1 pr-2 font-mono text-slate-700">{row.oracle}</td>
+            <td className="py-1 pr-2">
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                  row.status === "passed" && "bg-emerald-50 text-emerald-700",
+                  row.status === "failed" && "bg-red-50 text-red-700",
+                  row.status !== "passed" && row.status !== "failed" && "bg-slate-100 text-slate-500",
+                )}
+              >
+                {row.status}
+              </span>
+            </td>
+            <td className="py-1 break-all text-slate-500">{row.detail}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function ExecutionTraceRows({
   steps,
   runStatus,
@@ -280,7 +332,11 @@ function ExecutionTraceRows({
       {steps.map((step, index) => {
         const isExpanded = expandedStepIds.has(step.id);
         const mappedStatus = mapStatus(step.status, runStatus);
-        const details = step.errorMessage || step.output || "Step completed";
+        const oracleOutput = parseOracleOutput(step.output);
+        const details =
+          step.errorMessage ||
+          (oracleOutput ? oracleOutput.summary ?? "Oracle verdict recorded" : step.output) ||
+          "Step completed";
 
         return (
           <Fragment key={step.id}>
@@ -356,6 +412,7 @@ function ExecutionTraceRows({
                               <div className="flex-1">
                                 <div className="text-sm font-medium text-slate-700">Details</div>
                                 <div className="text-xs text-slate-500 whitespace-pre-wrap">{details}</div>
+                                {oracleOutput && <OracleEvidenceTable oracles={oracleOutput.oracles} />}
                               </div>
                               <Button
                                 variant="outline"
@@ -380,6 +437,122 @@ function ExecutionTraceRows({
         );
       })}
     </>
+  );
+}
+
+/* ─── Span Timeline Component ─── */
+
+const SPAN_COLORS: Record<string, string> = {
+  yaml_generation: "bg-violet-500",
+  device_prep: "bg-sky-500",
+  maestro_startup: "bg-orange-500",
+  process_spawn_per_node: "bg-orange-400",
+  maestro_total: "bg-slate-400",
+  node_process_total: "bg-slate-300",
+  ui_action: "bg-emerald-500",
+  bridge_wait: "bg-amber-500",
+  get_state_pull: "bg-cyan-500",
+  video_pull: "bg-indigo-500",
+};
+
+function formatSpanMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function SpanTimeline({ spans }: { spans: RunSpan[] }) {
+  const totalMs = useMemo(
+    () => Math.max(...spans.map((s) => s.startMs + s.durationMs), 1),
+    [spans]
+  );
+
+  const totalsByName = useMemo(() => {
+    const acc = new Map<string, { totalMs: number; count: number }>();
+    for (const span of spans) {
+      const entry = acc.get(span.name) ?? { totalMs: 0, count: 0 };
+      entry.totalMs += span.durationMs;
+      entry.count += 1;
+      acc.set(span.name, entry);
+    }
+    return [...acc.entries()].sort((a, b) => b[1].totalMs - a[1].totalMs);
+  }, [spans]);
+
+  if (spans.length === 0) {
+    return (
+      <div className="text-xs italic text-slate-500">
+        No span telemetry recorded for this run. Spans are collected for runs started after telemetry was enabled.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h4 className="mb-2 text-sm font-semibold text-slate-900">Where the time went</h4>
+        <table className="w-full text-xs">
+          <thead className="text-slate-500">
+            <tr>
+              <th className="py-1 text-left font-medium">Phase</th>
+              <th className="py-1 text-right font-medium">Count</th>
+              <th className="py-1 text-right font-medium">Total</th>
+              <th className="py-1 text-right font-medium">% of run</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {totalsByName.map(([name, entry]) => (
+              <tr key={name}>
+                <td className="py-1.5">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className={cn("size-2 rounded-sm", SPAN_COLORS[name] ?? "bg-slate-400")} />
+                    <span className="font-mono text-slate-700">{name}</span>
+                  </span>
+                </td>
+                <td className="py-1.5 text-right text-slate-500">{entry.count}</td>
+                <td className="py-1.5 text-right font-semibold text-slate-900">{formatSpanMs(entry.totalMs)}</td>
+                <td className="py-1.5 text-right text-slate-500">{Math.round((entry.totalMs / totalMs) * 100)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h4 className="mb-2 text-sm font-semibold text-slate-900">Timeline</h4>
+        <div className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+          {spans.map((span, index) => {
+            const leftPct = (span.startMs / totalMs) * 100;
+            const widthPct = Math.max((span.durationMs / totalMs) * 100, 0.5);
+            const label = [
+              span.name,
+              span.attrs?.nodeType ? String(span.attrs.nodeType) : null,
+              span.attrs?.action ? String(span.attrs.action) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+
+            return (
+              <div key={index} className="flex items-center gap-2">
+                <div
+                  className="w-56 shrink-0 truncate text-right font-mono text-[10px] text-slate-500"
+                  title={`${label} — ${formatSpanMs(span.durationMs)} (starts at ${formatSpanMs(span.startMs)})`}
+                >
+                  {label}
+                </div>
+                <div className="relative h-4 flex-1 overflow-hidden rounded bg-white">
+                  <div
+                    className={cn("absolute top-0 h-full rounded", SPAN_COLORS[span.name] ?? "bg-slate-400")}
+                    style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                  />
+                </div>
+                <div className="w-14 shrink-0 text-right font-mono text-[10px] font-semibold text-slate-700">
+                  {formatSpanMs(span.durationMs)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1226,6 +1399,10 @@ export default function RunResultsPage() {
                       device={run.device}
                       adbDeviceId={run.deviceId}
                     />
+                  )}
+
+                  {activeTab === "spans" && (
+                    <SpanTimeline spans={Array.isArray(run.spans) ? run.spans : []} />
                   )}
 
                   {activeTab === "parameters" && (

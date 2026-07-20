@@ -2,8 +2,9 @@ import { Router, type Request, type Response } from "express";
 import path from "node:path";
 import fs from "node:fs";
 import { prisma, Prisma } from "@nesy/db";
-import { WorkflowRunner } from "../services/workflow-runner.js";
 import { RunStore } from "../services/run-store.js";
+import { dispatchRun, removeRunFromQueues, DeviceWorkerRegistry } from "../services/device-worker.js";
+import { generateWorkflowWorkspace } from "../services/yaml-generator.js";
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -188,6 +189,60 @@ router.get("/runs", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/workflows/:id - Get single workflow with current version
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/workflows/device-workers - Device worker health/queue status
+// (must be registered before /:id)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/device-workers", (_req, res) => {
+  res.json({ data: DeviceWorkerRegistry.list() });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/workflows/yaml-preview - Compile the editor graph with the SAME
+// compiler the runner uses (single source of truth for YAML generation).
+// (must be registered before /:id routes)
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/yaml-preview", (req, res) => {
+  try {
+    const { nodes, edges, config, country, environment } = req.body as {
+      nodes?: unknown;
+      edges?: unknown;
+      config?: Record<string, unknown>;
+      country?: string;
+      environment?: string;
+    };
+
+    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+      res.status(400).json({ message: "nodes and edges arrays are required" });
+      return;
+    }
+
+    const workspace = generateWorkflowWorkspace({
+      workflowId: "preview",
+      runId: "preview",
+      nodes: nodes as never,
+      edges: edges as never,
+      config,
+      country,
+      environment,
+    });
+
+    res.json({
+      data: {
+        yaml: workspace.combinedYaml,
+        files: workspace.files,
+        mainFile: workspace.mainFile,
+        conditionDecisions: workspace.conditionDecisions,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to generate YAML preview",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -637,12 +692,12 @@ router.post("/:id/run", async (req, res) => {
       console.log(`[POST /:id/run] Created ${stepData.length} step results (topological order)`);
     }
 
-    WorkflowRunner.execute(run.id).catch((err: unknown) => {
-      console.error(`[WorkflowRunner] Run ${run.id} failed:`, err);
-    });
+    const { queuePosition } = dispatchRun(run.id, selectedDeviceId ?? null);
 
-    console.log(`[POST /:id/run] Run ${run.id} dispatched successfully`);
-    res.status(202).json({ data: { runId: run.id, status: "pending" } });
+    console.log(`[POST /:id/run] Run ${run.id} dispatched (queue position: ${queuePosition})`);
+    res.status(202).json({
+      data: { runId: run.id, status: queuePosition > 0 ? "queued" : "pending", queuePosition },
+    });
   } catch (error) {
     console.error(`[POST /:id/run] ERROR:`, error);
     res.status(500).json({
@@ -688,11 +743,11 @@ router.post("/:id/run-step", async (req, res) => {
       },
     });
 
-    WorkflowRunner.execute(run.id).catch((err: unknown) => {
-      console.error(`[WorkflowRunner] Step run ${run.id} failed:`, err);
-    });
+    const { queuePosition } = dispatchRun(run.id, selectedDeviceId ?? null);
 
-    res.status(202).json({ data: { runId: run.id, status: "pending" } });
+    res.status(202).json({
+      data: { runId: run.id, status: queuePosition > 0 ? "queued" : "pending", queuePosition },
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to start step run",
@@ -833,13 +888,17 @@ router.post("/:id/runs/:runId/cancel", async (req, res) => {
       return;
     }
 
-    if (run.status !== "running" && run.status !== "pending") {
+    if (run.status !== "running" && run.status !== "pending" && run.status !== "queued") {
       res.status(400).json({ message: "Run is not active" });
       return;
     }
 
-    const killed = RunStore.kill(runId);
-    console.log(`[Cancel] RunStore.kill(${runId}): ${killed ? "process killed" : "no process found"}`);
+    // Queued runs have no process yet — just drop them from the device queue.
+    const dequeued = removeRunFromQueues(runId);
+    const killed = dequeued ? false : RunStore.kill(runId);
+    console.log(
+      `[Cancel] run ${runId}: ${dequeued ? "removed from device queue" : killed ? "process killed" : "no process found"}`,
+    );
 
     await prisma.workflowRun.update({
       where: { id: runId },
@@ -885,7 +944,8 @@ router.delete("/:id/runs/:runId", async (req, res) => {
       return;
     }
 
-    if (run.status === "running" || run.status === "pending") {
+    if (run.status === "running" || run.status === "pending" || run.status === "queued") {
+      removeRunFromQueues(runId);
       RunStore.kill(runId);
     }
 

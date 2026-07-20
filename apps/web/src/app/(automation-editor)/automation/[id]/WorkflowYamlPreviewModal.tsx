@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@nesy/metronic/lib/utils";
 import type { Connection, WorkflowNode } from "./workflow-types";
 import { generateYamlFromFlow } from "./yaml-generator";
+
+const AUTOMATION_API_BASE = process.env.NEXT_PUBLIC_AUTOMATION_API_URL ?? "/automation-api";
 
 type PreviewTab = "yaml" | "json";
 
@@ -166,7 +168,38 @@ export function WorkflowYamlPreviewModal({
 }: WorkflowYamlPreviewModalProps) {
   const [activeTab, setActiveTab] = useState<PreviewTab>("yaml");
   const [copied, setCopied] = useState(false);
-  const yamlPreview = useMemo(() => buildYamlPreview(nodes, connections), [connections, nodes]);
+  const localYamlPreview = useMemo(() => buildYamlPreview(nodes, connections), [connections, nodes]);
+  const [serverYamlPreview, setServerYamlPreview] = useState<string | null>(null);
+
+  // Prefer the runner's own compiler (single source of truth); the local
+  // generator stays as an offline fallback.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setServerYamlPreview(null);
+
+    fetch(`${AUTOMATION_API_BASE}/api/workflows/yaml-preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nodes, edges: connections }),
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const body = (await response.json()) as { data?: { yaml?: string } };
+        if (!cancelled && typeof body.data?.yaml === "string" && body.data.yaml.trim().length > 0) {
+          setServerYamlPreview(body.data.yaml);
+        }
+      })
+      .catch(() => {
+        // API unavailable — keep the local preview.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, nodes, connections]);
+
+  const yamlPreview = serverYamlPreview ?? localYamlPreview;
   const jsonPreview = useMemo(
     () => buildJsonPreview(workflowName, nodes, connections),
     [connections, nodes, workflowName],

@@ -50,6 +50,9 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.3
+      ws:
+        specifier: ^8.21.1
+        version: 8.21.1
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -66,6 +69,9 @@ importers:
       '@types/node':
         specifier: ^22.10.10
         version: 22.20.1
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       eslint:
         specifier: ^9.39.1
         version: 9.39.5(jiti@2.7.0)
@@ -4844,8 +4850,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.21.0:
-    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+  ws@8.21.1:
+    resolution: {integrity: sha512-+0NTnW77fFN/DjQi6k/Sq/Yvk4Sgajw7urW8V+asjXnRgDs9gyGkdb7EzgfhA4goXsRIZKE28fzIXBHEzhuiWw==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -7199,7 +7205,7 @@ snapshots:
       cors: 2.8.6
       debug: 4.4.3
       engine.io-parser: 5.2.3
-      ws: 8.21.0
+      ws: 8.21.1
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -9156,7 +9162,7 @@ snapshots:
   socket.io-adapter@2.5.8:
     dependencies:
       debug: 4.4.3
-      ws: 8.21.0
+      ws: 8.21.1
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -9724,7 +9730,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.21.0: {}
+  ws@8.21.1: {}
 
   yocto-queue@0.1.0: {}
 

@@ -81,6 +81,28 @@ export class LogcatSniffer extends EventEmitter {
     super();
     this.deviceId = options?.deviceId;
     this.runId = options?.runId;
+    // A device worker keeps one sniffer alive across many sequential runs and
+    // attaches per-run listeners — the default limit of 10 would warn spuriously.
+    this.setMaxListeners(100);
+  }
+
+  /**
+   * Re-targets the structured-event runId filter. Used by the persistent
+   * per-device sniffer: the device queue guarantees a single active run per
+   * device, so switching the filter between runs is race-free.
+   */
+  setRunId(runId: string | undefined): void {
+    this.runId = runId;
+  }
+
+  /**
+   * Feeds a structured event from another transport (the WebSocket bridge)
+   * through the same runId filter + (runId, sessionId, seq) dedupe as logcat
+   * lines. The mobile app dual-emits on both channels, so whichever transport
+   * delivers first wins and the duplicate is dropped here.
+   */
+  injectTestEvent(event: TestBridgeEvent): void {
+    this.handleTestEvent(event);
   }
 
   getProcess() {
