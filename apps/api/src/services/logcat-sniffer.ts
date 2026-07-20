@@ -1,13 +1,17 @@
 /**
  * Logcat Sniffer
  *
- * Spawns `adb logcat -s NESY_AUTO_BRIDGE` and parses log lines
- * for VERIFY_BACKEND_STATE and other device-side events.
+ * Spawns `adb logcat -s NESY_AUTO_BRIDGE NESY_TEST_EVENT` and parses both channels:
+ * - legacy pipe-format lines (NESY_AUTO_BRIDGE) — existing action-specific events
+ * - structured Test Event Bridge lines (NESY_TEST_EVENT|{json}) — emitted as "test_event",
+ *   filtered by runId and deduped by (runId, sessionId, seq) per the mobile contract
+ *   (NesyMobile docs/test-event-bridge-mapping.md)
  */
 
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { EventEmitter } from "node:events";
+import { parseTestEventLine, TestEventDeduper, type TestBridgeEvent } from "./test-event-bridge.js";
 
 export interface LogcatEvent {
   action: string;
@@ -67,12 +71,16 @@ export function parseLogcatLine(line: string): LogcatEvent | null {
 
 export class LogcatSniffer extends EventEmitter {
   private deviceId?: string;
+  /** When set, structured test events from other runs (stale sysprop, parallel device use) are dropped. */
+  private runId?: string;
+  private deduper = new TestEventDeduper();
   private process: ReturnType<typeof spawn> | null = null;
   private running = false;
 
-  constructor(options?: { deviceId?: string }) {
+  constructor(options?: { deviceId?: string; runId?: string }) {
     super();
     this.deviceId = options?.deviceId;
+    this.runId = options?.runId;
   }
 
   getProcess() {
@@ -92,7 +100,7 @@ export class LogcatSniffer extends EventEmitter {
       args.push("-s", this.deviceId);
     }
 
-    args.push("logcat", "-T", "1", "-s", "NESY_AUTO_BRIDGE:D", "-v", "time");
+    args.push("logcat", "-T", "1", "-s", "NESY_AUTO_BRIDGE:D", "NESY_TEST_EVENT:I", "-v", "time");
 
     try {
       this.process = spawn("adb", args, {
@@ -136,6 +144,12 @@ export class LogcatSniffer extends EventEmitter {
   }
 
   private parseLine(line: string): void {
+    const testEvent = parseTestEventLine(line);
+    if (testEvent) {
+      this.handleTestEvent(testEvent);
+      return;
+    }
+
     const event = parseLogcatLine(line);
     if (!event) return;
 
@@ -169,6 +183,25 @@ export class LogcatSniffer extends EventEmitter {
       this.emit("check_route", event);
     } else if (event.action === "ROUTE_STATUS") {
       this.emit("route_status", event);
+    }
+  }
+
+  /**
+   * Structured NESY_TEST_EVENT channel. Drops events tagged with a DIFFERENT run
+   * (stale sysprop or a parallel session); events with an empty runId are kept —
+   * they can only come from the app before SET_RUN reaches it, and dropping them
+   * would hide BRIDGE_INIT/APP_CRASHED during startup races.
+   */
+  private handleTestEvent(event: TestBridgeEvent): void {
+    if (this.runId && event.runId && event.runId !== this.runId) return;
+    if (!this.deduper.accept(event)) return;
+
+    this.emit("test_event", event);
+
+    if (event.event === "BRIDGE_INIT") {
+      this.emit("bridge_init", event);
+    } else if (event.event === "APP_CRASHED") {
+      this.emit("app_crashed", event);
     }
   }
 }

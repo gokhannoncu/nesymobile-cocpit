@@ -808,7 +808,7 @@ function indent(text: string, spaces: number): string {
     .join("\n");
 }
 
-function resolveWorkflowAppId(nodes: WorkflowNode[]): string {
+export function resolveWorkflowAppId(nodes: WorkflowNode[]): string {
   const launchNode = nodes.find((n) => n.type === "LAUNCH_APP");
 
   if (launchNode) {

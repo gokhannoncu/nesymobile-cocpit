@@ -1,0 +1,119 @@
+import { describe, expect, it } from "vitest";
+import {
+  parseTestEventLine,
+  parseGetStateOutput,
+  TestEventDeduper,
+  type TestBridgeEvent,
+} from "./test-event-bridge.js";
+
+function makeEvent(overrides: Partial<TestBridgeEvent> = {}): TestBridgeEvent {
+  return {
+    v: 1,
+    runId: "run-1",
+    sessionId: "session-a",
+    seq: 1,
+    ts: 0,
+    monoTs: 0,
+    screen: "",
+    event: "SCREEN_READY",
+    taskId: "",
+    raw: "",
+    ...overrides,
+  };
+}
+
+describe("parseTestEventLine", () => {
+  it("parses a NESY_TEST_EVENT line with logcat time prefix", () => {
+    const json = JSON.stringify({
+      v: 1,
+      runId: "run-42",
+      sessionId: "abc-123",
+      seq: 7,
+      ts: 1789000000000,
+      monoTs: 5555,
+      screen: "DeliveryFragment",
+      event: "DELIVERY_PERSISTED",
+      taskId: "T-1",
+      success: true,
+      data: { request_name: "DeliverParcels" },
+    });
+    const line = `07-20 06:31:02.123 I/NESY_TEST_EVENT( 1234): NESY_TEST_EVENT|${json}`;
+
+    const event = parseTestEventLine(line);
+
+    expect(event).not.toBeNull();
+    expect(event?.runId).toBe("run-42");
+    expect(event?.sessionId).toBe("abc-123");
+    expect(event?.seq).toBe(7);
+    expect(event?.event).toBe("DELIVERY_PERSISTED");
+    expect(event?.taskId).toBe("T-1");
+    expect(event?.success).toBe(true);
+    expect(event?.data?.request_name).toBe("DeliverParcels");
+    expect(event?.raw).toBe(line);
+  });
+
+  it("ignores legacy NESY_AUTO_BRIDGE lines and malformed payloads", () => {
+    expect(
+      parseTestEventLine("07-20 06:31:02.123 D/NESY_AUTO_BRIDGE( 1234): ACTION: CHECK_LOGIN | STATUS: SUCCESS | TASK_ID:  | DATA: {}"),
+    ).toBeNull();
+    expect(parseTestEventLine("NESY_TEST_EVENT|not-json")).toBeNull();
+    expect(parseTestEventLine('NESY_TEST_EVENT|{"broken":')).toBeNull();
+    // missing required sessionId/event fields
+    expect(parseTestEventLine('NESY_TEST_EVENT|{"v":1,"seq":3}')).toBeNull();
+  });
+});
+
+describe("TestEventDeduper", () => {
+  it("accepts monotonic seq and rejects replays per (runId, sessionId)", () => {
+    const deduper = new TestEventDeduper();
+
+    expect(deduper.accept(makeEvent({ seq: 1 }))).toBe(true);
+    expect(deduper.accept(makeEvent({ seq: 2 }))).toBe(true);
+    // WebSocket ring-buffer replay of the same events
+    expect(deduper.accept(makeEvent({ seq: 1 }))).toBe(false);
+    expect(deduper.accept(makeEvent({ seq: 2 }))).toBe(false);
+    expect(deduper.accept(makeEvent({ seq: 3 }))).toBe(true);
+  });
+
+  it("treats a new sessionId as a fresh sequence (mid-run app restart)", () => {
+    const deduper = new TestEventDeduper();
+
+    expect(deduper.accept(makeEvent({ sessionId: "session-a", seq: 5 }))).toBe(true);
+    // App restarted: new process, new sessionId, seq starts over — must NOT be dropped
+    expect(deduper.accept(makeEvent({ sessionId: "session-b", seq: 1 }))).toBe(true);
+    expect(deduper.accept(makeEvent({ sessionId: "session-b", seq: 2 }))).toBe(true);
+  });
+});
+
+describe("parseGetStateOutput", () => {
+  it("parses GET_STATE broadcast output (RESULT_OK)", () => {
+    const stdout = [
+      "Broadcasting: Intent { act=com.arasdigital.nesymobile.GET_STATE flg=0x400000 cmp=com.arasdigital.nesymobile.test/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver }",
+      'Broadcast completed: result=-1, data="{"is_logged_in":"true","route_selected":"true","route_name":"R-102","schedule_loaded":"true","schedule_id":"S-9","current_screen":"StopListFragment","run_id":"run-42","session_id":"abc","seq":"14"}"',
+    ].join("\n");
+
+    const state = parseGetStateOutput(stdout);
+
+    expect(state).not.toBeNull();
+    expect(state?.isLoggedIn).toBe(true);
+    expect(state?.routeSelected).toBe(true);
+    expect(state?.routeName).toBe("R-102");
+    expect(state?.scheduleLoaded).toBe(true);
+    expect(state?.currentScreen).toBe("StopListFragment");
+    expect(state?.runId).toBe("run-42");
+  });
+
+  it("returns null on RESULT_CANCELED (mobile watchdog timeout)", () => {
+    const stdout = 'Broadcast completed: result=0, data="ERROR:STATE_TIMEOUT"';
+    expect(parseGetStateOutput(stdout)).toBeNull();
+  });
+
+  it("returns null when data is not JSON", () => {
+    const stdout = 'Broadcast completed: result=-1, data="ERROR:STATE_FAILED:SQLiteException"';
+    expect(parseGetStateOutput(stdout)).toBeNull();
+  });
+
+  it("returns null when data payload is missing", () => {
+    expect(parseGetStateOutput("Broadcast completed: result=-1")).toBeNull();
+  });
+});

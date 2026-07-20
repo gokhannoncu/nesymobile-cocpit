@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { spawn, execSync } from "node:child_process";
 import { prisma } from "@nesy/db";
-import { generateWorkflowYaml, generatePartialWorkflowYaml, generateSingleNodeWorkflowYaml } from "./yaml-generator.js";
+import { generateWorkflowYaml, generatePartialWorkflowYaml, generateSingleNodeWorkflowYaml, resolveWorkflowAppId } from "./yaml-generator.js";
 import {
   formatMaestroFailure,
   MaestroExecutor,
@@ -22,6 +22,12 @@ import {
 } from "./maestro-executor.js";
 import { LogcatSniffer, type LogcatEvent } from "./logcat-sniffer.js";
 import { RunStore } from "./run-store.js";
+import {
+  setRunIdProperty,
+  broadcastSetRun,
+  getDeviceBridgeState,
+  type TestBridgeEvent,
+} from "./test-event-bridge.js";
 
 const SCREENSHOT_BASE_DIR = path.resolve(process.cwd(), "maestro", "run");
 
@@ -212,6 +218,18 @@ export const WorkflowRunner = {
       },
     });
 
+    // 3b. Test Event Bridge — assign the runId to the device BEFORE launch.
+    // The `debug.nesy.run_id` sysprop is restored by the app on every cold start, so the
+    // runId survives mid-run restarts (clearState nodes, crash recovery); the SET_RUN
+    // broadcast additionally tags an already-running process. Both are best-effort:
+    // structured events then carry this runId and the sniffer filters on it.
+    const bridgeAppId = resolveWorkflowAppId(nodes);
+    const bridgeDeviceId = run.deviceId;
+    if (bridgeDeviceId) {
+      await setRunIdProperty(bridgeDeviceId, runId);
+      await broadcastSetRun(bridgeDeviceId, bridgeAppId, runId);
+    }
+
     let sniffer: LogcatSniffer | null = null;
 
     try {
@@ -225,9 +243,10 @@ export const WorkflowRunner = {
         console.warn("[WorkflowRunner] Maestro executor error (non-fatal):", err instanceof Error ? err.message : err);
       });
 
-      // 5. Start Logcat sniffer
+      // 5. Start Logcat sniffer (legacy pipe channel + structured NESY_TEST_EVENT channel)
       sniffer = new LogcatSniffer({
         deviceId: run.deviceId ?? undefined,
+        runId,
       });
 
       // 6. Register executor in RunStore (process will be added on spawn)
@@ -798,6 +817,43 @@ export const WorkflowRunner = {
         }
       });
 
+      // 8e. Structured Test Event Bridge channel (NESY_TEST_EVENT, runId-filtered + deduped).
+      // BRIDGE_INIT mid-run = the app process restarted (clearState node or crash recovery).
+      sniffer.on("bridge_init", (event: TestBridgeEvent) => {
+        console.log(
+          `[WorkflowRunner] BRIDGE_INIT: app (re)started — session=${event.sessionId}, ` +
+          `version=${event.data?.app_version ?? "?"}, flavor=${event.data?.flavor ?? "?"}`
+        );
+      });
+
+      // APP_CRASHED is written synchronously on the crashing thread (bypasses the app's
+      // dispatch queue), so it is the most reliable "the app died" signal we have.
+      sniffer.on("app_crashed", async (event: TestBridgeEvent) => {
+        try {
+          const summary = `App crashed: ${event.data?.exception ?? "unknown"} — ${event.data?.message ?? ""} ` +
+            `(thread=${event.data?.thread ?? "?"}, screen=${event.screen})`;
+          console.error(`[WorkflowRunner] ${summary}`);
+
+          const runningSteps = await prisma.workflowStepResult.findMany({
+            where: { runId, status: "running" },
+          });
+
+          for (const step of runningSteps) {
+            await prisma.workflowStepResult.update({
+              where: { id: step.id },
+              data: {
+                status: "failed",
+                completedAt: new Date(),
+                errorMessage: summary,
+                output: event.raw,
+              },
+            });
+          }
+        } catch (err) {
+          console.error("[WorkflowRunner] APP_CRASHED handling failed:", err);
+        }
+      });
+
       const bridgeEvents: LogcatEvent[] = [];
       const consumedBridgeEvents = new Set<LogcatEvent>();
 
@@ -985,17 +1041,33 @@ export const WorkflowRunner = {
               const convergenceNodeId = trueTarget;
 
               try {
-                const checkLoginEvent = await waitForBridgeEvent(
-                  "CHECK_LOGIN",
-                  (event) => event.status === "SUCCESS" && getBooleanData(event, "is_logged_in") !== null,
-                  BRIDGE_TIMEOUTS.CHECK_LOGIN,
-                );
-                const isLoggedIn = getBooleanData(checkLoginEvent, "is_logged_in") === true;
+                // Pull-first: the GET_STATE broadcast answers synchronously instead of
+                // waiting up to 10s for the CHECK_LOGIN logcat event. Falls back to the
+                // legacy event wait when the query fails (older app build, device hiccup).
+                let isLoggedIn: boolean;
+                let loginEvidence: string;
+
+                const pulledLoginState = bridgeDeviceId
+                  ? await getDeviceBridgeState(bridgeDeviceId, bridgeAppId)
+                  : null;
+
+                if (pulledLoginState && pulledLoginState.isLoggedIn !== null) {
+                  isLoggedIn = pulledLoginState.isLoggedIn;
+                  loginEvidence = `GET_STATE: is_logged_in=${pulledLoginState.isLoggedIn}, screen=${pulledLoginState.currentScreen}`;
+                } else {
+                  const checkLoginEvent = await waitForBridgeEvent(
+                    "CHECK_LOGIN",
+                    (event) => event.status === "SUCCESS" && getBooleanData(event, "is_logged_in") !== null,
+                    BRIDGE_TIMEOUTS.CHECK_LOGIN,
+                  );
+                  isLoggedIn = getBooleanData(checkLoginEvent, "is_logged_in") === true;
+                  loginEvidence = checkLoginEvent.raw;
+                }
 
                 await markNodeSuccess(node, startedAt, {
                   action: "CHECK_LOGIN",
                   isLoggedIn,
-                  raw: checkLoginEvent.raw,
+                  raw: loginEvidence,
                 });
 
                 if (isLoggedIn) {
@@ -1037,17 +1109,35 @@ export const WorkflowRunner = {
               const convergenceNodeId = trueTarget;
 
               try {
-                const checkRouteEvent = await waitForBridgeEvent(
-                  "CHECK_ROUTE",
-                  (event) => event.status === "SUCCESS" && getBooleanData(event, "route_required") !== null,
-                  BRIDGE_TIMEOUTS.CHECK_ROUTE,
-                );
-                const routeRequired = getBooleanData(checkRouteEvent, "route_required") === true;
+                // Pull fast-path: GET_STATE route_selected=true is unambiguous (a route is
+                // already picked → no selection needed). route_selected=false is NOT enough
+                // to conclude the opposite — some flavors don't require a route at all —
+                // so that case still defers to the app's own route_required computation
+                // via the legacy CHECK_ROUTE event.
+                let routeRequired: boolean;
+                let routeEvidence: string;
+
+                const pulledRouteState = bridgeDeviceId
+                  ? await getDeviceBridgeState(bridgeDeviceId, bridgeAppId)
+                  : null;
+
+                if (pulledRouteState?.routeSelected === true) {
+                  routeRequired = false;
+                  routeEvidence = `GET_STATE: route_selected=true, route_name=${pulledRouteState.routeName}`;
+                } else {
+                  const checkRouteEvent = await waitForBridgeEvent(
+                    "CHECK_ROUTE",
+                    (event) => event.status === "SUCCESS" && getBooleanData(event, "route_required") !== null,
+                    BRIDGE_TIMEOUTS.CHECK_ROUTE,
+                  );
+                  routeRequired = getBooleanData(checkRouteEvent, "route_required") === true;
+                  routeEvidence = checkRouteEvent.raw;
+                }
 
                 await markNodeSuccess(node, startedAt, {
                   action: "CHECK_ROUTE",
                   routeRequired,
-                  raw: checkRouteEvent.raw,
+                  raw: routeEvidence,
                 });
 
                 if (!routeRequired) {
@@ -1280,6 +1370,14 @@ export const WorkflowRunner = {
       if (sniffer) sniffer.stop();
       cleanupPath(tmpYamlPath);
       RunStore.cleanup(runId);
+
+      // Test Event Bridge contract: clear the runId at run end. The sysprop survives
+      // until reboot — left behind, tomorrow's manual session would be tagged with
+      // this run's id. Both calls are best-effort (device may already be gone).
+      if (bridgeDeviceId) {
+        await setRunIdProperty(bridgeDeviceId, "");
+        await broadcastSetRun(bridgeDeviceId, bridgeAppId, "");
+      }
     }
   },
 };
