@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+import Fastify, { type FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import express from 'express'
 import fastifyExpress from '@fastify/express'
@@ -45,6 +45,23 @@ export async function buildApp(env: Env) {
   await app.register(nesyAuthRoutes, { prefix: '/api/nesy/auth' })
   await app.register(nesyEnvRoutes, { prefix: '/api/nesy' })
 
+  // The @fastify/express bridge breaks light-my-request payload capture,
+  // so skip the Express data-center API in tests (mirrors the socket.io skip below).
+  if (env.NODE_ENV !== 'test') {
+    await registerDataCenterApi(app)
+  }
+
+  const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
+
+  if (io) {
+    const { startAdbBridge } = await import('./plugins/adb-bridge.js')
+    startAdbBridge(io)
+  }
+
+  return { app, io }
+}
+
+async function registerDataCenterApi(app: FastifyInstance) {
   await app.register(fastifyExpress)
 
   const dataCenterApi = express()
@@ -96,13 +113,4 @@ export async function buildApp(env: Env) {
   dataCenterApi.use('/api/incidents', engineeringIncidentsRouter)
   dataCenterApi.use('/api/workflows', workflowsRouter)
   app.use(dataCenterApi)
-
-  const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)
-
-  if (io) {
-    const { startAdbBridge } = await import('./plugins/adb-bridge.js')
-    startAdbBridge(io)
-  }
-
-  return { app, io }
 }
