@@ -152,7 +152,7 @@ export async function broadcastSetRun(
   deviceId: string,
   appId: string,
   runId: string,
-  options?: { wsEnabled?: boolean; wsPort?: number },
+  options?: { wsEnabled?: boolean; wsPort?: number; skipDeliveryWait?: boolean },
 ): Promise<boolean> {
   try {
     const args = [
@@ -164,6 +164,12 @@ export async function broadcastSetRun(
     if (options?.wsEnabled) {
       args.push("--es", "ws_enabled", "true");
       args.push("--es", "ws_port", String(options.wsPort ?? 8765));
+    }
+    // Automation-only: flush the mobile ~120s "two-minute" delivery/pickup queue wait so the
+    // backend leg (DELIVERY_RESPONSE_RECEIVED / BACKEND_CONFIRMED) confirms within seconds.
+    // App-side setter is gated by AUTOMATION_BRIDGE_ENABLED, so it is a no-op on prod builds.
+    if (options?.skipDeliveryWait) {
+      args.push("--es", "skip_delivery_wait", "true");
     }
     const stdout = await adbShell(deviceId, args);
     return stdout.includes("result=-1"); // Activity.RESULT_OK

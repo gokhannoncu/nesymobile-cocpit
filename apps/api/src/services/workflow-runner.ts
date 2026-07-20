@@ -52,6 +52,13 @@ export interface WorkflowRunnerOptions {
    * SET_RUN then also tells the app to connect its WebSocket sink.
    */
   wsEventsEnabled?: boolean;
+  /**
+   * Flush the mobile ~120s "two-minute" delivery/pickup queue wait so backend
+   * confirmation events arrive in seconds. Defaults to true (automation builds only —
+   * the app-side setter is gated by AUTOMATION_BRIDGE_ENABLED). Set false to exercise
+   * the real two-minute production timing.
+   */
+  skipDeliveryWait?: boolean;
 }
 
 type WorkflowRunnerNode = {
@@ -310,6 +317,7 @@ export const WorkflowRunner = {
         await setRunIdProperty(bridgeDeviceId, runId);
         await broadcastSetRun(bridgeDeviceId, bridgeAppId, runId, {
           wsEnabled: options.wsEventsEnabled === true,
+          skipDeliveryWait: options.skipDeliveryWait !== false,
         });
       });
     }
