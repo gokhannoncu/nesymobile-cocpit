@@ -1,0 +1,14 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/dialog_spinner"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: "36.*"
+    direction: DOWN
+    timeout: 20000
+    visibilityPercentage: 10
+    speed: 15
+- tapOn:
+    text: "36.*"

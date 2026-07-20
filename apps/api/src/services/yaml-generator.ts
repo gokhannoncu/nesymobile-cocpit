@@ -240,16 +240,33 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     case "SELECT_ROUTE": {
       const routeNumber = str(c.routeNumber ?? c.route, "1");
       const spinnerId = resourceId(appId, "dialog_spinner");
-      const okButtonId = resourceId(appId, "yesButton");
-      return `- tapOn:
+      // RS: the route selector is dialog_spinner on the StopList screen ("Please
+      // Select Route"). StopList can take a while to render after login, so wait
+      // for the spinner; some builds auto-apply the pick, so the OK is optional.
+      // Verified RS sequence: open the spinner, WAIT for the popup to render
+      // (scrolling before it renders silently no-ops), scroll the long list to
+      // the target, pick it, then confirm with OK. Rows carry a "* " schedule
+      // suffix, so match "<route>.*"; the confirm button is a plain "OK" text.
+      return `# --- SELECT ROUTE ${routeNumber} ---
+- extendedWaitUntil:
+    visible:
+      id: "${spinnerId}"
+    timeout: 15000
+- tapOn:
     id: "${spinnerId}"
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      text: "${routeNumber}"
+      text: "${routeNumber}.*"
     direction: DOWN
-- tapOn: "${routeNumber}"
+    speed: 15
+    visibilityPercentage: 10
+    timeout: 20000
 - tapOn:
-    id: "${okButtonId}"`;
+    text: "${routeNumber}.*"
+- waitForAnimationToEnd
+- tapOn:
+    text: "OK"`;
     }
 
     case "VALIDATE_STOPLIST":
@@ -1003,7 +1020,7 @@ ${indent(falseBranch, 6)}`;
 - extendedWaitUntil:
     visible:
       id: "${spinnerId}"
-    timeout: 4000
+    timeout: 15000
     optional: true\n`;
 
     // FALSE branch (route not selected → SELECT_ROUTE) runs inside conditional.
@@ -1300,7 +1317,9 @@ export function generateWorkflowWorkspace(
   function emitRuntimeFallback(node: WorkflowNode, branch: IRNode[]): void {
     const probeId =
       node.type === "IF_LOGIN" ? resourceId(appId, "btn_login") : resourceId(appId, "dialog_spinner");
-    const waitTimeout = node.type === "IF_LOGIN" ? 15000 : 4000;
+    // The RS StopList (route spinner) can take >10s to render after login; a short
+    // probe skips SELECT_ROUTE and leaves the run route-less.
+    const waitTimeout = 15000;
 
     visited.add(node.id);
     mainBody += `\n# ===== STEP: ${node.id} (${node.type}) — runtime UI fallback =====\n`;

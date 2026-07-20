@@ -1,0 +1,112 @@
+{
+  "10-standard": {
+    "label": "Standard Delivery",
+    "route": "delivery",
+    "dbId": "262a28d9-00a2-490e-8bc0-46f3f66a04eb",
+    "shipmentId": "55936964469842",
+    "barcode": "6880051000267214",
+    "fullBarcode": "N6880100000000000010006880100000000110001000155936964469842IF19181",
+    "allBarcodes": [
+      "6880051000267214"
+    ],
+    "parcelCount": 1
+  },
+  "11-cod-cash": {
+    "label": "COD / Cash",
+    "route": "delivery",
+    "dbId": "28133a48-0a99-43a3-94d3-2918c9cc53fd",
+    "shipmentId": "71952466340348",
+    "barcode": "6880051000267313",
+    "fullBarcode": "N6880100000000000010006880100000000110001000971952466340348AU84541",
+    "allBarcodes": [
+      "6880051000267313"
+    ],
+    "parcelCount": 1
+  },
+  "12-cc": {
+    "label": "Credit Card",
+    "route": "delivery",
+    "dbId": "d3390bc3-6b91-4ee5-97ed-c6c12bcd6e38",
+    "shipmentId": "84545270233738",
+    "barcode": "6880051000267412",
+    "fullBarcode": "N6880100000000000010006880100000000110001000984545270233738ZY41251",
+    "allBarcodes": [
+      "6880051000267412"
+    ],
+    "parcelCount": 1
+  },
+  "13-multicolli": {
+    "label": "Multicolli (3)",
+    "route": "delivery",
+    "dbId": "7144af5f-26d0-476f-8953-1cbe6c2f8460",
+    "shipmentId": "82261505089969",
+    "barcode": "6880051000267511",
+    "fullBarcode": "N6880100000000000010006880100000000110001000182261505089969XL91061",
+    "allBarcodes": [
+      "6880051000267511",
+      "6880051000267610",
+      "6880051000267719"
+    ],
+    "parcelCount": 3
+  },
+  "14-deps": {
+    "label": "DEPS",
+    "route": "delivery",
+    "dbId": "77444bb1-13cc-4116-8774-131e65b3bef4",
+    "shipmentId": "34447829012343",
+    "barcode": "6880051000267818",
+    "fullBarcode": "N6880100000000000010006880100000000110001000134447829012343DB33821",
+    "allBarcodes": [
+      "6880051000267818"
+    ],
+    "parcelCount": 1
+  },
+  "17-delivery-failed": {
+    "label": "Delivery Failed",
+    "route": "delivery",
+    "dbId": "e4041fb3-4e7b-412c-8e80-4e3f65d76892",
+    "shipmentId": "37822714716358",
+    "barcode": "6880051000267917",
+    "fullBarcode": "N6880100000000000010006880100000000110001000137822714716358GE22251",
+    "allBarcodes": [
+      "6880051000267917"
+    ],
+    "parcelCount": 1
+  },
+  "18-pickup": {
+    "label": "Pickup",
+    "route": "pickup",
+    "dbId": "2bbd1c13-fc07-4607-9b94-078d57643d79",
+    "shipmentId": "12803691160231",
+    "barcode": "6880051000268013",
+    "fullBarcode": "N6880100000000000010006880100000000112711000112803691160231WG36431",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
+    "allBarcodes": [
+      "6880051000268013"
+    ]
+  },
+  "19-remote-pickup": {
+    "label": "Remote Pickup",
+    "route": "pickup",
+    "dbId": "25ae5084-928e-4193-9612-4cf1ade86e04",
+    "shipmentId": "49744893976553",
+    "barcode": "6880051000268112",
+    "fullBarcode": "N6880100000000000010006880100000000112711000149744893976553EX29991",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
+    "allBarcodes": [
+      "6880051000268112"
+    ]
+  },
+  "21-pickup-failed": {
+    "label": "Pickup Failed",
+    "route": "pickup",
+    "dbId": "fb638560-5675-4467-8d9d-4f6805e74b1d",
+    "shipmentId": "41827384716729",
+    "barcode": "6880051000268211",
+    "fullBarcode": "N6880110004500000010006880110004500112711000141827384716729BZ78921",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
+    "allBarcodes": [
+      "6880051000268211"
+    ]
+  }
+}
