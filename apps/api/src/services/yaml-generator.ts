@@ -209,6 +209,14 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
       const barcodeOkId = resourceId(appId, "btn_ok");
       const dialogTitleId = resourceId(appId, "tv_arasDg_title");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
+      // RS ScanProcessor shows SingleChoicePickerDialogFragment ("Select Time Range")
+      // between FETCH_SHIPMENT and CREATE_TASK when hub time slots exist.
+      const timeSlotSaveId = resourceId(appId, "btnSave");
+      const timeSlotLabel = str(c.timeSlot, ""); // optional exact label e.g. "07:00 - 09:00"
+      const timeSlotPick =
+        timeSlotLabel.length > 0
+          ? `- tapOn: "${timeSlotLabel}"\n      - tapOn:\n          id: "${timeSlotSaveId}"`
+          : `- tapOn:\n          id: "${timeSlotSaveId}"`;
       return `# --- LOAD TO VEHICLE PROCESS ---
 - tapOn:
     id: "${manuelInputId}"
@@ -224,7 +232,7 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
 - extendedWaitUntil:
     visible:
       id: "${dialogTitleId}"
-    timeout: 5000
+    timeout: 4000
     optional: true
 - runFlow:
     when:
@@ -233,11 +241,23 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     commands:
       - tapOn:
           id: "${dialogPositiveId}"
+# RS time slot picker (countryCode == RS && hub slots) — blocks CREATE_TASK until Select
+- extendedWaitUntil:
+    visible:
+      text: "Select Time Range"
+    timeout: 4000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        text: "Select Time Range"
+    commands:
+      ${timeSlotPick}
 # CREATE_TASK stage — second dialog may appear
 - extendedWaitUntil:
     visible:
       id: "${dialogTitleId}"
-    timeout: 3000
+    timeout: 4000
     optional: true
 - runFlow:
     when:
