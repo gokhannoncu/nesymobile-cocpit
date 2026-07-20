@@ -30,7 +30,7 @@ const PROTECTED_KEY_RECEIVER_CLASS =
   "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
 const SYSTEM_WORKFLOW_SLUG = "field-courier-login";
 const AUTOMATION_API_ORIGIN =
-  process.env.AUTOMATION_API_ORIGIN?.trim() || "http://localhost:3008";
+  process.env.AUTOMATION_API_ORIGIN?.trim() || "http://localhost:4001";
 
 export type FieldLoginStepId =
   | "validate_device"

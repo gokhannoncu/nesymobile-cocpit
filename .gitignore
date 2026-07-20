@@ -27,3 +27,6 @@ graphify-out/
 
 # Brainstorm visual companion (local only)
 .superpowers/
+
+# Workflow run artifacts (screenshots/video)
+apps/api/maestro/

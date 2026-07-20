@@ -48,6 +48,7 @@ export async function buildApp(env: Env) {
   await app.register(fastifyExpress)
 
   const dataCenterApi = express()
+  dataCenterApi.use('/api/media', express.static(process.cwd()))
   dataCenterApi.use((req, res, next) => {
     const path = (req.path ?? req.url ?? '').split('?')[0] ?? ''
     if (
@@ -63,7 +64,8 @@ export async function buildApp(env: Env) {
       path.startsWith('/api/graylog-query') ||
       path.startsWith('/api/data-locator') ||
       path.startsWith('/api/field-courier-login') ||
-      path.startsWith('/api/incidents')
+      path.startsWith('/api/incidents') ||
+      path.startsWith('/api/workflows')
     ) {
       return express.json()(req, res, next)
     }
@@ -82,6 +84,7 @@ export async function buildApp(env: Env) {
   const { default: dataLocatorRouter } = await import('./legacy/data-locator.router.js')
   const { default: fieldCourierLoginRouter } = await import('./legacy/field-courier-login.router.js')
   const { default: engineeringIncidentsRouter } = await import('./legacy/engineering-incidents.router.js')
+  const { default: workflowsRouter } = await import('./legacy/workflows.router.js')
   dataCenterApi.use('/api/nesy/dashboard', nesyDashboardRouter)
   dataCenterApi.use('/api/courier-wallets', courierWalletsRouter)
   dataCenterApi.use('/api/mobile-devices', mobileDevicesRouter)
@@ -91,6 +94,7 @@ export async function buildApp(env: Env) {
   dataCenterApi.use('/api/data-locator', dataLocatorRouter)
   dataCenterApi.use('/api/field-courier-login', fieldCourierLoginRouter)
   dataCenterApi.use('/api/incidents', engineeringIncidentsRouter)
+  dataCenterApi.use('/api/workflows', workflowsRouter)
   app.use(dataCenterApi)
 
   const io = env.NODE_ENV === 'test' ? null : createSocketServer(app.server, env)

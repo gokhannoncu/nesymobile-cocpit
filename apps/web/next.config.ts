@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   // PDF export — tarayıcıya özel paketler SSR'da bundle'lanmaz
   serverExternalPackages: ['html2canvas-pro', 'jspdf'],
   async rewrites() {
-    const automationApi = process.env.AUTOMATION_API_ORIGIN ?? 'http://localhost:3008'
+    const automationApi = process.env.AUTOMATION_API_ORIGIN ?? 'http://localhost:4001'
     return [
       {
         source: '/automation-api/:path*',
