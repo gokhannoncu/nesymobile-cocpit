@@ -1,0 +1,22 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+- pressKey: back
+- pressKey: back
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible: "Stop List"
+    commands:
+      - swipe:
+          start: "50%, 28%"
+          end: "50%, 78%"
+          duration: 500
+- waitForAnimationToEnd
+# wait for GetMyScheduleByZoneCode
+- swipe:
+    start: "50%, 40%"
+    end: "50%, 40%"
+    duration: 10000

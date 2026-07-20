@@ -1,0 +1,38 @@
+﻿[
+    {
+        "parcelCode":  "DD9296",
+        "success":  false,
+        "used":  "fullBarcode",
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "exitCode":  1,
+        "scan":  "6880051000263810"
+    },
+    {
+        "parcelCode":  "CH4846",
+        "success":  false,
+        "used":  "fullBarcode",
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "exitCode":  1,
+        "scan":  "6880051000263414"
+    },
+    {
+        "parcelCode":  "ZL8068",
+        "success":  false,
+        "used":  "fullBarcode",
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "exitCode":  1,
+        "scan":  "6880051000263315"
+    },
+    {
+        "parcelCode":  "JH8800",
+        "success":  false,
+        "used":  "fullBarcode",
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "exitCode":  1,
+        "scan":  "6880051000263216"
+    }
+]

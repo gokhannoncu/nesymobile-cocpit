@@ -1,0 +1,11 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 1500

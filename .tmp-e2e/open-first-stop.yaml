@@ -1,0 +1,13 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 15000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/stopCard"
+    index: 0
+- extendedWaitUntil:
+    visible: "Shipments"
+    timeout: 15000
+    optional: true
+- takeScreenshot: .tmp-e2e/stop-detail.png

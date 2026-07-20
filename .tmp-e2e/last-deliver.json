@@ -1,0 +1,197 @@
+{
+  "code": "6880051000263117",
+  "res": {
+    "ok": false,
+    "reason": "no_delivery_form",
+    "texts": [
+      "Write barcode number",
+      "OK"
+    ]
+  },
+  "hit": {
+    "stop": 11,
+    "type": "D",
+    "status": 1,
+    "doc": false,
+    "barcodes": [
+      {
+        "b": "6880051000263117",
+        "st": 4
+      }
+    ]
+  },
+  "snap": [
+    {
+      "stop": 1,
+      "type": "D",
+      "status": 2,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000262813",
+          "st": 6
+        }
+      ]
+    },
+    {
+      "stop": 2,
+      "type": "D",
+      "status": 1,
+      "doc": true,
+      "barcodes": [
+        {
+          "b": "6880051000263216",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 2,
+      "type": "P",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263919",
+          "st": 14
+        }
+      ]
+    },
+    {
+      "stop": 3,
+      "type": "D",
+      "status": 2,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263315",
+          "st": 6
+        }
+      ]
+    },
+    {
+      "stop": 4,
+      "type": "D",
+      "status": 2,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000262417",
+          "st": 6
+        }
+      ]
+    },
+    {
+      "stop": 5,
+      "type": "D",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263414",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 6,
+      "type": "D",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000262615",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 7,
+      "type": "D",
+      "status": 2,
+      "doc": true,
+      "barcodes": [
+        {
+          "b": "6880051000263018",
+          "st": 6
+        }
+      ]
+    },
+    {
+      "stop": 7,
+      "type": "P",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000264015",
+          "st": 14
+        }
+      ]
+    },
+    {
+      "stop": 8,
+      "type": "D",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000262318",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 9,
+      "type": "D",
+      "status": 2,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263810",
+          "st": 6
+        }
+      ]
+    },
+    {
+      "stop": 10,
+      "type": "D",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000262516",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 11,
+      "type": "D",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263117",
+          "st": 4
+        }
+      ]
+    },
+    {
+      "stop": 12,
+      "type": "P",
+      "status": 1,
+      "doc": false,
+      "barcodes": [
+        {
+          "b": "6880051000263612",
+          "st": 0
+        },
+        {
+          "b": null,
+          "st": 0
+        }
+      ]
+    }
+  ]
+}

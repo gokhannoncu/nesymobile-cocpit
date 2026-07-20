@@ -1,0 +1,5 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- waitForAnimationToEnd

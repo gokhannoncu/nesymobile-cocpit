@@ -1,0 +1,14 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- scrollUntilVisible:
+    element:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_not_deliver"
+    direction: DOWN
+    timeout: 12000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_not_deliver"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+    optional: true

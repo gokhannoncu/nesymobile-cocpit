@@ -1,0 +1,23 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- runFlow:
+    when:
+      visible: "12. Stop Tasks"
+    commands:
+      - pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_cash_overview"
+    timeout: 15000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_cash_overview"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+    optional: true

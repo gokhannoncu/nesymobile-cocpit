@@ -1,0 +1,50 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn: "ASSIGNED"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/stopCard"
+    index: 0
+- extendedWaitUntil:
+    visible: "Shipments"
+    timeout: 15000
+    optional: true
+- takeScreenshot: .tmp-e2e/first-stop
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000263216"
+      - pressKey: Enter
+- swipe:
+    start: "50%, 40%"
+    end: "50%, 40%"
+    duration: 2000
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+- takeScreenshot: .tmp-e2e/after-open-deliver

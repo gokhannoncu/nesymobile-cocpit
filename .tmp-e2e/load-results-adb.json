@@ -1,0 +1,132 @@
+﻿[
+    {
+        "parcelCode":  "DD9296",
+        "scan":  "6880051000263810",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "CH4846",
+        "scan":  "6880051000263414",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "ZL8068",
+        "scan":  "6880051000263315",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "JH8800",
+        "scan":  "6880051000263216",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "CQ5661",
+        "scan":  "6880051000263117",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "FP4416",
+        "scan":  "6880051000263018",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "no input dialog",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "PW7070",
+        "scan":  "6880051000262714",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  -1,
+        "note":  "before=11 after=-1",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "TH8230",
+        "scan":  "6880051000262813",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  -1,
+        "note":  "before=11 after=-1",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "DG1653",
+        "scan":  "6880051000262912",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "before=11 after=11",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "ZX8999",
+        "scan":  "6880051000262615",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "before=11 after=11",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "KK8354",
+        "scan":  "6880051000262516",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  11,
+        "loadedAfter":  11,
+        "note":  "before=11 after=11",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "MB2142",
+        "scan":  "6880051000262417",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "note":  "no manuel_input",
+        "method":  "adb"
+    },
+    {
+        "parcelCode":  "EJ3959",
+        "scan":  "6880051000262318",
+        "used":  "fullBarcode",
+        "success":  false,
+        "loadedBefore":  -1,
+        "loadedAfter":  -1,
+        "note":  "no manuel_input",
+        "method":  "adb"
+    }
+]

@@ -58,6 +58,7 @@ export async function unloadParcel(params: {
   environment: string;
   barcode: string;
   isLastParcel: boolean;
+  isOversize?: boolean;
 }): Promise<Record<string, unknown>> {
   const { shipmentDbId, ...body } = params;
   const res = await fetch(`${API_BASE}/shipments/${shipmentDbId}/unload`, {

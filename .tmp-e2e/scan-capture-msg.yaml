@@ -1,0 +1,27 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    timeout: 12000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 8000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+- eraseText: 80
+- inputText: "6880051000263414"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/tv_arasDg_message"
+    timeout: 8000
+    optional: true
+- takeScreenshot: .tmp-e2e/dialog-after-3414
+- copyTextFrom:
+    id: "com.arasdigital.nesymobile.rstest:id/tv_arasDg_message"
+    optional: true

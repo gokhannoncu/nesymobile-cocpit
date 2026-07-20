@@ -54,13 +54,19 @@ function normalizeOohItem(raw: unknown, index: number): OohItem {
   }
 
   const r = raw as Record<string, unknown>;
+  // Nesy SaveShipment looks up CounterLocationConsigneeId by OOHID (business key),
+  // not MongoDB document id — prefer oohid so DEPS / parcel-shop creates succeed.
   const id = str(
-    r.id ??
-      r.Id ??
+    r.oohid ??
+      r.OOHID ??
+      r.oohId ??
+      r.OohId ??
       r.counterLocationId ??
       r.CounterLocationId ??
       r.oohPointId ??
       r.OohPointId ??
+      r.id ??
+      r.Id ??
       index,
   );
 

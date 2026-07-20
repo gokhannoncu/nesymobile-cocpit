@@ -1,0 +1,319 @@
+[
+  {
+    "stop": 1,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 06",
+    "waybill": "13761428642948",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000262813",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 924,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 2,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 09",
+    "waybill": "57947209065418",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263216",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 830,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 2,
+    "type": "PICKUP",
+    "taskStatus": 1,
+    "party": "CASH",
+    "waybill": "97656569471566",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263919",
+        "status": 14,
+        "loc": 1
+      }
+    ],
+    "cod": []
+  },
+  {
+    "stop": 3,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 10",
+    "waybill": "16764379017345",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263315",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 4,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 02",
+    "waybill": "25466993577635",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000262417",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 1500,
+        "status": 2,
+        "type": 0
+      },
+      {
+        "amt": 830,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 5,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 11",
+    "waybill": "79224564835243",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263414",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 6,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "City Express Surčin",
+    "waybill": "46769007745792",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000262615",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 7,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 07",
+    "waybill": "45816325896622",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263018",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 830,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 7,
+    "type": "PICKUP",
+    "taskStatus": 1,
+    "party": "CASH",
+    "waybill": "92361378563842",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000264015",
+        "status": 14,
+        "loc": 1
+      }
+    ],
+    "cod": []
+  },
+  {
+    "stop": 8,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 01",
+    "waybill": "75535925864700",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000262318",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 9,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "RS Direct4Me",
+    "waybill": "72894568294210",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263810",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 10,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 03",
+    "waybill": "72899493856358",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000262516",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 995.63,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 11,
+    "type": "DELIVERY",
+    "taskStatus": 1,
+    "party": "Stop Test 08",
+    "waybill": "42799239833414",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263117",
+        "status": 4,
+        "loc": 10
+      }
+    ],
+    "cod": [
+      {
+        "amt": 650,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 12,
+    "type": "PICKUP",
+    "taskStatus": 1,
+    "party": "_CASH",
+    "waybill": "94643876527895",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": "6880051000263612",
+        "status": 0,
+        "loc": 1
+      }
+    ],
+    "cod": [
+      {
+        "amt": 0,
+        "status": 2,
+        "type": 1
+      }
+    ]
+  },
+  {
+    "stop": 12,
+    "type": "PICKUP",
+    "taskStatus": 1,
+    "party": "_CASH",
+    "waybill": "74901237799972",
+    "shipmentStatus": 0,
+    "items": [
+      {
+        "legacy": null,
+        "status": 0,
+        "loc": 1
+      }
+    ],
+    "cod": []
+  }
+]

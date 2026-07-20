@@ -1,0 +1,39 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible:
+      id: "/manuel_input"
+    timeout: 15000
+- tapOn:
+    id: "/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "/et_input_dialog_barcode_number"
+    timeout: 8000
+- tapOn:
+    id: "/et_input_dialog_barcode_number"
+- eraseText: 100
+- inputText: "6880051000262813"
+- tapOn:
+    id: "/btn_ok"
+- extendedWaitUntil:
+    visible:
+      id: "/btn_arasDg_positive_button"
+    timeout: 12000
+    optional: true
+- tapOn:
+    id: "/btn_arasDg_positive_button"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "/btn_arasDg_positive_button"
+    timeout: 6000
+    optional: true
+- tapOn:
+    id: "/btn_arasDg_positive_button"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "/manuel_input"
+    timeout: 12000
+    optional: true

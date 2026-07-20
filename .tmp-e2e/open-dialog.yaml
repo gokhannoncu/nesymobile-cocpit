@@ -1,0 +1,11 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- assertVisible:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 8000
+- takeScreenshot: .tmp-e2e/after-manuel

@@ -1,0 +1,106 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "Please scan all the barcodes"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible: "PRINT"
+    commands:
+      - pressKey: Back
+# Back to Stop List if on Task
+- runFlow:
+    when:
+      visible: "2. Stop Tasks"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible: "Task"
+    commands:
+      - pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    timeout: 20000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 12000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+- eraseText: 80
+- inputText: "SCANCODE"
+- hideKeyboard
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+# Pick Up vs Pickup Failed
+- runFlow:
+    when:
+      visible: "Pick Up"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+# If already on complete dialog
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+# Else on Task: scan again to open complete dialog
+- runFlow:
+    when:
+      notVisible:
+        id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    commands:
+      - runFlow:
+          when:
+            visible: "Waiting For Pickup"
+          commands:
+            - tapOn:
+                id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+            - extendedWaitUntil:
+                visible:
+                  id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+                timeout: 10000
+            - tapOn:
+                id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+            - eraseText: 80
+            - inputText: "SCANCODE"
+            - hideKeyboard
+            - tapOn:
+                id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- extendedWaitUntil:
+    visible: "Picked Up"
+    timeout: 20000
+    optional: true
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 15000
+    optional: true

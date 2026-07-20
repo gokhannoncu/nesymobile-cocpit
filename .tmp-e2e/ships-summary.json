@@ -1,0 +1,220 @@
+[
+  {
+    "id": "9e126504-7b06-47a4-b392-e624a65eca07",
+    "createdAt": "2026-07-19T23:15:20.043Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "72894568294210",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880110050000110001004872894568294210DD92961",
+        "parcelCode": "DD9296",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "048b8a9b-6f88-41eb-b923-cca7705c69ea",
+    "createdAt": "2026-07-19T23:13:41.922Z",
+    "unloadStatus": "Pending",
+    "shipmentId": "43352913973910",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880100000000000010006880100000000115501000143352913973910QG41121",
+        "parcelCode": "QG4112",
+        "status": "SaveShipment",
+        "location": "OnShipper",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "c2bb6c97-7243-47ca-9e02-2a8f4000b644",
+    "createdAt": "2026-07-19T23:13:39.045Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "79224564835243",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880110002600115001000179224564835243CH48461",
+        "parcelCode": "CH4846",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "e65ed4ec-8faf-4754-9514-f9352a522bf7",
+    "createdAt": "2026-07-19T23:13:37.041Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "16764379017345",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880100000000000010006880100000000110001000116764379017345ZL80681",
+        "parcelCode": "ZL8068",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "e17e2e08-94ca-4206-8672-fe72a064f7c8",
+    "createdAt": "2026-07-19T23:13:35.355Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "57947209065418",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880100000000000010006880100000000110001006557947209065418JH88001",
+        "parcelCode": "JH8800",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "1bf2ceee-c93b-42e0-a93f-679e4eea6559",
+    "createdAt": "2026-07-19T23:13:33.437Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "42799239833414",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880210001200210001003742799239833414CQ56611",
+        "parcelCode": "CQ5661",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "69457af9-81ab-46a7-b54c-c8a67bb65454",
+    "createdAt": "2026-07-19T23:13:31.356Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "45816325896622",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880120009700113001006545816325896622FP44161",
+        "parcelCode": "FP4416",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "cc03ab4c-2300-4e95-8f9c-b5cb389c464d",
+    "createdAt": "2026-07-19T23:13:27.185Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "13761428642948",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880100000000000010006880100000000260001004713761428642948PW70701",
+        "parcelCode": "PW7070",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      },
+      {
+        "barcode": "N6880100000000000010006880100000000260001004713761428642948TH82301",
+        "parcelCode": "TH8230",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      },
+      {
+        "barcode": "N6880100000000000010006880100000000260001004713761428642948DG16531",
+        "parcelCode": "DG1653",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "85f09e49-8b71-426f-8b21-c385585036e0",
+    "createdAt": "2026-07-19T23:13:25.315Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "46769007745792",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880100000000000010006880100000000112711003146769007745792ZX89991",
+        "parcelCode": "ZX8999",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "4af01f49-3ef7-4c34-9271-e1c6b8b1a416",
+    "createdAt": "2026-07-19T23:13:23.583Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "72899493856358",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880110003900110801001772899493856358KK83541",
+        "parcelCode": "KK8354",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "57ad543e-df32-4b44-8ff6-8f8ac045e33b",
+    "createdAt": "2026-07-19T23:13:21.540Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "25466993577635",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880110005000110701000925466993577635MB21421",
+        "parcelCode": "MB2142",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  },
+  {
+    "id": "baeef2ff-0e7a-4c7f-8b67-382bce6165d1",
+    "createdAt": "2026-07-19T23:13:18.805Z",
+    "unloadStatus": "Completed",
+    "shipmentId": "75535925864700",
+    "type": "Standard",
+    "barcodes": [
+      {
+        "barcode": "N6880110004100000010006880110050000110001000175535925864700EJ39591",
+        "parcelCode": "EJ3959",
+        "status": "Unloaded",
+        "location": "InPickupHub",
+        "courierName": null
+      }
+    ],
+    "cod": null
+  }
+]

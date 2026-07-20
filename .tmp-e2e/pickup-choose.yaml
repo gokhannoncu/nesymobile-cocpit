@@ -1,0 +1,10 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: .tmp-e2e/pickup-after-choice

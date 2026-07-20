@@ -1,0 +1,16 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Login"
+    timeout: 20000
+- tapOn: "PIN"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/pinView"
+- inputText: "3680"
+- tapOn: "Login"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_out"
+    timeout: 60000

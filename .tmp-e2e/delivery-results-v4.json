@@ -1,0 +1,97 @@
+[
+  {
+    "code": "6880051000263216",
+    "exit": 1,
+    "before": {
+      "stop": 2,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 09"
+    },
+    "after": {
+      "stop": 2,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 09"
+    },
+    "ok": false
+  },
+  {
+    "code": "6880051000263414",
+    "exit": 1,
+    "before": {
+      "stop": 5,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 11"
+    },
+    "after": {
+      "stop": 5,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 11"
+    },
+    "ok": false
+  },
+  {
+    "code": "6880051000262615",
+    "exit": 1,
+    "before": {
+      "stop": 6,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "City Express Surčin"
+    },
+    "after": {
+      "stop": 6,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "City Express Surčin"
+    },
+    "ok": false
+  },
+  {
+    "code": "6880051000262318",
+    "exit": 1,
+    "before": {
+      "stop": 8,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 01"
+    },
+    "after": {
+      "stop": 8,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 01"
+    },
+    "ok": false
+  },
+  {
+    "code": "6880051000263117",
+    "exit": 1,
+    "before": {
+      "stop": 11,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 08"
+    },
+    "after": {
+      "stop": 11,
+      "type": 2,
+      "taskStatus": 1,
+      "itemStatus": 4,
+      "party": "Stop Test 08"
+    },
+    "ok": false
+  }
+]

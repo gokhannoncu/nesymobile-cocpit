@@ -1,0 +1,25 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000263018"
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- takeScreenshot: .tmp-e2e/shot-after-scan
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 3000
+- takeScreenshot: .tmp-e2e/shot-after-wait

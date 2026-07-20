@@ -1,0 +1,9 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn: "ASSIGNED"
+- tapOn: "6880051000263216"
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 2000
+- takeScreenshot: .tmp-e2e/stop-3216

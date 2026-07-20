@@ -31,6 +31,7 @@ export interface DeliveryGroupSettings {
     billingOption: ExwBillingOption;
   };
   deps?: OohPointSelection;
+  d4me?: OohPointSelection;
 }
 
 export interface PickupGroupSettings {
@@ -51,6 +52,7 @@ export interface PerTypeSettings {
   multicolli?: DeliveryGroupSettings["multicolli"];
   exw?: DeliveryGroupSettings["exw"];
   deps?: OohPointSelection;
+  d4me?: OohPointSelection;
   pickup?: PickupGroupSettings;
   receiverName?: string;
   integrationCode1?: string;
@@ -62,6 +64,7 @@ export interface CombinedSettings {
   multicolli?: DeliveryGroupSettings["multicolli"];
   exw?: DeliveryGroupSettings["exw"];
   deps?: OohPointSelection;
+  d4me?: OohPointSelection;
   pickup?: PickupGroupSettings;
   receiverName?: string;
   integrationCode1?: string;
@@ -193,6 +196,7 @@ export function getDefaultPerTypeSettings(
         parcelCount: 1,
       };
     case "deps":
+    case "d4me":
       return { parcelCount: 1 };
     case "remote-pickup":
     case "pickup-at-customer":
@@ -259,7 +263,7 @@ export function getDefaultSettingsForContext(
   if (contextId === "return") {
     return getDefaultReturnSettings(includedTypeIds);
   }
-  if (contextId in { "standard-delivery": 1, "cod-delivery": 1, "exw-delivery": 1, deps: 1, "mono-multicolli": 1, "remote-pickup": 1, "pickup-at-customer": 1, rdoc: 1, "delivery-pick": 1, "red-label": 1, doco: 1 }) {
+  if (contextId in { "standard-delivery": 1, "cod-delivery": 1, "exw-delivery": 1, deps: 1, d4me: 1, "mono-multicolli": 1, "remote-pickup": 1, "pickup-at-customer": 1, rdoc: 1, "delivery-pick": 1, "red-label": 1, doco: 1 }) {
     return getDefaultPerTypeSettings(contextId as HappyPathTypeId, country);
   }
   return { parcelCount: 1 };
@@ -317,6 +321,13 @@ export function validateSettings(
           severity: "error",
         });
       }
+      if (includedTypeIds.has("d4me") && !settings.d4me?.oohPointId) {
+        errors.push({
+          field: "d4me.oohPoint",
+          message: "Please select a Locker for D4ME",
+          severity: "error",
+        });
+      }
     }
   } else if (contextId === "pickup" || ["remote-pickup", "pickup-at-customer"].includes(contextId)) {
     if (isPickupGroupSettings(settings)) {
@@ -361,6 +372,34 @@ export function validateSettings(
         severity: "error",
       });
     }
+    if (includedTypeIds.has("d4me") && !combined.d4me?.oohPointId) {
+      errors.push({
+        field: "d4me.oohPoint",
+        message: "Please select a Locker for D4ME",
+        severity: "error",
+      });
+    }
+  }
+
+  if (contextId === "deps") {
+    const depsPoint = "deps" in settings ? settings.deps : undefined;
+    if (!depsPoint?.oohPointId) {
+      errors.push({
+        field: "deps.oohPoint",
+        message: "Please select a Parcel Shop for DEPS",
+        severity: "error",
+      });
+    }
+  }
+  if (contextId === "d4me") {
+    const d4mePoint = "d4me" in settings ? settings.d4me : undefined;
+    if (!d4mePoint?.oohPointId) {
+      errors.push({
+        field: "d4me.oohPoint",
+        message: "Please select a Locker for D4ME",
+        severity: "error",
+      });
+    }
   }
 
   const hasBlocking = errors.some((e) => e.severity === "error");
@@ -382,6 +421,7 @@ export function formatSettingsSummary(
     if (settings.parcelCount > 1) parts.push(`${settings.parcelCount} parcels`);
     if (settings.multicolli) parts.push(`MC ${settings.multicolli.parcelCount}`);
     if (settings.deps?.oohName) parts.push(`DEPS: ${settings.deps.oohName}`);
+    if (settings.d4me?.oohName) parts.push(`D4ME: ${settings.d4me.oohName}`);
     if (settings.exw?.billingOption) parts.push(settings.exw.billingOption);
   }
   if (isPickupGroupSettings(settings)) {
@@ -440,6 +480,9 @@ export function resolveSettingsForType(
     if (typeId === "deps" && combined.deps) {
       result.oohPoint = combined.deps;
     }
+    if (typeId === "d4me" && combined.d4me) {
+      result.oohPoint = combined.d4me;
+    }
     if (
       (typeId === "remote-pickup" || typeId === "pickup-at-customer") &&
       combined.pickup
@@ -468,6 +511,7 @@ export function resolveSettingsForType(
       }
       if (typeId === "exw-delivery" && settings.exw) Object.assign(result, settings.exw);
       if (typeId === "deps" && settings.deps) result.oohPoint = settings.deps;
+      if (typeId === "d4me" && settings.d4me) result.oohPoint = settings.d4me;
     }
     if (groupId === "cod" && isCodSettings(settings)) {
       Object.assign(result, settings);
@@ -490,6 +534,7 @@ export function resolveSettingsForType(
   }
   if (perType.exw) Object.assign(result, perType.exw);
   if (perType.deps) result.oohPoint = perType.deps;
+  if (perType.d4me) result.oohPoint = perType.d4me;
   if (perType.pickup) Object.assign(result, perType.pickup);
   if (perType.receiverName) result.receiverName = perType.receiverName;
   if (perType.integrationCode1) result.integrationCode1 = perType.integrationCode1;

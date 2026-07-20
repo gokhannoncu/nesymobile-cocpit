@@ -173,6 +173,7 @@ function buildServices(
   }
 
   if (shipmentType === "delivery-pick") {
+    // Do not include Cash Prepayed: backend ForbiddenServiceTypes removes PersonalDelivery.
     return [
       {
         servicePrice: 0,
@@ -181,7 +182,6 @@ function buildServices(
         legacySystemServiceId: "36",
         value: receiverName ?? "Test Receiver",
       },
-      cashPrepayedService,
       standard,
     ];
   }
@@ -234,12 +234,14 @@ function buildShipmentPayload(
   }
 ) {
   const { billingOption, payerType } = billing;
+  // Dashboard ClientSaveShipment uses pricingUnit "None" (0). WeightPerUnit (17)
+  // causes TariffPricingUnitNotFound on RS stage after unload.
   const parcels = Array.from({ length: parcelCount }, () => ({
     barcode: "",
     customerBarcode: "",
     weight: 1,
     parcelType: "PARCEL",
-    pricingUnit: "WeightPerUnit",
+    pricingUnit: "None",
     goodCategory: 0,
     integrationCode: "",
   }));
@@ -559,27 +561,78 @@ function mergeParcelsFromUnloadResponse(
   return merged;
 }
 
-function buildUnloadPayload(barcode: string) {
+interface UnloadOperatorHub {
+  hubId: string;
+  hubName: string;
+  eventLocation: { lat: number; lon: number; zipCode: string; city: string };
+}
+
+/**
+ * Dashboard unload uses Geocode/GetUserHub for the logged-in operator —
+ * never a country hardcode and never shipment.pickupLocation.
+ */
+async function fetchUnloadOperatorHub(
+  baseUrl: string,
+  token: string,
+): Promise<UnloadOperatorHub | null> {
+  const response = await fetch(`${baseUrl}/Geocode/GetUserHub`, {
+    method: "POST",
+    headers: nesyHeaders(token),
+    body: "{}",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) return null;
+
+  const json = (await response.json()) as Record<string, unknown>;
+  const payload = (json.payload ?? json.Payload ?? json) as Record<string, unknown>;
+  const hubId = payload.hubId ?? payload.HubId;
+  const hubName = payload.hubName ?? payload.HubName;
+  if (hubId == null || typeof hubName !== "string" || !hubName.trim()) return null;
+
+  const lat = Number(payload.latitude ?? payload.Latitude ?? 0);
+  const lon = Number(payload.longitude ?? payload.Longitude ?? 0);
+  const zipCode = String(payload.zipCode ?? payload.ZipCode ?? "");
+  const city = String(payload.cityName ?? payload.CityName ?? payload.city ?? "");
+
+  return {
+    hubId: String(hubId),
+    hubName: hubName.trim(),
+    eventLocation: {
+      lat: Number.isFinite(lat) ? lat : 0,
+      lon: Number.isFinite(lon) ? lon : 0,
+      zipCode,
+      city,
+    },
+  };
+}
+
+function buildUnloadPayload(
+  barcode: string,
+  hub: UnloadOperatorHub,
+  options?: { weight?: string | number; isOversize?: boolean },
+) {
+  // Match Dashboard N-Point unload (unload.component.ts setEventLocation + unload payload):
+  // hub/eventLocation from GetUserHub; weight from scale; CounterId per session.
+  const weight =
+    options?.weight != null && String(options.weight).trim() !== ""
+      ? String(options.weight)
+      : "5";
+
   return {
     filterList: [{ value: barcode }],
-    weight: "1",
-    isOversize: false,
+    weight,
+    isOversize: options?.isOversize ?? false,
     isSpecialHandling: false,
-    isEurodisTrasSending: true,
+    isEurodisTrasSending: false,
     isOnlySearchFromMipOrder: false,
     isCargoService: false,
     isReGeocoded: false,
-    hubName: "OSE Zagreb (Central)",
-    hubId: "10",
-    eventLocation: {
-      lat: 45.75312,
-      lon: 15.89509,
-      zipCode: "10251",
-      city: "HRVATSKI LESKOVAC",
-    },
+    hubName: hub.hubName,
+    hubId: hub.hubId,
+    eventLocation: hub.eventLocation,
     channel: "Portal",
     unloadChannel: 1,
-    CounterId: "d012617d-adbf-49cf-bada-aa679b6f701e",
+    CounterId: crypto.randomUUID(),
     checkIfParcelIsUnloaded: true,
     noDataEntry: null,
     isPrintRequired: false,
@@ -643,10 +696,16 @@ router.post("/create", async (req, res) => {
       happyPathOrigin,
     } = body;
 
+    // delivery-pick: do not send "CPP in cash" into ClientSaveShipment.
+    // SetProductAndServices adds Cash Prepayed for CPP_CASH and then strips
+    // PersonalDelivery via ForbiddenServiceTypes. Use invoice at save time;
+    // UpdateBillingAndPayerInfo still corrects CashOnly customers to CPP cash.
     const billingOption =
-      typeof billingOptionRaw === "string" && billingOptionRaw.trim() !== ""
-        ? billingOptionRaw.trim()
-        : "CPP in cash";
+      shipmentType === "delivery-pick"
+        ? "CPP on invoice"
+        : typeof billingOptionRaw === "string" && billingOptionRaw.trim() !== ""
+          ? billingOptionRaw.trim()
+          : "CPP in cash";
     const payerType =
       typeof payerTypeRaw === "number" && !Number.isNaN(payerTypeRaw)
         ? payerTypeRaw
@@ -697,7 +756,7 @@ router.post("/create", async (req, res) => {
         customerBarcode: "",
         weight: 1,
         parcelType: "PARCEL",
-        pricingUnit: "WeightPerUnit",
+        pricingUnit: "None",
         goodCategory: 0,
         integrationCode: "",
       }));
@@ -1186,13 +1245,24 @@ interface UnloadBody {
   environment?: NesyEnvironment;
   barcode?: string;
   isLastParcel?: boolean;
+  /** Actual scale weight (kg). Dashboard N-Point sends this; defaults to 5. */
+  weight?: string | number;
+  isOversize?: boolean;
 }
 
 router.post("/:id/unload", async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body as UnloadBody;
-    const { token, country, environment, barcode, isLastParcel = false } = body;
+    const {
+      token,
+      country,
+      environment,
+      barcode,
+      isLastParcel = false,
+      weight,
+      isOversize,
+    } = body;
 
     if (!token || !country || !environment || !barcode) {
       res.status(400).json({ message: "token, country, environment, barcode are required." });
@@ -1205,7 +1275,21 @@ router.post("/:id/unload", async (req, res) => {
       return;
     }
 
-    const unloadPayload = buildUnloadPayload(barcode);
+    const existing = await prisma.shipment.findUnique({ where: { id } });
+    const existingData = (existing?.data ?? {}) as Record<string, unknown>;
+
+    const operatorHub = await fetchUnloadOperatorHub(baseUrl, token);
+    if (!operatorHub) {
+      res.status(502).json({
+        message: "Nesy GetUserHub failed — unload hub cannot be resolved for the logged-in user.",
+      });
+      return;
+    }
+
+    const unloadPayload = buildUnloadPayload(barcode, operatorHub, {
+      weight,
+      isOversize,
+    });
 
     const unloadResponse = await fetch(`${baseUrl}/Shipment/Unload`, {
       method: "POST",
@@ -1225,9 +1309,6 @@ router.post("/:id/unload", async (req, res) => {
 
     const unloadResult = await unloadResponse.json() as Record<string, unknown>;
     const unloadItem = extractFirstUnloadShipmentItem(unloadResult);
-
-    const existing = await prisma.shipment.findUnique({ where: { id } });
-    const existingData = (existing?.data ?? {}) as Record<string, unknown>;
     const existingRawParcels =
       existingData.parcels ?? (existingData as { Parcels?: unknown }).Parcels;
     const existingParcels = Array.isArray(existingRawParcels)

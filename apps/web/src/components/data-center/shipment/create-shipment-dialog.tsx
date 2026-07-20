@@ -8,12 +8,17 @@ import {
   Check,
   CircleCheck,
   DollarSign,
+  FileText,
   Loader2,
+  Lock,
+  Maximize2,
   Minus,
   Package,
   Plus,
   RefreshCcw,
   Search,
+  Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@nesy/metronic/components/ui/button";
 import {
@@ -27,8 +32,31 @@ import {
 } from "@nesy/metronic/components/ui/dialog";
 import { Input } from "@nesy/metronic/components/ui/input";
 import { Label } from "@nesy/metronic/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nesy/metronic/components/ui/select";
 import { Switch, SwitchWrapper } from "@nesy/metronic/components/ui/switch";
 import { useNesyAuth } from "@/contexts/nesy-auth-context";
+import { OohPointPicker } from "@/components/data-center/happy-path/settings/ooh-point-picker";
+import { TypeChoiceCard, TypeChoiceGrid } from "@/components/data-center/type-choice-card";
+import {
+  CREATE_SHIPMENT_TYPES,
+  getCreateShipmentExtras,
+  getCreateShipmentUnloadDefaults,
+  mapCreateShipmentTypeToBff,
+  type CreateShipmentTypeId,
+} from "@/lib/data-center/create-shipment-types";
+import {
+  getDefaultCodSettings,
+  getDefaultExwBillingOption,
+  type ExwBillingOption,
+  type NesyCountryCode,
+  type OohPointSelection,
+} from "@/lib/happy-path/shipment-group-settings";
 import {
   buildInitialPartySelection,
   buildPartiesFromDetails,
@@ -46,7 +74,10 @@ import {
   rowDisplayCity,
   rowDisplayName,
 } from "@/lib/customer-search-helpers";
-import { mapNesyDetailsToBffPayload } from "@/lib/nesy-customer-mapper";
+import {
+  bffCustomerFromConsigneeParty,
+  mapNesyDetailsToBffPayload,
+} from "@/lib/nesy-customer-mapper";
 import type { ShipmentPartySelection } from "@/lib/nesy-shipment-parties";
 import { cn } from "@nesy/metronic/lib/utils";
 import { buildPartiesWithDistinctConsignee } from "@/lib/multi-stop-addresses";
@@ -56,13 +87,42 @@ import {
   searchCustomers,
   type BffCustomerPayload,
 } from "@/services/customer";
+import { createPickup } from "@/services/pickup";
 import { createSingleShipment, unloadParcel } from "@/services/shipment";
 
 const MIN_SEARCH_LENGTH = 3;
 const DEBOUNCE_MS = 3000;
 const MAX_RESULTS = 3;
 
-type ShipmentType = "standard" | "cod" | "rdoc";
+const TYPE_DESCRIPTIONS: Record<CreateShipmentTypeId, string> = {
+  standard: "Standard delivery",
+  cod: "Cash on delivery",
+  exw: "Ex works billing",
+  deps: "Parcel shop delivery",
+  d4me: "Locker (D4ME) delivery",
+  multicolli: "Multiple parcels",
+  rdoc: "Return document",
+  "delivery-pick": "Delivery with linked pickup",
+  doco: "Document collection",
+  cpp: "Collect CPP / Cash Prepayed",
+  ovsz: "Oversized — unload with oversize flag",
+  ddef: "No unload — PAC scan source",
+};
+
+const TYPE_ICONS: Record<CreateShipmentTypeId, LucideIcon> = {
+  standard: Package,
+  cod: DollarSign,
+  exw: FileText,
+  deps: Building2,
+  d4me: Lock,
+  multicolli: Package,
+  rdoc: RefreshCcw,
+  "delivery-pick": RefreshCcw,
+  doco: CircleCheck,
+  cpp: Wallet,
+  ovsz: Maximize2,
+  ddef: Package,
+};
 
 interface LogEntry {
   key: string;
@@ -87,11 +147,6 @@ function extractBarcodes(data: Record<string, unknown>): ParcelInfo[] {
     }));
 }
 
-function mapShipmentType(type: ShipmentType): string {
-  if (type === "rdoc") return "return-document";
-  return type;
-}
-
 function formatLogTime(): string {
   return new Date().toLocaleTimeString(undefined, {
     hour: "2-digit",
@@ -99,28 +154,6 @@ function formatLogTime(): string {
     second: "2-digit",
   });
 }
-
-const shipmentTypes: Array<{
-  value: ShipmentType;
-  title: string;
-  icon: typeof Package;
-}> = [
-  {
-    value: "standard",
-    title: "Standard",
-    icon: Package,
-  },
-  {
-    value: "cod",
-    title: "COD",
-    icon: DollarSign,
-  },
-  {
-    value: "rdoc",
-    title: "RDOC",
-    icon: RefreshCcw,
-  },
-];
 
 function StepNumber({ value }: { value: number }) {
   return (
@@ -219,9 +252,21 @@ export function CreateShipmentDialog({
 }) {
   const { token, country, environment, status: authStatus } = useNesyAuth();
   const isConnected = authStatus === "connected" && !!token;
+  const countryCode = (country as NesyCountryCode) || "HR";
+  const defaultCod = getDefaultCodSettings(countryCode);
 
-  const [selectedType, setSelectedType] = useState<ShipmentType | null>(null);
-  const [codAmount, setCodAmount] = useState("10.99");
+  const [selectedType, setSelectedType] = useState<CreateShipmentTypeId | null>(null);
+  const [codAmount, setCodAmount] = useState(String(defaultCod.codAmount));
+  const [codCurrency, setCodCurrency] = useState(defaultCod.codCurrency);
+  const [iban, setIban] = useState(defaultCod.iban);
+  const [bicSwift, setBicSwift] = useState(defaultCod.bicSwift);
+  const [exwBillingOption, setExwBillingOption] = useState<ExwBillingOption>(
+    getDefaultExwBillingOption(countryCode),
+  );
+  const [depsOoh, setDepsOoh] = useState<OohPointSelection | undefined>(undefined);
+  const [d4meOoh, setD4meOoh] = useState<OohPointSelection | undefined>(undefined);
+  const [multicolliParcelCount, setMulticolliParcelCount] = useState(3);
+  const [multicolliIntegrationCode, setMulticolliIntegrationCode] = useState("CREATE-MC-001");
   const [parcelCount, setParcelCount] = useState(1);
   const [shipmentCount, setShipmentCount] = useState(1);
   const [unloadParcels, setUnloadParcels] = useState(false);
@@ -249,7 +294,7 @@ export function CreateShipmentDialog({
   const quantitySectionRef = useRef<HTMLDivElement>(null);
   const progressEndRef = useRef<HTMLDivElement>(null);
   const logsContainerRef = useRef<HTMLDivElement>(null);
-  const prevSelectedTypeRef = useRef<ShipmentType | null>(null);
+  const prevSelectedTypeRef = useRef<CreateShipmentTypeId | null>(null);
 
   const isWaitingDebounce =
     searchValue.trim().length >= MIN_SEARCH_LENGTH &&
@@ -262,11 +307,23 @@ export function CreateShipmentDialog({
   const shipperValid = isPartySelectionValid(shipperSelection);
   const consigneeValid = isPartySelectionValid(consigneeSelection);
 
+  const selectedExtras = selectedType ? getCreateShipmentExtras(selectedType) : [];
+  const unloadDefaults = selectedType
+    ? getCreateShipmentUnloadDefaults(selectedType)
+    : {};
+  const typeFieldsReady =
+    selectedType !== null &&
+    (!selectedExtras.includes("cod") || !Number.isNaN(Number.parseFloat(codAmount))) &&
+    (!selectedExtras.includes("deps") || !!depsOoh?.oohPointId) &&
+    (!selectedExtras.includes("d4me") || !!d4meOoh?.oohPointId) &&
+    (!selectedExtras.includes("multicolli") ||
+      (multicolliParcelCount >= 2 && multicolliParcelCount <= 10));
+
   const addressesReady =
     !!customerDetails &&
     shipperValid &&
     (distinctStops || consigneeValid) &&
-    selectedType !== null;
+    typeFieldsReady;
 
   const showConsigneeSection = !distinctStops;
   const showBatchOptions = distinctStops ? shipperFilled : consigneeFilled;
@@ -300,13 +357,22 @@ export function CreateShipmentDialog({
     setSuccessCount(0);
     setCreatedShipmentIds([]);
     setSelectedType(null);
-    setCodAmount("10.99");
+    const codDefaults = getDefaultCodSettings((country as NesyCountryCode) || "HR");
+    setCodAmount(String(codDefaults.codAmount));
+    setCodCurrency(codDefaults.codCurrency);
+    setIban(codDefaults.iban);
+    setBicSwift(codDefaults.bicSwift);
+    setExwBillingOption(getDefaultExwBillingOption((country as NesyCountryCode) || "HR"));
+    setDepsOoh(undefined);
+    setD4meOoh(undefined);
+    setMulticolliParcelCount(3);
+    setMulticolliIntegrationCode("CREATE-MC-001");
     setParcelCount(1);
     setShipmentCount(1);
     setUnloadParcels(false);
     setDistinctStops(false);
     prevSelectedTypeRef.current = null;
-  }, []);
+  }, [country]);
 
   useEffect(() => {
     if (!open) {
@@ -362,6 +428,13 @@ export function CreateShipmentDialog({
 
     return () => window.clearTimeout(timer);
   }, [open, selectedType]);
+
+  useEffect(() => {
+    if (!selectedType) return;
+    const defaults = getCreateShipmentUnloadDefaults(selectedType);
+    if (defaults.forceUnload) setUnloadParcels(true);
+    if (defaults.forceNoUnload) setUnloadParcels(false);
+  }, [selectedType]);
 
   useEffect(() => {
     if (!open || !showProgressResult) return;
@@ -507,12 +580,28 @@ export function CreateShipmentDialog({
 
     const buildPartiesForIndex = (index: number) =>
       distinctStops
-        ? buildPartiesWithDistinctConsignee(customerDetails, shipperSelection, index)
+        ? buildPartiesWithDistinctConsignee(
+            customerDetails,
+            shipperSelection,
+            index,
+            country,
+          )
         : buildPartiesFromDetails(customerDetails, shipperSelection, consigneeSelection!);
 
-    const apiShipmentType = mapShipmentType(selectedType);
-    const effectiveParcelCount = distinctStops ? 1 : parcelCount;
-    const unloadSteps = unloadParcels ? effectiveParcelCount : 0;
+    const apiShipmentType = mapCreateShipmentTypeToBff(selectedType);
+    const extras = getCreateShipmentExtras(selectedType);
+    const typeUnloadDefaults = getCreateShipmentUnloadDefaults(selectedType);
+    const shouldUnload = typeUnloadDefaults.forceNoUnload
+      ? false
+      : typeUnloadDefaults.forceUnload
+        ? true
+        : unloadParcels;
+    const effectiveParcelCount = distinctStops
+      ? 1
+      : extras.includes("multicolli")
+        ? multicolliParcelCount
+        : parcelCount;
+    const unloadSteps = shouldUnload ? effectiveParcelCount : 0;
     const totalSteps = shipmentCount * (1 + unloadSteps);
     let completedSteps = 0;
     let createdCount = 0;
@@ -537,19 +626,76 @@ export function CreateShipmentDialog({
       setStatusText(`Shipment ${shipNum}/${shipmentCount} creating...`);
 
       let record: Awaited<ReturnType<typeof createSingleShipment>> | null = null;
+      const parties = buildPartiesForIndex(i);
+
+      // DEPS / D4ME: consignee must be parcelshop mode + OOHID (not Mongo id).
+      const oohForType =
+        extras.includes("deps") && depsOoh?.oohPointId
+          ? { selection: depsOoh, oohType: "parcelshop" as const }
+          : extras.includes("d4me") && d4meOoh?.oohPointId
+            ? { selection: d4meOoh, oohType: "locker" as const }
+            : null;
+
+      if (oohForType) {
+        const { selection, oohType } = oohForType;
+        parties.consignee = {
+          ...parties.consignee,
+          mode: "parcelshop",
+          parcelShop: {
+            oohId: selection.oohPointId,
+            oohType,
+            name: selection.oohName || "OOH Point",
+            address: {
+              addressType: 10,
+              street: parties.consignee.address?.street ?? "",
+              city: selection.city || parties.consignee.address?.city || "",
+              zipCode: selection.zipCode || parties.consignee.address?.zipCode || "",
+              countryCode:
+                parties.consignee.address?.countryCode ||
+                parties.customer.payerAddress?.countryCode ||
+                country,
+            },
+          },
+        };
+      }
 
       try {
-        record = await createSingleShipment({
+        const createBody: Parameters<typeof createSingleShipment>[0] = {
           token,
           country,
           environment,
           parcelCount: effectiveParcelCount,
           shipmentType: apiShipmentType,
-          ...(apiShipmentType === "cod"
-            ? { codAmount: Number.parseFloat(codAmount) || 0 }
-            : {}),
-          parties: buildPartiesForIndex(i),
-        });
+          parties,
+        };
+
+        if (extras.includes("cod")) {
+          createBody.codAmount = Number.parseFloat(codAmount) || 0;
+          createBody.codCurrency = codCurrency;
+          createBody.iban = iban;
+          createBody.bicSwift = bicSwift;
+        }
+        if (extras.includes("exw")) {
+          createBody.billingOption = exwBillingOption;
+          createBody.payerType = 1;
+        }
+        if (oohForType) {
+          createBody.counterLocationConsigneeId = oohForType.selection.oohPointId;
+        }
+        if (extras.includes("multicolli") && multicolliIntegrationCode.trim()) {
+          createBody.integrationCode1 = multicolliIntegrationCode.trim();
+        }
+        if (selectedType === "cpp") {
+          createBody.billingOption = "CPP in cash";
+          createBody.payerType = 2;
+        }
+        if (selectedType === "delivery-pick") {
+          createBody.receiverName = "Test Receiver";
+          // BFF maps this away from CPP cash so Personal Delivery is not stripped.
+          createBody.billingOption = "CPP on invoice";
+        }
+
+        record = await createSingleShipment(createBody);
 
         createdCount++;
         setSuccessCount(createdCount);
@@ -574,14 +720,43 @@ export function CreateShipmentDialog({
           message: `Shipment #${shipNum} create failed: ${error instanceof Error ? error.message : "Unknown"}`,
           time: formatLogTime(),
         });
-        if (unloadParcels) {
+        if (shouldUnload) {
           completedSteps += effectiveParcelCount;
           setProgress(Math.round((completedSteps / totalSteps) * 100));
         }
         continue;
       }
 
-      if (!unloadParcels || !record) continue;
+      if (selectedType === "delivery-pick" && record) {
+        try {
+          const linkedCustomer = bffCustomerFromConsigneeParty(parties);
+          const pickupRecord = await createPickup({
+            token,
+            country,
+            environment,
+            pickupType: "remote",
+            shipmentCount: 1,
+            customer: linkedCustomer,
+          });
+          addLog({
+            key: `s${shipNum}-linked-pickup`,
+            success: true,
+            message: `Linked pickup created (${pickupRecord.shipmentId})`,
+            time: formatLogTime(),
+          });
+        } catch (error) {
+          addLog({
+            key: `s${shipNum}-linked-pickup`,
+            success: false,
+            message: `Delivery created but linked pickup failed: ${
+              error instanceof Error ? error.message : "Unknown"
+            }`,
+            time: formatLogTime(),
+          });
+        }
+      }
+
+      if (!shouldUnload || !record) continue;
 
       const barcodes = extractBarcodes(record.data as Record<string, unknown>);
 
@@ -613,6 +788,7 @@ export function CreateShipmentDialog({
             environment,
             barcode: barcodes[j].barcode,
             isLastParcel: isLast,
+            ...(typeUnloadDefaults.isOversize ? { isOversize: true } : {}),
           });
 
           updateProgress(`Shipment ${shipNum} parcel ${parcelNum} unloaded`);
@@ -655,6 +831,14 @@ export function CreateShipmentDialog({
     isProcessing,
     selectedType,
     codAmount,
+    codCurrency,
+    iban,
+    bicSwift,
+    exwBillingOption,
+    depsOoh,
+    d4meOoh,
+    multicolliParcelCount,
+    multicolliIntegrationCode,
     parcelCount,
     shipmentCount,
     unloadParcels,
@@ -677,7 +861,7 @@ export function CreateShipmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-[620px] flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-[680px] flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="mb-0 space-y-0.5 border-b px-5 py-4">
           <DialogTitle className="text-lg font-semibold">Create Shipments</DialogTitle>
           <DialogDescription>
@@ -854,57 +1038,156 @@ export function CreateShipmentDialog({
 
             {showBatchOptions && (
               <StepSection number={4} title="Shipment Type">
-              <div className="grid grid-cols-3 gap-2">
-                {shipmentTypes.map((type) => {
-                  const Icon = type.icon;
-                  const selected = selectedType === type.value;
-
-                  return (
-                    <button
-                      key={type.value}
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg border bg-background px-2 py-1.5 text-left transition-all hover:border-nesy/70 hover:bg-nesy-soft/40",
-                        selected && "border-nesy bg-nesy-soft/60 shadow-[0_0_0_1px_var(--nesy-orange)]",
-                      )}
-                      onClick={() => setSelectedType(type.value)}
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                Choose the service type for the test shipment. Additional fields appear below
+                when required.
+              </p>
+              <TypeChoiceGrid columns={3}>
+                {CREATE_SHIPMENT_TYPES.map((type) => (
+                  <TypeChoiceCard
+                    key={type.id}
+                    title={type.title}
+                    description={TYPE_DESCRIPTIONS[type.id]}
+                    icon={TYPE_ICONS[type.id]}
+                    selected={selectedType === type.id}
+                    disabled={isProcessing || isCreationDone}
+                    onClick={() => setSelectedType(type.id)}
+                  />
+                ))}
+              </TypeChoiceGrid>
+              {selectedType !== null && selectedExtras.length > 0 && (
+                <div className="mt-4 space-y-3 rounded-lg border border-dashed border-border/80 bg-muted/15 p-3">
+                  <p className="text-xs font-semibold text-foreground">Type settings</p>
+              {selectedExtras.includes("cod") && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-semibold">COD Amount</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={codAmount}
+                      onChange={(event) => setCodAmount(event.target.value)}
+                      disabled={isProcessing || isCreationDone}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-semibold">Currency</Label>
+                    <Select
+                      value={codCurrency}
+                      onValueChange={(v) => setCodCurrency(v as "EUR" | "RSD")}
                       disabled={isProcessing || isCreationDone}
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-nesy-soft text-nesy">
-                        <Icon className="size-3.5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-foreground">
-                          {type.title}
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          selected
-                            ? "border-nesy bg-nesy text-white"
-                            : "border-input bg-background",
-                        )}
-                      >
-                        {selected && <Check className="size-2.5" />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedType === "cod" && (
-                <div className="mt-3 space-y-2">
-                  <Label className="text-[13px] font-semibold">COD Amount</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={codAmount}
-                    onChange={(event) => setCodAmount(event.target.value)}
-                    placeholder="10.99"
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="RSD">RSD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="text-[13px] font-semibold">IBAN</Label>
+                    <Input
+                      value={iban}
+                      onChange={(event) => setIban(event.target.value)}
+                      disabled={isProcessing || isCreationDone}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="text-[13px] font-semibold">BIC / SWIFT</Label>
+                    <Input
+                      value={bicSwift}
+                      onChange={(event) => setBicSwift(event.target.value)}
+                      disabled={isProcessing || isCreationDone}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              )}
+              {selectedExtras.includes("exw") && (
+                <div className="space-y-2">
+                  <Label className="text-[13px] font-semibold">EXW billing</Label>
+                  <Select
+                    value={exwBillingOption}
+                    onValueChange={(v) => setExwBillingOption(v as ExwBillingOption)}
                     disabled={isProcessing || isCreationDone}
-                    className="h-10"
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EXWORKS on invoice">EXWORKS on invoice</SelectItem>
+                      <SelectItem value="EXWORKS in cash">EXWORKS in cash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {selectedExtras.includes("deps") && (
+                <div>
+                  <OohPointPicker
+                    label="Parcel Shop (DEPS)"
+                    value={depsOoh}
+                    oohKind="parcelshop"
+                    onChange={setDepsOoh}
+                    error={
+                      !depsOoh?.oohPointId
+                        ? "Select a parcel shop to create a DEPS shipment"
+                        : undefined
+                    }
                   />
+                </div>
+              )}
+              {selectedExtras.includes("d4me") && (
+                <div>
+                  <OohPointPicker
+                    label="Locker (D4ME)"
+                    value={d4meOoh}
+                    oohKind="locker"
+                    onChange={setD4meOoh}
+                    error={
+                      !d4meOoh?.oohPointId
+                        ? "Select a locker to create a D4ME shipment"
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
+              {selectedExtras.includes("multicolli") && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-semibold">Parcel count (2–10)</Label>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={10}
+                      value={multicolliParcelCount}
+                      onChange={(event) => {
+                        const next = Math.min(
+                          10,
+                          Math.max(2, Number.parseInt(event.target.value, 10) || 2),
+                        );
+                        setMulticolliParcelCount(next);
+                        setParcelCount(next);
+                      }}
+                      disabled={isProcessing || isCreationDone || distinctStops}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[13px] font-semibold">Integration code</Label>
+                    <Input
+                      value={multicolliIntegrationCode}
+                      onChange={(event) => setMulticolliIntegrationCode(event.target.value)}
+                      disabled={isProcessing || isCreationDone}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              )}
                 </div>
               )}
             </StepSection>
@@ -941,10 +1224,21 @@ export function CreateShipmentDialog({
               <div className="grid grid-cols-3 items-end gap-3">
                 <CounterControl
                   label="Parcel Count"
-                  value={distinctStops ? 1 : parcelCount}
-                  min={1}
-                  max={50}
-                  onChange={setParcelCount}
+                  value={
+                    distinctStops
+                      ? 1
+                      : selectedExtras.includes("multicolli")
+                        ? multicolliParcelCount
+                        : parcelCount
+                  }
+                  min={selectedExtras.includes("multicolli") ? 2 : 1}
+                  max={selectedExtras.includes("multicolli") ? 10 : 50}
+                  onChange={(next) => {
+                    if (selectedExtras.includes("multicolli")) {
+                      setMulticolliParcelCount(next);
+                    }
+                    setParcelCount(next);
+                  }}
                   disabled={isProcessing || isCreationDone || distinctStops}
                 />
                 <CounterControl
@@ -961,10 +1255,19 @@ export function CreateShipmentDialog({
                       checked={unloadParcels}
                       onCheckedChange={setUnloadParcels}
                       className="data-[state=checked]:bg-nesy"
-                      disabled={isProcessing || isCreationDone}
+                      disabled={
+                        isProcessing ||
+                        isCreationDone ||
+                        !!unloadDefaults.forceUnload ||
+                        !!unloadDefaults.forceNoUnload
+                      }
                     />
                   </SwitchWrapper>
-                  <Label className="text-[13px] font-semibold">Unload Parcels</Label>
+                  <Label className="text-[13px] font-semibold">
+                    Unload Parcels
+                    {unloadDefaults.isOversize ? " (OVSZ)" : ""}
+                    {unloadDefaults.forceNoUnload ? " (off for DDEF)" : ""}
+                  </Label>
                 </div>
               </div>
             </StepSection>

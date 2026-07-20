@@ -1,0 +1,14 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 15000
+- swipe:
+    start: "50%, 25%"
+    end: "50%, 75%"
+    duration: 600
+- waitForAnimationToEnd
+- swipe:
+    start: "50%, 30%"
+    end: "50%, 30%"
+    duration: 8000

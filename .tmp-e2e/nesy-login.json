@@ -1,0 +1,29 @@
+{
+  "message": "Nesy login successful.",
+  "country": "RS",
+  "environment": "stage",
+  "result": {
+    "resultCode": 200,
+    "resultMessage": "OK",
+    "payload": {
+      "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik9EYzJNakUzTVRJeE9RIn0.eyJwY2giOiJEYXNoYm9hcmQiLCJ2Y2giOiIiLCJyb2xlIjoiYWRtaW4iLCJjdXNpZCI6Ijg4UkU4QjdTL0xmVFhRV2xxNzdqZEE9PSIsImRydmlkIjoiIiwidW5pZCI6ImU3alRLZjJvNGVsMUhWQnBoT2NEK2c9PSIsInVuZGVzYyI6ImRtM1M0ZDZJT1NQMEpCSks1MVUwSUE9PSIsInVpZCI6InlkUXBHOE12bTJudUNLY0NnajhqcEQyS1pmLzZJcGxrS0t4K09SaW1EcTQ9IiwianRpIjoiNTk5NDQ0NjEtYWRiYi00YjAyLTgxNzMtM2Y2NGFkOTY3MTZhIiwiaGlkIjoiZTdqVEtmMm80ZWwxSFZCcGhPY0QrZz09IiwiY3ppZCI6IiIsImJpZCI6ImU3alRLZjJvNGVsMUhWQnBoT2NEK2c9PSIsImZuIjoiUmdYME4rRmtvUWhKSGoycTkzMjdCdz09IiwidW4iOiJHeTNNc3g1VlluMjBld3FaYlAzWVJnPT0iLCJsZyI6IiIsImFoaWRzIjoiIiwibmJmIjoxNzg0NTIzMjA3LCJleHAiOjE3ODQ2MDI4MDAsImlhdCI6MTc4NDUyMzIwNywiaXNzIjoiYXJhc2thcmdvLmNvbS50ciIsImF1ZCI6ImFyYXNrYXJnby5jb20udHIifQ.Dvc4WY6aS5HPxzfryWo_nntHdZ41TezxLjSbqSHdKJnewakiEuSZmI0VKmip0b8zjtfsKGSY2TkwuVW8elUivGA5r5iGTwuET9fV_Agn1wnY4LZVG69f6tZFQ1N-NDTdX2DbY0Xcfd4sX-Kr7j9GL3rlGNPGoVHGZv0x_S3iR_kDxa1yX_SggfL8-h1CjU5wE7Mrbr-aQg8vHNf8wMKooqsxbCiPmQ2HN-IxqloZUdqvtMmOhybZw9UvC6SrQML8E5Si-9_BtTWUc3KwTk7Be9L5fHIzBWPgE-u-wuEmhl5LaxqYRCu9SaRCdSKLHqP6rI3Sq876Zgaj_REiBXi7zw",
+      "user": {
+        "username": "GOKHANADMIN",
+        "fullName": "Gokhan Oncu",
+        "channelType": "Dashboard",
+        "channelVersion": "",
+        "role": "admin",
+        "customerId": 0,
+        "driverId": "",
+        "driverVerificationCode": "",
+        "branchId": "11",
+        "hubName": "CEBeograd",
+        "courierZone": null,
+        "courierAssistZone": null,
+        "cashRegisterKey": null,
+        "direct4MeCourierId": null,
+        "direct4MeQrCode": null
+      }
+    }
+  }
+}

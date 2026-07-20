@@ -102,6 +102,12 @@ const SHIPMENT_GROUPS = [
         color: "text-indigo-500",
       },
       {
+        id: "d4me",
+        label: "D4ME (Locker)",
+        icon: Package,
+        color: "text-fuchsia-500",
+      },
+      {
         id: "mono-multicolli",
         label: "Multicolli Delivery",
         icon: Boxes,
@@ -177,7 +183,7 @@ const PAC_DDEF_UI_TYPES: ShipmentTypeItem[] = PAC_DDEF_TYPE_IDS.map((id, index) 
 }));
 
 const RECOMMENDED_GROUP_TYPE_IDS: Record<string, readonly string[]> = {
-  delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps"],
+  delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps", "d4me"],
   cod: ["cod-delivery"],
   pickup: ["remote-pickup", "pickup-at-customer"],
   return: ["rdoc", "delivery-pick", "red-label", "doco"],
@@ -211,6 +217,10 @@ const SHIPMENT_TYPE_CUSTOMERS: Record<string, ShipmentTypeCustomer> = {
   deps: {
     badge: "Recommended",
     iconBg: "bg-indigo-50",
+  },
+  d4me: {
+    badge: "Recommended",
+    iconBg: "bg-fuchsia-50",
   },
   "mono-multicolli": {
     badge: "Recommended",

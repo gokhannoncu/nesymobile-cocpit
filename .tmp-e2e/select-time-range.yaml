@@ -1,0 +1,25 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+# Path note: zimmet can open Time Range selection before stop is created
+- extendedWaitUntil:
+    visible: "Select Time Range"
+    timeout: 8000
+- tapOn: "07:00 - 09:00"
+- tapOn: "Select"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 20000
+    optional: true

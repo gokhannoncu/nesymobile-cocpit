@@ -1,0 +1,7 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"

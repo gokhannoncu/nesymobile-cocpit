@@ -1,0 +1,127 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "Offline Mode"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/buttonPrimary"
+          optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+      - extendedWaitUntil:
+          visible:
+            id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+          timeout: 8000
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000262417"
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+- runFlow:
+    when:
+      visible: "Select Time Range"
+    commands:
+      - tapOn: "07:00 - 09:00"
+      - tapOn: "Select"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/tie_delivery_name"
+    timeout: 25000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/tie_delivery_name"
+- eraseText: 40
+- inputText: "Test Receiver"
+- pressKey: Enter
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_deliver"
+    direction: DOWN
+    timeout: 15000
+- swipe:
+    start: "25%, 78%"
+    end: "75%, 78%"
+    duration: 500
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_deliver"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDely"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDely"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible: "Cash"
+    commands:
+      - tapOn: "Cash"
+- runFlow:
+    when:
+      visible: "CASH"
+    commands:
+      - tapOn: "CASH"
+- runFlow:
+    when:
+      visible: "Complete"
+    commands:
+      - tapOn: "Complete"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/buttonPrimary"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/buttonPrimary"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - pressKey: Back
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 20000
+    optional: true

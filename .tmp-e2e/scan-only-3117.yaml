@@ -1,0 +1,56 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000263117"
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+      - extendedWaitUntil:
+          visible:
+            id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+          timeout: 10000
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000263117"
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- swipe:
+    start: "50%, 40%"
+    end: "50%, 40%"
+    duration: 2500
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- takeScreenshot: .tmp-e2e/after-scan-3117

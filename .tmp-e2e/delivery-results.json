@@ -1,0 +1,426 @@
+{
+  "scheduleId": "11-36-20260720-1",
+  "scheduleStatus": 2,
+  "deliveriesCompleted": 6,
+  "deliveriesTotal": 11,
+  "pickupsCompleted": 0,
+  "pickupsTotal": 4,
+  "remainingDeliveries": [
+    {
+      "stop": 2,
+      "waybill": "57947209065418",
+      "barcode": "6880051000263216",
+      "doc": true
+    },
+    {
+      "stop": 5,
+      "waybill": "79224564835243",
+      "barcode": "6880051000263414",
+      "doc": false
+    },
+    {
+      "stop": 6,
+      "waybill": "46769007745792",
+      "barcode": "6880051000262615",
+      "doc": false
+    },
+    {
+      "stop": 8,
+      "waybill": "75535925864700",
+      "barcode": "6880051000262318",
+      "doc": false
+    },
+    {
+      "stop": 11,
+      "waybill": "42799239833414",
+      "barcode": "6880051000263117",
+      "doc": false
+    }
+  ],
+  "remainingPickups": [
+    {
+      "stop": 2,
+      "waybill": "97656569471566",
+      "barcode": [
+        "6880051000263919"
+      ]
+    },
+    {
+      "stop": 7,
+      "waybill": "92361378563842",
+      "barcode": [
+        "6880051000264015"
+      ]
+    },
+    {
+      "stop": 12,
+      "waybill": "94643876527895",
+      "barcode": [
+        "6880051000263612"
+      ]
+    },
+    {
+      "stop": 12,
+      "waybill": "74901237799972",
+      "barcode": []
+    }
+  ],
+  "hardBlocks": [
+    "Maestro Android driver UNAVAILABLE / tcp:7001 timeout mid-batch (needs adb forward --remove-all + often adb kill-server)",
+    "After COD Cash: Invoice Summary PRINT dialog; Back dismisses; PRINT can open fiscal flow; Fiscal Created notification sticky (rv_notifications) — force-stop+SplashActivity to recover",
+    "Document collection: Attention dialog Please pick up the document related to this shipment (btn_arasDg_positive_button); stop cards show iv_document",
+    "Delivery options sheet: btnDelivery / btnDeliveryFailed / btnDeps before delivery form",
+    "Stop detail alternate paths: Delivery Failed (btn_not_deliver), Try delivery today again (btn_come_again)",
+    "Pickup scan of legacy short opens stop detail but does not advance Picked Up Parcel Count (0) — pick success path not completed this run",
+    "ADB tap on manuel_input often fails to open barcode dialog; Maestro tap works when driver healthy",
+    "Keyboard can cover btn_ok after inputText — prefer tap OK without hideKeyboard, or press Enter carefully"
+  ],
+  "tasks": [
+    {
+      "stopOrder": 1,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "13761428642948",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 924,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000262813",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 2,
+      "taskType": "delivery",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "57947209065418",
+      "isDocumentCollection": true,
+      "cod": [
+        {
+          "amount": 830,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263216",
+          "shipmentItemStatus": 4,
+          "itemCurrentLocation": 10
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 2,
+      "taskType": "pickup",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "97656569471566",
+      "isDocumentCollection": false,
+      "cod": [],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263919",
+          "shipmentItemStatus": 14,
+          "itemCurrentLocation": 1
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 3,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "16764379017345",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263315",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 4,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "25466993577635",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 1500,
+          "currency": "RSD",
+          "type": 1,
+          "status": 1
+        },
+        {
+          "amount": 830,
+          "currency": "RSD",
+          "type": 1,
+          "status": 1
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000262417",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 5,
+      "taskType": "delivery",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "79224564835243",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263414",
+          "shipmentItemStatus": 4,
+          "itemCurrentLocation": 10
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 6,
+      "taskType": "delivery",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "46769007745792",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000262615",
+          "shipmentItemStatus": 4,
+          "itemCurrentLocation": 10
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 7,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "45816325896622",
+      "isDocumentCollection": true,
+      "cod": [
+        {
+          "amount": 830,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263018",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 7,
+      "taskType": "pickup",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "92361378563842",
+      "isDocumentCollection": false,
+      "cod": [],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000264015",
+          "shipmentItemStatus": 14,
+          "itemCurrentLocation": 1
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 8,
+      "taskType": "delivery",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "75535925864700",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000262318",
+          "shipmentItemStatus": 4,
+          "itemCurrentLocation": 10
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 9,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "72894568294210",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263810",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 10,
+      "taskType": "delivery",
+      "taskStatus": 2,
+      "taskStatusLabel": "Completed",
+      "waybill": "72899493856358",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 995.63,
+          "currency": "RSD",
+          "type": 1,
+          "status": 1
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000262516",
+          "shipmentItemStatus": 6,
+          "itemCurrentLocation": 13
+        }
+      ],
+      "outcome": "completed"
+    },
+    {
+      "stopOrder": 11,
+      "taskType": "delivery",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "42799239833414",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 650,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263117",
+          "shipmentItemStatus": 4,
+          "itemCurrentLocation": 10
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 12,
+      "taskType": "pickup",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "94643876527895",
+      "isDocumentCollection": false,
+      "cod": [
+        {
+          "amount": 0,
+          "currency": "RSD",
+          "type": 1,
+          "status": 2
+        }
+      ],
+      "items": [
+        {
+          "legacySystemShortBarcode": "6880051000263612",
+          "shipmentItemStatus": 0,
+          "itemCurrentLocation": 1
+        }
+      ],
+      "outcome": "remaining"
+    },
+    {
+      "stopOrder": 12,
+      "taskType": "pickup",
+      "taskStatus": 1,
+      "taskStatusLabel": "Assigned",
+      "waybill": "74901237799972",
+      "isDocumentCollection": false,
+      "cod": [],
+      "items": [
+        {
+          "legacySystemShortBarcode": null,
+          "shipmentItemStatus": 0,
+          "itemCurrentLocation": 1
+        }
+      ],
+      "outcome": "remaining"
+    }
+  ],
+  "ts": "2026-07-20T04:10:44.622Z"
+}

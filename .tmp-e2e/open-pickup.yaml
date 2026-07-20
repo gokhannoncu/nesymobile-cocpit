@@ -1,0 +1,20 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 20000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/pickUpFilter"
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 1000
+- takeScreenshot: .tmp-e2e/pickup-filter
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/stopCard"
+    index: 0
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 2000
+- takeScreenshot: .tmp-e2e/pickup-stop

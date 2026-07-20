@@ -1,0 +1,35 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Which operation do you want for this shipment?"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Waiting For Pickup"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+      - extendedWaitUntil:
+          visible:
+            id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+          timeout: 10000
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+      - eraseText: 80
+      - inputText: "6880051000264015"
+      - hideKeyboard
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    timeout: 20000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+- extendedWaitUntil:
+    visible: "Picked Up"
+    timeout: 20000
+    optional: true

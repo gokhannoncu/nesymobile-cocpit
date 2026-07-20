@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="hubId">CEBeograd</string>
+    <string name="zipCode">11010</string>
+    <int name="reOrderedCount" value="0" />
+    <string name="roles">{&quot;payload&quot;:[{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_StopList&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_ManuelRouting&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_Delivery&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_ReleaseParcel&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_ShipmentTracking&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_AskQuestion&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_LinehaulLoad&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_ScanParcel&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_D4meQr&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;},{&quot;permissionChannel&quot;:&quot;Mobile&quot;,&quot;permissionUniqueName&quot;:&quot;Menu_Mobile_AccountSettings&quot;,&quot;roleUniqueName&quot;:&quot;courier&quot;}],&quot;resultCode&quot;:200,&quot;resultMessage&quot;:&quot;OK&quot;}</string>
+    <string name="availableWorkingDays">[&quot;2026-07-20T01:45:08.495+02:00&quot;,&quot;2026-07-21T01:45:08.495+02:00&quot;,&quot;2026-07-22T01:45:08.495+02:00&quot;,&quot;2026-07-23T01:45:08.495+02:00&quot;,&quot;2026-07-24T01:45:08.495+02:00&quot;,&quot;2026-07-27T01:45:08.495+02:00&quot;,&quot;2026-07-28T01:45:08.495+02:00&quot;,&quot;2026-07-29T01:45:08.495+02:00&quot;,&quot;2026-07-30T01:45:08.495+02:00&quot;,&quot;2026-07-31T01:45:08.495+02:00&quot;,&quot;2026-08-03T01:45:08.495+02:00&quot;,&quot;2026-08-04T01:45:08.495+02:00&quot;,&quot;2026-08-05T01:45:08.495+02:00&quot;,&quot;2026-08-06T01:45:08.495+02:00&quot;,&quot;2026-08-07T01:45:08.495+02:00&quot;,&quot;2026-08-10T01:45:08.495+02:00&quot;,&quot;2026-08-11T01:45:08.495+02:00&quot;,&quot;2026-08-12T01:45:08.495+02:00&quot;,&quot;2026-08-13T01:45:08.495+02:00&quot;,&quot;2026-08-14T01:45:08.495+02:00&quot;,&quot;2026-08-17T01:45:08.495+02:00&quot;,&quot;2026-08-18T01:45:08.495+02:00&quot;]</string>
+    <string name="language">tr</string>
+    <int name="alternativePort" value="0" />
+    <string name="long">29.237071666666665</string>
+    <string name="timeRangeSelectedStopIds">[&quot;72894568294210&quot;,&quot;79224564835243&quot;,&quot;16764379017345&quot;,&quot;25466993577635&quot;,&quot;57947209065418&quot;,&quot;97656569471566&quot;,&quot;75535925864700&quot;,&quot;42799239833414&quot;,&quot;13761428642948&quot;,&quot;46769007745792&quot;,&quot;72899493856358&quot;,&quot;45816325896622&quot;,&quot;92361378563842&quot;]</string>
+    <string name="pakHeader">113600</string>
+    <boolean name="isLogin" value="true" />
+    <boolean name="allowBackPress" value="true" />
+    <string name="pin">3680</string>
+    <string name="alternativeHttp"></string>
+    <int name="scheduleStatus" value="2" />
+    <float name="actualDistance" value="0.0" />
+    <string name="scheduleId">11-36-20260720-1</string>
+    <string name="lat">40.63650500000001</string>
+    <int name="branchId" value="11" />
+    <boolean name="offlineMode" value="false" />
+    <int name="loginAttemptCount" value="0" />
+    <string name="unitName">CEBeograd</string>
+    <string name="cashRegisterKey"></string>
+    <string name="appName">test-Nesy-Mobile-Test</string>
+    <string name="forceLoadBarcodeList">[]</string>
+    <string name="alternativeURL"></string>
+    <string name="courierAssistZone">null</string>
+    <string name="fullName">GOKHAN ONCU</string>
+    <boolean name="autoDeps" value="false" />
+    <string name="employeeUnitId">11</string>
+    <string name="versionCode">0.1157</string>
+    <string name="token">eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik9EYzJNakUzTVRJeE9RIn0.eyJwY2giOiJNb2JpbGUiLCJ2Y2giOiIiLCJyb2xlIjoiY291cmllciIsImN1c2lkIjoiODhSRThCN1MvTGZUWFFXbHE3N2pkQT09IiwiZHJ2aWQiOiIiLCJ1bmlkIjoiZTdqVEtmMm80ZWwxSFZCcGhPY0QrZz09IiwidW5kZXNjIjoiZG0zUzRkNklPU1AwSkJKSzUxVTBJQT09IiwidWlkIjoidXA3ZFRnWXBnTXphNHc4OGtmR1pQUTBjOWx5WHJzK1VyRUI5bzY1bnRiOD0iLCJqdGkiOiIyZGNmY2E0Ni1hOTMzLTQyNWEtOWZjMy04ZmI5NTExNTkwMzIiLCJoaWQiOiJlN2pUS2YybzRlbDFIVkJwaE9jRCtnPT0iLCJjemlkIjoiIiwiYmlkIjoiZTdqVEtmMm80ZWwxSFZCcGhPY0QrZz09IiwiZm4iOiJJbzdYaHBidmxzamY1Nk5uWlk1bnJBPT0iLCJ1biI6IkFBMWRDbEg0bXNUaDNBSzhYS1Z6eWc9PSIsImxnIjoiIiwiYWhpZHMiOiIiLCJuYmYiOjE3ODQ1MDQ3MDMsImV4cCI6MTc4NDUxNjQwMCwiaWF0IjoxNzg0NTA0NzAzLCJpc3MiOiJhcmFza2FyZ28uY29tLnRyIiwiYXVkIjoiYXJhc2thcmdvLmNvbS50ciJ9.VII7Dk-DUw7-4r8RNIhACQpy2_KcCrvxB9VGVh0AY3xmNCze--QPdzVZzQf0QGvU2mqcrdtkEf6d_HSWRcWZ76mO0IJFeiCnAGp01_Bo4e_8_6ZN6WPpeuPgOUcjzDa_gPkUvQXpiS1G_x_hZWnUY5fLJgOhVe3glPA3sAjduEEEE5853JCn11JKd7aW5J3LHFdWphSW_fTDcAk20WdgcMurDyVEttIaN3H0xyBFlJsqOTGjFGCFMl_Kb8nNouczcP95QdRjzX4n0y17u_yqpQd_gr8SQNQjblEhYGnoZu-Y2deDy6xe8_WVLWZA7Wdmesvoa6TYeJawYGR5abU6fg</string>
+    <string name="driverVerificationCode"></string>
+    <string name="firebaseToken">d_zOOk_JSFSCokboOgFYzv:APA91bFowgMbofs7d4idukvTmwxTig2erpN1U51WcEbs_dPU2ivGCjPcr3RFg3okCglsym5eO4IycrOHuhVEwNxCqUc2y51LFCD-_9YOm6TRbBDQGxVxSrA</string>
+    <string name="route">36</string>
+    <string name="latestVersion">Version:187</string>
+    <long name="loginBlockTime" value="0" />
+    <int name="dailyScheduleNumber" value="1" />
+    <string name="reorderedList">[]</string>
+    <string name="userRole">courier</string>
+    <string name="contractedCustomerList">[&quot;10803&quot;,&quot;29522&quot;,&quot;28049&quot;]</string>
+    <string name="username">G.ONCU</string>
+    <boolean name="isGDPRConfirmed" value="true" />
+</map>

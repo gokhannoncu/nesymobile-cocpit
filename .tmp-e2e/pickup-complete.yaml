@@ -1,0 +1,28 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_deliver"
+    commands:
+      - swipe:
+          start: "20%, 78%"
+          end: "85%, 78%"
+          duration: 700
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_deliver"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: .tmp-e2e/pickup-complete1

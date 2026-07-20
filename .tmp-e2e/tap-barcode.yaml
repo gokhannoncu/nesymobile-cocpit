@@ -1,0 +1,7 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- tapOn: "6880051000263018"
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 2500

@@ -60,10 +60,14 @@ export function ShipmentSettingsPanel({
         includedTypeIds.has("pickup-at-customer")));
 
   const showDeps =
-    (contextId === "delivery" || contextId === "deps" || contextId === "all") &&
-    (contextId === "deps" || contextId === "all"
-      ? includedTypeIds.has("deps")
-      : includedTypeIds.has("deps"));
+    contextId === "deps" ||
+    (contextId === "delivery" && includedTypeIds.has("deps")) ||
+    (contextId === "all" && includedTypeIds.has("deps"));
+
+  const showD4me =
+    contextId === "d4me" ||
+    (contextId === "delivery" && includedTypeIds.has("d4me")) ||
+    (contextId === "all" && includedTypeIds.has("d4me"));
 
   const showExw =
     contextId === "exw-delivery" ||
@@ -88,6 +92,7 @@ export function ShipmentSettingsPanel({
   const pickup = "pickUpDateOffsetDays" in settings ? settings : "pickup" in settings ? settings.pickup : null;
   const exw = "exw" in settings ? settings.exw : undefined;
   const deps = "deps" in settings ? settings.deps : undefined;
+  const d4me = "d4me" in settings ? settings.d4me : undefined;
 
   return (
     <div className="space-y-5">
@@ -290,6 +295,18 @@ export function ShipmentSettingsPanel({
             onChange({ ...settings, deps: selection } as ShipmentSettings)
           }
           error={fieldError(errors, "deps.oohPoint")}
+        />
+      )}
+
+      {showD4me && (
+        <OohPointPicker
+          label="Locker (D4ME)"
+          value={d4me}
+          oohKind="locker"
+          onChange={(selection) =>
+            onChange({ ...settings, d4me: selection } as ShipmentSettings)
+          }
+          error={fieldError(errors, "d4me.oohPoint")}
         />
       )}
 

@@ -1,0 +1,76 @@
+﻿{
+    "capturedAt":  "2026-07-20T06:22:48.1564260+03:00",
+    "device":  "R6CW400BC8N",
+    "package":  "com.arasdigital.nesymobile.rstest",
+    "zimmet":  {
+                   "targetParcelCount":  13,
+                   "peakUiLoadedParcels":  11,
+                   "finalUiLoadedParcels":  9,
+                   "uiRemainingStops":  10,
+                   "scheduleStopCount":  12,
+                   "scheduleId":  "11-36-20260720-1",
+                   "scheduleFile":  ".tmp-e2e/sched-final.json",
+                   "scanFieldUsed":  "legacySystemShortBarcode (scan) with full barcode (N...) fallback; never shipmentId",
+                   "status":  "PARTIAL",
+                   "notes":  [
+                                 "Peak Loaded Parcels on UI reached 11/13 during the run",
+                                 "Final UI Loaded Parcels: 9; Remaining Stops UI: 10; schedule stops: 12",
+                                 "Maestro frequently failed asserting manuel_input (driver/accessibility flake, tcp:7001 drops)",
+                                 "Interruptions: Offline mode dialog, notification shade, Waiting Approval, brief return to Login",
+                                 "Visible leftovers included 6880051000263117 and 6880051000263612"
+                             ]
+               },
+    "pickups":  {
+                    "login":  {
+                                  "ok":  true,
+                                  "tokenFile":  ".tmp-e2e/token.txt",
+                                  "country":  "RS",
+                                  "environment":  "stage"
+                              },
+                    "assignP1":  {
+                                     "id":  "22a26de5-5982-4ee8-84b1-523e8f87d5de",
+                                     "branchId":  "11",
+                                     "courierZoneCode":  "36",
+                                     "http":  404,
+                                     "response":  {
+                                                      "message":  "Pickup not found in Nesy pickup list."
+                                                  }
+                                 },
+                    "assignP2":  {
+                                     "id":  "e43fbeab-529c-4571-bdc8-48adce217a0f",
+                                     "branchId":  "11",
+                                     "courierZoneCode":  "36",
+                                     "http":  404,
+                                     "response":  {
+                                                      "message":  "Pickup not found in Nesy pickup list."
+                                                  }
+                                 },
+                    "list":  [
+                                 {
+                                     "id":  "22a26de5-5982-4ee8-84b1-523e8f87d5de",
+                                     "assignStatus":  "TaskNotFound",
+                                     "shipmentId":  "74901237799972",
+                                     "taskId":  null,
+                                     "branchId":  null,
+                                     "courierZoneCode":  null,
+                                     "declaredPickupDate":  "2026-07-20T23:13:49.956Z"
+                                 },
+                                 {
+                                     "id":  "e43fbeab-529c-4571-bdc8-48adce217a0f",
+                                     "assignStatus":  "TaskNotFound",
+                                     "shipmentId":  "94643876527895",
+                                     "taskId":  null,
+                                     "branchId":  null,
+                                     "courierZoneCode":  null,
+                                     "declaredPickupDate":  "2026-07-20T23:13:42.384Z"
+                                 }
+                             ],
+                    "listFile":  ".tmp-e2e/picks-list.json",
+                    "status":  "BLOCKED",
+                    "blocker":  "Both pickups not found in Nesy Task/GetPickupList (campaignCode=shipmentId, hubId=100, date from declaredPickupDate 2026-07-20). assignStatus ended TaskNotFound / PickupListFailed."
+                },
+    "blockers":  [
+                     "Zimmet incomplete (~9-11/13): Maestro cannot reliably drive manuel_input; further loads stalled",
+                     "Pickup assign hard-blocked: Nesy pickup list has no matching tasks for shipmentIds 74901237799972 and 94643876527895"
+                 ]
+}

@@ -1,0 +1,138 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "Write barcode number"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible: "PRINT"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/rv_notifications"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_exit"
+          optional: true
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    timeout: 15000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+- eraseText: 80
+- inputText: "6880051000263414"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/tie_delivery_name"
+    timeout: 35000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/tie_delivery_name"
+- eraseText: 40
+- inputText: "Test Receiver"
+- pressKey: Enter
+- hideKeyboard
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 500
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 500
+- swipe:
+    start: "20%, 80%"
+    end: "85%, 80%"
+    duration: 600
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_deliver"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDely"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btnDely"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible: "Cash"
+    commands:
+      - tapOn: "Cash"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+# COD fiscal invoice print dialog
+- runFlow:
+    when:
+      visible: "PRINT"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/tvInvoiceSummary"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btnDelivery"
+    commands:
+      - pressKey: Back
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 25000
+    optional: true
+

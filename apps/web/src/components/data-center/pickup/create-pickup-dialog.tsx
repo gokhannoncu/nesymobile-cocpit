@@ -1,16 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Building2, Package } from "lucide-react";
 import { Button } from "@nesy/metronic/components/ui/button";
 import { Input } from "@nesy/metronic/components/ui/input";
 import { Label } from "@nesy/metronic/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@nesy/metronic/components/ui/select";
 import {
   Dialog,
   DialogBody,
@@ -23,6 +17,8 @@ import { ScrollArea } from "@nesy/metronic/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@nesy/metronic/components/ui/alert";
 import { useNesyAuth } from "@/contexts/nesy-auth-context";
 import { CustomerSearch } from "@/components/data-center/customer-search";
+import { TypeChoiceCard, TypeChoiceGrid } from "@/components/data-center/type-choice-card";
+import { getDefaultPickupSettings } from "@/lib/happy-path/shipment-group-settings";
 import { createPickup } from "@/services/pickup";
 import type { BffCustomerPayload } from "@/services/customer";
 
@@ -31,6 +27,21 @@ interface LogEntry {
   success: boolean;
   message: string;
 }
+
+const PICKUP_TYPES = [
+  {
+    value: "remote" as const,
+    title: "Remote Pickup",
+    description: "Pickup at a remote address",
+    icon: Package,
+  },
+  {
+    value: "customer" as const,
+    title: "Pickup At Customer",
+    description: "Pickup at customer (PAC)",
+    icon: Building2,
+  },
+];
 
 export function CreatePickupDialog({
   open,
@@ -42,9 +53,15 @@ export function CreatePickupDialog({
   onCreated?: () => void;
 }) {
   const { token, country, environment, status: authStatus } = useNesyAuth();
+  const defaults = getDefaultPickupSettings();
 
   const [pickupType, setPickupType] = useState<"remote" | "customer">("remote");
   const [shipmentCount, setShipmentCount] = useState(1);
+  const [pickUpDateOffsetDays, setPickUpDateOffsetDays] = useState(
+    defaults.pickUpDateOffsetDays,
+  );
+  const [pickupEndTime, setPickupEndTime] = useState(defaults.pickupEndTime);
+  const [parcelWeight, setParcelWeight] = useState(defaults.parcelWeight);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
@@ -54,8 +71,12 @@ export function CreatePickupDialog({
   const isConnected = authStatus === "connected" && !!token;
 
   const resetForm = useCallback(() => {
+    const nextDefaults = getDefaultPickupSettings();
     setPickupType("remote");
     setShipmentCount(1);
+    setPickUpDateOffsetDays(nextDefaults.pickUpDateOffsetDays);
+    setPickupEndTime(nextDefaults.pickupEndTime);
+    setParcelWeight(nextDefaults.parcelWeight);
     setProgress(0);
     setStatusText("");
     setLogs([]);
@@ -85,6 +106,9 @@ export function CreatePickupDialog({
         environment,
         pickupType,
         shipmentCount,
+        pickUpDateOffsetDays,
+        pickupEndTime,
+        parcelWeight,
         ...(bffCustomer ? { customer: bffCustomer } : {}),
       });
 
@@ -108,7 +132,19 @@ export function CreatePickupDialog({
     } finally {
       setIsProcessing(false);
     }
-  }, [token, country, environment, pickupType, shipmentCount, bffCustomer, onCreated, addLog]);
+  }, [
+    token,
+    country,
+    environment,
+    pickupType,
+    shipmentCount,
+    pickUpDateOffsetDays,
+    pickupEndTime,
+    parcelWeight,
+    bffCustomer,
+    onCreated,
+    addLog,
+  ]);
 
   const handleClose = useCallback(() => {
     if (isProcessing) return;
@@ -124,12 +160,12 @@ export function CreatePickupDialog({
         onOpenChange(true);
       }
     },
-    [handleClose, onOpenChange]
+    [handleClose, onOpenChange],
   );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Create Pickup</DialogTitle>
         </DialogHeader>
@@ -154,35 +190,78 @@ export function CreatePickupDialog({
 
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Pickup Type</Label>
-                <Select
-                  value={pickupType}
-                  onValueChange={(v) => setPickupType(v as "remote" | "customer")}
-                  disabled={isProcessing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Pickup Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="remote">Remote Pickup</SelectItem>
-                    <SelectItem value="customer">Pickup At Customer</SelectItem>
-                  </SelectContent>
-                </Select>
+                <TypeChoiceGrid columns={2}>
+                  {PICKUP_TYPES.map((type) => (
+                    <TypeChoiceCard
+                      key={type.value}
+                      title={type.title}
+                      description={type.description}
+                      icon={type.icon}
+                      selected={pickupType === type.value}
+                      disabled={isProcessing}
+                      onClick={() => setPickupType(type.value)}
+                    />
+                  ))}
+                </TypeChoiceGrid>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Shipment Count</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={shipmentCount}
-                  onChange={(e) =>
-                    setShipmentCount(
-                      Math.max(1, Number.parseInt(e.target.value, 10) || 1)
-                    )
-                  }
-                  disabled={isProcessing}
-                />
+              <div className="space-y-3 rounded-lg border border-dashed border-border/80 bg-muted/15 p-3">
+                <p className="text-xs font-semibold text-foreground">Pickup settings</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="text-xs font-medium">Shipment count</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={shipmentCount}
+                      onChange={(e) =>
+                        setShipmentCount(
+                          Math.max(1, Number.parseInt(e.target.value, 10) || 1),
+                        )
+                      }
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Pickup date offset (days)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={pickUpDateOffsetDays}
+                      onChange={(e) =>
+                        setPickUpDateOffsetDays(
+                          Math.max(0, Number.parseInt(e.target.value, 10) || 0),
+                        )
+                      }
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Pickup end time</Label>
+                    <Input
+                      type="time"
+                      value={pickupEndTime}
+                      onChange={(e) => setPickupEndTime(e.target.value || "21:00")}
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="text-xs font-medium">Parcel weight</Label>
+                    <Input
+                      type="number"
+                      min={0.1}
+                      step={0.1}
+                      value={parcelWeight}
+                      onChange={(e) =>
+                        setParcelWeight(
+                          Math.max(0.1, Number.parseFloat(e.target.value) || 0.1),
+                        )
+                      }
+                      disabled={isProcessing}
+                    />
+                  </div>
+                </div>
               </div>
 
               {(isProcessing || progress > 0) && (

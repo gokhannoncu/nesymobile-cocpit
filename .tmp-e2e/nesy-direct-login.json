@@ -1,0 +1,1 @@
+{"errors":{"password":["Unexpected character encountered while parsing value: G. Path 'Password', line 2, position 15."]},"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"traceId":"00-0eae454667b93f3e92a93718b3772f31-3200e10ea61ed896-01"}

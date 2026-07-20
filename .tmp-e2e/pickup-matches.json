@@ -1,0 +1,36 @@
+[
+  {
+    "id": "6a5d5a27c768d3a200f658ba",
+    "createdAt": "2026-07-19T23:13:43.141Z",
+    "date": "2026-07-20T00:00:00Z",
+    "courierZoneCode": "41",
+    "hubId": "11",
+    "taskType": 2,
+    "sender": "_CASH",
+    "campaignCode": "94643876527895",
+    "pickupAddress": "SVETOG SAVE 36, 11271, SURČIN, RS",
+    "pickupFromTime": "02:13:00",
+    "pickupToTime": "17:00:00",
+    "pickUpType": 2,
+    "isSeriesPickup": false,
+    "consigneeCustomerId": "1000",
+    "consigneeName": "_CASH"
+  },
+  {
+    "id": "6a5d5a2ec768d3a200f658bb",
+    "createdAt": "2026-07-19T23:13:50.032Z",
+    "date": "2026-07-20T00:00:00Z",
+    "courierZoneCode": "41",
+    "hubId": "11",
+    "taskType": 3,
+    "sender": "_CASH",
+    "campaignCode": "74901237799972",
+    "pickupAddress": "SVETOG SAVE 36, 11271, SURČIN, RS",
+    "pickupFromTime": "02:13:00",
+    "pickupToTime": "17:00:00",
+    "pickUpType": 3,
+    "isSeriesPickup": false,
+    "consigneeCustomerId": "1000",
+    "consigneeName": "_CASH"
+  }
+]

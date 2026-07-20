@@ -1,5 +1,5 @@
 export const HAPPY_PATH_GROUP_TYPE_IDS: Record<string, readonly string[]> = {
-  delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps"],
+  delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps", "d4me"],
   cod: ["cod-delivery"],
   pickup: ["remote-pickup", "pickup-at-customer"],
   return: ["rdoc", "delivery-pick", "red-label", "doco"],
@@ -19,6 +19,7 @@ export const HAPPY_PATH_TYPE_ORDER = [
   "cod-delivery",
   "exw-delivery",
   "deps",
+  "d4me",
   "mono-multicolli",
   "remote-pickup",
   "ddef-shipment-1",
@@ -38,6 +39,7 @@ export const HAPPY_PATH_TYPE_LABELS: Record<HappyPathTypeId, string> = {
   "cod-delivery": "COD Delivery",
   "exw-delivery": "EXW Delivery",
   deps: "DEPS",
+  d4me: "D4ME (Locker)",
   "mono-multicolli": "Multicolli Delivery",
   "remote-pickup": "Remote Pickup",
   "pickup-at-customer": "Pickup At Customer (PAC)",
@@ -91,6 +93,13 @@ export const HAPPY_PATH_TYPE_CONFIG: Record<HappyPathTypeId, HappyPathTypeConfig
     route: "shipment",
     requiresUnloadAfterCreate: true,
     bffShipmentType: "deps",
+  },
+  d4me: {
+    typeId: "d4me",
+    label: HAPPY_PATH_TYPE_LABELS.d4me,
+    route: "shipment",
+    requiresUnloadAfterCreate: true,
+    bffShipmentType: "d4me",
   },
   "mono-multicolli": {
     typeId: "mono-multicolli",

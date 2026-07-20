@@ -1,0 +1,17 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 10000
+- tapOn: "ASSIGNED"
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 800
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/stopCard"
+    index: 0
+- swipe:
+    start: "50%, 50%"
+    end: "50%, 50%"
+    duration: 2000

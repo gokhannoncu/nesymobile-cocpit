@@ -1,0 +1,44 @@
+[
+  {
+    "shipmentId": "42799239833414",
+    "parcelCode": "CQ5661",
+    "scan": "6880051000263117",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "45816325896622",
+    "parcelCode": "FP4416",
+    "scan": "6880051000263018",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "13761428642948",
+    "parcelCode": "PW7070",
+    "scan": "6880051000262714",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "13761428642948",
+    "parcelCode": "TH8230",
+    "scan": "6880051000262813",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "13761428642948",
+    "parcelCode": "DG1653",
+    "scan": "6880051000262912",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "46769007745792",
+    "parcelCode": "ZX8999",
+    "scan": "6880051000262615",
+    "kind": "legacyShort"
+  },
+  {
+    "shipmentId": "72899493856358",
+    "parcelCode": "KK8354",
+    "scan": "6880051000262516",
+    "kind": "legacyShort"
+  }
+]

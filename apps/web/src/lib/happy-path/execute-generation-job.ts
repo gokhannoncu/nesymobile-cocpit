@@ -64,10 +64,11 @@ async function resolveParties(
     | undefined;
 
   if (oohPoint?.oohPointId) {
+    const oohType = job.typeId === "d4me" ? "locker" : "parcelshop";
     consignee.mode = "parcelshop";
     consignee.parcelShop = {
       oohId: oohPoint.oohPointId,
-      oohType: "parcelshop",
+      oohType,
       name: oohPoint.oohName ?? "OOH Point",
       address: {
         addressType: 10,

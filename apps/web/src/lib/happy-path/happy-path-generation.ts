@@ -66,6 +66,7 @@ function resolveAssignmentForType(
     "exw-delivery": "delivery",
     "mono-multicolli": "delivery",
     deps: "delivery",
+    d4me: "delivery",
     "cod-delivery": "cod",
     "remote-pickup": "pickup",
     "ddef-shipment-1": "pickup",
@@ -94,6 +95,7 @@ function resolveSettingsForJob(
     "exw-delivery": "delivery",
     "mono-multicolli": "delivery",
     deps: "delivery",
+    d4me: "delivery",
     "cod-delivery": "cod",
     "remote-pickup": "pickup",
     "ddef-shipment-1": "pickup",
@@ -141,7 +143,7 @@ export function buildGenerationQueue(params: {
         : mode === "custom"
           ? typeId
           : (Object.entries({
-              delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps"],
+              delivery: ["standard-delivery", "exw-delivery", "mono-multicolli", "deps", "d4me"],
               cod: ["cod-delivery"],
               pickup: ["remote-pickup", "pickup-at-customer"],
               return: ["rdoc", "delivery-pick", "red-label", "doco"],

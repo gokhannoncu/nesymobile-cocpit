@@ -1,0 +1,13 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- scrollUntilVisible:
+    element: "Pickup Failed"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Pickup Failed"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: .tmp-e2e/pickup-failed-screen
