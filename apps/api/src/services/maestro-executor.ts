@@ -26,6 +26,16 @@ export interface MaestroResult {
   duration: number;
 }
 
+/** Server-side backend verification request emitted by the NESY_BACKEND_CHECK marker. */
+export interface BackendCheckEvent {
+  nodeId: string;
+  shipmentRef: string;
+  /** Expected event short codes / numeric codes (any one match passes). */
+  codes: string[];
+  /** Delay before the first backend poll, in ms. */
+  delayMs: number;
+}
+
 export function formatMaestroFailure(result: MaestroResult): string {
   const summary = `Maestro exited with code ${result.exitCode}`;
   const detail = result.output.trim();
@@ -78,6 +88,8 @@ export function resolveMaestroSpawn(
 const STEP_START_PATTERN = /NESY_STEP::START::(?<nodeId>[^:]+)::(?<nodeType>[^'")\s]+)/;
 const STEP_DONE_PATTERN = /NESY_STEP::DONE::(?<nodeId>[^:]+)::(?<nodeType>[^'")\s]+)/;
 const STEP_FAIL_PATTERN = /NESY_STEP::FAIL::(?<nodeId>[^:]+)::(?<message>.+)/;
+const BACKEND_CHECK_PATTERN =
+  /NESY_BACKEND_CHECK::(?<nodeId>[^:]+)::(?<shipmentRef>[^:]*)::(?<codes>[^:]*)::(?<delayMs>\d+)/;
 
 export class MaestroExecutor extends EventEmitter {
   private yamlPath: string;
@@ -220,6 +232,22 @@ export class MaestroExecutor extends EventEmitter {
       };
       this.activeStepWarnings = 0;
       this.emit("step", event);
+      return;
+    }
+
+    const backendMatch = line.match(BACKEND_CHECK_PATTERN);
+    if (backendMatch?.groups?.nodeId) {
+      const codes = (backendMatch.groups.codes ?? "")
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      const event: BackendCheckEvent = {
+        nodeId: backendMatch.groups.nodeId,
+        shipmentRef: (backendMatch.groups.shipmentRef ?? "").trim(),
+        codes,
+        delayMs: Number(backendMatch.groups.delayMs ?? "5000"),
+      };
+      this.emit("backendCheck", event);
       return;
     }
 

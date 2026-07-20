@@ -27,6 +27,7 @@ import {
 import {
   MaestroExecutor,
   type StepEvent,
+  type BackendCheckEvent,
 } from "./maestro-executor.js";
 import { LogcatSniffer } from "./logcat-sniffer.js";
 import { RunStore } from "./run-store.js";
@@ -37,6 +38,14 @@ import {
   broadcastSetRun,
   getDeviceBridgeState,
 } from "./test-event-bridge.js";
+import { BackendVerifier } from "./backend-verifier.js";
+import { runServerSteps, hasServerSteps } from "./server-steps.js";
+import {
+  isNesyDashboardCountry,
+  isNesyEnvironment,
+  type NesyCountry,
+  type NesyEnvironment,
+} from "../nesy-env.js";
 
 const SCREENSHOT_BASE_DIR = path.resolve(process.cwd(), "maestro", "run");
 
@@ -164,6 +173,7 @@ export const WorkflowRunner = {
       environment: run.environment ?? undefined,
       country: run.country ?? undefined,
       config: (run.version.config as Record<string, unknown>) ?? undefined,
+      runInput: (run.runInput as unknown as Record<string, string> | null) ?? undefined,
     };
 
     const bridgeAppId = resolveWorkflowAppId(nodes);
@@ -388,6 +398,41 @@ export const WorkflowRunner = {
       // confirmations into per-node verdicts based on each node's completionPolicy.
       const oracle = new OracleEngine(runId, nodes);
 
+      // Server-side backend verification (NESY_BACKEND_CHECK markers). Each check
+      // runs independently; the run waits for all of them before finalizing so a
+      // node with verifyBackend can't pass on UI alone.
+      const runCountry: NesyCountry | null =
+        run.country && isNesyDashboardCountry(run.country) ? run.country : null;
+      const runEnvironment: NesyEnvironment | null =
+        run.environment && isNesyEnvironment(run.environment) ? run.environment : null;
+      const backendVerifier = new BackendVerifier();
+      const pendingBackendChecks: Promise<void>[] = [];
+
+      executor.on("backendCheck", (check: BackendCheckEvent) => {
+        const task = (async () => {
+          if (!runCountry || !runEnvironment) {
+            await oracle.recordBackendVerification(
+              check.nodeId,
+              false,
+              `Backend verification requested but run country/environment is not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"}).`,
+            );
+            return;
+          }
+          if (check.delayMs > 0) await new Promise((r) => setTimeout(r, check.delayMs));
+          const result = await backendVerifier.verify({
+            country: runCountry,
+            environment: runEnvironment,
+            shipmentRef: check.shipmentRef,
+            codes: check.codes,
+          });
+          logArtifactEvent("backend_check", { nodeId: check.nodeId, ...result });
+          await oracle.recordBackendVerification(check.nodeId, result.passed, result.detail);
+        })().catch((err) => {
+          console.warn("[WorkflowRunner] backend check failed:", err instanceof Error ? err.message : err);
+        });
+        pendingBackendChecks.push(task);
+      });
+
       // Spans: measure spawn → first stdout line as process startup cost.
       function attachStartupSpan(targetExecutor: MaestroExecutor, spanName: string, attrs?: Record<string, string>): void {
         let spawnedAt: number | null = null;
@@ -571,6 +616,32 @@ export const WorkflowRunner = {
       // backend confirmation never arrived are FAILED — a green screen alone
       // does not pass the test.
       await stepQueue;
+
+      // Wait for any in-flight server-side backend verifications (NESY_BACKEND_CHECK).
+      if (pendingBackendChecks.length > 0) {
+        await spanRecorder.measureAsync("backend_verify", () => Promise.allSettled(pendingBackendChecks));
+      }
+
+      // Post-Maestro server steps (tour / end-of-day dispatcher approvals).
+      if (hasServerSteps(nodes) && result.exitCode === 0) {
+        if (runCountry && runEnvironment) {
+          await spanRecorder.measureAsync("server_steps", () =>
+            runServerSteps({
+              nodes,
+              country: runCountry,
+              environment: runEnvironment,
+              deviceId: bridgeDeviceId,
+              appId: bridgeAppId,
+              oracle,
+            }),
+          );
+        } else {
+          console.warn(
+            `[WorkflowRunner] server steps skipped — run country/environment not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"})`,
+          );
+        }
+      }
+
       const { oracleFailures } = await oracle.finalizeRun(result.exitCode === 0);
 
       // 14. Determine final status (Maestro exit code + oracle verdict)

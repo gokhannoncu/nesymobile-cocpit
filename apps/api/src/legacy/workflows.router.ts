@@ -8,6 +8,21 @@ import { generateWorkflowWorkspace } from "../services/yaml-generator.js";
 
 const router: ReturnType<typeof Router> = Router();
 
+/**
+ * Coerces a request body `runInput` into a flat string map. Run-time inputs
+ * (barcode, shipmentId, ...) are substituted into node config as {{key}} tokens
+ * and exposed as Maestro env vars, so only string-valued scalars are kept.
+ */
+function sanitizeRunInput(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === "string") out[key] = raw;
+    else if (typeof raw === "number" || typeof raw === "boolean") out[key] = String(raw);
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -566,7 +581,7 @@ router.get("/:id/versions/:versionId", async (req, res) => {
 router.post("/:id/run", async (req, res) => {
   try {
     const { id } = req.params;
-    const { selectedDeviceId, mode, targetStepId, country, environment } = req.body;
+    const { selectedDeviceId, mode, targetStepId, country, environment, runInput } = req.body;
 
     console.log(`[POST /:id/run] Starting run for workflow: ${id}`, { selectedDeviceId, mode, targetStepId });
 
@@ -612,6 +627,7 @@ router.post("/:id/run", async (req, res) => {
         deviceId: selectedDeviceId ?? null,
         country: finalCountry ?? null,
         environment: finalEnvironment ?? null,
+        runInput: sanitizeRunInput(runInput) ?? Prisma.DbNull,
       },
     });
 
@@ -713,7 +729,7 @@ router.post("/:id/run", async (req, res) => {
 router.post("/:id/run-step", async (req, res) => {
   try {
     const { id } = req.params;
-    const { nodeId, mode, selectedDeviceId } = req.body;
+    const { nodeId, mode, selectedDeviceId, runInput } = req.body;
 
     if (!nodeId) {
       res.status(400).json({ message: "nodeId is required" });
@@ -740,6 +756,7 @@ router.post("/:id/run-step", async (req, res) => {
         mode: mode ?? "single_step",
         targetStepId: nodeId,
         deviceId: selectedDeviceId ?? null,
+        runInput: sanitizeRunInput(runInput) ?? Prisma.DbNull,
       },
     });
 

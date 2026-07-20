@@ -1,0 +1,64 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- extendedWaitUntil:
+    visible: "Waiting For Pickup"
+    timeout: 15000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+- eraseText: 120
+- inputText: "N6880110004100000010006880110006300110001000136502571298539FI35781"
+- hideKeyboard
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- waitForAnimationToEnd
+# Payment / confirm dialogs
+- runFlow:
+    when:
+      visible: "Cash"
+    commands:
+      - tapOn: "Cash"
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/complete_task"
+- runFlow:
+    when:
+      visible: "PRINT"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/tvInvoiceSummary"
+    commands:
+      - pressKey: Back
+- extendedWaitUntil:
+    visible: "Picked Up"
+    timeout: 25000
+    optional: true

@@ -1,0 +1,30 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible: "PRINT"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/tvInvoiceSummary"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_arasDg_positive_button"
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Stop List"
+    timeout: 20000
+    optional: true

@@ -1,0 +1,22 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- assertVisible: "Waiting For Pickup"
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+    timeout: 10000
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/et_input_dialog_barcode_number"
+- eraseText: 100
+- inputText: "6880051000264114"
+- hideKeyboard
+- tapOn:
+    id: "com.arasdigital.nesymobile.rstest:id/btn_ok"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: .tmp-e2e/pac-scan-on-task

@@ -50,6 +50,9 @@ export const DEFAULT_COMPLETION_POLICIES: Record<string, NodeCompletionPolicy> =
   OPEN_SHIPMENT: { required: ["ui", "mobileEvent"] },
   OPEN_PARCEL: { required: ["ui", "mobileEvent"] },
   VERIFY_BACKEND_STATE: { required: ["backend"] },
+  // Server-side approval steps (server-steps.ts) resolve the "backend" oracle.
+  TOUR_APPROVE: { required: ["backend"] },
+  EOD_APPROVE: { required: ["backend"] },
 };
 
 const DEFAULT_POLICY: NodeCompletionPolicy = { required: ["ui"] };
@@ -241,6 +244,16 @@ export class OracleEngine {
 
   onUiStepFailed(nodeId: string, message: string): void {
     this.record(nodeId, "ui", "failed", message);
+  }
+
+  /**
+   * Records the server-side backend verification result (NESY_BACKEND_CHECK
+   * poller or a server approval step) for a specific node and finalizes the
+   * step if its policy is now satisfied.
+   */
+  async recordBackendVerification(nodeId: string, passed: boolean, detail: string): Promise<void> {
+    this.record(nodeId, "backend", passed ? "passed" : "failed", detail);
+    await this.finalizeStepIfComplete(nodeId);
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -574,16 +587,22 @@ export class OracleEngine {
 }
 
 function resolvePolicy(nodeType: string, config?: Record<string, unknown>): NodeCompletionPolicy {
-  const base = DEFAULT_COMPLETION_POLICIES[nodeType] ?? DEFAULT_POLICY;
+  let policy = DEFAULT_COMPLETION_POLICIES[nodeType] ?? DEFAULT_POLICY;
 
   const override = config?.completionPolicy;
   if (override && typeof override === "object" && !Array.isArray(override)) {
     const required = (override as Record<string, unknown>).required;
     if (Array.isArray(required)) {
       const kinds = required.filter(isOracleKind);
-      if (kinds.length > 0) return { required: kinds };
+      if (kinds.length > 0) policy = { required: kinds };
     }
   }
 
-  return base;
+  // `verifyBackend: true` on a node makes the server-side backend event check a
+  // hard requirement even for node types whose default policy omits it.
+  if (config?.verifyBackend === true && !policy.required.includes("backend")) {
+    policy = { required: [...policy.required, "backend"] };
+  }
+
+  return policy;
 }

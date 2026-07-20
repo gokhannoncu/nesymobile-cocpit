@@ -1,0 +1,11 @@
+{
+  "dbId": "5de90bf5-dc89-4285-8ec6-41f627c1f26d",
+  "shipmentId": "36502571298539",
+  "customerId": 1000,
+  "customerName": "CASH",
+  "barcode": "N6880110004100000010006880110006300110001000136502571298539FI35781",
+  "legacy": "~0011000000688688005100026411400010001",
+  "legacyShort": "6880051000264114",
+  "seq": "10002641",
+  "note": "barcode after unload from SearchShipment"
+}

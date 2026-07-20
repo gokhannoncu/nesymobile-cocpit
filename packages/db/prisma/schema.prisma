@@ -185,6 +185,11 @@ model WorkflowRun {
   country      String?
   environment  String?
 
+  /// Run-time inputs (barcode, shipmentId, ...) merged into the Maestro env and
+  /// used to resolve {{placeholder}} tokens in node config. Lets one workflow run
+  /// against different shipments without editing the saved version.
+  runInput     Json?
+
   yamlContent   String?
   startedAt     DateTime?
   completedAt   DateTime?

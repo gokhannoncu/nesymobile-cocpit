@@ -51,6 +51,12 @@ interface YamlGeneratorOptions {
   environment?: string;
   country?: string;
   config?: Record<string, unknown>;
+  /**
+   * Run-time inputs (barcode, shipmentId, ...). Merged into the Maestro `env`
+   * block and used to resolve `{{key}}` tokens in node config so one saved
+   * workflow can run against different shipments. Overrides version `config`.
+   */
+  runInput?: Record<string, string>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,6 +146,40 @@ function cfg(node: WorkflowNode): Record<string, unknown> {
   return node.data.config ?? {};
 }
 
+/**
+ * Substitution variables for `{{token}}` placeholders in node config.
+ * runInput wins over version config so a run can override saved values.
+ */
+function buildRunVars(options: YamlGeneratorOptions): Record<string, string> {
+  const vars: Record<string, string> = {};
+  if (options.config) {
+    for (const [key, val] of Object.entries(options.config)) {
+      if (typeof val === "string") vars[key] = val;
+    }
+  }
+  if (options.runInput) {
+    for (const [key, val] of Object.entries(options.runInput)) vars[key] = val;
+  }
+  return vars;
+}
+
+function substituteTokens(value: string, vars: Record<string, string>): string {
+  return value.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_match, key: string) => vars[key] ?? "");
+}
+
+/** Resolves `{{token}}` placeholders in every string (and string-array) config value. */
+function resolveConfig(config: Record<string, unknown>, vars: Record<string, string>): Record<string, unknown> {
+  if (Object.keys(vars).length === 0) return config;
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(config)) {
+    if (typeof val === "string") out[key] = substituteTokens(val, vars);
+    else if (Array.isArray(val)) {
+      out[key] = val.map((item) => (typeof item === "string" ? substituteTokens(item, vars) : item));
+    } else out[key] = val;
+  }
+  return out;
+}
+
 function str(val: unknown, fallback = ""): string {
   return typeof val === "string" ? val : fallback;
 }
@@ -152,8 +192,23 @@ function bool(val: unknown, fallback = false): boolean {
   return typeof val === "boolean" ? val : fallback;
 }
 
-function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: string): string {
-  const c = cfg(node);
+/**
+ * Collects barcodes from a node config that may carry either a singular
+ * `barcode` (UI schema) or a plural `barcodes[]` (API-authored / multicolli).
+ * Empty strings are dropped.
+ */
+function collectBarcodes(c: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  if (Array.isArray(c.barcodes)) {
+    for (const item of c.barcodes) if (typeof item === "string" && item.trim()) out.push(item.trim());
+  }
+  const single = str(c.barcode).trim();
+  if (single && !out.includes(single)) out.push(single);
+  return out;
+}
+
+function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: string): string {
+  const c = resolveConfig(cfg(node), buildRunVars(options));
   const pinViewId = resourceId(appId, "pinView");
   const loginButtonId = resourceId(appId, "btn_login");
 
@@ -274,13 +329,19 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     }
 
     case "SEARCH_PARCEL": {
-      const parcelId = str(c.parcelId, "");
-      return searchOnStopsYaml(appId, parcelId);
+      // UI schema: barcode / legacySystemShortBarcode / trimmed variant.
+      const parcelQuery =
+        str(c.barcode) ||
+        str(c.legacySystemShortBarcode) ||
+        str(c.legacySystemShortBarcodeTrim) ||
+        str(c.parcelId);
+      return searchOnStopsYaml(appId, parcelQuery);
     }
 
     case "SEARCH_STOP": {
-      const stopId = str(c.stopId, "");
-      return searchOnStopsYaml(appId, stopId);
+      // UI schema field is `stopOrder`; keep legacy `stopId` as a fallback.
+      const stopOrder = str(c.stopOrder, str(c.stopId, ""));
+      return searchOnStopsYaml(appId, stopOrder);
     }
 
     case "REQUEST_TOUR_START":
@@ -301,6 +362,36 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     commands:
       - tapOn:
           id: "${appId}:id/auto_route"`;
+
+    case "END_OF_DAY": {
+      // Schedule must be Approved; btn_out reads "End Of Tour" and triggers the
+      // mobile Task/RequestScheduleEndOfDay, then an ArasDialog confirmation.
+      // Server-side approval (ApproveScheduleEndOfDay) is a separate EOD_APPROVE step.
+      const btnOutId = resourceId(appId, "btn_out");
+      const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
+      return `# --- END OF DAY (request) ---
+- extendedWaitUntil:
+    visible:
+      id: "${btnOutId}"
+    timeout: 10000
+- tapOn:
+    id: "${btnOutId}"
+- runFlow:
+    when:
+      visible:
+        id: "${dialogPositiveId}"
+    commands:
+      - tapOn:
+          id: "${dialogPositiveId}"`;
+    }
+
+    case "TOUR_APPROVE":
+    case "EOD_APPROVE": {
+      // Executed server-side after Maestro (see server-steps.ts). The marker keeps
+      // the node visible in step tracking; its completionPolicy requires the
+      // "backend" oracle, which the server phase resolves.
+      return `- evalScript: \${console.log("NESY_SERVER_STEP::${node.id}::${node.type}")}`;
+    }
 
     case "OPEN_SHIPMENT": {
       const barcode = str(c.barcode, str(c.trackingNumber, ""));
@@ -363,7 +454,8 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     case "OPEN_STOP": {
       // stop_item_<n> is a gated automation contentDescription set by
       // StopsAdapter (n = stopOrder); Maestro's text selector matches it.
-      const stopIndex = str(c.stopIndex, "0");
+      // UI schema field is `stopOrder`; keep legacy `stopIndex` as a fallback.
+      const stopIndex = str(c.stopOrder, str(c.stopIndex, "0"));
       return `- tapOn: "stop_item_${stopIndex}"`;
     }
 
@@ -478,7 +570,31 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
       - tapOn:
           id: "${dialogPositiveId}"`;
 
-      // Completion is verified by the logcat DELIVER_PARCEL handler (BACKEND_CONFIRMED).
+      // COD / cash flow (config codCash=true): choose "Cash" then dismiss the
+      // fiscal invoice-summary screen. PRINT (android:id/button2) fires a sticky
+      // "Fiscal Created" notification, so the safe dismiss is a Back press.
+      if (bool(c.codCash) || str(c.paymentType).toLowerCase() === "cash") {
+        const invoiceSummaryId = resourceId(appId, "tvInvoiceSummary");
+        yaml += `
+# (Optional) COD cash selection
+- runFlow:
+    when:
+      visible:
+        text: "Cash"
+    commands:
+      - tapOn:
+          text: "Cash"
+# (Optional) Fiscal invoice summary — dismiss with Back
+- runFlow:
+    when:
+      visible:
+        id: "${invoiceSummaryId}"
+    commands:
+      - pressKey: Back`;
+      }
+
+      // Completion is verified by the logcat DELIVER_PARCEL handler (BACKEND_CONFIRMED)
+      // and, when verifyBackend is set, by the server-side event poller (NESY_BACKEND_CHECK).
       return yaml;
     }
 
@@ -486,7 +602,8 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
       // Verified flow: barcodes go in via the toolbar manual-input dialog
       // (manuel_input → et_input_dialog_barcode_number → btn_ok); pickup is
       // completed with btn_task_complete on the pickup screen.
-      const barcodes = Array.isArray(c.barcodes) ? (c.barcodes as string[]) : [];
+      // UI schema uses a single `barcode`; API-authored flows may pass `barcodes[]`.
+      const barcodes = collectBarcodes(c);
       const manuelInputId = resourceId(appId, "manuel_input");
       const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
       const barcodeOkId = resourceId(appId, "btn_ok");
@@ -545,16 +662,44 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     case "REMOTE_PICKUP_OPERATION":
     case "PICKUP_AT_CUSTOMER_OPERATION":
     case "RDOC_OPERATION": {
-      // These flows open dialog_pickup_at_remote automatically after the
-      // barcode scan; confirmation is the shared complete_task button.
+      // On the "Waiting For Pickup" task the barcodes are scanned via the manual
+      // input dialog; the app then shows dialog_pickup_at_remote ("Please scan
+      // all the barcodes") and the shared complete_task button confirms.
+      // RDOC carries deliveryBarcode/pickupBarcode; PAC/remote carry barcode(s).
       const completeTaskId = resourceId(appId, "complete_task");
-      return `# --- ${node.type} (confirm via dialog_pickup_at_remote) ---
+      const manuelInputId = resourceId(appId, "manuel_input");
+      const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
+      const barcodeOkId = resourceId(appId, "btn_ok");
+
+      const barcodes = collectBarcodes(c);
+      for (const extra of [c.deliveryBarcode, c.pickupBarcode]) {
+        const b = str(extra).trim();
+        if (b && !barcodes.includes(b)) barcodes.push(b);
+      }
+
+      let yaml = `# --- ${node.type} (confirm via dialog_pickup_at_remote) ---`;
+      for (const barcode of barcodes) {
+        yaml += `
+- tapOn:
+    id: "${manuelInputId}"
+- extendedWaitUntil:
+    visible:
+      id: "${barcodeInputId}"
+    timeout: 5000
+- tapOn:
+    id: "${barcodeInputId}"
+- inputText: "${barcode}"
+- tapOn:
+    id: "${barcodeOkId}"`;
+      }
+      yaml += `
 - extendedWaitUntil:
     visible:
       id: "${completeTaskId}"
     timeout: 10000
 - tapOn:
     id: "${completeTaskId}"`;
+      return yaml;
     }
 
     case "LOS_OPERATION": {
@@ -587,7 +732,9 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
       // screen opens the reason list; rows carry the gated contentDescription
       // fail_reason_<backend code>; tapping the row submits. Some reasons show
       // an ArasDialog yes/no afterwards.
-      const failReason = str(c.failReason, "1");
+      // fail_reason_<code> contentDescription selects the row. API-authored
+      // flows pass the numeric `failReason`; UI `failureReason` is a fallback.
+      const failReason = str(c.failReason) || str(c.failureReason, "1");
       const btnDeliveryFailedId = resourceId(appId, "btnDeliveryFailed");
       const btnDeliverId = resourceId(appId, "btn_deliver");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
@@ -617,7 +764,7 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     case "PICKUP_FAIL_OPERATION": {
       // Entry from the task card is btn_not_deliver; reason rows carry the
       // gated fail_reason_<code> contentDescription; tapping the row submits.
-      const failReason = str(c.failReason, "1");
+      const failReason = str(c.failReason) || str(c.failureReason, "1");
       const btnNotDeliverId = resourceId(appId, "btn_not_deliver");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
       return `# --- PICKUP FAIL OPERATION (reason code: ${failReason}) ---
@@ -669,8 +816,9 @@ function nodeYaml(node: WorkflowNode, _options: YamlGeneratorOptions, appId: str
     }
 
     case "ASSERT_VISIBLE": {
-      const elementId = str(c.elementId, "");
-      const text = str(c.text, "");
+      // `selector` is an alias for elementId (resource id); `text` matches label.
+      const elementId = str(c.elementId) || str(c.selector);
+      const text = str(c.text);
       if (elementId) {
         return `- assertVisible:
     id: "${elementId}"`;
@@ -911,6 +1059,7 @@ function generateBranchYaml(
       yaml += generateConditionalYaml(node, edges, nodeMap, visited, options, appId, markerDone(node)) + "\n";
     } else {
       yaml += nodeYaml(node, options, appId) + "\n";
+      yaml += backendCheckMarker(node, options);
       yaml += markerDone(node);
     }
 
@@ -926,6 +1075,39 @@ function generateBranchYaml(
 // ─────────────────────────────────────────────────────────────────────────────
 // Marker Injection
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Parses expectedEventCodes as an array (of number/string) or a CSV string. */
+function normalizeEventCodes(value: unknown): string[] {
+  const push = (out: string[], v: unknown) => {
+    if (typeof v === "number") out.push(String(v));
+    else if (typeof v === "string" && v.trim()) out.push(v.trim());
+  };
+  const out: string[] = [];
+  if (Array.isArray(value)) {
+    for (const item of value) push(out, item);
+  } else if (typeof value === "string") {
+    for (const part of value.split(",")) push(out, part);
+  } else {
+    push(out, value);
+  }
+  return out;
+}
+
+/**
+ * Server-side backend verification marker. Emitted right after an operation
+ * node whose config sets `verifyBackend: true`; the runner parses it from
+ * Maestro stdout and polls EventTower/GetEvents for the expected event codes.
+ * Format: NESY_BACKEND_CHECK::<nodeId>::<shipmentRef>::<codesCsv>::<delayMs>
+ */
+function backendCheckMarker(node: WorkflowNode, options: YamlGeneratorOptions): string {
+  const c = resolveConfig(cfg(node), buildRunVars(options));
+  if (!bool(c.verifyBackend)) return "";
+  const shipmentRef = (str(c.shipmentRef) || str(c.barcode) || collectBarcodes(c)[0] || "").trim();
+  const codes = normalizeEventCodes(c.expectedEventCodes);
+  if (!shipmentRef || codes.length === 0) return "";
+  const delayMs = num(c.verifyDelayMs, 5000);
+  return `- evalScript: \${console.log("NESY_BACKEND_CHECK::${node.id}::${shipmentRef}::${codes.join(",")}::${delayMs}")}\n`;
+}
 
 function markerStart(node: WorkflowNode): string {
   return `- evalScript: \${console.log("NESY_STEP::START::${node.id}::${node.type}")}\n`;
@@ -960,6 +1142,10 @@ function buildYamlHeader(options: YamlGeneratorOptions, appId: string): string {
     for (const [key, val] of Object.entries(options.config)) {
       if (typeof val === "string") envVars[key] = val;
     }
+  }
+  // Run-time inputs override version config in the Maestro env block too.
+  if (options.runInput) {
+    for (const [key, val] of Object.entries(options.runInput)) envVars[key] = val;
   }
 
   let header = `appId: "${appId}"\n`;
@@ -1002,6 +1188,7 @@ export function generateWorkflowYaml(options: YamlGeneratorOptions): string {
       body += generateConditionalYaml(node, edges, nodeMap, visited, options, appId, markerDone(node)) + "\n";
     } else {
       body += nodeYaml(node, options, appId) + "\n";
+      body += backendCheckMarker(node, options);
       body += markerDone(node);
     }
   }
@@ -1105,6 +1292,7 @@ export function generateWorkflowWorkspace(
     mainBody += `\n# ===== STEP: ${node.id} (${node.type}) =====\n`;
     mainBody += markerStart(node);
     mainBody += `- runFlow:\n    file: ${fileName}\n`;
+    mainBody += backendCheckMarker(node, options);
     mainBody += markerDone(node);
   }
 
