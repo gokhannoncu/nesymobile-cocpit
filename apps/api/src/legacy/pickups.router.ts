@@ -694,13 +694,15 @@ router.post("/:id/assign", async (req, res) => {
       pickupDateStr = formatDateOnly(d);
     }
 
+    // RS CEBeograd uses hubId "11"; HR default is "100". Prefer the caller's
+    // branchId so country-specific hubs resolve (PATH-NOTES hub-100 blocker).
     const pickupListResponse = await fetch(`${baseUrl}/Task/GetPickupList`, {
       method: "POST",
       headers: nesyHeaders(token),
       body: JSON.stringify({
         startDate: pickupDateStr,
         endDate: pickupDateStr,
-        hubId: "100",
+        hubId: branchId,
         pickupFromTime: null,
         pickupToTime: null,
       }),

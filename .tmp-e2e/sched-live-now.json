@@ -1,0 +1,300 @@
+{
+  "serial": "R6CW400BC8N",
+  "packageName": "com.arasdigital.nesymobile.rstest",
+  "capturedAt": "2026-07-20T18:35:48.052Z",
+  "databaseName": "aras_kurye",
+  "databasePath": "/data/user/0/com.arasdigital.nesymobile.rstest/databases/aras_kurye",
+  "sizeBytes": 94208,
+  "walSizeBytes": 473832,
+  "shmSizeBytes": 32768,
+  "scheduleRowCount": 1,
+  "stopChunkCount": 2,
+  "schedule": {
+    "id": 1,
+    "scheduleId": "11-36-20260720-1",
+    "timeStamp": "20-07-2026-21:32:14",
+    "status": 2,
+    "courierName": "GOKHAN ONCU",
+    "courierId": "6889e5bdf06d7b29960cfa23",
+    "vehiclePlate": "-",
+    "branchCode": "11",
+    "stops": [
+      {
+        "stopId": "6a5e5c8f14388af86aa410bb",
+        "stopOrder": 1,
+        "timeWindow": {
+          "startTime": "07:00:00",
+          "endTime": "09:00:00"
+        },
+        "estimatedTimeOfArrival": "00:00:00",
+        "latitude": 44.81471525,
+        "longitude": 20.46054203,
+        "orderChanged": false,
+        "taskList": [
+          {
+            "taskId": "6a5e5c8f14388af86aa410bc",
+            "lastStopId": null,
+            "taskStatus": 2,
+            "taskType": 2,
+            "taskParty": "HappyPath Consignee",
+            "taskAddress": "TERAZIJE ,11000 ,BEOGRAD ,RS",
+            "streetTag": "TERAZIJE",
+            "gsm": "067000099",
+            "consigneeEmail": "happypath@test.nesy.local",
+            "isConsigneeAtTheAddress": false,
+            "isDropAtTheDoor": false,
+            "waveNumber": 1,
+            "remarkText": null,
+            "shipmentList": [
+              {
+                "waybillNumber": "84806074705579",
+                "trackingNumber": "84806074705579",
+                "deliveryCode": "5438",
+                "sender": "CASH",
+                "marketPlace": null,
+                "packageType": 2,
+                "shipmentStatus": 2,
+                "shipmentType": 1,
+                "recipientType": 1,
+                "customerTypeId": 2,
+                "isDocumentCollection": false,
+                "isRedirection": 0,
+                "shipmentItemCount": 1,
+                "activeShipmentItemCount": 1,
+                "deliveryRemark": null,
+                "consigneeGsm": "067000099",
+                "collections": [
+                  {
+                    "collectionAmount": 650,
+                    "collectionStatus": 1,
+                    "collectionType": 1,
+                    "currency": "RSD",
+                    "serviceType": 39,
+                    "paymentTimeStamp": "2026-07-20T18:15:28.243Z"
+                  }
+                ],
+                "shipmentItemList": [
+                  {
+                    "barcode": "N6880110004100000010006880110006300110001000184806074705579RM14401",
+                    "legacySystemShortBarcode": "6880051000268310",
+                    "deci": 0,
+                    "weight": 5,
+                    "itemCurrentLocation": 13,
+                    "shipmentItemStatus": 6,
+                    "deliveryFailureReason": 0,
+                    "isOverSize": false,
+                    "lastStatusUpdatedAt": "2026-07-20T18:15:28.243Z"
+                  }
+                ]
+              },
+              {
+                "waybillNumber": "82076131640786",
+                "trackingNumber": "82076131640786",
+                "deliveryCode": "7912",
+                "sender": "CASH",
+                "marketPlace": null,
+                "packageType": 2,
+                "shipmentStatus": 2,
+                "shipmentType": 1,
+                "recipientType": 1,
+                "customerTypeId": 2,
+                "isDocumentCollection": false,
+                "isRedirection": 0,
+                "shipmentItemCount": 1,
+                "activeShipmentItemCount": 1,
+                "deliveryRemark": null,
+                "consigneeGsm": "067000099",
+                "collections": [
+                  {
+                    "collectionAmount": 10,
+                    "collectionStatus": 1,
+                    "collectionType": 1,
+                    "currency": "EUR",
+                    "serviceType": 20,
+                    "paymentTimeStamp": "2026-07-20T17:56:52.428Z"
+                  },
+                  {
+                    "collectionAmount": 830,
+                    "collectionStatus": 1,
+                    "collectionType": 1,
+                    "currency": "RSD",
+                    "serviceType": 39,
+                    "paymentTimeStamp": "2026-07-20T17:56:52.428Z"
+                  }
+                ],
+                "shipmentItemList": [
+                  {
+                    "barcode": "N6880110004100000010006880110006300110001000982076131640786UO50481",
+                    "legacySystemShortBarcode": "6880051000268419",
+                    "deci": 0,
+                    "weight": 5,
+                    "itemCurrentLocation": 13,
+                    "shipmentItemStatus": 6,
+                    "deliveryFailureReason": 0,
+                    "isOverSize": false,
+                    "lastStatusUpdatedAt": "2026-07-20T17:56:52.425Z"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "stopId": "6a5e686b14388af86aa410bf",
+        "stopOrder": 2,
+        "timeWindow": {
+          "startTime": "08:00:00",
+          "endTime": "18:00:00"
+        },
+        "estimatedTimeOfArrival": "00:00:00",
+        "latitude": 0,
+        "longitude": 0,
+        "orderChanged": false,
+        "taskList": [
+          {
+            "taskId": "6a5e686b14388af86aa410c0",
+            "lastStopId": null,
+            "taskStatus": 1,
+            "taskType": 1,
+            "taskParty": "_CASH",
+            "taskAddress": "11271, BELGRADE",
+            "streetTag": null,
+            "gsm": "4607-000",
+            "consigneeEmail": null,
+            "isConsigneeAtTheAddress": false,
+            "isDropAtTheDoor": false,
+            "waveNumber": 2,
+            "remarkText": null,
+            "shipmentList": [
+              {
+                "waybillNumber": "20486893755281",
+                "trackingNumber": "20486893755281",
+                "deliveryCode": "9623",
+                "sender": "_CASH",
+                "marketPlace": null,
+                "packageType": 0,
+                "shipmentStatus": 0,
+                "shipmentType": 0,
+                "recipientType": 0,
+                "customerTypeId": 0,
+                "isDocumentCollection": false,
+                "isRedirection": 0,
+                "shipmentItemCount": 0,
+                "activeShipmentItemCount": 0,
+                "deliveryRemark": null,
+                "consigneeGsm": null,
+                "collections": [
+                  {
+                    "collectionAmount": 0,
+                    "collectionStatus": 2,
+                    "collectionType": 1,
+                    "currency": "RSD",
+                    "serviceType": 39,
+                    "paymentTimeStamp": "0001-01-01T00:00:00Z"
+                  }
+                ],
+                "shipmentItemList": [
+                  {
+                    "barcode": "N6880100000000000010006880100000000112711000120486893755281AH90671",
+                    "legacySystemShortBarcode": "6880051000269119",
+                    "deci": 0,
+                    "weight": 0,
+                    "itemCurrentLocation": 1,
+                    "shipmentItemStatus": 0,
+                    "deliveryFailureReason": 0,
+                    "isOverSize": false,
+                    "lastStatusUpdatedAt": "2026-07-20T18:26:51.945Z"
+                  }
+                ]
+              },
+              {
+                "waybillNumber": "16514132325829",
+                "trackingNumber": "16514132325829",
+                "deliveryCode": "2610",
+                "sender": "_CASH",
+                "marketPlace": null,
+                "packageType": 0,
+                "shipmentStatus": 0,
+                "shipmentType": 0,
+                "recipientType": 0,
+                "customerTypeId": 0,
+                "isDocumentCollection": false,
+                "isRedirection": 0,
+                "shipmentItemCount": 0,
+                "activeShipmentItemCount": 0,
+                "deliveryRemark": null,
+                "consigneeGsm": null,
+                "collections": [
+                  {
+                    "collectionAmount": 0,
+                    "collectionStatus": 2,
+                    "collectionType": 1,
+                    "currency": "RSD",
+                    "serviceType": 39,
+                    "paymentTimeStamp": "0001-01-01T00:00:00Z"
+                  }
+                ],
+                "shipmentItemList": [
+                  {
+                    "barcode": "N6880100000000000010006880100000000112711000116514132325829OZ76081",
+                    "legacySystemShortBarcode": "6880051000269218",
+                    "deci": 0,
+                    "weight": 0,
+                    "itemCurrentLocation": 1,
+                    "shipmentItemStatus": 0,
+                    "deliveryFailureReason": 0,
+                    "isOverSize": false,
+                    "lastStatusUpdatedAt": "2026-07-20T18:26:55.226Z"
+                  }
+                ]
+              },
+              {
+                "waybillNumber": "88455241787384",
+                "trackingNumber": "88455241787384",
+                "deliveryCode": "4045",
+                "sender": "_CASH",
+                "marketPlace": null,
+                "packageType": 0,
+                "shipmentStatus": 0,
+                "shipmentType": 0,
+                "recipientType": 0,
+                "customerTypeId": 0,
+                "isDocumentCollection": false,
+                "isRedirection": 0,
+                "shipmentItemCount": 0,
+                "activeShipmentItemCount": 0,
+                "deliveryRemark": null,
+                "consigneeGsm": null,
+                "collections": [
+                  {
+                    "collectionAmount": 0,
+                    "collectionStatus": 2,
+                    "collectionType": 1,
+                    "currency": "RSD",
+                    "serviceType": 39,
+                    "paymentTimeStamp": "0001-01-01T00:00:00Z"
+                  }
+                ],
+                "shipmentItemList": [
+                  {
+                    "barcode": "N6880100000000000010006880100000000112711000188455241787384BY65221",
+                    "legacySystemShortBarcode": "6880051000269317",
+                    "deci": 0,
+                    "weight": 0,
+                    "itemCurrentLocation": 1,
+                    "shipmentItemStatus": 0,
+                    "deliveryFailureReason": 0,
+                    "isOverSize": false,
+                    "lastStatusUpdatedAt": "2026-07-20T18:26:57.223Z"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": []
+}

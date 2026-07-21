@@ -11,5 +11,5 @@ appId: com.arasdigital.nesymobile.rstest
 - extendedWaitUntil:
     visible:
       id: nesy_probe_never
-    timeout: 6000
+    timeout: 12000
     optional: true

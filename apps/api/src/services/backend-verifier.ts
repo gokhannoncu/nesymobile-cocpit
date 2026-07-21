@@ -79,16 +79,28 @@ export class BackendVerifier {
         body: JSON.stringify([{ value: ref, filterType: 1 }]),
       });
       if (!res.ok) return ref;
-      const json = asRecord(await res.json());
-      const payload = asRecord(json.payload ?? json.Payload);
-      const items =
-        (Array.isArray(payload.items) && payload.items) ||
-        (Array.isArray(payload.Items) && payload.Items) ||
-        (Array.isArray(json.items) && json.items) ||
-        [];
+      const json = await res.json();
+      const root = asRecord(json);
+      const payload = root.payload ?? root.Payload ?? json;
+      // RS stage often returns a bare array in payload (not { items: [...] }).
+      const items: unknown[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(asRecord(payload).items)
+          ? (asRecord(payload).items as unknown[])
+          : Array.isArray(asRecord(payload).Items)
+            ? (asRecord(payload).Items as unknown[])
+            : Array.isArray(root.items)
+              ? (root.items as unknown[])
+              : [];
       const first = asRecord(items[0]);
       const id =
-        first.shipmentId ?? first.ShipmentId ?? first.id ?? first.Id ?? first.shipmentID;
+        first.shipmentId ??
+        first.ShipmentId ??
+        first.waybillNumber ??
+        first.WaybillNumber ??
+        first.id ??
+        first.Id ??
+        first.shipmentID;
       return typeof id === "string" && id.trim() ? id.trim() : typeof id === "number" ? String(id) : ref;
     } catch {
       return ref;
@@ -117,8 +129,9 @@ export class BackendVerifier {
 
   async verify(req: BackendVerifyRequest): Promise<BackendVerifyResult> {
     const { country, environment, shipmentRef, codes } = req;
-    const attempts = req.attempts ?? 3;
-    const intervalMs = req.intervalMs ?? 3000;
+    // RS stage delivery (esp. COD/fiscal) often lands events 20–90s after UI finish.
+    const attempts = req.attempts ?? 20;
+    const intervalMs = req.intervalMs ?? 5000;
 
     if (!shipmentRef || codes.length === 0) {
       return { passed: false, detail: "Missing shipmentRef or expected codes." };
@@ -145,11 +158,16 @@ export class BackendVerifier {
         if (res.ok) {
           const json = await res.json();
           lastFound = this.extractFoundCodes(json);
-          const matched = lastFound.find((f) => expected.has(f));
-          if (matched) {
+          // Require every requested code (e.g. DELY+CODH), not just the first hit.
+          const missing = codes.filter((c) => {
+            const forms = expandCode(c);
+            return ![...forms].some((f) => lastFound.includes(f));
+          });
+          if (missing.length === 0) {
+            const matched = codes.join(",");
             return {
               passed: true,
-              detail: `Backend event ${matched} found for shipment ${shipmentId} (attempt ${attempt}/${attempts}).`,
+              detail: `Backend event(s) [${matched}] found for shipment ${shipmentId} (attempt ${attempt}/${attempts}).`,
               shipmentId,
               matchedCode: matched,
               foundCodes: lastFound,

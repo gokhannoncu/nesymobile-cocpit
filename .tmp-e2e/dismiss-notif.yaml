@@ -1,0 +1,15 @@
+appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/btn_exit"
+    commands:
+      - tapOn:
+          id: "com.arasdigital.nesymobile.rstest:id/btn_exit"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/manuel_input"
+    timeout: 15000
+    optional: true

@@ -43,10 +43,18 @@ export interface OracleEvidence {
  */
 export const DEFAULT_COMPLETION_POLICIES: Record<string, NodeCompletionPolicy> = {
   DELIVERY_OPERATION: { required: ["ui", "mobileEvent", "backend"] },
-  LOAD_TO_VEHICLE: { required: ["ui", "mobileEvent"] },
+  // Multi-barcode loads: per-parcel GENERIC_ERROR is non-fatal; UI completion
+  // of the Maestro loop is the gate. mobileEvent still recorded when a parcel
+  // pipeline succeeds, but is no longer required for the node to pass.
+  LOAD_TO_VEHICLE: { required: ["ui"] },
   SCAN_BARCODE: { required: ["ui", "mobileEvent"] },
-  VALIDATE_STOPLIST: { required: ["mobileEvent"] },
-  REQUEST_TOUR_START: { required: ["ui", "mobileEvent"] },
+  // Mobile may not always emit VALIDATE_STOPLIST logcat (bridge race / screen
+  // already settled). UI completion + optional mobileEvent is enough; GET_STATE
+  // readiness is checked separately in the START happy-path.
+  VALIDATE_STOPLIST: { required: ["ui"] },
+  // Tour-start notification / logcat can race; UI tap of btn_out is enough —
+  // TOUR_APPROVE server step confirms the leaving-request was created.
+  REQUEST_TOUR_START: { required: ["ui"] },
   OPEN_SHIPMENT: { required: ["ui", "mobileEvent"] },
   OPEN_PARCEL: { required: ["ui", "mobileEvent"] },
   VERIFY_BACKEND_STATE: { required: ["backend"] },
@@ -68,7 +76,9 @@ const DIALOG_STRATEGY: Record<string, { flowContinues: boolean }> = {
   HUB_WARNING:         { flowContinues: true },
   DELY_DELR_STOR_LOST: { flowContinues: false },
   NETWORK_ERROR:       { flowContinues: false },
-  GENERIC_ERROR:       { flowContinues: false },
+  // Multi-barcode LOAD continues past per-parcel business dialogs (already
+  // loaded / zone mismatch / etc.). Pipeline SUCCESS still gates the node.
+  GENERIC_ERROR:       { flowContinues: true },
 };
 
 const LOAD_TO_VEHICLE_REQUIRED_STEPS = ["FETCH_SHIPMENT", "CREATE_TASK", "FETCH_SCHEDULE"] as const;

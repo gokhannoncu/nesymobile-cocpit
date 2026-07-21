@@ -50,6 +50,21 @@ Workaround used: direct `Task/UpdatePickup` + `Task/AssignPickupToCourier` with 
 - Mobile `GetMyScheduleByZoneCode` with courier JWT returned `payload: null` (likely `ScheduleDate == DateTime.Now.Date` filter vs stored UTC date) â€” pull-to-refresh cannot apply Approved
 - Pickup assign notification also received: **"A New PickUp Task Has Been Assigned Stop No: 12"**; backend has 12 stops, device still 11
 
+## Phase 3 (2026-07-20 evening) — results
+
+**Green:** START · API zimmet (CreateInstantTask) · COD(+CODH) · Standard · CC(+CODH via Cash) · Multicolli · Pickup · EOD(+approve)
+
+**Red (YAML fixed; blocked for same-day retest by EndOfDayApproved=4):**
+- DEPS — UI finishes but event 71 missing (chooser `getEventTypeList` race); longer AreYouSure wait added
+- Delivery Failed — reason tapped, FDLY 131 missing; confirm/OK wait added
+- Remote Pickup — was skipping Pick-Up dialog ? now mirrors PICKUP_OPERATION
+- Pickup Failed — `fail_reason_43` not on screen; scrollUntilVisible added
+
+**Ops notes:**
+- Mobile LOAD after CourierLeft can silent-no-op (`matchedItem null`); use `.tmp-e2e/api-zimmet.mjs` (`Task/CreateInstantTask`) then START sync
+- Backend verifier defaults: 30s delay + 20×5s polls; COD needs Cash tender or DELY never lands
+- Do not edit `apps/api` under `tsx watch` mid-suite (ECONNREFUSED)
+
 ## Progress snapshot
 
 - Login PIN 3680 / G.ONCU / route 36 / hub CEBeograd âœ“

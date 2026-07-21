@@ -1,0 +1,23 @@
+﻿appId: com.arasdigital.nesymobile.rstest
+---
+- runFlow:
+    when:
+      visible:
+        id: com.arasdigital.nesymobile.rstest:id/dialog_spinner
+    commands:
+      - tapOn:
+          id: com.arasdigital.nesymobile.rstest:id/dialog_spinner
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element:
+            text: "36.*"
+          direction: DOWN
+          timeout: 20000
+      - tapOn:
+          text: "36.*"
+      - tapOn:
+          text: "OK"
+- extendedWaitUntil:
+    visible:
+      id: com.arasdigital.nesymobile.rstest:id/manuel_input
+    timeout: 20000

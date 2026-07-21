@@ -1,0 +1,349 @@
+{
+  "start": {
+    "runId": "cmrtj7l7j0001o19c2fnxcxng",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_25",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15629,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "if_login_26",
+        "nodeType": "IF_LOGIN",
+        "status": "success",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "check_route_28",
+        "nodeType": "CHECK_ROUTE",
+        "status": "success",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "validate_stoplist_30",
+        "nodeType": "VALIDATE_STOPLIST",
+        "status": "success",
+        "duration": 2788,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "select_route_29",
+        "nodeType": "SELECT_ROUTE",
+        "status": "skipped",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "auth_login_27",
+        "nodeType": "AUTH_LOGIN",
+        "status": "skipped",
+        "duration": 0,
+        "errorMessage": null
+      }
+    ]
+  },
+  "load": {
+    "runStatus": "success",
+    "outcomes": [
+      {
+        "barcode": "6880051000268310",
+        "status": "success"
+      },
+      {
+        "barcode": "6880051000268518",
+        "status": "failed"
+      },
+      {
+        "barcode": "6880051000268617",
+        "status": "success"
+      },
+      {
+        "barcode": "6880051000268716",
+        "status": "success"
+      },
+      {
+        "barcode": "6880051000268815",
+        "status": "success"
+      },
+      {
+        "barcode": "6880051000268914",
+        "status": "success"
+      },
+      {
+        "barcode": "6880051000269010",
+        "status": "success"
+      }
+    ]
+  },
+  "11-cod-cash": {
+    "runStatus": "success",
+    "note": "already had events",
+    "codes": [
+      "8",
+      "10",
+      "30",
+      "40",
+      "269"
+    ]
+  },
+  "10-standard": {
+    "runStatus": "success",
+    "note": "already had events",
+    "codes": [
+      "8",
+      "10",
+      "30",
+      "40"
+    ]
+  },
+  "12-cc": {
+    "runId": "cmrtlt4bv0013o12wun1jg1s2",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_5",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15776,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "delivery_operation_6",
+        "nodeType": "DELIVERY_OPERATION",
+        "status": "success",
+        "duration": 100020,
+        "errorMessage": null
+      }
+    ]
+  },
+  "13-multicolli": {
+    "runId": "cmrtly2ld0017o12weilnrmnz",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_7",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15595,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "delivery_operation_8",
+        "nodeType": "DELIVERY_OPERATION",
+        "status": "success",
+        "duration": null,
+        "errorMessage": null
+      }
+    ]
+  },
+  "14-deps": {
+    "runId": "cmrtm65oc001fo12wu8h8mwbc",
+    "runStatus": "failed",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_9",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15607,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "deps_operation_10",
+        "nodeType": "DEPS_OPERATION",
+        "status": "failed",
+        "duration": 70679,
+        "errorMessage": "Expected event(s) [71] not found for shipment 64737311745472 after 20 attempts. Seen: [8, 10, 30]."
+      }
+    ]
+  },
+  "17-delivery-failed": {
+    "runId": "cmrtmfl8q001no12w1hzvpgxc",
+    "runStatus": "failed",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_15",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15537,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "delivery_fail_operation_16",
+        "nodeType": "DELIVERY_FAIL_OPERATION",
+        "status": "failed",
+        "duration": 54247,
+        "errorMessage": "Expected event(s) [131] not found for shipment 76237828998416 after 20 attempts. Seen: [8, 10, 30]."
+      }
+    ]
+  },
+  "18-pickup": {
+    "runId": "cmrtmk4fa001ro12w6m5cmc9e",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_17",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15649,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "pickup_operation_18",
+        "nodeType": "PICKUP_OPERATION",
+        "status": "success",
+        "duration": 45262,
+        "errorMessage": null
+      }
+    ]
+  },
+  "19-remote-pickup": {
+    "runId": "cmrtmmaeb001vo12wk92pwtt9",
+    "runStatus": "failed",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_19",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 16055,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "remote_pickup_operation_20",
+        "nodeType": "REMOTE_PICKUP_OPERATION",
+        "status": "failed",
+        "duration": null,
+        "errorMessage": "Maestro exited with code 1"
+      }
+    ]
+  },
+  "21-pickup-failed": {
+    "runId": "cmrtmnsv9001zo12wmnztjx30",
+    "runStatus": "failed",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_23",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 14779,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "pickup_fail_operation_24",
+        "nodeType": "PICKUP_FAIL_OPERATION",
+        "status": "failed",
+        "duration": null,
+        "errorMessage": "Maestro exited with code 1"
+      }
+    ]
+  },
+  "eod": {
+    "runId": "cmrtmp6is0023o12waxwgbcgc",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_35",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 15548,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "end_of_day_36",
+        "nodeType": "END_OF_DAY",
+        "status": "success",
+        "duration": 6449,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "eod_approve_37",
+        "nodeType": "EOD_APPROVE",
+        "status": "success",
+        "duration": 9,
+        "errorMessage": null
+      }
+    ]
+  },
+  "start2": {
+    "runId": "cmrtls1st000vo12wznsgxoo5",
+    "runStatus": "success",
+    "currentStepId": null,
+    "steps": [
+      {
+        "nodeId": "launch_app_25",
+        "nodeType": "LAUNCH_APP",
+        "status": "success",
+        "duration": 19559,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "if_login_26",
+        "nodeType": "IF_LOGIN",
+        "status": "success",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "check_route_28",
+        "nodeType": "CHECK_ROUTE",
+        "status": "success",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "validate_stoplist_30",
+        "nodeType": "VALIDATE_STOPLIST",
+        "status": "success",
+        "duration": 3398,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "select_route_29",
+        "nodeType": "SELECT_ROUTE",
+        "status": "skipped",
+        "duration": 0,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "auth_login_27",
+        "nodeType": "AUTH_LOGIN",
+        "status": "skipped",
+        "duration": 0,
+        "errorMessage": null
+      }
+    ]
+  },
+  "_summary": {
+    "green": [
+      "start",
+      "load",
+      "11-cod-cash",
+      "10-standard",
+      "12-cc",
+      "13-multicolli",
+      "18-pickup",
+      "eod"
+    ],
+    "red": [
+      "14-deps",
+      "17-delivery-failed",
+      "19-remote-pickup",
+      "21-pickup-failed"
+    ],
+    "blockedBy": "EndOfDayApproved (scheduleStatus=4) — cannot retest fails same day",
+    "yamlFixedAt": "2026-07-20T19:45:00Z"
+  }
+}

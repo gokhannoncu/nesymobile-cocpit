@@ -1,5 +1,16 @@
 appId: com.arasdigital.nesymobile.rstest
 ---
+- runFlow:
+    when:
+      visible:
+        id: com.arasdigital.nesymobile.rstest:id/rv_notifications
+    commands:
+      - tapOn:
+          id: com.arasdigital.nesymobile.rstest:id/btn_exit
+- extendedWaitUntil:
+    visible:
+      id: com.arasdigital.nesymobile.rstest:id/manuel_input
+    timeout: 20000
 - tapOn:
     id: com.arasdigital.nesymobile.rstest:id/manuel_input
 - tapOn:
@@ -11,5 +22,5 @@ appId: com.arasdigital.nesymobile.rstest
 - extendedWaitUntil:
     visible:
       id: nesy_probe_never
-    timeout: 6000
+    timeout: 8000
     optional: true

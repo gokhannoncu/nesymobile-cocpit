@@ -57,6 +57,11 @@ interface YamlGeneratorOptions {
    * workflow can run against different shipments. Overrides version `config`.
    */
   runInput?: Record<string, string>;
+  /**
+   * When set (e.g. single_step partial YAML that drops LAUNCH_APP), force this
+   * applicationId instead of resolving from the sliced node list.
+   */
+  appIdOverride?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,16 +200,129 @@ function bool(val: unknown, fallback = false): boolean {
 /**
  * Collects barcodes from a node config that may carry either a singular
  * `barcode` (UI schema) or a plural `barcodes[]` (API-authored / multicolli).
+ * Comma-separated values in a single string are split (LOAD & TOUR runInput).
  * Empty strings are dropped.
  */
 function collectBarcodes(c: Record<string, unknown>): string[] {
   const out: string[] = [];
+  const pushParts = (raw: string) => {
+    for (const part of raw.split(",")) {
+      const t = part.trim();
+      if (t && !out.includes(t)) out.push(t);
+    }
+  };
   if (Array.isArray(c.barcodes)) {
-    for (const item of c.barcodes) if (typeof item === "string" && item.trim()) out.push(item.trim());
+    for (const item of c.barcodes) if (typeof item === "string") pushParts(item);
   }
   const single = str(c.barcode).trim();
-  if (single && !out.includes(single)) out.push(single);
+  if (single) pushParts(single);
   return out;
+}
+
+/** Clear overlays that block Stop List (notifications sheet / route picker). */
+function clearStopListOverlaysYaml(appId: string, routeNumber = "36"): string {
+  const spinnerId = resourceId(appId, "dialog_spinner");
+  const notifListId = resourceId(appId, "rv_notifications");
+  const btnExitId = resourceId(appId, "btn_exit");
+  return `# --- Clear Stop List overlays ---
+- runFlow:
+    when:
+      visible:
+        id: "${notifListId}"
+    commands:
+      - tapOn:
+          id: "${btnExitId}"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "PRINT"
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: "${spinnerId}"
+    commands:
+      - tapOn:
+          id: "${spinnerId}"
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element:
+            text: "${routeNumber}.*"
+          direction: DOWN
+          speed: 15
+          visibilityPercentage: 10
+          timeout: 20000
+      - tapOn:
+          text: "${routeNumber}.*"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: "OK"
+      - waitForAnimationToEnd
+`;
+}
+
+/** Stop-list manual scan → optional Attention dialog → options-sheet button. */
+function stopListScanOptionYaml(appId: string, barcode: string, optionButtonResId: string): string {
+  const manuelInputId = resourceId(appId, "manuel_input");
+  const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
+  const barcodeOkId = resourceId(appId, "btn_ok");
+  const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
+  const optionId = resourceId(appId, optionButtonResId);
+  const optionsRootId = resourceId(appId, "rootDeliveryOptions");
+  const swipeRefreshId = resourceId(appId, "srl");
+  return `${clearStopListOverlaysYaml(appId)}# --- Stop-list scan → ${optionButtonResId} ---
+- extendedWaitUntil:
+    visible:
+      id: "${manuelInputId}"
+    timeout: 20000
+# Pull-to-refresh so freshly zimmet'ted parcels appear before scan
+- runFlow:
+    when:
+      visible:
+        id: "${swipeRefreshId}"
+    commands:
+      - swipe:
+          start: "50%, 30%"
+          end: "50%, 75%"
+          duration: 400
+      - waitForAnimationToEnd
+- tapOn:
+    id: "${manuelInputId}"
+- extendedWaitUntil:
+    visible:
+      id: "${barcodeInputId}"
+    timeout: 8000
+- tapOn:
+    id: "${barcodeInputId}"
+- eraseText: 40
+- inputText: "${barcode}"
+- tapOn:
+    id: "${barcodeOkId}"
+- waitForAnimationToEnd
+# Attention / document-collection confirm (optional)
+- runFlow:
+    when:
+      visible:
+        id: "${dialogPositiveId}"
+    commands:
+      - tapOn:
+          id: "${dialogPositiveId}"
+      - waitForAnimationToEnd
+# Wait for options bottom sheet (network + fragment transition)
+- extendedWaitUntil:
+    visible:
+      id: "${optionsRootId}"
+    timeout: 20000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "${optionId}"
+    timeout: 20000
+- tapOn:
+    id: "${optionId}"
+`;
 }
 
 function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: string): string {
@@ -216,10 +334,30 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     case "LAUNCH_APP": {
       const resolvedAppId = resolveLaunchAppIdFromConfig(c);
       const clearState = bool(c.clearState);
+      const manuelInputId = resourceId(resolvedAppId, "manuel_input");
+      const pinViewId = resourceId(resolvedAppId, "pinView");
+      const btnOutId = resourceId(resolvedAppId, "btn_out");
+      // After relaunch, wait until either login or Stop List is interactive so
+      // the next scan step does not race SplashActivity.
       return `- launchApp:
     appId: "${resolvedAppId}"
     clearState: ${clearState}
-- waitForAnimationToEnd`;
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "${pinViewId}"
+    timeout: 8000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "${manuelInputId}"
+    timeout: 20000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "${btnOutId}"
+    timeout: 5000
+    optional: true`;
     }
 
     case "AUTH_LOGIN": {
@@ -269,13 +407,43 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     text: "OK"`;
     }
 
-    case "VALIDATE_STOPLIST":
-      // Success/failure is decided by the logcat VALIDATE_STOPLIST event handler.
-      return `# --- AUTOMATION BRIDGE: VALIDATE_STOPLIST ---
-- waitForAnimationToEnd`;
+    case "VALIDATE_STOPLIST": {
+      // Soft assert Stop List readiness — never hard-fail the Maestro process.
+      // Pull-to-refresh nudges GetMyScheduleByZoneCode when srl is present.
+      const srlId = resourceId(appId, "srl");
+      const rvId = resourceId(appId, "rv");
+      const btnOutId = resourceId(appId, "btn_out");
+      return `# --- VALIDATE STOPLIST ---
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "${btnOutId}"
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "${srlId}"
+    commands:
+      - swipe:
+          start: "50%, 25%"
+          end: "50%, 70%"
+          duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "${rvId}"
+    timeout: 15000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "${btnOutId}"
+    timeout: 5000
+    optional: true`;
+    }
 
     case "LOAD_TO_VEHICLE": {
-      const barcode = str(c.barcode, "");
+      const barcodes = collectBarcodes(c);
       const manuelInputId = resourceId(appId, "manuel_input");
       const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
       const barcodeOkId = resourceId(appId, "btn_ok");
@@ -289,22 +457,47 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
         timeSlotLabel.length > 0
           ? `- tapOn: "${timeSlotLabel}"\n      - tapOn:\n          id: "${timeSlotSaveId}"`
           : `- tapOn:\n          id: "${timeSlotSaveId}"`;
-      return `# --- LOAD TO VEHICLE PROCESS ---
+      if (barcodes.length === 0) {
+        return `# --- LOAD TO VEHICLE (no barcode) ---
+- evalScript: \${console.log("NESY_STEP::WARN::LOAD_TO_VEHICLE::empty_barcode")}`;
+      }
+      let yaml = `# --- LOAD TO VEHICLE (${barcodes.length} barcode(s)) ---
+${clearStopListOverlaysYaml(appId)}- extendedWaitUntil:
+    visible:
+      id: "${manuelInputId}"
+    timeout: 20000`;
+      for (const barcode of barcodes) {
+        yaml += `
+# Recover to Stop List before each scan (post-scan dialogs / overlays)
+${clearStopListOverlaysYaml(appId)}- runFlow:
+    when:
+      notVisible:
+        id: "${manuelInputId}"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "${manuelInputId}"
+    timeout: 20000
 - tapOn:
     id: "${manuelInputId}"
 - extendedWaitUntil:
     visible:
       id: "${barcodeInputId}"
-    timeout: 3000
+    timeout: 8000
+- tapOn:
+    id: "${barcodeInputId}"
+- eraseText: 40
 - inputText: "${barcode}"
 - tapOn:
     id: "${barcodeOkId}"
-# --- ScanProcessor Pipeline — Dialog Handling ---
-# FETCH_SHIPMENT stage — dialog may appear (HUB_WARNING, GENERIC_ERROR, etc.)
+- waitForAnimationToEnd
+# ScanProcessor — HUB_WARNING / GENERIC_ERROR (longer: network + parse)
 - extendedWaitUntil:
     visible:
       id: "${dialogTitleId}"
-    timeout: 4000
+    timeout: 8000
     optional: true
 - runFlow:
     when:
@@ -313,11 +506,12 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     commands:
       - tapOn:
           id: "${dialogPositiveId}"
-# RS time slot picker (countryCode == RS && hub slots) — blocks CREATE_TASK until Select
+      - waitForAnimationToEnd
+# RS time slot picker — blocks CREATE_TASK until Select
 - extendedWaitUntil:
     visible:
       text: "Select Time Range"
-    timeout: 4000
+    timeout: 8000
     optional: true
 - runFlow:
     when:
@@ -325,11 +519,12 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
         text: "Select Time Range"
     commands:
       ${timeSlotPick}
+      - waitForAnimationToEnd
 # CREATE_TASK stage — second dialog may appear
 - extendedWaitUntil:
     visible:
       id: "${dialogTitleId}"
-    timeout: 4000
+    timeout: 6000
     optional: true
 - runFlow:
     when:
@@ -337,7 +532,18 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
         id: "${dialogTitleId}"
     commands:
       - tapOn:
-          id: "${dialogPositiveId}"`;
+          id: "${dialogPositiveId}"
+      - waitForAnimationToEnd
+# Hard signal that zimmet applied — barcode must appear on a stop card.
+# Without this, Maestro exits 0 even when ScanProcessor silently drops
+# (matchedItem null) and the parcel never lands on the schedule.
+- extendedWaitUntil:
+    visible:
+      text: "${barcode}"
+    timeout: 20000
+- waitForAnimationToEnd`;
+      }
+      return yaml;
     }
 
     case "SEARCH_SHIPMENT": {
@@ -508,9 +714,15 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       const btnDeliverId = resourceId(appId, "btn_deliver");
       const btnDelyId = resourceId(appId, "btnDely");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
+      // When barcode is provided, enter via Stop List scan → options sheet (PATH-NOTES).
+      const entryBarcode = collectBarcodes(c)[0] || str(c.shipmentRef).trim();
 
-      let yaml = `# --- DELIVER PARCEL FLOW ---
-# 1. Wait for a top-level field to ensure screen is loaded
+      let yaml = `# --- DELIVER PARCEL FLOW ---`;
+      if (entryBarcode) {
+        yaml += `\n${stopListScanOptionYaml(appId, entryBarcode, "btnDelivery")}`;
+      }
+      yaml += `
+# 1. Wait for delivery form
 - extendedWaitUntil:
     visible:
       id: "${deliveryNameId}"
@@ -587,13 +799,20 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       - tapOn:
           id: "${dialogPositiveId}"`;
 
-      // COD / cash flow (config codCash=true): choose "Cash" then dismiss the
-      // fiscal invoice-summary screen. PRINT (android:id/button2) fires a sticky
-      // "Fiscal Created" notification, so the safe dismiss is a Back press.
-      if (bool(c.codCash) || str(c.paymentType).toLowerCase() === "cash") {
+      // COD / payment: always attempt Cash (optional). RS COD shipments block
+      // DELY until a tender is chosen — without this, Maestro finishes while
+      // the parcel stays Loaded on device.
+      {
         const invoiceSummaryId = resourceId(appId, "tvInvoiceSummary");
+        const notifListId = resourceId(appId, "rv_notifications");
+        const btnExitId = resourceId(appId, "btn_exit");
         yaml += `
-# (Optional) COD cash selection
+# (Optional) COD cash / card tender
+- extendedWaitUntil:
+    visible:
+      text: "Cash"
+    timeout: 8000
+    optional: true
 - runFlow:
     when:
       visible:
@@ -601,13 +820,37 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     commands:
       - tapOn:
           text: "Cash"
-# (Optional) Fiscal invoice summary — dismiss with Back
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "Credit Card"
+    commands:
+      - tapOn:
+          text: "Credit Card"
+      - waitForAnimationToEnd
+# Fiscal invoice summary can take several seconds after tender
+- extendedWaitUntil:
+    visible:
+      id: "${invoiceSummaryId}"
+    timeout: 25000
+    optional: true
 - runFlow:
     when:
       visible:
         id: "${invoiceSummaryId}"
     commands:
-      - pressKey: Back`;
+      - pressKey: Back
+      - waitForAnimationToEnd
+# Sticky "Fiscal Created" notification
+- runFlow:
+    when:
+      visible:
+        id: "${notifListId}"
+    commands:
+      - tapOn:
+          id: "${btnExitId}"
+      - waitForAnimationToEnd`;
       }
 
       // Completion is verified by the logcat DELIVER_PARCEL handler (BACKEND_CONFIRMED)
@@ -616,18 +859,19 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     }
 
     case "PICKUP_OPERATION": {
-      // Verified flow: barcodes go in via the toolbar manual-input dialog
-      // (manuel_input → et_input_dialog_barcode_number → btn_ok); pickup is
-      // completed with btn_task_complete on the pickup screen.
-      // UI schema uses a single `barcode`; API-authored flows may pass `barcodes[]`.
+      // PATH-NOTES: Stop List scan → "Pick Up" dialog → (task) scan again →
+      // complete_task / btn_task_complete. UI schema: barcode; API: barcodes[].
       const barcodes = collectBarcodes(c);
       const manuelInputId = resourceId(appId, "manuel_input");
       const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
       const barcodeOkId = resourceId(appId, "btn_ok");
+      const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
       const taskCompleteId = resourceId(appId, "btn_task_complete");
+      const completeTaskId = resourceId(appId, "complete_task");
+      const primary = barcodes[0] || "";
 
       let yaml = `# --- PICKUP OPERATION ---`;
-      for (const barcode of barcodes) {
+      if (primary) {
         yaml += `
 - tapOn:
     id: "${manuelInputId}"
@@ -637,36 +881,128 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     timeout: 5000
 - tapOn:
     id: "${barcodeInputId}"
-- inputText: "${barcode}"
+- eraseText: 40
+- inputText: "${primary}"
 - tapOn:
-    id: "${barcodeOkId}"`;
-      }
-      yaml += `
-# Complete the pickup
+    id: "${barcodeOkId}"
+# "Which operation…?" → Pick Up
 - extendedWaitUntil:
     visible:
-      id: "${taskCompleteId}"
-    timeout: 10000
+      id: "${dialogPositiveId}"
+    timeout: 8000
 - tapOn:
-    id: "${taskCompleteId}"`;
+    id: "${dialogPositiveId}"
+- waitForAnimationToEnd`;
+      }
+      // Second scan on task / multi-piece dialog (optional if single-piece auto-queued)
+      for (const barcode of barcodes) {
+        yaml += `
+- runFlow:
+    when:
+      visible:
+        id: "${manuelInputId}"
+    commands:
+      - tapOn:
+          id: "${manuelInputId}"
+      - extendedWaitUntil:
+          visible:
+            id: "${barcodeInputId}"
+          timeout: 5000
+      - tapOn:
+          id: "${barcodeInputId}"
+      - eraseText: 40
+      - inputText: "${barcode}"
+      - tapOn:
+          id: "${barcodeOkId}"`;
+      }
+      yaml += `
+- runFlow:
+    when:
+      visible:
+        id: "${completeTaskId}"
+    commands:
+      - tapOn:
+          id: "${completeTaskId}"
+- runFlow:
+    when:
+      visible:
+        id: "${taskCompleteId}"
+    commands:
+      - tapOn:
+          id: "${taskCompleteId}"`;
       return yaml;
     }
 
     case "DEPS_OPERATION": {
-      // DEPS choice appears after btn_deliver on the delivery screen
-      // (deliver_clicked_dialog_layout.xml → btnDeps).
+      // PATH-NOTES: Stop List scan → btnDeps → delivery form (isDeps) → btn_deliver
+      // → chooser btnDeps → confirm dialog.
+      const entryBarcode = collectBarcodes(c)[0] || str(c.shipmentRef).trim();
+      const deliveryNameId = resourceId(appId, "tie_delivery_name");
       const btnDeliverId = resourceId(appId, "btn_deliver");
       const btnDepsId = resourceId(appId, "btnDeps");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
-      return `# --- DEPS OPERATION ---
-- tapOn:
-    id: "${btnDeliverId}"
+      const personName = str(c.personDelivered, "") || "${TASK_PARTY}";
+      let yaml = `# --- DEPS OPERATION ---`;
+      if (entryBarcode) {
+        yaml += `\n${stopListScanOptionYaml(appId, entryBarcode, "btnDeps")}`;
+      } else {
+        yaml += `
 - extendedWaitUntil:
     visible:
       id: "${btnDepsId}"
     timeout: 5000
 - tapOn:
-    id: "${btnDepsId}"
+    id: "${btnDepsId}"`;
+      }
+      yaml += `
+- extendedWaitUntil:
+    visible:
+      id: "${deliveryNameId}"
+    timeout: 10000
+- tapOn:
+    id: "${deliveryNameId}"
+- inputText: "${personName}"
+- pressKey: Enter
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "${btnDeliverId}"
+    direction: DOWN
+    timeout: 10000
+- swipe:
+    start: "30%, 75%"
+    end: "70%, 75%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "${btnDeliverId}"
+# Chooser may take a network round-trip (getEventTypeList) before AreYouSure
+- extendedWaitUntil:
+    visible:
+      id: "${btnDepsId}"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "${btnDepsId}"
+    commands:
+      - tapOn:
+          id: "${btnDepsId}"
+- extendedWaitUntil:
+    visible:
+      id: "${dialogPositiveId}"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "${dialogPositiveId}"
+    commands:
+      - tapOn:
+          id: "${dialogPositiveId}"
+      - waitForAnimationToEnd
 - runFlow:
     when:
       visible:
@@ -674,9 +1010,89 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     commands:
       - tapOn:
           id: "${dialogPositiveId}"`;
+      return yaml;
     }
 
-    case "REMOTE_PICKUP_OPERATION":
+    case "REMOTE_PICKUP_OPERATION": {
+      // Same stop-list entry as PICKUP (options dialog → Pick Up), then task complete.
+      const barcodes = collectBarcodes(c);
+      const manuelInputId = resourceId(appId, "manuel_input");
+      const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
+      const barcodeOkId = resourceId(appId, "btn_ok");
+      const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
+      const taskCompleteId = resourceId(appId, "btn_task_complete");
+      const completeTaskId = resourceId(appId, "complete_task");
+      const primary = barcodes[0] || "";
+      let yaml = `# --- REMOTE PICKUP OPERATION ---`;
+      if (primary) {
+        yaml += `
+${clearStopListOverlaysYaml(appId)}- extendedWaitUntil:
+    visible:
+      id: "${manuelInputId}"
+    timeout: 20000
+- tapOn:
+    id: "${manuelInputId}"
+- extendedWaitUntil:
+    visible:
+      id: "${barcodeInputId}"
+    timeout: 8000
+- tapOn:
+    id: "${barcodeInputId}"
+- eraseText: 40
+- inputText: "${primary}"
+- tapOn:
+    id: "${barcodeOkId}"
+- extendedWaitUntil:
+    visible:
+      id: "${dialogPositiveId}"
+    timeout: 10000
+- tapOn:
+    id: "${dialogPositiveId}"
+- waitForAnimationToEnd`;
+      }
+      for (const barcode of barcodes) {
+        yaml += `
+- runFlow:
+    when:
+      visible:
+        id: "${manuelInputId}"
+    commands:
+      - tapOn:
+          id: "${manuelInputId}"
+      - extendedWaitUntil:
+          visible:
+            id: "${barcodeInputId}"
+          timeout: 5000
+      - tapOn:
+          id: "${barcodeInputId}"
+      - eraseText: 40
+      - inputText: "${barcode}"
+      - tapOn:
+          id: "${barcodeOkId}"`;
+      }
+      yaml += `
+- extendedWaitUntil:
+    visible:
+      id: "${completeTaskId}"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "${completeTaskId}"
+    commands:
+      - tapOn:
+          id: "${completeTaskId}"
+- runFlow:
+    when:
+      visible:
+        id: "${taskCompleteId}"
+    commands:
+      - tapOn:
+          id: "${taskCompleteId}"`;
+      return yaml;
+    }
+
     case "PICKUP_AT_CUSTOMER_OPERATION":
     case "RDOC_OPERATION": {
       // On the "Waiting For Pickup" task the barcodes are scanned via the manual
@@ -745,52 +1161,109 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     }
 
     case "DELIVERY_FAIL_OPERATION": {
-      // btnDeliveryFailed (bottom sheet) → btn_deliver on the delivery-failed
-      // screen opens the reason list; rows carry the gated contentDescription
-      // fail_reason_<backend code>; tapping the row submits. Some reasons show
-      // an ArasDialog yes/no afterwards.
-      // fail_reason_<code> contentDescription selects the row. API-authored
-      // flows pass the numeric `failReason`; UI `failureReason` is a fallback.
-      const failReason = str(c.failReason) || str(c.failureReason, "1");
-      const btnDeliveryFailedId = resourceId(appId, "btnDeliveryFailed");
+      // Stop List scan → btnDeliveryFailed → btn_deliver → fail_reason_<code>.
+      const failReason = str(c.failReason) || str(c.failureReason, "15");
+      const entryBarcode = collectBarcodes(c)[0] || str(c.shipmentRef).trim();
       const btnDeliverId = resourceId(appId, "btn_deliver");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
-      return `# --- DELIVERY FAIL OPERATION (reason code: ${failReason}) ---
+      let yaml = `# --- DELIVERY FAIL OPERATION (reason code: ${failReason}) ---`;
+      if (entryBarcode) {
+        yaml += `\n${stopListScanOptionYaml(appId, entryBarcode, "btnDeliveryFailed")}`;
+      } else {
+        const btnDeliveryFailedId = resourceId(appId, "btnDeliveryFailed");
+        yaml += `
 - runFlow:
     when:
       visible:
         id: "${btnDeliveryFailedId}"
     commands:
       - tapOn:
-          id: "${btnDeliveryFailedId}"
+          id: "${btnDeliveryFailedId}"`;
+      }
+      yaml += `
+- extendedWaitUntil:
+    visible:
+      id: "${btnDeliverId}"
+    timeout: 10000
 - tapOn:
     id: "${btnDeliverId}"
 - extendedWaitUntil:
     visible: "fail_reason_${failReason}"
-    timeout: 5000
+    timeout: 8000
 - tapOn: "fail_reason_${failReason}"
+- waitForAnimationToEnd
+# Confirm / navigate after reason (photo path or AreYouSure)
+- extendedWaitUntil:
+    visible:
+      id: "${dialogPositiveId}"
+    timeout: 8000
+    optional: true
 - runFlow:
     when:
       visible:
         id: "${dialogPositiveId}"
     commands:
       - tapOn:
-          id: "${dialogPositiveId}"`;
+          id: "${dialogPositiveId}"
+- runFlow:
+    when:
+      visible:
+        text: "OK"
+    commands:
+      - tapOn:
+          text: "OK"
+- waitForAnimationToEnd`;
+      return yaml;
     }
 
     case "PICKUP_FAIL_OPERATION": {
-      // Entry from the task card is btn_not_deliver; reason rows carry the
-      // gated fail_reason_<code> contentDescription; tapping the row submits.
-      const failReason = str(c.failReason) || str(c.failureReason, "1");
+      // Stop List scan → "Pickup Failed" (negative) → fail_reason_<code>.
+      // Fallback: task-card btn_not_deliver when already on the task.
+      const failReason = str(c.failReason) || str(c.failureReason, "43");
+      const entryBarcode = collectBarcodes(c)[0] || str(c.shipmentRef).trim();
+      const manuelInputId = resourceId(appId, "manuel_input");
+      const barcodeInputId = resourceId(appId, "et_input_dialog_barcode_number");
+      const barcodeOkId = resourceId(appId, "btn_ok");
+      const dialogNegativeId = resourceId(appId, "btn_arasDg_negative_button");
       const btnNotDeliverId = resourceId(appId, "btn_not_deliver");
       const dialogPositiveId = resourceId(appId, "btn_arasDg_positive_button");
-      return `# --- PICKUP FAIL OPERATION (reason code: ${failReason}) ---
+      let yaml = `# --- PICKUP FAIL OPERATION (reason code: ${failReason}) ---`;
+      if (entryBarcode) {
+        yaml += `
 - tapOn:
-    id: "${btnNotDeliverId}"
+    id: "${manuelInputId}"
+- extendedWaitUntil:
+    visible:
+      id: "${barcodeInputId}"
+    timeout: 5000
+- tapOn:
+    id: "${barcodeInputId}"
+- eraseText: 40
+- inputText: "${entryBarcode}"
+- tapOn:
+    id: "${barcodeOkId}"
+- extendedWaitUntil:
+    visible:
+      id: "${dialogNegativeId}"
+    timeout: 8000
+- tapOn:
+    id: "${dialogNegativeId}"`;
+      } else {
+        yaml += `
+- tapOn:
+    id: "${btnNotDeliverId}"`;
+      }
+      yaml += `
 - extendedWaitUntil:
     visible: "fail_reason_${failReason}"
-    timeout: 5000
+    timeout: 10000
+- scrollUntilVisible:
+    element: "fail_reason_${failReason}"
+    direction: DOWN
+    timeout: 10000
+    optional: true
 - tapOn: "fail_reason_${failReason}"
+- waitForAnimationToEnd
 - runFlow:
     when:
       visible:
@@ -798,6 +1271,7 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     commands:
       - tapOn:
           id: "${dialogPositiveId}"`;
+      return yaml;
     }
 
     case "CANCEL_DELIVERY_OPERATION": {
@@ -1122,7 +1596,7 @@ function backendCheckMarker(node: WorkflowNode, options: YamlGeneratorOptions): 
   const shipmentRef = (str(c.shipmentRef) || str(c.barcode) || collectBarcodes(c)[0] || "").trim();
   const codes = normalizeEventCodes(c.expectedEventCodes);
   if (!shipmentRef || codes.length === 0) return "";
-  const delayMs = num(c.verifyDelayMs, 5000);
+  const delayMs = num(c.verifyDelayMs, 30000);
   return `- evalScript: \${console.log("NESY_BACKEND_CHECK::${node.id}::${shipmentRef}::${codes.join(",")}::${delayMs}")}\n`;
 }
 
@@ -1143,11 +1617,19 @@ function indent(text: string, spaces: number): string {
     .join("\n");
 }
 
-export function resolveWorkflowAppId(nodes: WorkflowNode[]): string {
+export function resolveWorkflowAppId(
+  nodes: WorkflowNode[],
+  country?: string,
+  environment?: string,
+): string {
   const launchNode = nodes.find((n) => n.type === "LAUNCH_APP");
 
   if (launchNode) {
     return resolveLaunchAppIdFromConfig(cfg(launchNode));
+  }
+
+  if (isLaunchCountry(country) && isLaunchEnvironment(environment)) {
+    return resolveNesyMobileApplicationId(country, environment);
   }
 
   return resolveNesyMobileApplicationId(DEFAULT_LAUNCH_COUNTRY, DEFAULT_LAUNCH_ENVIRONMENT);
@@ -1186,7 +1668,9 @@ export function generateWorkflowYaml(options: YamlGeneratorOptions): string {
 
   if (!nodes.length) return "# Empty workflow\n";
 
-  const appId = resolveWorkflowAppId(nodes);
+  const appId =
+    options.appIdOverride ||
+    resolveWorkflowAppId(nodes, options.country, options.environment);
   const header = buildYamlHeader(options, appId);
 
   const sortedNodes = topologicalSort(nodes, edges);
@@ -1279,7 +1763,9 @@ export function generateWorkflowWorkspace(
   preflight?: PreflightState | null,
 ): WorkflowWorkspace {
   const { nodes, edges } = options;
-  const appId = resolveWorkflowAppId(nodes);
+  const appId =
+    options.appIdOverride ||
+    resolveWorkflowAppId(nodes, options.country, options.environment);
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   const ir = buildWorkflowIR(nodes, edges, preflight ?? null);
@@ -1417,6 +1903,11 @@ export function generatePartialWorkflowYaml(
   targetNodeId: string
 ): string {
   const { nodes, edges } = options;
+  // Resolve appId from the FULL graph (LAUNCH_APP) before slicing — otherwise
+  // single_step falls back to the HR default package id.
+  const appIdOverride =
+    options.appIdOverride ||
+    resolveWorkflowAppId(nodes, options.country, options.environment);
 
   if (mode === "single_step") {
     const targetNode = nodes.find((n) => n.id === targetNodeId);
@@ -1426,6 +1917,7 @@ export function generatePartialWorkflowYaml(
       ...options,
       nodes: [targetNode],
       edges: [],
+      appIdOverride,
     });
   }
 
@@ -1444,5 +1936,6 @@ export function generatePartialWorkflowYaml(
     ...options,
     nodes: partialNodes,
     edges: partialEdges,
+    appIdOverride,
   });
 }

@@ -1,0 +1,90 @@
+[
+  {
+    "barcode": "6880051000269416",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000269515",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000269614",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000269713",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000269812",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000269911",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000270016",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  },
+  {
+    "barcode": "6880051000270115",
+    "ok": true,
+    "stage": "create",
+    "endpoint": "/Task/CreateInstantTask",
+    "status": 200,
+    "resultCode": 200,
+    "message": "OK",
+    "stops": 1,
+    "body": "{\"resultCode\":200,\"resultMessage\":\"OK\",\"payload\":{\"code\":200,\"message\":\"Updated or created stops\",\"stops\":[{\"stopId\":\"6a5e6fb814388af86aa410cc\",\"stopOrder\":3,\"timeWindow\":{\"startTime\":\"08:00:00\",\"endTime\":\"18:00:00\"},\"initialEstimatedTimeOfArrival\":\"00:00:00\",\"estimatedTimeOfArrivalAtNotification\":\"00:00:00\",\"estimatedTimeOfArrival\":\"00:00:00\",\"latitude\":44.81471525,\"longitude\":20.46054203,\"taskList\":[{\"taskId\":\"6a5e6fb814388af86aa410cd\",\"lastStopId\":null,\"taskStatus\":1,\"taskType\":2,\"taskAddress"
+  }
+]

@@ -219,12 +219,13 @@ router.get("/device-workers", (_req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/yaml-preview", (req, res) => {
   try {
-    const { nodes, edges, config, country, environment } = req.body as {
+    const { nodes, edges, config, country, environment, runInput } = req.body as {
       nodes?: unknown;
       edges?: unknown;
       config?: Record<string, unknown>;
       country?: string;
       environment?: string;
+      runInput?: unknown;
     };
 
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
@@ -240,6 +241,7 @@ router.post("/yaml-preview", (req, res) => {
       config,
       country,
       environment,
+      runInput: sanitizeRunInput(runInput) ?? undefined,
     });
 
     res.json({
@@ -729,7 +731,7 @@ router.post("/:id/run", async (req, res) => {
 router.post("/:id/run-step", async (req, res) => {
   try {
     const { id } = req.params;
-    const { nodeId, mode, selectedDeviceId, runInput } = req.body;
+    const { nodeId, mode, selectedDeviceId, runInput, country, environment } = req.body;
 
     if (!nodeId) {
       res.status(400).json({ message: "nodeId is required" });
@@ -747,6 +749,16 @@ router.post("/:id/run-step", async (req, res) => {
     }
 
     const currentVersion = workflow.versions[0];
+    const launchAppNode = (currentVersion.nodes as Array<{ type?: string; data?: { config?: Record<string, unknown> } }>)?.find(
+      (n) => n.type === "LAUNCH_APP",
+    );
+    const finalCountry =
+      country || (launchAppNode?.data?.config?.country as string | undefined) || null;
+    const finalEnvironment =
+      environment ||
+      (launchAppNode?.data?.config?.environment as string | undefined) ||
+      (launchAppNode?.data?.config?.stage as string | undefined) ||
+      null;
 
     const run = await prisma.workflowRun.create({
       data: {
@@ -756,6 +768,8 @@ router.post("/:id/run-step", async (req, res) => {
         mode: mode ?? "single_step",
         targetStepId: nodeId,
         deviceId: selectedDeviceId ?? null,
+        country: finalCountry,
+        environment: finalEnvironment,
         runInput: sanitizeRunInput(runInput) ?? Prisma.DbNull,
       },
     });

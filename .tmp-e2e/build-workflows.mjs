@@ -92,20 +92,21 @@ function loadTourFlow() {
 }
 
 /**
- * Shipment-türü flow'u: LAUNCH(no-clear) → OPEN → operasyon(verifyBackend).
- * openType: OPEN_SHIPMENT (teslim tarafı) veya OPEN_PARCEL (pickup tarafı).
+ * Shipment-türü flow'u: LAUNCH(no-clear) → operasyon(verifyBackend).
+ * Operasyon YAML'ı Stop List scan + options sheet girişini kendi içinde yapar
+ * (PATH-NOTES); ayrı OPEN_SHIPMENT/OPEN_PARCEL gerekmez.
  */
-function shipmentFlow({ name, openType = "OPEN_SHIPMENT", opType, opConfig, codes }) {
+function shipmentFlow({ name, opType, opConfig, codes, verifyDelayMs = 20000 }) {
   const nLaunch = launch(false);
-  const openCfg = openType === "OPEN_PARCEL" ? { trackingNumber: "{{barcode}}" } : { barcode: "{{barcode}}" };
-  const nOpen = node(openType, openCfg);
   const nOp = node(opType, {
+    barcode: "{{barcode}}",
     ...opConfig,
     verifyBackend: true,
     shipmentRef: "{{barcode}}",
     expectedEventCodes: codes,
+    verifyDelayMs,
   });
-  const nodes = layout([nLaunch, nOpen, nOp]);
+  const nodes = layout([nLaunch, nOp]);
   return { name, nodes, edges: chain(nodes) };
 }
 
@@ -119,18 +120,18 @@ function endOfDayFlow() {
 
 // Event kodu referansı: DELY 40, PICK 44, DEPS 71, CODC 268, CODH 269, FDLY 131, NSYS 250.
 const shipmentFlows = [
-  shipmentFlow({ name: "10 · Standard Delivery", opType: "DELIVERY_OPERATION", opConfig: { personDelivered: "{{personDelivered}}" }, codes: [40] }),
-  shipmentFlow({ name: "11 · COD / Cash Delivery", opType: "DELIVERY_OPERATION", opConfig: { codCash: true }, codes: [40, 269] }),
-  shipmentFlow({ name: "12 · Credit Card Delivery", opType: "DELIVERY_OPERATION", opConfig: {}, codes: [40, 268] }),
-  shipmentFlow({ name: "13 · Multicolli Delivery", opType: "DELIVERY_OPERATION", opConfig: {}, codes: [40] }),
-  shipmentFlow({ name: "14 · DEPS", opType: "DEPS_OPERATION", opConfig: {}, codes: [71] }),
-  shipmentFlow({ name: "15 · D4ME / LOS", opType: "LOS_OPERATION", opConfig: { barcode: "{{barcode}}" }, codes: [40] }),
+  shipmentFlow({ name: "10 · Standard Delivery", opType: "DELIVERY_OPERATION", opConfig: { personDelivered: "HappyPath Receiver" }, codes: [40] }),
+  shipmentFlow({ name: "11 · COD / Cash Delivery", opType: "DELIVERY_OPERATION", opConfig: { codCash: true, personDelivered: "HappyPath Receiver" }, codes: [40, 269], verifyDelayMs: 35000 }),
+  shipmentFlow({ name: "12 · Credit Card Delivery", opType: "DELIVERY_OPERATION", opConfig: { codCash: true, personDelivered: "HappyPath Receiver" }, codes: [40, 269], verifyDelayMs: 35000 }),
+  shipmentFlow({ name: "13 · Multicolli Delivery", opType: "DELIVERY_OPERATION", opConfig: { personDelivered: "HappyPath Receiver" }, codes: [40] }),
+  shipmentFlow({ name: "14 · DEPS", opType: "DEPS_OPERATION", opConfig: { personDelivered: "HappyPath Receiver" }, codes: [71] }),
+  shipmentFlow({ name: "15 · D4ME / LOS", opType: "LOS_OPERATION", opConfig: {}, codes: [40] }),
   shipmentFlow({ name: "16 · Return Document (RDOC)", opType: "RDOC_OPERATION", opConfig: { rdocStatus: "Success", deliveryBarcode: "{{barcode}}", pickupBarcode: "{{pickupBarcode}}" }, codes: [44] }),
-  shipmentFlow({ name: "17 · Delivery Failed", opType: "DELIVERY_FAIL_OPERATION", opConfig: { failReason: "{{failReason}}" }, codes: [131] }),
-  shipmentFlow({ name: "18 · Pickup", openType: "OPEN_PARCEL", opType: "PICKUP_OPERATION", opConfig: { barcode: "{{barcode}}" }, codes: [44] }),
-  shipmentFlow({ name: "19 · Remote Pickup", openType: "OPEN_PARCEL", opType: "REMOTE_PICKUP_OPERATION", opConfig: { barcode: "{{barcode}}" }, codes: [44] }),
-  shipmentFlow({ name: "20 · Pickup At Customer (PAC)", openType: "OPEN_PARCEL", opType: "PICKUP_AT_CUSTOMER_OPERATION", opConfig: {}, codes: [44] }),
-  shipmentFlow({ name: "21 · Pickup Failed", openType: "OPEN_PARCEL", opType: "PICKUP_FAIL_OPERATION", opConfig: { failReason: "{{failReason}}" }, codes: [250] }),
+  shipmentFlow({ name: "17 · Delivery Failed", opType: "DELIVERY_FAIL_OPERATION", opConfig: { failReason: "15" }, codes: [131] }),
+  shipmentFlow({ name: "18 · Pickup", opType: "PICKUP_OPERATION", opConfig: {}, codes: [44] }),
+  shipmentFlow({ name: "19 · Remote Pickup", opType: "REMOTE_PICKUP_OPERATION", opConfig: {}, codes: [44] }),
+  shipmentFlow({ name: "20 · Pickup At Customer (PAC)", opType: "PICKUP_AT_CUSTOMER_OPERATION", opConfig: {}, codes: [44] }),
+  shipmentFlow({ name: "21 · Pickup Failed", opType: "PICKUP_FAIL_OPERATION", opConfig: { failReason: "43" }, codes: [250] }),
 ];
 
 const ALL = [startFlow(), loadTourFlow(), ...shipmentFlows, endOfDayFlow()];

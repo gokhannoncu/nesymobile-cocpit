@@ -132,27 +132,51 @@ async function runTourApprove(
   let courierUserName = str(config.courierUserName);
 
   // Resolve schedule + courier from the dispatcher's waiting-requests queue
-  // when not pinned in config.
+  // when not pinned in config. Payload is a bare array on RS stage
+  // (not { items: [...] }).
   if (!scheduleId || !courierUserName) {
     const waiting = await postJson(`${baseUrl}/Task/GetWaitingLeavingRequests`, token, {
       StartDate: today,
       EndDate: today,
       ...(hubIds.length > 0 ? { HubIds: hubIds } : {}),
     });
-    const payload = asRecord(asRecord(waiting.json).payload ?? asRecord(waiting.json).Payload ?? waiting.json);
-    const list =
-      (Array.isArray(payload.items) && payload.items) ||
-      (Array.isArray(payload.Items) && payload.Items) ||
-      (Array.isArray(payload.requests) && payload.requests) ||
-      (Array.isArray(waiting.json) && (waiting.json as unknown[])) ||
-      [];
-    const match = list
-      .map(asRecord)
-      .find((r) => !courierUserName || str(r.courierUserName ?? r.CourierUserName) === courierUserName) ?? asRecord(list[0]);
-    if (match) {
+    const root = asRecord(waiting.json);
+    const payload = root.payload ?? root.Payload ?? waiting.json;
+    const list: unknown[] = Array.isArray(payload)
+      ? payload
+      : Array.isArray(asRecord(payload).items)
+        ? (asRecord(payload).items as unknown[])
+        : Array.isArray(asRecord(payload).Items)
+          ? (asRecord(payload).Items as unknown[])
+          : Array.isArray(asRecord(payload).requests)
+            ? (asRecord(payload).requests as unknown[])
+            : [];
+    const zoneHint = str(config.courierZoneCode ?? config.zoneCode) || "36";
+    const match =
+      list
+        .map(asRecord)
+        .find((r) => {
+          const zone = str(r.courierZoneCode ?? r.CourierZoneCode);
+          const name = str(r.courierUserName ?? r.CourierUserName ?? r.courierUsername ?? r.CourierUsername);
+          if (courierUserName && name && name !== courierUserName) return false;
+          if (zoneHint && zone && zone !== zoneHint) return false;
+          return Boolean(str(r.scheduleId ?? r.ScheduleId));
+        }) ?? asRecord(list[0]);
+    if (match && Object.keys(match).length) {
       scheduleId = scheduleId || str(match.scheduleId ?? match.ScheduleId);
-      courierUserName = courierUserName || str(match.courierUserName ?? match.CourierUserName);
+      courierUserName =
+        courierUserName ||
+        str(match.courierUserName ?? match.CourierUserName ?? match.courierUsername ?? match.CourierUsername);
     }
+  }
+
+  // Waiting list often has courierName but not courierUsername — resolve via
+  // GetTodayScheduleByCourierZone when still missing.
+  if (scheduleId && !courierUserName) {
+    const zone = str(config.courierZoneCode ?? config.zoneCode) || "36";
+    const sched = await postJson(`${baseUrl}/Task/GetTodayScheduleByCourierZone`, token, zone);
+    const sp = asRecord(asRecord(sched.json).payload ?? asRecord(sched.json).Payload);
+    courierUserName = str(sp.courierUsername ?? sp.CourierUsername ?? sp.courierUserName ?? sp.CourierUserName);
   }
 
   if (!scheduleId) {
@@ -160,10 +184,16 @@ async function runTourApprove(
     return;
   }
 
+  // Proven RS-stage shape (PascalCase + EventLocation required — null NRE's).
   const approve = await postJson(`${baseUrl}/Task/ApproveLeavingPermission`, token, {
+    TimeSpan: new Date().toISOString(),
     CourierUserNames: courierUserName ? [{ ScheduleId: scheduleId, CourierUserName: courierUserName }] : [],
-    scheduleIds: [scheduleId],
-    eventLocation: null,
+    ScheduleIds: [scheduleId],
+    EventLocation: {
+      Latitude: 44.7866,
+      Longitude: 20.4489,
+      Accuracy: 10,
+    },
   });
 
   if (approve.ok) {
