@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minus, Plus } from 'lucide-react'
+import { Crosshair, Maximize2, Minus, Plus } from 'lucide-react'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
   SCREEN_DOMAINS,
   SCREEN_DOMAIN_META,
   SCREEN_MAP_EDGES,
+  SCREEN_MAP_HUB_ID,
   SCREEN_MAP_NODES,
   type ScreenDomain,
 } from '@/data/product/screen-map'
@@ -16,7 +17,8 @@ import { ScreenMapCanvas } from './screen-map-canvas'
 import { ScreenMapDetail } from './screen-map-detail'
 
 export function ScreenMapExplorer() {
-  const [selectedId, setSelectedId] = useState<string | null>('stop-list')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [activeDomains, setActiveDomains] = useState<Set<ScreenDomain>>(
     () => new Set(SCREEN_DOMAINS),
   )
@@ -31,7 +33,8 @@ export function ScreenMapExplorer() {
     () => new Map(SCREEN_MAP_NODES.map((node) => [node.id, node])),
     [],
   )
-  const selectedNode = selectedId ? (nodesById.get(selectedId) ?? null) : null
+  const detailId = selectedId ?? hoveredId
+  const selectedNode = detailId ? (nodesById.get(detailId) ?? null) : null
 
   const onViewportApi = useCallback(
     (api: { zoomIn: () => void; zoomOut: () => void; fit: () => void }) => {
@@ -54,6 +57,11 @@ export function ScreenMapExplorer() {
   }
 
   const showAllDomains = () => setActiveDomains(new Set(SCREEN_DOMAINS))
+
+  const focusHub = () => {
+    setSelectedId(SCREEN_MAP_HUB_ID)
+    setFitRequestKey((k) => k + 1)
+  }
 
   return (
     <div className="flex min-h-[640px] flex-col gap-3 lg:min-h-[calc(100vh-14rem)]">
@@ -93,6 +101,16 @@ export function ScreenMapExplorer() {
         <div className="flex items-center gap-1">
           <Button
             type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 px-2.5 text-xs"
+            onClick={focusHub}
+          >
+            <Crosshair className="size-3.5" />
+            Focus hub
+          </Button>
+          <Button
+            type="button"
             size="icon"
             variant="outline"
             className="size-8"
@@ -129,8 +147,10 @@ export function ScreenMapExplorer() {
           nodes={SCREEN_MAP_NODES}
           edges={SCREEN_MAP_EDGES}
           selectedId={selectedId}
+          hoveredId={hoveredId}
           activeDomains={activeDomains}
           onSelect={setSelectedId}
+          onHover={setHoveredId}
           fitRequestKey={fitRequestKey}
           onViewportApi={onViewportApi}
         />
@@ -140,6 +160,7 @@ export function ScreenMapExplorer() {
             edges={SCREEN_MAP_EDGES}
             nodesById={nodesById}
             onFocusNode={setSelectedId}
+            isPreview={!selectedId && Boolean(hoveredId)}
           />
         </div>
       </div>

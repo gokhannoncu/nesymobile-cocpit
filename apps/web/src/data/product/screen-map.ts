@@ -51,9 +51,13 @@ export const SCREEN_DOMAIN_META: Record<ScreenDomain, { label: string; tone: str
   settings: { label: 'Settings', tone: 'gray' },
 }
 
+/** Primary navigation hub — most drawer / stop actions originate here. */
+export const SCREEN_MAP_HUB_ID = 'stop-list'
+
 /**
  * Curated product flow map for NESY Courier Mobile.
  * Positions are world coordinates (top-left of each node).
+ * Layout: hub-and-spoke — Stop List center, domains in radial columns.
  */
 export const SCREEN_MAP_NODES: ScreenNode[] = [
   {
@@ -62,8 +66,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'auth',
     summary: 'Courier authentication entry. Routes to stop list or hub scan mode after sign-in.',
     sourceHint: 'LoginFragment',
-    x: 40,
-    y: 280,
+    x: 60,
+    y: 300,
   },
   {
     id: 'stop-list',
@@ -71,8 +75,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'route',
     summary: 'Primary day hub: stops on the active route, drawer entry to most operations.',
     sourceHint: 'StopListFragment',
-    x: 280,
-    y: 280,
+    x: 420,
+    y: 300,
   },
   {
     id: 'manual-routing',
@@ -80,8 +84,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'route',
     summary: 'Manual stop / route adjustments outside the default planned sequence.',
     sourceHint: 'ManuelRoutingFragment',
-    x: 540,
-    y: 640,
+    x: 420,
+    y: 560,
   },
   {
     id: 'map',
@@ -89,8 +93,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'route',
     summary: 'Geographic view of stops; returns to the stop list hub.',
     sourceHint: 'MapFragment',
-    x: 280,
-    y: 420,
+    x: 420,
+    y: 430,
   },
   {
     id: 'task-list',
@@ -98,8 +102,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'tasks',
     summary: 'Parcel-level tasks for a stop: chat, gray label, and shipment tracking entry points.',
     sourceHint: 'TaskListFragment',
-    x: 540,
-    y: 80,
+    x: 720,
+    y: 60,
   },
   {
     id: 'delivery',
@@ -107,8 +111,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'delivery',
     summary: 'Complete a delivery attempt with options, evidence, and payment paths.',
     sourceHint: 'DeliveryFragment',
-    x: 540,
-    y: 220,
+    x: 980,
+    y: 140,
   },
   {
     id: 'delivery-failed',
@@ -116,8 +120,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'delivery',
     summary: 'Capture failure reason and optional photo evidence for an unsuccessful delivery.',
     sourceHint: 'DeliveryFailedFragment',
-    x: 800,
-    y: 220,
+    x: 1240,
+    y: 140,
   },
   {
     id: 'pickup',
@@ -125,8 +129,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'pickup',
     summary: 'Collect parcels from a shipper stop, including KTF / exception side paths.',
     sourceHint: 'PickUpFragment',
-    x: 540,
-    y: 360,
+    x: 980,
+    y: 300,
   },
   {
     id: 'pickup-failed',
@@ -134,8 +138,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'pickup',
     summary: 'Record a failed pickup with reason and camera evidence when required.',
     sourceHint: 'PickupFailedFragment',
-    x: 800,
-    y: 360,
+    x: 1240,
+    y: 300,
   },
   {
     id: 'scan-parcel',
@@ -143,8 +147,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'scan',
     summary: 'Hub companion scan entry used after login or from the drawer.',
     sourceHint: 'ScanParcelFragment',
-    x: 540,
-    y: 500,
+    x: 980,
+    y: 460,
   },
   {
     id: 'barcode-routing',
@@ -152,8 +156,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'scan',
     summary: 'Route a scanned barcode into the correct operational destination.',
     sourceHint: 'BarcodeRoutingFragment',
-    x: 1060,
-    y: 500,
+    x: 1240,
+    y: 540,
   },
   {
     id: 'shipment-tracking',
@@ -161,8 +165,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Look up shipment status; can open invoice and inquiry details.',
     sourceHint: 'ShipmentTrackingFragment',
-    x: 800,
-    y: 500,
+    x: 1240,
+    y: 460,
   },
   {
     id: 'other-transactions',
@@ -170,8 +174,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Ops menu: hand transaction, KTF, case detection, transfer control.',
     sourceHint: 'OtherTransactionFragment',
-    x: 280,
-    y: 140,
+    x: 720,
+    y: 560,
   },
   {
     id: 'vehicle-ops',
@@ -179,8 +183,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Vehicle welcome / loading hand-transaction path before returning to stops.',
     sourceHint: 'VehicleWelcomeFragment / VehicleLoadingFragment',
-    x: 1060,
-    y: 140,
+    x: 1240,
+    y: 620,
   },
   {
     id: 'end-of-day',
@@ -188,8 +192,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Close the tour day and return to the stop list hub.',
     sourceHint: 'EndOfDayFragment',
-    x: 40,
-    y: 40,
+    x: 60,
+    y: 60,
   },
   {
     id: 'gray-label',
@@ -197,8 +201,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Gray-label parcel list → calculator → result → signature, then back to tasks.',
     sourceHint: 'GrayLabel*Fragment',
-    x: 800,
-    y: 40,
+    x: 1240,
+    y: 60,
   },
   {
     id: 'lean-locker',
@@ -206,8 +210,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Locker task list that can open a delivery for a selected barcode.',
     sourceHint: 'LeanLockerTaskListFragment',
-    x: 800,
-    y: 300,
+    x: 980,
+    y: 620,
   },
   {
     id: 'parcel-release',
@@ -215,8 +219,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Release parcels (including PUDO locker release variants) from the drawer.',
     sourceHint: 'ParcelReleaseFragment',
-    x: 800,
-    y: 640,
+    x: 720,
+    y: 430,
   },
   {
     id: 'linehaul',
@@ -224,8 +228,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'ops',
     summary: 'Linehaul loading operation reachable from the navigation drawer.',
     sourceHint: 'LinehaulLoadFragment',
-    x: 280,
-    y: 560,
+    x: 720,
+    y: 300,
   },
   {
     id: 'account-settings',
@@ -233,8 +237,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'settings',
     summary: 'Courier account and device settings; returns to the stop list.',
     sourceHint: 'AccountSettingsFragment',
-    x: 40,
-    y: 480,
+    x: 60,
+    y: 430,
   },
   {
     id: 'ask-question',
@@ -242,8 +246,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'settings',
     summary: 'Support Q&A flow that returns to the stop list when finished.',
     sourceHint: 'AskQuestionFragment / QuestionFragment',
-    x: 40,
-    y: 620,
+    x: 60,
+    y: 560,
   },
   {
     id: 'chat',
@@ -251,8 +255,8 @@ export const SCREEN_MAP_NODES: ScreenNode[] = [
     domain: 'settings',
     summary: 'Task-related courier chat opened from the task list.',
     sourceHint: 'ChatFragment',
-    x: 1060,
-    y: 40,
+    x: 1240,
+    y: 220,
   },
 ]
 
@@ -372,32 +376,177 @@ export function screenMapBounds(nodes: ScreenNode[]): {
 }
 
 type NodeBox = { x: number; y: number; width: number; height: number }
+type EdgeSide = 'left' | 'right' | 'top' | 'bottom'
 
-/** Orthogonal elbow path from the right/left mid of source to target. */
-export function orthogonalEdgePath(from: NodeBox, to: NodeBox): string {
-  const fromRight = from.x + from.width
-  const fromMidY = from.y + from.height / 2
-  const toLeft = to.x
-  const toMidY = to.y + to.height / 2
-  const toRight = to.x + to.width
-  const fromLeft = from.x
+export type EdgePort = { x: number; y: number }
 
-  // Prefer left-to-right; fall back to right-to-left when target is to the left.
-  if (to.x >= fromRight - 8) {
-    const midX = Math.round((fromRight + toLeft) / 2)
-    return `M ${fromRight} ${fromMidY} L ${midX} ${fromMidY} L ${midX} ${toMidY} L ${toLeft} ${toMidY}`
+export type ResolvedScreenEdge = {
+  edge: ScreenEdge
+  fromPort: EdgePort
+  toPort: EdgePort
+  laneOffset: number
+  isReturn: boolean
+}
+
+const RETURN_EDGE_LABELS = new Set(['Back', 'Done', 'Signed', 'Loaded'])
+
+export function isReturnEdge(edge: ScreenEdge): boolean {
+  return RETURN_EDGE_LABELS.has(edge.label)
+}
+
+function nodeBox(node: ScreenNode): NodeBox {
+  return { x: node.x, y: node.y, width: SCREEN_NODE_WIDTH, height: SCREEN_NODE_HEIGHT }
+}
+
+function pickEdgeSides(from: NodeBox, to: NodeBox): { fromSide: EdgeSide; toSide: EdgeSide } {
+  const fromCx = from.x + from.width / 2
+  const fromCy = from.y + from.height / 2
+  const toCx = to.x + to.width / 2
+  const toCy = to.y + to.height / 2
+  const dx = toCx - fromCx
+  const dy = toCy - fromCy
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { fromSide: 'right', toSide: 'left' }
+      : { fromSide: 'left', toSide: 'right' }
+  }
+  return dy >= 0
+    ? { fromSide: 'bottom', toSide: 'top' }
+    : { fromSide: 'top', toSide: 'bottom' }
+}
+
+function portOnSide(box: NodeBox, side: EdgeSide, t: number): EdgePort {
+  switch (side) {
+    case 'left':
+      return { x: box.x, y: box.y + box.height * t }
+    case 'right':
+      return { x: box.x + box.width, y: box.y + box.height * t }
+    case 'top':
+      return { x: box.x + box.width * t, y: box.y }
+    case 'bottom':
+      return { x: box.x + box.width * t, y: box.y + box.height }
+  }
+}
+
+function sideSortKey(box: NodeBox, side: EdgeSide, other: NodeBox): number {
+  const otherCx = other.x + other.width / 2
+  const otherCy = other.y + other.height / 2
+  if (side === 'left' || side === 'right') return otherCy
+  return otherCx
+}
+
+function distributePortT(count: number, index: number): number {
+  if (count <= 1) return 0.5
+  const margin = 0.14
+  const span = 1 - margin * 2
+  return margin + (span * index) / (count - 1)
+}
+
+/** Assign unique anchor ports so parallel edges from the same node do not stack. */
+export function resolveScreenEdges(
+  edges: ScreenEdge[],
+  nodesById: Map<string, ScreenNode>,
+): ResolvedScreenEdge[] {
+  type Pending = {
+    edge: ScreenEdge
+    from: NodeBox
+    to: NodeBox
+    fromSide: EdgeSide
+    toSide: EdgeSide
+  }
+  const pending: Pending[] = []
+
+  for (const edge of edges) {
+    const fromNode = nodesById.get(edge.from)
+    const toNode = nodesById.get(edge.to)
+    if (!fromNode || !toNode) continue
+    const from = nodeBox(fromNode)
+    const to = nodeBox(toNode)
+    const sides = pickEdgeSides(from, to)
+    pending.push({ edge, from, to, ...sides })
   }
 
-  if (toRight <= fromLeft + 8) {
-    const midX = Math.round((fromLeft + toRight) / 2)
-    return `M ${fromLeft} ${fromMidY} L ${midX} ${fromMidY} L ${midX} ${toMidY} L ${toRight} ${toMidY}`
+  const fromGroups = new Map<string, Pending[]>()
+  const toGroups = new Map<string, Pending[]>()
+  for (const item of pending) {
+    const fromKey = `${item.edge.from}:${item.fromSide}`
+    const toKey = `${item.edge.to}:${item.toSide}`
+    if (!fromGroups.has(fromKey)) fromGroups.set(fromKey, [])
+    if (!toGroups.has(toKey)) toGroups.set(toKey, [])
+    fromGroups.get(fromKey)!.push(item)
+    toGroups.get(toKey)!.push(item)
   }
 
-  // Overlapping X: route below both nodes.
-  const fromBottom = from.y + from.height
-  const toBottom = to.y + to.height
-  const midY = Math.max(fromBottom, toBottom) + 28
-  const fromX = from.x + from.width / 2
-  const toX = to.x + to.width / 2
-  return `M ${fromX} ${fromBottom} L ${fromX} ${midY} L ${toX} ${midY} L ${toX} ${to.y}`
+  for (const group of fromGroups.values()) {
+    group.sort((a, b) => sideSortKey(a.from, a.fromSide, b.to) - sideSortKey(b.from, b.fromSide, a.to))
+  }
+  for (const group of toGroups.values()) {
+    group.sort((a, b) => sideSortKey(a.to, a.toSide, b.from) - sideSortKey(b.to, b.toSide, a.from))
+  }
+
+  const fromIndex = new Map<string, number>()
+  const toIndex = new Map<string, number>()
+
+  return pending.map((item) => {
+    const fromKey = `${item.edge.from}:${item.fromSide}`
+    const toKey = `${item.edge.to}:${item.toSide}`
+    const fi = fromIndex.get(fromKey) ?? 0
+    const ti = toIndex.get(toKey) ?? 0
+    fromIndex.set(fromKey, fi + 1)
+    toIndex.set(toKey, ti + 1)
+
+    const fromGroup = fromGroups.get(fromKey)!
+    const toGroup = toGroups.get(toKey)!
+    const fromT = distributePortT(fromGroup.length, fi)
+    const toT = distributePortT(toGroup.length, ti)
+    const laneOffset = (fi - (fromGroup.length - 1) / 2) * 14
+
+    return {
+      edge: item.edge,
+      fromPort: portOnSide(item.from, item.fromSide, fromT),
+      toPort: portOnSide(item.to, item.toSide, toT),
+      laneOffset,
+      isReturn: isReturnEdge(item.edge),
+    }
+  })
+}
+
+export function domainZoneBounds(
+  nodes: ScreenNode[],
+  domain: ScreenDomain,
+): { x: number; y: number; width: number; height: number } | null {
+  const domainNodes = nodes.filter((n) => n.domain === domain)
+  if (domainNodes.length === 0) return null
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const node of domainNodes) {
+    minX = Math.min(minX, node.x)
+    minY = Math.min(minY, node.y)
+    maxX = Math.max(maxX, node.x + SCREEN_NODE_WIDTH)
+    maxY = Math.max(maxY, node.y + SCREEN_NODE_HEIGHT)
+  }
+  const pad = 20
+  return {
+    x: minX - pad,
+    y: minY - pad,
+    width: maxX - minX + pad * 2,
+    height: maxY - minY + pad * 2,
+  }
+}
+
+/** Orthogonal elbow path between explicit anchor ports. */
+export function orthogonalEdgePath(fromPort: EdgePort, toPort: EdgePort, laneOffset = 0): string {
+  const dx = toPort.x - fromPort.x
+  const dy = toPort.y - fromPort.y
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const midX = Math.round((fromPort.x + toPort.x) / 2 + laneOffset)
+    return `M ${fromPort.x} ${fromPort.y} L ${midX} ${fromPort.y} L ${midX} ${toPort.y} L ${toPort.x} ${toPort.y}`
+  }
+
+  const midY = Math.round((fromPort.y + toPort.y) / 2 + laneOffset)
+  return `M ${fromPort.x} ${fromPort.y} L ${fromPort.x} ${midY} L ${toPort.x} ${midY} L ${toPort.x} ${toPort.y}`
 }

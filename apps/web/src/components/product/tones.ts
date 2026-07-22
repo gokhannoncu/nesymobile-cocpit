@@ -65,6 +65,20 @@ export const toneDot: Record<Tone, string> = {
   gray: 'bg-muted-foreground',
 }
 
+/** SVG stroke colors for graph edges (matches toneDot). */
+export const toneStroke: Record<Tone, string> = {
+  purple: '#a855f7',
+  blue: '#3b82f6',
+  green: '#16a34a',
+  orange: '#f97316',
+  red: '#ef4444',
+  amber: '#f59e0b',
+  teal: '#14b8a6',
+  indigo: '#6366f1',
+  nesy: 'var(--nesy)',
+  gray: '#94a3b8',
+}
+
 /** Icon squircle background (hero, card headers). */
 export const toneIconBox: Record<Tone, string> = {
   purple: 'bg-purple-100 dark:bg-purple-900/40',

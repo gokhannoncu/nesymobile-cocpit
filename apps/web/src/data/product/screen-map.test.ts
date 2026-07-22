@@ -4,7 +4,9 @@ import {
   SCREEN_MAP_EDGES,
   SCREEN_MAP_NODES,
   assertScreenMapIntegrity,
+  isReturnEdge,
   orthogonalEdgePath,
+  resolveScreenEdges,
 } from './screen-map'
 
 describe('assertScreenMapIntegrity', () => {
@@ -73,12 +75,34 @@ describe('SCREEN_MAP curated graph', () => {
 })
 
 describe('orthogonalEdgePath', () => {
-  it('builds an elbow path between two node centers', () => {
-    const path = orthogonalEdgePath(
-      { x: 0, y: 0, width: 100, height: 40 },
-      { x: 200, y: 100, width: 100, height: 40 },
-    )
+  it('builds an elbow path between two anchor ports', () => {
+    const path = orthogonalEdgePath({ x: 100, y: 20 }, { x: 300, y: 120 }, 0)
     expect(path.startsWith('M ')).toBe(true)
     expect(path.includes('L ')).toBe(true)
+  })
+})
+
+describe('resolveScreenEdges', () => {
+  it('assigns unique ports for parallel edges from the same node', () => {
+    const nodes = [
+      { id: 'hub', label: 'Hub', domain: 'route' as const, summary: '', x: 0, y: 0 },
+      { id: 'a', label: 'A', domain: 'tasks' as const, summary: '', x: 200, y: -40 },
+      { id: 'b', label: 'B', domain: 'tasks' as const, summary: '', x: 200, y: 40 },
+    ]
+    const edges = [
+      { id: 'e1', from: 'hub', to: 'a', label: 'Go A' },
+      { id: 'e2', from: 'hub', to: 'b', label: 'Go B' },
+    ]
+    const nodesById = new Map(nodes.map((n) => [n.id, n]))
+    const resolved = resolveScreenEdges(edges, nodesById)
+    expect(resolved).toHaveLength(2)
+    expect(resolved[0]?.fromPort).not.toEqual(resolved[1]?.fromPort)
+  })
+})
+
+describe('isReturnEdge', () => {
+  it('marks back-flow labels as return edges', () => {
+    expect(isReturnEdge({ id: 'e', from: 'a', to: 'b', label: 'Back' })).toBe(true)
+    expect(isReturnEdge({ id: 'e', from: 'a', to: 'b', label: 'Deliver' })).toBe(false)
   })
 })

@@ -15,11 +15,14 @@ export function ScreenMapDetail({
   edges,
   nodesById,
   onFocusNode,
+  isPreview = false,
 }: {
   node: ScreenNode | null
   edges: ScreenEdge[]
   nodesById: Map<string, ScreenNode>
   onFocusNode: (id: string) => void
+  /** True when showing hover preview before click selection. */
+  isPreview?: boolean
 }) {
   if (!node) {
     return (
@@ -50,6 +53,9 @@ export function ScreenMapDetail({
           {meta.label}
         </p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{node.label}</h2>
+        {isPreview ? (
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground">Hover preview — click to pin</p>
+        ) : null}
         <p className="mt-2 text-sm leading-relaxed text-foreground/80">{node.summary}</p>
         {node.sourceHint ? (
           <p className="mt-3 font-mono text-[11px] text-muted-foreground">{node.sourceHint}</p>
