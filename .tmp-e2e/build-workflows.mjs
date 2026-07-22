@@ -66,7 +66,10 @@ function startFlow() {
   const nAuth = node("AUTH_LOGIN", { pinCode: PIN });
   const nCheckRoute = node("CHECK_ROUTE", {}, "condition");
   const nSelectRoute = node("SELECT_ROUTE", { routeNumber: ROUTE });
-  const nValidate = node("VALIDATE_STOPLIST", {});
+  const nValidate = node("VALIDATE_STOPLIST", {
+    courierZoneCode: ROUTE,
+    courierUsername: "G.ONCU",
+  });
 
   const nodes = layout([nLaunch, nIfLogin, nAuth, nCheckRoute, nSelectRoute, nValidate]);
   const edges = [
@@ -135,6 +138,11 @@ const shipmentFlows = [
 ];
 
 const ALL = [startFlow(), loadTourFlow(), ...shipmentFlows, endOfDayFlow()];
+const ONLY = (() => {
+  const idx = process.argv.indexOf("--only");
+  return idx >= 0 ? String(process.argv[idx + 1] || "").trim() : "";
+})();
+const SELECTED = ONLY ? ALL.filter((w) => w.name.includes(ONLY)) : ALL;
 
 // ─── API yardımcıları ────────────────────────────────────────────────────────
 async function api(pathname, init) {
@@ -199,9 +207,15 @@ async function upsert(wf) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 (async () => {
-  console.log(`Faz 2 — ${ALL.length} workflow ${DRY_RUN ? "(dry-run)" : `→ ${API}`}\n`);
+  if (ONLY && SELECTED.length === 0) {
+    console.error(`--only ${ONLY}: eşleşen workflow yok`);
+    process.exit(1);
+  }
+  console.log(
+    `Faz 2 — ${SELECTED.length} workflow ${DRY_RUN ? "(dry-run)" : `→ ${API}`}${ONLY ? ` (only: ${ONLY})` : ""}\n`,
+  );
   let ok = 0;
-  for (const wf of ALL) {
+  for (const wf of SELECTED) {
     try {
       await upsert(wf);
       ok += 1;
@@ -209,6 +223,6 @@ async function upsert(wf) {
       console.error(`  ✗ ${wf.name}: ${err instanceof Error ? err.message : err}`);
     }
   }
-  console.log(`\nBitti: ${ok}/${ALL.length} başarılı.`);
-  if (ok < ALL.length) process.exit(1);
+  console.log(`\nBitti: ${ok}/${SELECTED.length} başarılı.`);
+  if (ok < SELECTED.length) process.exit(1);
 })();

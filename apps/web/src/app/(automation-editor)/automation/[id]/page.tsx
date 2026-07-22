@@ -1,4 +1,4 @@
-import { WorkflowEditorPage } from "./workflow-editor";
+import { WorkflowEditorLoader } from "./workflow-editor-loader";
 
 type WorkflowDetailPageProps = {
   params: Promise<{
@@ -9,5 +9,5 @@ type WorkflowDetailPageProps = {
 export default async function WorkflowDetailPage({ params }: WorkflowDetailPageProps) {
   const { id } = await params;
 
-  return <WorkflowEditorPage workflowId={id} />;
+  return <WorkflowEditorLoader workflowId={id} />;
 }

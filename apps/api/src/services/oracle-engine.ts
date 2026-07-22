@@ -48,17 +48,16 @@ export const DEFAULT_COMPLETION_POLICIES: Record<string, NodeCompletionPolicy> =
   // pipeline succeeds, but is no longer required for the node to pass.
   LOAD_TO_VEHICLE: { required: ["ui"] },
   SCAN_BARCODE: { required: ["ui", "mobileEvent"] },
-  // Mobile may not always emit VALIDATE_STOPLIST logcat (bridge race / screen
-  // already settled). UI completion + optional mobileEvent is enough; GET_STATE
-  // readiness is checked separately in the START happy-path.
-  VALIDATE_STOPLIST: { required: ["ui"] },
+  // UI soft-assert + post-Maestro server step (device JWT + GET_KEY →
+  // GetMyScheduleByZoneCode). Run stays open until backend oracle resolves.
+  VALIDATE_STOPLIST: { required: ["ui", "backend"] },
   // Tour-start notification / logcat can race; UI tap of btn_out is enough —
   // TOUR_APPROVE server step confirms the leaving-request was created.
   REQUEST_TOUR_START: { required: ["ui"] },
   OPEN_SHIPMENT: { required: ["ui", "mobileEvent"] },
   OPEN_PARCEL: { required: ["ui", "mobileEvent"] },
   VERIFY_BACKEND_STATE: { required: ["backend"] },
-  // Server-side approval steps (server-steps.ts) resolve the "backend" oracle.
+  // Server-side approval / schedule steps (server-steps.ts) resolve "backend".
   TOUR_APPROVE: { required: ["backend"] },
   EOD_APPROVE: { required: ["backend"] },
 };
@@ -127,6 +126,13 @@ export class OracleEngine {
 
   policyFor(nodeId: string): NodeCompletionPolicy {
     return this.policyByNodeId.get(nodeId) ?? DEFAULT_POLICY;
+  }
+
+  /** Latest backend oracle evidence for a node (used by the Backend Validations lane). */
+  getBackendOracle(nodeId: string): { status: OracleEvidence["status"]; detail: string } | null {
+    const evidence = this.evidence.get(nodeId)?.get("backend");
+    if (!evidence) return null;
+    return { status: evidence.status, detail: evidence.detail };
   }
 
   // ───────────────────────────────────────────────────────────────────────────

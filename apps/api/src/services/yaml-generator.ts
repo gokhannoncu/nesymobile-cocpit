@@ -410,6 +410,8 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     case "VALIDATE_STOPLIST": {
       // Soft assert Stop List readiness — never hard-fail the Maestro process.
       // Pull-to-refresh nudges GetMyScheduleByZoneCode when srl is present.
+      // Hard backend gate runs after Maestro (server-steps.ts): device JWT +
+      // GET_KEY → Task/GetMyScheduleByZoneCode (+ admin schedule cross-check).
       const srlId = resourceId(appId, "srl");
       const rvId = resourceId(appId, "rv");
       const btnOutId = resourceId(appId, "btn_out");

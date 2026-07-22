@@ -113,6 +113,17 @@ describe("generateWorkflowWorkspace", () => {
     expect(main.content).toContain("runFlow:\n    when:\n      visible:");
     expect(main.content).toContain("btn_login");
   });
+
+  it("runs LAUNCH_APP before the deferred IF_LOGIN runtime probe", () => {
+    // Matches WorkflowRunner defer_to_runtime: null preflight when LAUNCH_APP is present.
+    const workspace = generateWorkflowWorkspace(options(conditionalNodes, conditionalEdges), null);
+    const main = workspace.files.find((f) => f.relativePath === "main.yaml")!.content;
+
+    const launchIdx = main.indexOf("NESY_STEP::START::n1::LAUNCH_APP");
+    const ifLoginIdx = main.indexOf("NESY_STEP::START::if1::IF_LOGIN");
+    expect(launchIdx).toBeGreaterThanOrEqual(0);
+    expect(ifLoginIdx).toBeGreaterThan(launchIdx);
+  });
 });
 
 describe("buildWorkflowIR", () => {

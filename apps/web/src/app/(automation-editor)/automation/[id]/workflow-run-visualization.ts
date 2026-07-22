@@ -85,10 +85,47 @@ export function buildWorkflowRunVisualization(
     nodeStatusById[VIRTUAL_START_NODE_ID] = "success";
   }
 
+  const backendLaneSteps = status.steps.filter((step) => step.nodeId.startsWith("__bv__"));
+  if (backendLaneSteps.length > 0) {
+    const anyBvRunning = backendLaneSteps.some((s) => coerceNodeStatus(s.status) === "running");
+    const anyBvFailed = backendLaneSteps.some((s) => coerceNodeStatus(s.status) === "failed");
+    const allBvDone = backendLaneSteps.every((s) => {
+      const st = coerceNodeStatus(s.status);
+      return st === "success" || st === "failed" || st === "skipped" || st === "cancelled";
+    });
+    const anyBvReached = backendLaneSteps.some((s) => isNodeReached(coerceNodeStatus(s.status)));
+    if (anyBvRunning) {
+      nodeStatusById["__backend_lane_header__"] = "running";
+    } else if (anyBvFailed && allBvDone) {
+      nodeStatusById["__backend_lane_header__"] = "failed";
+    } else if (allBvDone && anyBvReached) {
+      nodeStatusById["__backend_lane_header__"] = "success";
+    } else if (isActive && anyBvReached) {
+      nodeStatusById["__backend_lane_header__"] = "running";
+    }
+  }
+
   const traversedConnectionIds = computeTraversedConnectionIds(connections, nodeStatusById);
 
   if (anyStepReached) {
     traversedConnectionIds.add(VIRTUAL_START_CONNECTION_ID);
+  }
+
+  // Traverse backend lane connections when targets are reached.
+  for (const connection of connections) {
+    if (!connection.id.startsWith("__bv_conn__")) continue;
+    if (!connection.targetNodeId) continue;
+    const targetStatus = nodeStatusById[connection.targetNodeId] ?? "pending";
+    if (!isNodeReached(targetStatus)) continue;
+    const sourceReady =
+      connection.sourceNodeId === "__backend_lane_header__"
+        ? isNodeReached(targetStatus)
+        : nodeStatusById[connection.sourceNodeId] === "success" ||
+          nodeStatusById[connection.sourceNodeId] === "failed" ||
+          nodeStatusById[connection.sourceNodeId] === "running";
+    if (sourceReady || connection.sourceNodeId === "__backend_lane_header__") {
+      traversedConnectionIds.add(connection.id);
+    }
   }
 
   return {

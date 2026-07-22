@@ -1,0 +1,64 @@
+{
+  "pin": "3680",
+  "route": "36",
+  "preflight": {
+    "is_logged_in": "true",
+    "route_selected": "true",
+    "route_name": "36",
+    "schedule_loaded": "true",
+    "schedule_id": "11-36-20260722-1",
+    "current_screen": "StopListFragment",
+    "run_id": "",
+    "session_id": "8a43ebda-f1ea-4d4e-85fe-eb46b9589e87",
+    "seq": "19",
+    "skip_delivery_wait": "false",
+    "pending_request_count": "0",
+    "active_task_count": "0"
+  },
+  "run": null,
+  "postState": {
+    "is_logged_in": "true",
+    "route_selected": "true",
+    "route_name": "36",
+    "schedule_loaded": "true",
+    "schedule_id": "11-36-20260722-1",
+    "current_screen": "StopListFragment",
+    "run_id": "",
+    "session_id": "8a43ebda-f1ea-4d4e-85fe-eb46b9589e87",
+    "seq": "19",
+    "skip_delivery_wait": "false",
+    "pending_request_count": "0",
+    "active_task_count": "0"
+  },
+  "backend": {
+    "ok": true,
+    "errors": [],
+    "scheduleId": "11-36-20260722-1",
+    "scheduleStatus": 0,
+    "courierUsername": "G.ONCU",
+    "courierZoneCode": "36",
+    "stopCount": 0,
+    "waitingForZone": 0,
+    "uniqueScheduleIds": [
+      "11-36-20260722-1"
+    ],
+    "courierAuth": {
+      "isLogin": true,
+      "tokenLen": 1099,
+      "protectedKeyLen": 344
+    },
+    "getMyScheduleByZoneCode": {
+      "http": 200,
+      "resultCode": 200,
+      "hasPayload": true,
+      "scheduleId": "11-36-20260722-1",
+      "scheduleStatus": 0,
+      "courierUsername": "G.ONCU",
+      "courierZoneCode": "36",
+      "stopCount": 0,
+      "responseBytes": 1028,
+      "source": "device JWT + GET_KEY → mobile API"
+    }
+  },
+  "ready": true
+}

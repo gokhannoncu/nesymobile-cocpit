@@ -167,7 +167,7 @@ export const workflowComponentRegistry: Partial<Record<WorkflowNodeType, Workflo
     type: WorkflowNodeType.VALIDATE_STOPLIST,
     label: "Validate StopList",
     title: "Validate StopList",
-    subtitle: "Required validation",
+    subtitle: "UI · Server API",
     phase: "precheck_boundary",
     category: "Courier Actions",
     courierPaletteSubgroup: "Route & stops",
@@ -604,6 +604,38 @@ export function paletteItemFromType(type: WorkflowNodeType): PaletteItem {
     kind: definition.kind,
     defaultConfig: definition.defaultConfig,
   };
+}
+
+function humanizeWorkflowType(type: string): string {
+  return type
+    .split("_")
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/** Split compound palette subtitles into compact canvas tags (e.g. "UI · Server API"). */
+export function parseWorkflowSubtitleTags(subtitle: string): string[] {
+  if (!subtitle) return [];
+  for (const separator of [" · ", " + ", " | "]) {
+    if (!subtitle.includes(separator)) continue;
+    const parts = subtitle.split(separator).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2 && parts.every((part) => part.length <= 28)) return parts;
+  }
+  return [];
+}
+
+export function getWorkflowNodeDisplay(node: {
+  type: string;
+  data?: { title?: string; subtitle?: string };
+}): { title: string; subtitle: string; subtitleTags: string[] } {
+  const definition = workflowComponentRegistry[node.type as WorkflowNodeType];
+  const rawTitle = node.data?.title?.trim() || definition?.title || node.type;
+  const looksLikeTypeId = rawTitle === node.type || /^[A-Z0-9_]+$/.test(rawTitle);
+  const title = looksLikeTypeId
+    ? (definition?.label ?? definition?.title ?? humanizeWorkflowType(node.type))
+    : rawTitle;
+  const subtitle = node.data?.subtitle?.trim() || definition?.subtitle || "";
+  return { title, subtitle, subtitleTags: parseWorkflowSubtitleTags(subtitle) };
 }
 
 function courierPaletteSubsections(): { title: string; items: PaletteItem[] }[] {

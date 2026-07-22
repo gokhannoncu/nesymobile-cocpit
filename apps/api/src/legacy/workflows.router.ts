@@ -706,8 +706,31 @@ router.post("/:id/run", async (req, res) => {
           status: string;
         }>;
 
+      // Derived post-Maestro backend validation lane steps (EventTower / server-steps).
+      const { deriveBackendValidations } = await import("../services/backend-validation-lane.js");
+      const backendValidations = deriveBackendValidations(
+        nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          data: n.data,
+        })),
+      );
+      let nextOrder = stepData.length;
+      for (const bv of backendValidations) {
+        stepData.push({
+          runId: run.id,
+          nodeId: bv.stepNodeId,
+          nodeType: `BACKEND_VALIDATION:${bv.sourceNodeType}`,
+          nodeTitle: bv.title,
+          order: nextOrder++,
+          status: "pending",
+        });
+      }
+
       await prisma.workflowStepResult.createMany({ data: stepData });
-      console.log(`[POST /:id/run] Created ${stepData.length} step results (topological order)`);
+      console.log(
+        `[POST /:id/run] Created ${stepData.length} step results (topological + ${backendValidations.length} backend validations)`,
+      );
     }
 
     const { queuePosition } = dispatchRun(run.id, selectedDeviceId ?? null);

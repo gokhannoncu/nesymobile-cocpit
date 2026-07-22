@@ -33,14 +33,17 @@ import { Fragment, useEffect, useState, useRef, useCallback, useMemo } from "rea
 import { fetchWorkflow, fetchRunDetail, type WorkflowDetail, type WorkflowRun, type WorkflowStepResult, type RunSpan } from "@/services/automation-api";
 import { toast } from "sonner";
 import { ExecutionTimeline, toExecutionTimelineSteps, type ExecutionTimelineStep } from "./ExecutionTimeline";
+import { BackendValidationPanel } from "./BackendValidationPanel";
 import { playVideoElement } from "@/lib/safe-video-play";
+import { isBackendValidationStepId } from "../../backend-validation-lane";
 
-type RunDetailTab = "summary" | "parameters" | "logs" | "video" | "spans";
+type RunDetailTab = "summary" | "parameters" | "logs" | "backend" | "video" | "spans";
 
 const RUN_DETAIL_TABS: { id: RunDetailTab; label: string }[] = [
   { id: "summary", label: "Summary" },
   { id: "parameters", label: "Parameters" },
   { id: "logs", label: "Logs" },
+  { id: "backend", label: "Backend" },
   { id: "video", label: "Video" },
   { id: "spans", label: "Spans" },
 ];
@@ -998,13 +1001,17 @@ export default function RunResultsPage() {
 
   const steps = useMemo(() => {
     if (!run?.stepResults) return [];
-    return [...run.stepResults].sort((a, b) => {
-      const timeA = a.startedAt ? new Date(a.startedAt).getTime() : Number.MAX_SAFE_INTEGER;
-      const timeB = b.startedAt ? new Date(b.startedAt).getTime() : Number.MAX_SAFE_INTEGER;
-      if (timeA === timeB) return a.order - b.order;
-      return timeA - timeB;
-    });
+    return [...run.stepResults]
+      .filter((s) => !isBackendValidationStepId(s.nodeId))
+      .sort((a, b) => {
+        const timeA = a.startedAt ? new Date(a.startedAt).getTime() : Number.MAX_SAFE_INTEGER;
+        const timeB = b.startedAt ? new Date(b.startedAt).getTime() : Number.MAX_SAFE_INTEGER;
+        if (timeA === timeB) return a.order - b.order;
+        return timeA - timeB;
+      });
   }, [run?.stepResults]);
+
+  const allStepsIncludingBackend = useMemo(() => run?.stepResults ?? [], [run?.stepResults]);
 
   if (!run) {
     return (
@@ -1388,6 +1395,10 @@ export default function RunResultsPage() {
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {activeTab === "backend" && (
+                    <BackendValidationPanel steps={allStepsIncludingBackend} />
                   )}
 
                   {activeTab === "video" && (

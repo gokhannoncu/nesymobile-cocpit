@@ -19,6 +19,7 @@ import {
   type NesyEnvironment,
 } from "../nesy-env.js";
 import { getDashboardAdminToken } from "./nesy-admin-token.js";
+import type { BackendHttpCapture } from "./backend-validation-lane.js";
 
 export interface BackendVerifyRequest {
   country: NesyCountry;
@@ -39,6 +40,7 @@ export interface BackendVerifyResult {
   shipmentId?: string;
   matchedCode?: string;
   foundCodes?: string[];
+  requests?: BackendHttpCapture[];
 }
 
 /** Short code ⇄ numeric code map for the events the happy-path flows assert. */
@@ -132,31 +134,42 @@ export class BackendVerifier {
     // RS stage delivery (esp. COD/fiscal) often lands events 20–90s after UI finish.
     const attempts = req.attempts ?? 20;
     const intervalMs = req.intervalMs ?? 5000;
+    const requests: BackendHttpCapture[] = [];
 
     if (!shipmentRef || codes.length === 0) {
-      return { passed: false, detail: "Missing shipmentRef or expected codes." };
+      return { passed: false, detail: "Missing shipmentRef or expected codes.", requests };
     }
 
     const baseUrl = resolveBaseUrl(country, environment);
-    if (!baseUrl) return { passed: false, detail: `No base URL for ${country}/${environment}.` };
+    if (!baseUrl) return { passed: false, detail: `No base URL for ${country}/${environment}.`, requests };
 
     const token = await getDashboardAdminToken(country, environment);
-    if (!token) return { passed: false, detail: "Could not obtain admin token for backend verification." };
+    if (!token) return { passed: false, detail: "Could not obtain admin token for backend verification.", requests };
 
     const shipmentId = await this.resolveShipmentId(baseUrl, token, shipmentRef);
-    const expected = new Set<string>();
-    for (const c of codes) for (const form of expandCode(c)) expected.add(form);
+    requests.push({
+      method: "POST",
+      url: `${baseUrl}/Shipment/GetShipmentsByFilter`,
+      requestBody: [{ value: shipmentRef, filterType: 1 }],
+      responseBody: { resolvedShipmentId: shipmentId },
+    });
 
     let lastFound: string[] = [];
+    let lastStatus: number | undefined;
+    let lastBody: unknown;
     for (let attempt = 1; attempt <= attempts; attempt++) {
+      const eventsUrl = `${baseUrl}/EventTower/GetEvents`;
+      const requestBody = { ShipmentId: shipmentId };
       try {
-        const res = await fetch(`${baseUrl}/EventTower/GetEvents`, {
+        const res = await fetch(eventsUrl, {
           method: "POST",
           headers: nesyHeaders(token),
-          body: JSON.stringify({ ShipmentId: shipmentId }),
+          body: JSON.stringify(requestBody),
         });
+        lastStatus = res.status;
         if (res.ok) {
           const json = await res.json();
+          lastBody = json;
           lastFound = this.extractFoundCodes(json);
           // Require every requested code (e.g. DELY+CODH), not just the first hit.
           const missing = codes.filter((c) => {
@@ -165,20 +178,39 @@ export class BackendVerifier {
           });
           if (missing.length === 0) {
             const matched = codes.join(",");
+            requests.push({
+              method: "POST",
+              url: eventsUrl,
+              requestBody,
+              status: res.status,
+              responseBody: { attempt, foundCodes: lastFound, matched },
+            });
             return {
               passed: true,
               detail: `Backend event(s) [${matched}] found for shipment ${shipmentId} (attempt ${attempt}/${attempts}).`,
               shipmentId,
               matchedCode: matched,
               foundCodes: lastFound,
+              requests,
             };
           }
+        } else {
+          lastBody = null;
         }
       } catch (err) {
         console.warn(`[BackendVerifier] GetEvents attempt ${attempt} failed:`, err instanceof Error ? err.message : err);
+        lastBody = { error: err instanceof Error ? err.message : String(err) };
       }
       if (attempt < attempts) await sleep(intervalMs);
     }
+
+    requests.push({
+      method: "POST",
+      url: `${baseUrl}/EventTower/GetEvents`,
+      requestBody: { ShipmentId: shipmentId },
+      status: lastStatus,
+      responseBody: lastBody ?? { foundCodes: lastFound },
+    });
 
     return {
       passed: false,
@@ -187,6 +219,7 @@ export class BackendVerifier {
         `Seen: [${lastFound.join(", ") || "none"}].`,
       shipmentId,
       foundCodes: lastFound,
+      requests,
     };
   }
 }

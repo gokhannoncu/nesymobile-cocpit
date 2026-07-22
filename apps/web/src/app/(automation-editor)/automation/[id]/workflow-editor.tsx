@@ -85,8 +85,10 @@ import { InvalidWorkflowStepDialog } from "./invalid-workflow-step-dialog";
 import { UnsavedChangesDialog } from "./unsaved-changes-dialog";
 import {
   allPaletteItems,
+  getWorkflowNodeDisplay,
   iconRegistry,
   nodeToneByType,
+  parseWorkflowSubtitleTags,
   paletteItemFromType,
   workflowComponentGroups,
   workflowComponentRegistry,
@@ -104,6 +106,11 @@ import {
   TRAVERSED_CONNECTION_COLOR,
   type WorkflowRunVisualization,
 } from "./workflow-run-visualization";
+import {
+  layoutBackendValidationLane,
+  getBackendLaneNodeDimensions,
+} from "./backend-validation-lane";
+import { BackendLaneNodeView } from "./BackendLaneNodeView";
 import { WorkflowYamlPreviewModal } from "./WorkflowYamlPreviewModal";
 import { YamlPreviewPanel } from "./YamlPreviewPanel";
 import {
@@ -212,8 +219,8 @@ function isDeviceRunnable(device: NesyMobileAdbDevice) {
   return status === "Online" || status === "Testing" || status === "Emulator";
 }
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 64;
+const NODE_WIDTH = 228;
+const NODE_HEIGHT = 76;
 const START_NODE_VERTICAL_GAP = 120;
 const NODE_VERTICAL_GAP = 56;
 const BRANCH_HORIZONTAL_GAP = 260;
@@ -284,11 +291,12 @@ type WorkflowSnapshot = Pick<WorkflowState, "nodes" | "connections" | "selectedN
 
 type CanvasRenderNode = WorkflowNode & {
   virtual?: boolean;
-  visualRole?: "start_trigger";
+  visualRole?: "start_trigger" | "backend_header" | "backend_lane";
 };
 
 type CanvasRenderConnection = Connection & {
   virtual?: boolean;
+  backendLane?: boolean;
 };
 
 const workflowTitles: Record<string, string> = {
@@ -1779,7 +1787,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         const status = await fetchRunStatus(activeRunId);
         if (cancelled) return;
 
-        setRunVisualization(buildWorkflowRunVisualization(status, connections));
+        const lane = layoutBackendValidationLane(nodes);
+        setRunVisualization(
+          buildWorkflowRunVisualization(status, [...connections, ...lane.connections]),
+        );
 
         if (status.runStatus !== "running" && status.runStatus !== "pending") {
           if (runPollingRef.current) {
@@ -1805,7 +1816,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         runPollingRef.current = null;
       }
     };
-  }, [activeRunId, connections]);
+  }, [activeRunId, connections, nodes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3217,14 +3228,26 @@ function WorkflowCanvas({
   });
   const virtualStartNode = useMemo(() => getVirtualStartNode(nodes), [nodes]);
   const virtualStartConnection = useMemo(() => getVirtualStartConnection(virtualStartNode, nodes), [nodes, virtualStartNode]);
-  const renderNodes = useMemo<CanvasRenderNode[]>(
-    () => (virtualStartNode ? [virtualStartNode, ...nodes] : nodes),
-    [nodes, virtualStartNode],
-  );
-  const renderConnections = useMemo<CanvasRenderConnection[]>(
-    () => (virtualStartConnection ? [virtualStartConnection, ...connections] : connections),
-    [connections, virtualStartConnection],
-  );
+  const backendLane = useMemo(() => layoutBackendValidationLane(nodes, NODE_WIDTH), [nodes]);
+  const renderNodes = useMemo<CanvasRenderNode[]>(() => {
+    const base: CanvasRenderNode[] = virtualStartNode ? [virtualStartNode, ...nodes] : [...nodes];
+    if (backendLane.header) {
+      base.push({ ...backendLane.header, virtual: true, visualRole: "backend_header" });
+    }
+    for (const laneNode of backendLane.nodes) {
+      base.push({ ...laneNode, virtual: true, visualRole: "backend_lane" });
+    }
+    return base;
+  }, [backendLane.header, backendLane.nodes, nodes, virtualStartNode]);
+  const renderConnections = useMemo<CanvasRenderConnection[]>(() => {
+    const base: CanvasRenderConnection[] = virtualStartConnection
+      ? [virtualStartConnection, ...connections]
+      : [...connections];
+    for (const connection of backendLane.connections) {
+      base.push({ ...connection, virtual: true, backendLane: true });
+    }
+    return base;
+  }, [backendLane.connections, connections, virtualStartConnection]);
 
   return (
     <main
@@ -3265,17 +3288,25 @@ function WorkflowCanvas({
             traversedConnectionIds={runVisualization?.traversedConnectionIds}
           />
           <AnimatePresence>
-            {renderNodes.map((node) => (
-              <CanvasNodeView
-                key={node.id}
-                node={node}
-                invalid={invalidNodeIds.has(node.id)}
-                selected={!editorLocked && selectedNodeId === node.id}
-                onRequestDelete={onRequestDeleteNode}
-                executionStatus={getCanvasNodeExecutionStatus(node.id, runVisualization)}
-                editorLocked={editorLocked}
-              />
-            ))}
+            {renderNodes.map((node) =>
+              node.virtual && (node.visualRole === "backend_lane" || node.visualRole === "backend_header") ? (
+                <BackendLaneNodeView
+                  key={node.id}
+                  node={node}
+                  executionStatus={getCanvasNodeExecutionStatus(node.id, runVisualization)}
+                />
+              ) : (
+                <CanvasNodeView
+                  key={node.id}
+                  node={node}
+                  invalid={invalidNodeIds.has(node.id)}
+                  selected={!editorLocked && selectedNodeId === node.id}
+                  onRequestDelete={onRequestDeleteNode}
+                  executionStatus={getCanvasNodeExecutionStatus(node.id, runVisualization)}
+                  editorLocked={editorLocked}
+                />
+              ),
+            )}
           </AnimatePresence>
           {nodes.filter((node) => node.kind === "condition").map((node) => (
             <ConditionBranchTargets
@@ -3535,16 +3566,61 @@ function PaletteButton({ item }: { item: PaletteItem }) {
   );
 }
 
+function WorkflowNodeSubtitle({
+  subtitle,
+  subtitleTags,
+  muted = false,
+}: {
+  subtitle: string;
+  subtitleTags: string[];
+  muted?: boolean;
+}) {
+  if (subtitleTags.length > 0) {
+    return (
+      <span className="mt-1.5 flex flex-wrap gap-1">
+        {subtitleTags.map((tag) => (
+          <span
+            key={tag}
+            className={cn(
+              "inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+              muted
+                ? "border-slate-200 bg-slate-50 text-slate-500"
+                : "border-slate-200/90 bg-slate-50 text-slate-600",
+            )}
+          >
+            {tag}
+          </span>
+        ))}
+      </span>
+    );
+  }
+  if (!subtitle) return null;
+  return (
+    <span
+      className={cn(
+        "mt-1 block text-[11px] font-medium leading-snug",
+        muted ? "text-slate-500" : "text-slate-500",
+      )}
+    >
+      {subtitle}
+    </span>
+  );
+}
+
 function PaletteDragPreview({ item }: { item: PaletteItem }) {
   const Icon = iconRegistry[item.icon] ?? Box;
+  const subtitleTags = parseWorkflowSubtitleTags(item.subtitle);
   return (
-    <div className="flex min-h-14 w-[200px] items-center gap-2.5 rounded-xl border border-nesy-muted bg-white px-3 py-2.5 text-left shadow-xl">
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg border", item.tone)}>
+    <div
+      className="flex items-start gap-3 rounded-xl border border-nesy-muted bg-white px-3.5 py-3 text-left shadow-xl"
+      style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
+    >
+      <span className={cn("mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg border", item.tone)}>
         <Icon className="size-4.5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-semibold leading-tight text-slate-800">{item.title}</span>
-        <span className="mt-0.5 block text-[11px] font-medium leading-tight text-slate-400">{item.subtitle}</span>
+        <span className="block text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
+        <WorkflowNodeSubtitle subtitle={item.subtitle} subtitleTags={subtitleTags} muted />
       </span>
     </div>
   );
@@ -3746,6 +3822,10 @@ const CanvasNodeView = memo(function CanvasNodeView({
   });
   const Icon = isVirtualStart ? Play : iconRegistry[node.data.icon ?? "Box"] ?? Box;
   const tone = allPaletteItems.find((item) => item.type === node.type)?.tone ?? nodeToneByType.action;
+  const { title: displayTitle, subtitle, subtitleTags } = isVirtualStart
+    ? { title: node.data.title ?? "Start", subtitle: "", subtitleTags: [] as string[] }
+    : getWorkflowNodeDisplay(node);
+  const showExecutionBadge = Boolean(executionStatus);
 
   return (
     <motion.button
@@ -3766,7 +3846,7 @@ const CanvasNodeView = memo(function CanvasNodeView({
         onRequestDelete(node.id);
       }}
       className={cn(
-        "group relative absolute z-10 flex min-h-14 items-center gap-2.5 overflow-hidden border bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-200",
+        "group relative absolute z-10 flex items-start gap-3 overflow-hidden border bg-white px-3.5 py-3 text-left shadow-sm transition-all duration-200",
         isVirtualStart
           ? "pointer-events-none rounded-[14px] border-slate-200/80 bg-white shadow-none"
           : editorLocked
@@ -3790,22 +3870,28 @@ const CanvasNodeView = memo(function CanvasNodeView({
     >
       <span
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg border",
+          "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg border",
           isVirtualStart ? "border-emerald-200 bg-emerald-50 text-emerald-600" : tone,
         )}
       >
         <Icon className="size-4.5" />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-semibold leading-tight text-slate-800">{node.data.title}</span>
-        <span className={cn("mt-0.5 block text-[11px] font-medium leading-tight", isVirtualStart ? "text-slate-500" : "text-slate-400")}>
-          {isVirtualStart ? "Manual Trigger" : node.data.subtitle}
-        </span>
+      <span className={cn("min-w-0 flex-1", showExecutionBadge && "pr-7")}>
+        <span className="block text-[13px] font-semibold leading-snug text-slate-800">{displayTitle}</span>
+        {isVirtualStart ? (
+          <span className="mt-1 block text-[11px] font-medium leading-snug text-slate-500">Manual Trigger</span>
+        ) : (
+          <WorkflowNodeSubtitle subtitle={subtitle} subtitleTags={subtitleTags} />
+        )}
       </span>
       {executionStatus === "running" && node.type === WorkflowNodeType.WAIT ? (
-        <WaitCountdown timeoutMs={Number(node.data.config?.timeout ?? 5000)} />
+        <span className="absolute right-2.5 top-2.5 shrink-0">
+          <WaitCountdown timeoutMs={Number(node.data.config?.timeout ?? 5000)} />
+        </span>
       ) : executionStatus ? (
-        <NodeExecutionIndicator status={executionStatus} />
+        <span className="absolute right-2.5 top-2.5 shrink-0">
+          <NodeExecutionIndicator status={executionStatus} />
+        </span>
       ) : null}
       {executionStatus === "running" ? (
         <span
@@ -3933,6 +4019,12 @@ function ConnectionLayer({
         <filter id="connector-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#0f172a" floodOpacity="0.08" />
         </filter>
+        <marker id="backend-lane-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#94A3B8" />
+        </marker>
+        <marker id="backend-lane-arrow-traversed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill={TRAVERSED_CONNECTION_COLOR} />
+        </marker>
       </defs>
       {connections
         .slice()
@@ -3986,15 +4078,20 @@ function Connector({
   targetNode: CanvasRenderNode | null;
 }) {
   const isVirtual = connection.virtual === true;
+  const isBackendLane = connection.backendLane === true;
   const branchType = getConnectionBranchType(connection);
+  const sourceSize = canvasNodeDimensions(sourceNode);
+  const targetSize = targetNode ? canvasNodeDimensions(targetNode) : sourceSize;
   const placeholderTarget = getBranchAnchorPoint(sourceNode, branchType, null);
-  const normalAnchors = targetNode ? getNormalConnectorAnchors(sourceNode, targetNode, targetOffsetX) : null;
+  const normalAnchors = targetNode
+    ? getNormalConnectorAnchors(sourceNode, targetNode, targetOffsetX, sourceSize, targetSize)
+    : null;
   const branchTarget =
     branchType && targetNode
-      ? { x: targetNode.position.x + NODE_WIDTH / 2 + targetOffsetX, y: targetNode.position.y }
+      ? { x: targetNode.position.x + targetSize.width / 2 + targetOffsetX, y: targetNode.position.y }
       : placeholderTarget;
   const source = branchType || !normalAnchors
-    ? { x: sourceNode.position.x + NODE_WIDTH / 2, y: sourceNode.position.y + NODE_HEIGHT }
+    ? { x: sourceNode.position.x + sourceSize.width / 2, y: sourceNode.position.y + sourceSize.height }
     : normalAnchors.source;
   const target = branchType ? branchTarget : normalAnchors?.target ?? placeholderTarget;
   const hasTargetNode = Boolean(targetNode);
@@ -4012,7 +4109,8 @@ function Connector({
   const branchAccent = Boolean(branchType) && selectedNodeId != null && (selectedNodeId === sourceNode.id || (targetNode ? selectedNodeId === targetNode.id : false));
   const combinedHitPath = branchParts ? `${branchParts.solidPath} ${branchParts.dashedPath}` : path ?? "";
   const branchDashStrokeClass = isTraversed ? "stroke-emerald-500" : branchAccent ? "stroke-orange-600" : "stroke-orange-400 group-hover:stroke-orange-500";
-  const connectorStroke = isTraversed ? TRAVERSED_CONNECTION_COLOR : CONNECTION_COLOR;
+  const connectorStroke = isTraversed ? TRAVERSED_CONNECTION_COLOR : isBackendLane ? "#94A3B8" : CONNECTION_COLOR;
+  const arrowMarker = isBackendLane ? (isTraversed ? "url(#backend-lane-arrow-traversed)" : "url(#backend-lane-arrow)") : undefined;
 
   return (
     <g className={cn("group", isVirtual ? "pointer-events-none" : "pointer-events-auto")}>
@@ -4022,7 +4120,7 @@ function Connector({
           <motion.path d={branchParts.dashedPath} stroke={isTraversed ? TRAVERSED_CONNECTION_COLOR : undefined} strokeWidth={CONNECTION_WIDTH} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={BRANCH_CONNECTOR_DASH} fill="none" className={cn("transition-[stroke] duration-150 ease-out", !isTraversed && branchDashStrokeClass)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, ease: "easeOut" }} />
         </>
       ) : (
-        <motion.path d={path ?? ""} stroke={connectorStroke} strokeWidth={CONNECTION_WIDTH} strokeLinecap="round" strokeLinejoin="round" fill="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.22 }} />
+        <motion.path d={path ?? ""} stroke={connectorStroke} strokeWidth={CONNECTION_WIDTH} strokeLinecap="round" strokeLinejoin="round" fill="none" markerEnd={arrowMarker} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.22 }} />
       )}
       {!isVirtual ? <path d={combinedHitPath} stroke="transparent" strokeWidth={22} strokeLinecap="round" /> : null}
       {!isVirtual && !connection.isPlaceholder ? <ConnectionDropTarget connection={connection} x={mid.x} y={mid.y} /> : null}
@@ -4060,16 +4158,37 @@ function incomingTargetOffset(index: number, total: number) {
   return offsets[index] ?? (index % 2 === 0 ? 1 : -1) * (24 + Math.ceil(index / 2) * 12);
 }
 
-function getNormalConnectorAnchors(sourceNode: WorkflowNode, targetNode: WorkflowNode, incomingOffset: number) {
-  const sourceCenter = { x: sourceNode.position.x + NODE_WIDTH / 2, y: sourceNode.position.y + NODE_HEIGHT / 2 };
-  const targetCenter = { x: targetNode.position.x + NODE_WIDTH / 2, y: targetNode.position.y + NODE_HEIGHT / 2 };
-  const useSideAnchors = Math.abs(targetCenter.x - sourceCenter.x) > NODE_WIDTH * 0.65 && Math.abs(targetCenter.y - sourceCenter.y) <= SIDE_CONNECTOR_VERTICAL_THRESHOLD;
+function canvasNodeDimensions(node: CanvasRenderNode): { width: number; height: number } {
+  if (node.virtual && (node.visualRole === "backend_header" || node.visualRole === "backend_lane")) {
+    return getBackendLaneNodeDimensions(node);
+  }
+  return { width: NODE_WIDTH, height: NODE_HEIGHT };
+}
+
+function getNormalConnectorAnchors(
+  sourceNode: WorkflowNode,
+  targetNode: WorkflowNode,
+  incomingOffset: number,
+  sourceSize: { width: number; height: number },
+  targetSize: { width: number; height: number },
+) {
+  const sourceCenter = { x: sourceNode.position.x + sourceSize.width / 2, y: sourceNode.position.y + sourceSize.height / 2 };
+  const targetCenter = { x: targetNode.position.x + targetSize.width / 2, y: targetNode.position.y + targetSize.height / 2 };
+  const useSideAnchors = Math.abs(targetCenter.x - sourceCenter.x) > sourceSize.width * 0.65 && Math.abs(targetCenter.y - sourceCenter.y) <= sourceSize.height * 1.25;
   if (!useSideAnchors) {
-    return { mode: "vertical" as const, source: { x: sourceNode.position.x + NODE_WIDTH / 2, y: sourceNode.position.y + NODE_HEIGHT }, target: { x: targetNode.position.x + NODE_WIDTH / 2 + incomingOffset, y: targetNode.position.y } };
+    return {
+      mode: "vertical" as const,
+      source: { x: sourceNode.position.x + sourceSize.width / 2, y: sourceNode.position.y + sourceSize.height },
+      target: { x: targetNode.position.x + targetSize.width / 2 + incomingOffset, y: targetNode.position.y },
+    };
   }
   const targetIsLeft = targetCenter.x < sourceCenter.x;
   const sideY = sourceCenter.y + incomingOffset;
-  return { mode: "side" as const, source: { x: targetIsLeft ? sourceNode.position.x : sourceNode.position.x + NODE_WIDTH, y: sideY }, target: { x: targetIsLeft ? targetNode.position.x + NODE_WIDTH : targetNode.position.x, y: sideY } };
+  return {
+    mode: "side" as const,
+    source: { x: targetIsLeft ? sourceNode.position.x : sourceNode.position.x + sourceSize.width, y: sideY },
+    target: { x: targetIsLeft ? targetNode.position.x + targetSize.width : targetNode.position.x, y: sideY },
+  };
 }
 
 function sideConnectorPath(source: { x: number; y: number }, target: { x: number; y: number }) {

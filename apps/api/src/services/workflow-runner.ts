@@ -5,9 +5,11 @@
  * parse -> DB step update -> cleanup.
  *
  * Every workflow — conditionals included — executes as a single Maestro
- * process: IF_LOGIN / CHECK_ROUTE branches are resolved BEFORE the run via the
- * GET_STATE preflight pull, and fall back to Maestro's own UI-visibility
- * conditionals when the device state cannot be pulled.
+ * process. IF_LOGIN / CHECK_ROUTE are resolved via GET_STATE only when that
+ * snapshot is safe (no LAUNCH_APP ahead, or clearState forces logged-out).
+ * When LAUNCH_APP is present, pre-launch GET_STATE is skipped — Maestro
+ * runtime UI probes after launch decide the branches (stale StopList vs real
+ * Login screen).
  *
  * Workspace files are ephemeral (os.tmpdir()); the combined YAML is persisted
  * in WorkflowRun.yamlContent.
@@ -38,8 +40,15 @@ import {
   broadcastSetRun,
   getDeviceBridgeState,
 } from "./test-event-bridge.js";
+import { hasLogConditionNodes, planPreflight } from "./preflight-plan.js";
 import { BackendVerifier } from "./backend-verifier.js";
-import { runServerSteps, hasServerSteps } from "./server-steps.js";
+import { runServerSteps, hasServerSteps, failServerSteps } from "./server-steps.js";
+import { deriveBackendValidations } from "./backend-validation-lane.js";
+import {
+  completeBackendValidationStep,
+  failPendingBackendValidations,
+  markBackendValidationRunning,
+} from "./backend-validation-steps.js";
 import {
   isNesyDashboardCountry,
   isNesyEnvironment,
@@ -87,8 +96,6 @@ type WorkflowRunnerEdge = {
   isPlaceholder?: boolean;
 };
 
-const LOG_CONDITION_NODE_TYPES = new Set(["IF_LOGIN", "CHECK_ROUTE"]);
-
 const ANDROID_SDK = path.join(os.homedir(), "Library", "Android", "sdk", "platform-tools");
 const MAESTRO_BIN = path.join(os.homedir(), ".maestro", "bin");
 
@@ -115,10 +122,6 @@ function cleanupPath(filePath: string): void {
   }
 }
 
-function hasLogConditionNodes(nodes: WorkflowRunnerNode[]): boolean {
-  return nodes.some((node) => LOG_CONDITION_NODE_TYPES.has(node.type));
-}
-
 /**
  * Maestro `--debug-output` drops failure screenshots (screenshot-❌-*.png)
  * into the debug dir. Returns the newest one, or null.
@@ -136,15 +139,6 @@ function findLatestFailureScreenshot(debugDir: string): string | null {
     }
   }
   return latest?.file ?? null;
-}
-
-/**
- * When LAUNCH_APP clears app state, whatever GET_STATE reported beforehand is
- * void — the run starts logged-out with no route.
- */
-function launchClearsState(nodes: WorkflowRunnerNode[]): boolean {
-  const launchNode = nodes.find((node) => node.type === "LAUNCH_APP");
-  return launchNode?.data.config?.clearState === true;
 }
 
 export const WorkflowRunner = {
@@ -179,19 +173,23 @@ export const WorkflowRunner = {
     const bridgeAppId = resolveWorkflowAppId(nodes);
     const bridgeDeviceId = run.deviceId;
 
-    // 1. Preflight — resolve IF_LOGIN / CHECK_ROUTE branches BEFORE the run so
-    // conditionals compile into the single Maestro workspace. When LAUNCH_APP
-    // clears state, the pulled state is void: the run starts logged-out.
+    // 1. Preflight — resolve IF_LOGIN / CHECK_ROUTE only when GET_STATE is safe.
+    // With LAUNCH_APP present we defer to Maestro runtime UI probes after launch
+    // (pre-launch GET_STATE can claim StopList while the UI is on Login).
     let preflight: PreflightState | null = null;
     const isFullRun = run.mode === "full" || (!run.targetStepId && run.mode !== "single_step" && run.mode !== "up_to_step");
 
     if (isFullRun && hasLogConditionNodes(nodes) && bridgeDeviceId) {
-      if (launchClearsState(nodes)) {
+      const plan = planPreflight(nodes);
+      if (plan.kind === "force_logged_out") {
         preflight = {
           isLoggedIn: false,
           routeSelected: false,
-          evidence: "LAUNCH_APP clearState=true — state is wiped at launch",
+          evidence: plan.evidence,
         };
+      } else if (plan.kind === "defer_to_runtime") {
+        preflight = null;
+        console.log(`[WorkflowRunner] ${plan.evidence}`);
       } else {
         const pulled = await spanRecorder.measureAsync(
           "get_state_pull",
@@ -407,15 +405,19 @@ export const WorkflowRunner = {
         run.environment && isNesyEnvironment(run.environment) ? run.environment : null;
       const backendVerifier = new BackendVerifier();
       const pendingBackendChecks: Promise<void>[] = [];
+      const backendCheckResults = new Map<
+        string,
+        { passed: boolean; detail: string; requests: import("./backend-validation-lane.js").BackendHttpCapture[] }
+      >();
+      const backendValidations = deriveBackendValidations(nodes);
+      const backendValidationBySource = new Map(backendValidations.map((v) => [v.sourceNodeId, v]));
 
       executor.on("backendCheck", (check: BackendCheckEvent) => {
         const task = (async () => {
           if (!runCountry || !runEnvironment) {
-            await oracle.recordBackendVerification(
-              check.nodeId,
-              false,
-              `Backend verification requested but run country/environment is not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"}).`,
-            );
+            const detail = `Backend verification requested but run country/environment is not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"}).`;
+            backendCheckResults.set(check.nodeId, { passed: false, detail, requests: [] });
+            await oracle.recordBackendVerification(check.nodeId, false, detail);
             return;
           }
           if (check.delayMs > 0) await new Promise((r) => setTimeout(r, check.delayMs));
@@ -424,6 +426,11 @@ export const WorkflowRunner = {
             environment: runEnvironment,
             shipmentRef: check.shipmentRef,
             codes: check.codes,
+          });
+          backendCheckResults.set(check.nodeId, {
+            passed: result.passed,
+            detail: result.detail,
+            requests: result.requests ?? [],
           });
           logArtifactEvent("backend_check", { nodeId: check.nodeId, ...result });
           await oracle.recordBackendVerification(check.nodeId, result.passed, result.detail);
@@ -617,12 +624,58 @@ export const WorkflowRunner = {
       // does not pass the test.
       await stepQueue;
 
+      // Post-Maestro Backend Validations lane: show progress after UI finishes.
+      const laneEventTower = backendValidations.filter((v) => v.kind !== "server_step");
+      for (const v of laneEventTower) {
+        await markBackendValidationRunning(runId, v.sourceNodeId);
+      }
+
       // Wait for any in-flight server-side backend verifications (NESY_BACKEND_CHECK).
       if (pendingBackendChecks.length > 0) {
         await spanRecorder.measureAsync("backend_verify", () => Promise.allSettled(pendingBackendChecks));
       }
 
-      // Post-Maestro server steps (tour / end-of-day dispatcher approvals).
+      for (const v of laneEventTower) {
+        const captured = backendCheckResults.get(v.sourceNodeId);
+        const oracleBackend = oracle.getBackendOracle(v.sourceNodeId);
+        if (captured) {
+          await completeBackendValidationStep({
+            runId,
+            validation: v,
+            passed: captured.passed,
+            detail: captured.detail,
+            requests: captured.requests,
+          });
+        } else if (oracleBackend && oracleBackend.status !== "pending") {
+          await completeBackendValidationStep({
+            runId,
+            validation: v,
+            passed: oracleBackend.status === "passed",
+            detail: oracleBackend.detail,
+            requests: [],
+          });
+        } else if (result.exitCode !== 0) {
+          await completeBackendValidationStep({
+            runId,
+            validation: v,
+            passed: false,
+            detail: `Skipped — Maestro exited with code ${result.exitCode}.`,
+            requests: [],
+          });
+        } else {
+          await completeBackendValidationStep({
+            runId,
+            validation: v,
+            passed: false,
+            detail: "Backend validation never confirmed after Maestro completed.",
+            requests: [],
+          });
+        }
+      }
+
+      // Post-Maestro server steps (VALIDATE_STOPLIST schedule check, tour / EOD approvals).
+      // VALIDATE_STOPLIST requires the backend oracle — without this phase the run
+      // cannot finalize green even when Maestro UI looked fine.
       if (hasServerSteps(nodes) && result.exitCode === 0) {
         if (runCountry && runEnvironment) {
           await spanRecorder.measureAsync("server_steps", () =>
@@ -633,13 +686,26 @@ export const WorkflowRunner = {
               deviceId: bridgeDeviceId,
               appId: bridgeAppId,
               oracle,
+              runId,
+              backendValidationBySource,
             }),
           );
         } else {
-          console.warn(
-            `[WorkflowRunner] server steps skipped — run country/environment not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"})`,
+          const reason = `Server steps skipped — run country/environment not set (country=${run.country ?? "—"}, environment=${run.environment ?? "—"}).`;
+          console.warn(`[WorkflowRunner] ${reason}`);
+          await failServerSteps(nodes, oracle, reason);
+          await failPendingBackendValidations(
+            runId,
+            backendValidations.filter((v) => v.kind === "server_step"),
+            reason,
           );
         }
+      } else if (result.exitCode !== 0) {
+        await failPendingBackendValidations(
+          runId,
+          backendValidations.filter((v) => v.kind === "server_step"),
+          `Skipped — Maestro exited with code ${result.exitCode}.`,
+        );
       }
 
       const { oracleFailures } = await oracle.finalizeRun(result.exitCode === 0);
