@@ -16,28 +16,42 @@ export type GraylogField = {
  */
 const GRAYLOG_FIELDS: GraylogField[] = [
   {
-    field: 'Log_ShipmentId',
-    meaning: 'Shipment id on service logs. Also try Log_Data_ShipmentId or message:"<id>".',
-    example: '70957029401697',
-    source: 'services_nesy_hr',
+    field: 'Log_Data_ShipmentId',
+    meaning:
+      'Shipment id under Log.Data — preferred cross-country (exists on HR + RS). Prefer this over Log_ShipmentId.',
+    example: '84806074705579',
+    source: 'services_nesy_*',
   },
   {
-    field: 'Log_Data_ShipmentId',
-    meaning: 'Shipment id nested under Log.Data payloads.',
+    field: 'Log_ShipmentId',
+    meaning:
+      'Shipment id on some service logs. NOT present on every cluster (e.g. missing on RS). Prefer Log_Data_ShipmentId + message.',
     example: '70957029401697',
-    source: 'services_nesy_hr',
+    source: 'services_nesy_hr (not RS)',
   },
   {
     field: 'Log_Data_Barcode',
     meaning: 'Parcel barcode on structured Data payloads (preferred over inventing barcode:).',
     example: 'N1911370022000000148901915540000100532871000164080147938285BO77151',
-    source: 'services_nesy_hr',
+    source: 'services_nesy_*',
+  },
+  {
+    field: 'Log_Data_LegacySystemShortBarcode',
+    meaning: 'Legacy short barcode (common on RS/mobile payloads). Good fallback for short numeric barcodes.',
+    example: '6880051000268310',
+    source: 'services_nesy_*',
+  },
+  {
+    field: 'Log_Data_LegacySystemBarcode',
+    meaning: 'Legacy full barcode string when present on Data payloads.',
+    example: 'N68801100041…',
+    source: 'services_nesy_*',
   },
   {
     field: 'Log_Barcode',
     meaning: 'Alternate barcode field (sparse). Prefer Log_Data_Barcode or message:"<barcode>".',
     example: 'N1911370022…',
-    source: 'services_nesy_hr',
+    source: 'services_nesy_*',
   },
   {
     field: 'Log_WaybillNumber',
@@ -190,15 +204,17 @@ export const GRAYLOG_MOBILE_REQUEST_TOKENS = [
 
 /** UI identifier keys → real Lucene field hints for the LLM. */
 export const GRAYLOG_IDENTIFIER_FIELD_MAP: Record<string, string> = {
-  shipmentId: 'Log_ShipmentId OR Log_Data_ShipmentId OR message:"<value>"',
+  // Log_ShipmentId is HR-biased; RS indexes Log_Data_ShipmentId only.
+  shipmentId: 'Log_Data_ShipmentId OR message:"<value>" (add Log_ShipmentId only if cluster has it)',
   courierId: 'Log_RequestData_CourierId OR Log_CourierUserId OR Log_Request_User_Username',
   scheduleId: 'Log_ScheduleId',
   requestId: 'MessageId OR Log_Request_MessageId OR Log_CorrelationId',
   deviceId: 'search message:"<value>" (no deviceId field in Graylog schema)',
-  fiscalId: 'message:"<value>" OR Log_ShipmentId when fiscal tied to shipment',
+  fiscalId: 'message:"<value>" OR Log_Data_ShipmentId when fiscal tied to shipment',
   errorCode: 'Log_Code OR ResultCode OR message:"<value>"',
   customerTicketId: 'message:"<value>"',
-  barcode: 'Log_Data_Barcode OR Log_Barcode OR message:"<value>"',
+  barcode:
+    'Log_Data_Barcode OR Log_Data_LegacySystemShortBarcode OR Log_Data_LegacySystemBarcode OR Log_Barcode OR message:"<value>"',
 }
 
 export function getGraylogFields(): GraylogField[] {

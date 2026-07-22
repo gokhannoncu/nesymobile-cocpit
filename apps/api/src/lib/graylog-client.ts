@@ -161,6 +161,110 @@ function parseMessages(payload: unknown): {
   return { messages, totalResults, durationMs, effectiveFrom, effectiveTo }
 }
 
+type FieldsCacheEntry = { fields: Set<string>; fetchedAt: number }
+
+const FIELDS_CACHE_TTL_MS = 10 * 60 * 1000
+const fieldsCache = new Map<GraylogCountry, FieldsCacheEntry>()
+
+/** Live `/api/system/fields` for a country cluster (cached ~10m). */
+export async function fetchGraylogSystemFields(
+  country: string,
+  options?: { timeoutMs?: number; force?: boolean },
+): Promise<Set<string>> {
+  const countryRaw = country.trim().toUpperCase()
+  if (!isGraylogCountry(countryRaw)) {
+    throw new GraylogClientError(
+      `Unknown Graylog country "${country}". Supported: HR, SI, RS, SK, ME, BA, AZ, BG.`,
+      400,
+    )
+  }
+
+  const cached = fieldsCache.get(countryRaw)
+  if (
+    !options?.force &&
+    cached &&
+    Date.now() - cached.fetchedAt < FIELDS_CACHE_TTL_MS &&
+    cached.fields.size > 0
+  ) {
+    return cached.fields
+  }
+
+  const token = resolveGraylogToken(countryRaw)
+  const baseUrl = resolveGraylogBaseUrl(countryRaw)
+  if (!token) {
+    throw new GraylogClientError(
+      `Graylog cluster for ${countryRaw} is not configured (missing GRAYLOG_${countryRaw}_TOKEN).`,
+      503,
+    )
+  }
+
+  const timeoutMs = options?.timeoutMs ?? 20_000
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const res = await fetch(`${baseUrl}/api/system/fields`, {
+      headers: {
+        Accept: 'application/json',
+        'X-Requested-By': 'nesy-cockpit',
+        Authorization: basicAuthHeader(token),
+      },
+      signal: controller.signal,
+    })
+    const text = await res.text()
+    let json: unknown
+    try {
+      json = text ? JSON.parse(text) : null
+    } catch {
+      throw new GraylogClientError(
+        `Graylog ${countryRaw} fields returned non-JSON (${res.status}).`,
+        502,
+        text.slice(0, 500),
+      )
+    }
+    if (!res.ok) {
+      throw new GraylogClientError(
+        `Graylog ${countryRaw} fields failed (${res.status}).`,
+        502,
+        text.slice(0, 800),
+      )
+    }
+
+    const obj = asRecord(json)
+    const rawFields = Array.isArray(obj?.fields)
+      ? obj.fields
+      : Array.isArray(json)
+        ? json
+        : []
+    const fields = new Set(
+      rawFields.filter((f): f is string => typeof f === 'string' && f.trim().length > 0),
+    )
+    // Always allow free-text / built-ins used in our prompts.
+    fields.add('message')
+    fields.add('source')
+    fields.add('timestamp')
+    fields.add('stringLevel')
+
+    fieldsCache.set(countryRaw, { fields, fetchedAt: Date.now() })
+    return fields
+  } catch (error) {
+    if (error instanceof GraylogClientError) throw error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new GraylogClientError(
+        `Graylog ${countryRaw} fields timed out after ${timeoutMs}ms.`,
+        502,
+      )
+    }
+    throw new GraylogClientError(
+      `Graylog ${countryRaw} fields request failed.`,
+      502,
+      error instanceof Error ? error.message : String(error),
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function executeGraylogSearch(input: {
   country: string
   query: string

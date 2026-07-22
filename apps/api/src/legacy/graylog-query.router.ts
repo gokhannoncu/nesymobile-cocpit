@@ -8,12 +8,18 @@ import {
 } from '../data/graylog-fields.js'
 import { listGraylogClusters } from '../graylog-env.js'
 import { ClaudeCliError, extractJsonObject, runClaudePrompt } from '../lib/claude-cli.js'
-import { executeGraylogSearch, GraylogClientError } from '../lib/graylog-client.js'
+import {
+  executeGraylogSearch,
+  fetchGraylogSystemFields,
+  GraylogClientError,
+} from '../lib/graylog-client.js'
 import {
   assertSearchOnlyQuery,
   buildQuality,
   deriveStatus,
   ensureValidationChecks,
+  materializeGraylogQueryIdentifiers,
+  sanitizeQueryForKnownFields,
   UnsafeGraylogQueryError,
 } from '../lib/graylog-query-guardrails.js'
 
@@ -41,17 +47,39 @@ function buildPrompt(input: {
   appVersion: string
   identifiers: Record<string, string>
   sources: string[]
+  clusterFields?: Set<string> | null
 }): string {
-  const fieldLines = getGraylogFields()
+  const clusterFields = input.clusterFields
+  const curated = getGraylogFields().filter((f) => {
+    if (!clusterFields || clusterFields.size === 0) return true
+    // Always keep message docs; drop curated fields missing on this cluster.
+    if (f.field === 'message' || f.field === 'source' || f.field === 'stringLevel') return true
+    return clusterFields.has(f.field)
+  })
+
+  const fieldLines = curated
     .map((f) => `- ${f.field}: ${f.meaning}; example ${f.example}; source ${f.source}`)
     .join('\n')
 
-  const idLines = Object.entries(input.identifiers)
-    .filter(([, v]) => String(v ?? '').trim())
+  const shipmentHint =
+    clusterFields?.has('Log_ShipmentId') && clusterFields.has('Log_Data_ShipmentId')
+      ? 'Shipments: Log_Data_ShipmentId OR Log_ShipmentId OR message:"…" — never shipmentId:.'
+      : clusterFields?.has('Log_Data_ShipmentId')
+        ? 'Shipments: Log_Data_ShipmentId OR message:"…" — NEVER Log_ShipmentId (unknown on this cluster). Never shipmentId:.'
+        : 'Shipments: message:"…" (and Log_Data_ShipmentId / Log_ShipmentId only if listed below). Never shipmentId:.'
+
+  const filledIds = Object.entries(input.identifiers).filter(([, v]) => String(v ?? '').trim())
+  const idLines = filledIds
     .map(([k, v]) => {
-      const mapHint = GRAYLOG_IDENTIFIER_FIELD_MAP[k] ?? 'message:"<value>"'
-      return `- UI key ${k}=${v} → Lucene: ${mapHint.replace(/<value>/g, v)}`
+      let mapHint = GRAYLOG_IDENTIFIER_FIELD_MAP[k] ?? 'message:"VALUE"'
+      if (k === 'shipmentId' && clusterFields && !clusterFields.has('Log_ShipmentId')) {
+        mapHint = 'Log_Data_ShipmentId OR message:"<value>"'
+      }
+      return `- UI key ${k}="${v}" → Lucene MUST use: ${mapHint.replace(/<value>/g, v)}`
     })
+    .join('\n')
+  const requiredLiterals = filledIds
+    .map(([k, v]) => `- ${k}: the exact string "${v}" MUST appear inside the query field`)
     .join('\n')
 
   return [
@@ -61,16 +89,18 @@ function buildPrompt(input: {
     'quality ({verdict:strong|broad, explanation}), expectedSignals (string[], optional).',
     'Rules:',
     '- Search-only Lucene / Graylog query string. Never delete streams, drop indexes, or remove messages.',
-    '- ONLY use fields from the dictionary below. Invented fields (barcode, requestName, X-Channel, country, shipmentId, courierId, scheduleId, deviceId, appVersion, username) are REJECTED by Graylog.',
+    '- ONLY use fields from the dictionary below (already filtered to the selected country cluster). Invented fields (barcode, requestName, X-Channel, country, shipmentId, courierId, scheduleId, deviceId, appVersion, username) are REJECTED by Graylog.',
     '- Country is selected by which Graylog cluster runs the query — NEVER emit country: in Lucene.',
     '- Mobile APIs: prefer To:DeliverParcels / From:… / message:"Task/DeliverParcels" — never requestName:.',
     '- Terminal channel: Channel:Terminal or Log_Request_Channel:Terminal — never X-Channel:.',
-    '- Barcodes: Log_Data_Barcode:"…" or message:"…" — never barcode:.',
-    '- Shipments: Log_ShipmentId / Log_Data_ShipmentId / message:"…" — never shipmentId:.',
+    '- Barcodes: Log_Data_Barcode / Log_Data_LegacySystemShortBarcode / message:"…" — never barcode:.',
+    `- ${shipmentHint}`,
     '- Schedules: Log_ScheduleId — never scheduleId:.',
     '- App version: ClientVersion — never appVersion:.',
     '- Avoid bare wildcards on analyzed text fields (*token*) — prefer exact To:Name or quoted message:"…".',
     '- Sensitive values (tokens, passwords, full PII) must not appear unmasked in the query.',
+    '- CRITICAL: When Known identifiers list concrete values, embed those EXACT literal strings in `query`. NEVER emit angle-bracket or brace templates like <SHIPMENT_ID>, <BARCODE>, {shipmentId}. Omit an identifier family only if it was not provided.',
+    '- Field dictionary "example" values are documentation only — do NOT copy them into the query unless the user supplied them.',
     `- Environment: ${input.environment}`,
     `- Country cluster context (do NOT put in query): ${input.country}`,
     `- Application (context only unless expressible via source/message): ${input.application}`,
@@ -80,10 +110,13 @@ function buildPrompt(input: {
     `- Device (search in message if needed; no deviceId field): ${input.device}`,
     `- App version → ClientVersion when filtering: ${input.appVersion}`,
     '',
-    'Known identifiers (map UI keys to real fields):',
+    'Known identifiers (map UI keys to real fields — use these literals):',
     idLines || '- (none)',
     '',
-    'Field dictionary (ONLY these field names are valid):',
+    'REQUIRED LITERALS IN query (when listed):',
+    requiredLiterals || '- (none — only then may you ask the operator to fill an id)',
+    '',
+    `Field dictionary for ${input.country} (ONLY these field names are valid on this cluster):`,
     fieldLines,
     '',
     'Known mobile / terminal request patterns:',
@@ -201,14 +234,29 @@ router.post('/execute', async (req, res) => {
 
     assertSearchOnlyQuery(query)
 
+    let executableQuery = query
+    try {
+      const clusterFields = await fetchGraylogSystemFields(country)
+      executableQuery = sanitizeQueryForKnownFields(query, clusterFields).query
+      assertSearchOnlyQuery(executableQuery)
+    } catch (error) {
+      if (!(error instanceof GraylogClientError)) throw error
+      // Fall back to original query if fields API unavailable.
+    }
+
     const result = await executeGraylogSearch({
       country,
-      query,
+      query: executableQuery,
       timeRange,
       limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
     })
 
-    res.json({ data: result })
+    res.json({
+      data: {
+        ...result,
+        query: executableQuery,
+      },
+    })
   } catch (error) {
     if (error instanceof UnsafeGraylogQueryError) {
       res.status(422).json({ message: error.message })
@@ -301,6 +349,14 @@ router.post('/generate', async (req, res) => {
       return
     }
 
+    let clusterFields: Set<string> | null = null
+    try {
+      clusterFields = await fetchGraylogSystemFields(country)
+    } catch (error) {
+      // Generation can continue on curated dictionary if fields API is down.
+      if (!(error instanceof GraylogClientError)) throw error
+    }
+
     const prompt = buildPrompt({
       naturalLanguage,
       environment,
@@ -313,6 +369,7 @@ router.post('/generate', async (req, res) => {
       appVersion,
       identifiers,
       sources,
+      clusterFields,
     })
 
     const model =
@@ -339,12 +396,27 @@ router.post('/generate', async (req, res) => {
       return
     }
 
-    const query = parsed.query.trim()
+    // Claude often emits <SHIPMENT_ID>/<BARCODE> even when the form had values — materialize.
+    let query = materializeGraylogQueryIdentifiers(parsed.query.trim(), identifiers)
+    const schemaFix = sanitizeQueryForKnownFields(query, clusterFields)
+    query = schemaFix.query
     assertSearchOnlyQuery(query)
 
     const explanation = Array.isArray(parsed.explanation)
       ? parsed.explanation.filter((s): s is string => typeof s === 'string')
       : []
+    if (schemaFix.rewrittenFields.length) {
+      explanation.unshift(
+        `Cluster ${country}: rewrote ${schemaFix.rewrittenFields
+          .map((r) => `${r.from}→${r.to}`)
+          .join(', ')} (field missing on this Graylog).`,
+      )
+    }
+    if (schemaFix.removedFields.length) {
+      explanation.unshift(
+        `Cluster ${country}: dropped unknown fields ${schemaFix.removedFields.join(', ')}.`,
+      )
+    }
     const validation = ensureValidationChecks({
       validation: Array.isArray(parsed.validation) ? parsed.validation : [],
       query,
@@ -352,10 +424,28 @@ router.post('/generate', async (req, res) => {
       identifiers,
       environment,
     })
+    if (schemaFix.rewrittenFields.length || schemaFix.removedFields.length) {
+      validation.unshift({
+        id: 'cluster-fields',
+        label: 'Cluster field schema applied',
+        detail: [
+          schemaFix.rewrittenFields.length
+            ? `Rewrote: ${schemaFix.rewrittenFields.map((r) => `${r.from}→${r.to}`).join(', ')}`
+            : null,
+          schemaFix.removedFields.length
+            ? `Removed unknown: ${schemaFix.removedFields.join(', ')}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        status: 'pass',
+      })
+    }
     const quality = buildQuality({
       identifiers,
       timeRange,
       environment,
+      query,
       llmQuality: parsed.quality ?? null,
     })
     const status = deriveStatus(validation)

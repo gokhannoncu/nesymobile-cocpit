@@ -29,7 +29,7 @@ export type GraylogPredefinedQuery = {
 }
 
 /**
- * Canonical library of 50 Graylog NL intents for NESY mobile / terminal /
+ * Canonical library of Graylog NL intents for NESY mobile / terminal /
  * delivery / fiscal / D4Me / support investigations.
  *
  * Sample placeholders match cockpit conventions.
@@ -37,7 +37,7 @@ export type GraylogPredefinedQuery = {
  * Channel, To/From, Log_ScheduleId) — never barcode:/requestName:/country:.
  */
 export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
-  // ── Identity (1–8) ────────────────────────────────────────────
+  // ── Identity (1–8, 51) ─────────────────────────────────────────
   {
     id: 1,
     label: 'Shipment flow last 2h',
@@ -50,6 +50,22 @@ export const GRAYLOG_PREDEFINED_QUERY_LIBRARY: GraylogPredefinedQuery[] = [
     timeRange: '1h',
     identifiers: { shipmentId: '45-40-20251224-1' },
     sources: ['mobile', 'backend', 'fiscal', 'offline-queue'],
+  },
+  {
+    id: 51,
+    label: 'Last courier on shipment/barcode',
+    text: 'For Log_Data_ShipmentId 84806074705579 or Log_Data_LegacySystemShortBarcode / Log_Data_Barcode 6880051000268310 (also match message), show the last Terminal-channel mobile actions in the last 24 hours — which courier (Log_Request_User_Username / Log_RequestData_CourierId) acted, which Log_ScheduleId, and what they did (To/From DeliverParcels, DeliveryFailed, load/unload, SaveTerminalFailedRequests, Task/* paths). Newest first. Prefer Log_Data_ShipmentId over Log_ShipmentId (missing on some clusters e.g. RS).',
+    application: 'nesy-mobile',
+    service: 'DeliveryService',
+    category: 'identity',
+    reason: 'Who last touched this shipment/barcode from mobile Terminal — courier, schedule, last action',
+    priority: 'P0',
+    timeRange: '24h',
+    identifiers: {
+      shipmentId: '84806074705579',
+      barcode: '6880051000268310',
+    },
+    sources: ['mobile', 'backend', 'offline-queue'],
   },
   {
     id: 2,

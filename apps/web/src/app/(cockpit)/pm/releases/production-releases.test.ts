@@ -10,27 +10,27 @@ import {
 describe('production release history', () => {
   it('keeps the first-parent release classification totals', () => {
     expect(productionReleaseSummary).toEqual({
-      total: 34,
+      total: 35,
       code: 17,
       workflow: 1,
-      rollout: 16,
+      rollout: 17,
     })
   })
 
   it('preserves chronological sequence and commit uniqueness', () => {
     expect(productionReleases.map((release) => release.sequence)).toEqual(
-      Array.from({ length: 34 }, (_, index) => index + 1),
+      Array.from({ length: 35 }, (_, index) => index + 1),
     )
-    expect(new Set(productionReleases.map((release) => release.commit)).size).toBe(34)
+    expect(new Set(productionReleases.map((release) => release.commit)).size).toBe(35)
   })
 
   it('derives the final production version matrix', () => {
     expect(latestCountryVersions).toMatchObject({
-      hr: 262,
-      si: 174,
-      rs: 68,
+      hr: 264,
+      si: 176,
+      rs: 69,
       ba: 29,
-      me: 30,
+      me: 31,
     })
   })
 
@@ -54,15 +54,15 @@ describe('production release history', () => {
 
   it('derives each country\'s latest version release from the same history', () => {
     expect(getCountryVersionHistory('hr').at(-1)).toMatchObject({
-      release: { sequence: 33 },
-      transition: { from: 261, to: 262 },
+      release: { sequence: 35 },
+      transition: { from: 262, to: 264 },
     })
     expect(getCountryVersionHistory('si').at(-1)).toMatchObject({
-      release: { sequence: 34 },
-      transition: { from: 173, to: 174 },
+      release: { sequence: 35 },
+      transition: { from: 174, to: 176 },
     })
-    expect(getCountryVersionHistory('rs').at(-1)?.transition.to).toBe(68)
+    expect(getCountryVersionHistory('rs').at(-1)?.transition.to).toBe(69)
     expect(getCountryVersionHistory('ba').at(-1)?.transition.to).toBe(29)
-    expect(getCountryVersionHistory('me').at(-1)?.transition.to).toBe(30)
+    expect(getCountryVersionHistory('me').at(-1)?.transition.to).toBe(31)
   })
 })

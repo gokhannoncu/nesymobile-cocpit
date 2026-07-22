@@ -4,6 +4,14 @@ export type NesyMobileEnvironment = 'stage' | 'prod'
 export const NESY_MOBILE_COUNTRIES: NesyMobileCountry[] = ['HR', 'SI', 'RS', 'BA', 'ME']
 export const NESY_MOBILE_ENVIRONMENTS: NesyMobileEnvironment[] = ['stage', 'prod']
 
+export function isNesyMobileCountry(value: string): value is NesyMobileCountry {
+  return NESY_MOBILE_COUNTRIES.includes(value as NesyMobileCountry)
+}
+
+export function isNesyMobileEnvironment(value: string): value is NesyMobileEnvironment {
+  return NESY_MOBILE_ENVIRONMENTS.includes(value as NesyMobileEnvironment)
+}
+
 export const NESY_MOBILE_COUNTRY_ENVIRONMENTS = {
   HR: ['stage', 'prod'],
   SI: ['prod'],
@@ -112,6 +120,50 @@ export function resolveNesyMobileApplicationId(
   environment: NesyMobileEnvironment,
 ) {
   return NESY_MOBILE_APPLICATION_IDS[country][environment]
+}
+
+/**
+ * BuildConfig.APP_NAME_TEST values from NESY.Courier.Mobile product flavors.
+ * Used as GetLatestVersion request body `AppName`.
+ */
+export const NESY_MOBILE_APP_NAMES: Record<
+  NesyMobileCountry,
+  Record<NesyMobileEnvironment, string>
+> = {
+  HR: {
+    stage: 'test-Nesy-Mobile-Test',
+    prod: 'Nesy-Mobile-Prod',
+  },
+  SI: {
+    stage: 'test-Nesy-Mobile-Test',
+    prod: 'Nesy-Mobile-Prod-SI',
+  },
+  RS: {
+    stage: 'test-Nesy-Mobile-Test',
+    prod: 'Nesy-Mobile-Prod-RS',
+  },
+  BA: {
+    stage: 'test-Nesy-Mobile-Test',
+    prod: 'Nesy-Mobile-Prod-BA',
+  },
+  ME: {
+    stage: 'test-Nesy-Mobile-Test',
+    prod: 'Nesy-Mobile-Prod-ME',
+  },
+}
+
+export function resolveNesyMobileAppName(
+  country: NesyMobileCountry,
+  environment: NesyMobileEnvironment,
+) {
+  return NESY_MOBILE_APP_NAMES[country][environment]
+}
+
+/** UI "test" maps to mobile stage hosts / AppNames. */
+export function resolveInstallEnvironment(
+  environment: 'test' | 'prod',
+): NesyMobileEnvironment {
+  return environment === 'test' ? 'stage' : 'prod'
 }
 
 export function resolveNesyMobileHost(

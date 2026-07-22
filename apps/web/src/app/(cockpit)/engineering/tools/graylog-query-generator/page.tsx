@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BookOpen,
@@ -50,6 +50,7 @@ import {
   SERVICES,
   TIME_RANGES,
   timeRangeLabel,
+  syncIdentifierLiteralsInIntent,
   toIntentText,
   type SelectOption,
 } from '@/data/engineering/tools/graylog-generator'
@@ -227,6 +228,14 @@ export default function GraylogQueryGeneratorPage() {
   const [executeError, setExecuteError] = useState<string | null>(null)
   const [executeResult, setExecuteResult] = useState<GraylogExecuteResult | null>(null)
   const [workspaceTab, setWorkspaceTab] = useState('query')
+  const prevIdentifiersRef = useRef(identifiers)
+
+  // Keep NL textarea literals in sync when barcode / shipment / schedule / courier boxes change.
+  useEffect(() => {
+    const previous = prevIdentifiersRef.current
+    setRequest((current) => syncIdentifierLiteralsInIntent(current, previous, identifiers))
+    prevIdentifiersRef.current = identifiers
+  }, [identifiers])
 
   const clusterConfigured = useMemo(
     () => clusters.some((c) => c.country === country && c.configured),
@@ -556,8 +565,8 @@ export default function GraylogQueryGeneratorPage() {
               className="min-h-[96px] text-sm"
             />
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Intent only. Time range, country, and IDs are taken from the filters below — changing a
-              filter updates the summary immediately.
+              Intent only. Time range and country come from the filters. Editing an identifier box
+              also rewrites matching IDs in this text; Applied chips update immediately.
             </p>
           </div>
 

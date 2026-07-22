@@ -63,12 +63,12 @@ const VALID_CATEGORIES: GraylogPredefinedQueryCategory[] = [
 ]
 
 describe('GRAYLOG_PREDEFINED_QUERY_LIBRARY', () => {
-  it('contains exactly 50 unique ops queries', () => {
-    expect(GRAYLOG_PREDEFINED_QUERY_LIBRARY).toHaveLength(50)
+  it('contains 51 unique ops queries', () => {
+    expect(GRAYLOG_PREDEFINED_QUERY_LIBRARY).toHaveLength(51)
     const ids = GRAYLOG_PREDEFINED_QUERY_LIBRARY.map((q) => q.id)
-    expect(new Set(ids).size).toBe(50)
+    expect(new Set(ids).size).toBe(51)
     expect(Math.min(...ids)).toBe(1)
-    expect(Math.max(...ids)).toBe(50)
+    expect(Math.max(...ids)).toBe(51)
   })
 
   it('has every category non-empty and valid priorities', () => {
@@ -113,7 +113,7 @@ describe('GRAYLOG_PREDEFINED_QUERY_LIBRARY', () => {
 
   it('exposes predefinedQueries on fields payload', () => {
     const payload = getFieldsPayload()
-    expect(payload.predefinedQueries).toHaveLength(50)
+    expect(payload.predefinedQueries).toHaveLength(51)
     expect(payload.fields.length).toBeGreaterThanOrEqual(12)
   })
 

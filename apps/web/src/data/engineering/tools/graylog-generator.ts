@@ -175,6 +175,28 @@ export function toIntentText(text: string): string {
     .trim()
 }
 
+/**
+ * When an identifier filter changes, rewrite matching literals in the intent text
+ * so the textarea stays aligned with the boxes (predefined samples → user edits).
+ */
+export function syncIdentifierLiteralsInIntent(
+  text: string,
+  previous: Record<string, string>,
+  next: Record<string, string>,
+): string {
+  let out = text
+  const keys = new Set([...Object.keys(previous), ...Object.keys(next)])
+  for (const key of keys) {
+    const from = String(previous[key] ?? '').trim()
+    const to = String(next[key] ?? '').trim()
+    if (!from || !to || from === to) continue
+    // Skip tiny tokens — avoid accidental substring swaps while typing.
+    if (from.length < 4) continue
+    out = out.split(from).join(to)
+  }
+  return out
+}
+
 export function normalizeTimeRange(value: string | null | undefined): string {
   if (!value || value === 'custom') return PRODUCTION_DEFAULT_TIME_RANGE
   if (TIME_RANGES.some((t) => t.value === value)) return value

@@ -25,6 +25,9 @@ __pycache__
 # graphify — local knowledge graph output (not pushed to remote)
 graphify-out/
 
+# Cursor hook local state (pending prod rebuilds / logs)
+.cursor/hooks-state/
+
 # Brainstorm visual companion (local only)
 .superpowers/
 

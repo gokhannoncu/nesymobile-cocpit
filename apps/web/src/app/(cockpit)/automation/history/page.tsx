@@ -12,7 +12,10 @@ import {
   Network,
   Play,
   Search,
+  Trash2,
 } from 'lucide-react'
+import { Button } from '@nesy/metronic/components/ui/button'
+import { Checkbox } from '@nesy/metronic/components/ui/checkbox'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +35,7 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { AUTOMATION_LIST_PATH } from '@nesy/metronic/config/layout-21.config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ComponentType, ReactNode, SVGProps } from 'react'
-import { deleteRun, fetchAllRuns, type WorkflowRun } from '@/services/automation-api'
+import { deleteRun, deleteRuns, fetchAllRuns, type WorkflowRun } from '@/services/automation-api'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -173,6 +176,35 @@ export default function AutomationHistoryPage() {
     }
   }
 
+  const handleBulkDeleteRuns = async (
+    targets: Array<{ workflowId: string; runId: string }>,
+  ) => {
+    if (targets.length === 0) return
+
+    try {
+      const { deleted, failed } = await deleteRuns(targets)
+      if (deleted.length > 0) {
+        const deletedSet = new Set(deleted)
+        setRuns((prev) => prev.filter((run) => !deletedSet.has(run.id)))
+      }
+
+      if (failed.length === 0) {
+        toast.success(
+          deleted.length === 1
+            ? 'Run removed from history.'
+            : `${deleted.length} runs removed from history.`,
+        )
+      } else if (deleted.length > 0) {
+        toast.warning(`${deleted.length} runs deleted, ${failed.length} could not be removed.`)
+      } else {
+        toast.error('Failed to delete selected runs.')
+      }
+    } catch (err) {
+      console.error('Failed to bulk delete runs:', err)
+      toast.error('Failed to delete selected runs.')
+    }
+  }
+
   return (
     <ProductPage path="/automation/history">
       <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -205,6 +237,7 @@ export default function AutomationHistoryPage() {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           onDeleteRun={handleDeleteRun}
+          onBulkDeleteRuns={handleBulkDeleteRuns}
         />
       )}
     </ProductPage>
@@ -265,19 +298,24 @@ function RunHistoryTable({
   statusFilter,
   onStatusFilterChange,
   onDeleteRun,
+  onBulkDeleteRuns,
 }: {
   runs: WorkflowRun[]
   statusFilter: RunHistoryStatusFilter
   onStatusFilterChange: (filter: RunHistoryStatusFilter) => void
   onDeleteRun: (workflowId: string, runId: string) => void
+  onBulkDeleteRuns: (targets: Array<{ workflowId: string; runId: string }>) => Promise<void>
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'created-desc' | 'created-asc'>('created-desc')
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(() => new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
     workflowId: string
     runId: string
     label: string
   } | null>(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
   const filteredRuns = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -322,10 +360,79 @@ function RunHistoryTable({
     setCurrentPage((current) => Math.min(current, totalPages))
   }, [totalPages])
 
+  const visibleRunIds = useMemo(() => new Set(runs.map((run) => run.id)), [runs])
+
+  useEffect(() => {
+    setSelectedRunIds((current) => {
+      const next = new Set([...current].filter((id) => visibleRunIds.has(id)))
+      return next.size === current.size ? current : next
+    })
+  }, [visibleRunIds])
+
+  const selectedCount = selectedRunIds.size
+  const paginatedRunIds = useMemo(() => paginatedRuns.map((run) => run.id), [paginatedRuns])
+  const allPageSelected =
+    paginatedRunIds.length > 0 && paginatedRunIds.every((id) => selectedRunIds.has(id))
+  const somePageSelected =
+    paginatedRunIds.some((id) => selectedRunIds.has(id)) && !allPageSelected
+
+  const toggleRunSelection = (runId: string, checked: boolean) => {
+    setSelectedRunIds((current) => {
+      const next = new Set(current)
+      if (checked) {
+        next.add(runId)
+      } else {
+        next.delete(runId)
+      }
+      return next
+    })
+  }
+
+  const togglePageSelection = (checked: boolean) => {
+    setSelectedRunIds((current) => {
+      const next = new Set(current)
+      paginatedRuns.forEach((run) => {
+        if (checked) {
+          next.add(run.id)
+        } else {
+          next.delete(run.id)
+        }
+      })
+      return next
+    })
+  }
+
+  const selectedDeleteTargets = useMemo(
+    () =>
+      runs
+        .filter((run) => selectedRunIds.has(run.id))
+        .map((run) => ({ workflowId: run.workflowId, runId: run.id })),
+    [runs, selectedRunIds],
+  )
+
   const confirmDelete = () => {
     if (!deleteTarget) return
     onDeleteRun(deleteTarget.workflowId, deleteTarget.runId)
+    setSelectedRunIds((current) => {
+      if (!current.has(deleteTarget.runId)) return current
+      const next = new Set(current)
+      next.delete(deleteTarget.runId)
+      return next
+    })
     setDeleteTarget(null)
+  }
+
+  const confirmBulkDelete = async () => {
+    if (selectedDeleteTargets.length === 0) return
+
+    setBulkDeleting(true)
+    try {
+      await onBulkDeleteRuns(selectedDeleteTargets)
+      setSelectedRunIds(new Set())
+      setBulkDeleteOpen(false)
+    } finally {
+      setBulkDeleting(false)
+    }
   }
 
   return (
@@ -365,11 +472,43 @@ function RunHistoryTable({
           ]}
         />
       </div>
+      {selectedCount > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-3 py-2.5">
+          <p className="text-sm font-medium text-foreground">
+            {selectedCount} run{selectedCount === 1 ? '' : 's'} selected
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={bulkDeleting}
+            onClick={() => setBulkDeleteOpen(true)}
+          >
+            <Trash2 className="size-4" />
+            {bulkDeleting ? 'Deleting...' : `Delete selected (${selectedCount})`}
+          </Button>
+          <button
+            type="button"
+            disabled={bulkDeleting}
+            onClick={() => setSelectedRunIds(new Set())}
+            className="text-sm font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+          >
+            Clear selection
+          </button>
+        </div>
+      ) : null}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-left">
+        <table className="w-full min-w-[940px] border-collapse text-left">
           <thead>
             <tr className="border-b border-border bg-card text-xs font-bold uppercase tracking-[0.02em] text-muted-foreground">
-              <th className="w-[220px] px-5 py-5">Workflow</th>
+              <th className="w-[52px] px-4 py-5">
+                <Checkbox
+                  aria-label="Select all runs on this page"
+                  checked={allPageSelected ? true : somePageSelected ? 'indeterminate' : false}
+                  onCheckedChange={(checked) => togglePageSelection(checked === true)}
+                  disabled={paginatedRuns.length === 0 || bulkDeleting}
+                />
+              </th>
+              <th className="w-[220px] px-3 py-5">Workflow</th>
               <th className="w-[120px] px-3 py-5">Status</th>
               <th className="w-[120px] px-3 py-5">Mode</th>
               <th className="w-[180px] px-3 py-5">Started</th>
@@ -385,9 +524,20 @@ function RunHistoryTable({
               return (
                 <tr
                   key={run.id}
-                  className="border-b border-border bg-card text-sm last:border-b-0 hover:bg-muted/50"
+                  className={cn(
+                    'border-b border-border bg-card text-sm last:border-b-0 hover:bg-muted/50',
+                    selectedRunIds.has(run.id) && 'bg-nesy-soft/10',
+                  )}
                 >
-                  <td className="px-5 py-4 align-middle">
+                  <td className="px-4 py-4 align-middle">
+                    <Checkbox
+                      aria-label={`Select run ${run.id}`}
+                      checked={selectedRunIds.has(run.id)}
+                      onCheckedChange={(checked) => toggleRunSelection(run.id, checked === true)}
+                      disabled={bulkDeleting}
+                    />
+                  </td>
+                  <td className="px-3 py-4 align-middle">
                     <Link href={`/automation/${workflowSlug}`} className="block">
                       <p className="font-semibold text-foreground">{workflowName}</p>
                       <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -448,7 +598,7 @@ function RunHistoryTable({
             })}
             {paginatedRuns.length === 0 ? (
               <tr>
-                <td className="px-5 py-10 text-center" colSpan={6}>
+                <td className="px-5 py-10 text-center" colSpan={7}>
                   {runs.length === 0 ? (
                     <div className="mx-auto flex max-w-md flex-col items-center gap-3">
                       <p className="text-sm font-medium text-foreground">No runs recorded yet</p>
@@ -516,6 +666,37 @@ function RunHistoryTable({
               className="rounded-[4px] bg-nesy text-white hover:bg-nesy-hover"
             >
               Delete run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !bulkDeleting && setBulkDeleteOpen(open)}
+      >
+        <AlertDialogContent className="rounded-[4px] border border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">
+              Delete {selectedCount} run{selectedCount === 1 ? '' : 's'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the selected run records from history. The workflows themselves will not
+              be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-[4px]" disabled={bulkDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmBulkDelete()
+              }}
+              disabled={bulkDeleting}
+              className="rounded-[4px] bg-nesy text-white hover:bg-nesy-hover"
+            >
+              {bulkDeleting ? 'Deleting...' : `Delete ${selectedCount} run${selectedCount === 1 ? '' : 's'}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

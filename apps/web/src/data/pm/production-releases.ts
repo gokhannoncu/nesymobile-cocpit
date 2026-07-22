@@ -625,6 +625,23 @@ export const productionReleases: ProductionRelease[] = [
     notes:
       'Yeni kod yok; o tarihte prod dalında bulunan gün sonu, crash ve HR ödeme hotfix kodlarıyla aynı kod tabanı paketlendi.',
   }),
+  productionRelease({
+    sequence: 35,
+    title: 'GetLatestVersion canlı prod sürümleri',
+    commit: 'glv-20260722',
+    date: '2026-07-22',
+    kind: 'rollout',
+    versionTransitions: [
+      { countryId: 'hr', from: 262, to: 264 },
+      { countryId: 'si', from: 174, to: 176 },
+      { countryId: 'rs', from: 68, to: 69 },
+      { countryId: 'me', from: 30, to: 31 },
+    ],
+    features: [],
+    fixes: [],
+    notes:
+      'Ülke × prod GetLatestVersion (AppName) yanıtlarından alındı. BA prod 29’da kaldı. Test (stage) versionCode’ları bu tabloda tutulmaz.',
+  }),
 ]
 
 export const productionReleaseSummary = {

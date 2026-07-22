@@ -1,18 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ChevronDown,
   Code2,
-  ExternalLink,
   GitCommit,
   Globe2,
   History,
+  Loader2,
   PackageCheck,
   Tag,
   Workflow,
 } from 'lucide-react'
+import { CountryInstallButtons } from '@/components/pm/country-install-buttons'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import {
@@ -88,6 +89,32 @@ function isVersionCountry(countryId: string): countryId is VersionCountryId {
 export default function VersionsPage() {
   const [countryFilter, setCountryFilter] = useState<CountryFilter>('all')
   const [showAllHistory, setShowAllHistory] = useState(false)
+  const [testVersions, setTestVersions] = useState<Record<string, number | null>>({})
+  const [testVersionsStatus, setTestVersionsStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadTestVersions() {
+      setTestVersionsStatus('loading')
+      try {
+        const res = await fetch('/api/versions/latest?environment=test', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = (await res.json()) as { byCountry?: Record<string, number | null> }
+        if (!cancelled) {
+          setTestVersions(data.byCountry ?? {})
+          setTestVersionsStatus('ready')
+        }
+      } catch {
+        if (!cancelled) setTestVersionsStatus('error')
+      }
+    }
+    void loadTestVersions()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const countryRows = useMemo(
     () =>
@@ -133,14 +160,16 @@ export default function VersionsPage() {
   const tableHeaders = [
     { label: 'Ülke' },
     { label: 'Production versionCode', tone: 'green' as const },
-    { label: 'Önceki versionCode' },
+    { label: 'Test versionCode', tone: 'amber' as const },
     { label: 'Son release' },
     { label: 'Son deploy' },
-    { label: 'Store' },
+    { label: 'Kurulum' },
   ]
 
   const tableRows = countryRows.map(({ country, latest }) => {
     const countryName = COUNTRY_NAMES[country.countryId as keyof typeof COUNTRY_NAMES] ?? country.countryName
+    const testVersion = testVersions[country.countryId]
+    const hasMobileApi = isVersionCountry(country.countryId)
 
     return [
       <div key={`${country.countryId}-name`}>
@@ -158,8 +187,21 @@ export default function VersionsPage() {
           Kayıt yok
         </span>
       ),
-      <span key={`${country.countryId}-previous`} className="text-sm font-semibold tabular-nums text-muted-foreground">
-        {latest?.transition.from ?? '—'}
+      <span key={`${country.countryId}-test`} className="text-sm font-semibold tabular-nums text-foreground">
+        {!hasMobileApi ? (
+          '—'
+        ) : testVersionsStatus === 'loading' ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Loader2 className="size-3 animate-spin" />
+            …
+          </span>
+        ) : testVersionsStatus === 'error' ? (
+          <span className="text-xs text-destructive">Alınamadı</span>
+        ) : testVersion != null ? (
+          testVersion
+        ) : (
+          '—'
+        )}
       </span>,
       latest ? (
         <div key={`${country.countryId}-release`} className="min-w-36">
@@ -176,20 +218,7 @@ export default function VersionsPage() {
       <span key={`${country.countryId}-deploy`} className="whitespace-nowrap text-xs font-medium">
         {latest ? formatDate(latest.release.date) : '—'}
       </span>,
-      country.storeUrl ? (
-        <a
-          key={`${country.countryId}-store`}
-          href={country.storeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-        >
-          <ExternalLink className="size-3" />
-          Play Store
-        </a>
-      ) : (
-        <span key={`${country.countryId}-store-empty`} className="text-xs text-muted-foreground">—</span>
-      ),
+      <CountryInstallButtons key={`${country.countryId}-install`} countryId={country.countryId} />,
     ]
   })
 
@@ -238,7 +267,7 @@ export default function VersionsPage() {
         title="Ülke × version matrisi"
         icon={Tag}
         tone="indigo"
-        description="Production versionCode, önceki değer, son release ve deploy tarihi. Store linkleri mevcut haliyle korunmuştur."
+        description="Production versionCode (release geçmişi), Test versionCode (GetLatestVersion), son release/deploy ve kurulum."
       >
         <ComparisonTable headers={tableHeaders} rows={tableRows} highlightCol={1} />
       </PageSection>

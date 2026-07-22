@@ -337,6 +337,28 @@ export async function deleteRun(workflowId: string, runId: string): Promise<void
   if (!res.ok) throw new Error('Failed to delete run')
 }
 
+export async function deleteRuns(
+  runs: Array<{ workflowId: string; runId: string }>,
+): Promise<{ deleted: string[]; failed: string[] }> {
+  const results = await Promise.allSettled(
+    runs.map(({ workflowId, runId }) => deleteRun(workflowId, runId).then(() => runId)),
+  )
+
+  const deleted: string[] = []
+  const failed: string[] = []
+  results.forEach((result, index) => {
+    const run = runs[index]
+    if (!run) return
+    if (result.status === 'fulfilled') {
+      deleted.push(result.value)
+    } else {
+      failed.push(run.runId)
+    }
+  })
+
+  return { deleted, failed }
+}
+
 export async function fetchRuns(
   workflowId: string,
   params?: { page?: number; limit?: number },

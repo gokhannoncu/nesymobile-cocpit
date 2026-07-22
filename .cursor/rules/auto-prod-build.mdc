@@ -1,0 +1,28 @@
+---
+description: After agent code edits, auto-rebuild for pnpm prod (stop hook)
+alwaysApply: true
+---
+
+# Auto prod rebuild
+
+Daily UI work prefers **`pnpm prod`** (faster serve) over `pnpm dev`.
+
+## Automation (already installed)
+
+1. `afterFileEdit` marks `apps/web` / `apps/api` (and shared packages) dirty in `.cursor/hooks-state/pending-build.json`
+2. On agent **stop**, dirty packages are built (`pnpm --filter … build`)
+3. If `:4002` / `:4001` were listening, those processes are restarted so `pnpm prod` picks up the new build
+
+Opt out for a session: `NESY_AUTO_PROD_BUILD=0`
+
+Log: `.cursor/hooks-state/auto-prod-build.log`
+
+## Agent habit (belt-and-suspenders)
+
+When you finish web/api source changes and the user is on prod, you may still run:
+
+```bash
+pnpm --filter @nesy/web build
+```
+
+Do not start `pnpm dev` just to preview agent edits unless the user asks.
