@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Quiet NESY Cockpit for `pnpm dev` / `pnpm prod`.
+ * Quiet NESY Cockpit for `pnpm dev` / `pnpm prod` / `pnpm fastprod`.
  * Status panel only (DB / API / Web). Pass --verbose for raw Turbo logs.
  *
- * Usage: node scripts/cockpit-runner.mjs --mode dev|prod [--verbose]
+ * Usage: node scripts/cockpit-runner.mjs --mode dev|prod|fastprod [--verbose]
  */
 import { spawn, execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -28,7 +28,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--mode') {
       const value = argv[i + 1]
-      if (value === 'dev' || value === 'prod') mode = value
+      if (value === 'dev' || value === 'prod' || value === 'fastprod') mode = value
       i += 1
       continue
     }
@@ -41,10 +41,11 @@ function parseArgs(argv) {
 
 const { mode, verbose } = parseArgs(process.argv.slice(2))
 if (!mode) {
-  console.error('Usage: node scripts/cockpit-runner.mjs --mode dev|prod [--verbose]')
+  console.error('Usage: node scripts/cockpit-runner.mjs --mode dev|prod|fastprod [--verbose]')
   process.exit(1)
 }
 
+const skipBuild = mode === 'fastprod'
 const turboTask = mode === 'dev' ? 'dev' : 'start'
 let turboBin
 try {
@@ -108,9 +109,12 @@ async function runHealthProbes() {
 
 renderPanel()
 
+const turboArgs = [turboBin, 'run', turboTask, '--ui=stream']
+if (skipBuild) turboArgs.push('--only')
+
 const child = spawn(
   process.execPath,
-  [turboBin, 'run', turboTask, '--ui=stream'],
+  turboArgs,
   {
     cwd: repoRoot,
     env: {

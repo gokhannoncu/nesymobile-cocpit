@@ -56,7 +56,7 @@ export function ScreenMapExplorer() {
   const showAllDomains = () => setActiveDomains(new Set(SCREEN_DOMAINS))
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-3">
+    <div className="flex min-h-[640px] flex-col gap-3 lg:min-h-[calc(100vh-14rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {SCREEN_DOMAINS.map((domain) => {

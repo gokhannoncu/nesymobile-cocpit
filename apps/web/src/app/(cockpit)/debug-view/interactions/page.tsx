@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import {
   Activity,
   AlertCircle,
+  Download,
   Keyboard,
   MonitorSmartphone,
   MousePointerClick,
@@ -17,6 +18,7 @@ import {
   ScanLine,
   Smartphone,
   Trash2,
+  X,
   Zap,
 } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
@@ -31,6 +33,13 @@ import {
 } from '@/components/debug-view/interaction-capture-context'
 import { INTERACTION_KIND_META } from '@/data/debug-view/mock-interactions'
 import type { InteractionKind, InteractionEvent } from '@/data/debug-view/types'
+import {
+  buildInteractionExport,
+  filterInteractions,
+  filterInteractionsForCounts,
+  interactionExportFilename,
+  type InteractionFilterState,
+} from '@/lib/debug-view/filter-interactions'
 
 /** Nesy Mobile / Debug View brand accent — matches overview, network, schedule pages. */
 const PAGE_TONE = 'orange' as const satisfies Tone
@@ -53,28 +62,53 @@ function fmtOffset(ms: number): string {
   return m > 0 ? `+${m}m ${rem}s` : `+${rem}s`
 }
 
+const EMPTY_FILTERS: InteractionFilterState = {
+  kind: 'all',
+  from: '',
+  to: '',
+  search: '',
+}
+
+function hasActiveFilters(filters: InteractionFilterState): boolean {
+  return filters.kind !== 'all' || Boolean(filters.from.trim()) || Boolean(filters.to.trim()) || Boolean(filters.search.trim())
+}
+
+function downloadInteractionJson(payload: ReturnType<typeof buildInteractionExport>, serial: string) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = interactionExportFilename(serial, new Date(payload.exportedAt))
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function InteractionsPage() {
   const { selectedDevice } = useDebugView()
   const { events: realEvents, streamState, clear: clearInteractions } = useInteractionCapture()
-  const [filter, setFilter] = useState<InteractionKind | 'all'>('all')
+  const [filters, setFilters] = useState<InteractionFilterState>(EMPTY_FILTERS)
 
-  const handleClear = () => {
+  const handleClearHistory = () => {
     clearInteractions()
   }
 
+  const clearFilters = () => setFilters(EMPTY_FILTERS)
+
   const allEvents = realEvents
 
-  const events = useMemo(
-    () => (filter === 'all' ? allEvents : allEvents.filter((e) => e.kind === filter)),
-    [filter, allEvents],
+  const countBase = useMemo(
+    () => filterInteractionsForCounts(allEvents, filters),
+    [allEvents, filters],
   )
+
+  const events = useMemo(() => filterInteractions(allEvents, filters), [allEvents, filters])
 
   const kinds = Object.keys(INTERACTION_KIND_META) as InteractionKind[]
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
-    for (const e of allEvents) c[e.kind] = (c[e.kind] ?? 0) + 1
+    for (const e of countBase) c[e.kind] = (c[e.kind] ?? 0) + 1
     return c
-  }, [allEvents])
+  }, [countBase])
 
   type DisplayEvent = InteractionEvent & { repeatCount?: number }
 
@@ -94,6 +128,16 @@ export default function InteractionsPage() {
 
     return grouped
   }, [events])
+
+  const handleExport = () => {
+    if (!selectedDevice || events.length === 0) return
+    const payload = buildInteractionExport({
+      events,
+      filters,
+      device: { serial: selectedDevice.serial, name: selectedDevice.name },
+    })
+    downloadInteractionJson(payload, selectedDevice.serial)
+  }
 
   return (
     <ProductPage path="/debug-view/interactions">
@@ -115,67 +159,120 @@ export default function InteractionsPage() {
       ) : (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/80 bg-orange-50/30 px-4 py-3 dark:bg-orange-950/10">
-            <div className="flex flex-wrap gap-1.5">
-              <FilterChip
-                label="All"
-                active={filter === 'all'}
-                onClick={() => setFilter('all')}
-                count={allEvents.length}
-                tone={PAGE_TONE}
-              />
-              {kinds.map((k) => (
+          <div className="space-y-3 rounded-xl border border-border/80 bg-orange-50/30 px-4 py-3 dark:bg-orange-950/10">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-1.5">
                 <FilterChip
-                  key={k}
-                  label={INTERACTION_KIND_META[k].label}
-                  active={filter === k}
-                  onClick={() => setFilter(k)}
-                  count={counts[k] ?? 0}
-                  tone={INTERACTION_KIND_META[k].tone}
+                  label="All"
+                  active={filters.kind === 'all'}
+                  onClick={() => setFilters((prev) => ({ ...prev, kind: 'all' }))}
+                  count={countBase.length}
+                  tone={PAGE_TONE}
                 />
-              ))}
+                {kinds.map((k) => (
+                  <FilterChip
+                    key={k}
+                    label={INTERACTION_KIND_META[k].label}
+                    active={filters.kind === k}
+                    onClick={() => setFilters((prev) => ({ ...prev, kind: k }))}
+                    count={counts[k] ?? 0}
+                    tone={INTERACTION_KIND_META[k].tone}
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="secondary"
+                  appearance="outline"
+                  size="sm"
+                  className={cn(
+                    'gap-1.5',
+                    streamState === 'live'
+                      ? toneText.green
+                      : streamState === 'reconnecting'
+                        ? toneText.amber
+                        : toneText.gray,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'size-1.5 rounded-full',
+                      streamState === 'live'
+                        ? 'bg-green-500'
+                        : streamState === 'reconnecting'
+                          ? 'bg-amber-500'
+                          : 'bg-muted-foreground/50',
+                    )}
+                  />
+                  {streamState === 'live'
+                    ? 'ADB live'
+                    : streamState === 'reconnecting'
+                      ? 'Reconnecting'
+                      : 'Connecting'}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground">
+                  {events.length}/{allEvents.length} shown · {allEvents.length}/{MAX_STORED_INTERACTIONS} retained
+                </span>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  disabled={events.length === 0}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <Download className="size-3" />
+                  Export JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-foreground"
+                >
+                  <Trash2 className="size-3" />
+                  Clear
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="secondary"
-                appearance="outline"
-                size="sm"
-                className={cn(
-                  'gap-1.5',
-                  streamState === 'live'
-                    ? toneText.green
-                    : streamState === 'reconnecting'
-                      ? toneText.amber
-                      : toneText.gray,
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    streamState === 'live'
-                      ? 'bg-green-500'
-                      : streamState === 'reconnecting'
-                        ? 'bg-amber-500'
-                        : 'bg-muted-foreground/50',
-                  )}
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">From</span>
+                <input
+                  type="datetime-local"
+                  value={filters.from}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
+                  className="h-8 rounded-lg border border-border bg-card px-2 font-mono text-[11px] text-foreground outline-none focus:border-orange-500/40"
                 />
-                {streamState === 'live'
-                  ? 'ADB live'
-                  : streamState === 'reconnecting'
-                    ? 'Reconnecting'
-                    : 'Connecting'}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground">
-                {allEvents.length}/{MAX_STORED_INTERACTIONS} retained for this device
-              </span>
-              <button
-                onClick={handleClear}
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-foreground"
-              >
-                <Trash2 className="size-3" />
-                Clear
-              </button>
+              </label>
+              <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">To</span>
+                <input
+                  type="datetime-local"
+                  value={filters.to}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
+                  className="h-8 rounded-lg border border-border bg-card px-2 font-mono text-[11px] text-foreground outline-none focus:border-orange-500/40"
+                />
+              </label>
+              <label className="flex min-w-[12rem] flex-[2] flex-col gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Search</span>
+                <input
+                  type="search"
+                  value={filters.search}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  placeholder="Label, screen, detail, analytics…"
+                  className="h-8 rounded-lg border border-border bg-card px-2.5 text-[11px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-orange-500/40"
+                />
+              </label>
+              {hasActiveFilters(filters) ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mb-0.5 flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-foreground"
+                >
+                  <X className="size-3" />
+                  Clear filters
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -185,10 +282,11 @@ export default function InteractionsPage() {
               {displayEvents.length === 0 ? (
                 <InteractionTimelineEmptyState
                   streamState={streamState}
-                  filter={filter}
+                  filters={filters}
+                  filteredCount={events.length}
                   totalEvents={allEvents.length}
                   deviceName={selectedDevice.name}
-                  onClearFilter={() => setFilter('all')}
+                  onClearFilters={clearFilters}
                 />
               ) : (
                 <div className="relative p-5">
@@ -254,36 +352,52 @@ export default function InteractionsPage() {
 
 function InteractionTimelineEmptyState({
   streamState,
-  filter,
+  filters,
+  filteredCount,
   totalEvents,
   deviceName,
-  onClearFilter,
+  onClearFilters,
 }: {
   streamState: InteractionStreamState
-  filter: InteractionKind | 'all'
+  filters: InteractionFilterState
+  filteredCount: number
   totalEvents: number
   deviceName: string
-  onClearFilter: () => void
+  onClearFilters: () => void
 }) {
-  const isFilteredEmpty = totalEvents > 0 && filter !== 'all'
-  const filterMeta = filter !== 'all' ? INTERACTION_KIND_META[filter] : null
+  const isFilteredEmpty = totalEvents > 0 && filteredCount === 0 && hasActiveFilters(filters)
+  const kindMeta = filters.kind !== 'all' ? INTERACTION_KIND_META[filters.kind] : null
 
-  if (isFilteredEmpty && filterMeta) {
+  if (isFilteredEmpty) {
+    const title =
+      filters.kind !== 'all' && kindMeta && !filters.from.trim() && !filters.to.trim() && !filters.search.trim()
+        ? `No ${kindMeta.label.toLowerCase()} events`
+        : 'No matching interactions'
+
     return (
       <div className="flex flex-col items-center px-6 py-12 text-center">
-        <span className={cn('flex size-12 items-center justify-center rounded-2xl', toneIconBox[filterMeta.tone])}>
-          {(() => {
-            const Icon = KIND_ICON[filter]
-            return <Icon className={cn('size-6', toneIcon[filterMeta.tone])} />
-          })()}
+        <span
+          className={cn(
+            'flex size-12 items-center justify-center rounded-2xl',
+            toneIconBox[kindMeta?.tone ?? PAGE_TONE],
+          )}
+        >
+          {filters.kind !== 'all' ? (
+            (() => {
+              const Icon = KIND_ICON[filters.kind]
+              return <Icon className={cn('size-6', toneIcon[kindMeta!.tone])} />
+            })()
+          ) : (
+            <MousePointerClick className={cn('size-6', toneIcon[PAGE_TONE])} />
+          )}
         </span>
-        <h3 className="mt-4 text-base font-bold text-foreground">No {filterMeta.label.toLowerCase()} events</h3>
+        <h3 className="mt-4 text-base font-bold text-foreground">{title}</h3>
         <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-          {totalEvents} interaction{totalEvents === 1 ? '' : 's'} captured, but none match this filter.
+          {totalEvents} interaction{totalEvents === 1 ? '' : 's'} captured, but none match the current filters.
         </p>
         <button
           type="button"
-          onClick={onClearFilter}
+          onClick={onClearFilters}
           className={cn(
             'mt-4 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
             toneCard[PAGE_TONE],
@@ -291,7 +405,7 @@ function InteractionTimelineEmptyState({
             'border-current/25 hover:bg-orange-500/10',
           )}
         >
-          Show all events
+          Clear filters
         </button>
       </div>
     )

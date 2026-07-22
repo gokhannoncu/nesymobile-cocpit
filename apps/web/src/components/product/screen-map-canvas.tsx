@@ -203,15 +203,9 @@ export function ScreenMapCanvas({
     <div
       ref={containerRef}
       className={cn(
-        'relative h-full min-h-[520px] w-full overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(241,245,249,0.9))] dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(15,23,42,0.98))]',
+        'relative h-full min-h-[520px] w-full overflow-hidden rounded-xl border border-border/70 bg-gradient-to-b from-slate-50/95 to-slate-100/90 dark:from-slate-900/95 dark:to-slate-950',
         isPanning ? 'cursor-grabbing' : 'cursor-grab',
       )}
-      style={{
-        backgroundImage:
-          'radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 0)',
-        backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px`,
-        backgroundPosition: `${viewport.x}px ${viewport.y}px`,
-      }}
       onPointerDown={(e) => {
         if (e.button !== 0) return
         const target = e.target as HTMLElement
@@ -227,6 +221,16 @@ export function ScreenMapCanvas({
         onSelect(null)
       }}
     >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.45] dark:opacity-25"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 0)',
+          backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px`,
+          backgroundPosition: `${viewport.x}px ${viewport.y}px`,
+        }}
+      />
       <div
         className="absolute left-0 top-0 origin-top-left will-change-transform"
         style={{

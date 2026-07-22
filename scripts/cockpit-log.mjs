@@ -24,7 +24,7 @@ const c = {
  * @typedef {'idle' | 'waiting' | 'building' | 'starting' | 'ready' | 'failed'} ServiceStatus
  * @typedef {{ status: ServiceStatus, detail: string }} ServiceState
  * @typedef {{
- *   mode: 'dev' | 'prod',
+ *   mode: 'dev' | 'prod' | 'fastprod',
  *   ports: { api: number, web: number },
  *   db: ServiceState,
  *   api: ServiceState,
