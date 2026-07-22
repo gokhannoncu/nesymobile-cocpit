@@ -9,7 +9,7 @@
     "stop": [
       {
         "command": "node .cursor/hooks/stop-auto-prod-build.mjs",
-        "timeout": 600,
+        "timeout": 1200,
         "loop_limit": 1
       }
     ]

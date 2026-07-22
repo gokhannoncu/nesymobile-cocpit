@@ -178,6 +178,7 @@ export function toIntentText(text: string): string {
 /**
  * When an identifier filter changes, rewrite matching literals in the intent text
  * so the textarea stays aligned with the boxes (predefined samples → user edits).
+ * Clearing a box removes that literal from the intent (not only Applied chips).
  */
 export function syncIdentifierLiteralsInIntent(
   text: string,
@@ -185,16 +186,41 @@ export function syncIdentifierLiteralsInIntent(
   next: Record<string, string>,
 ): string {
   let out = text
+  let cleared = false
   const keys = new Set([...Object.keys(previous), ...Object.keys(next)])
   for (const key of keys) {
     const from = String(previous[key] ?? '').trim()
     const to = String(next[key] ?? '').trim()
-    if (!from || !to || from === to) continue
+    if (!from || from === to) continue
     // Skip tiny tokens — avoid accidental substring swaps while typing.
     if (from.length < 4) continue
     out = out.split(from).join(to)
+    if (!to) cleared = true
   }
+
+  if (!cleared) return out
+
+  // After a clear, drop empty field mentions left behind (e.g. "or Log_Data_Barcode ").
+  // Only strip labels that are NOT followed by another identifier-like token.
   return out
+    .replace(
+      /\s*(?:or\s+)?Log_Data_LegacySystemShortBarcode\s*\/\s*Log_Data_Barcode(?!\s+[A-Za-z0-9._-]+)/gi,
+      ' ',
+    )
+    .replace(
+      /\s*(?:or\s+)?Log_Data_LegacySystemShortBarcode(?!\s+[A-Za-z0-9._-]+)/gi,
+      ' ',
+    )
+    .replace(/\s*(?:or\s+)?Log_Data_Barcode(?!\s+[A-Za-z0-9._-]+)/gi, ' ')
+    .replace(/\s*(?:or\s+)?Log_Barcode(?!\s+[A-Za-z0-9._-]+)/gi, ' ')
+    .replace(/\s*(?:or\s+)?Log_Data_ShipmentId(?!\s+[A-Za-z0-9._-]+)/gi, ' ')
+    .replace(/\s*(?:or\s+)?Log_ShipmentId(?!\s+[A-Za-z0-9._-]+)/gi, ' ')
+    .replace(/\(\s*also match message\)/gi, '')
+    .replace(/\bor\s+or\b/gi, 'or')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([.,;])/g, '$1')
+    .replace(/\s+\/\s+/g, ' / ')
+    .trim()
 }
 
 export function normalizeTimeRange(value: string | null | undefined): string {

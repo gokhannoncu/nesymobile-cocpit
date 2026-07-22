@@ -2,6 +2,9 @@
 /**
  * stop — if agent edited web/api sources, rebuild for `pnpm prod` and restart listeners.
  * Opt out: NESY_AUTO_PROD_BUILD=0
+ *
+ * Cross-session safety: acquires `.cursor/hooks-state/prod-build.lock` so two
+ * agent sessions finishing at once cannot run parallel pnpm builds.
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -9,6 +12,7 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { killPort } from '../../scripts/kill-dev-ports.mjs'
+import { acquireProdBuildLock, releaseProdBuildLock } from './prod-build-lock.mjs'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const stateDir = join(repoRoot, '.cursor', 'hooks-state')
@@ -147,23 +151,39 @@ if (payload.status === 'aborted') {
   process.exit(0)
 }
 
-const state = loadState()
-if (!state || (!state.web && !state.api)) {
+const peek = loadState()
+if (!peek || (!peek.web && !peek.api)) {
   process.stdout.write('{}\n')
   process.exit(0)
 }
 
-const webWasUp = state.web && portInUse(4002)
-const apiWasUp = state.api && portInUse(4001)
-
+let heldLock = false
 try {
-  if (state.api) runPnpm('@nesy/api', 'build')
-  if (state.web) runPnpm('@nesy/web', 'build')
-  clearState()
-  if (state.api && apiWasUp) restartApi()
-  if (state.web && webWasUp) restartNextWeb()
-  log('done')
-  process.stdout.write('{}\n')
+  await acquireProdBuildLock({
+    log,
+    owner: `stop-hook:${payload.conversation_id || payload.session_id || process.pid}`,
+  })
+  heldLock = true
+
+  // Re-read under lock — another session may have already built + cleared.
+  const state = loadState()
+  if (!state || (!state.web && !state.api)) {
+    log('nothing dirty after acquiring lock — skip')
+    process.stdout.write('{}\n')
+  } else {
+    const webWasUp = state.web && portInUse(4002)
+    const apiWasUp = state.api && portInUse(4001)
+
+    // Clear before build so concurrent afterFileEdit marks stay for the next waiter.
+    clearState()
+
+    if (state.api) runPnpm('@nesy/api', 'build')
+    if (state.web) runPnpm('@nesy/web', 'build')
+    if (state.api && apiWasUp) restartApi()
+    if (state.web && webWasUp) restartNextWeb()
+    log('done')
+    process.stdout.write('{}\n')
+  }
 } catch (err) {
   const message = err instanceof Error ? err.message : String(err)
   log(`FAILED: ${message}`)
@@ -178,4 +198,6 @@ try {
   } else {
     process.stdout.write('{}\n')
   }
+} finally {
+  if (heldLock) releaseProdBuildLock({ log })
 }

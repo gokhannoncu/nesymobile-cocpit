@@ -12,6 +12,7 @@ Daily UI work prefers **`pnpm prod`** (faster serve) over `pnpm dev`.
 1. `afterFileEdit` marks `apps/web` / `apps/api` (and shared packages) dirty in `.cursor/hooks-state/pending-build.json`
 2. On agent **stop**, dirty packages are built (`pnpm --filter … build`)
 3. If `:4002` / `:4001` were listening, those processes are restarted so `pnpm prod` picks up the new build
+4. **Cross-session lock:** builds take `.cursor/hooks-state/prod-build.lock`. If another session is already building, this stop hook **waits**, re-reads dirty state, then builds. Prevents parallel `pnpm` / Next build collisions.
 
 Opt out for a session: `NESY_AUTO_PROD_BUILD=0`
 
@@ -19,10 +20,14 @@ Log: `.cursor/hooks-state/auto-prod-build.log`
 
 ## Agent habit (belt-and-suspenders)
 
-When you finish web/api source changes and the user is on prod, you may still run:
+When you finish web/api source changes and the user is on prod, you may still run a build — but **never start a second build while another is running**.
+
+Preferred (waits on the shared lock):
 
 ```bash
-pnpm --filter @nesy/web build
+node .cursor/hooks/with-prod-build-lock.mjs -- pnpm --filter @nesy/web build
 ```
+
+If you run `pnpm --filter … build` directly, first check that `.cursor/hooks-state/prod-build.lock` is absent (or wait until it is). Two sessions building in parallel can corrupt `.next` / `dist`.
 
 Do not start `pnpm dev` just to preview agent edits unless the user asks.

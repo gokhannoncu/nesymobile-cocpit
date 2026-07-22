@@ -174,6 +174,11 @@ export const WORKSPACES: Workspace[] = [
                 path: '/product/domain-model',
                 icon: Network,
               },
+              {
+                title: 'Screen Map',
+                path: '/product/screen-map',
+                icon: Map,
+              },
             ],
           },
           {
