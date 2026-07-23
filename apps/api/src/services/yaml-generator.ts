@@ -349,6 +349,18 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     appId: "${resolvedAppId}"
     clearState: ${clearState}
 - waitForAnimationToEnd
+# Samsung system "app compatibility" warning (debuggable build / 16KB page size)
+# covers the app on the first launch after install or data-clear. If left up it
+# eats the whole run — every branch probe WARNs yet Maestro exits 0 (false
+# success). Dismiss via "Don't show again" so it also self-suppresses. TR/EN text.
+- runFlow:
+    when:
+      visible:
+        text: "Bir Daha Gösterme|Don.t show again"
+    commands:
+      - tapOn:
+          text: "Bir Daha Gösterme|Don.t show again"
+      - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${pinViewId}"
@@ -426,8 +438,10 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       // signal; rv/second-btn_out are confirmations that cost their full timeout
       // whenever the list id differs or the list is empty. Bounded low so an
       // absent element costs ~3s instead of ~15-20s.
+      // No leading waitForAnimationToEnd: the preceding step (CHECK_ROUTE / OK tap)
+      // already settled, and the btn_out extendedWaitUntil below polls the screen,
+      // so it saves one screenshot-loop + hierarchy cycle for nothing lost.
       return `# --- VALIDATE STOPLIST ---
-- waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${btnOutId}"

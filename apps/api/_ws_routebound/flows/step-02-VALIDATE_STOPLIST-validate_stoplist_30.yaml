@@ -1,0 +1,28 @@
+appId: "com.arasdigital.nesymobile.rstest"
+---
+# --- VALIDATE STOPLIST ---
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_out"
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "com.arasdigital.nesymobile.rstest:id/srl"
+    commands:
+      - swipe:
+          start: "50%, 25%"
+          end: "50%, 70%"
+          duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/rv"
+    timeout: 3000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "com.arasdigital.nesymobile.rstest:id/btn_out"
+    timeout: 2500
+    optional: true
