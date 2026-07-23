@@ -339,6 +339,12 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       const btnOutId = resourceId(resolvedAppId, "btn_out");
       // After relaunch, wait until either login or Stop List is interactive so
       // the next scan step does not race SplashActivity.
+      // Screen-readiness probes: exactly one of pinView / manuel_input / btn_out
+      // is ever present, so the other two ALWAYS burn their full timeout. Because
+      // they are `optional`, they give no correctness guarantee (the flow proceeds
+      // regardless) — the downstream IF_LOGIN / CHECK_ROUTE steps carry the real
+      // gates. Short timeouts here just clear SplashActivity without dead-waiting
+      // ~25s on the two non-matching probes.
       return `- launchApp:
     appId: "${resolvedAppId}"
     clearState: ${clearState}
@@ -346,17 +352,17 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
 - extendedWaitUntil:
     visible:
       id: "${pinViewId}"
-    timeout: 8000
+    timeout: 3000
     optional: true
 - extendedWaitUntil:
     visible:
       id: "${manuelInputId}"
-    timeout: 20000
+    timeout: 2500
     optional: true
 - extendedWaitUntil:
     visible:
       id: "${btnOutId}"
-    timeout: 5000
+    timeout: 2500
     optional: true`;
     }
 
@@ -415,12 +421,17 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       const srlId = resourceId(appId, "srl");
       const rvId = resourceId(appId, "rv");
       const btnOutId = resourceId(appId, "btn_out");
+      // All three waits are `optional` (soft readiness checks — the hard gate is
+      // the post-Maestro backend server step). btn_out is the real readiness
+      // signal; rv/second-btn_out are confirmations that cost their full timeout
+      // whenever the list id differs or the list is empty. Bounded low so an
+      // absent element costs ~3s instead of ~15-20s.
       return `# --- VALIDATE STOPLIST ---
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${btnOutId}"
-    timeout: 20000
+    timeout: 8000
     optional: true
 - runFlow:
     when:
@@ -435,12 +446,12 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
 - extendedWaitUntil:
     visible:
       id: "${rvId}"
-    timeout: 15000
+    timeout: 3000
     optional: true
 - extendedWaitUntil:
     visible:
       id: "${btnOutId}"
-    timeout: 5000
+    timeout: 2500
     optional: true`;
     }
 
@@ -1417,10 +1428,12 @@ function generateConditionalYaml(
 
     let yaml = "";
 
+    // btn_login shows in <2s post-launch when present; short timeout avoids a
+    // 15s dead-wait on the already-logged-in path (optional → no correctness gate).
     yaml += `- extendedWaitUntil:
     visible:
       id: "${loginButtonId}"
-    timeout: 15000
+    timeout: 5000
     optional: true\n`;
 
     // Convergence mode: only FALSE branch (AUTH_LOGIN) runs inside conditional.
@@ -1806,9 +1819,18 @@ export function generateWorkflowWorkspace(
   function emitRuntimeFallback(node: WorkflowNode, branch: IRNode[]): void {
     const probeId =
       node.type === "IF_LOGIN" ? resourceId(appId, "btn_login") : resourceId(appId, "dialog_spinner");
-    // The RS StopList (route spinner) can take >10s to render after login; a short
-    // probe skips SELECT_ROUTE and leaves the run route-less.
-    const waitTimeout = 15000;
+    // Branch-trigger probe timeout. When the branch is NOT taken the trigger is
+    // absent and this wait burns its FULL timeout (it is `optional`, so it never
+    // gates correctness — only latency). Tuned per probe:
+    //  - IF_LOGIN/btn_login: the login screen is already rendered by the time this
+    //    runs (LAUNCH_APP's pinView probe absorbed the splash), so btn_login shows
+    //    in <2s when present. A short timeout keeps the already-logged-in path from
+    //    dead-waiting 15s. btn_login is effectively redundant with LAUNCH_APP.
+    //  - CHECK_ROUTE/dialog_spinner: the RS StopList route spinner can take >10s to
+    //    render after a fresh login; a short probe would skip SELECT_ROUTE and leave
+    //    the run route-less. Kept long — the cost only hits the already-route-selected
+    //    path and cannot be cut here without a state-aware signal (see preflight).
+    const waitTimeout = node.type === "IF_LOGIN" ? 5000 : 15000;
 
     visited.add(node.id);
     mainBody += `\n# ===== STEP: ${node.id} (${node.type}) — runtime UI fallback =====\n`;
