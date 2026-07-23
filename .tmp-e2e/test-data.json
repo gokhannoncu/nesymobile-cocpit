@@ -2,114 +2,102 @@
   "10-standard": {
     "label": "Standard Delivery",
     "route": "delivery",
-    "dbId": "509971d9-89f8-4dab-8bd4-bf897d04b846",
-    "shipmentId": "76075881908183",
-    "barcode": "6880051000269416",
-    "fullBarcode": "N6880110004100000010006880110006300110001000176075881908183WK37131",
+    "dbId": "04f3ab52-4753-495f-8593-83e7e081f9f4",
+    "shipmentId": "79403436072439",
+    "barcode": "6880051000274410",
+    "fullBarcode": "N6880100000000000010006880100000000110001000179403436072439PW29971",
     "allBarcodes": [
-      "6880051000269416"
+      "6880051000274410"
     ],
     "parcelCount": 1
   },
   "11-cod-cash": {
     "label": "COD / Cash",
     "route": "delivery",
-    "dbId": "7625b570-445d-46a2-8809-0af67d7c23b1",
-    "shipmentId": "95953219290008",
-    "barcode": "6880051000269515",
-    "fullBarcode": "N6880100000000000010006880100000000110001000995953219290008XW52891",
+    "dbId": "4760dca4-6555-46f0-b0dd-c202659509bf",
+    "shipmentId": "94428785781195",
+    "barcode": "6880051000274519",
+    "fullBarcode": "N6880110004100000010006880110006300110001000994428785781195QQ55321",
     "allBarcodes": [
-      "6880051000269515"
+      "6880051000274519"
     ],
     "parcelCount": 1
   },
   "12-cc": {
     "label": "Credit Card",
     "route": "delivery",
-    "dbId": "42146752-fe29-4e23-8f49-2b5128e2b5c2",
-    "shipmentId": "46294086049516",
-    "barcode": "6880051000269614",
-    "fullBarcode": "N6880100000000000010006880100000000110001000946294086049516FU54571",
+    "dbId": "35b28e83-9c39-4f64-9b6f-3b8b73027156",
+    "shipmentId": "72907848358143",
+    "barcode": "6880051000274618",
+    "fullBarcode": "N6880100000000000010006880100000000110001000972907848358143PS33751",
     "allBarcodes": [
-      "6880051000269614"
+      "6880051000274618"
     ],
     "parcelCount": 1
   },
   "13-multicolli": {
     "label": "Multicolli (3)",
     "route": "delivery",
-    "dbId": "2d0bab43-3f0c-4d53-9f9d-cf7903dfbe13",
-    "shipmentId": "15868283811766",
-    "barcode": "6880051000269713",
-    "fullBarcode": "N6880100000000000010006880100000000110001000115868283811766FL92211",
+    "dbId": "f2142826-43a6-4584-9e32-ef1ead847474",
+    "shipmentId": "78489134069434",
+    "barcode": "6880051000274717",
+    "fullBarcode": "N6880100000000000010006880100000000110001000178489134069434PT53251",
     "allBarcodes": [
-      "6880051000269713",
-      "6880051000269812",
-      "6880051000269911"
+      "6880051000274717",
+      "6880051000274816",
+      "6880051000274915"
     ],
     "parcelCount": 3
   },
   "14-deps": {
     "label": "DEPS",
     "route": "delivery",
-    "dbId": "90c4be85-50aa-462d-9098-a32db22ee27c",
-    "shipmentId": "64737311745472",
-    "barcode": "6880051000270016",
-    "fullBarcode": "N6880100000000000010006880100000000110001000164737311745472PH10421",
+    "dbId": "5911dfac-fff3-4b96-9917-7cf161046f61",
+    "shipmentId": "98588981314081",
+    "barcode": "6880051000275011",
+    "fullBarcode": "N6880100000000000010006880100000000110001000198588981314081WC10921",
     "allBarcodes": [
-      "6880051000270016"
+      "6880051000275011"
     ],
     "parcelCount": 1
   },
   "17-delivery-failed": {
     "label": "Delivery Failed",
     "route": "delivery",
-    "dbId": "9bb444f0-fec4-439d-82cd-79ff7d20b8aa",
-    "shipmentId": "76237828998416",
-    "barcode": "6880051000270115",
-    "fullBarcode": "N6880100000000000010006880100000000110001000176237828998416YE91601",
+    "dbId": "91d83c93-e279-4cf6-8d64-7f20b3587926",
+    "shipmentId": "80776782201332",
+    "barcode": "6880051000275110",
+    "fullBarcode": "N6880100000000000010006880100000000110001000180776782201332AW43311",
     "allBarcodes": [
-      "6880051000270115"
+      "6880051000275110"
     ],
     "parcelCount": 1
   },
   "18-pickup": {
     "label": "Pickup",
     "route": "pickup",
-    "dbId": "72da6b5b-9c08-4f2b-95d1-d64c64c97eca",
-    "shipmentId": "58262183576896",
-    "barcode": "6880051000270214",
-    "fullBarcode": "N6880100000000000010006880100000000112711000158262183576896FH86031",
-    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
-    "assigned": false,
-    "assignHub": "11",
-    "assignZone": "36",
-    "assignError": "/pickups/72da6b5b-9c08-4f2b-95d1-d64c64c97eca/assign 404: {\"message\":\"Pickup not found in Nesy pickup list.\"}"
+    "dbId": "e10b0ad7-abc1-4211-b43e-33471ded7a97",
+    "shipmentId": "17543305537573",
+    "barcode": "6880051000275219",
+    "fullBarcode": "N6880100000000000010006880100000000112711000117543305537573CG48901",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device."
   },
   "19-remote-pickup": {
     "label": "Remote Pickup",
     "route": "pickup",
-    "dbId": "f22da55b-e087-4d64-a1ed-da9dd9e7fd67",
-    "shipmentId": "79908473540258",
-    "barcode": "6880051000270313",
-    "fullBarcode": "N6880110004500000010006880110004500112711000179908473540258HR94431",
-    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
-    "assigned": false,
-    "assignHub": "11",
-    "assignZone": "36",
-    "assignError": "/pickups/f22da55b-e087-4d64-a1ed-da9dd9e7fd67/assign 404: {\"message\":\"Pickup not found in Nesy pickup list.\"}"
+    "dbId": "d2b62938-b4d5-460b-b77f-a6a50f1767e0",
+    "shipmentId": "93326648591090",
+    "barcode": "6880051000275318",
+    "fullBarcode": "N6880100000000000010006880100000000112711000193326648591090DS79671",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device."
   },
   "21-pickup-failed": {
     "label": "Pickup Failed",
     "route": "pickup",
-    "dbId": "6854d4cc-23d0-460a-a797-2519b228935d",
-    "shipmentId": "64774454282274",
-    "barcode": "6880051000270412",
-    "fullBarcode": "N6880100000000000010006880100000000112711000164774454282274JQ77751",
-    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device.",
-    "assigned": false,
-    "assignHub": "11",
-    "assignZone": "36",
-    "assignError": "/pickups/6854d4cc-23d0-460a-a797-2519b228935d/assign 404: {\"message\":\"Pickup not found in Nesy pickup list.\"}"
+    "dbId": "9c10b5e1-00e6-450f-b25c-778a78a17486",
+    "shipmentId": "98509518593231",
+    "barcode": "6880051000275417",
+    "fullBarcode": "N6880100000000000010006880100000000112711000198509518593231MV32141",
+    "note": "Assign uses hubId 100 (RS blocker per PATH-NOTES) — may need hub-11 workaround before it appears on device."
   }
 }

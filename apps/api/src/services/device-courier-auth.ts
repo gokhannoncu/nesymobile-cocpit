@@ -15,7 +15,12 @@ export interface DeviceCourierAuth {
   token: string | null;
   xProtectedRequestKey: string | null;
   isLogin: boolean | null;
+  /** Selected courier zone / route code (e.g. "36"). */
   route: string | null;
+  /** Numeric hub / branch id used by Task APIs (e.g. "11"). */
+  branchId: string | null;
+  /** Human hub name from prefs when present (e.g. "CEBeograd"). */
+  hubName: string | null;
 }
 
 function decodeXmlEntities(value: string): string {
@@ -27,18 +32,47 @@ function decodeXmlEntities(value: string): string {
     .replace(/&#39;/g, "'");
 }
 
+function readStringPref(prefsXml: string, names: string[]): string | null {
+  for (const name of names) {
+    const match = prefsXml.match(
+      new RegExp(`<string name="${name}">([^<]*)</string>`),
+    )?.[1];
+    if (match != null && match.trim()) return decodeXmlEntities(match).trim();
+  }
+  return null;
+}
+
+function readIntPref(prefsXml: string, names: string[]): string | null {
+  for (const name of names) {
+    const match = prefsXml.match(
+      new RegExp(`<int name="${name}" value="(-?\\d+)"`),
+    )?.[1];
+    if (match != null && match.trim()) return match.trim();
+  }
+  return null;
+}
+
 /** Extract courier session fields from a shared_prefs XML dump. */
-export function parseCourierPrefsXml(prefsXml: string): Pick<DeviceCourierAuth, "token" | "isLogin" | "route"> {
+export function parseCourierPrefsXml(
+  prefsXml: string,
+): Pick<DeviceCourierAuth, "token" | "isLogin" | "route" | "branchId" | "hubName"> {
   const tokenRaw = prefsXml.match(
     /<string name="(?:token|accessToken|access_token|jwt)">([\s\S]*?)<\/string>/,
   )?.[1];
   const token = tokenRaw ? decodeXmlEntities(tokenRaw).replace(/\s+/g, "").trim() : null;
   const isLoginRaw = prefsXml.match(/<boolean name="isLogin" value="(true|false)"/)?.[1];
-  const route = prefsXml.match(/<string name="route">([^<]+)<\/string>/)?.[1]?.trim() ?? null;
+  const route = readStringPref(prefsXml, ["route", "courierZoneCode", "zoneCode"]);
+  const branchId =
+    readIntPref(prefsXml, ["branchId", "hubId"]) ||
+    readStringPref(prefsXml, ["branchId"]);
+  // hubId string is often the hub *name* (CEBeograd), not the numeric id.
+  const hubName = readStringPref(prefsXml, ["hubId", "hubName", "branchName"]);
   return {
     token: token || null,
     isLogin: isLoginRaw == null ? null : isLoginRaw === "true",
     route: route || null,
+    branchId: branchId || null,
+    hubName: hubName || null,
   };
 }
 
@@ -51,6 +85,20 @@ export function parseAdbBroadcastData(stdout: string): string | null {
   return null;
 }
 
+/**
+ * schedule_id shapes like `11-36-20260723-1` → hub/branch + zone.
+ * Returns null when the pattern does not match.
+ */
+export function parseScheduleIdParts(scheduleId: string): {
+  branchId: string;
+  zone: string;
+} | null {
+  const trimmed = scheduleId.trim();
+  const match = trimmed.match(/^(\d+)-(\d+)-\d{8}/);
+  if (!match?.[1] || !match[2]) return null;
+  return { branchId: match[1], zone: match[2] };
+}
+
 async function adb(args: string[], timeoutMs = 15_000): Promise<string> {
   const result = await execFileAsync("adb", args, {
     timeout: timeoutMs,
@@ -60,7 +108,7 @@ async function adb(args: string[], timeoutMs = 15_000): Promise<string> {
 }
 
 /**
- * Reads courier JWT (+ login/route) from app shared_prefs and the
+ * Reads courier JWT (+ login/route/hub) from app shared_prefs and the
  * X-Protected-Request-Key via GET_KEY broadcast.
  */
 export async function readDeviceCourierAuth(
@@ -105,5 +153,7 @@ export async function readDeviceCourierAuth(
     xProtectedRequestKey,
     isLogin: prefs.isLogin,
     route: prefs.route,
+    branchId: prefs.branchId,
+    hubName: prefs.hubName,
   };
 }

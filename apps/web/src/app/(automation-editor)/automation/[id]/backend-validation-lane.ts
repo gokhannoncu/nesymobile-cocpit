@@ -16,6 +16,7 @@ const BACKEND_REQUIRED_TYPES = new Set<string>([
   WorkflowNodeType.VALIDATE_STOPLIST,
   WorkflowNodeType.VERIFY_BACKEND_STATE,
   "TOUR_APPROVE",
+  "PICKUP_ASSIGN",
   "EOD_APPROVE",
 ]);
 
@@ -73,6 +74,7 @@ const TYPE_LABELS: Record<string, string> = {
   [WorkflowNodeType.DELIVERY_OPERATION]: "Delivery Operation",
   [WorkflowNodeType.VERIFY_BACKEND_STATE]: "Verify Backend State",
   TOUR_APPROVE: "Tour Approve",
+  PICKUP_ASSIGN: "Pickup Assign",
   EOD_APPROVE: "EOD Approve",
 };
 
@@ -81,6 +83,7 @@ const TYPE_ICONS: Record<string, string> = {
   [WorkflowNodeType.DELIVERY_OPERATION]: "Box",
   [WorkflowNodeType.VERIFY_BACKEND_STATE]: "Database",
   TOUR_APPROVE: "ClipboardCheck",
+  PICKUP_ASSIGN: "Truck",
   EOD_APPROVE: "Sunset",
 };
 
@@ -111,7 +114,9 @@ function descriptionForValidation(sourceNodeType: string, kind: BackendValidatio
     case WorkflowNodeType.VERIFY_BACKEND_STATE:
       return "Logcat backend state matches expected assertion";
     case "TOUR_APPROVE":
-      return "Tour approval recorded and confirmed on server";
+      return "GetWaitingLeavingRequests → ApproveLeavingPermission";
+    case "PICKUP_ASSIGN":
+      return "Device hub/branch/zone → AssignPickupToCourier";
     case "EOD_APPROVE":
       return "End-of-day approval confirmed on server";
     default:
@@ -178,7 +183,12 @@ export function nodeNeedsBackendValidation(node: WorkflowNode): boolean {
 }
 
 function kindForType(type: string): BackendValidationKind {
-  if (type === "VALIDATE_STOPLIST" || type === "TOUR_APPROVE" || type === "EOD_APPROVE") {
+  if (
+    type === "VALIDATE_STOPLIST" ||
+    type === "TOUR_APPROVE" ||
+    type === "PICKUP_ASSIGN" ||
+    type === "EOD_APPROVE"
+  ) {
     return "server_step";
   }
   if (type === WorkflowNodeType.VERIFY_BACKEND_STATE) return "logcat_backend";

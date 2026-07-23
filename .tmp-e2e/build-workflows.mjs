@@ -88,9 +88,10 @@ function loadTourFlow() {
   const nLaunch = launch(false);
   const nLoad = node("LOAD_TO_VEHICLE", { barcode: "{{barcode}}" });
   const nTour = node("REQUEST_TOUR_START", {});
-  // Sunucu adımı: hub 11 / zone 36 (PATH-NOTES). courierUserName boşsa waiting-requests'ten çözülür.
-  const nApprove = node("TOUR_APPROVE", { hubIds: ["11"] });
-  const nodes = layout([nLaunch, nLoad, nTour, nApprove]);
+  // Hub/zone cihazdan çözülür (hardcoded hubIds yok).
+  const nApprove = node("TOUR_APPROVE", {});
+  const nAssign = node("PICKUP_ASSIGN", { pickupDbIds: "{{pickupDbIds}}" });
+  const nodes = layout([nLaunch, nLoad, nTour, nApprove, nAssign]);
   return { name: "01 · LOAD & TOUR FLOW", nodes, edges: chain(nodes) };
 }
 

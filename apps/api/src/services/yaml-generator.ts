@@ -611,6 +611,7 @@ ${clearStopListOverlaysYaml(appId)}- runFlow:
     }
 
     case "TOUR_APPROVE":
+    case "PICKUP_ASSIGN":
     case "EOD_APPROVE": {
       // Executed server-side after Maestro (see server-steps.ts). The marker keeps
       // the node visible in step tracking; its completionPolicy requires the

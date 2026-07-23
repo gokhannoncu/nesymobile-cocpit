@@ -687,6 +687,7 @@ export const WorkflowRunner = {
               appId: bridgeAppId,
               oracle,
               runId,
+              runInput: (run.runInput as unknown as Record<string, string> | null) ?? undefined,
               backendValidationBySource,
             }),
           );

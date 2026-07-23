@@ -14,6 +14,7 @@ const BACKEND_REQUIRED_TYPES = new Set([
   "VALIDATE_STOPLIST",
   "VERIFY_BACKEND_STATE",
   "TOUR_APPROVE",
+  "PICKUP_ASSIGN",
   "EOD_APPROVE",
 ]);
 
@@ -71,7 +72,12 @@ export function nodeNeedsBackendValidation(node: BackendValidationSourceNode): b
 }
 
 function kindForType(type: string): BackendValidationKind {
-  if (type === "VALIDATE_STOPLIST" || type === "TOUR_APPROVE" || type === "EOD_APPROVE") {
+  if (
+    type === "VALIDATE_STOPLIST" ||
+    type === "TOUR_APPROVE" ||
+    type === "PICKUP_ASSIGN" ||
+    type === "EOD_APPROVE"
+  ) {
     return "server_step";
   }
   if (type === "VERIFY_BACKEND_STATE") return "logcat_backend";
@@ -90,6 +96,7 @@ const TYPE_LABELS: Record<string, string> = {
   DELIVERY_OPERATION: "Delivery Operation",
   VERIFY_BACKEND_STATE: "Verify Backend State",
   TOUR_APPROVE: "Tour Approve",
+  PICKUP_ASSIGN: "Pickup Assign",
   EOD_APPROVE: "EOD Approve",
 };
 
@@ -107,7 +114,9 @@ function descriptionForValidation(sourceNodeType: string, kind: BackendValidatio
     case "VERIFY_BACKEND_STATE":
       return "Logcat backend state matches expected assertion";
     case "TOUR_APPROVE":
-      return "Tour approval recorded and confirmed on server";
+      return "GetWaitingLeavingRequests → ApproveLeavingPermission";
+    case "PICKUP_ASSIGN":
+      return "Device hub/branch/zone → AssignPickupToCourier";
     case "EOD_APPROVE":
       return "End-of-day approval confirmed on server";
     default:

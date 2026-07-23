@@ -6,7 +6,10 @@
  * - VALIDATE_STOPLIST : device JWT + GET_KEY → Task/GetMyScheduleByZoneCode
  *                       (+ admin GetTodayScheduleByCourierZone cross-check)
  * - TOUR_APPROVE      : Task/GetWaitingLeavingRequests → Task/ApproveLeavingPermission
+ * - PICKUP_ASSIGN     : assign selected pickups using device hub/branch/zone
  * - EOD_APPROVE       : Task/ApproveScheduleEndOfDay
+ *
+ * Hub / branch / zone are resolved from the logged-in device — never hardcoded.
  *
  * TOUR/EOD are terminal in their workflows. VALIDATE_STOPLIST may appear mid-graph;
  * its backend oracle is still resolved in this post-Maestro phase so the run cannot
@@ -28,6 +31,7 @@ import {
 import { getDashboardAdminToken } from "./nesy-admin-token.js";
 import { getDeviceBridgeState } from "./test-event-bridge.js";
 import { readDeviceCourierAuth } from "./device-courier-auth.js";
+import { resolveCourierDeviceIdentity } from "./courier-device-identity.js";
 import type { OracleEngine } from "./oracle-engine.js";
 import type { BackendHttpCapture, DerivedBackendValidation } from "./backend-validation-lane.js";
 import {
@@ -49,10 +53,24 @@ export interface ServerStepsContext {
   appId: string;
   oracle: OracleEngine;
   runId?: string;
+  runInput?: Record<string, string> | null;
   backendValidationBySource?: Map<string, DerivedBackendValidation>;
 }
 
-const SERVER_STEP_TYPES = new Set(["VALIDATE_STOPLIST", "TOUR_APPROVE", "EOD_APPROVE"]);
+const SERVER_STEP_TYPES = new Set([
+  "VALIDATE_STOPLIST",
+  "TOUR_APPROVE",
+  "PICKUP_ASSIGN",
+  "EOD_APPROVE",
+]);
+
+function cockpitApiBase(): string {
+  return (
+    process.env.COCKPIT_API?.replace(/\/$/, "") ||
+    process.env.COCKPIT_API_BASE?.replace(/\/$/, "") ||
+    `http://127.0.0.1:${process.env.PORT || "4001"}/api`
+  );
+}
 
 export function hasServerSteps(nodes: ServerStepNode[]): boolean {
   return nodes.some((n) => SERVER_STEP_TYPES.has(n.type));
@@ -183,6 +201,18 @@ export async function runServerSteps(ctx: ServerStepsContext): Promise<void> {
           continue;
         }
         await runTourApprove(ctx, node, baseUrl, token);
+      } else if (node.type === "PICKUP_ASSIGN") {
+        if (!token) {
+          await recordServerStepLane(
+            ctx,
+            node,
+            false,
+            `No admin token for ${country}/${environment}.`,
+            [],
+          );
+          continue;
+        }
+        await runPickupAssign(ctx, node, token);
       } else if (node.type === "EOD_APPROVE") {
         if (!baseUrl || !token) {
           await recordServerStepLane(
@@ -359,8 +389,26 @@ async function runTourApprove(
 ): Promise<void> {
   const config = asRecord(node.data?.config);
   const today = formatDateOnly(new Date());
-  const hubIds = toStringArray(config.hubIds ?? config.HubIds);
   const requests: BackendHttpCapture[] = [];
+
+  let deviceBranchId = "";
+  let deviceZone = "";
+  if (ctx.deviceId) {
+    const identity = await resolveCourierDeviceIdentity(ctx.deviceId, ctx.appId);
+    if (identity) {
+      deviceBranchId = identity.branchId;
+      deviceZone = identity.zone;
+    }
+  }
+
+  const hubIds =
+    toStringArray(config.hubIds ?? config.HubIds).length > 0
+      ? toStringArray(config.hubIds ?? config.HubIds)
+      : deviceBranchId
+        ? [deviceBranchId]
+        : [];
+  const zoneHint =
+    str(config.courierZoneCode ?? config.zoneCode) || deviceZone;
 
   let scheduleId = str(config.scheduleId);
   let courierUserName = str(config.courierUserName);
@@ -386,7 +434,6 @@ async function runTourApprove(
           : Array.isArray(asRecord(payload).requests)
             ? (asRecord(payload).requests as unknown[])
             : [];
-    const zoneHint = str(config.courierZoneCode ?? config.zoneCode) || "36";
     const match =
       list
         .map(asRecord)
@@ -396,7 +443,7 @@ async function runTourApprove(
           if (courierUserName && name && name !== courierUserName) return false;
           if (zoneHint && zone && zone !== zoneHint) return false;
           return Boolean(str(r.scheduleId ?? r.ScheduleId));
-        }) ?? asRecord(list[0]);
+        }) ?? (zoneHint ? undefined : asRecord(list[0]));
     if (match && Object.keys(match).length) {
       scheduleId = scheduleId || str(match.scheduleId ?? match.ScheduleId);
       courierUserName =
@@ -408,8 +455,17 @@ async function runTourApprove(
   // Waiting list often has courierName but not courierUsername — resolve via
   // GetTodayScheduleByCourierZone when still missing.
   if (scheduleId && !courierUserName) {
-    const zone = str(config.courierZoneCode ?? config.zoneCode) || "36";
-    const sched = await postJsonAdmin(`${baseUrl}/Task/GetTodayScheduleByCourierZone`, token, zone);
+    if (!zoneHint) {
+      await recordServerStepLane(
+        ctx,
+        node,
+        false,
+        "TOUR_APPROVE: courier zone unresolved from device (no hardcoded fallback).",
+        requests,
+      );
+      return;
+    }
+    const sched = await postJsonAdmin(`${baseUrl}/Task/GetTodayScheduleByCourierZone`, token, zoneHint);
     requests.push(sched.capture);
     const sp = asRecord(asRecord(sched.json).payload ?? asRecord(sched.json).Payload);
     courierUserName = str(sp.courierUsername ?? sp.CourierUsername ?? sp.courierUserName ?? sp.CourierUserName);
@@ -420,7 +476,7 @@ async function runTourApprove(
       ctx,
       node,
       false,
-      "TOUR_APPROVE: no waiting leaving-request scheduleId found.",
+      `TOUR_APPROVE: no waiting leaving-request scheduleId found (hub=${hubIds.join(",") || "—"}, zone=${zoneHint || "—"}).`,
       requests,
     );
     return;
@@ -444,7 +500,7 @@ async function runTourApprove(
       ctx,
       node,
       true,
-      `Tour approved (scheduleId=${scheduleId}${courierUserName ? `, courier=${courierUserName}` : ""}).`,
+      `Tour approved (scheduleId=${scheduleId}${courierUserName ? `, courier=${courierUserName}` : ""}, hub=${hubIds.join(",") || "—"}, zone=${zoneHint || "—"}).`,
       requests,
     );
   } else {
@@ -453,6 +509,92 @@ async function runTourApprove(
       node,
       false,
       `ApproveLeavingPermission failed (HTTP ${approve.status}) for scheduleId=${scheduleId}.`,
+      requests,
+    );
+  }
+}
+
+async function runPickupAssign(
+  ctx: ServerStepsContext,
+  node: ServerStepNode,
+  adminToken: string,
+): Promise<void> {
+  const { country, environment, deviceId, appId, runInput } = ctx;
+  const config = asRecord(node.data?.config);
+  const requests: BackendHttpCapture[] = [];
+
+  const pickupDbIds = [
+    ...toStringArray(runInput?.pickupDbIds),
+    ...toStringArray(config.pickupDbIds ?? config.pickupIds),
+  ].filter((id, index, all) => all.indexOf(id) === index);
+
+  if (pickupDbIds.length === 0) {
+    await recordServerStepLane(
+      ctx,
+      node,
+      true,
+      "PICKUP_ASSIGN: no pickupDbIds in runInput — skipped.",
+      requests,
+    );
+    return;
+  }
+
+  if (!deviceId) {
+    await recordServerStepLane(ctx, node, false, "PICKUP_ASSIGN: no deviceId on run.", requests);
+    return;
+  }
+
+  const identity = await resolveCourierDeviceIdentity(deviceId, appId);
+  if (!identity) {
+    await recordServerStepLane(
+      ctx,
+      node,
+      false,
+      "PICKUP_ASSIGN: courier hub/branch/zone unresolved from device (no hardcoded fallback).",
+      requests,
+    );
+    return;
+  }
+
+  const apiBase = cockpitApiBase();
+  const assigned: string[] = [];
+  const failed: string[] = [];
+
+  for (const pickupDbId of pickupDbIds) {
+    const url = `${apiBase}/pickups/${pickupDbId}/assign`;
+    const body = {
+      token: adminToken,
+      country,
+      environment,
+      branchId: identity.branchId,
+      courierZoneCode: identity.zone,
+    };
+    const result = await postJson(url, { "Content-Type": "application/json", Accept: "application/json" }, body);
+    requests.push(result.capture);
+    if (result.ok) {
+      assigned.push(pickupDbId);
+    } else {
+      const errBody = asRecord(result.json);
+      failed.push(
+        `${pickupDbId} (HTTP ${result.status}: ${str(errBody.message ?? errBody.error) || "assign failed"})`,
+      );
+    }
+  }
+
+  if (failed.length === 0) {
+    await recordServerStepLane(
+      ctx,
+      node,
+      true,
+      `PICKUP_ASSIGN OK (${assigned.length}) branchId=${identity.branchId} zone=${identity.zone} via ${identity.source}.`,
+      requests,
+    );
+  } else {
+    await recordServerStepLane(
+      ctx,
+      node,
+      false,
+      `PICKUP_ASSIGN partial/fail: ok=${assigned.length} failed=${failed.join("; ")} (branchId=${identity.branchId}, zone=${identity.zone}).`,
       requests,
     );
   }

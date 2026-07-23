@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { Crosshair, Maximize2, Minus, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Crosshair, Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { cn } from '@nesy/metronic/lib/utils'
 import {
@@ -16,6 +16,39 @@ import { toneCard, toneText, type Tone } from './tones'
 import { ScreenMapCanvas } from './screen-map-canvas'
 import { ScreenMapDetail } from './screen-map-detail'
 
+function getFullscreenElement() {
+  const doc = document as Document & {
+    webkitFullscreenElement?: Element | null
+  }
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null
+}
+
+async function requestElementFullscreen(el: HTMLElement) {
+  if (el.requestFullscreen) {
+    await el.requestFullscreen()
+    return
+  }
+  const webkitEl = el as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void
+  }
+  if (webkitEl.webkitRequestFullscreen) {
+    await webkitEl.webkitRequestFullscreen()
+  }
+}
+
+async function exitDocumentFullscreen() {
+  if (document.exitFullscreen) {
+    await document.exitFullscreen()
+    return
+  }
+  const webkitDoc = document as Document & {
+    webkitExitFullscreen?: () => Promise<void> | void
+  }
+  if (webkitDoc.webkitExitFullscreen) {
+    await webkitDoc.webkitExitFullscreen()
+  }
+}
+
 export function ScreenMapExplorer() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -23,6 +56,8 @@ export function ScreenMapExplorer() {
     () => new Set(SCREEN_DOMAINS),
   )
   const [fitRequestKey, setFitRequestKey] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   const viewportApiRef = useRef<{
     zoomIn: () => void
     zoomOut: () => void
@@ -42,6 +77,26 @@ export function ScreenMapExplorer() {
     },
     [],
   )
+
+  useEffect(() => {
+    let fitTimer: ReturnType<typeof setTimeout> | undefined
+    const syncFullscreen = () => {
+      const active = getFullscreenElement() === rootRef.current
+      setIsFullscreen(active)
+      // Wait for the browser to apply fullscreen layout before fitting the map.
+      if (active || !getFullscreenElement()) {
+        window.clearTimeout(fitTimer)
+        fitTimer = setTimeout(() => setFitRequestKey((k) => k + 1), 50)
+      }
+    }
+    document.addEventListener('fullscreenchange', syncFullscreen)
+    document.addEventListener('webkitfullscreenchange', syncFullscreen as EventListener)
+    return () => {
+      window.clearTimeout(fitTimer)
+      document.removeEventListener('fullscreenchange', syncFullscreen)
+      document.removeEventListener('webkitfullscreenchange', syncFullscreen as EventListener)
+    }
+  }, [])
 
   const toggleDomain = (domain: ScreenDomain) => {
     setActiveDomains((prev) => {
@@ -63,8 +118,28 @@ export function ScreenMapExplorer() {
     setFitRequestKey((k) => k + 1)
   }
 
+  const toggleFullscreen = async () => {
+    const el = rootRef.current
+    if (!el) return
+    try {
+      if (getFullscreenElement() === el) {
+        await exitDocumentFullscreen()
+      } else {
+        await requestElementFullscreen(el)
+      }
+    } catch {
+      // Browser may reject fullscreen outside a user gesture or when blocked by policy.
+    }
+  }
+
   return (
-    <div className="flex min-h-[640px] flex-col gap-3 lg:min-h-[calc(100vh-14rem)]">
+    <div
+      ref={rootRef}
+      className={cn(
+        'flex min-h-[640px] flex-col gap-3 lg:min-h-[calc(100vh-14rem)]',
+        isFullscreen && 'h-screen min-h-screen bg-background p-4',
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {SCREEN_DOMAINS.map((domain) => {
@@ -134,10 +209,15 @@ export function ScreenMapExplorer() {
             size="icon"
             variant="outline"
             className="size-8"
-            onClick={() => setFitRequestKey((k) => k + 1)}
-            aria-label="Fit to view"
+            onClick={() => void toggleFullscreen()}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen'}
           >
-            <Maximize2 className="size-3.5" />
+            {isFullscreen ? (
+              <Minimize2 className="size-3.5" />
+            ) : (
+              <Maximize2 className="size-3.5" />
+            )}
           </Button>
         </div>
       </div>

@@ -268,6 +268,8 @@ export async function startWorkflowRun(
     targetStepId?: string
     country?: string
     environment?: string
+    /** Runtime placeholders (e.g. barcode, pickupDbIds) — substituted into {{key}} tokens. */
+    runInput?: Record<string, string>
   },
 ): Promise<{ runId: string; status: string }> {
   const res = await fetch(`${AUTOMATION_API_BASE}/workflows/${workflowId}/run`, {
@@ -290,6 +292,9 @@ export async function startStepRun(
     nodeId: string
     mode?: string
     selectedDeviceId?: string
+    country?: string
+    environment?: string
+    runInput?: Record<string, string>
   },
 ): Promise<{ runId: string; status: string }> {
   const res = await fetch(`${AUTOMATION_API_BASE}/workflows/${workflowId}/run-step`, {
@@ -395,4 +400,26 @@ export async function fetchRunStatus(runId: string): Promise<RunStatusResponse> 
   const res = await fetch(`${AUTOMATION_API_BASE}/workflows/runs/${runId}/status`)
   if (!res.ok) throw new Error('Failed to fetch run status')
   return res.json()
+}
+
+/** Compiles workflow graph → Maestro YAML (supports runInput token substitution). */
+export async function previewWorkflowYaml(params: {
+  nodes: unknown[]
+  edges: unknown[]
+  config?: Record<string, unknown> | null
+  country?: string
+  environment?: string
+  runInput?: Record<string, string>
+}): Promise<string> {
+  const res = await fetch(`${AUTOMATION_API_BASE}/workflows/yaml-preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.message ?? body?.error ?? 'YAML preview failed')
+  }
+  const json = await res.json()
+  return (json.data?.yaml as string) ?? ''
 }

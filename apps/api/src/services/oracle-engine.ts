@@ -59,6 +59,7 @@ export const DEFAULT_COMPLETION_POLICIES: Record<string, NodeCompletionPolicy> =
   VERIFY_BACKEND_STATE: { required: ["backend"] },
   // Server-side approval / schedule steps (server-steps.ts) resolve "backend".
   TOUR_APPROVE: { required: ["backend"] },
+  PICKUP_ASSIGN: { required: ["backend"] },
   EOD_APPROVE: { required: ["backend"] },
 };
 
