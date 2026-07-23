@@ -33,3 +33,6 @@ graphify-out/
 
 # Workflow run artifacts (screenshots/video)
 apps/api/maestro/
+
+# Automation benchmark/scratch artifacts (Claude perf session)
+apps/api/_*

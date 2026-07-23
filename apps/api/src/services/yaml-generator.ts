@@ -380,9 +380,13 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
 
     case "AUTH_LOGIN": {
       const pinCode = str(c.pinCode, "0000");
-      return `- tapOn:
-    id: "${pinViewId}"
-- inputText: "${pinCode}"
+      // No tapOn pinView: the PIN field auto-focuses when the login screen opens
+      // (verified — inputText lands without a tap), and AUTH_LOGIN only runs inside
+      // the `btn_login`-visible guard so the screen is confirmed up. Each Maestro
+      // tapOn costs ~3s here (hierarchyBasedTap captures the view hierarchy before
+      // AND after the tap to confirm a change — unaffected by retryTapIfNoChange /
+      // waitToSettleTimeoutMs), so dropping this redundant tap removes ~3s.
+      return `- inputText: "${pinCode}"
 - tapOn:
     id: "${loginButtonId}"`;
     }
