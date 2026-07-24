@@ -376,10 +376,25 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
 
     case "AUTH_LOGIN": {
       const pinCode = str(c.pinCode, "0000");
-      // The pinView tap is REQUIRED — the PIN field does NOT reliably auto-focus on
-      // the login screen (verified on device: inputText without a preceding tap is
-      // silently dropped and login stays on the PIN screen). It costs ~3s to Maestro's
-      // hierarchyBasedTap, but removing it regresses login. Keep the tap.
+      // Bridge login (opt-in via node config `bridgeLogin`): emit a NESY_LOGIN marker
+      // the runner turns into the mobile `login` automation-bridge broadcast, which
+      // drives LoginFragment's real login path with the PIN — no ~10s of
+      // hierarchyBasedTap (tap pinView → input → tap btn_login) and no PIN
+      // auto-focus fragility. Maestro just waits for the PIN screen to go away; a
+      // failed bridge call leaves it up → the wait times out → step fails loudly.
+      // REQUIRES the mobile TestNavigationReceiver `login` verb (see broadcastLogin).
+      if (bool(c.bridgeLogin)) {
+        return `# --- LOGIN ${pinCode} (automation bridge) ---
+- evalScript: \${console.log("NESY_LOGIN::${node.id}::${pinCode}")}
+- extendedWaitUntil:
+    notVisible:
+      id: "${pinViewId}"
+    timeout: 20000`;
+      }
+      // Default: UI login. The pinView tap is REQUIRED — the PIN field does NOT
+      // reliably auto-focus (verified on device: inputText without a preceding tap is
+      // silently dropped and login stays on the PIN screen). ~3s hierarchyBasedTap,
+      // but removing it regresses login.
       return `- tapOn:
     id: "${pinViewId}"
 - inputText: "${pinCode}"
@@ -449,7 +464,7 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
           start: "50%, 25%"
           end: "50%, 70%"
           duration: 400
-- waitForAnimationToEnd
+      - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${rvId}"

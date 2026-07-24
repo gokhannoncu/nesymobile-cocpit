@@ -212,6 +212,40 @@ export async function broadcastSelectRoute(
   }
 }
 
+/**
+ * SEED_STATE `login` — programmatically logs in with a PIN via TestNavigationReceiver,
+ * replacing the Maestro tap(pinView) → inputText → tap(btn_login) sequence (~10s of
+ * hierarchyBasedTap + fragile PIN auto-focus). Mirrors broadcastSelectRoute.
+ *
+ * MOBILE CONTRACT (to be added by the app, mirroring `select_route`):
+ *   TestNavigationReceiver: VERB_LOGIN = "login", EXTRA_PIN = "pin"
+ *   → drive LoginFragment's real login code path with the PIN, on the main thread.
+ *   Return `OK:login` (RESULT_OK) or `ERROR:NOT_ON_LOGIN` / `ERROR:NO_PIN` / `ERROR:LOGIN_FAILED:<detail>`.
+ *
+ * Returns the mobile result string, or null when the broadcast itself failed.
+ */
+export async function broadcastLogin(
+  deviceId: string,
+  appId: string,
+  pin: string,
+): Promise<{ ok: boolean; result: string } | null> {
+  try {
+    const stdout = await adbShell(deviceId, [
+      "am", "broadcast",
+      "-n", `${appId}/${NAV_RECEIVER_CLASS}`,
+      "-a", ACTION_SEED_STATE,
+      "--es", "verb", "login",
+      "--es", "pin", pin,
+    ]);
+    const ok = stdout.includes("result=-1");
+    const dataMatch = stdout.match(/data="([\s\S]*?)"/);
+    return { ok, result: dataMatch?.[1]?.trim() ?? (ok ? "OK" : "") };
+  } catch (err) {
+    console.warn(`[TestEventBridge] login broadcast failed:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 /** Snapshot returned by the mobile GET_STATE control-plane query. */
 export interface DeviceBridgeState {
   isLoggedIn: boolean | null;

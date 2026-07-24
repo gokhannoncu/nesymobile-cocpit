@@ -31,6 +31,7 @@ import {
   type StepEvent,
   type BackendCheckEvent,
   type SelectRouteEvent,
+  type LoginEvent,
 } from "./maestro-executor.js";
 import { LogcatSniffer } from "./logcat-sniffer.js";
 import { RunStore } from "./run-store.js";
@@ -40,6 +41,7 @@ import {
   setRunIdProperty,
   broadcastSetRun,
   broadcastSelectRoute,
+  broadcastLogin,
   getDeviceBridgeState,
 } from "./test-event-bridge.js";
 import { hasLogConditionNodes, planPreflight } from "./preflight-plan.js";
@@ -85,6 +87,13 @@ export interface WorkflowRunnerOptions {
    * install/uninstall. Unset (direct-dispatch path) → Maestro manages the driver.
    */
   skipDriverReinstall?: boolean;
+  /**
+   * Record a full-run screen video (adb screenrecord). Off by default: the
+   * continuous on-device H.264 encode + a fixed ~3s finalize+pull at run end cost
+   * time every run, while Maestro's `--debug-output` already captures a failure
+   * screenshot. Enable per-run (debug / repro) when the video is actually wanted.
+   */
+  recordVideo?: boolean;
 }
 
 type WorkflowRunnerNode = {
@@ -466,6 +475,21 @@ export const WorkflowRunner = {
             console.warn("[WorkflowRunner] select_route failed:", err instanceof Error ? err.message : err);
           });
         });
+
+        // NESY_LOGIN marker → fire the mobile `login` automation-bridge broadcast
+        // (opt-in via AUTH_LOGIN node config `bridgeLogin`). Same fire-and-forget
+        // contract as select_route: a failed/ERROR result leaves the PIN screen up
+        // so Maestro's `notVisible pinView` wait times out and the step fails loudly.
+        executor.on("login", (evt: LoginEvent) => {
+          void (async () => {
+            const res = await broadcastLogin(bridgeDeviceId, bridgeAppId, evt.pin);
+            const detail = res ? `${res.ok ? "ok" : "not-ok"} (${res.result})` : "broadcast failed";
+            logArtifactEvent("login", { nodeId: evt.nodeId, ...res });
+            console.log(`[WorkflowRunner] login: ${detail}`);
+          })().catch((err) => {
+            console.warn("[WorkflowRunner] login failed:", err instanceof Error ? err.message : err);
+          });
+        });
       }
 
       // Spans: measure spawn → first stdout line as process startup cost.
@@ -589,7 +613,7 @@ export const WorkflowRunner = {
       
       let screenrecordProcess: ReturnType<typeof spawn> | null = null;
       const deviceId = run.deviceId;
-      if (deviceId) {
+      if (deviceId && options.recordVideo === true) {
         screenrecordProcess = spawn("adb", [
           "-s", deviceId,
           "shell",

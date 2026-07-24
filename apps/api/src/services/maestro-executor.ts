@@ -46,6 +46,16 @@ export interface SelectRouteEvent {
   route: string;
 }
 
+/**
+ * Programmatic login request emitted by the NESY_LOGIN marker. The runner fires the
+ * mobile `login` automation-bridge broadcast; Maestro meanwhile waits for the PIN
+ * screen to go away.
+ */
+export interface LoginEvent {
+  nodeId: string;
+  pin: string;
+}
+
 export function formatMaestroFailure(result: MaestroResult): string {
   const summary = `Maestro exited with code ${result.exitCode}`;
   const detail = result.output.trim();
@@ -102,6 +112,8 @@ const BACKEND_CHECK_PATTERN =
   /NESY_BACKEND_CHECK::(?<nodeId>[^:]+)::(?<shipmentRef>[^:]*)::(?<codes>[^:]*)::(?<delayMs>\d+)/;
 const SELECT_ROUTE_PATTERN =
   /NESY_SELECT_ROUTE::(?<nodeId>[^:]+)::(?<route>[^:'")\s]+)/;
+const LOGIN_PATTERN =
+  /NESY_LOGIN::(?<nodeId>[^:]+)::(?<pin>[^:'")\s]+)/;
 
 export class MaestroExecutor extends EventEmitter {
   private yamlPath: string;
@@ -286,6 +298,16 @@ export class MaestroExecutor extends EventEmitter {
         route: selectRouteMatch.groups.route,
       };
       this.emit("selectRoute", event);
+      return;
+    }
+
+    const loginMatch = line.match(LOGIN_PATTERN);
+    if (loginMatch?.groups?.nodeId && loginMatch.groups.pin) {
+      const event: LoginEvent = {
+        nodeId: loginMatch.groups.nodeId,
+        pin: loginMatch.groups.pin,
+      };
+      this.emit("login", event);
       return;
     }
 
