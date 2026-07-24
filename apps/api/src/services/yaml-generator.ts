@@ -345,22 +345,18 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       // regardless) — the downstream IF_LOGIN / CHECK_ROUTE steps carry the real
       // gates. Short timeouts here just clear SplashActivity without dead-waiting
       // ~25s on the two non-matching probes.
+      //
+      // No post-launch `waitForAnimationToEnd` (it cost ~3.5s of screenshot-diffing
+      // on cold start): the extendedWaitUntil probes below poll the hierarchy and
+      // tolerate an animating screen, so they provide the real settle.
+      //
+      // No inline Samsung "app compatibility" dialog guard either — checking for it
+      // every run cost ~6.9s (a cold-start waitForIdle hierarchy fetch) for a dialog
+      // that only appears after install/data-clear. It's dismissed once per device in
+      // DeviceWorker.prepare() (dismissCompatDialogOnce) instead.
       return `- launchApp:
     appId: "${resolvedAppId}"
     clearState: ${clearState}
-- waitForAnimationToEnd
-# Samsung system "app compatibility" warning (debuggable build / 16KB page size)
-# covers the app on the first launch after install or data-clear. If left up it
-# eats the whole run — every branch probe WARNs yet Maestro exits 0 (false
-# success). Dismiss via "Don't show again" so it also self-suppresses. TR/EN text.
-- runFlow:
-    when:
-      visible:
-        text: "Bir Daha Gösterme|Don.t show again"
-    commands:
-      - tapOn:
-          text: "Bir Daha Gösterme|Don.t show again"
-      - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${pinViewId}"
@@ -380,13 +376,13 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
 
     case "AUTH_LOGIN": {
       const pinCode = str(c.pinCode, "0000");
-      // No tapOn pinView: the PIN field auto-focuses when the login screen opens
-      // (verified — inputText lands without a tap), and AUTH_LOGIN only runs inside
-      // the `btn_login`-visible guard so the screen is confirmed up. Each Maestro
-      // tapOn costs ~3s here (hierarchyBasedTap captures the view hierarchy before
-      // AND after the tap to confirm a change — unaffected by retryTapIfNoChange /
-      // waitToSettleTimeoutMs), so dropping this redundant tap removes ~3s.
-      return `- inputText: "${pinCode}"
+      // The pinView tap is REQUIRED — the PIN field does NOT reliably auto-focus on
+      // the login screen (verified on device: inputText without a preceding tap is
+      // silently dropped and login stays on the PIN screen). It costs ~3s to Maestro's
+      // hierarchyBasedTap, but removing it regresses login. Keep the tap.
+      return `- tapOn:
+    id: "${pinViewId}"
+- inputText: "${pinCode}"
 - tapOn:
     id: "${loginButtonId}"`;
     }
@@ -400,33 +396,26 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
     case "SELECT_ROUTE": {
       const routeNumber = str(c.routeNumber ?? c.route, "1");
       const spinnerId = resourceId(appId, "dialog_spinner");
-      // RS: the route selector is dialog_spinner on the StopList screen ("Please
-      // Select Route"). StopList can take a while to render after login, so wait
-      // for the spinner; some builds auto-apply the pick, so the OK is optional.
-      // Verified RS sequence: open the spinner, WAIT for the popup to render
-      // (scrolling before it renders silently no-ops), scroll the long list to
-      // the target, pick it, then confirm with OK. Rows carry a "* " schedule
-      // suffix, so match "<route>.*"; the confirm button is a plain "OK" text.
-      return `# --- SELECT ROUTE ${routeNumber} ---
+      // Automation-bridge route selection (replaces the ~20s UI scroll+tap).
+      // The route/hub list is still fetched from the service normally; once the
+      // "Please Select Route" dialog is up we emit a NESY_SELECT_ROUTE marker.
+      // The runner parses it (maestro-executor) and fires the TestNavigationReceiver
+      // `select_route` broadcast, which drives StopListFragment.selectRouteProgrammatically
+      // — the exact confirmation path a courier tap runs (SP.route write,
+      // createEmptySchedule, ROUTE_SELECTED emit), no scroll/tap and no
+      // hierarchyBasedTap tax. Maestro then just waits for the dialog to close
+      // (route applied → StopList loads); a failed bridge call leaves the spinner
+      // up and this wait times out → the step fails loudly (never a silent pass).
+      return `# --- SELECT ROUTE ${routeNumber} (automation bridge) ---
 - extendedWaitUntil:
     visible:
       id: "${spinnerId}"
     timeout: 15000
-- tapOn:
-    id: "${spinnerId}"
-- waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      text: "${routeNumber}.*"
-    direction: DOWN
-    speed: 15
-    visibilityPercentage: 10
-    timeout: 20000
-- tapOn:
-    text: "${routeNumber}.*"
-- waitForAnimationToEnd
-- tapOn:
-    text: "OK"`;
+- evalScript: \${console.log("NESY_SELECT_ROUTE::${node.id}::${routeNumber}")}
+- extendedWaitUntil:
+    notVisible:
+      id: "${spinnerId}"
+    timeout: 20000`;
     }
 
     case "VALIDATE_STOPLIST": {

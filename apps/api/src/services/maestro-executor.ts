@@ -36,6 +36,16 @@ export interface BackendCheckEvent {
   delayMs: number;
 }
 
+/**
+ * Programmatic route-selection request emitted by the NESY_SELECT_ROUTE marker.
+ * The runner fires the mobile `select_route` automation-bridge broadcast; Maestro
+ * meanwhile waits for the route dialog to close.
+ */
+export interface SelectRouteEvent {
+  nodeId: string;
+  route: string;
+}
+
 export function formatMaestroFailure(result: MaestroResult): string {
   const summary = `Maestro exited with code ${result.exitCode}`;
   const detail = result.output.trim();
@@ -90,11 +100,14 @@ const STEP_DONE_PATTERN = /NESY_STEP::DONE::(?<nodeId>[^:]+)::(?<nodeType>[^'")\
 const STEP_FAIL_PATTERN = /NESY_STEP::FAIL::(?<nodeId>[^:]+)::(?<message>.+)/;
 const BACKEND_CHECK_PATTERN =
   /NESY_BACKEND_CHECK::(?<nodeId>[^:]+)::(?<shipmentRef>[^:]*)::(?<codes>[^:]*)::(?<delayMs>\d+)/;
+const SELECT_ROUTE_PATTERN =
+  /NESY_SELECT_ROUTE::(?<nodeId>[^:]+)::(?<route>[^:'")\s]+)/;
 
 export class MaestroExecutor extends EventEmitter {
   private yamlPath: string;
   private deviceId?: string;
   private debugOutputDir?: string;
+  private noReinstallDriver: boolean;
   private process: ReturnType<typeof spawn> | null = null;
   private outputLines: string[] = [];
   private startTime = 0;
@@ -103,11 +116,18 @@ export class MaestroExecutor extends EventEmitter {
     yamlPath: string;
     deviceId?: string;
     debugOutputDir?: string;
+    /**
+     * Skip the per-run driver (re)install/uninstall (`--no-reinstall-driver`).
+     * Only safe when the maestro driver is already installed at the matching
+     * version — the DeviceWorker pre-installs it once from the maestro jar.
+     */
+    noReinstallDriver?: boolean;
   }) {
     super();
     this.yamlPath = options.yamlPath;
     this.deviceId = options.deviceId;
     this.debugOutputDir = options.debugOutputDir;
+    this.noReinstallDriver = options.noReinstallDriver ?? false;
   }
 
   getProcess() {
@@ -117,7 +137,15 @@ export class MaestroExecutor extends EventEmitter {
   async execute(): Promise<MaestroResult> {
     this.startTime = Date.now();
 
-    const args: string[] = ["test", this.yamlPath];
+    const args: string[] = ["test"];
+
+    // Skip driver reinstall/uninstall when it's pre-installed — saves ~2-4s of
+    // per-run startup and keeps the driver resident (no install/uninstall churn).
+    if (this.noReinstallDriver) {
+      args.push("--no-reinstall-driver");
+    }
+
+    args.push(this.yamlPath);
 
     if (this.deviceId) {
       args.unshift("--device", this.deviceId);
@@ -248,6 +276,16 @@ export class MaestroExecutor extends EventEmitter {
         delayMs: Number(backendMatch.groups.delayMs ?? "5000"),
       };
       this.emit("backendCheck", event);
+      return;
+    }
+
+    const selectRouteMatch = line.match(SELECT_ROUTE_PATTERN);
+    if (selectRouteMatch?.groups?.nodeId && selectRouteMatch.groups.route) {
+      const event: SelectRouteEvent = {
+        nodeId: selectRouteMatch.groups.nodeId,
+        route: selectRouteMatch.groups.route,
+      };
+      this.emit("selectRoute", event);
       return;
     }
 

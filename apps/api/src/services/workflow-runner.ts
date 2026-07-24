@@ -30,6 +30,7 @@ import {
   MaestroExecutor,
   type StepEvent,
   type BackendCheckEvent,
+  type SelectRouteEvent,
 } from "./maestro-executor.js";
 import { LogcatSniffer } from "./logcat-sniffer.js";
 import { RunStore } from "./run-store.js";
@@ -38,6 +39,7 @@ import { OracleEngine } from "./oracle-engine.js";
 import {
   setRunIdProperty,
   broadcastSetRun,
+  broadcastSelectRoute,
   getDeviceBridgeState,
 } from "./test-event-bridge.js";
 import { hasLogConditionNodes, planPreflight } from "./preflight-plan.js";
@@ -77,6 +79,12 @@ export interface WorkflowRunnerOptions {
    * the real two-minute production timing.
    */
   skipDeliveryWait?: boolean;
+  /**
+   * Pass `--no-reinstall-driver` to Maestro. Set by the DeviceWorker after it has
+   * pre-installed the maestro driver once, so each run skips the ~2-4s driver
+   * install/uninstall. Unset (direct-dispatch path) → Maestro manages the driver.
+   */
+  skipDriverReinstall?: boolean;
 }
 
 type WorkflowRunnerNode = {
@@ -359,6 +367,7 @@ export const WorkflowRunner = {
         yamlPath: tmpYamlPath,
         deviceId: run.deviceId ?? undefined,
         debugOutputDir,
+        noReinstallDriver: options.skipDriverReinstall === true,
       });
 
       executor.on("error", (err: unknown) => {
@@ -439,6 +448,25 @@ export const WorkflowRunner = {
         });
         pendingBackendChecks.push(task);
       });
+
+      // NESY_SELECT_ROUTE marker → fire the mobile `select_route` automation-bridge
+      // broadcast. The Maestro flow emits the marker once the route dialog is up, then
+      // waits for the dialog to close; this handler picks the route programmatically
+      // (StopListFragment.selectRouteProgrammatically) instead of a ~20s scroll+tap.
+      // Fire-and-forget: a failed/ERROR result leaves the dialog up so Maestro's
+      // `notVisible` wait times out and the step fails loudly.
+      if (bridgeDeviceId) {
+        executor.on("selectRoute", (evt: SelectRouteEvent) => {
+          void (async () => {
+            const res = await broadcastSelectRoute(bridgeDeviceId, bridgeAppId, evt.route);
+            const detail = res ? `${res.ok ? "ok" : "not-ok"} (${res.result})` : "broadcast failed";
+            logArtifactEvent("select_route", { nodeId: evt.nodeId, route: evt.route, ...res });
+            console.log(`[WorkflowRunner] select_route route=${evt.route}: ${detail}`);
+          })().catch((err) => {
+            console.warn("[WorkflowRunner] select_route failed:", err instanceof Error ? err.message : err);
+          });
+        });
+      }
 
       // Spans: measure spawn → first stdout line as process startup cost.
       function attachStartupSpan(targetExecutor: MaestroExecutor, spanName: string, attrs?: Record<string, string>): void {

@@ -18,8 +18,10 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const RECEIVER_CLASS = "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
+const NAV_RECEIVER_CLASS = "com.arasdigital.nesymobile.adb.TestNavigationReceiver";
 const ACTION_SET_RUN = "com.arasdigital.nesymobile.SET_RUN";
 const ACTION_GET_STATE = "com.arasdigital.nesymobile.GET_STATE";
+const ACTION_SEED_STATE = "com.arasdigital.nesymobile.SEED_STATE";
 const RUN_ID_PROP = "debug.nesy.run_id";
 
 /** Mobile watchdog finishes GET_STATE within 5s; give the broadcast a little headroom. */
@@ -176,6 +178,37 @@ export async function broadcastSetRun(
   } catch (err) {
     console.warn(`[TestEventBridge] SET_RUN broadcast failed:`, err instanceof Error ? err.message : err);
     return false;
+  }
+}
+
+/**
+ * SEED_STATE `select_route` — programmatically picks a route in the live "Please
+ * Select Route" dialog via TestNavigationReceiver, replacing the ~20s Maestro
+ * scroll+tap. Returns the mobile result string (e.g. `OK:36`,
+ * `ERROR:ROUTE_DIALOG_NOT_SHOWN`, `ERROR:ROUTE_NOT_FOUND:36`, `ERROR:NOT_ON_STOPLIST`)
+ * or null when the broadcast itself failed. The caller decides how to surface a
+ * non-OK result; the run then fails naturally because the route dialog stays up
+ * and the Maestro `notVisible` wait times out.
+ */
+export async function broadcastSelectRoute(
+  deviceId: string,
+  appId: string,
+  route: string,
+): Promise<{ ok: boolean; result: string } | null> {
+  try {
+    const stdout = await adbShell(deviceId, [
+      "am", "broadcast",
+      "-n", `${appId}/${NAV_RECEIVER_CLASS}`,
+      "-a", ACTION_SEED_STATE,
+      "--es", "verb", "select_route",
+      "--es", "route", route,
+    ]);
+    const ok = stdout.includes("result=-1"); // Activity.RESULT_OK
+    const dataMatch = stdout.match(/data="([\s\S]*?)"/);
+    return { ok, result: dataMatch?.[1]?.trim() ?? (ok ? "OK" : "") };
+  } catch (err) {
+    console.warn(`[TestEventBridge] select_route broadcast failed:`, err instanceof Error ? err.message : err);
+    return null;
   }
 }
 
