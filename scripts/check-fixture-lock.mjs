@@ -25,7 +25,14 @@ const arg = (name) => {
 
 const SELF = resolve(arg('--self') ?? process.cwd())
 const PEER = arg('--peer')
-const CORPUS = arg('--corpus') ?? process.env.VERDICT_FIXTURES_DIR
+// Default to the submodule location when it is actually checked out. Requiring the
+// flag meant a local run silently skipped the corpus check — the same
+// "green tick that verified nothing" this gate exists to remove.
+const defaultCorpus = join(SELF, 'verdict-contract-fixtures')
+const CORPUS =
+  arg('--corpus') ??
+  process.env.VERDICT_FIXTURES_DIR ??
+  (existsSync(join(defaultCorpus, 'manifest.json')) ? defaultCorpus : undefined)
 
 const readSha = (repo) => {
   const lock = join(repo, 'contract-fixtures.lock')
@@ -77,7 +84,31 @@ if (CORPUS && self.sha) {
     }
   }
 } else if (!CORPUS) {
-  console.warn('[fixture-lock] no --corpus / VERDICT_FIXTURES_DIR: corpus check SKIPPED')
+  // A missing corpus is only tolerable while the submodule is not declared. Once
+  // `.gitmodules` names it, absence means a forgotten `git submodule update --init`
+  // and the check MUST fail.
+  //
+  // Measured: the earlier version printed
+  //     [fixture-lock] no --corpus: corpus check SKIPPED
+  //     [fixture-lock] OK — pinned <sha>
+  // and exited 0 with no corpus on disk at all — the exact
+  // green-tick-that-verified-nothing this gate exists to prevent, inside the gate
+  // itself. It surfaced in a sandbox where the submodule clone had failed.
+  const gitmodules = join(SELF, '.gitmodules')
+  const declared =
+    existsSync(gitmodules) &&
+    readFileSync(gitmodules, 'utf8').includes('verdict-contract-fixtures')
+  if (declared) {
+    problems.push(
+      `CORPUS MISSING\n  .gitmodules declares verdict-contract-fixtures but nothing is ` +
+        `checked out at ${defaultCorpus}\n  Run: git submodule update --init --checkout`,
+    )
+  } else {
+    console.warn(
+      '[fixture-lock] no corpus and no submodule declared: corpus check SKIPPED ' +
+        '(this stops being acceptable once .gitmodules names it)',
+    )
+  }
 }
 
 if (problems.length) {

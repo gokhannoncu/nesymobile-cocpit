@@ -8,4 +8,4 @@
 #   1. commit in verdict-contract-fixtures
 #   2. move this line in BOTH repos, in the same PR round
 #   3. cross-link the two PRs with `Pairs-With: <owner/repo#PR>`
-sha=b7fc73dc1edd3a9c7f72ef6202c62cf6bede5d80
+sha=af203dc534aeebe65ae6d2d5f913c346339bdb5c

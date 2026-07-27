@@ -36,11 +36,28 @@ jobs:
           version: 9
 
       # --- 1) Mismatch gate, before anything else -------------------------
+      # The two repos live under DIFFERENT owners, so the default GITHUB_TOKEN
+      # cannot read the peer — a token with `contents: read` on it is required.
+      # Only contract-fixtures.lock is fetched; no peer code is executed.
+      # A missing token would make the peer checkout fail with a confusing git error,
+      # or worse, be worked around by dropping the peer comparison — leaving a job that
+      # says "contract verified" while checking only one side. Say what is wrong.
+      - name: Require peer-read configuration
+        run: |
+          missing=""
+          [ -n "${{ vars.MOBILE_REPO }}" ] || missing="$missing vars.MOBILE_REPO"
+          [ -n "${{ secrets.PEER_LOCK_TOKEN }}" ] || missing="$missing secrets.PEER_LOCK_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::cross-repo mismatch gate cannot run; missing:$missing"
+            exit 1
+          fi
+
       - name: Checkout NesyMobile lock (read-only)
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.MOBILE_REPO }}
           ref: rel/env-dev
+          token: ${{ secrets.PEER_LOCK_TOKEN }}
           path: .peer-mobile
           sparse-checkout: contract-fixtures.lock
           sparse-checkout-cone-mode: false
