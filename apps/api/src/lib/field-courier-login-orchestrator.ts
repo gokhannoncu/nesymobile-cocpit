@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { prisma } from "@nesy/db";
+import { newRequestId } from "@nesy/control-contract";
+import { createControlExecutor } from "@nesy/control-channels/node";
 import {
   getEnvValue,
   isDashboardConfigured,
@@ -25,9 +27,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const GET_DEVICE_ID_ACTION = "com.arasdigital.nesymobile.GET_DEVICE_ID";
-const PROTECTED_KEY_RECEIVER_CLASS =
-  "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
+// Receiver class name moved to `@nesy/control-channels` (C.9) — Faz 4 deletes
+// the receiver on the mobile side, and a copy here would break silently.
 const SYSTEM_WORKFLOW_SLUG = "field-courier-login";
 const AUTOMATION_API_ORIGIN =
   process.env.AUTOMATION_API_ORIGIN?.trim() || "http://localhost:4001";
@@ -477,14 +478,6 @@ function parseAdbDevices(stdout: string) {
     .filter((d) => d.id && d.id !== "List");
 }
 
-function parseAdbBroadcastData(stdout: string) {
-  const dataMatch = stdout.match(/\bdata="((?:\\"|[^"])*)"/);
-  if (dataMatch?.[1]) return dataMatch[1].replace(/\\"/g, '"');
-  const resultMatch = stdout.match(/\bresult="((?:\\"|[^"])*)"/);
-  if (resultMatch?.[1]) return resultMatch[1].replace(/\\"/g, '"');
-  return null;
-}
-
 async function requireSingleAdbDevice(): Promise<string> {
   const adb = resolveAdbCommand();
   const { stdout } = await execFileAsync(adb, ["devices", "-l"], {
@@ -504,34 +497,24 @@ async function requireSingleAdbDevice(): Promise<string> {
 }
 
 async function readDeviceCode(adbDeviceId: string, applicationId: string): Promise<string> {
-  const adb = resolveAdbCommand();
-  const receiverComponent = `${applicationId}/${PROTECTED_KEY_RECEIVER_CLASS}`;
-  const { stdout } = await execFileAsync(
-    adb,
-    [
-      "-s",
-      adbDeviceId,
-      "shell",
-      "am",
-      "broadcast",
-      "--include-stopped-packages",
-      "-n",
-      receiverComponent,
-      "-a",
-      GET_DEVICE_ID_ACTION,
-    ],
-    { timeout: 15_000, maxBuffer: 1024 * 1024 },
-  );
-  const value = parseAdbBroadcastData(String(stdout));
-  if (!value) {
-    throw new Error(
-      `GET_DEVICE_ID returned no data. Ensure ${applicationId} includes ProtectedRequestKeyReceiver. stdout=${String(stdout).trim()}`,
-    );
+  // Control-plane contract (C.9): receiver class + action no longer hardcoded here.
+  // `wakeStopped` preserves the old `--include-stopped-packages` behaviour — this
+  // call must work on a force-stopped app, which is why the flag was there.
+  const res = await createControlExecutor({ applicationId }).run(adbDeviceId, {
+    op: "get_device_id",
+    requestId: newRequestId("device-code"),
+    scope: `login-orchestrator:${adbDeviceId}`,
+    wakeStopped: true,
+  });
+  if (!res.ok) {
+    if (res.code === "CHANNEL_UNAVAILABLE") {
+      throw new Error(
+        `GET_DEVICE_ID returned no data. Ensure ${applicationId} includes ProtectedRequestKeyReceiver. ${res.detail ?? ""}`,
+      );
+    }
+    throw new Error(`GET_DEVICE_ID error: ${res.raw ?? res.code}`);
   }
-  if (value.startsWith("ERROR:")) {
-    throw new Error(`GET_DEVICE_ID error: ${value}`);
-  }
-  return value;
+  return res.data.deviceId;
 }
 
 function pinFromPayload(payload: unknown): string {

@@ -5,6 +5,8 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { newRequestId } from "@nesy/control-contract";
+import { createControlExecutor } from "@nesy/control-channels/node";
 import {
   isNesyMobileCountry,
   isNesyMobileEnvironment,
@@ -112,10 +114,7 @@ function nesyMobileLoginDeviceBusinessFailure(result: unknown): {
 
 const router: RouterType = Router();
 const execFileAsync = promisify(execFile);
-const GET_PROTECTED_KEY_ACTION = "com.arasdigital.nesymobile.GET_KEY";
-const GET_DEVICE_ID_ACTION = "com.arasdigital.nesymobile.GET_DEVICE_ID";
-const PROTECTED_KEY_RECEIVER_CLASS =
-  "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
+// Receiver class + action names now live in `@nesy/control-channels` (C.9).
 
 class NesyMobileUpstreamError extends Error {
   constructor(
@@ -304,38 +303,42 @@ async function hydrateAdbDeviceDetails(params: {
   };
 }
 
+/**
+ * Reads a single value from the app over the control-plane contract (C.9).
+ *
+ * `op` replaces the old raw `action` string: the receiver class name and the
+ * `com.arasdigital.nesymobile.*` action are owned by `@nesy/control-channels`
+ * now, because Faz 4 deletes both receivers on the mobile side.
+ */
 async function requestAppValueFromAdb(params: {
-  adbCommand: string;
   adbDeviceId?: string;
   applicationId: string;
-  action: string;
+  op: "get_device_id" | "get_request_key";
 }) {
-  const receiverComponent = `${params.applicationId}/${PROTECTED_KEY_RECEIVER_CLASS}`;
-  const args = [
-    ...(params.adbDeviceId ? ["-s", params.adbDeviceId] : []),
-    "shell",
-    "am",
-    "broadcast",
-    "-n",
-    receiverComponent,
-    "-a",
-    params.action,
-  ];
-  const result = await execFileAsync(params.adbCommand, args, {
-    timeout: 15_000,
-    maxBuffer: 1024 * 1024,
-  });
-  const value = parseAdbBroadcastData(String(result.stdout));
+  const executor = createControlExecutor({ applicationId: params.applicationId });
+  const envelope = {
+    requestId: newRequestId(params.op),
+    scope: `nesy-mobile-auth:${params.adbDeviceId ?? "single-device"}`,
+  };
+  // An empty serial means "whatever single device is attached" — the old code
+  // omitted `-s` in that case and the channel does the same.
+  const serial = params.adbDeviceId ?? "";
 
-  if (!value) {
-    throw createAdbError("ADB broadcast completed without result data.", String(result.stdout));
+  const res =
+    params.op === "get_device_id"
+      ? await executor.run(serial, { ...envelope, op: "get_device_id" })
+      : await executor.run(serial, { ...envelope, op: "get_request_key" });
+
+  if (!res.ok) {
+    if (res.raw?.startsWith("ERROR:")) {
+      throw createAdbError(`Android receiver returned ${res.raw}.`, res.raw);
+    }
+    throw createAdbError(
+      "ADB broadcast completed without result data.",
+      res.detail ?? res.code,
+    );
   }
-
-  if (value.startsWith("ERROR:")) {
-    throw createAdbError(`Android receiver returned ${value}.`, String(result.stdout));
-  }
-
-  return value;
+  return "deviceId" in res.data ? res.data.deviceId : res.data.key;
 }
 
 async function listAdbDevices(applicationId?: string) {
@@ -352,10 +355,9 @@ async function listAdbDevices(applicationId?: string) {
 
       try {
         const appDeviceId = await requestAppValueFromAdb({
-          adbCommand,
           adbDeviceId: device.id,
           applicationId,
-          action: GET_DEVICE_ID_ACTION,
+          op: "get_device_id",
         });
         return {
           ...device,
@@ -475,19 +477,6 @@ async function tryPostNesyMobile(
   }
 }
 
-function parseAdbBroadcastData(stdout: string) {
-  const dataMatch = stdout.match(/\bdata="((?:\\"|[^"])*)"/);
-  if (dataMatch?.[1]) {
-    return dataMatch[1].replace(/\\"/g, "\"");
-  }
-
-  const resultMatch = stdout.match(/\bresult="((?:\\"|[^"])*)"/);
-  if (resultMatch?.[1]) {
-    return resultMatch[1].replace(/\\"/g, "\"");
-  }
-
-  return null;
-}
 
 async function requestProtectedRequestKeyFromAdb(params: {
   adbDeviceId?: string;
@@ -496,10 +485,9 @@ async function requestProtectedRequestKeyFromAdb(params: {
   const adbCommand = resolveAdbCommand();
   try {
     return await requestAppValueFromAdb({
-      adbCommand,
       adbDeviceId: params.adbDeviceId,
       applicationId: params.applicationId,
-      action: GET_PROTECTED_KEY_ACTION,
+      op: "get_request_key",
     });
   } catch (error) {
     const output = getErrorWithOutput(error);

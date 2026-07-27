@@ -1,0 +1,24 @@
+{
+  "name": "@nesy/control-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cihaz kontrol düzlemi SÖZLEŞMESİ — typed ControlOperation + ControlExecutor. KANAL BİLGİSİ YOK: bu paket ne broadcast ne WebSocket bilir (C.9).",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "^5.8.3"
+  }
+}

@@ -14,14 +14,15 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { NO_SECRET, newRequestId } from "@nesy/control-contract";
+import { parseBroadcastPayload } from "@nesy/control-channels";
+import { createControlExecutor } from "@nesy/control-channels/node";
 
 const execFileAsync = promisify(execFile);
 
-const RECEIVER_CLASS = "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
-const NAV_RECEIVER_CLASS = "com.arasdigital.nesymobile.adb.TestNavigationReceiver";
-const ACTION_SET_RUN = "com.arasdigital.nesymobile.SET_RUN";
-const ACTION_GET_STATE = "com.arasdigital.nesymobile.GET_STATE";
-const ACTION_SEED_STATE = "com.arasdigital.nesymobile.SEED_STATE";
+// Receiver class names and action strings USED TO LIVE HERE. They now live in
+// `@nesy/control-channels` (C.9) — Faz 4 deletes both receivers on the mobile
+// side, and a hardcoded copy in this file would have broken silently.
 const RUN_ID_PROP = "debug.nesy.run_id";
 
 /** Mobile watchdog finishes GET_STATE within 5s; give the broadcast a little headroom. */
@@ -127,6 +128,21 @@ async function adbShell(deviceId: string, args: string[], timeoutMs = BROADCAST_
 }
 
 /**
+ * Control-plane executor (C.9). Receiver class names and action strings live in
+ * `@nesy/control-channels`, not here. In Faz 0.3 `detectChannel()` still always
+ * resolves to `legacy`, so the bytes on the wire are byte-for-byte what this
+ * file used to send — only the hardcoding is gone.
+ */
+function control(appId: string) {
+  return createControlExecutor({ applicationId: appId });
+}
+
+/** Envelope for a one-shot control call. */
+function envelope(deviceId: string, tag: string) {
+  return { requestId: newRequestId(tag), scope: `${tag}:${deviceId}` };
+}
+
+/**
  * Writes the runId system property. The mobile app restores it in Application.onCreate,
  * so the runId survives mid-run app restarts (clearState nodes, crash recovery).
  * Call BEFORE launching the app; pass "" at run end (stale-prop cleanup).
@@ -156,29 +172,26 @@ export async function broadcastSetRun(
   runId: string,
   options?: { wsEnabled?: boolean; wsPort?: number; skipDeliveryWait?: boolean },
 ): Promise<boolean> {
-  try {
-    const args = [
-      "am", "broadcast",
-      "-n", `${appId}/${RECEIVER_CLASS}`,
-      "-a", ACTION_SET_RUN,
-      "--es", "run_id", runId === "" ? "''" : runId,
-    ];
-    if (options?.wsEnabled) {
-      args.push("--es", "ws_enabled", "true");
-      args.push("--es", "ws_port", String(options.wsPort ?? 8765));
-    }
+  const res = await control(appId).run(deviceId, {
+    ...envelope(deviceId, "set-run"),
+    op: "set_run",
+    runId,
+    // The legacy receiver does not know about HMAC; the secret is deliberately
+    // NOT sent on this channel (C.2a). Faz 4's VerdictChannel supplies a real one.
+    secret: NO_SECRET,
+    ...(options?.wsEnabled
+      ? { wsEnabled: true, wsPort: options.wsPort ?? 8765 }
+      : {}),
     // Automation-only: flush the mobile ~120s "two-minute" delivery/pickup queue wait so the
     // backend leg (DELIVERY_RESPONSE_RECEIVED / BACKEND_CONFIRMED) confirms within seconds.
     // App-side setter is gated by AUTOMATION_BRIDGE_ENABLED, so it is a no-op on prod builds.
-    if (options?.skipDeliveryWait) {
-      args.push("--es", "skip_delivery_wait", "true");
-    }
-    const stdout = await adbShell(deviceId, args);
-    return stdout.includes("result=-1"); // Activity.RESULT_OK
-  } catch (err) {
-    console.warn(`[TestEventBridge] SET_RUN broadcast failed:`, err instanceof Error ? err.message : err);
+    ...(options?.skipDeliveryWait ? { skipDeliveryWait: true } : {}),
+  });
+  if (!res.ok) {
+    console.warn(`[TestEventBridge] SET_RUN broadcast failed: ${res.code}`, res.detail ?? "");
     return false;
   }
+  return true;
 }
 
 /**
@@ -195,21 +208,22 @@ export async function broadcastSelectRoute(
   appId: string,
   route: string,
 ): Promise<{ ok: boolean; result: string } | null> {
-  try {
-    const stdout = await adbShell(deviceId, [
-      "am", "broadcast",
-      "-n", `${appId}/${NAV_RECEIVER_CLASS}`,
-      "-a", ACTION_SEED_STATE,
-      "--es", "verb", "select_route",
-      "--es", "route", route,
-    ]);
-    const ok = stdout.includes("result=-1"); // Activity.RESULT_OK
-    const dataMatch = stdout.match(/data="([\s\S]*?)"/);
-    return { ok, result: dataMatch?.[1]?.trim() ?? (ok ? "OK" : "") };
-  } catch (err) {
-    console.warn(`[TestEventBridge] select_route broadcast failed:`, err instanceof Error ? err.message : err);
+  const res = await control(appId).run(deviceId, {
+    ...envelope(deviceId, "select-route"),
+    op: "seed",
+    verb: "select_route",
+    params: { route },
+  });
+  // `CHANNEL_UNAVAILABLE` = the broadcast itself never landed → null, exactly as
+  // the old `catch` branch did. Every other code is a real mobile-side answer and
+  // is surfaced through `raw` so callers keep seeing `ERROR:ROUTE_NOT_FOUND:36`.
+  if (!res.ok && res.code === "CHANNEL_UNAVAILABLE") {
+    console.warn(`[TestEventBridge] select_route broadcast failed: ${res.code}`, res.detail ?? "");
     return null;
   }
+  return res.ok
+    ? { ok: true, result: res.data.raw?.trim() ?? "OK" }
+    : { ok: false, result: res.raw?.trim() ?? "" };
 }
 
 /**
@@ -229,21 +243,19 @@ export async function broadcastLogin(
   appId: string,
   pin: string,
 ): Promise<{ ok: boolean; result: string } | null> {
-  try {
-    const stdout = await adbShell(deviceId, [
-      "am", "broadcast",
-      "-n", `${appId}/${NAV_RECEIVER_CLASS}`,
-      "-a", ACTION_SEED_STATE,
-      "--es", "verb", "login",
-      "--es", "pin", pin,
-    ]);
-    const ok = stdout.includes("result=-1");
-    const dataMatch = stdout.match(/data="([\s\S]*?)"/);
-    return { ok, result: dataMatch?.[1]?.trim() ?? (ok ? "OK" : "") };
-  } catch (err) {
-    console.warn(`[TestEventBridge] login broadcast failed:`, err instanceof Error ? err.message : err);
+  const res = await control(appId).run(deviceId, {
+    ...envelope(deviceId, "login"),
+    op: "seed",
+    verb: "login",
+    params: { pin },
+  });
+  if (!res.ok && res.code === "CHANNEL_UNAVAILABLE") {
+    console.warn(`[TestEventBridge] login broadcast failed: ${res.code}`, res.detail ?? "");
     return null;
   }
+  return res.ok
+    ? { ok: true, result: res.data.raw?.trim() ?? "OK" }
+    : { ok: false, result: res.raw?.trim() ?? "" };
 }
 
 /** Snapshot returned by the mobile GET_STATE control-plane query. */
@@ -265,17 +277,15 @@ export interface DeviceBridgeState {
  * device offline, mobile-side timeout) — callers must fall back to the legacy logcat wait.
  */
 export async function getDeviceBridgeState(deviceId: string, appId: string): Promise<DeviceBridgeState | null> {
-  try {
-    const stdout = await adbShell(deviceId, [
-      "am", "broadcast",
-      "-n", `${appId}/${RECEIVER_CLASS}`,
-      "-a", ACTION_GET_STATE,
-    ]);
-    return parseGetStateOutput(stdout);
-  } catch (err) {
-    console.warn(`[TestEventBridge] GET_STATE failed:`, err instanceof Error ? err.message : err);
+  const res = await control(appId).run(deviceId, {
+    ...envelope(deviceId, "get-state"),
+    op: "get_state",
+  });
+  if (!res.ok) {
+    console.warn(`[TestEventBridge] GET_STATE failed: ${res.code}`, res.detail ?? "");
     return null;
   }
+  return mapBridgeState(res.data);
 }
 
 /**
@@ -287,28 +297,35 @@ export async function getDeviceBridgeState(deviceId: string, appId: string): Pro
 export function parseGetStateOutput(stdout: string): DeviceBridgeState | null {
   if (!stdout.includes("result=-1")) return null;
 
-  const dataMatch = stdout.match(/data="([\s\S]*)"/);
-  if (!dataMatch?.[1]) return null;
-
-  const payload = dataMatch[1].trim();
-  if (!payload.startsWith("{")) return null;
+  const payload = parseBroadcastPayload(stdout)?.trim();
+  if (!payload?.startsWith("{")) return null;
 
   try {
-    const raw = JSON.parse(payload) as Record<string, unknown>;
-    return {
-      isLoggedIn: parseBooleanish(raw.is_logged_in),
-      routeSelected: parseBooleanish(raw.route_selected),
-      routeName: typeof raw.route_name === "string" ? raw.route_name : "",
-      scheduleLoaded: parseBooleanish(raw.schedule_loaded),
-      scheduleId: typeof raw.schedule_id === "string" ? raw.schedule_id : "",
-      currentScreen: typeof raw.current_screen === "string" ? raw.current_screen : "",
-      runId: typeof raw.run_id === "string" ? raw.run_id : "",
-      sessionId: typeof raw.session_id === "string" ? raw.session_id : "",
-      raw,
-    };
+    return mapBridgeState(JSON.parse(payload) as Record<string, unknown>);
   } catch {
     return null;
   }
+}
+
+/**
+ * Mobile `GET_STATE` JSON → this module's snapshot shape.
+ *
+ * Split out of `parseGetStateOutput` so the control-plane path (which already
+ * receives parsed JSON from the contract) and the raw-stdout path share ONE
+ * field mapping. Two copies would drift the moment the mobile side adds a field.
+ */
+function mapBridgeState(raw: Record<string, unknown>): DeviceBridgeState {
+  return {
+    isLoggedIn: parseBooleanish(raw.is_logged_in),
+    routeSelected: parseBooleanish(raw.route_selected),
+    routeName: typeof raw.route_name === "string" ? raw.route_name : "",
+    scheduleLoaded: parseBooleanish(raw.schedule_loaded),
+    scheduleId: typeof raw.schedule_id === "string" ? raw.schedule_id : "",
+    currentScreen: typeof raw.current_screen === "string" ? raw.current_screen : "",
+    runId: typeof raw.run_id === "string" ? raw.run_id : "",
+    sessionId: typeof raw.session_id === "string" ? raw.session_id : "",
+    raw,
+  };
 }
 
 function parseBooleanish(value: unknown): boolean | null {

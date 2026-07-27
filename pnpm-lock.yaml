@@ -26,6 +26,12 @@ importers:
       '@fastify/middie':
         specifier: ^9.0.3
         version: 9.3.3
+      '@nesy/control-channels':
+        specifier: workspace:*
+        version: link:../../packages/control-channels
+      '@nesy/control-contract':
+        specifier: workspace:*
+        version: link:../../packages/control-contract
       '@nesy/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -93,6 +99,12 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.81.0(react@19.2.7))
+      '@nesy/control-channels':
+        specifier: workspace:*
+        version: link:../../packages/control-channels
+      '@nesy/control-contract':
+        specifier: workspace:*
+        version: link:../../packages/control-contract
       '@nesy/metronic':
         specifier: workspace:*
         version: link:../../packages/metronic
@@ -196,6 +208,46 @@ importers:
       vitest:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
+  packages/control-channels:
+    dependencies:
+      '@nesy/control-contract':
+        specifier: workspace:*
+        version: link:../control-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
+  packages/control-contract:
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
 
   packages/db:
     dependencies:

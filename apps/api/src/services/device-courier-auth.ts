@@ -5,11 +5,11 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { newRequestId } from "@nesy/control-contract";
+import { parseBroadcastPayload } from "@nesy/control-channels";
+import { createControlExecutor } from "@nesy/control-channels/node";
 
 const execFileAsync = promisify(execFile);
-
-const RECEIVER_CLASS = "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
-const ACTION_GET_KEY = "com.arasdigital.nesymobile.GET_KEY";
 
 export interface DeviceCourierAuth {
   token: string | null;
@@ -76,14 +76,14 @@ export function parseCourierPrefsXml(
   };
 }
 
-/** Parse `am broadcast` data=/result= payload for GET_KEY. */
-export function parseAdbBroadcastData(stdout: string): string | null {
-  const dataMatch = stdout.match(/\bdata="((?:\\"|[^"])*)"/);
-  if (dataMatch?.[1]) return dataMatch[1].replace(/\\"/g, '"');
-  const resultMatch = stdout.match(/\bresult="((?:\\"|[^"])*)"/);
-  if (resultMatch?.[1]) return resultMatch[1].replace(/\\"/g, '"');
-  return null;
-}
+/**
+ * @deprecated `@nesy/control-channels`'ın `parseBroadcastPayload`'ına takma ad.
+ *
+ * Eski yerel kopya, payload'ı İLK iç tırnakta kesiyordu; `GET_KEY` /
+ * `GET_DEVICE_ID` tırnak içermediği için tesadüfen çalışıyordu ama aynı regex
+ * `GET_STATE` JSON'unu bozardı. Tek doğru implementasyon artık pakette.
+ */
+export const parseAdbBroadcastData = parseBroadcastPayload;
 
 /**
  * schedule_id shapes like `11-36-20260723-1` → hub/branch + zone.
@@ -127,24 +127,24 @@ export async function readDeviceCourierAuth(
   }
 
   const prefs = parseCourierPrefsXml(prefsXml);
+
+  // GET_KEY artık kontrol düzlemi sözleşmesinden geçiyor (C.9). Kanal Faz 0.3'te
+  // hâlâ `legacy` olduğu için tel üzerindeki komut BİREBİR aynı; değişen tek şey
+  // receiver sınıf adı ve action isminin burada HARDCODE olmaması.
   let xProtectedRequestKey: string | null = null;
-  try {
-    const keyOut = await adb([
-      "-s",
-      deviceId,
-      "shell",
-      "am",
-      "broadcast",
-      "-n",
-      `${appId}/${RECEIVER_CLASS}`,
-      "-a",
-      ACTION_GET_KEY,
-    ]);
-    xProtectedRequestKey = parseAdbBroadcastData(keyOut);
-  } catch (err) {
+  const control = createControlExecutor({ applicationId: appId });
+  const keyRes = await control.run(deviceId, {
+    op: "get_request_key",
+    requestId: newRequestId("courier-auth"),
+    scope: `courier-auth:${deviceId}`,
+  });
+  if (keyRes.ok) {
+    xProtectedRequestKey = keyRes.data.key;
+  } else {
+    // `detail` sözleşme katmanında sırlardan arındırılmış geliyor.
     console.warn(
-      "[device-courier-auth] GET_KEY failed:",
-      err instanceof Error ? err.message : err,
+      `[device-courier-auth] GET_KEY failed: ${keyRes.code}`,
+      keyRes.detail ?? "",
     );
   }
 
