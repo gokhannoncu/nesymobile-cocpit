@@ -27,6 +27,7 @@ import type {
   ControlResult,
 } from "@nesy/control-contract";
 import {
+  LegacyActivityDumpChannel,
   LegacyReceiverChannel,
   channelFor,
   detectChannel,
@@ -141,6 +142,23 @@ export function createControlExecutor(
     ): Promise<ControlResult<Op["op"]>> {
       const startedAt = performance.now();
       const ctx = { applicationId: await resolveAppId(serial), adb };
+
+      // `get_screen_state` receiver'a değil ACTIVITY DUMP'a gider (C.11.4).
+      // Kanal tespiti bu op için anlamsız — dump kanalının legacy/verdict
+      // ayrımı Faz 5.9'da dosya içinde çözülecek, burada değil.
+      if (op.op === "get_screen_state") {
+        const dumpRes = await new LegacyActivityDumpChannel().run(serial, op, ctx);
+        opts.onEvent?.({
+          serial,
+          op: op.op,
+          requestId: op.requestId,
+          channel: "legacy",
+          ok: dumpRes.ok,
+          ...(dumpRes.ok ? {} : { code: dumpRes.code, detail: dumpRes.detail }),
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+        return dumpRes;
+      }
 
       let kind: ChannelKind;
       if (opts.forceChannel) {

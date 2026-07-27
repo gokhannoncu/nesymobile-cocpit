@@ -59,6 +59,7 @@ export function sampleOperations(): ControlOperation[] {
     { ...env(), op: "seed", verb: "select_route", params: { route: "R7" } },
     { ...env(), op: "end_run" },
     { ...env(), op: "get_command_result", targetRequestId: "other-req" },
+    { ...env(), op: "get_screen_state" },
   ];
 }
 

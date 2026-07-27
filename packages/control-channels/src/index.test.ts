@@ -21,8 +21,11 @@ import { describe, expect, it } from "vitest";
 import { asSecret, newRequestId } from "@nesy/control-contract";
 import type { ControlOperation } from "@nesy/control-contract";
 import {
+  LegacyActivityDumpChannel,
+  previewCommand,
   LegacyReceiverChannel,
   detectChannel,
+  parseScreenStateDump,
   parseBroadcastPayload,
   parseResultCode,
   type AdbRunner,
@@ -433,5 +436,116 @@ describe("detectChannel", () => {
       ctxWith(runnerReturning(completed(-1, "anything"))),
     );
     expect(kind).toBe("legacy");
+  });
+});
+
+// ---------------------------------------------------------------------------
+//  6) LegacyActivityDumpChannel — Debug View ekran durumu (C.11.4)
+// ---------------------------------------------------------------------------
+
+describe("LegacyActivityDumpChannel", () => {
+  const env = () => ({ requestId: newRequestId("t"), scope: "run-1" });
+  const ch = new LegacyActivityDumpChannel();
+  const DUMP_OK =
+    'TASK ...\n  NESY_SCREEN_STATE:{"screen":{"stopCount":12},"shared":{"route":"36"}}\n  more\n';
+
+  it("activity'yi COMPONENT adıyla dump eder ve bayrağı geçirir", async () => {
+    const args: string[][] = [];
+    await ch.run(
+      SERIAL,
+      { ...env(), op: "get_screen_state" },
+      ctxWith(runnerReturning(DUMP_OK, args)),
+    );
+    const cmd = args[0]!.join(" ");
+    expect(cmd).toContain(`${APP_ID}/com.arasdigital.nesymobile.main.MainActivity`);
+    expect(cmd).toContain("--nesy-state");
+  });
+
+  it("NESY_SCREEN_STATE gövdesini ayrıştırır", async () => {
+    const res = await ch.run(
+      SERIAL,
+      { ...env(), op: "get_screen_state" },
+      ctxWith(runnerReturning(DUMP_OK)),
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.instrumented).toBe(true);
+      expect(res.data.state?.screen).toEqual({ stopCount: 12 });
+      expect(res.data.state?.shared).toEqual({ route: "36" });
+    }
+  });
+
+  it("işaret yoksa HATA değil — instrumented:false", async () => {
+    // Eski build. Dump çalıştı; UI kullanıcıya doğru build istemesini söyler.
+    const res = await ch.run(
+      SERIAL,
+      { ...env(), op: "get_screen_state" },
+      ctxWith(runnerReturning("TASK ...\n  no marker here\n")),
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.instrumented).toBe(false);
+  });
+
+  it("işaret var ama JSON bozuksa instrumented SAYILMAZ", async () => {
+    // Aksi hâlde çağıran "alanlar boş ama build doğru" diye yanlış rapor verir.
+    const parsed = parseScreenStateDump("NESY_SCREEN_STATE:{oops\n");
+    expect(parsed.instrumented).toBe(false);
+    expect(parsed.state).toBeNull();
+  });
+
+  it("dump kanalı receiver op'larını TAŞIMAZ", async () => {
+    const res = await ch.run(
+      SERIAL,
+      { ...env(), op: "get_state" },
+      ctxWith(runnerReturning(DUMP_OK)),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe("UNKNOWN_COMMAND");
+  });
+
+  it("receiver kanalı get_screen_state'i TAŞIMAZ", async () => {
+    const res = await new LegacyReceiverChannel().run(
+      SERIAL,
+      { ...env(), op: "get_screen_state" },
+      ctxWith(runnerReturning(completed(-1, "x"))),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe("UNKNOWN_COMMAND");
+  });
+});
+
+// ---------------------------------------------------------------------------
+//  7) previewCommand — Debug View kopyala-yapıştır satırı
+// ---------------------------------------------------------------------------
+
+describe("previewCommand", () => {
+  const env = () => ({ requestId: newRequestId("t"), scope: "run-1" });
+
+  it("gerçek yönlendirmeyle AYNI receiver ve action'ı üretir", () => {
+    const op: ControlOperation = { ...env(), op: "get_request_key" };
+    const preview = previewCommand(op, { applicationId: APP_ID, serial: SERIAL });
+    expect(preview).toBe(
+      `adb -s ${SERIAL} shell am broadcast -n ${APP_ID}/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver -a com.arasdigital.nesymobile.GET_KEY`,
+    );
+  });
+
+  it("önizleme ile gerçek çağrı ASLA ayrışmaz", async () => {
+    // Tek koruma bu: ikisi de routeLegacy'den geldiği için biri değişirse
+    // diğeri de değişir. Elle yazılmış string literal'lerde bu güvence yoktu.
+    const op: ControlOperation = { ...env(), op: "get_device_id" };
+    const args: string[][] = [];
+    await new LegacyReceiverChannel().run(
+      SERIAL,
+      op,
+      ctxWith(runnerReturning(completed(-1, "dev1"), args)),
+    );
+    const executed = `adb ${args[0]!.join(" ")}`;
+    expect(previewCommand(op, { applicationId: APP_ID, serial: SERIAL })).toBe(executed);
+  });
+
+  it("legacy'de karşılığı olmayan op için null döner", () => {
+    expect(
+      previewCommand({ ...env(), op: "end_run" }, { applicationId: APP_ID }),
+    ).toBeNull();
   });
 });

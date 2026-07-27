@@ -6,6 +6,10 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { resolveAdbPath } from '@/lib/server/adb-path'
+import { newRequestId } from '@nesy/control-contract'
+import { parseBroadcastPayload } from '@nesy/control-channels'
+import type { ControlOperation } from '@nesy/control-contract'
+import { createControlExecutor, createNodeAdbRunner } from '@nesy/control-channels/node'
 import { getAppIdentity } from '@/lib/server/adb'
 import type { ScenarioStepEvent } from '@/data/engineering/device-lab/device-lab-types'
 
@@ -16,7 +20,7 @@ const execFileAsync = promisify(execFile)
 const SERIAL_RE = /^[\w.:-]+$/
 
 const CHAOS_RECEIVER = 'com.arasdigital.nesymobile.adb.ChaosReceiver'
-const PROTECTED_RECEIVER = 'com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver'
+// PROTECTED_RECEIVER moved to `@nesy/control-channels` (C.9).
 const SPLASH_ACTIVITY = 'com.arasdigital.nesymobile.SplashActivity'
 
 type StepFn = (ctx: ExecContext) => Promise<string>
@@ -41,12 +45,41 @@ function shell(serial: string, cmd: string, timeoutMs = 30_000): Promise<string>
   return adb(['-s', serial, 'shell', cmd], timeoutMs)
 }
 
-function parseBroadcastData(stdout: string): string | null {
-  const dataMatch = stdout.match(/\bdata="((?:\\"|[^"])*)"/)
-  if (dataMatch?.[1]) return dataMatch[1].replace(/\\"/g, '"')
-  const resultMatch = stdout.match(/\bresult="((?:\\"|[^"])*)"/)
-  if (resultMatch?.[1]) return resultMatch[1].replace(/\\"/g, '"')
-  return null
+/**
+ * Control-plane call for the Debug View (C.9).
+ *
+ * These steps render a human-readable log line, not a typed value, so the
+ * contract result is formatted back into text. The receiver class name and
+ * action string are no longer hardcoded here — Faz 4 deletes both receivers on
+ * the mobile side and this file would otherwise break silently.
+ *
+ * `broadcast()` below stays for the CHAOS receiver: those actions are not part
+ * of the control-plane contract (and `ChaosReceiver` does not currently exist in
+ * the app — every `requiresChaos` scenario is gated for that reason).
+ */
+async function control(
+  ctx: ExecContext,
+  op: ControlOperation['op'] & ('get_device_id' | 'get_request_key'),
+): Promise<string> {
+  const executor = createControlExecutor({
+    applicationId: ctx.pkg,
+    adb: createNodeAdbRunner({ defaultTimeoutMs: 20_000 }),
+  })
+  const envelope = { requestId: newRequestId(op), scope: `debug-view:${ctx.serial}` }
+  const res =
+    op === 'get_device_id'
+      ? await executor.run(ctx.serial, { ...envelope, op: 'get_device_id' })
+      : await executor.run(ctx.serial, { ...envelope, op: 'get_request_key' })
+
+  if (!res.ok) {
+    // `raw` carries the device's own words (`ERROR:NO_USERNAME`); `detail`
+    // explains a channel-level failure. Both are useful in the Debug View.
+    return `${op} FAILED: ${res.code}${res.raw ? ` → ${res.raw}` : ''}${
+      res.detail ? ` (${res.detail})` : ''
+    }`
+  }
+  const value = 'deviceId' in res.data ? res.data.deviceId : res.data.key
+  return `${op} OK\n→ data=${value}`
 }
 
 async function broadcast(
@@ -59,7 +92,7 @@ async function broadcast(
   const component = `${pkg}/${receiverClass}`
   const args = ['-s', serial, 'shell', 'am', 'broadcast', '-n', component, '-a', action, ...extras]
   const out = await adb(args, 20_000)
-  const data = parseBroadcastData(out)
+  const data = parseBroadcastPayload(out)
   return data ? `${out}\n→ data=${data}` : out
 }
 
@@ -377,18 +410,11 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     steps: [
       {
         label: 'GET_DEVICE_ID',
-        run: (c) =>
-          broadcast(
-            c.serial,
-            c.pkg,
-            PROTECTED_RECEIVER,
-            'com.arasdigital.nesymobile.GET_DEVICE_ID',
-          ),
+        run: (c) => control(c, 'get_device_id'),
       },
       {
         label: 'GET_KEY',
-        run: (c) =>
-          broadcast(c.serial, c.pkg, PROTECTED_RECEIVER, 'com.arasdigital.nesymobile.GET_KEY'),
+        run: (c) => control(c, 'get_request_key'),
       },
     ],
   },

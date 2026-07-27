@@ -1,6 +1,19 @@
 // ============================================================================
 // Device Lab – Real ADB Scenarios (Courier Mobile hard situations)
 // ============================================================================
+//
+// ⚠️ `command` fields are COPY-PASTE PREVIEWS shown in the "commands" tab, not
+//    executed code — execution lives in `lib/server/adb-scenario-executor.ts`.
+//
+// ⚠️ Every scenario below that broadcasts to `ChaosReceiver` targets a receiver
+//    that DOES NOT EXIST in the NesyMobile app (verified: no ChaosReceiver in
+//    app/src, Kotlin or manifest). Those previews cannot work today, and the
+//    executor gates them behind `requiresChaos`. They are left in place as a
+//    specification of what the receiver would need to support; do not read them
+//    as working commands.
+//
+// The two ProtectedRequestKeyReceiver previews ARE real and are derived from
+// `@nesy/control-channels` so they cannot drift from the executed call (C.9).
 
 import type {
   ScenarioPackage,
@@ -9,6 +22,8 @@ import type {
   PreflightCheck,
   CategoryInfo,
 } from './device-lab-types'
+import type { ControlOperation } from '@nesy/control-contract'
+import { previewCommand } from '@nesy/control-channels'
 
 /** Packages used by NESY Courier Mobile flavors (test + common). */
 export const NESY_MOBILE_PACKAGES = [
@@ -24,6 +39,27 @@ export const NESY_MOBILE_PACKAGES = [
 
 const PKG = '{package}'
 const SERIAL = '{serial}'
+
+/**
+ * Preview command for a control-plane op, rendered from the SAME routing table
+ * the real call uses (`@nesy/control-channels`).
+ *
+ * These strings are copy-paste previews for the "commands" tab, not executed
+ * code — execution goes through `adb-scenario-executor.ts`. They used to be
+ * hand-written literals, which meant Faz 4 (mobile deletes both receivers)
+ * would leave them SILENTLY WRONG: no error anywhere, the user just copies a
+ * command that no longer works. Deriving them removes that failure mode.
+ */
+function controlPreview(
+  op: Extract<ControlOperation['op'], 'get_device_id' | 'get_request_key'>,
+): string {
+  const envelope = { requestId: 'preview', scope: 'preview' }
+  const built: ControlOperation =
+    op === 'get_device_id'
+      ? { ...envelope, op: 'get_device_id' }
+      : { ...envelope, op: 'get_request_key' }
+  return previewCommand(built, { applicationId: PKG, serial: SERIAL }) ?? ''
+}
 
 // ---------------------------------------------------------------------------
 // 1. SCENARIO CATEGORIES
@@ -101,7 +137,7 @@ export const PREFLIGHT_CHECKS: PreflightCheck[] = [
   {
     id: 'debuggable',
     label: 'Debug / test build (chaos receiver)',
-    description: 'Required for ChaosReceiver / ProtectedRequestKeyReceiver',
+    description: 'ProtectedRequestKeyReceiver only — ChaosReceiver does not exist in the app (see note at top of file)',
     required: false,
   },
   {
@@ -704,13 +740,13 @@ export const SCENARIO_PACKAGES: ScenarioPackage[] = [
       {
         step: 1,
         label: 'GET_DEVICE_ID',
-        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver -a com.arasdigital.nesymobile.GET_DEVICE_ID`,
+        command: controlPreview('get_device_id'),
         description: 'ANDROID_ID via broadcast',
       },
       {
         step: 2,
         label: 'GET_KEY',
-        command: `adb -s ${SERIAL} shell am broadcast -n ${PKG}/com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver -a com.arasdigital.nesymobile.GET_KEY`,
+        command: controlPreview('get_request_key'),
         description: 'Native protected request key',
       },
     ],

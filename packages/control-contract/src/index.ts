@@ -96,6 +96,21 @@ export type ControlOperation = ControlEnvelope &
     | { op: "seed"; verb: string; params: Record<string, string> }
     | { op: "navigate"; destination: string }
     | { op: "get_command_result"; targetRequestId: string }
+    /**
+     * Ekrandaki canlı ViewModel/screen alanları (Debug View · C.11.4).
+     *
+     * **Receiver DEĞİL, ACTIVITY DUMP kanalı.** `get_state`'ten farklıdır:
+     * `get_state` bridge durumunu (runId, isLogin, route) broadcast ile okur;
+     * bu op ekranın in-memory alanlarını `dumpsys activity … --<flag>` ile
+     * okur ve uygulama ön planda değilse doğal olarak boş döner.
+     *
+     * Faz 5.9'da hedef `dumpsys activity provider
+     * <pkg>/com.verdict.sdk.core.VerdictDumpProvider --verdict-screen-state`
+     * olacak — component adıyla, authority ile DEĞİL (Faz 0.1 spike'ı
+     * authority'nin hiç eşleşmediğini ölçtü). Bu op, o geçişte `adb.ts`'in
+     * değişmemesini sağlar.
+     */
+    | { op: "get_screen_state" }
   );
 
 export type ControlOp = ControlOperation["op"];
@@ -155,6 +170,22 @@ export interface ControlResultMap {
   get_command_result:
     | { state: "pending" }
     | { state: "done"; result: unknown };
+  get_screen_state: ScreenStateDump;
+}
+
+/** `get_screen_state` yanıtı. */
+export interface ScreenStateDump {
+  /**
+   * Kurulu build dump hook'unu içeriyor mu.
+   *
+   * `false` = eski/enstrümante olmayan build; UI kullanıcıya doğru build
+   * istemesini söyleyebilir. Bu bir HATA DEĞİL — dump çalıştı, işaret yoktu.
+   */
+  instrumented: boolean;
+  /** Ayrıştırılmış `{ shared?, screen? }` gövdesi; işaret yoksa null. */
+  state: { shared?: Record<string, unknown>; screen?: Record<string, unknown> } | null;
+  /** Ham dump metni — teşhis için. */
+  raw: string;
 }
 
 /** Stabil hata kodları — cihazın `CommandErrorCode` enum'uyla hizalı. */

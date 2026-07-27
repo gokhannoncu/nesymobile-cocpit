@@ -11,6 +11,9 @@ import { tmpdir } from 'node:os'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { resolveAdbPath, resolveSqlitePath } from '@/lib/server/adb-path'
+import { newRequestId } from '@nesy/control-contract'
+import type { ScreenStateDump } from '@nesy/control-contract'
+import { createControlExecutor, createNodeAdbRunner } from '@nesy/control-channels/node'
 import type {
   ConnectedDevice,
   DeviceStatus,
@@ -2237,26 +2240,22 @@ function fieldValueCount(value: unknown): number | null {
 }
 
 /**
- * Parses the `NESY_SCREEN_STATE:{json}` line emitted by the app's debug dump
- * hook. Returns `instrumented: false` when the installed build predates the
- * hook (no marker), so the UI can prompt for an instrumented build.
+ * Maps a `get_screen_state` control-plane result onto this module's field shape.
+ *
+ * The dump invocation, the activity component name, the `--nesy-state` flag and
+ * the `NESY_SCREEN_STATE:` marker USED TO LIVE HERE. They now belong to
+ * `@nesy/control-channels` (C.9 / C.11.4): Faz 5.9 replaces all four with
+ * `dumpsys activity provider <pkg>/com.verdict.sdk.core.VerdictDumpProvider
+ * --verdict-screen-state`, and this file must not have to change for that.
+ *
+ * `instrumented: false` is not an error — the dump ran, the marker was absent,
+ * so the installed build predates the hook and the UI can say so.
  */
-function parseScreenStateDump(dump: string | null): {
+function mapScreenStateFields(dump: ScreenStateDump | null): {
   instrumented: boolean
   fields: LiveScreenField[]
 } {
-  if (!dump) return { instrumented: false, fields: [] }
-  const marker = dump.indexOf('NESY_SCREEN_STATE:')
-  if (marker < 0) return { instrumented: false, fields: [] }
-
-  const jsonStart = marker + 'NESY_SCREEN_STATE:'.length
-  const line = dump.slice(jsonStart).split('\n')[0]?.trim() ?? ''
-  let parsed: { shared?: Record<string, unknown>; screen?: Record<string, unknown> }
-  try {
-    parsed = JSON.parse(line) as typeof parsed
-  } catch {
-    return { instrumented: false, fields: [] }
-  }
+  if (!dump?.instrumented || !dump.state) return { instrumented: false, fields: [] }
 
   const fields: LiveScreenField[] = []
   const collect = (obj: Record<string, unknown> | undefined, group: LiveScreenField['group']) => {
@@ -2265,8 +2264,8 @@ function parseScreenStateDump(dump: string | null): {
       fields.push({ name, value, kind: jsonKind(value), count: fieldValueCount(value), group })
     }
   }
-  collect(parsed.screen, 'screen')
-  collect(parsed.shared, 'shared')
+  collect(dump.state.screen, 'screen')
+  collect(dump.state.shared, 'shared')
   return { instrumented: true, fields }
 }
 
@@ -2297,19 +2296,27 @@ export async function getDeviceScreenState(serial: string): Promise<LiveScreenSt
   }
   if (!pkg) return { ...base, reason: 'NesyMobile is not installed on this device' }
 
-  // The activity class package is fixed regardless of applicationId suffix (.test/.dev).
-  const component = `${pkg}/com.arasdigital.nesymobile.main.MainActivity`
-  const [activities, dump, services, stateDump] = await Promise.all([
+  const control = createControlExecutor({
+    applicationId: pkg,
+    adb: createNodeAdbRunner({ defaultTimeoutMs: 8_000 }),
+  })
+  const [activities, dump, services, stateRes] = await Promise.all([
     tryShell(serial, 'dumpsys activity activities | grep -E "ResumedActivity|topResumedActivity"', 8_000),
     tryShell(serial, 'dumpsys activity top', 15_000),
     readAllNesyServices(serial, pkg),
-    tryShell(serial, `dumpsys activity ${component} --nesy-state`, 8_000),
+    control.run(serial, {
+      op: 'get_screen_state',
+      requestId: newRequestId('screen-state'),
+      scope: `debug-view:${serial}`,
+    }),
   ])
 
   base.runningServices = services
   base.appForeground = Boolean(activities && activities.includes(pkg))
 
-  const parsedState = parseScreenStateDump(stateDump)
+  // A failed dump is treated exactly like the old `tryShell` returning null:
+  // not instrumented, no fields, and the rest of the snapshot still renders.
+  const parsedState = mapScreenStateFields(stateRes.ok ? stateRes.data : null)
   base.stateInstrumented = parsedState.instrumented
   base.fields = parsedState.fields
 

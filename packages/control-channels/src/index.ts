@@ -15,6 +15,7 @@ import type {
   ControlErrorCode,
   ControlOperation,
   ControlResult,
+  ScreenStateDump,
 } from "@nesy/control-contract";
 
 /** Kanalların ihtiyaç duyduğu tek dış yetenek: `adb` çalıştırmak. */
@@ -169,6 +170,10 @@ function routeLegacy(op: ControlOperation): LegacyRoute | null {
     // sessizce "başarılı" dönmek yanlış olurdu.
     case "end_run":
     case "get_command_result":
+      return null;
+    // Bu op ACTIVITY DUMP kanalına ait (aşağıdaki LegacyActivityDumpChannel);
+    // receiver kanalı onu taşımaz.
+    case "get_screen_state":
       return null;
   }
 }
@@ -418,6 +423,122 @@ export class LegacyReceiverChannel implements ControlChannel {
 
 /** Mobil watchdog `GET_STATE`'i 5 s'de bitirir; broadcast'e biraz pay bırak. */
 const BROADCAST_TIMEOUT_MS = 15_000;
+
+/**
+ * Bir op'un ÇALIŞTIRILMAYAN, kopyala-yapıştır önizleme komutunu üretir.
+ *
+ * Debug View'ın "commands" sekmesi kullanıcıya terminale yazabileceği satırı
+ * gösteriyor. O satırlar bugün elle yazılmış string literal'ler; Faz 4 iki
+ * receiver'ı silince **sessizce yanlış** olacaklar — kimse hata almaz, komut
+ * kopyalanır ve çalışmaz. Aynı yönlendirme tablosundan üretmek bunu engeller.
+ *
+ * ⚠️ Bu fonksiyon bir taşıma değil, bir GÖSTERİM. Gerçek çağrı
+ * `LegacyReceiverChannel`den geçer.
+ */
+export function previewCommand(
+  op: ControlOperation,
+  ctx: { applicationId: string; serial?: string },
+): string | null {
+  const route = routeLegacy(op);
+  if (!route) return null;
+  const parts = [
+    "adb",
+    ...(ctx.serial ? ["-s", ctx.serial] : []),
+    "shell",
+    "am",
+    "broadcast",
+    ...(op.wakeStopped ? ["--include-stopped-packages"] : []),
+    "-n",
+    `${ctx.applicationId}/${route.receiver}`,
+    "-a",
+    `${ACTION_PREFIX}${route.action}`,
+    ...route.extras,
+  ];
+  return parts.join(" ");
+}
+
+// ---------------------------------------------------------------------------
+//  LEGACY ACTIVITY DUMP CHANNEL  (Debug View · C.11.4)
+//
+//  `dumpsys activity <pkg>/<Activity> --nesy-state` → `NESY_SCREEN_STATE:{json}`
+//
+//  Bu kanal `adb.ts`'de hardcode duran ÜÇ stringi sahiplenir: activity sınıf
+//  adı, dump bayrağı ve çıktı işareti. Faz 5.9 üçünü de değiştiriyor
+//  (VerdictDumpProvider / --verdict-screen-state / VERDICT_SCREEN_STATE:) ve
+//  o değişiklik BU DOSYADA kalmalı, çağıranda değil.
+// ---------------------------------------------------------------------------
+
+const LEGACY_DUMP_ACTIVITY = "com.arasdigital.nesymobile.main.MainActivity";
+const LEGACY_DUMP_FLAG = "--nesy-state";
+const LEGACY_DUMP_MARKER = "NESY_SCREEN_STATE:";
+
+/**
+ * Faz 0.1 spike'ında ölçülen framework dump transfer timeout'u ~2.05–2.10 s.
+ * 8 s onun üstünde kalıyor ve `adb.ts`'in bugünkü değeriyle aynı.
+ */
+const DUMP_TIMEOUT_MS = 8_000;
+
+/** `NESY_SCREEN_STATE:{json}` satırını ayrıştırır. */
+export function parseScreenStateDump(dump: string): ScreenStateDump {
+  const marker = dump.indexOf(LEGACY_DUMP_MARKER);
+  // İşaret yok = enstrümante olmayan build. HATA DEĞİL: dump çalıştı.
+  if (marker < 0) return { instrumented: false, state: null, raw: dump };
+
+  const line =
+    dump.slice(marker + LEGACY_DUMP_MARKER.length).split("\n")[0]?.trim() ?? "";
+  try {
+    return {
+      instrumented: true,
+      state: JSON.parse(line) as ScreenStateDump["state"],
+      raw: dump,
+    };
+  } catch {
+    // İşaret vardı ama gövde bozuk — enstrümante SAYILMAZ, yoksa çağıran
+    // "alanlar boş ama build doğru" diye yanlış rapor verir.
+    return { instrumented: false, state: null, raw: dump };
+  }
+}
+
+export class LegacyActivityDumpChannel implements ControlChannel {
+  readonly name = "legacy" as const;
+
+  async run<Op extends ControlOperation>(
+    serial: string,
+    op: Op,
+    ctx: ChannelContext,
+  ): Promise<ControlResult<Op["op"]>> {
+    if (op.op !== "get_screen_state") {
+      return {
+        ok: false,
+        code: "UNKNOWN_COMMAND",
+        detail: `${op.op}: activity dump kanalı yalnız get_screen_state taşır`,
+      } as ControlResult<Op["op"]>;
+    }
+    // Component adı ZORUNLU. Faz 0.1 spike'ı ölçtü: `dumpsys activity provider`
+    // authority ile HİÇ eşleşmiyor, component adı ister. Activity dump'ı da
+    // aynı biçimi kullanıyor ve 13 flavor için daha sağlam — paket adı
+    // değişiyor ama sınıf adı sabit.
+    const component = `${ctx.applicationId}/${LEGACY_DUMP_ACTIVITY}`;
+    try {
+      const out = await ctx.adb(
+        serial,
+        [
+          ...(serial ? ["-s", serial] : []),
+          "shell",
+          `dumpsys activity ${component} ${LEGACY_DUMP_FLAG}`,
+        ],
+        DUMP_TIMEOUT_MS,
+      );
+      return { ok: true, data: parseScreenStateDump(out) } as ControlResult<Op["op"]>;
+    } catch (err) {
+      return {
+        ok: false,
+        code: "CHANNEL_UNAVAILABLE",
+        detail: err instanceof Error ? err.message : String(err),
+      } as ControlResult<Op["op"]>;
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 //  KANAL TESPİTİ  (C.9 — Faz 4'te tamamlanır)
