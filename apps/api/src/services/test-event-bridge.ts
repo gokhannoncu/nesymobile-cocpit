@@ -68,11 +68,32 @@ export function parseTestEventLine(line: string): TestBridgeEvent | null {
     const parsed = JSON.parse(json) as Record<string, unknown>;
     if (typeof parsed.event !== "string" || typeof parsed.sessionId !== "string") return null;
 
+    // `v` 1 or 2 (plan Faz 0.2). v2 only ADDS optional fields, so a v1 parser
+    // reading a v2 line is correct — but an unknown MAJOR version is not
+    // something to guess at.
+    const version = typeof parsed.v === "number" ? parsed.v : 0;
+    if (version !== 1 && version !== 2) {
+      console.warn(`[TestEventBridge] rejecting event with unsupported v=${String(parsed.v)}`);
+      return null;
+    }
+
+    // A missing seq used to become -1, and TestEventDeduper lets seq < 0 through
+    // unconditionally "for diagnostics". Together those two silently DISABLED
+    // dedupe for the malformed event — the one case where a replay is most
+    // likely. Reject loudly instead (plan Faz 0.2).
+    if (typeof parsed.seq !== "number" || !Number.isInteger(parsed.seq) || parsed.seq < 1) {
+      console.warn(
+        `[TestEventBridge] rejecting event without a usable seq: ` +
+          `event=${parsed.event} seq=${String(parsed.seq)}`,
+      );
+      return null;
+    }
+
     return {
-      v: typeof parsed.v === "number" ? parsed.v : 0,
+      v: version,
       runId: typeof parsed.runId === "string" ? parsed.runId : "",
       sessionId: parsed.sessionId,
-      seq: typeof parsed.seq === "number" ? parsed.seq : -1,
+      seq: parsed.seq,
       ts: typeof parsed.ts === "number" ? parsed.ts : 0,
       monoTs: typeof parsed.monoTs === "number" ? parsed.monoTs : 0,
       screen: typeof parsed.screen === "string" ? parsed.screen : "",
@@ -106,7 +127,10 @@ export class TestEventDeduper {
 
   /** Returns true when the event is fresh; false for duplicates/replays. */
   accept(event: TestBridgeEvent): boolean {
-    if (event.seq < 0) return true; // malformed seq — let it through for diagnostics
+    // There used to be a `seq < 0 -> return true` bypass "for diagnostics". Paired
+    // with the parser turning a missing seq into -1, it DISABLED dedupe for exactly
+    // the malformed events most likely to be replays. The parser now rejects such
+    // lines outright, so the bypass is both dead and misleading — removed.
     const key = `${event.runId}|${event.sessionId}`;
     const last = this.lastSeqBySession.get(key);
     if (last !== undefined && event.seq <= last) return false;

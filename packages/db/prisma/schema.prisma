@@ -128,20 +128,20 @@ model MobileDevice {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Workflow {
-  id               String   @id @default(cuid())
-  slug             String   @unique
-  name             String
-  description      String?
-  status           String   @default("draft")
-  category         String?
-  icon             String   @default("Workflow")
-  iconClassName    String   @default("")
-  currentVersionId String?
-  draftNodes       Json?
-  draftEdges       Json?
-  draftConfig      Json?
+  id                 String    @id @default(cuid())
+  slug               String    @unique
+  name               String
+  description        String?
+  status             String    @default("draft")
+  category           String?
+  icon               String    @default("Workflow")
+  iconClassName      String    @default("")
+  currentVersionId   String?
+  draftNodes         Json?
+  draftEdges         Json?
+  draftConfig        Json?
   draftBaseVersionId String?
-  draftUpdatedAt   DateTime?
+  draftUpdatedAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,7 +155,7 @@ model Workflow {
 }
 
 model WorkflowVersion {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   workflowId String
   version    Int
   nodes      Json
@@ -166,7 +166,7 @@ model WorkflowVersion {
   createdAt DateTime @default(now())
   createdBy String?
 
-  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   runs     WorkflowRun[]
 
   @@unique([workflowId, version])
@@ -188,7 +188,7 @@ model WorkflowRun {
   /// Run-time inputs (barcode, shipmentId, ...) merged into the Maestro env and
   /// used to resolve {{placeholder}} tokens in node config. Lets one workflow run
   /// against different shipments without editing the saved version.
-  runInput     Json?
+  runInput Json?
 
   yamlContent   String?
   startedAt     DateTime?
@@ -201,8 +201,8 @@ model WorkflowRun {
 
   createdAt DateTime @default(now())
 
-  workflow    Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  version    WorkflowVersion  @relation(fields: [versionId], references: [id])
+  workflow    Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version     WorkflowVersion      @relation(fields: [versionId], references: [id])
   stepResults WorkflowStepResult[]
 
   @@index([workflowId, createdAt])
@@ -355,31 +355,105 @@ model EngineeringIncidentEvent {
 
 /// Automation: field support courier login (1 row per courier / country / env; PIN never stored)
 model FieldCourierLogin {
-  id               String   @id @default(cuid())
-  country          String
-  environment      String
-  courierUserId    String?
-  courierUsername  String?
-  courierFullName  String?
-  hubId            String?
-  hubName          String?
-  waybillNumber    String?
-  legacyBarcode    String?
-  barcode          String?
-  deviceCode       String?
-  adbDeviceId      String?
-  adminUserId      String?
-  adminUsername    String?
-  status           String
-  errorMessage     String?
-  failedStep       String?
-  maestroRunId     String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  country         String
+  environment     String
+  courierUserId   String?
+  courierUsername String?
+  courierFullName String?
+  hubId           String?
+  hubName         String?
+  waybillNumber   String?
+  legacyBarcode   String?
+  barcode         String?
+  deviceCode      String?
+  adbDeviceId     String?
+  adminUserId     String?
+  adminUsername   String?
+  status          String
+  errorMessage    String?
+  failedStep      String?
+  maestroRunId    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([country, environment, courierUserId])
   @@index([country, environment, updatedAt])
   @@index([status])
   @@index([courierUsername])
   @@map("field_courier_logins")
+}
+
+// ===========================================================================
+//  Verdict at-least-once ingest  (plan C.5.3 / Faz 0.2)
+//
+//  Three tables, one job: make "the host has durably accepted this event" a
+//  fact the device can rely on before it deletes its WAL record.
+//
+//  The earlier design ACKed right after parsing. If the host then crashed
+//  between ACK and fan-out, the device had already dropped the record and the
+//  event was gone for good — at-least-once was not achievable. Insert and
+//  watermark now move inside ONE transaction, and the ACK is sent only after
+//  COMMIT.
+//
+//  These are written through raw SQL, not the Prisma query builder: the ingest
+//  path needs `SELECT ... FOR UPDATE`, array mutation on `pending_above`, and
+//  `pg_try_advisory_lock`, none of which Prisma exposes. The models exist so
+//  the tables live in the same migration history as everything else.
+// ===========================================================================
+
+/// One row per accepted event. PK makes re-delivery idempotent.
+model VerdictInbox {
+  runId       String    @map("run_id")
+  sessionId   String    @map("session_id")
+  /// BigInt, not Int: a long-running stream's seq can exceed 2^31.
+  seq         BigInt
+  payload     Json
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  /// NULL until the ordered fan-out worker has handed the event to consumers.
+  /// Restart resumes from exactly these rows.
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+
+  @@id([runId, sessionId, seq])
+  @@index([runId, sessionId, processedAt, seq], map: "verdict_inbox_pending_idx")
+  @@map("verdict_inbox")
+}
+
+/// Ranges the device permanently skipped (ENOSPC, capacity, retention purge).
+///
+/// PK is (run, session, generation), NOT (run, session, from_seq). Generations
+/// are immutable on the device: a merge is emitted as a NEW generation rather
+/// than a widened old one, so `ON CONFLICT DO NOTHING` cannot silently discard
+/// a grown to_seq. Re-sending the same generation is idempotent.
+model VerdictGap {
+  runId      String   @map("run_id")
+  sessionId  String   @map("session_id")
+  generation BigInt
+  fromSeq    BigInt   @map("from_seq")
+  toSeq      BigInt   @map("to_seq")
+  reason     String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([runId, sessionId, generation])
+  @@map("verdict_gap")
+}
+
+/// Per-stream ingest cursor.
+model VerdictStream {
+  runId           String   @map("run_id")
+  sessionId       String   @map("session_id")
+  /// Highest n such that [1..n] is fully covered by received events UNION gaps.
+  /// Advanced INCREMENTALLY (see pendingAbove) — never recomputed by scanning
+  /// the inbox, which would be O(n^2) per run under the row lock.
+  contiguousSeq   BigInt   @default(0) @map("contiguous_seq")
+  /// Seqs received above the cursor, i.e. the far side of a hole. A cache, not
+  /// a source of truth: losing it costs one full rescan, not correctness.
+  pendingAbove    BigInt[] @default([]) @map("pending_above")
+  /// Counts how often the 10k pending_above cap forced a full rescan. A
+  /// non-zero value in normal operation means the ingest assumptions are wrong.
+  fullRescanCount Int      @default(0) @map("full_rescan_count")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([runId, sessionId])
+  @@map("verdict_stream")
 }

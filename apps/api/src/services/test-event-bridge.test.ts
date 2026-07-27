@@ -117,3 +117,51 @@ describe("parseGetStateOutput", () => {
     expect(parseGetStateOutput("Broadcast completed: result=-1")).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+//  Faz 0.2 — schema version and seq validation
+// ---------------------------------------------------------------------------
+
+describe("parseTestEventLine — v1/v2 and seq validation (Faz 0.2)", () => {
+  const line = (fields: Record<string, unknown>) =>
+    `NESY_TEST_EVENT|${JSON.stringify({
+      v: 1,
+      runId: "run-1",
+      sessionId: "s1",
+      seq: 7,
+      ts: 1,
+      monoTs: 2,
+      screen: "S",
+      event: "SCREEN_READY",
+      taskId: "",
+      ...fields,
+    })}`;
+
+  it("accepts v=1 and v=2", () => {
+    expect(parseTestEventLine(line({ v: 1 }))?.v).toBe(1);
+    expect(parseTestEventLine(line({ v: 2 }))?.v).toBe(2);
+  });
+
+  it("rejects an unknown schema version instead of guessing", () => {
+    expect(parseTestEventLine(line({ v: 3 }))).toBeNull();
+    expect(parseTestEventLine(line({ v: undefined }))).toBeNull();
+  });
+
+  it("REJECTS a missing seq instead of substituting -1", () => {
+    // The old behaviour turned a missing seq into -1, and the deduper let seq < 0
+    // through unconditionally — silently disabling dedupe for exactly the
+    // malformed events most likely to be replays.
+    expect(parseTestEventLine(line({ seq: undefined }))).toBeNull();
+    expect(parseTestEventLine(line({ seq: "7" }))).toBeNull();
+    expect(parseTestEventLine(line({ seq: 0 }))).toBeNull();
+    expect(parseTestEventLine(line({ seq: -1 }))).toBeNull();
+    expect(parseTestEventLine(line({ seq: 1.5 }))).toBeNull();
+  });
+
+  it("the deduper no longer has a bypass, so every accepted event is deduped", () => {
+    const deduper = new TestEventDeduper();
+    const event = parseTestEventLine(line({ seq: 5 }))!;
+    expect(deduper.accept(event)).toBe(true);
+    expect(deduper.accept(event)).toBe(false);
+  });
+});

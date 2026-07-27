@@ -41,6 +41,9 @@ importers:
       '@nesy/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@prisma/client':
+        specifier: ^6.1.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.8.3))(typescript@5.8.3)
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1

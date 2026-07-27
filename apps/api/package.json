@@ -21,6 +21,7 @@
     "@nesy/control-channels": "workspace:*",
     "@nesy/control-contract": "workspace:*",
     "@nesy/db": "workspace:*",
+    "@prisma/client": "^6.1.0",
     "@nesy/platform-paths": "workspace:*",
     "@nesy/types": "workspace:*",
     "dotenv": "^16.4.7",
