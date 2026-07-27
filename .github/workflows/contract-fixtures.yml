@@ -1,0 +1,61 @@
+# ============================================================================
+#  Golden contract fixtures — CONSUMER side  (plan Faz 0.4 / 2.5, Bölüm G)
+#
+#  The gate has to run in BOTH repos, not just one. A single-sided job cannot
+#  catch mutual staleness: each repo's own suite keeps passing against whichever
+#  corpus it happens to have, so the mismatch is only visible when both sides
+#  compare their pins.
+#
+#  This repo had no workflows before; this file adds only the contract job.
+#  Wiring the rest of the Cockpit CI is a separate piece of work.
+# ============================================================================
+name: contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract:
+    name: Golden contract fixtures (consumer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pinned corpus. Without it the suite FAILS rather than skipping — a
+          # pinned SHA with no checkout must not read as "contract verified".
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      # --- 1) Mismatch gate, before anything else -------------------------
+      - name: Checkout NesyMobile lock (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.MOBILE_REPO }}
+          ref: rel/env-dev
+          path: .peer-mobile
+          sparse-checkout: contract-fixtures.lock
+          sparse-checkout-cone-mode: false
+
+      - name: Fixture lock mismatch gate
+        run: |
+          node scripts/check-fixture-lock.mjs \
+            --self . \
+            --peer .peer-mobile \
+            --corpus verdict-contract-fixtures
+
+      # --- 2) Consumer side: parsers must match expected-parse ------------
+      - run: pnpm install --frozen-lockfile
+
+      - name: Consume fixtures
+        env:
+          VERDICT_FIXTURES_DIR: ${{ github.workspace }}/verdict-contract-fixtures
+        run: pnpm --filter @nesy/api test -- src/services/contract-fixtures.test.ts

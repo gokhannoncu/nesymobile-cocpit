@@ -1,0 +1,11 @@
+# verdict-contract-fixtures pin — DO NOT edit by hand alone.
+#
+# Both consumer repos must hold the SAME sha. CI's `contract` job compares the
+# two locks BEFORE running either suite and fails when they differ, so a fixture
+# change that lands on only one side cannot go green.
+#
+# Updating fixtures:
+#   1. commit in verdict-contract-fixtures
+#   2. move this line in BOTH repos, in the same PR round
+#   3. cross-link the two PRs with `Pairs-With: <owner/repo#PR>`
+sha=b7fc73dc1edd3a9c7f72ef6202c62cf6bede5d80
