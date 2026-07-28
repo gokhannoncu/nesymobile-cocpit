@@ -13,16 +13,20 @@ import { TestEventWsServer } from "./services/test-event-ws-server.js";
 import type { LogcatSniffer } from "./services/logcat-sniffer.js";
 
 let injected = 0;
-let acks = 0;
-let lastAck = "-";
-const seen = new Map<string, number[]>();
+let outboundFrames = 0;
+let eventAcks = 0;
+let gapAcks = 0;
+let ackRegressions = 0;
+const seen = new Map<string, Map<number, number>>();
+const ackMax = new Map<string, bigint>();
 
 const sniffer = {
   injectTestEvent(e: { runId: string; sessionId: string; seq: number; event: string; raw: string }) {
     injected += 1;
     const k = `${e.runId}|${e.sessionId}`;
-    if (!seen.has(k)) seen.set(k, []);
-    const arr = seen.get(k)!; arr.push(e.seq); if (arr.length > 5000) arr.splice(0, 2500);
+    if (!seen.has(k)) seen.set(k, new Map());
+    const seqCounts = seen.get(k)!;
+    seqCounts.set(e.seq, (seqCounts.get(e.seq) ?? 0) + 1);
     if (injected % 500 === 0) console.log(`[SNIFF#${injected}] ${k} seq=${e.seq} event=${e.event}`);
   },
 } as unknown as LogcatSniffer;
@@ -39,7 +43,41 @@ if (srv) {
     socket.on("message", (d) => { const t = String(d); if (t.length < 400 && !t.includes('"seq"')) console.log("[RAW<-]", t); });
     const origSend = socket.send.bind(socket);
     (socket as unknown as { send: (x: unknown) => void }).send = (x: unknown) => {
-      acks += 1; const t = String(x); const m = /lastContiguousSeq":"(\d+)"/.exec(t); if (m) { lastAck = m[1]; } else { console.log("[RAW->]", t); }
+      outboundFrames += 1;
+      const t = String(x);
+      try {
+        const frame = JSON.parse(t) as {
+          type?: string;
+          runId?: string;
+          sessionId?: string;
+          lastContiguousSeq?: string;
+        };
+        if (
+          frame.type === "event_ack" &&
+          typeof frame.runId === "string" &&
+          typeof frame.sessionId === "string" &&
+          typeof frame.lastContiguousSeq === "string"
+        ) {
+          eventAcks += 1;
+          const k = `${frame.runId}|${frame.sessionId}`;
+          const ack = BigInt(frame.lastContiguousSeq);
+          const previousMax = ackMax.get(k);
+          const regressed = previousMax !== undefined && ack < previousMax;
+          if (regressed) ackRegressions += 1;
+          if (previousMax === undefined || ack > previousMax) ackMax.set(k, ack);
+          console.log(
+            `[ACK#${eventAcks}] runId=${frame.runId} sessionId=${frame.sessionId} ` +
+              `lastContiguousSeq=${ack} previousMax=${previousMax ?? "-"} regressed=${regressed}`,
+          );
+        } else if (frame.type === "gap_ack") {
+          gapAcks += 1;
+          console.log("[GAP_ACK]", t);
+        } else {
+          console.log("[RAW->]", t);
+        }
+      } catch {
+        console.log("[RAW->]", t);
+      }
       return origSend(x as string);
     };
   });
@@ -48,21 +86,33 @@ if (srv) {
 }
 
 setInterval(() => {
+  const unique = [...seen.values()].reduce((n, seqCounts) => n + seqCounts.size, 0);
   console.log(
     `[cp2] running=${TestEventWsServer.isRunning()} ingestReady=${TestEventWsServer.isIngestReady()} injected=${injected} ` +
-      `acksSent=${acks} lastAck=${lastAck} streams=${seen.size} ` +
-      `${[...seen.entries()].slice(-3).map(([k, v]) => `${k}:n=${v.length},max=${v[v.length - 1]}`).join(" ")}`,
+      `unique=${unique} duplicates=${injected - unique} eventAcks=${eventAcks} gapAcks=${gapAcks} ` +
+      `ackRegressions=${ackRegressions} streams=${seen.size}`,
   );
 }, 10_000);
 
 process.on("SIGINT", () => {
-  console.log(`[cp2] FINAL injected=${injected}`);
-  for (const [k, v] of seen) {
-    const s = [...v].sort((a, b) => a - b);
-    const uniq = [...new Set(s)];
+  const unique = [...seen.values()].reduce((n, seqCounts) => n + seqCounts.size, 0);
+  console.log(
+    `[cp2] FINAL frames=${injected} unique=${unique} duplicates=${injected - unique} ` +
+      `outboundFrames=${outboundFrames} eventAcks=${eventAcks} gapAcks=${gapAcks} ` +
+      `ackRegressions=${ackRegressions} streams=${seen.size}`,
+  );
+  for (const [k, seqCounts] of seen) {
+    const seqs = [...seqCounts.keys()].sort((a, b) => a - b);
     const gaps: string[] = [];
-    for (let i = 1; i < uniq.length; i++) if (uniq[i] !== uniq[i - 1] + 1) gaps.push(`${uniq[i - 1]}->${uniq[i]}`);
-    console.log(`[cp2] stream ${k}: frames=${v.length} unique=${uniq.length} min=${uniq[0]} max=${uniq[uniq.length - 1]} duplicates=${v.length - uniq.length} gaps=[${gaps.join(",")}]`);
+    for (let i = 1; i < seqs.length; i++) {
+      if (seqs[i] !== seqs[i - 1] + 1) gaps.push(`${seqs[i - 1]}->${seqs[i]}`);
+    }
+    const frames = [...seqCounts.values()].reduce((n, count) => n + count, 0);
+    console.log(
+      `[cp2] stream ${k}: frames=${frames} unique=${seqs.length} min=${seqs[0]} ` +
+        `max=${seqs[seqs.length - 1]} duplicates=${frames - seqs.length} ` +
+        `ackMax=${ackMax.get(k) ?? "-"} gaps=[${gaps.join(",")}]`,
+    );
   }
   process.exit(0);
 });
