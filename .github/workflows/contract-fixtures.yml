@@ -8,6 +8,29 @@
 #
 #  This repo had no workflows before; this file adds only the contract job.
 #  Wiring the rest of the Cockpit CI is a separate piece of work.
+#
+#  ## `Pairs-With` — the coordinated-bump path (Bölüm G), NOW IMPLEMENTED
+#
+#  Until this landed, each side compared its own new sha against the peer's
+#  DEFAULT BRANCH, so a paired pin change could not go green on either side: this
+#  PR compared the new sha with NesyMobile's still-old `rel/env-dev`, and the
+#  NesyMobile PR did the mirror image. Two PRs that must land together were
+#  unmergeable, and the only way forward would have been to ignore the gate — the
+#  habit that ends a gate's usefulness.
+#
+#  A PR description may now carry `Pairs-With: <owner/repo#PR>`, and when the peer
+#  PR names this PR back, the peer's PR HEAD is read instead of its default branch.
+#  All of the validation lives in `scripts/check-fixture-lock.mjs` and is unit
+#  tested (`scripts/check-fixture-lock.test.mjs`) — see that file for the trust
+#  model. The value is UNTRUSTED INPUT and is never interpolated into a shell.
+#
+#  ## STILL A GAP — do not read the green tick as more than it is
+#
+#  Bölüm G puts this job in the neutral `verdict-contract-fixtures` repo, called
+#  from both consumers via `workflow_call`. That is NOT implemented: this is still
+#  a hand-kept COPY of the NesyMobile file
+#  (`NesyMobile/.github/workflows/contract-fixtures.yml`) and of the gate script,
+#  which is byte-identical in both repos. Keep them in step by hand.
 # ============================================================================
 name: contract
 
@@ -15,6 +38,17 @@ on:
   push:
     branches: [main]
   pull_request:
+
+# `Pairs-With` reads THIS PR's description out of the event payload, which needs no
+# permission, and the PEER PR is read with `secrets.PEER_LOCK_TOKEN` — a different
+# credential that `permissions:` does not govern.
+#
+# ⚠️ That peer token now needs `pull_requests: read` on the peer repo in addition
+# to `contents: read`. Bölüm G's access table says `contents: read` only; a head
+# SHA, a PR state and a PR description are not repository contents. Flagged as a
+# plan gap rather than silently assumed.
+permissions:
+  contents: read
 
 jobs:
   contract:
@@ -37,8 +71,8 @@ jobs:
 
       # --- 1) Mismatch gate, before anything else -------------------------
       # The two repos live under DIFFERENT owners, so the default GITHUB_TOKEN
-      # cannot read the peer — a token with `contents: read` on it is required.
-      # Only contract-fixtures.lock is fetched; no peer code is executed.
+      # cannot read the peer — a token with `contents: read` + `pull_requests: read`
+      # on it is required. One file is fetched; no peer code is executed.
       # A missing token would make the peer checkout fail with a confusing git error,
       # or worse, be worked around by dropping the peer comparison — leaving a job that
       # says "contract verified" while checking only one side. Say what is wrong.
@@ -52,11 +86,87 @@ jobs:
             exit 1
           fi
 
+      # The validator's own tests. They run BEFORE the gate uses it, and they are
+      # the only evidence available locally: the cross-repo path needs
+      # `vars.MOBILE_REPO` and `secrets.PEER_LOCK_TOKEN`, so nothing outside CI can
+      # exercise the `gh api` call — but the decision about WHICH commit to trust is
+      # pure, and that is where the untrusted-input risk lives.
+      - name: Pairs-With validator tests
+        run: node --test scripts/check-fixture-lock.test.mjs
+
+      # --- 1a) Which peer commit? ------------------------------------------
+      #
+      # Two steps, because the second needs the answer of the first: the peer PR
+      # can only be fetched once we know which PR this one names.
+      #
+      # ⚠️ The PR description is UNTRUSTED and is passed through a FILE via `env`,
+      # never through `${{ }}` into a `run:` block. It can contain quotes,
+      # backticks, newlines and `$(...)`; interpolating it would be a shell
+      # injection with this workflow's permissions.
+      - name: Read the Pairs-With target
+        id: pair_target
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > /tmp/pr-body.txt
+          target="$(node scripts/check-fixture-lock.mjs --pairs-target --body-file /tmp/pr-body.txt)"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          if [ -n "$target" ]; then
+            echo "::notice::Pairs-With names $target"
+          fi
+
+      # `gh api` and not `actions/checkout`: this reads a PR's metadata (head SHA,
+      # state, base/head repo, description), which is not repository contents. The
+      # peer's CODE is never fetched — see the sparse checkout below, which takes
+      # one file.
+      - name: Fetch the peer PR (metadata only)
+        if: steps.pair_target.outputs.target != ''
+        env:
+          GH_TOKEN: ${{ secrets.PEER_LOCK_TOKEN }}
+          TARGET: ${{ steps.pair_target.outputs.target }}
+        run: |
+          # TARGET is already validated to `owner/repo#N` by --pairs-target, which
+          # exits non-zero on anything else, so this split cannot smuggle a path.
+          repo="${TARGET%#*}"
+          num="${TARGET##*#}"
+          if ! gh api "repos/$repo/pulls/$num" > /tmp/peer-pr.json; then
+            echo "::error::Pairs-With names $TARGET but that PR could not be read. Either it does not exist, or secrets.PEER_LOCK_TOKEN lacks pull_requests:read on $repo."
+            exit 1
+          fi
+
+      - name: Resolve the peer ref
+        id: peer
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          SELF_FORK: ${{ github.event.pull_request.head.repo.fork }}
+        run: |
+          printf '%s' "$PR_BODY" > /tmp/pr-body.txt
+          # `if` blocks and not `[ ... ] && x=y`: the default shell is `bash -e`, and
+          # a bare AND-list whose test is false returns non-zero, which exits the
+          # step. That would have made every non-paired PR fail here.
+          args=""
+          if [ -f /tmp/peer-pr.json ]; then
+            args="--peer-pr-file /tmp/peer-pr.json"
+          fi
+          if [ "$SELF_FORK" = "true" ]; then
+            args="$args --self-fork"
+          fi
+          node scripts/check-fixture-lock.mjs --resolve-peer \
+            --self-repo '${{ github.repository }}' \
+            --self-pr '${{ github.event.pull_request.number }}' \
+            --body-file /tmp/pr-body.txt \
+            --peer-repo '${{ vars.MOBILE_REPO }}' \
+            --peer-default-branch rel/env-dev \
+            $args >> "$GITHUB_OUTPUT"
+
       - name: Checkout NesyMobile lock (read-only)
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.MOBILE_REPO }}
-          ref: rel/env-dev
+          # The peer's default branch, or — for a validated MUTUAL, non-fork
+          # `Pairs-With` pair — the peer PR's head SHA. A 40-hex SHA or the literal
+          # `rel/env-dev`; the resolver refuses anything else.
+          ref: ${{ steps.peer.outputs.peer_ref }}
           token: ${{ secrets.PEER_LOCK_TOKEN }}
           path: .peer-mobile
           sparse-checkout: contract-fixtures.lock
@@ -64,6 +174,7 @@ jobs:
 
       - name: Fixture lock mismatch gate
         run: |
+          echo "peer ref: ${{ steps.peer.outputs.peer_ref }} (${{ steps.peer.outputs.peer_mode }})"
           node scripts/check-fixture-lock.mjs \
             --self . \
             --peer .peer-mobile \
