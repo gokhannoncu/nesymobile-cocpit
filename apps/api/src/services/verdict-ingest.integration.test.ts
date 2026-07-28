@@ -76,6 +76,30 @@ suite("verdict ingest against PostgreSQL", () => {
     expect((await cursor()).contiguous).toBe(1n);
   });
 
+  it("serialises a concurrent burst for one stream without DB errors or lost updates", async () => {
+    const sessionId = "cp2-concurrent";
+    const frames = Array.from({ length: 64 }, (_, index): IngestFrame => {
+      const seq = index + 1;
+      return {
+        kind: "event",
+        runId: RUN,
+        sessionId,
+        seq: String(seq),
+        payload: { event: "SCREEN_READY", seq },
+      };
+    });
+
+    const results = await Promise.all(frames.map((frame) => ingestFrame(frame)));
+    expect(results.filter((result) => !result.ok)).toEqual([]);
+    const rows = await prisma.$queryRaw<{ contiguous_seq: bigint; inbox_count: bigint }[]>`
+      SELECT s.contiguous_seq,
+             (SELECT count(*) FROM verdict_inbox i
+              WHERE i.run_id = s.run_id AND i.session_id = s.session_id) AS inbox_count
+      FROM verdict_stream s
+      WHERE s.run_id = ${RUN} AND s.session_id = ${sessionId}`;
+    expect(rows[0]).toEqual({ contiguous_seq: 64n, inbox_count: 64n });
+  });
+
   it("a hole parks in pending_above and survives the round trip as bigint[]", async () => {
     await ingestFrame(ev(3));
     await ingestFrame(ev(4));

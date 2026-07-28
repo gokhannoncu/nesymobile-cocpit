@@ -20,6 +20,7 @@ import type { LogcatSniffer } from "./logcat-sniffer.js";
 import { parseTestEventLine, type TestBridgeEvent } from "./test-event-bridge.js";
 import { ingestFrame, type IngestFrame } from "./verdict-ingest.js";
 import { runFanoutOnce } from "./verdict-fanout.js";
+import { MonotoneStreamWatermarks } from "./verdict-stream-order.js";
 import { prisma } from "@nesy/db";
 
 export const TEST_EVENT_WS_PORT = 8765;
@@ -94,6 +95,7 @@ class TestEventWsServerImpl {
    * the same error forever.
    */
   private ingestReady = false;
+  private readonly sentAckThrough = new MonotoneStreamWatermarks();
 
   /**
    * Verifies the ingest tables exist before claiming the durable path works.
@@ -143,13 +145,18 @@ class TestEventWsServerImpl {
     const send = (payload: unknown) => {
       if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(payload));
     };
+    const wireAck = this.sentAckThrough.advance(
+      frame.runId,
+      frame.sessionId,
+      res.lastContiguousSeq,
+    );
     send({
       type: "event_ack",
       runId: frame.runId,
       sessionId: frame.sessionId,
       // Decimal string: seq is a Kotlin Long and JSON numbers lose precision
       // past 2^53. The device parses it with BigInt.
-      lastContiguousSeq: res.lastContiguousSeq.toString(),
+      lastContiguousSeq: wireAck.toString(),
     });
     if (res.ackGeneration !== undefined) {
       // Only this (or a cumulative ack >= toSeq) lets the device clear the gap

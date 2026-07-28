@@ -42,6 +42,9 @@ import {
   type GapRange,
   type StreamCursor,
 } from "./verdict-contiguous.js";
+import { StreamSerialiser } from "./verdict-stream-order.js";
+
+const streamSerialiser = new StreamSerialiser();
 
 /**
  * The transaction client type, derived from the client rather than imported from
@@ -211,7 +214,7 @@ export async function ingestFrame(frame: IngestFrame): Promise<IngestResult> {
   }
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await streamSerialiser.run(runId, sessionId, () => prisma.$transaction(async (tx) => {
       const row = await lockStream(tx, runId, sessionId);
       const gaps = await loadGaps(tx, runId, sessionId);
       let cursor: StreamCursor = {
@@ -308,7 +311,7 @@ export async function ingestFrame(frame: IngestFrame): Promise<IngestResult> {
         duplicate: res.duplicate,
         fullRescan: rescanDelta === 1,
       };
-    });
+    }));
   } catch (err) {
     if (err instanceof GapConflictError) {
       return { ok: false, code: "PROTOCOL_VIOLATION", detail: err.message };
