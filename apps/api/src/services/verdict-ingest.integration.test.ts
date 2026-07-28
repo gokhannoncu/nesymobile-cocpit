@@ -77,28 +77,35 @@ suite("verdict ingest against PostgreSQL", () => {
   });
 
   it("serialises a concurrent burst for one stream without DB errors or lost updates", async () => {
+    const runId = `${RUN}-concurrent`;
     const sessionId = "cp2-concurrent";
     const frames = Array.from({ length: 64 }, (_, index): IngestFrame => {
       const seq = index + 1;
       return {
         kind: "event",
-        runId: RUN,
+        runId,
         sessionId,
         seq: String(seq),
         payload: { event: "SCREEN_READY", seq },
       };
     });
 
-    const results = await Promise.all(frames.map((frame) => ingestFrame(frame)));
-    expect(results.filter((result) => !result.ok)).toEqual([]);
-    const rows = await prisma.$queryRaw<{ contiguous_seq: bigint; inbox_count: bigint }[]>`
-      SELECT s.contiguous_seq,
-             (SELECT count(*) FROM verdict_inbox i
-              WHERE i.run_id = s.run_id AND i.session_id = s.session_id) AS inbox_count
-      FROM verdict_stream s
-      WHERE s.run_id = ${RUN} AND s.session_id = ${sessionId}`;
-    expect(rows[0]).toEqual({ contiguous_seq: 64n, inbox_count: 64n });
-  });
+    try {
+      const results = await Promise.all(frames.map((frame) => ingestFrame(frame)));
+      expect(results.filter((result) => !result.ok)).toEqual([]);
+      const rows = await prisma.$queryRaw<{ contiguous_seq: bigint; inbox_count: bigint }[]>`
+        SELECT s.contiguous_seq,
+               (SELECT count(*) FROM verdict_inbox i
+                WHERE i.run_id = s.run_id AND i.session_id = s.session_id) AS inbox_count
+        FROM verdict_stream s
+        WHERE s.run_id = ${runId} AND s.session_id = ${sessionId}`;
+      expect(rows[0]).toEqual({ contiguous_seq: 64n, inbox_count: 64n });
+    } finally {
+      await prisma.$executeRaw`DELETE FROM verdict_inbox  WHERE run_id = ${runId}`;
+      await prisma.$executeRaw`DELETE FROM verdict_gap    WHERE run_id = ${runId}`;
+      await prisma.$executeRaw`DELETE FROM verdict_stream WHERE run_id = ${runId}`;
+    }
+  }, 120_000);
 
   it("a hole parks in pending_above and survives the round trip as bigint[]", async () => {
     await ingestFrame(ev(3));
@@ -121,7 +128,8 @@ suite("verdict ingest against PostgreSQL", () => {
 
   it("re-delivery is a duplicate, is still ACKed, and inserts nothing new", async () => {
     const before = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT count(*) n FROM verdict_inbox WHERE run_id = ${RUN}`;
+      SELECT count(*) n FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION}`;
     const res = await ingestFrame(ev(2));
     expect(res.ok).toBe(true);
     if (res.ok) {
@@ -130,7 +138,8 @@ suite("verdict ingest against PostgreSQL", () => {
       expect(res.lastContiguousSeq).toBe(4n);
     }
     const after = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT count(*) n FROM verdict_inbox WHERE run_id = ${RUN}`;
+      SELECT count(*) n FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION}`;
     expect(after[0]!.n).toBe(before[0]!.n);
   });
 
@@ -166,7 +175,8 @@ suite("verdict ingest against PostgreSQL", () => {
     if (!res.ok) expect(res.code).toBe("PROTOCOL_VIOLATION");
     // The transaction rolled back: the stored range is untouched.
     const rows = await prisma.$queryRaw<{ to_seq: bigint }[]>`
-      SELECT to_seq FROM verdict_gap WHERE run_id = ${RUN} AND generation = 2`;
+      SELECT to_seq FROM verdict_gap
+      WHERE run_id = ${RUN} AND session_id = ${SESSION} AND generation = 2`;
     expect(rows[0]!.to_seq).toBe(30n);
   });
 
@@ -175,7 +185,8 @@ suite("verdict ingest against PostgreSQL", () => {
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.duplicate).toBe(true);
     const rows = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT count(*) n FROM verdict_inbox WHERE run_id = ${RUN} AND seq = 25`;
+      SELECT count(*) n FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION} AND seq = 25`;
     expect(rows[0]!.n).toBe(0n);
   });
 
@@ -221,7 +232,9 @@ suite("verdict ingest against PostgreSQL", () => {
 
     // 9 is marked processed, 10 is not: at-least-once means 10 comes back.
     const pending = await prisma.$queryRaw<{ seq: bigint }[]>`
-      SELECT seq FROM verdict_inbox WHERE run_id = ${RUN} AND processed_at IS NULL ORDER BY seq`;
+      SELECT seq FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION} AND processed_at IS NULL
+      ORDER BY seq`;
     expect(pending.map((r) => r.seq)).toEqual([10n, 11n]);
   });
 
@@ -238,7 +251,8 @@ suite("verdict ingest against PostgreSQL", () => {
       INSERT INTO verdict_inbox (run_id, session_id, seq, payload)
       VALUES (${RUN}, ${SESSION}, ${big}, '{}'::jsonb)`;
     const rows = await prisma.$queryRaw<{ seq: bigint }[]>`
-      SELECT seq FROM verdict_inbox WHERE run_id = ${RUN} AND seq = ${big}`;
+      SELECT seq FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION} AND seq = ${big}`;
     expect(rows[0]!.seq).toBe(big);
   });
 });
