@@ -66,6 +66,56 @@ function parseControlFrame(data: string): IngestFrame | null {
   }
 }
 
+export interface HeartbeatFrame {
+  runId: string | null;
+  sessionId: string | null;
+  wal: string | null;
+  ws: string | null;
+}
+
+export interface StreamHeartbeatLiveness {
+  lastBeatAt: number;
+  wal: string | null;
+  ws: string | null;
+}
+
+function hasUsableEventSeq(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1;
+}
+
+/**
+ * Recognises the SDK's unsequenced, WAL-bypass heartbeat before the shared
+ * structured-event parser can reject its deliberately absent `seq`.
+ *
+ * `type: "heartbeat"` is authoritative and is always liveness-only. A legacy
+ * `BRIDGE_HEARTBEAT` carrying a usable seq is intentionally not matched here,
+ * so it remains ingestable exactly as it was before the WAL-bypass frame was
+ * introduced.
+ */
+function parseHeartbeatFrame(data: string): HeartbeatFrame | null {
+  try {
+    const frame = JSON.parse(data.trim()) as Record<string, unknown>;
+    const isWalBypassHeartbeat = frame.type === "heartbeat";
+    const isUnsequencedStructuredHeartbeat =
+      frame.event === "BRIDGE_HEARTBEAT" && !hasUsableEventSeq(frame.seq);
+    if (!isWalBypassHeartbeat && !isUnsequencedStructuredHeartbeat) return null;
+
+    const heartbeatData =
+      typeof frame.data === "object" && frame.data !== null && !Array.isArray(frame.data)
+        ? (frame.data as Record<string, unknown>)
+        : {};
+    return {
+      runId: typeof frame.runId === "string" && frame.runId !== "" ? frame.runId : null,
+      sessionId:
+        typeof frame.sessionId === "string" && frame.sessionId !== "" ? frame.sessionId : null,
+      wal: typeof heartbeatData.wal === "string" ? heartbeatData.wal : null,
+      ws: typeof heartbeatData.ws === "string" ? heartbeatData.ws : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function parseWsFrame(data: string): TestBridgeEvent | null {
   const trimmed = data.trim();
   if (!trimmed.startsWith("{")) return null;
@@ -85,9 +135,64 @@ function parseWsFrame(data: string): TestBridgeEvent | null {
   return parseTestEventLine(`NESY_TEST_EVENT|${trimmed}`);
 }
 
+export interface IncomingFrameHandlers {
+  onControl(frame: IngestFrame): void;
+  onHeartbeat(frame: HeartbeatFrame): void;
+  onEvent(event: TestBridgeEvent): void;
+}
+
+/**
+ * Keeps control, unsequenced heartbeat, and durable event routing mutually
+ * exclusive. Exported to let the wire-level routing contract be unit tested
+ * without opening port 8765 or requiring PostgreSQL.
+ */
+export function routeIncomingWsFrame(data: string, handlers: IncomingFrameHandlers): void {
+  const control = parseControlFrame(data);
+  if (control) {
+    handlers.onControl(control);
+    return;
+  }
+
+  const heartbeat = parseHeartbeatFrame(data);
+  if (heartbeat) {
+    handlers.onHeartbeat(heartbeat);
+    return;
+  }
+
+  const event = parseWsFrame(data);
+  if (event) handlers.onEvent(event);
+}
+
+export class HeartbeatLivenessStore {
+  private readonly lastHeartbeatByStream = new Map<string, StreamHeartbeatLiveness>();
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  record(frame: HeartbeatFrame): StreamHeartbeatLiveness | null {
+    if (!frame.runId || !frame.sessionId) return null;
+    const liveness = {
+      lastBeatAt: this.now(),
+      wal: frame.wal,
+      ws: frame.ws,
+    };
+    this.lastHeartbeatByStream.set(this.streamKey(frame.runId, frame.sessionId), liveness);
+    return liveness;
+  }
+
+  get(runId: string, sessionId: string): StreamHeartbeatLiveness | undefined {
+    const liveness = this.lastHeartbeatByStream.get(this.streamKey(runId, sessionId));
+    return liveness ? { ...liveness } : undefined;
+  }
+
+  private streamKey(runId: string, sessionId: string): string {
+    return JSON.stringify([runId, sessionId]);
+  }
+}
+
 class TestEventWsServerImpl {
   private server: WebSocketServer | null = null;
   private readonly sinks = new Set<LogcatSniffer>();
+  private readonly heartbeatLiveness = new HeartbeatLivenessStore();
   private connectionCount = 0;
   /**
    * Whether the durable path is usable. Decided ONCE at start-up rather than per
@@ -217,39 +322,50 @@ class TestEventWsServerImpl {
 
       socket.on("message", (data) => {
         const raw = String(data);
+        routeIncomingWsFrame(raw, {
+          // A gap frame is not a test event: it never reaches the sniffers, only
+          // the durable path.
+          onControl: (control) => {
+            if (this.ingestReady) void this.acceptDurable(socket, control);
+          },
+          // Heartbeats deliberately have no seq and bypass the WAL. They update
+          // host liveness only; they never reach acceptDurable or the sniffers.
+          onHeartbeat: (heartbeat) => {
+            const liveness = this.heartbeatLiveness.record(heartbeat);
+            console.debug(
+              liveness
+                ? `[TestEventWS] heartbeat ${heartbeat.runId}/${heartbeat.sessionId} ` +
+                    `wal=${liveness.wal ?? "unknown"} ws=${liveness.ws ?? "unknown"}`
+                : `[TestEventWS] heartbeat on connection #${connectionId} missing stream identity`,
+            );
+          },
+          onEvent: (event) => {
+            // DUAL WRITE, deliberately (mirrors the mobile side's dual-emit).
+            //
+            // The synchronous sink injection below is what current runs depend on and
+            // it stays byte-for-byte unchanged — switching the oracle's feed to the
+            // durable worker in the same step would couple every existing run to
+            // database latency and availability. The durable path runs alongside so
+            // the host is READY; Faz 2 removes the synchronous one.
+            const wsEvent: TestBridgeEvent = {
+              ...event,
+              raw: `WS|${event.raw.replace(/^.*NESY_TEST_EVENT\|/, "")}`,
+            };
+            for (const sink of this.sinks) {
+              sink.injectTestEvent(wsEvent);
+            }
 
-        // A gap frame is not a test event: it never reaches the sniffers, only
-        // the durable path.
-        const control = parseControlFrame(raw);
-        if (control) {
-          if (this.ingestReady) void this.acceptDurable(socket, control);
-          return;
-        }
-
-        const event = parseWsFrame(raw);
-        if (!event) return;
-
-        // DUAL WRITE, deliberately (mirrors the mobile side's dual-emit).
-        //
-        // The synchronous sink injection below is what current runs depend on and
-        // it stays byte-for-byte unchanged — switching the oracle's feed to the
-        // durable worker in the same step would couple every existing run to
-        // database latency and availability. The durable path runs alongside so
-        // the host is READY; Faz 2 removes the synchronous one.
-        const wsEvent: TestBridgeEvent = { ...event, raw: `WS|${event.raw.replace(/^.*NESY_TEST_EVENT\|/, "")}` };
-        for (const sink of this.sinks) {
-          sink.injectTestEvent(wsEvent);
-        }
-
-        if (this.ingestReady) {
-          void this.acceptDurable(socket, {
-            kind: "event",
-            runId: event.runId,
-            sessionId: event.sessionId,
-            seq: String(event.seq),
-            payload: event,
-          });
-        }
+            if (this.ingestReady) {
+              void this.acceptDurable(socket, {
+                kind: "event",
+                runId: event.runId,
+                sessionId: event.sessionId,
+                seq: String(event.seq),
+                payload: event,
+              });
+            }
+          },
+        });
       });
 
       socket.on("close", () => {
@@ -269,6 +385,11 @@ class TestEventWsServerImpl {
   /** True when frames are being durably accepted and acked. */
   isIngestReady(): boolean {
     return this.ingestReady;
+  }
+
+  /** Latest host-observed heartbeat for future health/stuck-run checks. */
+  getLastHeartbeat(runId: string, sessionId: string): StreamHeartbeatLiveness | undefined {
+    return this.heartbeatLiveness.get(runId, sessionId);
   }
 
   addSink(sniffer: LogcatSniffer): void {
