@@ -6,9 +6,8 @@
  *  (tur 8: önceki sürüm kanalları contract paketine koyup aynı pakete
  *   "kanal bilgisi yok" diyordu — çelişkiydi.)
  *
- *  Faz 0.3 kapsamı: YALNIZ `LegacyReceiverChannel`. Davranış DEĞİŞMEZ.
- *  `VerdictChannel` Faz 4'te eklenir; `detectChannel()` iskeleti burada
- *  hazır durur ki Faz 4 yalnız implementasyon eklesin.
+ *  Faz 4.3b: `LegacyReceiverChannel` Faz 8'e kadar korunur; yeni
+ *  `VerdictChannel` nonce'lı ordered-result ve DumpProvider yollarını taşır.
  * ===========================================================================
  */
 import type {
@@ -52,6 +51,11 @@ const LEGACY_KEY_RECEIVER =
 const LEGACY_NAV_RECEIVER =
   "com.arasdigital.nesymobile.adb.TestNavigationReceiver";
 const ACTION_PREFIX = "com.arasdigital.nesymobile.";
+const VERDICT_CONTROL_RECEIVER = "com.verdict.sdk.core.VerdictControlReceiver";
+const VERDICT_DUMP_PROVIDER = "com.verdict.sdk.core.VerdictDumpProvider";
+const VERDICT_RESULT_JSON = "verdict.result.json";
+const VERDICT_RESULT_TYPE = "verdict.result.type";
+const VERDICT_ACTION_SUFFIX = ".VERDICT_CMD";
 
 /**
  * `am broadcast` çıktısından payload çıkarır. **TEK implementasyon.**
@@ -360,6 +364,484 @@ function scrubSecrets(text: string, op: ControlOperation): string {
   return secret.length > 0 ? text.split(secret).join("***REDACTED***") : text;
 }
 
+// ---------------------------------------------------------------------------
+//  VERDICT CHANNEL  (Faz 4.3b)
+//
+//  Receiver: mutasyonlar + ağır sorgular, explicit component ordered result.
+//  DumpProvider: yalnız H.1 allowlist'indeki hafif, salt-okunur sorgular.
+// ---------------------------------------------------------------------------
+
+interface VerdictPendingResult {
+  resultCode: number | null;
+  dataJson: string | null;
+  extrasJson: string | null;
+  resultType: string | null;
+  nonce: string | null;
+}
+
+/** JSON nesnesini, string içindeki `{` / `}` karakterlerine aldanmadan keser. */
+function balancedJsonObject(source: string, objectStart: number): string | null {
+  if (source[objectStart] !== "{") return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = objectStart; i < source.length; i += 1) {
+    const ch = source[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth += 1;
+    } else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(objectStart, i + 1);
+    }
+  }
+  return null;
+}
+
+function bundleJsonExtra(stdout: string, key: string): string | null {
+  const marker = `${key}=`;
+  const markerAt = stdout.indexOf(marker);
+  if (markerAt < 0) return null;
+  const objectAt = stdout.indexOf("{", markerAt + marker.length);
+  return objectAt < 0 ? null : balancedJsonObject(stdout, objectAt);
+}
+
+function bundleScalarExtra(stdout: string, key: string): string | null {
+  const marker = `${key}=`;
+  const markerAt = stdout.indexOf(marker);
+  if (markerAt < 0) return null;
+  const start = markerAt + marker.length;
+  const endings = [
+    stdout.indexOf(", ", start),
+    stdout.indexOf("}]", start),
+    stdout.indexOf("]", start),
+    stdout.indexOf("\n", start),
+  ].filter((index) => index >= 0);
+  const end = endings.length > 0 ? Math.min(...endings) : stdout.length;
+  const value = stdout.slice(start, end).trim();
+  if (value.length === 0 || value === "null") return null;
+  return value.startsWith('"') && value.endsWith('"')
+    ? value.slice(1, -1)
+    : value;
+}
+
+/**
+ * Android `PendingResult`'ın iki eşdeğer JSON yüzünü okur:
+ * `resultData` (`data="…"`) ve result extras (`verdict.result.json`).
+ */
+export function parseVerdictPendingResult(stdout: string): VerdictPendingResult {
+  return {
+    resultCode: parseResultCode(stdout),
+    dataJson: parseBroadcastPayload(stdout),
+    extrasJson: bundleJsonExtra(stdout, VERDICT_RESULT_JSON),
+    resultType: bundleScalarExtra(stdout, VERDICT_RESULT_TYPE),
+    nonce: bundleScalarExtra(stdout, "nonce"),
+  };
+}
+
+function firstVerdictJson(stdout: string): string | null {
+  const markerAt = stdout.lastIndexOf('{"type":');
+  return markerAt < 0 ? null : balancedJsonObject(stdout, markerAt);
+}
+
+const CONTROL_ERROR_CODES: ReadonlySet<string> = new Set<ControlErrorCode>([
+  "UNKNOWN_COMMAND",
+  "MISSING_PARAM",
+  "INVALID_PARAM",
+  "PRECONDITION_FAILED",
+  "WRONG_SCREEN",
+  "TIMEOUT",
+  "HANDLER_FAILED",
+  "NOT_AUTHORIZED",
+  "PAYLOAD_TOO_LARGE",
+  "DUPLICATE_REQUEST",
+  "PROVIDER_MISSING",
+  "QUERY_NOT_REGISTERED",
+  "RESULT_TOO_LARGE",
+  "NESTED_PAYLOAD_REJECTED",
+  "RESOURCE_EXHAUSTED",
+  "CHANNEL_UNAVAILABLE",
+  "PROTOCOL_VIOLATION",
+]);
+
+const VERDICT_MUTATIONS: ReadonlySet<ControlOperation["op"]> = new Set([
+  "set_run",
+  "end_run",
+  "reset_state",
+  "seed",
+  "navigate",
+]);
+const VERDICT_RESERVED_PARAMS: ReadonlySet<string> = new Set([
+  "cmd",
+  "op",
+  "requestId",
+  "scope",
+  "params",
+  "nonce",
+  "secret",
+  "origin",
+  "verb",
+]);
+
+type JsonObject = Record<string, unknown>;
+type VerdictDumpOperation = Extract<
+  ControlOperation,
+  { op: "get_run" | "get_command_result" | "get_screen_state" }
+>;
+
+function asJsonObject(value: unknown): JsonObject | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonObject)
+    : null;
+}
+
+function decodeVerdict<Op extends ControlOperation>(
+  op: Op,
+  jsonText: string | null,
+  expectedNonce: string,
+  meta: Pick<VerdictPendingResult, "resultCode" | "resultType" | "nonce">,
+  rawTransport: string,
+): ControlResult<Op["op"]> {
+  type R = ControlResult<Op["op"]>;
+  const fail = (code: ControlErrorCode, detail?: string): R =>
+    ({
+      ok: false,
+      code,
+      ...(detail ? { detail } : {}),
+      ...(jsonText ? { raw: jsonText } : {}),
+    }) as R;
+  const good = (data: unknown): R => ({ ok: true, data }) as R;
+
+  if (!jsonText) {
+    return fail(
+      "CHANNEL_UNAVAILABLE",
+      `${op.op}: Verdict ordered-result JSON yok (result=${meta.resultCode ?? "?"})`,
+    );
+  }
+
+  let parsed: JsonObject;
+  try {
+    const object = asJsonObject(JSON.parse(jsonText));
+    if (!object) return fail("PROTOCOL_VIOLATION", "Verdict sonucu JSON nesnesi değil");
+    parsed = object;
+  } catch {
+    return fail("PROTOCOL_VIOLATION", "Verdict sonucu JSON parse edilemedi");
+  }
+
+  const type = typeof parsed.type === "string" ? parsed.type : meta.resultType;
+  const jsonNonce = typeof parsed.nonce === "string" ? parsed.nonce : null;
+  if (jsonNonce && meta.nonce && jsonNonce !== meta.nonce) {
+    return fail("PROTOCOL_VIOLATION", "resultData / extras nonce uyuşmuyor");
+  }
+  if ((jsonNonce ?? meta.nonce) !== expectedNonce) {
+    return fail("PROTOCOL_VIOLATION", "Verdict nonce uyuşmuyor");
+  }
+  if (
+    typeof parsed.type === "string" &&
+    meta.resultType &&
+    parsed.type !== meta.resultType
+  ) {
+    return fail("PROTOCOL_VIOLATION", "resultData / extras type uyuşmuyor");
+  }
+  if (parsed.requestId !== op.requestId) {
+    return fail("PROTOCOL_VIOLATION", "Verdict requestId uyuşmuyor");
+  }
+
+  if (type === "COMMAND_FAILED") {
+    const wireCode = typeof parsed.code === "string" ? parsed.code : "";
+    const detail = typeof parsed.detail === "string" ? parsed.detail : undefined;
+    const code: ControlErrorCode = CONTROL_ERROR_CODES.has(wireCode)
+      ? (wireCode as ControlErrorCode)
+      : "HANDLER_FAILED";
+    return fail(
+      code,
+      CONTROL_ERROR_CODES.has(wireCode)
+        ? detail
+        : [wireCode || "missing_error_code", detail].filter(Boolean).join(": "),
+    );
+  }
+
+  if (meta.resultCode !== null && meta.resultCode !== RESULT_OK) {
+    return fail(
+      "PROTOCOL_VIOLATION",
+      `başarı JSON'u beklenmeyen result=${meta.resultCode} ile geldi`,
+    );
+  }
+
+  if (type === "COMMAND_DISPATCHED" || type === "COMMAND_ACCEPTED") {
+    if (!VERDICT_MUTATIONS.has(op.op)) {
+      return fail("PROTOCOL_VIOLATION", `${op.op}: mutasyon yanıtı sorguya döndü`);
+    }
+    const completion =
+      parsed.completion === "async" || parsed.async === true ? "async" : "sync";
+    if (type === "COMMAND_ACCEPTED" && completion !== "async") {
+      return fail(
+        "PROTOCOL_VIOLATION",
+        "COMMAND_ACCEPTED terminal yanıtı async işaretli değil",
+      );
+    }
+    return good({
+      accepted: true,
+      requestId: op.requestId,
+      completion,
+      raw: jsonText,
+    });
+  }
+
+  if (type !== "COMMAND_RESULT") {
+    return fail(
+      "PROTOCOL_VIOLATION",
+      `tanınmayan Verdict result type: ${String(type)}`,
+    );
+  }
+  if (VERDICT_MUTATIONS.has(op.op)) {
+    return fail("PROTOCOL_VIOLATION", `${op.op}: sorgu yanıtı mutasyona döndü`);
+  }
+
+  const data = asJsonObject(parsed.data);
+  if (!data) return fail("PROTOCOL_VIOLATION", "COMMAND_RESULT.data nesnesi yok");
+
+  switch (op.op) {
+    case "get_screen_state": {
+      const state =
+        asJsonObject(data.state) ??
+        (data.screen !== undefined || data.shared !== undefined
+          ? {
+              ...(asJsonObject(data.shared) ? { shared: asJsonObject(data.shared)! } : {}),
+              ...(asJsonObject(data.screen) ? { screen: asJsonObject(data.screen)! } : {}),
+            }
+          : { screen: data });
+      return good({ instrumented: true, state, raw: rawTransport });
+    }
+    case "get_state":
+    case "get_run":
+    case "get_device_id":
+    case "get_request_key":
+    case "get_command_result":
+      return good(data);
+    default:
+      return fail("UNKNOWN_COMMAND", op.op);
+  }
+}
+
+function secureNonce(): string {
+  const crypto = globalThis.crypto;
+  if (!crypto) throw new Error("secure random unavailable");
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+const es = (key: string, value: string): string[] => [
+  "--es",
+  key,
+  value === "" ? "''" : value,
+];
+
+function verdictBroadcastArgs(
+  serial: string,
+  op: Exclude<ControlOperation, VerdictDumpOperation>,
+  ctx: ChannelContext,
+  nonce: string,
+): string[] {
+  const command = op.op === "seed" ? op.verb : op.op;
+  const extras = [
+    ...es("op", op.op),
+    ...es("cmd", command),
+    ...es("requestId", op.requestId),
+    ...es("scope", op.scope),
+    ...es("nonce", nonce),
+  ];
+
+  switch (op.op) {
+    case "set_run":
+      extras.push(...es("runId", op.runId));
+      // Empty runId is the legacy "detach" form. It deliberately carries no
+      // new HMAC root; the mobile built-in closes the current run.
+      if (op.runId !== "") extras.push(...es("secret", op.secret));
+      if (op.wsEnabled !== undefined)
+        extras.push("--ez", "wsEnabled", String(op.wsEnabled));
+      if (op.wsPort !== undefined)
+        extras.push("--ei", "wsPort", String(op.wsPort));
+      if (op.skipDeliveryWait !== undefined)
+        extras.push("--ez", "skipDeliveryWait", String(op.skipDeliveryWait));
+      break;
+    case "seed":
+      extras.push(...es("verb", op.verb));
+      for (const [key, value] of Object.entries(op.params)) {
+        extras.push(...es(key, value));
+      }
+      break;
+    case "navigate":
+      extras.push(...es("destination", op.destination));
+      break;
+    default:
+      break;
+  }
+
+  return [
+    ...(serial ? ["-s", serial] : []),
+    "shell",
+    "am",
+    "broadcast",
+    ...(op.wakeStopped ? ["--include-stopped-packages"] : []),
+    "-n",
+    `${ctx.applicationId}/${VERDICT_CONTROL_RECEIVER}`,
+    "-a",
+    `${ctx.applicationId}${VERDICT_ACTION_SUFFIX}`,
+    ...extras,
+  ];
+}
+
+function verdictDumpArgs(
+  serial: string,
+  op: VerdictDumpOperation,
+  ctx: ChannelContext,
+  nonce: string,
+): string[] {
+  const component = `${ctx.applicationId}/${VERDICT_DUMP_PROVIDER}`;
+  return [
+    ...(serial ? ["-s", serial] : []),
+    "shell",
+    "dumpsys",
+    "activity",
+    "provider",
+    component,
+    op.op === "get_screen_state"
+      ? "--verdict-state"
+      : `--verdict-command=${op.op}`,
+    `--request-id=${op.requestId}`,
+    `--scope=${op.scope}`,
+    `--nonce=${nonce}`,
+    ...(op.op === "get_command_result"
+      ? [`--command-request-id=${op.targetRequestId}`]
+      : []),
+  ];
+}
+
+export class VerdictChannel implements ControlChannel {
+  readonly name = "verdict" as const;
+
+  async run<Op extends ControlOperation>(
+    serial: string,
+    op: Op,
+    ctx: ChannelContext,
+  ): Promise<ControlResult<Op["op"]>> {
+    if (op.op === "seed") {
+      const reserved = Object.keys(op.params).find((key) =>
+        VERDICT_RESERVED_PARAMS.has(key),
+      );
+      if (reserved) {
+        return {
+          ok: false,
+          code: "INVALID_PARAM",
+          detail: `seed parametresi reserved envelope alanını kullanıyor: ${reserved}`,
+        } as ControlResult<Op["op"]>;
+      }
+    }
+
+    let nonce: string;
+    try {
+      nonce = secureNonce();
+    } catch (err) {
+      return {
+        ok: false,
+        code: "CHANNEL_UNAVAILABLE",
+        detail: err instanceof Error ? err.message : String(err),
+      } as ControlResult<Op["op"]>;
+    }
+
+    const isDump =
+      op.op === "get_run" ||
+      op.op === "get_command_result" ||
+      op.op === "get_screen_state";
+    const args = isDump
+      ? verdictDumpArgs(
+          serial,
+          op as VerdictDumpOperation,
+          ctx,
+          nonce,
+        )
+      : verdictBroadcastArgs(
+          serial,
+          op as Exclude<ControlOperation, VerdictDumpOperation>,
+          ctx,
+          nonce,
+        );
+
+    let stdout: string;
+    try {
+      stdout = await ctx.adb(
+        serial,
+        args,
+        isDump ? VERDICT_DUMP_TIMEOUT_MS : BROADCAST_TIMEOUT_MS,
+      );
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      invalidateDetectedChannel(serial, ctx);
+      return {
+        ok: false,
+        code: "CHANNEL_UNAVAILABLE",
+        detail: scrubSecrets(raw, op),
+      } as ControlResult<Op["op"]>;
+    }
+
+    const pending = isDump
+      ? {
+          resultCode: null,
+          dataJson: null,
+          extrasJson: firstVerdictJson(stdout),
+          resultType: null,
+          nonce: null,
+        }
+      : parseVerdictPendingResult(stdout);
+    if (
+      pending.dataJson &&
+      pending.extrasJson &&
+      pending.dataJson !== pending.extrasJson
+    ) {
+      invalidateDetectedChannel(serial, ctx);
+      return {
+        ok: false,
+        code: "PROTOCOL_VIOLATION",
+        detail: "resultData / verdict.result.json uyuşmuyor",
+      } as ControlResult<Op["op"]>;
+    }
+    const result = decodeVerdict(
+      op,
+      pending.dataJson ?? pending.extrasJson,
+      nonce,
+      pending,
+      stdout,
+    );
+    if (
+      !result.ok &&
+      (result.code === "CHANNEL_UNAVAILABLE" ||
+        result.code === "PROTOCOL_VIOLATION")
+    ) {
+      invalidateDetectedChannel(serial, ctx);
+    }
+    return !result.ok && result.detail
+      ? ({
+          ...result,
+          detail: scrubSecrets(result.detail, op),
+        } as ControlResult<Op["op"]>)
+      : result;
+  }
+}
+
 export class LegacyReceiverChannel implements ControlChannel {
   readonly name = "legacy" as const;
 
@@ -423,6 +905,8 @@ export class LegacyReceiverChannel implements ControlChannel {
 
 /** Mobil watchdog `GET_STATE`'i 5 s'de bitirir; broadcast'e biraz pay bırak. */
 const BROADCAST_TIMEOUT_MS = 15_000;
+/** DumpProvider kendi içinde 1 s hard limit uygular; framework aktarımına pay. */
+const VERDICT_DUMP_TIMEOUT_MS = 3_000;
 
 /**
  * Bir op'un ÇALIŞTIRILMAYAN, kopyala-yapıştır önizleme komutunu üretir.
@@ -541,10 +1025,33 @@ export class LegacyActivityDumpChannel implements ControlChannel {
 }
 
 // ---------------------------------------------------------------------------
-//  KANAL TESPİTİ  (C.9 — Faz 4'te tamamlanır)
+//  KANAL TESPİTİ  (C.9 / Faz 4.3b)
 // ---------------------------------------------------------------------------
 
 export type ChannelKind = "legacy" | "verdict";
+const detectedChannels = new Map<string, ChannelKind>();
+
+function detectionKey(serial: string, applicationId: string): string {
+  return `${serial}\u0000${applicationId}`;
+}
+
+/**
+ * Device worker cache'ini kanal/protokol hatasında düşürür.
+ * `ctx` yoksa serial'ın tüm flavor kayıtları temizlenir.
+ */
+export function invalidateDetectedChannel(
+  serial: string,
+  ctx?: Pick<ChannelContext, "applicationId">,
+): void {
+  if (ctx) {
+    detectedChannels.delete(detectionKey(serial, ctx.applicationId));
+    return;
+  }
+  const prefix = `${serial}\u0000`;
+  for (const key of detectedChannels.keys()) {
+    if (key.startsWith(prefix)) detectedChannels.delete(key);
+  }
+}
 
 /**
  * Hangi kanal kullanılacak?
@@ -558,18 +1065,61 @@ export type ChannelKind = "legacy" | "verdict";
  *   → timeout / nonce uyuşmuyor / yanıt yok → legacy
  * ```
  *
- * FAZ 0.3'TE: her zaman `"legacy"` döner — davranış değişmez. Faz 4'te
- * `VerdictChannel` eklenince gerçek tespit buraya yazılır. İskeletin şimdi
- * durması, Faz 4'ün yalnız implementasyon eklemesini sağlar.
- *
  * Sonuç device worker ömrü boyunca cache'lenir ama **kanal hatasında cache
  * invalidate edilir** ve tespit tekrarlanır (uygulama güncellenmiş olabilir).
  */
 export async function detectChannel(
-  _serial: string,
-  _ctx: ChannelContext,
+  serial: string,
+  ctx: ChannelContext,
 ): Promise<ChannelKind> {
-  return "legacy";
+  const key = detectionKey(serial, ctx.applicationId);
+  const cached = detectedChannels.get(key);
+  if (cached) return cached;
+
+  let detected: ChannelKind = "legacy";
+  try {
+    const nonce = secureNonce();
+    const stdout = await ctx.adb(
+      serial,
+      [
+        ...(serial ? ["-s", serial] : []),
+        "shell",
+        "am",
+        "broadcast",
+        // Capability detection must also work before a recovery `set_run`.
+        "--include-stopped-packages",
+        "-n",
+        `${ctx.applicationId}/${VERDICT_CONTROL_RECEIVER}`,
+        "-a",
+        `${ctx.applicationId}${VERDICT_ACTION_SUFFIX}`,
+        ...es("op", "ping"),
+        ...es("cmd", "ping"),
+        ...es("requestId", nonce),
+        ...es("scope", "verdict-detect"),
+        ...es("nonce", nonce),
+      ],
+      DETECT_TIMEOUT_MS,
+    );
+    const pending = parseVerdictPendingResult(stdout);
+    let jsonNonce: string | null = null;
+    for (const candidate of [pending.dataJson, pending.extrasJson]) {
+      if (!candidate) continue;
+      try {
+        const parsed = asJsonObject(JSON.parse(candidate));
+        if (typeof parsed?.nonce === "string") {
+          jsonNonce = parsed.nonce;
+          break;
+        }
+      } catch {
+        // Extras nonce below is still an ordered-result proof.
+      }
+    }
+    if ((pending.nonce ?? jsonNonce) === nonce) detected = "verdict";
+  } catch {
+    detected = "legacy";
+  }
+  detectedChannels.set(key, detected);
+  return detected;
 }
 
 export const channelFor = (kind: ChannelKind): ControlChannel => {
@@ -577,7 +1127,8 @@ export const channelFor = (kind: ChannelKind): ControlChannel => {
     case "legacy":
       return new LegacyReceiverChannel();
     case "verdict":
-      // Faz 4'te: return new VerdictChannel();
-      throw new Error("VerdictChannel Faz 4'te eklenir");
+      return new VerdictChannel();
   }
 };
+
+const DETECT_TIMEOUT_MS = 10_000;

@@ -13,8 +13,14 @@
  */
 
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
-import { NO_SECRET, newRequestId } from "@nesy/control-contract";
+import {
+  NO_SECRET,
+  asSecret,
+  newRequestId,
+  type Secret,
+} from "@nesy/control-contract";
 import { parseBroadcastPayload } from "@nesy/control-channels";
 import { createControlExecutor } from "@nesy/control-channels/node";
 
@@ -153,9 +159,8 @@ async function adbShell(deviceId: string, args: string[], timeoutMs = BROADCAST_
 
 /**
  * Control-plane executor (C.9). Receiver class names and action strings live in
- * `@nesy/control-channels`, not here. In Faz 0.3 `detectChannel()` still always
- * resolves to `legacy`, so the bytes on the wire are byte-for-byte what this
- * file used to send — only the hardcoding is gone.
+ * `@nesy/control-channels`, not here. Faz 4.3b nonce detection selects Verdict
+ * when available and preserves the legacy fallback for older mobile builds.
  */
 function control(appId: string) {
   return createControlExecutor({ applicationId: appId });
@@ -194,15 +199,26 @@ export async function broadcastSetRun(
   deviceId: string,
   appId: string,
   runId: string,
-  options?: { wsEnabled?: boolean; wsPort?: number; skipDeliveryWait?: boolean },
+  options?: {
+    wsEnabled?: boolean;
+    wsPort?: number;
+    skipDeliveryWait?: boolean;
+    /** WS handshake sahibi önceden ürettiyse aynı typed secret geçirilir. */
+    secret?: Secret;
+  },
 ): Promise<boolean> {
+  // Verdict ControlReceiver 32-byte base64url bootstrap secret ister. Legacy
+  // kanal bu typed alanı taşımadığı için aynı op eski build'lerde değişmeden
+  // çalışır. Empty runId yalnız detach'tir; yeni bir güven kökü kurmaz.
+  const secret =
+    runId === ""
+      ? NO_SECRET
+      : (options?.secret ?? asSecret(randomBytes(32).toString("base64url")));
   const res = await control(appId).run(deviceId, {
     ...envelope(deviceId, "set-run"),
     op: "set_run",
     runId,
-    // The legacy receiver does not know about HMAC; the secret is deliberately
-    // NOT sent on this channel (C.2a). Faz 4's VerdictChannel supplies a real one.
-    secret: NO_SECRET,
+    secret,
     ...(options?.wsEnabled
       ? { wsEnabled: true, wsPort: options.wsPort ?? 8765 }
       : {}),

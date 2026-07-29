@@ -31,6 +31,7 @@ import {
   LegacyReceiverChannel,
   channelFor,
   detectChannel,
+  invalidateDetectedChannel,
   type AdbRunner,
   type ChannelKind,
 } from "./index.js";
@@ -117,13 +118,12 @@ export interface ControlExecutorEvent {
 /**
  * Sözleşmeyi bir kanala bağlayan yürütücü.
  *
- * **Faz 0.3 değişmezi:** `forceChannel` verilmezse `detectChannel()` çağrılır
- * ve o bugün DAİMA `"legacy"` döndürür. Yani bu executor'a geçmek davranışı
- * değiştirmez; yalnız çağrı yolunu tekilleştirir. Faz 4'te `detectChannel`
- * gerçek tespiti yapmaya başladığında buradaki hiçbir satır değişmez.
+ * `forceChannel` verilmezse nonce'lı `detectChannel()` çağrılır. Verdict
+ * receiver aynı nonce'ı ordered result'ta kanıtlarsa yeni kanal, aksi halde
+ * legacy fallback kullanılır.
  *
- * Tespit sonucu serial başına cache'lenir; kanal hatasında cache DÜŞÜRÜLÜR
- * (uygulama arada güncellenmiş olabilir).
+ * Tespit sonucu `detectChannel()` içinde serial + applicationId başına
+ * cache'lenir; kanal/protokol hatasında cache DÜŞÜRÜLÜR.
  */
 export function createControlExecutor(
   opts: ControlExecutorOptions,
@@ -133,8 +133,6 @@ export function createControlExecutor(
     typeof opts.applicationId === "function"
       ? opts.applicationId(serial)
       : opts.applicationId;
-  const channelCache = new Map<string, ChannelKind>();
-
   return {
     async run<Op extends ControlOperation>(
       serial: string,
@@ -143,39 +141,31 @@ export function createControlExecutor(
       const startedAt = performance.now();
       const ctx = { applicationId: await resolveAppId(serial), adb };
 
-      // `get_screen_state` receiver'a değil ACTIVITY DUMP'a gider (C.11.4).
-      // Kanal tespiti bu op için anlamsız — dump kanalının legacy/verdict
-      // ayrımı Faz 5.9'da dosya içinde çözülecek, burada değil.
-      if (op.op === "get_screen_state") {
-        const dumpRes = await new LegacyActivityDumpChannel().run(serial, op, ctx);
-        opts.onEvent?.({
-          serial,
-          op: op.op,
-          requestId: op.requestId,
-          channel: "legacy",
-          ok: dumpRes.ok,
-          ...(dumpRes.ok ? {} : { code: dumpRes.code, detail: dumpRes.detail }),
-          durationMs: Math.round(performance.now() - startedAt),
-        });
-        return dumpRes;
-      }
-
       let kind: ChannelKind;
       if (opts.forceChannel) {
         kind = opts.forceChannel;
       } else {
-        const cached = channelCache.get(serial);
-        kind = cached ?? (await detectChannel(serial, ctx));
-        channelCache.set(serial, kind);
+        kind = await detectChannel(serial, ctx);
       }
 
+      // Legacy ekran durumu MainActivity dump'ıdır; Verdict karşılığı aynı
+      // semantic op'u VerdictDumpProvider component'i üzerinden taşır.
       const channel =
-        kind === "legacy" ? new LegacyReceiverChannel() : channelFor(kind);
+        kind === "legacy" && op.op === "get_screen_state"
+          ? new LegacyActivityDumpChannel()
+          : kind === "legacy"
+            ? new LegacyReceiverChannel()
+            : channelFor(kind);
       const res = await channel.run(serial, op, ctx);
 
-      // Kanal seviyesinde başarısızlık → tespiti bir dahaki çağrıda yenile.
-      if (!res.ok && res.code === "CHANNEL_UNAVAILABLE") {
-        channelCache.delete(serial);
+      // Kanal/protokol seviyesinde başarısızlık → bir sonraki çağrıda yeniden ping.
+      if (
+        !opts.forceChannel &&
+        !res.ok &&
+        (res.code === "CHANNEL_UNAVAILABLE" ||
+          res.code === "PROTOCOL_VIOLATION")
+      ) {
+        invalidateDetectedChannel(serial, ctx);
       }
 
       opts.onEvent?.({
