@@ -75,6 +75,41 @@ export interface RunSpan {
   attrs?: Record<string, string | number | boolean>
 }
 
+export interface DiagnosticCaptureRecord {
+  id: string
+  captureId: string
+  runId: string
+  sessionId: string
+  level: 'D1_MEMINFO' | 'D2_PERFETTO' | 'D3_HEAPDUMP'
+  triggerEvent: 'MEMORY_PRESSURE_DETECTED' | 'manual_opt_in'
+  status: 'captured' | 'skipped' | 'failed'
+  screen: string
+  operation: string | null
+  spanId: string | null
+  pid: number | null
+  markerPreMonoTs: string | null
+  markerPostMonoTs: string | null
+  artifactRef: string | null
+  mappingFileRef: string | null
+  sensitive: boolean
+  skippedReason:
+    | 'cooldown'
+    | 'quota'
+    | 'critical_span'
+    | 'low_disk'
+    | 'not_profileable'
+    | 'api_too_low'
+    | 'opt_in_missing'
+    | null
+  errorMessage: string | null
+  buildProfile: string
+  requestedBy: string
+  optInApprovedBy: string | null
+  optInApprovedAt: string | null
+  createdAt: string
+  completedAt: string | null
+}
+
 export interface WorkflowRun {
   id: string
   workflowId: string
@@ -93,6 +128,7 @@ export interface WorkflowRun {
   maestroOutput?: string | null
   spans?: RunSpan[] | null
   stepResults?: WorkflowStepResult[]
+  diagnosticCaptures?: DiagnosticCaptureRecord[]
   version?: { version: number; nodes?: unknown[] }
   workflow?: {
     id: string

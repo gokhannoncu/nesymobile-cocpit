@@ -30,14 +30,27 @@ import { Button } from "@nesy/metronic/components/ui/button";
 import { cn } from "@nesy/metronic/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import { Fragment, useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { fetchWorkflow, fetchRunDetail, type WorkflowDetail, type WorkflowRun, type WorkflowStepResult, type RunSpan } from "@/services/automation-api";
+import {
+  fetchWorkflow,
+  fetchRunDetail,
+  type DiagnosticCaptureRecord,
+  type WorkflowDetail,
+  type WorkflowRun,
+  type WorkflowStepResult,
+  type RunSpan,
+} from "@/services/automation-api";
 import { toast } from "sonner";
 import { ExecutionTimeline, toExecutionTimelineSteps, type ExecutionTimelineStep } from "./ExecutionTimeline";
 import { BackendValidationPanel } from "./BackendValidationPanel";
 import { playVideoElement } from "@/lib/safe-video-play";
 import { isBackendValidationStepId } from "../../backend-validation-lane";
+import {
+  groupDiagnosticCaptures,
+  needsMappingFile,
+  reportableDiagnosticCaptures,
+} from "@/lib/automation/diagnostic-captures";
 
-type RunDetailTab = "summary" | "parameters" | "logs" | "backend" | "video" | "spans";
+type RunDetailTab = "summary" | "parameters" | "logs" | "backend" | "video" | "spans" | "diagnostics";
 
 const RUN_DETAIL_TABS: { id: RunDetailTab; label: string }[] = [
   { id: "summary", label: "Summary" },
@@ -46,6 +59,7 @@ const RUN_DETAIL_TABS: { id: RunDetailTab; label: string }[] = [
   { id: "backend", label: "Backend" },
   { id: "video", label: "Video" },
   { id: "spans", label: "Spans" },
+  { id: "diagnostics", label: "Diagnostics" },
 ];
 
 type TraceStatus = "passed" | "warning" | "failed" | "skipped" | "running" | "pending";
@@ -184,6 +198,8 @@ function buildRunReportExport(
   const passedSteps = steps.filter((s) => s.status === "success").length;
   const warningSteps = steps.filter((s) => s.status === "warning").length;
   const failedSteps = steps.filter((s) => s.status === "failed").length;
+  const allDiagnosticCaptures = run.diagnosticCaptures ?? [];
+  const reportDiagnosticCaptures = reportableDiagnosticCaptures(allDiagnosticCaptures);
 
   return {
     exportedAt: new Date().toISOString(),
@@ -214,6 +230,12 @@ function buildRunReportExport(
       passed: passedSteps,
       warnings: warningSteps,
       failed: failedSteps,
+    },
+    diagnostics: {
+      sensitiveIncluded: false,
+      excludedSensitiveCount:
+        allDiagnosticCaptures.length - reportDiagnosticCaptures.length,
+      captures: reportDiagnosticCaptures,
     },
     steps: steps.map((step) => ({
       id: step.id,
@@ -555,6 +577,138 @@ function SpanTimeline({ spans }: { spans: RunSpan[] }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Diagnostic Capture Artefacts ─── */
+
+function diagnosticLevelLabel(level: DiagnosticCaptureRecord["level"]): string {
+  if (level === "D1_MEMINFO") return "D1 · meminfo";
+  if (level === "D2_PERFETTO") return "D2 · Perfetto";
+  return "D3 · heap dump";
+}
+
+function DiagnosticCapturePanel({
+  captures,
+}: {
+  captures: DiagnosticCaptureRecord[];
+}) {
+  const groups = useMemo(() => groupDiagnosticCaptures(captures), [captures]);
+
+  if (captures.length === 0) {
+    return (
+      <div className="text-xs italic text-slate-500">
+        No diagnostic capture attempts are recorded for this run.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        Sensitive artefacts remain visible here for authorized diagnostics, but are excluded
+        from run report export by default.
+      </div>
+
+      {groups.map((screenGroup) => (
+        <section key={screenGroup.screen} className="rounded-xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Screen
+            </div>
+            <h4 className="font-mono text-sm font-semibold text-slate-900">
+              {screenGroup.screen}
+            </h4>
+          </div>
+
+          <div className="space-y-3 p-3">
+            {screenGroup.operations.map((operationGroup) => (
+              <div key={operationGroup.operation} className="rounded-lg bg-slate-50 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Operation
+                  </span>
+                  <span className="font-mono text-xs font-semibold text-slate-700">
+                    {operationGroup.operation}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {operationGroup.spans.map((spanGroup) => (
+                    <div key={spanGroup.spanId} className="rounded-md border border-slate-200 bg-white">
+                      <div className="border-b border-slate-100 px-3 py-2 font-mono text-[11px] text-slate-500">
+                        spanId: <span className="font-semibold text-slate-800">{spanGroup.spanId}</span>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {spanGroup.captures.map((capture) => (
+                          <div key={capture.captureId} className="space-y-1.5 px-3 py-2.5 text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-slate-900">
+                                {diagnosticLevelLabel(capture.level)}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                  capture.status === "captured"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : capture.status === "skipped"
+                                      ? "bg-amber-50 text-amber-700"
+                                      : "bg-red-50 text-red-700",
+                                )}
+                              >
+                                {capture.status}
+                              </span>
+                              {capture.sensitive && (
+                                <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                                  Sensitive · report off
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="font-mono text-[10px] text-slate-500">
+                              {capture.captureId}
+                              {capture.pid ? ` · pid ${capture.pid}` : ""}
+                              {capture.markerPreMonoTs && capture.markerPostMonoTs
+                                ? ` · monoTs ${capture.markerPreMonoTs} → ${capture.markerPostMonoTs}`
+                                : ""}
+                            </div>
+
+                            {capture.artifactRef && (
+                              <div className="break-all font-mono text-[10px] text-slate-700">
+                                artefact: {capture.artifactRef}
+                              </div>
+                            )}
+                            {capture.mappingFileRef && (
+                              <div className="break-all font-mono text-[10px] text-slate-700">
+                                mapping: {capture.mappingFileRef}
+                              </div>
+                            )}
+                            {needsMappingFile(capture) && (
+                              <div className="flex items-center gap-1 text-[10px] font-medium text-amber-700">
+                                <AlertTriangle className="size-3" />
+                                automationRelease artefact needs the exact build mapping.txt for symbolication.
+                              </div>
+                            )}
+                            {capture.skippedReason && (
+                              <div className="text-[10px] text-amber-700">
+                                skippedReason: <span className="font-mono">{capture.skippedReason}</span>
+                              </div>
+                            )}
+                            {capture.errorMessage && (
+                              <div className="text-[10px] text-red-700">{capture.errorMessage}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -1309,7 +1463,7 @@ export default function RunResultsPage() {
                 </div>
                 
                 {/* Tabs */}
-                <div className="flex items-center gap-6 border-b border-slate-200 px-4 pt-2">
+                <div className="flex items-center gap-4 overflow-x-auto border-b border-slate-200 px-4 pt-2">
                   {RUN_DETAIL_TABS.map((tab) => (
                     <button
                       key={tab.id}
@@ -1414,6 +1568,10 @@ export default function RunResultsPage() {
 
                   {activeTab === "spans" && (
                     <SpanTimeline spans={Array.isArray(run.spans) ? run.spans : []} />
+                  )}
+
+                  {activeTab === "diagnostics" && (
+                    <DiagnosticCapturePanel captures={run.diagnosticCaptures ?? []} />
                   )}
 
                   {activeTab === "parameters" && (

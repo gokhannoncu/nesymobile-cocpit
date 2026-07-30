@@ -104,6 +104,7 @@ const TAG_SOURCE: Record<string, LogSource> = {
   ShowInfoDialog: 'app',
   showLoadErrorDialog: 'app',
   RestartDebug: 'app',
+  NESY_TEST_EVENT: 'app',
   InteractionEvent: 'app',
   ArasApplication: 'app',
   CallLog: 'app',

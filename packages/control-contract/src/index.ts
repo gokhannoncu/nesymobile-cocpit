@@ -236,6 +236,73 @@ export interface ControlExecutor {
   ): Promise<ControlResult<Op["op"]>>;
 }
 
+/**
+ * Host-side diagnostic escalation levels (plan B.5.4).
+ *
+ * These names describe the artefact, not how a command reaches the device.
+ * This package deliberately carries no ADB, receiver, provider, or WebSocket
+ * details.
+ */
+export type DiagnosticLevel =
+  | "D1_MEMINFO"
+  | "D2_PERFETTO"
+  | "D3_HEAPDUMP";
+
+/**
+ * Budget and safety policy evaluated by the Cockpit host.
+ *
+ * D3 is disabled in the default policy exported by the API implementation and
+ * may only be requested with explicit opt-in. A policy value alone never makes
+ * a field/production build eligible for heap dumping.
+ */
+export interface DiagnosticCapturePolicy {
+  enabled: Record<DiagnosticLevel, boolean>;
+  cooldownMs: Record<DiagnosticLevel, number>;
+  quotaPerRun: Record<DiagnosticLevel, number>;
+  /** No OS capture may begin while `get_health.inCriticalSpan` is true. */
+  inhibitDuringCriticalSpan: boolean;
+  /** Required free bytes / expected heap-dump bytes before D3 may begin. */
+  minFreeSpaceMultiplier: number;
+}
+
+/**
+ * A successfully correlated host diagnostic artefact. `skippedReason` remains
+ * part of the shared projection for persisted audit rows; skipped rows have no
+ * artefact and are represented by the API's audit/view model.
+ *
+ * `marker*MonoTs` are decimal strings because the SDK returns CLOCK_BOOTTIME
+ * milliseconds and the contract must remain safe if that counter outgrows
+ * JavaScript's exact integer range.
+ */
+export interface DiagnosticCapture {
+  captureId: string;
+  level: DiagnosticLevel;
+  runId: string;
+  sessionId: string;
+  screen: string;
+  operation: string | null;
+  spanId: string | null;
+  pid: number;
+  markerPreMonoTs: string;
+  markerPostMonoTs: string;
+  artifactPath: string;
+  /**
+   * Required for minified automationRelease D2/D3 artefacts. The host stores a
+   * copy of that build's mapping.txt alongside the capture (plan B.5.5).
+   */
+  mappingFileRef?: string;
+  /** Heap dumps are always sensitive and are excluded from reports by default. */
+  sensitive: boolean;
+  skippedReason?:
+    | "cooldown"
+    | "quota"
+    | "critical_span"
+    | "low_disk"
+    | "not_profileable"
+    | "api_too_low"
+    | "opt_in_missing";
+}
+
 /** `requestId` üreteci — çağıranların elle string uydurmasını engeller. */
 let seqCounter = 0;
 export function newRequestId(prefix = "req"): string {

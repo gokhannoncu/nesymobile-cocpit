@@ -903,6 +903,7 @@ router.get("/:id/runs/:runId", async (req, res) => {
         stepResults: { orderBy: { order: "asc" } },
         version: { select: { version: true, nodes: true } },
         workflow: { select: { id: true, slug: true, name: true } },
+        diagnosticCaptures: { orderBy: { createdAt: "asc" } },
       },
     });
 

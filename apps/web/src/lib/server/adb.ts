@@ -11,9 +11,6 @@ import { tmpdir } from 'node:os'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { resolveAdbPath, resolveSqlitePath } from '@/lib/server/adb-path'
-import { newRequestId } from '@nesy/control-contract'
-import type { ScreenStateDump } from '@nesy/control-contract'
-import { createControlExecutor, createNodeAdbRunner } from '@nesy/control-channels/node'
 import type {
   ConnectedDevice,
   DeviceStatus,
@@ -37,6 +34,7 @@ import type {
   OperationalHealthSnapshot,
 } from '@/data/debug-view/live-types'
 import { parseDeviceSchedule } from '@/lib/server/schedule-parser'
+import { readScreenStateDumpWithFallback } from './screen-state-dump'
 
 const execFileAsync = promisify(execFile)
 
@@ -2224,49 +2222,26 @@ async function readAllNesyServices(serial: string, pkg: string): Promise<string[
   return [...set].sort()
 }
 
-function jsonKind(value: unknown): LiveScreenField['kind'] {
-  if (value === null || value === undefined) return 'null'
-  if (Array.isArray(value)) return 'array'
-  if (typeof value === 'object') return 'object'
-  if (typeof value === 'boolean') return 'boolean'
-  if (typeof value === 'number') return 'number'
-  return 'string'
-}
-
-function fieldValueCount(value: unknown): number | null {
-  if (Array.isArray(value)) return value.length
-  if (typeof value === 'object' && value != null) return Object.keys(value).length
-  return null
-}
-
 /**
- * Maps a `get_screen_state` control-plane result onto this module's field shape.
- *
- * The dump invocation, the activity component name, the `--nesy-state` flag and
- * the `NESY_SCREEN_STATE:` marker USED TO LIVE HERE. They now belong to
- * `@nesy/control-channels` (C.9 / C.11.4): Faz 5.9 replaces all four with
- * `dumpsys activity provider <pkg>/com.verdict.sdk.core.VerdictDumpProvider
- * --verdict-screen-state`, and this file must not have to change for that.
- *
- * `instrumented: false` is not an error — the dump ran, the marker was absent,
- * so the installed build predates the hook and the UI can say so.
+ * Reads instrumented screen state through the Verdict SDK component first and
+ * falls back to the legacy MainActivity component when no parseable marker is
+ * returned. `dumpsys activity provider` resolves a component name, not the
+ * provider authority.
  */
-function mapScreenStateFields(dump: ScreenStateDump | null): {
-  instrumented: boolean
-  fields: LiveScreenField[]
-} {
-  if (!dump?.instrumented || !dump.state) return { instrumented: false, fields: [] }
-
-  const fields: LiveScreenField[] = []
-  const collect = (obj: Record<string, unknown> | undefined, group: LiveScreenField['group']) => {
-    if (!obj) return
-    for (const [name, value] of Object.entries(obj)) {
-      fields.push({ name, value, kind: jsonKind(value), count: fieldValueCount(value), group })
-    }
-  }
-  collect(dump.state.screen, 'screen')
-  collect(dump.state.shared, 'shared')
-  return { instrumented: true, fields }
+async function readScreenStateWithFallback(
+  serial: string,
+  pkg: string,
+): Promise<{ instrumented: boolean; fields: LiveScreenField[] }> {
+  const providerComponent = `${pkg}/com.verdict.sdk.core.VerdictDumpProvider`
+  const legacyComponent = `${pkg}/com.arasdigital.nesymobile.main.MainActivity`
+  return readScreenStateDumpWithFallback(
+    serial,
+    {
+      provider: `dumpsys activity provider ${providerComponent} --verdict-screen-state`,
+      legacy: `dumpsys activity ${legacyComponent} --nesy-state`,
+    },
+    tryShell,
+  )
 }
 
 /**
@@ -2296,27 +2271,16 @@ export async function getDeviceScreenState(serial: string): Promise<LiveScreenSt
   }
   if (!pkg) return { ...base, reason: 'NesyMobile is not installed on this device' }
 
-  const control = createControlExecutor({
-    applicationId: pkg,
-    adb: createNodeAdbRunner({ defaultTimeoutMs: 8_000 }),
-  })
-  const [activities, dump, services, stateRes] = await Promise.all([
+  const [activities, dump, services, parsedState] = await Promise.all([
     tryShell(serial, 'dumpsys activity activities | grep -E "ResumedActivity|topResumedActivity"', 8_000),
     tryShell(serial, 'dumpsys activity top', 15_000),
     readAllNesyServices(serial, pkg),
-    control.run(serial, {
-      op: 'get_screen_state',
-      requestId: newRequestId('screen-state'),
-      scope: `debug-view:${serial}`,
-    }),
+    readScreenStateWithFallback(serial, pkg),
   ])
 
   base.runningServices = services
   base.appForeground = Boolean(activities && activities.includes(pkg))
 
-  // A failed dump is treated exactly like the old `tryShell` returning null:
-  // not instrumented, no fields, and the rest of the snapshot still renders.
-  const parsedState = mapScreenStateFields(stateRes.ok ? stateRes.data : null)
   base.stateInstrumented = parsedState.instrumented
   base.fields = parsedState.fields
 

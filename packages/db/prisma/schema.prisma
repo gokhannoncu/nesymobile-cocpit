@@ -201,9 +201,10 @@ model WorkflowRun {
 
   createdAt DateTime @default(now())
 
-  workflow    Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  version     WorkflowVersion      @relation(fields: [versionId], references: [id])
-  stepResults WorkflowStepResult[]
+  workflow           Workflow                   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version            WorkflowVersion            @relation(fields: [versionId], references: [id])
+  stepResults        WorkflowStepResult[]
+  diagnosticCaptures VerdictDiagnosticCapture[]
 
   @@index([workflowId, createdAt])
   @@index([status])
@@ -229,6 +230,45 @@ model WorkflowStepResult {
 
   @@index([runId, order])
   @@map("workflow_step_results")
+}
+
+/// Host-side D1/D2/D3 diagnostic capture audit (plan B.5.4/B.5.5).
+///
+/// Rows are written for successful, skipped, and failed attempts. In particular,
+/// D3 keeps the requesting actor and explicit opt-in approval even when a disk
+/// pre-check prevents the heap dump from starting.
+model VerdictDiagnosticCapture {
+  id               String    @id @default(cuid())
+  captureId        String    @unique @map("capture_id")
+  runId            String    @map("run_id")
+  sessionId        String    @map("session_id")
+  level            String
+  triggerEvent     String    @map("trigger_event")
+  status           String
+  screen           String
+  operation        String?
+  spanId           String?   @map("span_id")
+  pid              Int?
+  markerPreMonoTs  String?   @map("marker_pre_mono_ts")
+  markerPostMonoTs String?   @map("marker_post_mono_ts")
+  artifactRef      String?   @map("artifact_ref")
+  mappingFileRef   String?   @map("mapping_file_ref")
+  sensitive        Boolean   @default(false)
+  skippedReason    String?   @map("skipped_reason")
+  errorMessage     String?   @map("error_message")
+  buildProfile     String    @map("build_profile")
+  requestedBy      String    @map("requested_by")
+  optInApprovedBy  String?   @map("opt_in_approved_by")
+  optInApprovedAt  DateTime? @map("opt_in_approved_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, screen, operation, spanId], map: "verdict_diagnostic_capture_context_idx")
+  @@index([runId, createdAt], map: "verdict_diagnostic_capture_run_created_idx")
+  @@index([sensitive, createdAt], map: "verdict_diagnostic_capture_sensitive_idx")
+  @@map("verdict_diagnostic_capture")
 }
 
 /// Engineering tools: MongoDB Query Generator history (auto-saved on Generate)

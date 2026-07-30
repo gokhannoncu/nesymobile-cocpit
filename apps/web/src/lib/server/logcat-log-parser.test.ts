@@ -91,6 +91,13 @@ describe('source classification', () => {
     expect(e!.packageName).toBe('com.arasdigital.nesymobile.test')
   })
 
+  it('classifies structured and legacy interaction tags as app', () => {
+    const [structured] = collect([line('1000', 'I', 'NESY_TEST_EVENT', 'NESY_TEST_EVENT|{"v":1}')])
+    const [legacy] = collect([line('1000', 'D', 'InteractionEvent', '{"id":"legacy"}')])
+    expect(structured!.source).toBe('app')
+    expect(legacy!.source).toBe('app')
+  })
+
   it('classifies unknown tags from other uids as system', () => {
     const [e] = collect([line('1000', 'I', 'SurfaceFlinger', 'frame')])
     expect(e!.source).toBe('system')

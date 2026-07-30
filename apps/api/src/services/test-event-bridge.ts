@@ -57,6 +57,9 @@ export interface TestBridgeEvent {
   requestId?: string;
   success?: boolean;
   durationMs?: number;
+  /** Additive B.5.1 correlation fields emitted by the Verdict SDK. */
+  spanId?: string;
+  parentSpanId?: string;
   data?: Record<string, string | null>;
   /** Original logcat line, for diagnostics. */
   raw: string;
@@ -111,6 +114,9 @@ export function parseTestEventLine(line: string): TestBridgeEvent | null {
       requestId: typeof parsed.requestId === "string" ? parsed.requestId : undefined,
       success: typeof parsed.success === "boolean" ? parsed.success : undefined,
       durationMs: typeof parsed.durationMs === "number" ? parsed.durationMs : undefined,
+      spanId: typeof parsed.spanId === "string" ? parsed.spanId : undefined,
+      parentSpanId:
+        typeof parsed.parentSpanId === "string" ? parsed.parentSpanId : undefined,
       data: isStringRecord(parsed.data) ? parsed.data : undefined,
       raw: line,
     };

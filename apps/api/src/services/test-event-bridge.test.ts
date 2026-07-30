@@ -35,6 +35,7 @@ describe("parseTestEventLine", () => {
       event: "DELIVERY_PERSISTED",
       taskId: "T-1",
       success: true,
+      spanId: "session-1:42",
       data: { request_name: "DeliverParcels" },
     });
     const line = `07-20 06:31:02.123 I/NESY_TEST_EVENT( 1234): NESY_TEST_EVENT|${json}`;
@@ -48,6 +49,7 @@ describe("parseTestEventLine", () => {
     expect(event?.event).toBe("DELIVERY_PERSISTED");
     expect(event?.taskId).toBe("T-1");
     expect(event?.success).toBe(true);
+    expect(event?.spanId).toBe("session-1:42");
     expect(event?.data?.request_name).toBe("DeliverParcels");
     expect(event?.raw).toBe(line);
   });
