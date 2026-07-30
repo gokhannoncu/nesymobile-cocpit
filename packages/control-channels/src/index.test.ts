@@ -489,8 +489,8 @@ describe("Verdict yönlendirme", () => {
     expect(args[0]).toContain(`${APP_ID}.VERDICT_CMD`);
   });
 
-  it("set_run typed secret ve camelCase parametrelerini doğru adb tipleriyle taşır", async () => {
-    const args: string[][] = [];
+  it("set_run secret'ını stdin sidecar'a taşır; broadcast argv'sine koymaz", async () => {
+    const calls: Array<{ args: string[]; stdin?: string }> = [];
     const secret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const op: ControlOperation = {
       ...env(),
@@ -501,20 +501,71 @@ describe("Verdict yönlendirme", () => {
       wsPort: 8765,
       skipDeliveryWait: true,
     };
+    const runner: AdbRunner = (_serial, args, _timeoutMs, stdin) => {
+      calls.push({ args, ...(stdin === undefined ? {} : { stdin }) });
+      if (!args.includes("broadcast")) return Promise.resolve("");
+      const nonce = verdictNonce(args);
+      const json = verdictSuccessJson(op, nonce);
+      return Promise.resolve(
+        verdictCompleted(-1, json, "COMMAND_DISPATCHED", nonce),
+      );
+    };
     await new VerdictChannel().run(
       SERIAL,
       op,
-      ctxWith(verdictRunnerReturning(op, args)),
+      ctxWith(runner),
     );
-    expect(argumentValue(args[0]!, "op")).toBe("set_run");
-    expect(argumentValue(args[0]!, "cmd")).toBe("set_run");
-    expect(argumentValue(args[0]!, "runId")).toBe("run-9");
-    expect(argumentValue(args[0]!, "secret")).toBe(secret);
-    expect(args[0]).toContain("--ez");
-    expect(argumentValue(args[0]!, "wsEnabled")).toBe("true");
-    expect(args[0]).toContain("--ei");
-    expect(argumentValue(args[0]!, "wsPort")).toBe("8765");
-    expect(argumentValue(args[0]!, "skipDeliveryWait")).toBe("true");
+    const stage = calls.find((call) => call.stdin !== undefined)!;
+    const broadcast = calls.find((call) => call.args.includes("broadcast"))!.args;
+    expect(stage.stdin).toBe(secret);
+    expect(stage.args.join(" ")).not.toContain(secret);
+    expect(argumentValue(broadcast, "op")).toBe("set_run");
+    expect(argumentValue(broadcast, "cmd")).toBe("set_run");
+    expect(argumentValue(broadcast, "runId")).toBe("run-9");
+    expect(argumentValue(broadcast, "secret")).toBeUndefined();
+    expect(argumentValue(broadcast, "secretFile")).toMatch(
+      /^control-[A-Za-z0-9._-]+-secret$/,
+    );
+    expect(broadcast.join(" ")).not.toContain(secret);
+    expect(broadcast).toContain("--ez");
+    expect(argumentValue(broadcast, "wsEnabled")).toBe("true");
+    expect(broadcast).toContain("--ei");
+    expect(argumentValue(broadcast, "wsPort")).toBe("8765");
+    expect(argumentValue(broadcast, "skipDeliveryWait")).toBe("true");
+    expect(calls.some((call) => call.args.includes("rm"))).toBe(true);
+  });
+
+  it("login PIN'ini de stdin sidecar'a taşır; broadcast argv'sine koymaz", async () => {
+    const calls: Array<{ args: string[]; stdin?: string }> = [];
+    const pin = "482913";
+    const op: ControlOperation = {
+      ...env(),
+      op: "seed",
+      verb: "login",
+      params: { username: "field-user", pin },
+    };
+    const runner: AdbRunner = (_serial, args, _timeoutMs, stdin) => {
+      calls.push({ args, ...(stdin === undefined ? {} : { stdin }) });
+      if (!args.includes("broadcast")) return Promise.resolve("");
+      const nonce = verdictNonce(args);
+      const json = verdictSuccessJson(op, nonce);
+      return Promise.resolve(
+        verdictCompleted(-1, json, "COMMAND_DISPATCHED", nonce),
+      );
+    };
+
+    await new VerdictChannel().run(SERIAL, op, ctxWith(runner));
+
+    const stage = calls.find((call) => call.stdin !== undefined)!;
+    const broadcast = calls.find((call) => call.args.includes("broadcast"))!.args;
+    expect(stage.stdin).toBe(pin);
+    expect(stage.args.join(" ")).not.toContain(pin);
+    expect(argumentValue(broadcast, "pin")).toBeUndefined();
+    expect(argumentValue(broadcast, "pinFile")).toMatch(
+      /^control-[A-Za-z0-9._-]+-pin$/,
+    );
+    expect(argumentValue(broadcast, "username")).toBe("field-user");
+    expect(broadcast.join(" ")).not.toContain(pin);
   });
 
   it("seed verb'ünü cmd + verb olarak, navigate destination'ı parametre olarak taşır", async () => {

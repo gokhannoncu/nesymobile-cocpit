@@ -19,8 +19,16 @@ import type {
 
 /** Kanalların ihtiyaç duyduğu tek dış yetenek: `adb` çalıştırmak. */
 export interface AdbRunner {
-  /** `adb -s <serial> <...args>` çalıştırır, stdout döner. Hata → throw. */
-  (serial: string, args: string[], timeoutMs?: number): Promise<string>;
+  /**
+   * `adb -s <serial> <...args>` çalıştırır, stdout döner. Hata → throw.
+   * `stdin` argv dışında taşınması gereken tek-kullanımlık hassas içerik içindir.
+   */
+  (
+    serial: string,
+    args: string[],
+    timeoutMs?: number,
+    stdin?: string,
+  ): Promise<string>;
 }
 
 export interface ChannelContext {
@@ -655,6 +663,7 @@ function verdictBroadcastArgs(
   op: Exclude<ControlOperation, VerdictDumpOperation>,
   ctx: ChannelContext,
   nonce: string,
+  sensitiveFiles: ReadonlyMap<string, string>,
 ): string[] {
   const command = op.op === "seed" ? op.verb : op.op;
   const extras = [
@@ -670,7 +679,10 @@ function verdictBroadcastArgs(
       extras.push(...es("runId", op.runId));
       // Empty runId is the legacy "detach" form. It deliberately carries no
       // new HMAC root; the mobile built-in closes the current run.
-      if (op.runId !== "") extras.push(...es("secret", op.secret));
+      if (op.runId !== "") {
+        const secretFile = sensitiveFiles.get("secret");
+        if (secretFile) extras.push(...es("secretFile", secretFile));
+      }
       if (op.wsEnabled !== undefined)
         extras.push("--ez", "wsEnabled", String(op.wsEnabled));
       if (op.wsPort !== undefined)
@@ -681,7 +693,12 @@ function verdictBroadcastArgs(
     case "seed":
       extras.push(...es("verb", op.verb));
       for (const [key, value] of Object.entries(op.params)) {
+        if (op.verb === "login" && key === "pin") continue;
         extras.push(...es(key, value));
+      }
+      if (op.verb === "login") {
+        const pinFile = sensitiveFiles.get("pin");
+        if (pinFile) extras.push(...es("pinFile", pinFile));
       }
       break;
     case "navigate":
@@ -702,6 +719,85 @@ function verdictBroadcastArgs(
     "-a",
     `${ctx.applicationId}${VERDICT_ACTION_SUFFIX}`,
     ...extras,
+  ];
+}
+
+interface SensitiveSidecar {
+  field: "secret" | "pin";
+  fileName: string;
+  value: string;
+}
+
+function verdictSensitiveSidecars(
+  op: Exclude<ControlOperation, VerdictDumpOperation>,
+  nonce: string,
+): SensitiveSidecar[] {
+  const safeNonce = nonce.replace(/[^A-Za-z0-9._-]/g, "");
+  if (!safeNonce) throw new Error("sensitive sidecar nonce is not path-safe");
+  if (op.op === "set_run" && op.runId !== "") {
+    return [{
+      field: "secret",
+      fileName: `control-${safeNonce}-secret`,
+      value: op.secret,
+    }];
+  }
+  if (
+    op.op === "seed" &&
+    op.verb === "login" &&
+    typeof op.params.pin === "string"
+  ) {
+    return [{
+      field: "pin",
+      fileName: `control-${safeNonce}-pin`,
+      value: op.params.pin,
+    }];
+  }
+  return [];
+}
+
+function sensitiveSidecarDirectoryArgs(
+  serial: string,
+  applicationId: string,
+): string[] {
+  return [
+    ...(serial ? ["-s", serial] : []),
+    "shell",
+    "run-as",
+    applicationId,
+    "mkdir",
+    "-p",
+    "no_backup/verdict/control",
+  ];
+}
+
+function sensitiveSidecarWriteArgs(
+  serial: string,
+  applicationId: string,
+  fileName: string,
+): string[] {
+  const relativePath = `no_backup/verdict/control/${fileName}`;
+  return [
+    ...(serial ? ["-s", serial] : []),
+    "shell",
+    // One remote-command argument is required: adb otherwise flattens `sh -c`'s script
+    // into separate shell tokens. The interpolated values are path-safe by construction.
+    `run-as ${applicationId} sh -c 'cat > ${relativePath}'`,
+  ];
+}
+
+function sensitiveSidecarDeleteArgs(
+  serial: string,
+  applicationId: string,
+  fileName: string,
+): string[] {
+  return [
+    ...(serial ? ["-s", serial] : []),
+    "shell",
+    "run-as",
+    applicationId,
+    "rm",
+    "-f",
+    `no_backup/verdict/control/${fileName}`,
   ];
 }
 
@@ -767,6 +863,60 @@ export class VerdictChannel implements ControlChannel {
       op.op === "get_run" ||
       op.op === "get_command_result" ||
       op.op === "get_screen_state";
+    const receiverOp = isDump
+      ? null
+      : (op as Exclude<ControlOperation, VerdictDumpOperation>);
+    let sidecars: SensitiveSidecar[] = [];
+    if (receiverOp) {
+      try {
+        sidecars = verdictSensitiveSidecars(receiverOp, nonce);
+        if (sidecars.length > 0) {
+          await ctx.adb(
+            serial,
+            sensitiveSidecarDirectoryArgs(serial, ctx.applicationId),
+            SENSITIVE_SIDECAR_TIMEOUT_MS,
+          );
+        }
+        for (const sidecar of sidecars) {
+          await ctx.adb(
+            serial,
+            sensitiveSidecarWriteArgs(
+              serial,
+              ctx.applicationId,
+              sidecar.fileName,
+            ),
+            SENSITIVE_SIDECAR_TIMEOUT_MS,
+            sidecar.value,
+          );
+        }
+      } catch (err) {
+        for (const sidecar of sidecars) {
+          try {
+            await ctx.adb(
+              serial,
+              sensitiveSidecarDeleteArgs(
+                serial,
+                ctx.applicationId,
+                sidecar.fileName,
+              ),
+              SENSITIVE_SIDECAR_TIMEOUT_MS,
+            );
+          } catch {
+            // The receiver also deletes on every read path; this is best-effort rollback.
+          }
+        }
+        const raw = err instanceof Error ? err.message : String(err);
+        invalidateDetectedChannel(serial, ctx);
+        return {
+          ok: false,
+          code: "CHANNEL_UNAVAILABLE",
+          detail: scrubSecrets(raw, op),
+        } as ControlResult<Op["op"]>;
+      }
+    }
+    const sensitiveFiles = new Map(
+      sidecars.map((sidecar) => [sidecar.field, sidecar.fileName] as const),
+    );
     const args = isDump
       ? verdictDumpArgs(
           serial,
@@ -779,6 +929,7 @@ export class VerdictChannel implements ControlChannel {
           op as Exclude<ControlOperation, VerdictDumpOperation>,
           ctx,
           nonce,
+          sensitiveFiles,
         );
 
     let stdout: string;
@@ -796,6 +947,22 @@ export class VerdictChannel implements ControlChannel {
         code: "CHANNEL_UNAVAILABLE",
         detail: scrubSecrets(raw, op),
       } as ControlResult<Op["op"]>;
+    } finally {
+      for (const sidecar of sidecars) {
+        try {
+          await ctx.adb(
+            serial,
+            sensitiveSidecarDeleteArgs(
+              serial,
+              ctx.applicationId,
+              sidecar.fileName,
+            ),
+            SENSITIVE_SIDECAR_TIMEOUT_MS,
+          );
+        } catch {
+          // Receiver deletion is authoritative; host cleanup only covers failed delivery.
+        }
+      }
     }
 
     const pending = isDump
@@ -907,6 +1074,8 @@ export class LegacyReceiverChannel implements ControlChannel {
 const BROADCAST_TIMEOUT_MS = 15_000;
 /** DumpProvider kendi içinde 1 s hard limit uygular; framework aktarımına pay. */
 const VERDICT_DUMP_TIMEOUT_MS = 3_000;
+/** Private sidecar stage/cleanup contains only one short value. */
+const SENSITIVE_SIDECAR_TIMEOUT_MS = 5_000;
 
 /**
  * Bir op'un ÇALIŞTIRILMAYAN, kopyala-yapıştır önizleme komutunu üretir.

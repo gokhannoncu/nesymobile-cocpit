@@ -20,7 +20,6 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type {
   ControlExecutor,
   ControlOperation,
@@ -35,8 +34,6 @@ import {
   type AdbRunner,
   type ChannelKind,
 } from "./index.js";
-
-const execFileAsync = promisify(execFile);
 
 /**
  * `adb` ikilisini bulur. Sıra bilinçli: açık env override → SDK env → macOS
@@ -78,13 +75,26 @@ export function createNodeAdbRunner(
 ): AdbRunner {
   const adbPath = resolveAdbPath();
   const { defaultTimeoutMs = 15_000, maxBufferBytes = 8 * 1024 * 1024 } = opts;
-  return async (_serial, args, timeoutMs) => {
-    const result = await execFileAsync(adbPath, args, {
-      timeout: timeoutMs ?? defaultTimeoutMs,
-      maxBuffer: maxBufferBytes,
+  return async (_serial, args, timeoutMs, stdin) =>
+    await new Promise<string>((resolve, reject) => {
+      const child = execFile(adbPath, args, {
+        timeout: timeoutMs ?? defaultTimeoutMs,
+        maxBuffer: maxBufferBytes,
+        encoding: "utf8",
+      }, (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(String(stdout ?? ""));
+      });
+      // Always close stdin. `exec-out ... cat` waits for EOF before the broadcast
+      // may reference the completed private sidecar.
+      child.stdin?.on("error", () => {
+        // The callback above owns command failure reporting.
+      });
+      child.stdin?.end(stdin);
     });
-    return String(result.stdout ?? "");
-  };
 }
 
 export interface ControlExecutorOptions {
