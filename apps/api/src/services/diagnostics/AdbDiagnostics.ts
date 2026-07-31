@@ -17,7 +17,8 @@ const PERFETTO_TIMEOUT_MS = 20_000;
 const HEAP_DUMP_TIMEOUT_MS = 120_000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 15_000;
 const MAX_COMMAND_OUTPUT_BYTES = 32 * 1024 * 1024;
-const DEVICE_DIAGNOSTIC_ROOT = "/data/local/tmp";
+const PERFETTO_DEVICE_ROOT = "/data/misc/perfetto-traces";
+const HEAP_DUMP_DEVICE_ROOT = "/data/local/tmp";
 
 export interface DiagnosticCommandResult {
   stdout: string;
@@ -106,7 +107,7 @@ export class AdbDiagnostics {
     const safeCaptureId = assertSafeCaptureId(target.captureId);
     const directory = await this.captureDirectory(safeCaptureId);
     const artifactPath = path.join(directory, "trace.perfetto-trace");
-    const remotePath = `${DEVICE_DIAGNOSTIC_ROOT}/verdict-${safeCaptureId}.perfetto-trace`;
+    const remotePath = `${PERFETTO_DEVICE_ROOT}/verdict-${safeCaptureId}.perfetto-trace`;
 
     try {
       await this.adb(
@@ -141,7 +142,7 @@ export class AdbDiagnostics {
     const safeCaptureId = assertSafeCaptureId(target.captureId);
     const directory = await this.captureDirectory(safeCaptureId);
     const artifactPath = path.join(directory, "heap.hprof");
-    const remotePath = `${DEVICE_DIAGNOSTIC_ROOT}/verdict-${safeCaptureId}.hprof`;
+    const remotePath = `${HEAP_DUMP_DEVICE_ROOT}/verdict-${safeCaptureId}.hprof`;
 
     try {
       await this.adb(
@@ -160,7 +161,7 @@ export class AdbDiagnostics {
   async deviceFreeBytes(serial: string): Promise<number> {
     const result = await this.adb(
       serial,
-      ["shell", "df", "-k", DEVICE_DIAGNOSTIC_ROOT],
+      ["shell", "df", "-k", HEAP_DUMP_DEVICE_ROOT],
       DEFAULT_COMMAND_TIMEOUT_MS,
     );
     return parseDfAvailableBytes(result.stdout);

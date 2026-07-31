@@ -75,7 +75,7 @@ describe("AdbDiagnostics", () => {
       "shell",
       "perfetto",
       "-o",
-      "/data/local/tmp/verdict-cap-perfetto.perfetto-trace",
+      "/data/misc/perfetto-traces/verdict-cap-perfetto.perfetto-trace",
       "-t",
       "8s",
       "-b",
@@ -89,7 +89,7 @@ describe("AdbDiagnostics", () => {
       "shell",
       "rm",
       "-f",
-      "/data/local/tmp/verdict-cap-perfetto.perfetto-trace",
+      "/data/misc/perfetto-traces/verdict-cap-perfetto.perfetto-trace",
     ]);
   });
 
