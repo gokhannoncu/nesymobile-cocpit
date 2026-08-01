@@ -58,15 +58,27 @@ export async function POST(request: Request) {
   }
 
   const encoder = new TextEncoder()
+  const signal = request.signal
   const stream = new ReadableStream({
     async start(controller) {
       const send = (payload: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+        if (signal.aborted) return
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+        } catch {
+          // Client already disconnected
+        }
       }
       try {
-        const result = await installLatestForCountry(input, (event) => send(event))
-        send({ type: 'done', result })
+        const result = await installLatestForCountry(input, (event) => send(event), signal)
+        if (!signal.aborted) send({ type: 'done', result })
       } catch (err) {
+        if (
+          signal.aborted ||
+          (err instanceof InstallLatestError && err.code === 'CANCELLED')
+        ) {
+          return
+        }
         if (err instanceof InstallLatestError) {
           send({ type: 'error', code: err.code, message: err.message })
         } else {
@@ -77,7 +89,11 @@ export async function POST(request: Request) {
           })
         }
       } finally {
-        controller.close()
+        try {
+          controller.close()
+        } catch {
+          // already closed
+        }
       }
     },
   })

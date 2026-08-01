@@ -14,6 +14,7 @@ export type InstallLatestErrorCode =
   | 'NO_DOWNLOAD_URL'
   | 'DOWNLOAD_FAILED'
   | 'INSTALL_FAILED'
+  | 'CANCELLED'
 
 export class InstallLatestError extends Error {
   constructor(

@@ -1008,12 +1008,19 @@ function ReleaseComparePicker({
               const tone = kindTone[release.kind]
               const KindIcon = kindIcon[release.kind]
               return (
-                <button
+                <div
                   key={release.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onBaseline(release.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      onBaseline(release.id)
+                    }
+                  }}
                   className={cn(
-                    'group min-w-[11rem] max-w-full flex-1 rounded-xl border px-3 py-2.5 text-left transition-all sm:max-w-[16rem]',
+                    'group min-w-[11rem] max-w-full flex-1 cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all sm:max-w-[16rem]',
                     isBaseline
                       ? cn(toneCard[tone], 'ring-2 ring-offset-1 ring-offset-background shadow-sm', kindRing[release.kind])
                       : 'border-border bg-background hover:border-foreground/15',
@@ -1064,7 +1071,7 @@ function ReleaseComparePicker({
                       <X className="size-3" />
                     </button>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>

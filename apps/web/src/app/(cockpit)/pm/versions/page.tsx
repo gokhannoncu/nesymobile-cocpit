@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ChevronDown,
@@ -10,12 +10,15 @@ import {
   History,
   Loader2,
   PackageCheck,
+  RefreshCw,
   Tag,
   Workflow,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { CountryInstallButtons } from '@/components/pm/country-install-buttons'
 import { cn } from '@nesy/metronic/lib/utils'
 import { Badge } from '@nesy/metronic/components/ui/badge'
+import { Button } from '@nesy/metronic/components/ui/button'
 import {
   Callout,
   ComparisonTable,
@@ -86,35 +89,66 @@ function isVersionCountry(countryId: string): countryId is VersionCountryId {
   return COUNTRY_ORDER.includes(countryId as VersionCountryId)
 }
 
+type LiveVersionsByEnv = {
+  test: Record<string, number | null>
+  prod: Record<string, number | null>
+}
+
+type LatestMatrixResponse = {
+  fetchedAt?: string
+  byEnvironment?: {
+    test?: Record<string, number | null>
+    prod?: Record<string, number | null>
+  }
+}
+
+function formatFetchedAt(iso: string | null) {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString('tr-TR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
 export default function VersionsPage() {
   const [countryFilter, setCountryFilter] = useState<CountryFilter>('all')
   const [showAllHistory, setShowAllHistory] = useState(false)
-  const [testVersions, setTestVersions] = useState<Record<string, number | null>>({})
-  const [testVersionsStatus, setTestVersionsStatus] = useState<'loading' | 'ready' | 'error'>(
+  const [liveVersions, setLiveVersions] = useState<LiveVersionsByEnv>({
+    test: {},
+    prod: {},
+  })
+  const [liveVersionsStatus, setLiveVersionsStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading',
   )
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    async function loadTestVersions() {
-      setTestVersionsStatus('loading')
-      try {
-        const res = await fetch('/api/versions/latest?environment=test', { cache: 'no-store' })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as { byCountry?: Record<string, number | null> }
-        if (!cancelled) {
-          setTestVersions(data.byCountry ?? {})
-          setTestVersionsStatus('ready')
-        }
-      } catch {
-        if (!cancelled) setTestVersionsStatus('error')
-      }
-    }
-    void loadTestVersions()
-    return () => {
-      cancelled = true
+  const loadLiveVersions = useCallback(async (opts?: { silent?: boolean }) => {
+    setLiveVersionsStatus('loading')
+    try {
+      const res = await fetch('/api/versions/latest?environment=all', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json()) as LatestMatrixResponse
+      setLiveVersions({
+        test: data.byEnvironment?.test ?? {},
+        prod: data.byEnvironment?.prod ?? {},
+      })
+      setFetchedAt(data.fetchedAt ?? new Date().toISOString())
+      setLiveVersionsStatus('ready')
+      if (!opts?.silent) toast.success('GetLatestVersion matrisi güncellendi')
+    } catch {
+      setLiveVersionsStatus('error')
+      if (!opts?.silent) toast.error('Versiyon bilgileri alınamadı')
     }
   }, [])
+
+  useEffect(() => {
+    void loadLiveVersions({ silent: true })
+  }, [loadLiveVersions])
 
   const countryRows = useMemo(
     () =>
@@ -159,17 +193,40 @@ export default function VersionsPage() {
 
   const tableHeaders = [
     { label: 'Ülke' },
-    { label: 'Production versionCode', tone: 'green' as const },
+    { label: 'Prod versionCode', tone: 'green' as const },
     { label: 'Test versionCode', tone: 'amber' as const },
     { label: 'Son release' },
     { label: 'Son deploy' },
     { label: 'Kurulum' },
   ]
 
+  function renderLiveVersion(countryId: string, environment: 'test' | 'prod') {
+    const hasMobileApi = isVersionCountry(countryId)
+    const version = liveVersions[environment][countryId]
+    if (!hasMobileApi) {
+      return <span className="text-xs text-muted-foreground">—</span>
+    }
+    if (liveVersionsStatus === 'loading') {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" />
+          …
+        </span>
+      )
+    }
+    if (liveVersionsStatus === 'error') {
+      return <span className="text-xs text-destructive">Alınamadı</span>
+    }
+    if (version != null) {
+      return (
+        <span className="text-lg font-bold tabular-nums text-foreground">{version}</span>
+      )
+    }
+    return <span className="text-xs text-muted-foreground">—</span>
+  }
+
   const tableRows = countryRows.map(({ country, latest }) => {
     const countryName = COUNTRY_NAMES[country.countryId as keyof typeof COUNTRY_NAMES] ?? country.countryName
-    const testVersion = testVersions[country.countryId]
-    const hasMobileApi = isVersionCountry(country.countryId)
 
     return [
       <div key={`${country.countryId}-name`}>
@@ -178,31 +235,8 @@ export default function VersionsPage() {
           {country.countryId}
         </div>
       </div>,
-      latest ? (
-        <span key={`${country.countryId}-production`} className="text-lg font-bold tabular-nums text-foreground">
-          {latest.transition.to}
-        </span>
-      ) : (
-        <span key={`${country.countryId}-production-empty`} className="text-xs text-muted-foreground">
-          Kayıt yok
-        </span>
-      ),
-      <span key={`${country.countryId}-test`} className="text-sm font-semibold tabular-nums text-foreground">
-        {!hasMobileApi ? (
-          '—'
-        ) : testVersionsStatus === 'loading' ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <Loader2 className="size-3 animate-spin" />
-            …
-          </span>
-        ) : testVersionsStatus === 'error' ? (
-          <span className="text-xs text-destructive">Alınamadı</span>
-        ) : testVersion != null ? (
-          testVersion
-        ) : (
-          '—'
-        )}
-      </span>,
+      <div key={`${country.countryId}-production`}>{renderLiveVersion(country.countryId, 'prod')}</div>,
+      <div key={`${country.countryId}-test`}>{renderLiveVersion(country.countryId, 'test')}</div>,
       latest ? (
         <div key={`${country.countryId}-release`} className="min-w-36">
           <div className="text-xs font-bold text-foreground">
@@ -211,6 +245,11 @@ export default function VersionsPage() {
           <div className="mt-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
             {latest.release.commit}
           </div>
+          {latest.transition.to != null && (
+            <div className="mt-0.5 text-[10px] text-muted-foreground">
+              Release geçmişi · {latest.transition.to}
+            </div>
+          )}
         </div>
       ) : (
         <span key={`${country.countryId}-release-empty`} className="text-xs text-muted-foreground">—</span>
@@ -221,6 +260,8 @@ export default function VersionsPage() {
       <CountryInstallButtons key={`${country.countryId}-install`} countryId={country.countryId} />,
     ]
   })
+
+  const fetchedAtLabel = formatFetchedAt(fetchedAt)
 
   function selectCountry(countryId: CountryFilter) {
     setCountryFilter(countryId)
@@ -267,8 +308,36 @@ export default function VersionsPage() {
         title="Ülke × version matrisi"
         icon={Tag}
         tone="indigo"
-        description="Production versionCode (release geçmişi), Test versionCode (GetLatestVersion), son release/deploy ve kurulum."
+        description="Prod/Test versionCode değerleri tüm ülke × ortam matrisi için GetLatestVersion’dan canlı çekilir. Son release/deploy release geçmişinden gelir."
       >
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-3 py-2.5">
+          <div className="min-w-0 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">GetLatestVersion</span>
+            {' · '}
+            HR/SI/RS/BA/ME × test + prod
+            {fetchedAtLabel ? (
+              <>
+                {' · '}
+                Son çekim {fetchedAtLabel}
+              </>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5"
+            disabled={liveVersionsStatus === 'loading'}
+            onClick={() => void loadLiveVersions()}
+          >
+            {liveVersionsStatus === 'loading' ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="size-3.5" />
+            )}
+            Yenile
+          </Button>
+        </div>
         <ComparisonTable headers={tableHeaders} rows={tableRows} highlightCol={1} />
       </PageSection>
 
@@ -421,13 +490,15 @@ export default function VersionsPage() {
       </PageSection>
 
       <Callout icon={GitCommit} title="Veri kaynağı" tone="amber">
-        Production versionCode’ları <code>rel/env-prod</code> dalındaki first-parent release
-        geçişlerinden üretildi. Staging için bu kaynakta doğrulanabilir version verisi bulunmadığı
-        için staging değeri gösterilmedi.
+        Matristeki Prod/Test versionCode değerleri her ülke × ortam için mobil API{' '}
+        <code>GetLatestVersion</code> çağrısından gelir (Yenile ile yeniden çekilir). Üstteki
+        ülke kartları ve version geçmişi <code>rel/env-prod</code> first-parent release
+        geçişlerinden üretilir.
         {missingCountries.length > 0 && (
           <>
-            {' '}Release geçmişinde {missingCountries.map(({ country }) => country.countryId.toUpperCase()).join(', ')}
-            {' '}version geçişi bulunmadığından ilgili production alanı boş bırakıldı.
+            {' '}Release geçmişinde{' '}
+            {missingCountries.map(({ country }) => country.countryId.toUpperCase()).join(', ')}
+            {' '}version geçişi bulunmadığından ilgili release alanları boş bırakıldı.
           </>
         )}
       </Callout>

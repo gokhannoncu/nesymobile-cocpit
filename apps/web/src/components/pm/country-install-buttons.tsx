@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   CheckCircle2,
   Circle,
@@ -107,15 +107,21 @@ function stepIndex(step: InstallStep | null): number {
   return STEPS.findIndex((s) => s.id === step)
 }
 
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError'
+}
+
 async function consumeInstallStream(
   country: NesyMobileCountry,
   environment: InstallEnv,
   onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal,
 ) {
   const res = await fetch('/api/adb/install-latest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
     body: JSON.stringify({ country, environment }),
+    signal,
   })
 
   if (!res.ok || !res.body) {
@@ -127,22 +133,26 @@ async function consumeInstallStream(
   const decoder = new TextDecoder()
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const chunks = buffer.split('\n\n')
-    buffer = chunks.pop() ?? ''
-    for (const chunk of chunks) {
-      const line = chunk
-        .split('\n')
-        .map((l) => l.trim())
-        .find((l) => l.startsWith('data:'))
-      if (!line) continue
-      const json = line.slice(5).trim()
-      if (!json) continue
-      onEvent(JSON.parse(json) as StreamEvent)
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const chunks = buffer.split('\n\n')
+      buffer = chunks.pop() ?? ''
+      for (const chunk of chunks) {
+        const line = chunk
+          .split('\n')
+          .map((l) => l.trim())
+          .find((l) => l.startsWith('data:'))
+        if (!line) continue
+        const json = line.slice(5).trim()
+        if (!json) continue
+        onEvent(JSON.parse(json) as StreamEvent)
+      }
     }
+  } finally {
+    reader.releaseLock()
   }
 }
 
@@ -151,12 +161,22 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
   const [busy, setBusy] = useState<InstallEnv | null>(null)
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   if (!country) {
     return <span className="text-xs text-muted-foreground">—</span>
   }
 
   const mobileCountry = country
+
+  function closeInstallDialog() {
+    const wasRunning = dialog?.status === 'running'
+    abortRef.current?.abort()
+    abortRef.current = null
+    setDialog(null)
+    setBusy(null)
+    if (wasRunning) toast.message('Kurulum iptal edildi')
+  }
 
   async function fetchDownloadLink(environment: InstallEnv) {
     setLinkDialog((prev) =>
@@ -226,6 +246,9 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
 
   async function install(environment: InstallEnv) {
     if (busy || disabled) return
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setBusy(environment)
     setDialog({
       open: true,
@@ -239,59 +262,64 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
 
     try {
       let sawDone = false
-      await consumeInstallStream(mobileCountry, environment, (event) => {
-        if (event.type === 'progress') {
-          setDialog((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  percent: event.percent,
-                  message: event.message,
-                  detail: event.detail,
-                  step: event.step,
-                }
-              : prev,
-          )
-          return
-        }
-        if (event.type === 'done') {
-          sawDone = true
-          const versionLabel =
-            event.result.versionNumber != null
-              ? `v${event.result.versionNumber}`
-              : event.result.applicationId
-          setDialog((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  percent: 100,
-                  message: 'Kurulum tamamlandı',
-                  detail: `${versionLabel} · ${event.result.deviceSerial}`,
-                  step: 'done',
-                  status: 'success',
-                  versionLabel,
-                }
-              : prev,
-          )
-          toast.success(`Kuruldu · ${versionLabel}`)
-          return
-        }
-        if (event.type === 'error') {
-          setDialog((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  status: 'error',
-                  errorMessage: event.message,
-                  message: 'Kurulum başarısız',
-                  detail: event.code,
-                }
-              : prev,
-          )
-          toast.error(event.message)
-        }
-      })
-      if (!sawDone) {
+      await consumeInstallStream(
+        mobileCountry,
+        environment,
+        (event) => {
+          if (event.type === 'progress') {
+            setDialog((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    percent: event.percent,
+                    message: event.message,
+                    detail: event.detail,
+                    step: event.step,
+                  }
+                : prev,
+            )
+            return
+          }
+          if (event.type === 'done') {
+            sawDone = true
+            const versionLabel =
+              event.result.versionNumber != null
+                ? `v${event.result.versionNumber}`
+                : event.result.applicationId
+            setDialog((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    percent: 100,
+                    message: 'Kurulum tamamlandı',
+                    detail: `${versionLabel} · ${event.result.deviceSerial}`,
+                    step: 'done',
+                    status: 'success',
+                    versionLabel,
+                  }
+                : prev,
+            )
+            toast.success(`Kuruldu · ${versionLabel}`)
+            return
+          }
+          if (event.type === 'error') {
+            setDialog((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: 'error',
+                    errorMessage: event.message,
+                    message: 'Kurulum başarısız',
+                    detail: event.code,
+                  }
+                : prev,
+            )
+            toast.error(event.message)
+          }
+        },
+        controller.signal,
+      )
+      if (!sawDone && !controller.signal.aborted) {
         setDialog((prev) =>
           prev && prev.status === 'running'
             ? {
@@ -304,6 +332,7 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
         )
       }
     } catch (err) {
+      if (controller.signal.aborted || isAbortError(err)) return
       const message = err instanceof Error ? err.message : 'Kurulum başarısız'
       setDialog((prev) =>
         prev
@@ -317,12 +346,13 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
       )
       toast.error(message)
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setBusy(null)
     }
   }
 
   const activeStepIdx = stepIndex(dialog?.step ?? null)
-  const canClose = dialog?.status !== 'running'
+  const isRunning = dialog?.status === 'running'
   const actionsLocked = disabled || busy != null
 
   return (
@@ -485,16 +515,14 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
       <Dialog
         open={Boolean(dialog?.open)}
         onOpenChange={(open) => {
-          if (!open && canClose) setDialog(null)
+          if (!open) closeInstallDialog()
         }}
       >
         <DialogContent
           className="sm:max-w-md"
           onPointerDownOutside={(e) => {
-            if (!canClose) e.preventDefault()
-          }}
-          onEscapeKeyDown={(e) => {
-            if (!canClose) e.preventDefault()
+            // Accidental overlay click shouldn't abort a long download
+            if (isRunning) e.preventDefault()
           }}
         >
           <DialogHeader>
@@ -584,13 +612,8 @@ export function CountryInstallButtons({ countryId, disabled }: Props) {
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canClose}
-              onClick={() => setDialog(null)}
-            >
-              {dialog?.status === 'running' ? 'Çalışıyor…' : 'Kapat'}
+            <Button type="button" variant="outline" onClick={closeInstallDialog}>
+              {isRunning ? 'İptal' : 'Kapat'}
             </Button>
           </DialogFooter>
         </DialogContent>

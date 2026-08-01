@@ -1,6 +1,6 @@
 ---
 name: Verdict Cockpit SDK + Bridge plan v1
-overview: NesyMobileCocpit'i mevcut Maestro merkezli otomasyon koşucusundan; Verdict SDK kontrol ve event düzlemi, Verdict Accessibility Bridge fiziksel UI eylem düzlemi, kalıcı event fan-out'u, BridgeFlowCompiler/Executor, dört katmanlı oracle ve ölçümlü Maestro silme kapısı bulunan app-agnostic bir test ve operasyon platformuna dönüştüren bağlayıcı master plan. Plan; mevcut doğru parçaları korur, production WebSocket mutual-HMAC boşluğunu, durable consumer/recovery boşluğunu, Bridge host client ve device gate eksikliğini, Workflow IR/Condition Engine/BridgeFlow runtime ihtiyacını, veri modeli ve UI dönüşümünü, fiziksel DUT kapılarını, güvenlik/retention kurallarını ve Cockpit ürün kabuğu borçlarını tek yerde toplar.
+overview: NesyMobileCocpit'i mevcut Maestro merkezli otomasyon koşucusundan; Verdict SDK kontrol ve event düzlemi, Verdict Accessibility Bridge fiziksel UI eylem düzlemi, kalıcı event fan-out'u, BridgeFlowCompiler/Executor ve dört katmanlı oracle bulunan app-agnostic bir test ve operasyon platformuna dönüştüren bağlayıcı master plan. Geçiş sonunda Maestro yalnız devre dışı bırakılmaz; runtime, driver, CLI, dependency, YAML üretimi, feature flag, API/DB alanı, UI, script, test, fixture ve aktif doküman yapısıyla birlikte Cockpit projesinden tamamen sökülür. Plan; mevcut doğru parçaları korur, production WebSocket mutual-HMAC boşluğunu, durable consumer/recovery boşluğunu, Bridge host client ve device gate eksikliğini, Workflow IR/Condition Engine/BridgeFlow runtime ihtiyacını, veri modeli ve UI dönüşümünü, fiziksel DUT kapılarını, güvenlik/retention kurallarını ve Cockpit ürün kabuğu borçlarını tek yerde toplar.
 todos:
   - id: faz-0
     content: "FAZ 0 — Doğrulanabilir baseline ve SSOT: repo-level typecheck yeşil; checkpoint script'leri ayrı harness; gerçek PostgreSQL ingest testleri CI'da; Mobile verdict-status.json ile Cockpit durum tablosu eşlenir; eski Cockpit dokümanlarındaki VerdictChannel/detectChannel/legacy drift'i düzeltilir; golden workflow ve ölçüm fixture'ları SHA-pinned hale gelir. CHECKPOINT 0 geçmeden güvenlik veya runtime cutover yapılmaz."
@@ -12,25 +12,25 @@ todos:
     content: "FAZ 2 — Durable event runtime: commit-sonrası ACK korunur; ordered fan-out gerçek consumer'a bağlanır; processed_at/retry/dead-letter/consumer lag; restart recovery; run-scoped subscription ve host waitEvent; synchronous sink ile paralel eşitlik; ölçüm sonrası synchronous oracle yolu kaldırılır. CHECKPOINT 2: process kill sonrası event bir kez ve sırayla oracle'a ulaşır, WAL ACK/gap semantiği korunur."
     status: pending
   - id: faz-3
-    content: "FAZ 3 — Bridge host temeli ve cihaz kapısı: packages/bridge-contract + bridge-client; NDJSON framing, handshake, typed command/result, requestId idempotency, timeout/cancel/reconnect, screenshot artifact; cihaz başına dinamik host port -> sabit device 9876; Bridge APK/version/hash/accessibility/capability/ping preflight; lab allowlist ve production deny. CHECKPOINT 3: gerçek DUT'ta scoped dump/find/tap/input/swipe/back/screenshot/wait_node ve hata sözleşmesi geçer."
+    content: "FAZ 3 — Bridge host temeli ve cihaz kapısı: packages/bridge-contract + bridge-client; NDJSON framing, handshake, typed command/result, semantic TargetFingerprint, requestId idempotency, fiziksel aksiyon yaşam döngüsü, timeout/cancel/reconnect, screenshot artifact; cihaz başına dinamik host port -> sabit device 9876; Bridge APK/version/hash/accessibility/capability/ping preflight; lab allowlist ve production deny. CHECKPOINT 3: gerçek DUT'ta scoped dump/find/tap/input/swipe/back/screenshot/wait_node, ambiguity/stale-tree ve action lifecycle sözleşmesi geçer."
     status: pending
   - id: faz-4
     content: "FAZ 4 — Workflow beyni: paylaşılan workflow-contract, Workflow IR v2, güvenli Condition Engine AST, true/false/unknown, compile-time/runtime ayrımı, FOR_EACH/SWITCH/RETRY/DIALOG_POLICY/WAIT_EVENT/CAPTURE/CLEANUP node'ları ve deterministik BridgeFlowCompiler. CHECKPOINT 4: unsupported/ambiguous/unbounded/risky planlar cihazdan önce fail; aynı input aynı plan hash'ini üretir."
     status: pending
   - id: faz-5
-    content: "FAZ 5 — BridgeFlowExecutor + dört katmanlı Oracle + yeni kalıcılık modeli: step occurrence/iteration/requestId/treeGen, SDK/Bridge/local/remote evidence, completion policy, cancellation/recovery/cleanup, stuck-run detection; additive Prisma migrasyonu ve eski Maestro run'ları read-only uyumluluğu. CHECKPOINT 5: process restart ve duplicate action senaryoları deterministik, ekran yeşili tek başına başarı üretmez."
+    content: "FAZ 5 — BridgeFlowExecutor + dört katmanlı Oracle + yeni kalıcılık modeli: step occurrence/iteration/requestId/treeGen, SDK/Bridge/local/remote evidence applicability, PASS_ONLINE/PASS_QUEUED_OFFLINE/PENDING/FAIL/INCONCLUSIVE sonuç taksonomisi, Remote business doğrulaması, CLOCK_BOOTTIME host-device korelasyonu, cancellation/recovery/cleanup ve stuck-run detection; eski engine'e ait run verileri engine-neutral arşiv modeline taşınır. CHECKPOINT 5: process restart ve duplicate action deterministik, transport success business success sayılmaz, ekran yeşili tek başına başarı üretmez."
     status: pending
   - id: faz-6
-    content: "FAZ 6 — Cockpit UI dönüşümü: YAML Preview yerine BridgeFlow Plan Preview; selector builder; Live Inspector Observe/Act; ADB/SDK Control/SDK Event/Accessibility Bridge ayrı sağlık durumları; run detail'de UI/App/Local/Remote rozetleri, occurrence/iteration timeline, missing-event teşhisi ve copy-repro paketi. CHECKPOINT 6: operatör YAML veya Maestro bilmeden workflow yazıp kanıtı açıklayabilir."
+    content: "FAZ 6 — Cockpit UI dönüşümü: YAML Preview yerine BridgeFlow Plan Preview; semantic fingerprint üreten selector builder; Live Inspector Observe/Act; ADB/SDK Control/SDK Event/Accessibility Bridge ayrı sağlık durumları; run detail'de UI/App/Local/Remote uygulanabilirlik rozetleri, normalize diagnostic waterfall, occurrence/iteration timeline, missing-event teşhisi ve genişletilmiş/redacted copy-repro paketi. CHECKPOINT 6: operatör YAML veya Maestro bilmeden workflow yazıp zaman hizalı kanıtı açıklayabilir."
     status: pending
   - id: faz-7
-    content: "FAZ 7 — Gerçek iş akışları ve teşhis: Field Login ve Load Tour tek executor'a taşınır; tam kurye turu, 20 barkod FOR_EACH, QUEUE_OFFLINE, backend confirmation ve dialog policy; D1/D2/D3 CapturePolicy, redaction, retention, RBAC/audit, heartbeat/stuck-run ve transport/Bridge metrikleri. CHECKPOINT 7: referans kurye akışı tüm evidence katmanlarıyla gerçek DUT'ta yeşil."
+    content: "FAZ 7 — Gerçek iş akışları ve teşhis: Field Login ve Load Tour tek executor'a taşınır; tam kurye turu, 20 barkod FOR_EACH, PASS_QUEUED_OFFLINE, backend business confirmation ve dialog policy; D1/D2/D3 CapturePolicy, redaction, retention, RBAC/audit, heartbeat/stuck-run ve transport/Bridge metrikleri. AI Design Audit ve post-run LLM açıklaması ayrı opsiyonel İz C'dir, runtime hükmünü değiştirmez ve checkpoint'i bloklamaz. CHECKPOINT 7: referans kurye akışı yalnız ilgili evidence katmanlarıyla gerçek DUT'ta yeşil."
     status: pending
   - id: faz-8
     content: "FAZ 8 — Fiziksel kabul ve ölçümlü Maestro cutover: Bridge B1 runId/sessionId/epoch fencing, process-death duplicate action, IME obstruction, foreign window ve manual touch contamination; golden runner dual-run; correctness, false-pass, süre ve artifact karşılaştırması. CHECKPOINT 8 geçmeden Maestro kapatılmaz."
     status: pending
   - id: faz-9
-    content: "FAZ 9 — Ürünleştirme ve DELETE: Maestro executor/driver/YAML compiler/UI/CLI/fallback kaldırılır; v1 compatibility telemetry gate; run/artifact operasyon politikaları; çoklu cihaz, düşük disk, USB/power kaybı ve soak; doküman/terminoloji temizliği; kalan product-shell placeholder işleri ayrı ürün backlog'una devredilir. CHECKPOINT 9: yeni run yolunda Maestro referansı sıfır, güvenlik/durability/release kapıları yeşil."
+    content: "FAZ 9 — Ürünleştirme ve TAM SÖKÜM: Maestro executor/driver/YAML compiler/UI/CLI/fallback yanında dependency, env/config, feature flag, API DTO, Prisma alanı, migration baseline, script, test, fixture, route, çeviri ve aktif doküman yapısı da projeden kaldırılır; eski run verisi önceden engine-neutral arşive taşınır, özel historical renderer bırakılmaz. CHECKPOINT 9: aktif Cockpit projesinde Maestro yapısı ve çalıştırılabilir referansı sıfır, güvenlik/durability/release kapıları yeşil."
     status: pending
 isProject: false
 ---
@@ -96,6 +96,31 @@ Hedef tanımı:
 > kalıcı, tekrar başlatılabilir, açıklanabilir ve dört katmanlı oracle ile
 > doğrulanan Maestro'suz workflow platformu.
 
+## Denetim Turu 2 — Ürün çalışma modeli ve açıklanabilirlik ekleri
+
+Ürünün kullanıcıya görünen uçtan uca anlatımı teknik master planla
+karşılaştırıldı. Ana mimari değişmedi; aşağıdaki eksik sözleşmeler eklendi:
+
+| Öncelik | Ekleme | Plandaki yeri |
+|---|---|---|
+| P1 | Teknik Faz 0–9 ile beş ürün katmanının isim ayrımı | A.10 |
+| P1 | SDK/Bridge `CLOCK_BOOTTIME` + host ping/marker/uncertainty korelasyonu | B.15 · D.9 |
+| P1 | Versioned semantic `TargetFingerprint`, stable `rowKey`, rowIndex yalnız hint | B.7 · D.3 · D.12 |
+| P1 | Physical action lifecycle ve process-death unknown-effect semantiği | B.7 · D.8 |
+| P1 | `dispatchGesture` primary, allowlisted semantic action, fixed koordinat yasağı | B.7 · C.22 |
+| P1 | Evidence layer applicability ve ayrı rozet durumları | B.12 · D.9 |
+| P1 | Online/offline/pending/layer-fail/inconclusive sonuç taksonomisi | B.12 · D.9 |
+| P1 | HTTP transport sonucu ile Remote business doğruluğunun ayrılması | B.12 · D.9 |
+| P1 | Normalize command→gesture→app→local→remote diagnostic waterfall | D.15 |
+| P1 | Versioned, redacted ve clock-aware genişletilmiş repro paketi | D.15 |
+| P1 | SDK otomatik teknik telemetri ile app business event/query sınırı | C.20 · D.7 |
+| P2 | AI Design Audit ve post-run explanation, non-blocking opsiyonel İz C | C.21 · D.21 |
+
+Eklenmeyen iddialar: Bridge için sabit boyut hedefi, tüm Room write'larının
+otomatik yakalanması, her node'da dört layer zorunluluğu, HTTP 200'ün doğrudan
+business success olması, requestId'nin mutlak exactly-once garantisi ve runtime
+LLM hükmü.
+
 ---
 
 # BÖLÜM A — BAĞLAM, KAPSAM VE MEVCUT DURUM
@@ -112,8 +137,8 @@ Bu planın amacı Cockpit'i aşağıdaki yeteneklere ulaştırmaktır:
 6. UI, app, local ve remote kanıtları aynı occurrence altında birleştirmek.
 7. API/UI process restart ve cihaz/Bridge kopmalarında güvenli recovery yapmak.
 8. Operatöre selector, plan, evidence ve repro araçlarını sunmak.
-9. Maestro'yu ölçümlü kapıdan sonra tamamen kaldırmak.
-10. Eski run'ları okunabilir tutarken yeni run modelini engine-agnostic yapmak.
+9. Maestro'yu ölçümlü kapıdan sonra yalnız kapatmak değil, bütün yapısıyla projeden sökmek.
+10. Eski run verisini engine-neutral arşive taşımak; özel Maestro alanı veya renderer bırakmamak.
 
 ## A.2 Tek kaynak ve öncelik sırası
 
@@ -208,7 +233,7 @@ yeniden çalıştırılıp kanıt üretildiğinde değiştirir.
 - Test harness, fixture, CI gate ve fiziksel cihaz script'leri.
 - Field Login, Load Tour ve tam kurye referans workflow'u.
 - Diagnostic capture, retention, RBAC ve audit.
-- Maestro cutover ve silme.
+- Ölçümlü cutover ve Maestro'nun kod, paket, veri modeli, UI, script, test ve aktif doküman dahil tam sökümü.
 - Cockpit dokümanlarının SSOT uyumu.
 
 ## A.9 Cockpit kritik kapsamının dışında olanlar
@@ -222,6 +247,25 @@ yeniden çalıştırılıp kanıt üretildiğinde değiştirir.
 - SDK içinde `waitEvent` komutu tasarlamak; bekleme host runtime işidir.
 - Genel Home/PM/Settings placeholder'larını SDK/Bridge release kapısına sokmak.
 - Kalıcı Maestro fallback bırakmak.
+
+## A.10 Ürün çalışma modeli ile teknik fazların ayrımı
+
+Bu dokümandaki **Faz 0–9**, implementasyon ve kabul sırasıdır. Kullanıcının
+üründe gördüğü uçtan uca akış aynı isimlerle anlatılmaz; aksi halde örneğin
+“Faz 4” ifadesi compiler fazı mı Oracle katmanı mı belirsizleşir.
+
+Ürün anlatımında şu beş katman kullanılır:
+
+| Ürün katmanı | Kullanıcının gördüğü | Teknik karşılığı |
+|---|---|---|
+| **Entegrasyon Katmanı** | Cihaz, uygulama, SDK event ve Bridge hazır mı? | ADB, SDK Control/Event, auth, durable ingest, Bridge preflight |
+| **Test Tasarım Katmanı** | Test nasıl oluşturulur? | Editor, Live Inspector, selector/fingerprint, condition, plan preview |
+| **Koşum Katmanı** | Hangi adım çalışıyor? | WorkflowIR, BridgeFlowCompiler/Executor, SDK/Bridge/host step'leri |
+| **Kanıt ve Oracle Katmanı** | Adım gerçekten doğru mu? | UI/App/Local/Remote evidence ve completion policy |
+| **Teşhis ve Raporlama Katmanı** | Neden geçti/kaldı, nasıl tekrar edilir? | Waterfall, artifact, repro, optional post-run explanation |
+
+Bu katmanlar teknik checkpoint adlarını değiştirmez; yalnız ürün anlatımının
+SSOT terminolojisidir.
 
 ---
 
@@ -431,6 +475,78 @@ Desteklenecek v1 yüzeyi:
 - Timeout, TCP kopması ve unknown effect ayrı hata sınıflarıdır.
 - Run fencing Mobile B1 tamamlanınca her command'da doğrulanır.
 
+### `TargetFingerprint` — kalıcı semantic hedef sözleşmesi
+
+`resourceId`, text veya `rowIndex` tek başına kalıcı hedef değildir. Editor,
+Live Inspector, compiler, BridgeClient ve repro paketi aynı versioned fingerprint
+sözleşmesini kullanır:
+
+```ts
+interface TargetFingerprint {
+  screen?: string;
+  packageName?: string;
+  role?: string;
+  resourceId?: string;
+  textPattern?: string;
+  contentDescriptionPattern?: string;
+  ancestor?: TargetFingerprint;
+  collectionRoot?: string;
+  rowKey?: Record<string, string>;
+  rowIndexHint?: number;
+}
+```
+
+Bağlayıcı çözüm kuralları:
+
+- Stable resource ID ve business `rowKey` mümkün olduğunda tercih edilir.
+- `shipmentId`, stop ID veya barcode gibi `rowKey` gerçek satır kimliğidir.
+- `rowIndexHint` yalnız ambiguity giderici ipucudur; ana kimlik değildir.
+- `nodes[0]`, “ilk eşleşen” ve kör text tap yasaktır.
+- Birden fazla eşleşme action üretmez.
+- Fingerprint'in hangi alanlarla çözüldüğü evidence olarak kaydedilir.
+- Hassas text değerleri log, artifact ve repro'da redakte edilir.
+- App sürümü değişiminde fingerprint drift ölçülür ve selector health'e yansır.
+
+### Fiziksel aksiyon yaşam döngüsü
+
+Bir `requestId` yalnız duplicate suppression anahtarı değildir; aksiyonun hangi
+aşamada kaldığı kalıcı olarak bilinmelidir:
+
+```text
+RECEIVED
+  -> TARGET_RESOLVED
+  -> GESTURE_DISPATCHED
+  -> GESTURE_COMPLETED
+  -> EFFECT_VERIFIED
+```
+
+Terminal hata durumları:
+
+- `TARGET_NOT_FOUND`
+- `AMBIGUOUS`
+- `OBSCURED`
+- `STALE_TREE`
+- `DISPATCH_REJECTED`
+- `GESTURE_FAILED`
+- `UNKNOWN_EFFECT`
+- `EFFECT_NOT_OBSERVED`
+
+Her transition `runId`, `sessionId`, `epoch`, `requestId`, `occurrenceId`,
+fingerprint, `treeGen` ve `monoTs` taşır. Bridge process'i gesture sonrasında
+ama response öncesinde ölürse Cockpit exactly-once varsaymaz; kalıcı transition
+ve idempotency kanıtına göre recover eder veya `UNKNOWN_EFFECT` ile durur.
+
+### Dokunma yöntemi
+
+- Normal fiziksel dokunmanın birincil yolu `dispatchGesture`'dır.
+- `performAction` yalnız contract'ta allowlist edilmiş semantic action için
+  kontrollü kaçış yolu olabilir.
+- Sabit ekran koordinatı kalıcı hedef veya workflow girdisi olamaz.
+- Kullanılan yöntem (`dispatchGesture`, `performAction`, semantic scroll) UI
+  evidence içinde görünür.
+- Safe point fresh bounds/tree üzerinden hesaplanır; foreign-window obstruction
+  varsa input dispatch edilmez.
+
 ## B.8 Run state machine
 
 ```text
@@ -456,6 +572,8 @@ Ek recovery state'leri:
 
 State transition atomik ve audit edilebilir olmalıdır. Process restart sonrası
 DB state'i üzerinden devam edilir; yalnız bellek içi run state'i kaynak değildir.
+Bridge action yaşam döngüsü run state machine'in alt state'idir; step “completed”
+olmadan önce action terminal state'i ve gerekli effect evidence'i kalıcı olmalıdır.
 
 ## B.9 Workflow IR v2
 
@@ -567,6 +685,67 @@ Completion policy örnekleri:
 
 Ekranın yeşil görünmesi tek başına business success sayılmaz.
 
+### Katman uygulanabilirliği
+
+Her node'da dört katmanın tamamı zorunlu değildir. Node hangi katmanın required,
+optional veya ilgisiz olduğunu compile-time'da açıkça belirtir:
+
+```json
+{
+  "requiredLayers": ["ui", "app", "local"],
+  "optionalLayers": ["remote"],
+  "remotePolicy": "online_or_queued"
+}
+```
+
+Her layer'ın durumu:
+
+- `REQUIRED_PENDING`
+- `PASSED`
+- `FAILED`
+- `NOT_APPLICABLE`
+- `NOT_MEASURED`
+- `INCONCLUSIVE`
+
+UI'da `NOT_APPLICABLE`, `NOT_MEASURED` ve `REQUIRED_PENDING` aynı gri rozetle
+anlam kaybına uğratılmaz.
+
+### Oracle sonuç taksonomisi
+
+Node ve run sonucu yalnız kırmızı/yeşil değildir:
+
+- `PASS_ONLINE`
+- `PASS_QUEUED_OFFLINE`
+- `PENDING_REMOTE`
+- `FAIL_UI`
+- `FAIL_APP`
+- `FAIL_LOCAL`
+- `FAIL_REMOTE`
+- `INCONCLUSIVE`
+- `CANCELLED`
+- `UNKNOWN_ACTION_EFFECT`
+
+`Local=PASSED + offlineQueue=PASSED + remote yok` otomatik failure değildir;
+node politikasına göre `PASS_QUEUED_OFFLINE` veya `PENDING_REMOTE` olur.
+
+### Remote business doğruluğu
+
+`HTTP 2xx` transport başarısıdır; tek başına business success değildir. Remote
+Oracle mümkün olduğunda şunları birleştirir:
+
+- HTTP status.
+- Response business result/code.
+- Backend entity/query sonucu.
+- Dispatcher veya queue state.
+- Backend correlation/request ID.
+- SDK/host request correlation.
+- Entity version/state.
+- Eventual-consistency deadline.
+
+Örnek olarak `HTTP 200 + business rejection` fail; `HTTP 202` pending;
+`HTTP 500 + doğru offline queue` queued-offline pass; `HTTP 200 + değişmeyen
+backend entity` fail veya deadline'a kadar pending olabilir.
+
 ## B.13 Veri modeli hedefi
 
 ### Run alanları
@@ -595,7 +774,11 @@ Ekranın yeşil görünmesi tek başına business success sayılmaz.
 - condition/dialog decision
 - retry/cancel/recovery bilgisi
 
-Migration additive yapılır. Eski Maestro run'ları read-only render edilir.
+Geçiş migrasyonu önce additive yapılır: eski engine'e ait gerekli tarihsel veri
+generic `legacyExecutionArtifact`/artifact export modeline taşınır ve engine-neutral
+Run Detail üzerinden okunur. Taşıma doğrulandıktan sonra `yamlContent`,
+`maestroOutput` ve diğer engine-specific kolon/DTO/type/renderer'lar drop edilir.
+Nihai şemada veya UI'da Maestro'ya özel read model kalmaz.
 
 ## B.14 Cockpit UI hedefi
 
@@ -642,6 +825,41 @@ Tek “Bridge” etiketi yerine:
 - Local DB Access
 - Active Run
 
+## B.15 Ortak zaman ekseni ve host-device korelasyonu
+
+SDK ve Bridge ayrı process'ler olsa da aynı Android cihazında
+`SystemClock.elapsedRealtime()` / `CLOCK_BOOTTIME` eksenini paylaşır. Cockpit
+host'un monotonic saati ise farklı bir eksendir ve doğrudan device `monoTs` gibi
+yorumlanamaz.
+
+```text
+SDK monoTs -----┐
+Bridge monoTs --┼-- device CLOCK_BOOTTIME
+                │
+Host event -----┴-- ping offset + capture marker ile hizalanır
+```
+
+### Persist edilecek korelasyon alanları
+
+- SDK/Bridge `deviceMonoTs`.
+- Host receive monotonic time.
+- Ping send/receive zamanları ve round-trip.
+- Tahmin edilen host-device offset.
+- Offset uncertainty/error bound.
+- Capture başlangıç/bitiş marker'ları.
+- Device boot identity.
+- Calibration version ve oluşturulma zamanı.
+
+### Bağlayıcı kurallar
+
+- Wall clock/NTP run sıralamasının ana kaynağı değildir.
+- Reboot sonrası eski calibration kullanılamaz.
+- Timestamp taşımayan host ölçümü en yakın marker aralığına yerleştirilir;
+  sahte device kesinliğiyle gösterilmez.
+- Diagnostic waterfall belirsizliği kullanıcıya gösterir.
+- Oracle ordering, yalnız tanımlı aynı-domain veya kalibrasyonlu karşılaştırma yapar.
+- Repro paketi kullanılan clock anchor ve uncertainty bilgisini taşır.
+
 ---
 
 # BÖLÜM C — BAĞLAYICI KARARLAR VE YAPILMAYACAKLAR
@@ -674,10 +892,13 @@ bir güvenlik ve ürün yüzeyidir. İkisi birbirinin yerine geçirilmez.
 Bridge lab-only uygulamadır. Production device veya production allowlist dışı
 device üzerinde Act Mode fail-closed olur.
 
-## C.5 Sessiz Maestro fallback olmayacak
+## C.5 Maestro fallback veya devre dışı kalıntı olmayacak
 
 Bridge preflight, compiler veya executor hatasında run Maestro'ya düşmez. Açık
-hata kodu üretir. Maestro yalnız ölçümlü geçiş boyunca bilinçli dual-run'da yaşar.
+hata kodu üretir. Maestro yalnız ölçümlü geçiş boyunca, silme kararını üretmek
+için izole dual-run harness'ında geçici olarak yaşar. Checkpoint 8 sonrasında bu
+harness da dahil bütün yapı Checkpoint 9'da projeden sökülür. Disabled kod,
+feature flag, “ileride lazım olur” dependency'si veya gizli CLI yolu bırakılmaz.
 
 ## C.6 Kalıcı YAML execution artifact'i olmayacak
 
@@ -743,15 +964,64 @@ Unknown dialog davranışı: STOP, screenshot, scoped dump, policy/audit kaydı.
 
 ADB, SDK Control, SDK Event ve Accessibility Bridge farklı sağlık durumlarıdır.
 
-## C.18 Eski run verisi silinmeyecek
+## C.18 Eski run verisi engine-neutral taşınacak; özel renderer bırakılmayacak
 
-Migration additive olur. Eski Maestro run'ları read-only görünür; yeni runtime
-eski alanlara bağımlı olmaz.
+Önce doğrulanmış export/migration ile korunması gereken tarihsel özet, log ve
+artifact generic alanlara taşınır. Sonra engine-specific kolonlar, DTO'lar,
+enum değerleri, UI bileşenleri ve renderer silinir. Eski run gerekiyorsa yalnız
+engine-neutral “legacy external execution” görünümünde açılır; proje içinde
+Maestro'ya özel kod yolu kalmaz.
 
 ## C.19 General product-shell işi kritik runtime yoluna karıştırılmayacak
 
 Home, PM, Settings ve statik içerik borçları ayrıca izlenir. Bunlar SDK/Bridge
 güvenlik ve correctness kapılarını geciktirecek şekilde aynı faza konmaz.
+
+## C.20 SDK bütün business veya Room değişikliklerini otomatik üretmiş sayılmayacak
+
+SDK otomatik teknik telemetri sağlayabilir:
+
+- Screen lifecycle.
+- Interaction metadata.
+- Network metadata ve süre/byte bilgileri.
+- Crash ve ANR riski.
+- Memory pressure.
+- Span/run context.
+
+Uygulamaya özgü business doğruluğu ise açık contract gerektirir:
+
+- Typed business event.
+- App-registered state provider.
+- Önceden kayıtlı ve allowlist'li named query.
+- Business correlation ID.
+- Host tarafına kopyalanan DB'nin doğrulanması.
+
+Compiler, zorunlu app/local evidence için gerekli event/provider/query capability
+yoksa planı fail-fast reddeder. Cockpit, SDK bütün Room write'larını otomatik
+dinliyormuş gibi event beklemez.
+
+## C.21 AI runtime hükmü vermez
+
+- AI/LLM raw log'dan pass/fail üretemez.
+- BridgeFlow execution veya retry kararı LLM'e bağlanamaz.
+- Oracle sonucu LLM tarafından değiştirilemez.
+- AI Design Audit çıktısı doğrudan çalıştırılmaz; typed deterministic rule'a
+  çevrilir ve insan onayı alır.
+- Post-run LLM yalnız deterministic evidence'i açıklayan opsiyonel katmandır.
+- AI servisi unavailable olduğunda run sonucu ve checkpoint etkilenmez.
+- Hassas artifact açık policy/approval olmadan model girdisine eklenmez.
+
+## C.22 Sabit koordinat kalıcı workflow hedefi olmayacak
+
+Koordinat yalnız fresh semantic node bounds'undan çalışma anında türetilen safe
+point olabilir. Editor'a kalıcı `x/y` test hedefi kaydedilmez. Orientation,
+resolution veya inset değişiminde eski koordinat yeniden kullanılmaz.
+
+## C.23 `rowIndex` business kimliği olmayacak
+
+Collection satırı mümkünse shipment/stop/barcode gibi stable `rowKey` ile
+çözülür. `rowIndexHint` yalnız aynı fingerprint için son ambiguity ipucudur;
+liste sırası değişince başka entity'ye kör tap yapılamaz.
 
 ---
 
@@ -831,6 +1101,10 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 10. Error taxonomy.
 11. Capability manifest.
 12. Schema fuzz/property testleri.
+13. Versioned `TargetFingerprint` ve resolution evidence şeması.
+14. Stable `rowKey` + optional `rowIndexHint` semantiği.
+15. Action lifecycle transition ve terminal-state şeması.
+16. `dispatchGesture` / allowlisted `performAction` method evidence'i.
 
 ## D.4 BridgeClient ve Device Gate
 
@@ -878,6 +1152,9 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 10. Occurrence/iteration model.
 11. Validation error path ve editor mapping.
 12. Eski workflow version reader/migrator.
+13. Shared TargetFingerprint ve fingerprint version.
+14. Layer applicability/result taxonomy.
+15. Clock calibration reference ve action lifecycle evidence tipleri.
 
 ## D.6 Condition Engine
 
@@ -917,6 +1194,10 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 18. Missing evidence policy error.
 19. Plan version/hash.
 20. Human-readable preview DTO.
+21. TargetFingerprint strength, ambiguity ve drift validation.
+22. Fixed-coordinate target rejection.
+23. Required business event/state/query capability validation.
+24. Required/optional/not-applicable evidence layer compilation.
 
 ## D.8 BridgeFlowExecutor
 
@@ -940,6 +1221,10 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 18. Cleanup/end_run/secret/socket/forward/subscriber release.
 19. Per-step metrics.
 20. Artifact manifest finalization.
+21. `RECEIVED → TARGET_RESOLVED → GESTURE_DISPATCHED → GESTURE_COMPLETED → EFFECT_VERIFIED` transition persistence.
+22. Action response kaybında exactly-once varsaymadan `UNKNOWN_EFFECT` recovery.
+23. Clock calibration oluşturma/yenileme ve reboot invalidation.
+24. Effect verification tamamlanmadan step success üretmeme.
 
 ## D.9 Oracle Engine v2
 
@@ -959,6 +1244,11 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 14. Backend/Bridge/SDK clock anchor metadata.
 15. Repeated node ve loop testleri.
 16. Final verdict explanation DTO.
+17. Layer applicability: required/optional/not-applicable/not-measured.
+18. `PASS_ONLINE`, `PASS_QUEUED_OFFLINE`, `PENDING_REMOTE`, layer-specific fail ve `INCONCLUSIVE` sonuçları.
+19. Remote business adapter: HTTP + business result + backend entity + dispatcher + correlation.
+20. Eventual-consistency deadline ve pending→terminal transition.
+21. Clock offset/uncertainty-aware evidence ordering.
 
 ## D.10 Persistence ve API
 
@@ -974,9 +1264,17 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 10. Event subscription/checkpoint state.
 11. Audit ilişkileri.
 12. Retention/purge state.
-13. Eski Maestro run read model.
-14. API DTO versioning.
-15. Pagination ve büyük artifact ayrımı.
+13. Eski engine verisini generic legacy execution artifact modeline taşıma.
+14. Eski `yamlContent`/`maestroOutput` verisi için sayım, checksum ve export doğrulaması.
+15. Engine-specific Prisma kolonları ve DTO'ları drop etmeye hazırlayan iki aşamalı migration.
+16. Engine-neutral legacy run summary; özel renderer yok.
+17. API DTO versioning.
+18. Pagination ve büyük artifact ayrımı.
+19. Target fingerprint ve resolution evidence alanları.
+20. Physical action transition tablosu/JSON modeli.
+21. Per-layer applicability ve verdict result taxonomy.
+22. Clock calibration/anchor/uncertainty modeli.
+23. Diagnostic waterfall stage ve correlation alanları.
 
 ## D.11 Automation Editor
 
@@ -998,6 +1296,9 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 16. Plan preview.
 17. YAML/Maestro dilini deprecate etme ve silme.
 18. Web local compiler fallback'ini silme.
+19. `TargetFingerprint` formu ve fingerprint strength/drift göstergesi.
+20. Business `rowKey` seçimi; `rowIndexHint` kullanımında uyarı.
+21. Required/optional/not-applicable evidence layer editörü.
 
 ## D.12 Live Inspector
 
@@ -1017,6 +1318,11 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 14. Production read-only.
 15. Audit.
 16. Polling/backpressure ve disconnected state.
+17. Seçilen node'dan versioned `TargetFingerprint` üretme.
+18. Fingerprint'in resolve ettiği alanları ve match count'u gösterme.
+19. `rowKey` ile collection satırı seçme; `rowIndex`i yalnız hint olarak kullanma.
+20. Kullanılan physical action method'unu (`dispatchGesture`/semantic action) gösterme.
+21. Selector drift ve app-version uyumluluk uyarısı.
 
 ## D.13 Device Lab ve Operational Readiness
 
@@ -1060,15 +1366,41 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 7. Condition operand snapshot.
 8. Dialog decision.
 9. Artifact gallery.
-10. Copy repro paketi:
-    - plan hash
-    - device/capability
+10. Normalize diagnostic waterfall:
+    - `COMMAND_CREATED`
+    - `COMMAND_SENT`
+    - `COMMAND_RECEIVED`
+    - `TARGET_RESOLVED`
+    - `GESTURE_DISPATCHED`
+    - `GESTURE_COMPLETED`
+    - `EFFECT_VERIFIED`
+    - `APP_EVENT_RECEIVED`
+    - `LOCAL_STATE_CONFIRMED`
+    - `HTTP_REQUEST_STARTED`
+    - `HTTP_RESPONSE_RECEIVED`
+    - `REMOTE_STATE_CONFIRMED`
+    - `QUEUE_OFFLINE_CONFIRMED`
+    - `STEP_COMPLETED`
+11. Waterfall satırında source, device/host mono time, offset uncertainty,
+    correlation ID, evidence link ve redacted detail.
+12. Copy repro paketi:
+    - app version/build variant
+    - SDK ve Bridge version/protocol
+    - workflow version ve plan hash
+    - device model/API/orientation/resolution/capabilities
+    - screen
     - redacted command
-    - selector
-    - requestId
-    - run/session/epoch
-    - scoped dump/screenshot ref
-    - expected/actual evidence
+    - target fingerprint ve resolution evidence
+    - requestId ve action lifecycle
+    - run/session/epoch/occurrence/iteration
+    - treeGen
+    - sanitized run input
+    - expected/actual events ve layer evidence
+    - clock calibration/offset/uncertainty
+    - scoped dump/screenshot ref ve artifact hash
+    - retention/expiry metadata
+13. Repro paketi immutable ve versioned olur; production Act Mode'u otomatik açmaz.
+14. `NOT_APPLICABLE`, `NOT_MEASURED`, `REQUIRED_PENDING` rozetlerini ayrı anlatma.
 
 ## D.16 Diagnostics, Metrics ve Retention
 
@@ -1117,7 +1449,7 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 9. `SCREEN_READY` invalidation.
 10. Workflow-lifetime WakeLock ve thermal etkisi.
 
-## D.19 Maestro Ölçümü ve DELETE
+## D.19 Maestro Ölçümü ve Projeden Tam Söküm
 
 1. Golden workflow listesi.
 2. Aynı input/device/build ile Maestro ve BridgeFlow run.
@@ -1134,9 +1466,76 @@ auth ve sync-cutover kriterleri tamamlanmalıdır.
 13. Maestro CLI/dependency/script silme.
 14. UI metinleri silme.
 15. Field flow özel Maestro yolları silme.
-16. Yeni run DB yazımından Maestro alanlarını kaldırma.
-17. Eski run renderer'ını read-only bırakma.
-18. Repo-wide zero-reference gate.
+16. Runtime feature flag, fallback branch ve environment variable'ları silme.
+17. Package manifest, lockfile ve container/image kurulumlarından dependency'yi silme.
+18. API route, DTO, type, enum, serializer ve response alanlarını silme.
+19. `yamlContent` ve `maestroOutput` dahil Prisma alanlarını drop etme.
+20. Korunacak eski run verisini engine-neutral artifact/archive modeline taşıma.
+21. Engine-specific historical renderer'ı silme; generic legacy summary kullanma.
+22. Test, mock, snapshot, fixture ve test helper'larını silme veya BridgeFlow'a dönüştürme.
+23. Script, CI job, shell command, env örneği ve runbook talimatlarını silme.
+24. Translation, label, icon, route ve kullanıcı metinlerini silme.
+25. Aktif Cockpit dokümanlarındaki eski mimari/yürütme talimatlarını kaldırma;
+    bu master plan yalnız karar geçmişini ve söküm kanıtını taşır.
+26. Prisma migration geçmişi için güvenli baseline/squash planı:
+    - tüm ortamlar drop migration'ını uygulamış olmalı,
+    - DB backup ve row/checksum kanıtı alınmalı,
+    - DB owner onayı olmadan migration geçmişi yeniden baselane edilmemeli,
+    - tamamlandığında aktif migration zinciri engine-specific kolon yaratmamalı.
+27. `rg`, dependency graph, lockfile, generated Prisma client, build output ve container
+    taramasıyla repo-wide zero-structure gate.
+28. Binary/process testi: Cockpit host'ta eski CLI bulunmasa dahi tüm suite yeşil.
+
+### “Tamamen kaldırıldı” tanımı
+
+Geçiş sonunda aşağıdakilerin hiçbiri bulunamaz:
+
+- Çalıştırılabilir kod veya import.
+- Executor/adapter/driver.
+- CLI binary çağrısı veya PATH varsayımı.
+- NPM/package/lockfile/container dependency'si.
+- Feature flag, fallback veya environment variable.
+- YAML compiler, preview, download veya generated artifact.
+- API route/DTO/type/enum.
+- Prisma model alanı veya yeni aktif migration'da engine-specific kolon.
+- UI component, label, menu, icon veya yardım metni.
+- Field Login/Load Tour özel orchestrator'ı.
+- Test helper, mock, fixture veya snapshot.
+- CI job, script veya operasyon runbook'u.
+- Engine-specific historical run renderer.
+
+Bu plan dosyasındaki ad, söküm kararını ve tarihsel gerekçeyi belgelemek içindir;
+canlı proje yapısı veya uyumluluk istisnası değildir.
+
+### Zero-structure gate
+
+Checkpoint 9'da aşağıdaki sınıfların tamamı taranır:
+
+```sh
+# Canlı uygulama, paket, script, config, CI, test ve schema içinde sıfır eşleşme.
+git ls-files -z -- apps packages scripts .github package.json pnpm-lock.yaml \
+  turbo.json 'Dockerfile*' 'docker-compose*.yml' \
+  | xargs -0 rg -n -i \
+      'maestro|MAESTRO_HOME|yamlContent|maestroOutput|no-reinstall-driver'
+
+# Dosya/dizin adında sıfır eşleşme.
+git ls-files | rg -i 'maestro'
+
+# Aktif dokümanlarda eski kullanım talimatı sıfır; bu master plan karar geçmişi
+# olduğu için denetim raporunda ayrı sınıflanır, uygulama istisnası sayılmaz.
+find docs -type f ! -name 'VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md' -print0 \
+  | xargs -0 rg -n -i 'maestro'
+```
+
+Bu komutların başarısı tek başına yeterli değildir. Ayrıca:
+
+- Lockfile/dependency graph eski paketi transitif olarak taşımamalı.
+- Build image ve host PATH'inde eski CLI'ya ihtiyaç olmamalı.
+- Generated Prisma client eski alanları taşımamalı.
+- Production DB şeması eski kolonları taşımamalı.
+- UI route/translation bundle'ında eski isim bulunmamalı.
+- BridgeFlow unit/integration/device suite'i eski CLI sistemde kurulu değilken geçmeli.
+- Engine-neutral arşive taşınan row/artifact sayısı kaynak sayıyla checksum üzerinden eşleşmeli.
 
 ## D.20 Product-shell borcu — ayrı backlog
 
@@ -1151,6 +1550,61 @@ SDK/Bridge platformu dışında:
 
 Bu kalemler envanterde tutulur fakat Faz 0–8 correctness/security gate'lerini
 bloke etmez. Faz 9 sonunda ayrı ürün roadmap'ine atanır.
+
+## D.21 Opsiyonel İz C — AI Design Audit ve Post-run Açıklama
+
+Bu iz BridgeFlow v1, CP0–CP9 veya platform release için blocker değildir.
+
+### AI Design Audit
+
+Hedef akış:
+
+```text
+Figma/Zeplin veya design source
+  + Bridge hierarchy/fingerprint
+  + source-code metadata
+  + veri şeması
+  -> LLM rule önerisi
+  -> schema validation
+  -> insan review/onayı
+  -> versioned deterministic expected_rules
+```
+
+Kurallar:
+
+1. LLM çıktısı doğrudan workflow/runtime'a girmez.
+2. Çıktı typed `expected_rules` sözleşmesine çevrilir.
+3. Rule source provenance, confidence, model/version ve reviewer taşır.
+4. İnsan onayı olmadan paylaşılan test library'ye publish edilmez.
+5. Runtime yalnız deterministic rule'u çalıştırır.
+6. Design/source erişimi tenant ve RBAC ile sınırlandırılır.
+7. Üretilen selector `TargetFingerprint` kurallarını geçmek zorundadır.
+
+### Post-run LLM açıklaması
+
+```text
+Deterministic Oracle result
+  -> redacted structured evidence
+  -> optional LLM explanation
+```
+
+Kurallar:
+
+1. LLM hükmü veya result code'u değiştiremez.
+2. Raw log yerine allowlist'li structured evidence kullanır.
+3. Her teşhis iddiası evidence link'i ve confidence taşır.
+4. Model, prompt version, tenant policy ve üretim zamanı audit edilir.
+5. AI unavailable olduğunda run sonucu değişmez.
+6. Screenshot, dump veya D3 artifact explicit policy olmadan prompt'a girmez.
+7. Açıklama “AI-generated, non-authoritative” olarak işaretlenir.
+
+### İz C kabul kriteri
+
+- Deterministic result öncesi veya sırasında model çağrısı yok.
+- Aynı evidence olmadan LLM yeni pass/fail iddiası üretemiyor.
+- Evidence link'leri gerçek artifact/step occurrence'a çözülüyor.
+- Redaction ve tenant isolation testleri yeşil.
+- İz C tamamen kapalıyken CP0–CP9 davranışı değişmiyor.
 
 ---
 
@@ -1306,6 +1760,9 @@ Compiler/executor, doğrulanmış bir action primitive'i olmadan tasarlanmamalı
 8. Bridge process kill/reconnect testi.
 9. Screenshot artifact ve redaction.
 10. Production deny testi.
+11. TargetFingerprint resolution ve business rowKey fixture'ları.
+12. Action lifecycle transition persistence.
+13. `dispatchGesture` primary / allowlisted semantic action acceptance.
 
 ### CHECKPOINT 3
 
@@ -1317,6 +1774,10 @@ Compiler/executor, doğrulanmış bir action primitive'i olmadan tasarlanmamalı
 - Scoped dump eksikse full'a düşmeden fail.
 - Ambiguous selector tap yapmıyor.
 - Stale tree action yapmadan reddediliyor.
+- `rowIndexHint` tek başına kalıcı hedef kabul edilmiyor; stable rowKey doğru satırı çözüyor.
+- Her action terminal state'e kadar lifecycle transition üretiyor.
+- Bridge response kaybında sonuç exactly-once varsayılmadan `UNKNOWN_EFFECT` oluyor.
+- Sabit koordinat workflow'u reddediliyor; kullanılan dispatch yöntemi evidence'ta görünüyor.
 - Screenshot artifact oluşuyor ve hassas log sızmıyor.
 - İki cihaz aynı anda farklı host portlarıyla READY.
 - Production device Act Mode kesin reddediliyor.
@@ -1344,6 +1805,9 @@ versioned plan sözleşmesiyle sabitlenmelidir.
 6. Plan hash/source map.
 7. Human-readable preview.
 8. Tam kurye workflow'unu compile edecek node set'i.
+9. TargetFingerprint strength/ambiguity/drift validation.
+10. Zorunlu typed business event/state/query capability validation.
+11. Evidence required/optional/not-applicable compile sözleşmesi.
 
 ### CHECKPOINT 4
 
@@ -1354,6 +1818,9 @@ versioned plan sözleşmesiyle sabitlenmelidir.
 - Sınırsız loop/wait reddediliyor.
 - Non-idempotent unsafe retry reddediliyor.
 - Missing evidence policy kritik node'u reddediyor.
+- SDK'nın otomatik üretmediği zorunlu business evidence capability'si yoksa compile fail.
+- `rowIndexHint` veya text-only zayıf selector policy'ye göre warning/error üretiyor.
+- Required/optional/not-applicable layer'lar plana deterministik yazılıyor.
 - Condition `eval` kullanmıyor; fuzz suite güvenli.
 - TRUE/FALSE/UNKNOWN kararları kanıtla persist edilebilir DTO üretiyor.
 - 20 barkod FOR_EACH planı doğru iteration scope taşıyor.
@@ -1381,9 +1848,12 @@ correctness kurulmalıdır.
 5. Host crash recovery.
 6. Bridge reconnect/unknown-effect politikası.
 7. Four-layer oracle.
-8. Additive DB migration.
-9. Eski Maestro read model.
+8. Additive DB migration ve engine-neutral history export/read model.
+9. Engine-specific eski kolon/DTO/renderer drop hazırlığı.
 10. API DTO ve pagination.
+11. Device/host clock calibration ve capture marker servisi.
+12. Action lifecycle ve per-layer applicability persistence.
+13. Remote business result/correlation adapter'ları.
 
 ### CHECKPOINT 5
 
@@ -1393,10 +1863,18 @@ correctness kurulmalıdır.
 - Process restart completed occurrence'ı tekrar uygulamıyor.
 - Unknown physical effect sessiz retry/green üretmiyor.
 - UI pass fakat app/remote missing ise completion policy fail/pending veriyor.
-- QUEUE_OFFLINE doğru ayrı state üretiyor.
+- `NOT_APPLICABLE`, `NOT_MEASURED` ve `REQUIRED_PENDING` birbirinden ayrılıyor.
+- `PASS_ONLINE`, `PASS_QUEUED_OFFLINE`, `PENDING_REMOTE`, layer-specific fail ve
+  `INCONCLUSIVE` deterministik üretiliyor.
+- HTTP 2xx tek başına business success üretmiyor; backend state/correlation politikası uygulanıyor.
+- QUEUE_OFFLINE doğru ayrı sonuç üretiyor.
+- SDK ve Bridge event'leri aynı device CLOCK_BOOTTIME ekseninde; host evidence'i
+  offset/marker/uncertainty ile hizalanıyor.
+- Reboot eski clock calibration'ı geçersiz kılıyor.
 - Event yanlış iteration'a yazılmıyor.
 - Cancel cleanup/end_run/secret/socket/subscriber release ediyor.
-- Eski Maestro run detail açılmaya devam ediyor.
+- Eski run gerekli tarihsel özet ve artifact'leri engine-neutral görünümde açılıyor;
+  Maestro'ya özel renderer veya DTO kullanılmıyor.
 - Yeni BridgeFlow run `yamlContent/maestroOutput` olmadan tamamlanıyor.
 
 ## FAZ 6 — Editor, Live Inspector, Device Lab ve Run Detail
@@ -1422,7 +1900,9 @@ icat etmemelidir.
 7. Run detail evidence drawer.
 8. Repro export redaction.
 9. Responsive/empty/error/loading/accessibility UI.
-10. Eski run rendering compatibility.
+10. Engine-neutral eski run summary compatibility; engine-specific renderer yok.
+11. Diagnostic waterfall stage ve clock uncertainty UI.
+12. Genişletilmiş immutable/versioned repro export.
 
 ### CHECKPOINT 6
 
@@ -1435,8 +1915,14 @@ icat etmemelidir.
 - Device kartı dört ayrı kanal sağlığını gösteriyor.
 - Run detail occurrence/iteration/retry'yi ayırıyor.
 - UI/App/Local/Remote evidence açıklanabilir.
+- `NOT_APPLICABLE`, `NOT_MEASURED` ve `REQUIRED_PENDING` rozetleri farklı anlamlarla gösteriliyor.
+- Waterfall command→gesture→app→local→remote zincirini ortak zaman ekseninde gösteriyor.
+- Host-device clock uncertainty görünür; sahte milisaniye kesinliği yok.
 - Copy repro secret/PIN/token içermiyor.
-- Eski run UI'sı bozulmuyor.
+- Repro app/SDK/Bridge/workflow/device/fingerprint/action-lifecycle/clock/artifact metadata'sını taşıyor.
+- Repro production Act Mode'u otomatik açmıyor.
+- Eski run'ın korunması gereken özeti generic legacy görünümde açılıyor;
+  engine-specific UI yapısı taşınmıyor.
 
 ## FAZ 7 — Referans İş Akışları, Diagnostics ve Güvenlik
 
@@ -1463,6 +1949,9 @@ kurulmadan cutover ölçümü yapılamaz.
 9. Stuck-run ve alert.
 10. PII/artifact retention audit.
 
+Opsiyonel D.21 İz C bu fazdan sonra veya paralel başlayabilir; AI Design Audit
+ve post-run explanation kapalıyken checkpoint davranışı aynı kalır.
+
 ### CHECKPOINT 7
 
 - Field Login ve Load Tour özel Maestro orchestrator olmadan çalışıyor.
@@ -1476,6 +1965,7 @@ kurulmadan cutover ölçümü yapılamaz.
 - Sensitive artifact purge SLA içinde.
 - Stuck run heartbeat ve consumer/Bridge health ile sınıflanıyor.
 - Audit kaydı actor/device/run/command/result taşıyor, secret taşımıyor.
+- Zorunlu business event/state/query entegrasyonu olmayan workflow compile/preflight'ta açık fail ediyor.
 
 ## FAZ 8 — Bridge B1 Fiziksel Kabul ve Maestro Cutover Gate
 
@@ -1518,12 +2008,12 @@ yalnız happy-path demo yeterli değildir.
 **Checkpoint 8 geçmeden Maestro DELETE yoktur.** Ancak başarısız Bridge run'ın
 sessiz Maestro fallback'i yine yoktur; dual-run yalnız ölçüm harness'ıdır.
 
-## FAZ 9 — Ürünleştirme, Maestro DELETE ve Operasyon
+## FAZ 9 — Ürünleştirme, Maestro'nun Projeden Tam Sökümü ve Operasyon
 
 ### Amaç
 
-Geçiş kodunu kaldırmak, yeni runtime'ı tek production Cockpit yolu yapmak ve
-uzun süreli operasyon kapılarını tamamlamak.
+Geçiş kodunu ve eski engine'e ait bütün proje yapısını kaldırmak, yeni runtime'ı
+tek production Cockpit yolu yapmak ve uzun süreli operasyon kapılarını tamamlamak.
 
 ### Neden en sonda
 
@@ -1532,30 +2022,42 @@ sonrası güvenle daraltılabilir.
 
 ### Yapılacaklar
 
-1. D.19 DELETE listesi.
-2. Repo-wide Maestro/YAML execution referans envanteri.
-3. Legacy UI metin ve route temizliği.
-4. DeviceWorker Maestro driver kodunu sil.
-5. API executor/compiler/script/dependency temizliği.
-6. Yeni run yazımından Maestro alanlarını çıkar.
-7. v1 event telemetry observation window.
-8. V1 parser sunset veya bilinçli device sunset.
-9. Multi-device concurrency.
-10. Low disk.
-11. USB disconnect.
-12. Power/process loss.
-13. 8 saat soak ve uzun retention/purge.
-14. Dependency/security scan.
-15. Runbook, operator guide ve incident playbook.
-16. Eski dar dokümanları bu master plana bağla/arsivle.
-17. Product-shell borcunu ayrı backlog'a taşı.
+1. D.19 tam söküm listesinin tamamı.
+2. Repo-wide kod/package/config/schema/UI/test/doc/migration envanteri.
+3. Eski run verisinin engine-neutral export/migration sayım ve checksum doğrulaması.
+4. Engine-specific DB kolon, DTO ve renderer drop migration'ı.
+5. Legacy UI metin, route, translation ve asset temizliği.
+6. DeviceWorker driver/preinstall kodunu sil.
+7. API executor/compiler/script/feature-flag/env temizliği.
+8. Package manifest, lockfile, image ve CI dependency temizliği.
+9. Test/mock/fixture/snapshot temizliği veya BridgeFlow dönüşümü.
+10. Aktif doküman/runbook talimatlarını yeni mimariye geçir.
+11. Güvenli DB baseline koşulları sağlanırsa eski migration zincirini yeniden baseline et.
+12. V1 event telemetry observation window.
+13. V1 parser sunset veya bilinçli device sunset.
+14. Multi-device concurrency.
+15. Low disk.
+16. USB disconnect.
+17. Power/process loss.
+18. 8 saat soak ve uzun retention/purge.
+19. Dependency/security scan.
+20. Runbook, operator guide ve incident playbook.
+21. Eski dar dokümanları yeni mimariye göre güncelle; geçersiz olanları repo dışı
+    tarihsel arşive taşı veya sil.
+22. Product-shell borcunu ayrı backlog'a taşı.
 
 ### CHECKPOINT 9
 
-- Yeni execution yolunda Maestro CLI/executor/driver/YAML compiler yok.
-- Repo-wide allowlisted historical renderer dışında Maestro execution referansı sıfır.
-- Yeni run Maestro alanı yazmıyor.
-- Eski run read-only açılıyor.
+- Maestro CLI/executor/driver/YAML compiler/preview/download yok.
+- Package, lockfile, container, CI, env ve config dependency'si yok.
+- Runtime fallback, feature flag, adapter veya disabled dead-code yok.
+- API route/DTO/type/enum ve Prisma alanı yok.
+- Engine-specific test, fixture, mock, snapshot ve script yok.
+- Engine-specific UI, label, translation, icon ve özel renderer yok.
+- Korunması gereken eski run verisi engine-neutral arşiv/summary olarak açılıyor.
+- Aktif migration baseline engine-specific kolon oluşturmuyor; drop/export kanıtı var.
+- Eski CLI sistemde kurulu değilken build, test ve gerçek run yeşil.
+- Aktif uygulama/build/config/schema/test/UI ağacında repo-wide Maestro yapısı sıfır.
 - Aktif v1 event/device oranı sıfır veya kalan cihazlar bilinçli sunset edilmiş.
 - Çoklu cihaz port/session izolasyonu yeşil.
 - Low disk/USB/process loss recovery beklendiği gibi.
@@ -1588,11 +2090,18 @@ sonrası güvenle daraltılabilir.
 | R17 | Screenshot/dump PII sızdırır | Veri ihlali | Redaction, RBAC, retention | CP6/CP7 |
 | R18 | Unknown dialog kör kapatılır | Bug gizlenir | STOP + artifact policy | CP7 |
 | R19 | Maestro erken silinir | Workflow kaybı | Measured dual-run gate | CP8 |
-| R20 | Maestro kalıcı fallback kalır | İki runtime drift/borç | CP9 zero-reference gate | CP9 |
+| R20 | Maestro'nun disabled kodu, dependency'si, DB alanı veya historical renderer'ı kalır | İki runtime drift/borç ve tamamlanmamış söküm | CP9 zero-structure gate | CP9 |
 | R21 | Accessibility service enable başka servisleri ezer | Cihaz bozulur | Read/merge/verify enabled-service list | CP3 |
 | R22 | Full dump hot path performansı bozar | Yavaşlık/ANR/power | Scope policy + metrics | CP3/CP8 |
 | R23 | Heartbeat var ama alarm yok | Stuck run fark edilmez | Liveness policy + executor watchdog | CP5/CP7 |
 | R24 | Typecheck/test skip borcu yeni hatayı gizler | Release regresyonu | CP0 baseline | CP0 |
+| R25 | Host zamanı device `monoTs` gibi yorumlanır | Yanlış olay sırası/kök neden | CLOCK_BOOTTIME + ping offset + marker + uncertainty | CP5/CP6 |
+| R26 | `rowIndex` kalıcı kimlik yapılır | Liste değişince yanlış teslimata tap | TargetFingerprint + stable rowKey | CP3/CP4 |
+| R27 | RequestId exactly-once sanılır | Process death sonrası duplicate fiziksel etki | Kalıcı action lifecycle + unknown-effect | CP3/CP5/CP8 |
+| R28 | Dört rozet her node'da zorunlu veya gri durumlar eşit sanılır | False fail / açıklanamayan sonuç | Layer applicability state modeli | CP4/CP5/CP6 |
+| R29 | HTTP 2xx business success sayılır | False pass | Remote business result + backend entity/correlation | CP5/CP7 |
+| R30 | SDK bütün Room/business event'lerini otomatik üretmiş varsayılır | Sonsuz bekleme/missing evidence | Capability-aware compiler/preflight | CP4/CP7 |
+| R31 | LLM runtime hükmünü değiştirir veya hassas kanıt sızdırır | Non-determinism/veri ihlali | Opsiyonel İz C, deterministic oracle, redacted input | İz C |
 
 ---
 
@@ -1611,6 +2120,11 @@ sonrası güvenle daraltılabilir.
 - Completion policy.
 - State transition.
 - Redaction.
+- TargetFingerprint resolution/ranking/drift.
+- Action lifecycle state machine.
+- Layer applicability ve verdict result taxonomy.
+- Clock offset/uncertainty hesaplama ve reboot invalidation.
+- Remote transport-vs-business kararları.
 
 ### Contract
 
@@ -1619,6 +2133,8 @@ sonrası güvenle daraltılabilir.
 - Bridge APK v1 fixture ↔ bridge-contract/client.
 - Workflow contract API ↔ Web.
 - DB migration/read model.
+- SDK/Bridge `CLOCK_BOOTTIME` fixture ve host calibration contract'ı.
+- TargetFingerprint ve action-lifecycle wire/persistence contract'ı.
 
 ### Integration
 
@@ -1627,6 +2143,9 @@ sonrası güvenle daraltılabilir.
 - Fake TCP Bridge partial frame/timeout/reconnect.
 - Executor + durable bus + oracle.
 - API + Web compile/preview hash.
+- Host/device clock marker alignment.
+- Remote HTTP/business/backend entity ayrışma fixture'ları.
+- Optional LLM adapter disabled/unavailable isolation testi.
 
 ### Device
 
@@ -1636,6 +2155,9 @@ sonrası güvenle daraltılabilir.
 - Full courier workflow.
 - Process death.
 - IME/foreign-window/manual touch.
+- Stable rowKey ile değişen liste sırasını doğru çözme.
+- Action response öncesi Bridge process death ve unknown-effect recovery.
+- Device reboot sonrası clock calibration yenileme.
 
 ### Durability/soak
 
@@ -1706,6 +2228,11 @@ Scheduled device lab:
 | TCP loss during action | Unknown-effect/idempotent recovery |
 | Process death | B1 politikası |
 | Two devices | Ayrı host port/session |
+| Aynı text, farklı business rowKey | Yalnız doğru satır çözülür |
+| `rowIndexHint` fakat sıra değişmiş | Kör tap yok; fingerprint yeniden çözülür |
+| Gesture sonrası response öncesi process death | Persisted lifecycle veya `UNKNOWN_EFFECT` |
+| Sabit koordinat workflow'u | Compile/runtime reject |
+| `performAction` allowlist dışı | Reject |
 
 ## G.5 Workflow/oracle test matrisi
 
@@ -1716,6 +2243,12 @@ Scheduled device lab:
 - UI pass + App missing.
 - App pass + Remote fail.
 - Offline queue accepted.
+- UI-only node'da diğer katmanlar `NOT_APPLICABLE`.
+- Required katman pending ile not-measured ayrımı.
+- HTTP 200 + business reject → `FAIL_REMOTE`.
+- HTTP 202 + entity pending → `PENDING_REMOTE`.
+- HTTP 500 + local offline queue → `PASS_QUEUED_OFFLINE`.
+- HTTP 200 + backend entity değişmedi → deadline'a kadar pending, sonra fail.
 - Late event.
 - Duplicate/replayed event.
 - Branch TRUE/FALSE/UNKNOWN.
@@ -1724,6 +2257,9 @@ Scheduled device lab:
 - Cancel while waiting event.
 - Cancel while Bridge action uncertain.
 - Host restart between action and evidence.
+- Aynı evidence'in farklı clock domain'lerde marker/uncertainty ile sıralanması.
+- Reboot sonrası eski offset'in reddedilmesi.
+- Optional LLM açıklamasının deterministic result'u değiştirememesi.
 
 ## G.6 Performans bütçeleri
 
@@ -1741,6 +2277,9 @@ regression gate olur:
 - Executor overhead.
 - Full courier toplam süre.
 - Device CPU/thermal/WakeLock.
+- Clock calibration round-trip, offset uncertainty ve calibration yaşı.
+- TargetFingerprint resolution latency ve drift rate.
+- Command→effect verification waterfall latency.
 
 ## G.7 Release kanıt paketi
 
@@ -1800,6 +2339,10 @@ Her checkpoint şunları üretir:
 - `BRIDGE_AMBIGUOUS_SELECTOR`
 - `BRIDGE_OBSCURED`
 - `BRIDGE_CONTAMINATED`
+- `BRIDGE_TARGET_NOT_FOUND`
+- `BRIDGE_DISPATCH_REJECTED`
+- `BRIDGE_GESTURE_FAILED`
+- `BRIDGE_EFFECT_NOT_OBSERVED`
 - `BRIDGE_PRODUCTION_DENIED`
 
 ### Workflow
@@ -1813,6 +2356,10 @@ Her checkpoint şunları üretir:
 - `EVIDENCE_MISSING`
 - `LOCAL_ASSERTION_FAILED`
 - `REMOTE_ASSERTION_FAILED`
+- `REMOTE_BUSINESS_REJECTED`
+- `REMOTE_CONFIRMATION_PENDING`
+- `CLOCK_CALIBRATION_STALE`
+- `CLOCK_DOMAIN_UNALIGNED`
 - `RUN_STUCK`
 - `CLEANUP_FAILED`
 
@@ -1833,7 +2380,11 @@ Her log/metric/span mümkün olduğunda şunları taşır:
 - attempt
 - requestId
 - protocolVersion
-- monotonic timestamp
+- target fingerprint version/hash
+- action lifecycle state
+- device monotonic timestamp/domain
+- host monotonic timestamp
+- clock calibration ID/offset/uncertainty
 
 Secret, PIN, token ve hassas input değeri taşımaz.
 
@@ -1845,6 +2396,7 @@ Secret, PIN, token ve hassas input değeri taşımaz.
 | UI-sensitive | Screenshot, hierarchy dump | RBAC + kısa retention |
 | Diagnostic | Perfetto, meminfo | Restricted |
 | Highly sensitive | Heap dump | Explicit D3 approval, 24 saat purge, rapora otomatik eklenmez |
+| AI input/output | Redacted evidence + optional explanation | Tenant policy, audit, kısa retention; hüküm değildir |
 
 ## H.4 Port ve process runbook'u
 
@@ -1892,6 +2444,7 @@ Secret, PIN, token ve hassas input değeri taşımaz.
 | `apps/api/src/services/verdict-ws-auth.ts` | Mutual HMAC socket gate |
 | `apps/api/src/services/verdict-event-bus.ts` | Durable subscription/waitEvent |
 | `apps/api/src/services/bridge-device-manager.ts` | Port/preflight/client ownership |
+| `apps/api/src/services/clock-correlation.ts` | Device/host marker, offset ve uncertainty |
 | `apps/api/src/services/condition-engine.ts` | Typed condition |
 | `apps/api/src/services/bridge-flow-compiler.ts` | IR → plan |
 | `apps/api/src/services/bridge-flow-executor.ts` | Plan runtime |
@@ -1901,6 +2454,8 @@ Secret, PIN, token ve hassas input değeri taşımaz.
 | Automation Web components | Authoring/preview |
 | Debug View Screen State | Live Inspector |
 | Run result/detail components | Evidence/repro |
+| Opsiyonel AI Design Audit adapter'ları | İz C rule suggestion; runtime dışında |
+| Opsiyonel post-run explanation adapter'ı | Redacted evidence açıklaması; hüküm değiştirmez |
 
 Dosya adları implementasyon sırasında repo konvansiyonuna göre küçük ölçüde
 değişebilir; paket ve sorumluluk sınırları bağlayıcıdır.
@@ -1932,15 +2487,27 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 6. Bridge host client/device gate çoklu cihazda çalışıyor.
 7. Workflow IR/Condition/Compiler/Executor typed ve versioned.
 8. Oracle occurrence bazlı dört kanıt katmanı kullanıyor.
-9. Yeni run modeli Maestro alanlarına bağımlı değil.
+9. Yeni run modeli engine-specific eski alanlara bağımlı değil; bu alanlar drop edilmiş.
 10. Editor/Inspector/Run Detail yeni runtime'ı eksiksiz sunuyor.
 11. Field Login/Load Tour/tam kurye tek omurgada.
 12. Security/RBAC/audit/retention kapıları yeşil.
 13. Golden cutover BridgeFlow lehine kabul edilmiş.
-14. Maestro execution kodu, driver, YAML yolu ve UI dili silinmiş.
-15. Eski run'lar read-only açılabiliyor.
+14. Maestro runtime, driver, CLI, dependency, YAML yolu, feature flag, API/DB alanı,
+    UI, script, test, fixture ve aktif doküman yapısıyla projeden tamamen sökülmüş.
+15. Korunması gereken eski run verisi yalnız engine-neutral arşiv/summary üzerinden açılıyor;
+    özel renderer bulunmuyor.
 16. Typecheck/test/integration/device/soak kapıları yeşil.
 17. SSOT ve dar dokümanlar çelişmiyor.
+18. Selector'lar versioned TargetFingerprint kullanıyor; stable rowKey ve ambiguity
+    kuralları gerçek collection senaryolarında kanıtlanmış.
+19. Fiziksel action lifecycle kalıcı ve process-death unknown-effect davranışı açıklanabilir.
+20. Oracle layer applicability ve ayrıntılı sonuç taksonomisini deterministik uyguluyor.
+21. Remote transport sonucu business success yerine geçmiyor; backend state/correlation kanıtı var.
+22. SDK/Bridge/host evidence'i kalibre edilmiş clock domain ve uncertainty ile hizalanıyor.
+23. Diagnostic waterfall ve versioned/redacted repro paketi aynı occurrence kanıtına çözülüyor.
+24. SDK'nın otomatik teknik telemetrisi ile app'in açık business event/query sorumluluğu
+    compiler/preflight capability gate'inde ayrılmış.
+25. Opsiyonel İz C kapalı veya unavailable olduğunda platform sonucu ve CP0–CP9 değişmiyor.
 
 ## H.9 İlk uygulanacak iş sırası — kısa özet
 
@@ -1955,6 +2522,7 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 9. Field Login/Load Tour/tam kurye + diagnostics/security.
 10. Physical B1 matrix + golden comparison.
 11. Maestro DELETE + productization.
+12. Opsiyonel İz C: AI Design Audit ve post-run evidence explanation.
 
 ---
 

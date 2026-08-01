@@ -117,9 +117,25 @@ export async function requireExactlyOneReadyDevice(): Promise<string> {
   return ready[0]!.serial
 }
 
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new InstallLatestError('CANCELLED', 'Kurulum iptal edildi')
+  }
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof Error && err.name === 'AbortError') ||
+    (typeof DOMException !== 'undefined' &&
+      err instanceof DOMException &&
+      err.name === 'AbortError')
+  )
+}
+
 export async function fetchLatestVersion(
   country: NesyMobileCountry,
   mobileEnvironment: NesyMobileEnvironment,
+  signal?: AbortSignal,
 ): Promise<{
   appName: string
   applicationId: string
@@ -142,8 +158,12 @@ export async function fetchLatestVersion(
       },
       body: JSON.stringify({ AppName: appName }),
       cache: 'no-store',
+      signal,
     })
   } catch (err) {
+    if (signal?.aborted || isAbortError(err)) {
+      throw new InstallLatestError('CANCELLED', 'Kurulum iptal edildi')
+    }
     throw new InstallLatestError(
       'VERSION_FETCH_FAILED',
       `Versiyon bilgisi alınamadı: ${err instanceof Error ? err.message : String(err)}`,
@@ -187,15 +207,24 @@ export async function fetchLatestVersion(
 export async function downloadApkToTemp(
   downloadUrl: string,
   onBytes?: (received: number, total: number | null) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
+  throwIfAborted(signal)
   const dir = await mkdtemp(join(tmpdir(), 'nesy-apk-'))
   const apkPath = join(dir, 'latest.apk')
 
   let response: Response
   try {
-    response = await fetch(downloadUrl, { cache: 'no-store', redirect: 'follow' })
+    response = await fetch(downloadUrl, {
+      cache: 'no-store',
+      redirect: 'follow',
+      signal,
+    })
   } catch (err) {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+    if (signal?.aborted || isAbortError(err)) {
+      throw new InstallLatestError('CANCELLED', 'Kurulum iptal edildi')
+    }
     throw new InstallLatestError(
       'DOWNLOAD_FAILED',
       `APK indirilemedi: ${err instanceof Error ? err.message : String(err)}`,
@@ -220,31 +249,53 @@ export async function downloadApkToTemp(
     let received = 0
     let lastEmit = 0
 
-    nodeStream.on('data', (chunk: Buffer | string) => {
-      const size = typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length
-      received += size
-      if (!onBytes) return
-      const now = Date.now()
-      if (now - lastEmit < 100 && totalOk != null && received < totalOk) return
-      lastEmit = now
-      onBytes(received, totalOk)
-    })
+    const onAbort = () => {
+      nodeStream.destroy()
+      file.destroy()
+    }
+    if (signal) {
+      if (signal.aborted) onAbort()
+      else signal.addEventListener('abort', onAbort, { once: true })
+    }
 
-    nodeStream.pipe(file)
-    await finished(file)
-    onBytes?.(received, totalOk ?? received)
+    try {
+      nodeStream.on('data', (chunk: Buffer | string) => {
+        const size = typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length
+        received += size
+        if (!onBytes) return
+        const now = Date.now()
+        if (now - lastEmit < 100 && totalOk != null && received < totalOk) return
+        lastEmit = now
+        onBytes(received, totalOk)
+      })
+
+      nodeStream.pipe(file)
+      await finished(file)
+      onBytes?.(received, totalOk ?? received)
+    } finally {
+      signal?.removeEventListener('abort', onAbort)
+    }
   } catch (err) {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+    if (signal?.aborted || isAbortError(err)) {
+      throw new InstallLatestError('CANCELLED', 'Kurulum iptal edildi')
+    }
     throw new InstallLatestError(
       'DOWNLOAD_FAILED',
       `APK yazılamadı: ${err instanceof Error ? err.message : String(err)}`,
     )
   }
 
+  throwIfAborted(signal)
   return apkPath
 }
 
-export async function adbInstallApk(serial: string, apkPath: string): Promise<string> {
+export async function adbInstallApk(
+  serial: string,
+  apkPath: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  throwIfAborted(signal)
   const bin = resolveAdbPath()
   if (!bin) {
     throw new InstallLatestError('NO_ADB', `adb binary not found. ${getAdbResolutionHint()}.`)
@@ -254,7 +305,7 @@ export async function adbInstallApk(serial: string, apkPath: string): Promise<st
     const { stdout, stderr } = await execFileAsync(
       bin,
       ['-s', serial, 'install', '-r', apkPath],
-      { timeout: 180_000, maxBuffer: 4 * 1024 * 1024 },
+      { timeout: 180_000, maxBuffer: 4 * 1024 * 1024, signal },
     )
     const output = `${stdout ?? ''}${stderr ?? ''}`.trim()
     if (/Failure\b/i.test(output)) {
@@ -266,6 +317,9 @@ export async function adbInstallApk(serial: string, apkPath: string): Promise<st
     return output || 'Success'
   } catch (err) {
     if (err instanceof InstallLatestError) throw err
+    if (signal?.aborted || isAbortError(err)) {
+      throw new InstallLatestError('CANCELLED', 'Kurulum iptal edildi')
+    }
     const message = err instanceof Error ? err.message : String(err)
     throw new InstallLatestError('INSTALL_FAILED', `Kurulum başarısız: ${message.slice(0, 500)}`)
   }
@@ -277,12 +331,14 @@ export async function installLatestForCountry(
     environment: InstallLatestEnvironment
   },
   onProgress?: (event: InstallProgressEvent) => void,
+  signal?: AbortSignal,
 ): Promise<InstallLatestResult> {
   const report = (event: InstallProgressEvent) => onProgress?.(event)
   const mobileEnvironment = resolveInstallEnvironment(input.environment)
   let apkPath: string | null = null
 
   try {
+    throwIfAborted(signal)
     report({
       type: 'progress',
       step: 'device',
@@ -292,6 +348,7 @@ export async function installLatestForCountry(
     })
 
     const deviceSerial = await requireExactlyOneReadyDevice()
+    throwIfAborted(signal)
     report({
       type: 'progress',
       step: 'device',
@@ -308,7 +365,8 @@ export async function installLatestForCountry(
       detail: `${input.country} · ${input.environment}`,
     })
 
-    const version = await fetchLatestVersion(input.country, mobileEnvironment)
+    const version = await fetchLatestVersion(input.country, mobileEnvironment, signal)
+    throwIfAborted(signal)
     report({
       type: 'progress',
       step: 'version',
@@ -328,24 +386,29 @@ export async function installLatestForCountry(
       detail: hostOf(version.downloadUrl) ?? 'SAS URL',
     })
 
-    apkPath = await downloadApkToTemp(version.downloadUrl, (received, total) => {
-      const ratio =
-        total != null && total > 0
-          ? received / total
-          : Math.min(received / (40 * 1024 * 1024), 0.95)
-      const percent = Math.min(78, 30 + Math.round(ratio * 48))
-      report({
-        type: 'progress',
-        step: 'download',
-        percent,
-        message: 'APK indiriliyor…',
-        detail:
-          total != null
-            ? `${formatBytes(received)} / ${formatBytes(total)}`
-            : formatBytes(received),
-      })
-    })
+    apkPath = await downloadApkToTemp(
+      version.downloadUrl,
+      (received, total) => {
+        const ratio =
+          total != null && total > 0
+            ? received / total
+            : Math.min(received / (40 * 1024 * 1024), 0.95)
+        const percent = Math.min(78, 30 + Math.round(ratio * 48))
+        report({
+          type: 'progress',
+          step: 'download',
+          percent,
+          message: 'APK indiriliyor…',
+          detail:
+            total != null
+              ? `${formatBytes(received)} / ${formatBytes(total)}`
+              : formatBytes(received),
+        })
+      },
+      signal,
+    )
 
+    throwIfAborted(signal)
     report({
       type: 'progress',
       step: 'download',
@@ -361,7 +424,7 @@ export async function installLatestForCountry(
       detail: `${deviceSerial} · install -r`,
     })
 
-    const installOutput = await adbInstallApk(deviceSerial, apkPath)
+    const installOutput = await adbInstallApk(deviceSerial, apkPath, signal)
 
     const result: InstallLatestResult = {
       ok: true,
@@ -406,6 +469,7 @@ export function isInstallLatestErrorCode(value: string): value is InstallLatestE
     value === 'VERSION_FETCH_FAILED' ||
     value === 'NO_DOWNLOAD_URL' ||
     value === 'DOWNLOAD_FAILED' ||
-    value === 'INSTALL_FAILED'
+    value === 'INSTALL_FAILED' ||
+    value === 'CANCELLED'
   )
 }
