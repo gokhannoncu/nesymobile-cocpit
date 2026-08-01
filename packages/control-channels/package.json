@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Kontrol düzlemi KANALLARI — LegacyReceiverChannel, VerdictChannel (Faz 4), detectChannel. control-contract'a bağımlıdır, TERSİ ASLA (C.9 tur 8).",
+  "description": "Kontrol düzlemi KANALI — VerdictChannel. control-contract'a bağımlıdır, TERSİ ASLA (C.9 tur 8).",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src/",

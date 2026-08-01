@@ -6,15 +6,14 @@
  *  (tur 8: önceki sürüm kanalları contract paketine koyup aynı pakete
  *   "kanal bilgisi yok" diyordu — çelişkiydi.)
  *
- *  Faz 4.3b: `LegacyReceiverChannel` Faz 8'e kadar korunur; yeni
- *  `VerdictChannel` nonce'lı ordered-result ve DumpProvider yollarını taşır.
+ *  Faz 8.1b: kontrol operasyonlarını yalnız `VerdictChannel`, nonce'lı
+ *  ordered-result ve DumpProvider yolları üzerinden taşır.
  * ===========================================================================
  */
 import type {
   ControlErrorCode,
   ControlOperation,
   ControlResult,
-  ScreenStateDump,
 } from "@nesy/control-contract";
 
 /** Kanalların ihtiyaç duyduğu tek dış yetenek: `adb` çalıştırmak. */
@@ -38,7 +37,7 @@ export interface ChannelContext {
 }
 
 export interface ControlChannel {
-  readonly name: "legacy" | "verdict";
+  readonly name: "verdict";
   run<Op extends ControlOperation>(
     serial: string,
     op: Op,
@@ -46,19 +45,6 @@ export interface ControlChannel {
   ): Promise<ControlResult<Op["op"]>>;
 }
 
-// ---------------------------------------------------------------------------
-//  LEGACY RECEIVER CHANNEL
-//
-//  Mevcut iki receiver'ı çağırır. Bu sınıf, 8 dosyaya dağılmış olan
-//  hardcoded sınıf adı + action ismi + `am broadcast` çağrısını TEK yere
-//  toplar. Faz 8'de tamamen silinecek (C.9 adım 9).
-// ---------------------------------------------------------------------------
-
-const LEGACY_KEY_RECEIVER =
-  "com.arasdigital.nesymobile.adb.ProtectedRequestKeyReceiver";
-const LEGACY_NAV_RECEIVER =
-  "com.arasdigital.nesymobile.adb.TestNavigationReceiver";
-const ACTION_PREFIX = "com.arasdigital.nesymobile.";
 const VERDICT_CONTROL_RECEIVER = "com.verdict.sdk.core.VerdictControlReceiver";
 const VERDICT_DUMP_PROVIDER = "com.verdict.sdk.core.VerdictDumpProvider";
 const VERDICT_RESULT_JSON = "verdict.result.json";
@@ -125,236 +111,8 @@ export function parseResultCode(stdout: string): number | null {
   return m?.[1] ? Number(m[1]) : null;
 }
 
-interface LegacyRoute {
-  receiver: string;
-  action: string;
-  /** `--es k v` / `--ez k true` çiftleri. */
-  extras: string[];
-}
-
-/** Operation → legacy receiver + action + extras. Tek eşleme noktası. */
-function routeLegacy(op: ControlOperation): LegacyRoute | null {
-  // Cihaz tarafında `am` bir SHELL üzerinden koşuyor; boş bir değer
-  // `--es run_id` şeklinde argümansız kalır ve am hata verir. Legacy kod bunu
-  // `''` ile çözüyordu — aynı davranış korunur.
-  const es = (k: string, v: string) => ["--es", k, v === "" ? "''" : v];
-
-  switch (op.op) {
-    case "get_state":
-      return { receiver: LEGACY_KEY_RECEIVER, action: "GET_STATE", extras: [] };
-    case "get_run":
-      return { receiver: LEGACY_KEY_RECEIVER, action: "GET_RUN", extras: [] };
-    case "get_device_id":
-      return { receiver: LEGACY_KEY_RECEIVER, action: "GET_DEVICE_ID", extras: [] };
-    case "get_request_key":
-      return { receiver: LEGACY_KEY_RECEIVER, action: "GET_KEY", extras: [] };
-    case "reset_state":
-      return { receiver: LEGACY_KEY_RECEIVER, action: "RESET_STATE", extras: [] };
-    case "set_run": {
-      const extras = [...es("run_id", op.runId)];
-      // ⚠️ STRING extra (`--es`), boolean (`--ez`) DEĞİL. Mobil taraf ikisini de
-      // kabul ediyor (`getBooleanExtra(...) || getStringExtra(...) == "true"`)
-      // ama production'da bugüne dek koşan tel `--es`. Faz 0.3'ün sözü
-      // "davranış değişmez" — telin biçimini de değiştirmiyoruz.
-      if (op.wsEnabled !== undefined)
-        extras.push(...es("ws_enabled", String(op.wsEnabled)));
-      if (op.wsPort !== undefined) extras.push(...es("ws_port", String(op.wsPort)));
-      if (op.skipDeliveryWait !== undefined)
-        extras.push(...es("skip_delivery_wait", String(op.skipDeliveryWait)));
-      // NOT: `secret` legacy receiver'a GÖNDERİLMEZ — eski receiver onu
-      // tanımıyor ve HMAC yalnız Verdict kanalında geçerli (C.2a). Secret'ın
-      // legacy yola sızmaması BİLİNÇLİ.
-      return { receiver: LEGACY_KEY_RECEIVER, action: "SET_RUN", extras };
-    }
-    case "seed": {
-      const extras = es("verb", op.verb);
-      for (const [k, v] of Object.entries(op.params)) extras.push(...es(k, v));
-      return { receiver: LEGACY_NAV_RECEIVER, action: "SEED_STATE", extras };
-    }
-    case "navigate":
-      return {
-        receiver: LEGACY_NAV_RECEIVER,
-        action: "NAV_TO",
-        extras: es("destination", op.destination),
-      };
-    // Legacy receiver'ların KARŞILIĞI OLMAYAN operasyonlar. Faz 4'te
-    // VerdictChannel bunları destekler; şimdilik açıkça reddedilir —
-    // sessizce "başarılı" dönmek yanlış olurdu.
-    case "end_run":
-    case "get_command_result":
-      return null;
-    // Bu op ACTIVITY DUMP kanalına ait (aşağıdaki LegacyActivityDumpChannel);
-    // receiver kanalı onu taşımaz.
-    case "get_screen_state":
-      return null;
-  }
-}
-
-/** `Activity.RESULT_OK` / `RESULT_CANCELED` — receiver'ların kullandığı kodlar. */
+/** Verdict ordered broadcast'ın başarı kodu (`Activity.RESULT_OK`). */
 const RESULT_OK = -1;
-const RESULT_CANCELED = 0;
-
-/**
- * Receiver'ların `ERROR:<KOD>[:detay]` sözlüğü → sözleşmenin hata kodu.
- *
- * Kaynak: `ProtectedRequestKeyReceiver.kt` + `TestNavigationReceiver.kt`
- * companion sabitleri. Eşlenmeyen bir kod gelirse `HANDLER_FAILED`'a düşer ama
- * `detail` ham kodu TAŞIR — bilgi kaybı olmaz.
- */
-const LEGACY_ERROR_MAP: Readonly<Record<string, ControlErrorCode>> = {
-  INVALID_ACTION: "UNKNOWN_COMMAND",
-  UNKNOWN_DESTINATION: "INVALID_PARAM",
-  UNKNOWN_VERB: "INVALID_PARAM",
-  NO_USERNAME: "MISSING_PARAM",
-  NO_SHIPMENT_ID: "MISSING_PARAM",
-  NO_STOP_ID: "MISSING_PARAM",
-  NO_ROUTE: "MISSING_PARAM",
-  NO_PIN: "MISSING_PARAM",
-  NO_FOREGROUND_MAIN_ACTIVITY: "WRONG_SCREEN",
-  NOT_ON_STOPLIST: "WRONG_SCREEN",
-  NOT_ON_LOGIN: "WRONG_SCREEN",
-  ROUTE_DIALOG_NOT_SHOWN: "WRONG_SCREEN",
-  DEVICE_ID_NOT_FOUND: "PRECONDITION_FAILED",
-  SHIPMENT_NOT_FOUND: "PRECONDITION_FAILED",
-  STOP_NOT_FOUND: "PRECONDITION_FAILED",
-  ROUTE_NOT_FOUND: "PRECONDITION_FAILED",
-  STATE_TIMEOUT: "TIMEOUT",
-  KEY_GENERATION_FAILED: "HANDLER_FAILED",
-  NAV_FAILED: "HANDLER_FAILED",
-  STATE_FAILED: "HANDLER_FAILED",
-};
-
-/**
- * `data=` payload'ını operasyona göre tipli sonuca çevirir.
- *
- * ⚠️ **BU FONKSİYONUN EN ÖNEMLİ İŞİ "BAŞARILI" DEMEMEYİ BİLMEK.**
- * Cihazda ölçüldü: var olmayan bir component'e gönderilen broadcast bile
- *
- *     Broadcast completed: result=0
- *     EXIT=0
- *
- * üretiyor. Yani ne exit code ne `result=0` başarı kanıtıdır. Kanıt YALNIZCA
- * `data="…"` payload'ıdır ve legacy receiver'ların **9 op'unun HEPSİ** payload
- * döndürür (`OK:<x>` · `ERROR:<KOD>` · `{"reset":"ok"}`). Payload yokluğu =
- * receiver kurulu değil / ulaşılamadı → `CHANNEL_UNAVAILABLE`.
- */
-function decodeLegacy<Op extends ControlOperation>(
-  op: Op,
-  payload: string | null,
-  resultCode: number | null,
-): ControlResult<Op["op"]> {
-  type R = ControlResult<Op["op"]>;
-  const fail = (code: ControlErrorCode, detail?: string): R =>
-    ({ ok: false, code, detail, ...(payload ? { raw: payload } : {}) }) as R;
-  const good = (data: unknown): R => ({ ok: true, data }) as R;
-
-  if (!payload) {
-    return fail(
-      "CHANNEL_UNAVAILABLE",
-      `${op.op}: broadcast payload yok (result=${resultCode ?? "?"}) — ` +
-        `receiver kurulu değil ya da ulaşılamadı. result=0 + exit=0 BAŞARI DEĞİL.`,
-    );
-  }
-
-  // --- Hata yolları ------------------------------------------------------
-  // 1) `ERROR:<KOD>[:detay]` — iki receiver'ın ortak sözlüğü.
-  if (payload.startsWith("ERROR:")) {
-    const [, code = "", ...rest] = payload.split(":");
-    return fail(
-      LEGACY_ERROR_MAP[code] ?? "HANDLER_FAILED",
-      rest.length > 0 ? `${code}: ${rest.join(":")}` : code,
-    );
-  }
-  // 2) `reset_state` JSON hata biçimi — `ERROR:` öneki KULLANMIYOR.
-  if (op.op === "reset_state" && payload.includes('"error"')) {
-    const message = /"message"\s*:\s*"([^"]*)"/.exec(payload)?.[1] ?? "";
-    const code: ControlErrorCode =
-      message === "bridge_disabled"
-        ? "PRECONDITION_FAILED"
-        : message === "timeout"
-          ? "TIMEOUT"
-          : "HANDLER_FAILED";
-    return fail(code, message || payload);
-  }
-  // 3) Payload var ama receiver CANCELED dedi — tanınmayan hata biçimi.
-  if (resultCode === RESULT_CANCELED) {
-    return fail("HANDLER_FAILED", `result=0, data=${payload}`);
-  }
-  if (resultCode !== RESULT_OK && resultCode !== null) {
-    return fail("PROTOCOL_VIOLATION", `beklenmeyen result=${resultCode}`);
-  }
-
-  // --- Başarı yolları ---------------------------------------------------
-  /** Mutasyonların `OK:<echo>` biçimini doğrular ve `Dispatched` üretir. */
-  const dispatched = (expectedEcho?: string): R => {
-    if (!payload.startsWith("OK:")) {
-      return fail("PROTOCOL_VIOLATION", `"OK:" beklenirken alındı: ${payload}`);
-    }
-    const echo = payload.slice(3);
-    // Receiver kendisine verilen değeri geri yansıtıyor; uyuşmazlık başka bir
-    // broadcast'in yanıtını okuduğumuz anlamına gelir — sessizce kabul edilmez.
-    if (expectedEcho !== undefined && echo !== expectedEcho) {
-      return fail(
-        "PROTOCOL_VIOLATION",
-        `echo uyuşmuyor: beklenen "${expectedEcho}", gelen "${echo}"`,
-      );
-    }
-    return good({
-      accepted: true,
-      requestId: op.requestId,
-      completion: "sync",
-      raw: payload,
-    });
-  };
-
-  switch (op.op) {
-    case "get_device_id":
-      return good({ deviceId: payload });
-    case "get_request_key":
-      return good({ key: payload });
-    case "get_run": {
-      // Legacy biçim: "runId|sessionId|seq"
-      const parts = payload.split("|");
-      if (parts.length < 3) {
-        return fail("PROTOCOL_VIOLATION", `get_run biçimi bozuk: ${payload}`);
-      }
-      const [runId = "", sessionId = "", seq = "0"] = parts;
-      return good({ runId, sessionId, seq: Number(seq) || 0 });
-    }
-    case "get_state": {
-      try {
-        return good(JSON.parse(payload) as unknown);
-      } catch {
-        return fail("PROTOCOL_VIOLATION", "get_state JSON parse edilemedi");
-      }
-    }
-    // Mutasyonlar. Legacy receiver deadline'ı içinde bitiriyor (GET_STATE ve
-    // RESET_STATE `goAsync` + 5 s watchdog kullanıyor, ama yanıtı YİNE de
-    // broadcast tamamlanmadan veriyor) → `completion: "sync"`. Verdict kanalı
-    // bunu `"async"` yapabilir (C.9a); çağıran `get_command_result` ile poll eder.
-    case "set_run":
-      return dispatched(op.runId);
-    case "navigate":
-      return dispatched(op.destination);
-    case "seed":
-      // Seed fiillerinin echo'su fiile göre değişiyor (stopId, route, pin…);
-      // sabit bir beklenti YOK — yalnız "OK:" öneki doğrulanır.
-      return dispatched();
-    case "reset_state":
-      // Başarı biçimi `{"reset":"ok"}` — `OK:` öneki KULLANMIYOR.
-      if (!payload.includes('"ok"')) {
-        return fail("PROTOCOL_VIOLATION", `reset_state yanıtı tanınmadı: ${payload}`);
-      }
-      return good({
-        accepted: true,
-        requestId: op.requestId,
-        completion: "sync",
-        raw: payload,
-      });
-    default:
-      return fail("UNKNOWN_COMMAND", op.op);
-  }
-}
 
 /**
  * Op'un taşıdığı sırları serbest metinden siler.
@@ -362,9 +120,8 @@ function decodeLegacy<Op extends ControlOperation>(
  * **Neden gerekli (C.2).** `secret` argv'de `--es` olarak geçiyor; birçok
  * process wrapper hata mesajına TÜM komut satırını koyar
  * (`Command failed: adb -s X shell am broadcast … --es secret ABC`). O mesajı
- * `detail` alanına ham geçirmek sırrı log'a yazmak demektir. Legacy kanal
- * secret'ı hiç göndermiyor ama Faz 4'ün `VerdictChannel`'ı gönderecek —
- * temizlik kanal katmanının değişmez kuralı olmalı, tek bir kanalın değil.
+ * `detail` alanına ham geçirmek sırrı log'a yazmak demektir. Temizlik bu
+ * nedenle Verdict kanalının değişmez kuralıdır.
  */
 function scrubSecrets(text: string, op: ControlOperation): string {
   if (op.op !== "set_run") return text;
@@ -661,7 +418,7 @@ const es = (key: string, value: string): string[] => [
 function verdictBroadcastArgs(
   serial: string,
   op: Exclude<ControlOperation, VerdictDumpOperation>,
-  ctx: ChannelContext,
+  ctx: Pick<ChannelContext, "applicationId">,
   nonce: string,
   sensitiveFiles: ReadonlyMap<string, string>,
 ): string[] {
@@ -804,7 +561,7 @@ function sensitiveSidecarDeleteArgs(
 function verdictDumpArgs(
   serial: string,
   op: VerdictDumpOperation,
-  ctx: ChannelContext,
+  ctx: Pick<ChannelContext, "applicationId">,
   nonce: string,
 ): string[] {
   const component = `${ctx.applicationId}/${VERDICT_DUMP_PROVIDER}`;
@@ -1009,67 +766,6 @@ export class VerdictChannel implements ControlChannel {
   }
 }
 
-export class LegacyReceiverChannel implements ControlChannel {
-  readonly name = "legacy" as const;
-
-  async run<Op extends ControlOperation>(
-    serial: string,
-    op: Op,
-    ctx: ChannelContext,
-  ): Promise<ControlResult<Op["op"]>> {
-    const route = routeLegacy(op);
-    if (!route) {
-      return {
-        ok: false,
-        code: "UNKNOWN_COMMAND",
-        detail: `${op.op}: legacy receiver'larda karşılığı yok (Faz 4 VerdictChannel gerekir)`,
-      } as ControlResult<Op["op"]>;
-    }
-
-    // EXPLICIT COMPONENT ZORUNLU (C.9 tur 7): action-only gönderim, aynı
-    // action'ı dinleyen BAŞKA bir uygulama tarafından yakalanıp sahte yanıtla
-    // taklit edilebilir. Faz 0.1 spike'ı ayrıca ölçtü: implicit broadcast
-    // API 29/31/34/36'da hiç ULAŞMIYOR (Q2) — yani explicit zaten zorunluluk.
-    const args = [
-      // Bazı çağıranlar tek cihaz varsayıp `-s` KULLANMIYOR (legacy
-      // `requestAppValueFromAdb`). `-s ""` göndermek adb'yi düşürürdü.
-      ...(serial ? ["-s", serial] : []),
-      "shell",
-      "am",
-      "broadcast",
-      // Durmuş uygulamayı yalnız çağıran açıkça istediğinde uyandır (envelope).
-      ...(op.wakeStopped ? ["--include-stopped-packages"] : []),
-      "-n",
-      `${ctx.applicationId}/${route.receiver}`,
-      "-a",
-      `${ACTION_PREFIX}${route.action}`,
-      ...route.extras,
-    ];
-
-    let stdout: string;
-    try {
-      stdout = await ctx.adb(serial, args, BROADCAST_TIMEOUT_MS);
-    } catch (err) {
-      const raw = err instanceof Error ? err.message : String(err);
-      return {
-        ok: false,
-        code: "CHANNEL_UNAVAILABLE",
-        detail: scrubSecrets(raw, op),
-      } as ControlResult<Op["op"]>;
-    }
-
-    const res = decodeLegacy(
-      op,
-      parseBroadcastPayload(stdout),
-      parseResultCode(stdout),
-    );
-    // Cihazın döndürdüğü metin de temizlenir — `detail` payload'ı yansıtabiliyor.
-    return !res.ok && res.detail
-      ? ({ ...res, detail: scrubSecrets(res.detail, op) } as ControlResult<Op["op"]>)
-      : res;
-  }
-}
-
 /** Mobil watchdog `GET_STATE`'i 5 s'de bitirir; broadcast'e biraz pay bırak. */
 const BROADCAST_TIMEOUT_MS = 15_000;
 /** DumpProvider kendi içinde 1 s hard limit uygular; framework aktarımına pay. */
@@ -1080,125 +776,43 @@ const SENSITIVE_SIDECAR_TIMEOUT_MS = 5_000;
 /**
  * Bir op'un ÇALIŞTIRILMAYAN, kopyala-yapıştır önizleme komutunu üretir.
  *
- * Debug View'ın "commands" sekmesi kullanıcıya terminale yazabileceği satırı
- * gösteriyor. O satırlar bugün elle yazılmış string literal'ler; Faz 4 iki
- * receiver'ı silince **sessizce yanlış** olacaklar — kimse hata almaz, komut
- * kopyalanır ve çalışmaz. Aynı yönlendirme tablosundan üretmek bunu engeller.
+ * Debug View'ın "commands" sekmesi kullanıcıya terminale yazabileceği Verdict
+ * komutunu gösterir. Hassas sidecar gerektiren işlemler için eksik veya sır
+ * sızdıran bir komut üretmek yerine `null` döner.
  *
  * ⚠️ Bu fonksiyon bir taşıma değil, bir GÖSTERİM. Gerçek çağrı
- * `LegacyReceiverChannel`den geçer.
+ * `VerdictChannel`dan geçer.
  */
 export function previewCommand(
   op: ControlOperation,
   ctx: { applicationId: string; serial?: string },
 ): string | null {
-  const route = routeLegacy(op);
-  if (!route) return null;
-  const parts = [
+  const serial = ctx.serial ?? "";
+  const nonce = "preview";
+  const isDump =
+    op.op === "get_run" ||
+    op.op === "get_command_result" ||
+    op.op === "get_screen_state";
+  if (!isDump) {
+    const receiverOp = op as Exclude<ControlOperation, VerdictDumpOperation>;
+    if (verdictSensitiveSidecars(receiverOp, nonce).length > 0) return null;
+    return [
+      "adb",
+      ...verdictBroadcastArgs(serial, receiverOp, ctx, nonce, new Map()),
+    ].join(" ");
+  }
+  return [
     "adb",
-    ...(ctx.serial ? ["-s", ctx.serial] : []),
-    "shell",
-    "am",
-    "broadcast",
-    ...(op.wakeStopped ? ["--include-stopped-packages"] : []),
-    "-n",
-    `${ctx.applicationId}/${route.receiver}`,
-    "-a",
-    `${ACTION_PREFIX}${route.action}`,
-    ...route.extras,
-  ];
-  return parts.join(" ");
-}
-
-// ---------------------------------------------------------------------------
-//  LEGACY ACTIVITY DUMP CHANNEL  (Debug View · C.11.4)
-//
-//  `dumpsys activity <pkg>/<Activity> --nesy-state` → `NESY_SCREEN_STATE:{json}`
-//
-//  Bu kanal `adb.ts`'de hardcode duran ÜÇ stringi sahiplenir: activity sınıf
-//  adı, dump bayrağı ve çıktı işareti. Faz 5.9 üçünü de değiştiriyor
-//  (VerdictDumpProvider / --verdict-screen-state / VERDICT_SCREEN_STATE:) ve
-//  o değişiklik BU DOSYADA kalmalı, çağıranda değil.
-// ---------------------------------------------------------------------------
-
-const LEGACY_DUMP_ACTIVITY = "com.arasdigital.nesymobile.main.MainActivity";
-const LEGACY_DUMP_FLAG = "--nesy-state";
-const LEGACY_DUMP_MARKER = "NESY_SCREEN_STATE:";
-
-/**
- * Faz 0.1 spike'ında ölçülen framework dump transfer timeout'u ~2.05–2.10 s.
- * 8 s onun üstünde kalıyor ve `adb.ts`'in bugünkü değeriyle aynı.
- */
-const DUMP_TIMEOUT_MS = 8_000;
-
-/** `NESY_SCREEN_STATE:{json}` satırını ayrıştırır. */
-export function parseScreenStateDump(dump: string): ScreenStateDump {
-  const marker = dump.indexOf(LEGACY_DUMP_MARKER);
-  // İşaret yok = enstrümante olmayan build. HATA DEĞİL: dump çalıştı.
-  if (marker < 0) return { instrumented: false, state: null, raw: dump };
-
-  const line =
-    dump.slice(marker + LEGACY_DUMP_MARKER.length).split("\n")[0]?.trim() ?? "";
-  try {
-    return {
-      instrumented: true,
-      state: JSON.parse(line) as ScreenStateDump["state"],
-      raw: dump,
-    };
-  } catch {
-    // İşaret vardı ama gövde bozuk — enstrümante SAYILMAZ, yoksa çağıran
-    // "alanlar boş ama build doğru" diye yanlış rapor verir.
-    return { instrumented: false, state: null, raw: dump };
-  }
-}
-
-export class LegacyActivityDumpChannel implements ControlChannel {
-  readonly name = "legacy" as const;
-
-  async run<Op extends ControlOperation>(
-    serial: string,
-    op: Op,
-    ctx: ChannelContext,
-  ): Promise<ControlResult<Op["op"]>> {
-    if (op.op !== "get_screen_state") {
-      return {
-        ok: false,
-        code: "UNKNOWN_COMMAND",
-        detail: `${op.op}: activity dump kanalı yalnız get_screen_state taşır`,
-      } as ControlResult<Op["op"]>;
-    }
-    // Component adı ZORUNLU. Faz 0.1 spike'ı ölçtü: `dumpsys activity provider`
-    // authority ile HİÇ eşleşmiyor, component adı ister. Activity dump'ı da
-    // aynı biçimi kullanıyor ve 13 flavor için daha sağlam — paket adı
-    // değişiyor ama sınıf adı sabit.
-    const component = `${ctx.applicationId}/${LEGACY_DUMP_ACTIVITY}`;
-    try {
-      const out = await ctx.adb(
-        serial,
-        [
-          ...(serial ? ["-s", serial] : []),
-          "shell",
-          `dumpsys activity ${component} ${LEGACY_DUMP_FLAG}`,
-        ],
-        DUMP_TIMEOUT_MS,
-      );
-      return { ok: true, data: parseScreenStateDump(out) } as ControlResult<Op["op"]>;
-    } catch (err) {
-      return {
-        ok: false,
-        code: "CHANNEL_UNAVAILABLE",
-        detail: err instanceof Error ? err.message : String(err),
-      } as ControlResult<Op["op"]>;
-    }
-  }
+    ...verdictDumpArgs(serial, op as VerdictDumpOperation, ctx, nonce),
+  ].join(" ");
 }
 
 // ---------------------------------------------------------------------------
 //  KANAL TESPİTİ  (C.9 / Faz 4.3b)
 // ---------------------------------------------------------------------------
 
-export type ChannelKind = "legacy" | "verdict";
-const detectedChannels = new Map<string, ChannelKind>();
+export type ChannelKind = "verdict";
+const detectedChannels = new Set<string>();
 
 function detectionKey(serial: string, applicationId: string): string {
   return `${serial}\u0000${applicationId}`;
@@ -1231,24 +845,24 @@ export function invalidateDetectedChannel(
  * ```
  * VERDICT_CMD ping { nonce: <rastgele> }
  *   → yanıtta AYNI nonce geri geldi mi?  EVET → verdict
- *   → timeout / nonce uyuşmuyor / yanıt yok → legacy
+ *   → timeout / nonce uyuşmuyor / yanıt yok → açık hata (fail closed)
  * ```
  *
- * Sonuç device worker ömrü boyunca cache'lenir ama **kanal hatasında cache
- * invalidate edilir** ve tespit tekrarlanır (uygulama güncellenmiş olabilir).
+ * Yalnız kanıtlanmış Verdict sonucu device worker ömrü boyunca cache'lenir.
+ * Kanal hatasında cache invalidate edilir ve tespit tekrarlanır.
  */
 export async function detectChannel(
   serial: string,
   ctx: ChannelContext,
 ): Promise<ChannelKind> {
   const key = detectionKey(serial, ctx.applicationId);
-  const cached = detectedChannels.get(key);
-  if (cached) return cached;
+  if (detectedChannels.has(key)) return "verdict";
 
-  let detected: ChannelKind = "legacy";
+  let nonce: string;
+  let stdout: string;
   try {
-    const nonce = secureNonce();
-    const stdout = await ctx.adb(
+    nonce = secureNonce();
+    stdout = await ctx.adb(
       serial,
       [
         ...(serial ? ["-s", serial] : []),
@@ -1269,35 +883,44 @@ export async function detectChannel(
       ],
       DETECT_TIMEOUT_MS,
     );
-    const pending = parseVerdictPendingResult(stdout);
-    let jsonNonce: string | null = null;
-    for (const candidate of [pending.dataJson, pending.extrasJson]) {
-      if (!candidate) continue;
-      try {
-        const parsed = asJsonObject(JSON.parse(candidate));
-        if (typeof parsed?.nonce === "string") {
-          jsonNonce = parsed.nonce;
-          break;
-        }
-      } catch {
-        // Extras nonce below is still an ordered-result proof.
-      }
-    }
-    if ((pending.nonce ?? jsonNonce) === nonce) detected = "verdict";
-  } catch {
-    detected = "legacy";
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Verdict channel detection failed for ${ctx.applicationId} on ${serial || "default device"}: ${detail}`,
+    );
   }
-  detectedChannels.set(key, detected);
-  return detected;
+
+  const pending = parseVerdictPendingResult(stdout);
+  let jsonNonce: string | null = null;
+  for (const candidate of [pending.dataJson, pending.extrasJson]) {
+    if (!candidate) continue;
+    try {
+      const parsed = asJsonObject(JSON.parse(candidate));
+      if (typeof parsed?.nonce === "string") {
+        jsonNonce = parsed.nonce;
+        break;
+      }
+    } catch {
+      // Ordered-result extras nonce below can still prove the response.
+    }
+  }
+  const proofNonce = pending.nonce ?? jsonNonce;
+  if (proofNonce !== nonce) {
+    throw new Error(
+      `Verdict channel detection failed for ${ctx.applicationId} on ${serial || "default device"}: ` +
+        (proofNonce ? "ping nonce mismatch" : "ping nonce proof missing"),
+    );
+  }
+
+  detectedChannels.add(key);
+  return "verdict";
 }
 
 export const channelFor = (kind: ChannelKind): ControlChannel => {
-  switch (kind) {
-    case "legacy":
-      return new LegacyReceiverChannel();
-    case "verdict":
-      return new VerdictChannel();
+  if ((kind as string) !== "verdict") {
+    throw new Error(`Unsupported control channel: ${String(kind)}; Verdict is required`);
   }
+  return new VerdictChannel();
 };
 
 const DETECT_TIMEOUT_MS = 10_000;

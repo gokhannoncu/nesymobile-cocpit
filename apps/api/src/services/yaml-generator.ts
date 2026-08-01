@@ -382,7 +382,7 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       // hierarchyBasedTap (tap pinView → input → tap btn_login) and no PIN
       // auto-focus fragility. Maestro just waits for the PIN screen to go away; a
       // failed bridge call leaves it up → the wait times out → step fails loudly.
-      // REQUIRES the mobile TestNavigationReceiver `login` verb (see broadcastLogin).
+      // REQUIRES the Verdict built-in `seed/login` verb (see broadcastLogin).
       if (bool(c.bridgeLogin)) {
         return `# --- LOGIN ${pinCode} (automation bridge) ---
 - evalScript: \${console.log("NESY_LOGIN::${node.id}::${pinCode}")}
@@ -414,8 +414,8 @@ function nodeYaml(node: WorkflowNode, options: YamlGeneratorOptions, appId: stri
       // Automation-bridge route selection (replaces the ~20s UI scroll+tap).
       // The route/hub list is still fetched from the service normally; once the
       // "Please Select Route" dialog is up we emit a NESY_SELECT_ROUTE marker.
-      // The runner parses it (maestro-executor) and fires the TestNavigationReceiver
-      // `select_route` broadcast, which drives StopListFragment.selectRouteProgrammatically
+      // The runner parses it (maestro-executor) and sends Verdict `seed/select_route`,
+      // which drives StopListFragment.selectRouteProgrammatically
       // — the exact confirmation path a courier tap runs (SP.route write,
       // createEmptySchedule, ROUTE_SELECTED emit), no scroll/tap and no
       // hierarchyBasedTap tax. Maestro then just waits for the dialog to close

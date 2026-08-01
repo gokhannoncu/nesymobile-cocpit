@@ -262,7 +262,7 @@ describe("golden contract fixtures", () => {
   //  Control plane
   // -------------------------------------------------------------------------
 
-  it("control-plane fixtures cover every op the legacy channel supports", () => {
+  it("control-plane fixtures cover every Verdict control op", () => {
     const dir = join(FIXTURES, "control-plane");
     const ops = readdirSync(dir)
       .filter((f) => f.endsWith(".json"))

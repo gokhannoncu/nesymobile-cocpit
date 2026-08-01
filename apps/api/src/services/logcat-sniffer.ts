@@ -11,6 +11,7 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { EventEmitter } from "node:events";
+import { resolveEventName } from "@nesy/control-contract";
 import { parseTestEventLine, TestEventDeduper, type TestBridgeEvent } from "./test-event-bridge.js";
 
 export interface LogcatEvent {
@@ -220,10 +221,13 @@ export class LogcatSniffer extends EventEmitter {
 
     this.emit("test_event", event);
 
-    if (event.event === "BRIDGE_INIT") {
+    const wireName = resolveEventName(event.event);
+    if (wireName === "BRIDGE_INIT") {
       this.emit("bridge_init", event);
-    } else if (event.event === "APP_CRASHED") {
+    } else if (wireName === "APP_CRASHED") {
       this.emit("app_crashed", event);
+    } else {
+      this.emit(wireName.toLowerCase(), event);
     }
   }
 }

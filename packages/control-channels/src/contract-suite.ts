@@ -2,10 +2,8 @@
  * ===========================================================================
  *  KANAL-AGNOSTİK SÖZLEŞME TEST PAKETİ  (Plan C.9 / Faz 0.3)
  *
- *  Buradaki testler HİÇBİR kanalın taşıma detayını bilmez. Her `ControlChannel`
- *  implementasyonu bunları geçmek ZORUNDADIR — `LegacyReceiverChannel` bugün,
- *  `VerdictChannel` Faz 4'te. Aynı suite iki kez koşar; böylece Faz 4'te
- *  kanalı değiştirmek davranışı sessizce değiştiremez.
+ *  Buradaki testler taşıma detayını bilmez. `ControlChannel` implementasyonu
+ *  olan `VerdictChannel` bu sözleşmenin tamamını geçmek ZORUNDADIR.
  *
  *  Taşıma farkı `ChannelHarness` ile soyutlanır: çağıran, kanalının üç
  *  senaryosunu (sessiz / patlayan / başarılı) nasıl kuracağını söyler.
@@ -21,7 +19,7 @@ export interface ChannelHarness {
   channel: ControlChannel;
   /**
    * Taşıma "cihaza ulaştı ama hiçbir kanıt dönmedi" gibi davranır.
-   * (legacy: `Broadcast completed: result=0`, hiç `data=` yok)
+   * (`Broadcast completed: result=0`, hiç `data=` yok)
    */
   silent(): ChannelContext;
   /** Taşıma patlar (adb yok, cihaz kopuk, timeout). */

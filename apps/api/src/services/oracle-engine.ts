@@ -19,8 +19,8 @@
  * evidence table in its output.
  */
 
+import { resolveEventName } from "@nesy/control-contract";
 import { prisma } from "@nesy/db";
-import type { LogcatEvent } from "./logcat-sniffer.js";
 import type { TestBridgeEvent } from "./test-event-bridge.js";
 
 export type OracleKind = "ui" | "mobileEvent" | "backend";
@@ -84,7 +84,7 @@ const DIALOG_STRATEGY: Record<string, { flowContinues: boolean }> = {
 const LOAD_TO_VEHICLE_REQUIRED_STEPS = ["FETCH_SHIPMENT", "CREATE_TASK", "FETCH_SCHEDULE"] as const;
 
 interface LoadToVehicleEvent {
-  status: string;
+  success?: boolean;
   raw: string;
   dialog?: string;
   message?: string;
@@ -278,53 +278,72 @@ export class OracleEngine {
   // ───────────────────────────────────────────────────────────────────────────
 
   attach(onSniffer: SnifferRegistrar): void {
-    onSniffer("verify", async (event: LogcatEvent) => {
+    const onWire = (wireName: string, fn: (event: TestBridgeEvent) => void | Promise<void>): void => {
+      onSniffer(resolveEventName(wireName).toLowerCase(), fn);
+    };
+
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action !== "VERIFY_BACKEND") return;
       try {
-        if (event.status === "SUCCESS") {
-          await this.recordForTypes(["VERIFY_BACKEND_STATE"], "backend", "passed", `Verified via logcat: TASK_ID=${event.value}`);
+        if (event.success === true) {
+          await this.recordForTypes(
+            ["VERIFY_BACKEND_STATE"],
+            "backend",
+            "passed",
+            `Verified via structured event: TASK_ID=${event.taskId || "—"}`,
+          );
         }
       } catch (err) {
         console.error("[OracleEngine] verify error:", err);
       }
     });
 
-    onSniffer("validate_stoplist", async (event: LogcatEvent) => {
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action !== "VALIDATE_STOPLIST") return;
       try {
-        if (event.status === "SUCCESS") {
-          await this.recordForTypes(["VALIDATE_STOPLIST"], "mobileEvent", "passed", `Logcat result: ${event.raw}`);
-        } else if (event.status === "FAIL" || event.status === "FAILED") {
-          await this.recordForTypes(["VALIDATE_STOPLIST"], "mobileEvent", "failed", `Validation failed. Logcat: ${event.raw}`);
+        if (event.success === true) {
+          await this.recordForTypes(["VALIDATE_STOPLIST"], "mobileEvent", "passed", `Structured result: ${event.raw}`);
+        } else if (event.success === false) {
+          await this.recordForTypes(["VALIDATE_STOPLIST"], "mobileEvent", "failed", `Validation failed. Event: ${event.raw}`);
         }
       } catch (err) {
         console.error("[OracleEngine] validate_stoplist error:", err);
       }
     });
 
-    onSniffer("request_tour_start", async (event: LogcatEvent) => {
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action !== "REQUEST_TOUR_START") return;
       try {
-        if (event.status === "SUCCESS") {
-          await this.recordForTypes(["REQUEST_TOUR_START"], "mobileEvent", "passed", `Logcat result: ${event.raw}`);
-        } else if (event.status === "FAIL" || event.status === "FAILED" || event.status === "ERROR") {
-          await this.recordForTypes(["REQUEST_TOUR_START"], "mobileEvent", "failed", `Request Tour Start failed. Logcat: ${event.raw}`);
+        if (event.success === true) {
+          await this.recordForTypes(["REQUEST_TOUR_START"], "mobileEvent", "passed", `Structured result: ${event.raw}`);
+        } else if (event.success === false) {
+          await this.recordForTypes(["REQUEST_TOUR_START"], "mobileEvent", "failed", `Request Tour Start failed. Event: ${event.raw}`);
         }
       } catch (err) {
         console.error("[OracleEngine] request_tour_start error:", err);
       }
     });
 
-    onSniffer("deliver_parcel", async (event: LogcatEvent) => {
+    const handleDeliverParcel = async (event: TestBridgeEvent): Promise<void> => {
       try {
         const step = typeof event.data?.step === "string" ? event.data.step : "";
 
-        // COMPLETED = written to local queue — the UI/mobile part of delivery succeeded.
-        if (step === "COMPLETED") {
-          await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "passed", `Delivery written to queue. ${event.raw}`);
-          console.log(`[OracleEngine] DELIVER_PARCEL COMPLETED — waiting for backend confirmation...`);
+        // DELIVERY_UI_COMPLETED is the structured counterpart of legacy step=COMPLETED.
+        if (event.event === "DELIVERY_UI_COMPLETED" || step === "COMPLETED") {
+          if (event.success === true) {
+            await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "passed", `Delivery UI completed. ${event.raw}`);
+          } else if (event.success === false) {
+            await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "failed", `Deliver parcel failed. Event: ${event.raw}`);
+          }
           return;
         }
 
         if (step === "BACKEND_CONFIRMED") {
-          await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "passed", `Backend confirmed. Logcat: ${event.raw}`);
+          if (event.success === true) {
+            await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "passed", `Backend confirmed. Event: ${event.raw}`);
+          } else if (event.success === false) {
+            await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "failed", `Backend confirmation failed. Event: ${event.raw}`);
+          }
           return;
         }
 
@@ -334,28 +353,34 @@ export class OracleEngine {
         }
 
         if (step === "BACKEND_FAILED") {
-          await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "failed", `Backend failed. Logcat: ${event.raw}`);
+          await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "failed", `Backend failed. Event: ${event.raw}`);
           return;
         }
 
-        // Legacy format fallback (no step field, only SUCCESS/ERROR)
-        if (event.status === "SUCCESS") {
-          await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "passed", `Logcat result: ${event.raw}`);
-          await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "passed", `Legacy SUCCESS event (no step detail). ${event.raw}`);
-        } else if (event.status === "FAIL" || event.status === "FAILED" || event.status === "ERROR") {
-          await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "failed", `Deliver parcel failed. Logcat: ${event.raw}`);
+        // Structured LEGACY passthrough fallback (no dedicated step mapping).
+        if (event.event === "LEGACY" && event.success === true) {
+          await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "passed", `Structured legacy result: ${event.raw}`);
+          await this.recordForTypes(["DELIVERY_OPERATION"], "backend", "passed", `Structured legacy success (no step detail). ${event.raw}`);
+        } else if (event.event === "LEGACY" && event.success === false) {
+          await this.recordForTypes(["DELIVERY_OPERATION"], "mobileEvent", "failed", `Deliver parcel failed. Event: ${event.raw}`);
         }
       } catch (err) {
         console.error("[OracleEngine] deliver_parcel error:", err);
       }
+    };
+
+    onWire("DELIVERY_UI_COMPLETED", handleDeliverParcel);
+    onWire("DELIVERY_RESPONSE_RECEIVED", handleDeliverParcel);
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action === "DELIVER_PARCEL") await handleDeliverParcel(event);
     });
 
-    onSniffer("scan_parcel", async (event: LogcatEvent) => {
+    onWire("PARCEL_SCANNED", async (event: TestBridgeEvent) => {
       try {
-        if (event.status === "SUCCESS") {
-          await this.recordForTypes(["SCAN_BARCODE"], "mobileEvent", "passed", `Logcat result: ${event.raw}`);
-        } else if (event.status === "FAIL" || event.status === "FAILED" || event.status === "ERROR") {
-          await this.recordForTypes(["SCAN_BARCODE"], "mobileEvent", "failed", `Scan barcode failed. Logcat: ${event.raw}`);
+        if (event.success === true) {
+          await this.recordForTypes(["SCAN_BARCODE"], "mobileEvent", "passed", `Structured result: ${event.raw}`);
+        } else if (event.success === false) {
+          await this.recordForTypes(["SCAN_BARCODE"], "mobileEvent", "failed", `Scan barcode failed. Event: ${event.raw}`);
         }
       } catch (err) {
         console.error("[OracleEngine] scan_parcel error:", err);
@@ -367,35 +392,42 @@ export class OracleEngine {
     //   FETCH_SHIPMENT -> CREATE_TASK -> FETCH_SCHEDULE
     // Each step can trigger ArasDialog; DIALOG_DISMISSED with flowContinues=false
     // is a terminal failure, ERROR alone is not (a dialog might resolve it).
-    onSniffer("load_to_vehicle", async (event: LogcatEvent) => {
+    const handleLoadToVehicle = async (event: TestBridgeEvent): Promise<void> => {
+      if (
+        (event.event === "DIALOG_SHOWN" || event.event === "DIALOG_DISMISSED") &&
+        event.action !== "LOAD_TO_VEHICLE"
+      ) return;
       try {
         await this.handleLoadToVehicle(event);
       } catch (err) {
         console.error("[OracleEngine] load_to_vehicle error:", err);
       }
-    });
+    };
 
-    onSniffer("search_stop", async (event: LogcatEvent) => {
+    onWire("VEHICLE_LOADING_STEP", handleLoadToVehicle);
+    onWire("DIALOG_SHOWN", handleLoadToVehicle);
+    onWire("DIALOG_DISMISSED", handleLoadToVehicle);
+
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action !== "SEARCH_STOP") return;
       try {
-        if (event.status === "ERROR") {
+        if (event.success === false) {
           await this.recordForTypes(
             ["OPEN_SHIPMENT", "OPEN_PARCEL"],
             "mobileEvent",
             "failed",
             `Search returned no results. Query: ${event.taskId ?? "—"}. ${event.raw}`,
           );
-        } else if (event.status === "SUCCESS") {
-          const resultCount = typeof event.data?.result_count === "string" ? event.data.result_count : "?";
-          console.log(`[OracleEngine] SEARCH_STOP success: query=${event.taskId}, results=${resultCount}`);
         }
       } catch (err) {
         console.error("[OracleEngine] search_stop error:", err);
       }
     });
 
-    onSniffer("open_stop", async (event: LogcatEvent) => {
+    onWire("LEGACY", async (event: TestBridgeEvent) => {
+      if (event.action !== "OPEN_STOP") return;
       try {
-        if (event.status === "SUCCESS") {
+        if (event.success === true) {
           await this.recordForTypes(
             ["OPEN_SHIPMENT", "OPEN_PARCEL"],
             "mobileEvent",
@@ -408,27 +440,21 @@ export class OracleEngine {
       }
     });
 
-    onSniffer("device_error", async (event: LogcatEvent) => {
+    onWire("UNEXPECTED_SCREEN", async (event: TestBridgeEvent) => {
       try {
+        const reason = typeof event.data?.reason === "string" ? event.data.reason : "unexpected_screen";
+        const detail = typeof event.data?.detail === "string" && event.data.detail !== "" ? `: ${event.data.detail}` : "";
         await prisma.workflowStepResult.updateMany({
           where: { runId: this.runId, status: "running" },
           data: {
             status: "failed",
             completedAt: new Date(),
-            errorMessage: `Device error: ${event.value}`,
+            errorMessage: `Device error: ${reason}${detail}`,
           },
         });
       } catch (err) {
         console.error("[OracleEngine] device_error handling failed:", err);
       }
-    });
-
-    // BRIDGE_INIT mid-run = the app process restarted (clearState node or crash recovery).
-    onSniffer("bridge_init", (event: TestBridgeEvent) => {
-      console.log(
-        `[OracleEngine] BRIDGE_INIT: app (re)started — session=${event.sessionId}, ` +
-        `version=${event.data?.app_version ?? "?"}, flavor=${event.data?.flavor ?? "?"}`,
-      );
     });
 
     // APP_CRASHED is written synchronously on the crashing thread — the most
@@ -454,12 +480,20 @@ export class OracleEngine {
     });
   }
 
-  private async handleLoadToVehicle(event: LogcatEvent): Promise<void> {
+  private async handleLoadToVehicle(event: TestBridgeEvent): Promise<void> {
     const taskId = event.taskId ?? "unknown";
     const subStep = typeof event.data?.step === "string" ? event.data.step : null;
-    const dialogType = typeof event.data?.dialog === "string" ? event.data.dialog : null;
+    const dialogType = typeof event.data?.dialog === "string"
+      ? event.data.dialog
+      : typeof event.data?.dialogType === "string"
+        ? event.data.dialogType
+        : null;
     const dialogMessage = typeof event.data?.message === "string" ? event.data.message : undefined;
-    const userChoice = typeof event.data?.user_choice === "string" ? event.data.user_choice : undefined;
+    const userChoice = typeof event.data?.user_choice === "string"
+      ? event.data.user_choice
+      : typeof event.data?.userChoice === "string"
+        ? event.data.userChoice
+        : undefined;
 
     let state = this.loadToVehicleTracker.get(taskId);
     if (!state) {
@@ -469,23 +503,19 @@ export class OracleEngine {
     if (state.terminalFailure) return;
 
     const eventEntry: LoadToVehicleEvent = {
-      status: event.status,
+      success: event.success,
       raw: event.raw,
       dialog: dialogType ?? undefined,
       message: dialogMessage,
       userChoice,
     };
 
-    console.log(
-      `[OracleEngine] LOAD_TO_VEHICLE [${taskId}] status=${event.status} step=${subStep ?? "—"} dialog=${dialogType ?? "—"}`,
-    );
-
-    if (event.status === "DIALOG_SHOWN") {
+    if (event.event === "DIALOG_SHOWN") {
       state.dialogLog.push(eventEntry);
       return;
     }
 
-    if (event.status === "DIALOG_DISMISSED") {
+    if (event.event === "DIALOG_DISMISSED") {
       state.dialogLog.push(eventEntry);
       const strategy = dialogType ? DIALOG_STRATEGY[dialogType] : null;
       const flowContinues = strategy?.flowContinues ?? false;
@@ -504,18 +534,18 @@ export class OracleEngine {
     }
 
     // ERROR alone does NOT fail the node — a dialog might resolve it.
-    if (event.status === "ERROR" || event.status === "FAIL" || event.status === "FAILED") {
+    if (event.success === false) {
       if (subStep) state.steps.set(subStep, eventEntry);
       return;
     }
 
-    if (event.status === "SUCCESS" && subStep) {
+    if (event.success === true && subStep) {
       state.steps.set(subStep, eventEntry);
 
       const allReceived = LOAD_TO_VEHICLE_REQUIRED_STEPS.every((s) => state.steps.has(s));
       if (!allReceived) return;
 
-      const allSuccess = LOAD_TO_VEHICLE_REQUIRED_STEPS.every((s) => state.steps.get(s)?.status === "SUCCESS");
+      const allSuccess = LOAD_TO_VEHICLE_REQUIRED_STEPS.every((s) => state.steps.get(s)?.success === true);
 
       if (allSuccess) {
         await this.recordForTypes(
@@ -527,7 +557,7 @@ export class OracleEngine {
         );
       } else {
         const failedSteps = LOAD_TO_VEHICLE_REQUIRED_STEPS
-          .filter((s) => state.steps.get(s)?.status !== "SUCCESS")
+          .filter((s) => state.steps.get(s)?.success !== true)
           .join(", ");
         await this.recordForTypes(
           ["LOAD_TO_VEHICLE"],

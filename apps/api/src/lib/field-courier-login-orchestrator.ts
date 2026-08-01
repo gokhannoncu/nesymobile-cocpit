@@ -509,7 +509,7 @@ async function readDeviceCode(adbDeviceId: string, applicationId: string): Promi
   if (!res.ok) {
     if (res.code === "CHANNEL_UNAVAILABLE") {
       throw new Error(
-        `GET_DEVICE_ID returned no data. Ensure ${applicationId} includes ProtectedRequestKeyReceiver. ${res.detail ?? ""}`,
+        `GET_DEVICE_ID returned no data. Ensure ${applicationId} includes the Verdict control SDK. ${res.detail ?? ""}`,
       );
     }
     throw new Error(`GET_DEVICE_ID error: ${res.raw ?? res.code}`);

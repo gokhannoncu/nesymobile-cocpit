@@ -12,7 +12,7 @@
 //    specification of what the receiver would need to support; do not read them
 //    as working commands.
 //
-// The two ProtectedRequestKeyReceiver previews ARE real and are derived from
+// The two Verdict control previews ARE real and are derived from
 // `@nesy/control-channels` so they cannot drift from the executed call (C.9).
 
 import type {
@@ -137,7 +137,7 @@ export const PREFLIGHT_CHECKS: PreflightCheck[] = [
   {
     id: 'debuggable',
     label: 'Debug / test build (chaos receiver)',
-    description: 'ProtectedRequestKeyReceiver only — ChaosReceiver does not exist in the app (see note at top of file)',
+    description: 'Verdict control SDK only — ChaosReceiver does not exist in the app (see note at top of file)',
     required: false,
   },
   {
@@ -730,7 +730,7 @@ export const SCENARIO_PACKAGES: ScenarioPackage[] = [
   baseScenario({
     id: 'scn-get-protected-key',
     name: 'Get Protected Key + Device ID',
-    description: 'Exercises ProtectedRequestKeyReceiver used by Cockpit field-login.',
+    description: 'Exercises Verdict get_request_key/get_device_id used by Cockpit field-login.',
     category: 'diagnostic',
     riskLevel: 'safe',
     buildCompatibility: 'debug',

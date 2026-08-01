@@ -26,8 +26,6 @@ import type {
   ControlResult,
 } from "@nesy/control-contract";
 import {
-  LegacyActivityDumpChannel,
-  LegacyReceiverChannel,
   channelFor,
   detectChannel,
   invalidateDetectedChannel,
@@ -105,10 +103,7 @@ export interface ControlExecutorOptions {
   applicationId: string | ((serial: string) => string | Promise<string>);
   /** Test enjeksiyonu için; verilmezse node koşucusu kurulur. */
   adb?: AdbRunner;
-  /**
-   * Kanal tespitini atlayıp sabit bir kanal kullan. Faz 0.3'te varsayılan
-   * `"legacy"`dir — davranış değişmez.
-   */
+  /** Kanal tespitini atlayıp Verdict kanalını doğrudan kullan. */
   forceChannel?: ChannelKind;
   /** Hata/olay günlüğü. */
   onEvent?: (e: ControlExecutorEvent) => void;
@@ -129,8 +124,8 @@ export interface ControlExecutorEvent {
  * Sözleşmeyi bir kanala bağlayan yürütücü.
  *
  * `forceChannel` verilmezse nonce'lı `detectChannel()` çağrılır. Verdict
- * receiver aynı nonce'ı ordered result'ta kanıtlarsa yeni kanal, aksi halde
- * legacy fallback kullanılır.
+ * receiver aynı nonce'ı ordered result'ta kanıtlayamazsa işlem fail closed
+ * olarak `CHANNEL_UNAVAILABLE` döner.
  *
  * Tespit sonucu `detectChannel()` içinde serial + applicationId başına
  * cache'lenir; kanal/protokol hatasında cache DÜŞÜRÜLÜR.
@@ -151,21 +146,33 @@ export function createControlExecutor(
       const startedAt = performance.now();
       const ctx = { applicationId: await resolveAppId(serial), adb };
 
-      let kind: ChannelKind;
+      let kind: ChannelKind = opts.forceChannel ?? "verdict";
       if (opts.forceChannel) {
         kind = opts.forceChannel;
       } else {
-        kind = await detectChannel(serial, ctx);
+        try {
+          kind = await detectChannel(serial, ctx);
+        } catch (err) {
+          const res = {
+            ok: false,
+            code: "CHANNEL_UNAVAILABLE",
+            detail: err instanceof Error ? err.message : String(err),
+          } as ControlResult<Op["op"]>;
+          opts.onEvent?.({
+            serial,
+            op: op.op,
+            requestId: op.requestId,
+            channel: "verdict",
+            ok: false,
+            code: "CHANNEL_UNAVAILABLE",
+            detail: res.ok ? undefined : res.detail,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
+          return res;
+        }
       }
 
-      // Legacy ekran durumu MainActivity dump'ıdır; Verdict karşılığı aynı
-      // semantic op'u VerdictDumpProvider component'i üzerinden taşır.
-      const channel =
-        kind === "legacy" && op.op === "get_screen_state"
-          ? new LegacyActivityDumpChannel()
-          : kind === "legacy"
-            ? new LegacyReceiverChannel()
-            : channelFor(kind);
+      const channel = channelFor(kind);
       const res = await channel.run(serial, op, ctx);
 
       // Kanal/protokol seviyesinde başarısızlık → bir sonraki çağrıda yeniden ping.

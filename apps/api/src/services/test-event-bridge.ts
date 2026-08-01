@@ -165,8 +165,8 @@ async function adbShell(deviceId: string, args: string[], timeoutMs = BROADCAST_
 
 /**
  * Control-plane executor (C.9). Receiver class names and action strings live in
- * `@nesy/control-channels`, not here. Faz 4.3b nonce detection selects Verdict
- * when available and preserves the legacy fallback for older mobile builds.
+ * `@nesy/control-channels`, not here. Faz 8.1b nonce detection requires Verdict
+ * and fails closed when its ping cannot be proven.
  */
 function control(appId: string) {
   return createControlExecutor({ applicationId: appId });
@@ -242,7 +242,7 @@ export async function broadcastSetRun(
 
 /**
  * SEED_STATE `select_route` — programmatically picks a route in the live "Please
- * Select Route" dialog via TestNavigationReceiver, replacing the ~20s Maestro
+ * Select Route" dialog via the Verdict `seed` built-in, replacing the ~20s Maestro
  * scroll+tap. Returns the mobile result string (e.g. `OK:36`,
  * `ERROR:ROUTE_DIALOG_NOT_SHOWN`, `ERROR:ROUTE_NOT_FOUND:36`, `ERROR:NOT_ON_STOPLIST`)
  * or null when the broadcast itself failed. The caller decides how to surface a
@@ -273,12 +273,12 @@ export async function broadcastSelectRoute(
 }
 
 /**
- * SEED_STATE `login` — programmatically logs in with a PIN via TestNavigationReceiver,
+ * Verdict `seed/login` — programmatically logs in with a PIN via the control SDK,
  * replacing the Maestro tap(pinView) → inputText → tap(btn_login) sequence (~10s of
  * hierarchyBasedTap + fragile PIN auto-focus). Mirrors broadcastSelectRoute.
  *
- * MOBILE CONTRACT (to be added by the app, mirroring `select_route`):
- *   TestNavigationReceiver: VERB_LOGIN = "login", EXTRA_PIN = "pin"
+ * MOBILE CONTRACT:
+ *   Verdict built-in seed verb `login`, sensitive PIN sidecar
  *   → drive LoginFragment's real login code path with the PIN, on the main thread.
  *   Return `OK:login` (RESULT_OK) or `ERROR:NOT_ON_LOGIN` / `ERROR:NO_PIN` / `ERROR:LOGIN_FAILED:<detail>`.
  *
