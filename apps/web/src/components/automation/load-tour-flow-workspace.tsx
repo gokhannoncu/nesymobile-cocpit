@@ -1040,7 +1040,7 @@ function WorkflowPipeline({
   )
 }
 
-function SelectionTableCard<T extends object>({
+function SelectionTableCard<T extends { id: string }>({
   title,
   description,
   searchValue,

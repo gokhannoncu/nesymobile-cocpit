@@ -15,13 +15,18 @@ import {
   type AdbRunner,
 } from "../../../packages/control-channels/src/index.js";
 import { createNodeAdbRunner } from "../../../packages/control-channels/src/node-executor.js";
-import { asSecret } from "../../../packages/control-contract/src/index.js";
+import { asSecret } from "@nesy/control-contract";
+import { prisma } from "@nesy/db";
+import { LogcatSniffer } from "./services/logcat-sniffer.js";
+import type { TestBridgeEvent } from "./services/test-event-bridge.js";
 import { TestEventWsServer } from "./services/test-event-ws-server.js";
 
-const serial = "R6CW400BC8N";
-const applicationId = "com.arasdigital.nesymobile.rstest";
-const shipmentId = "32562939073268";
+const serial = process.env.VERDICT_DEVICE_SERIAL ?? "R6CW400BC8N";
+const applicationId =
+  process.env.VERDICT_APPLICATION_ID ?? "com.arasdigital.nesymobile.rstest";
+const shipmentId = process.env.VERDICT_SHIPMENT_ID ?? "32562939073268";
 const runId = `checkpoint4-${Date.now()}`;
+const preflightRunId = `checkpoint4-preflight-${Date.now()}`;
 const scope = runId;
 const secretBytes = randomBytes(32);
 const secret = asSecret(secretBytes.toString("base64url"));
@@ -73,6 +78,20 @@ function parseJson(text: string): JsonObject | null {
   }
 }
 
+function nestedScreenHealth(result: unknown): JsonObject | null {
+  if (result === null || typeof result !== "object") return null;
+  const data = (result as JsonObject).data;
+  if (data === null || typeof data !== "object") return null;
+  const state = (data as JsonObject).state;
+  if (state === null || typeof state !== "object") return null;
+  const screenState = (state as JsonObject).screen;
+  if (screenState === null || typeof screenState !== "object") return null;
+  const health = (screenState as JsonObject).health;
+  return health !== null && typeof health === "object"
+    ? (health as JsonObject)
+    : null;
+}
+
 const adb: AdbRunner = createNodeAdbRunner();
 
 async function adbRun(args: string[], timeoutMs = 15_000): Promise<string> {
@@ -105,6 +124,19 @@ async function waitFor(
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (predicate()) return true;
+    await sleep(intervalMs);
+  }
+  return predicate();
+}
+
+async function waitForAsync(
+  predicate: () => Promise<boolean>,
+  timeoutMs: number,
+  intervalMs = 100,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) return true;
     await sleep(intervalMs);
   }
   return predicate();
@@ -168,7 +200,19 @@ let appSignatureValid = false;
 let helloFullCount = 0;
 let wsSetRunResponse: JsonObject | null = null;
 const screenFrames: JsonObject[] = [];
+const eventFrames: JsonObject[] = [];
+const eventAcks: JsonObject[] = [];
+const oracleFrames: TestBridgeEvent[] = [];
 const sockets = new Set<WebSocket>();
+
+// This is the same structured sink seam OracleEngine attaches to in a normal
+// Cockpit workflow run. No logcat process is needed: the real WS server injects
+// committed wire events into the sniffer during the current dual-write phase.
+const oracleSniffer = new LogcatSniffer({ deviceId: serial, runId });
+oracleSniffer.on("test_event", (event: TestBridgeEvent) => {
+  oracleFrames.push(event);
+});
+TestEventWsServer.addSink(oracleSniffer);
 
 TestEventWsServer.ensureStarted();
 const server = (
@@ -179,6 +223,20 @@ if (!server) throw new Error("Cockpit durable WS server did not start");
 server.on("connection", (socket) => {
   sockets.add(socket);
   socket.on("close", () => sockets.delete(socket));
+
+  // Observe the real post-COMMIT ACKs without replacing the server's ingest
+  // path. The wrapper delegates byte-for-byte to ws after recording metadata.
+  const originalSend = socket.send;
+  socket.send = (function (
+    this: WebSocket,
+    data: unknown,
+    ...args: unknown[]
+  ) {
+    const outgoing = parseJson(String(data));
+    if (outgoing?.type === "event_ack") eventAcks.push(outgoing);
+    return Reflect.apply(originalSend, this, [data, ...args]);
+  }) as WebSocket["send"];
+
   socket.on("message", (data) => {
     const frame = parseJson(String(data));
     if (!frame) return;
@@ -233,6 +291,15 @@ server.on("connection", (socket) => {
       screenFrames.push(compact);
       check("sdk_event", compact);
     }
+    if (typeof frame.event === "string" && frame.runId === runId) {
+      eventFrames.push({
+        event: frame.event,
+        runId: frame.runId,
+        sessionId: frame.sessionId,
+        seq: frame.seq,
+        screen: frame.screen,
+      });
+    }
   });
 });
 
@@ -255,7 +322,54 @@ const detected = await detectChannel(serial, ctx);
 check("detectChannel", detected);
 const channel = new VerdictChannel();
 
+// A same-port socket left behind by an already-running app is intentionally a
+// no-op in the transport. Start this gate from a cold process so bootstrap sees
+// the listening host and set_run can authenticate that fresh connection.
+const retiredWalFiles = (
+  await adbRun([
+    "shell",
+    `run-as ${applicationId} sh -c 'grep -l -F "checkpoint4-" no_backup/verdict/wal/seg-*.wal 2>/dev/null || true'`,
+  ])
+)
+  .split("\n")
+  .map((line) => line.trim())
+  .filter(Boolean);
+check("preflight_retired_wal_files", retiredWalFiles);
+await adbRun(["shell", "am", "force-stop", applicationId]);
 await adbRun(["logcat", "-c"]);
+const preflightSetRun = await channel.run(serial, {
+  op: "set_run",
+  requestId: "set-run-preflight",
+  scope: preflightRunId,
+  runId: preflightRunId,
+  secret,
+  wsEnabled: true,
+  wsPort: 8765,
+  skipDeliveryWait: false,
+  wakeStopped: true,
+}, ctx);
+check("preflight_set_run", preflightSetRun);
+
+const preflightAuthenticated = await waitFor(() => authenticated, 8_000);
+check("preflight_ws_authenticated", {
+  observed: preflightAuthenticated,
+  appSignatureValid,
+  helloFullCount,
+});
+
+let preflightHealthAttempt = 0;
+const preflightWalReady = await waitForAsync(async () => {
+  preflightHealthAttempt += 1;
+  const snapshot = await channel.run(serial, {
+    op: "get_screen_state",
+    requestId: `preflight-health-${preflightHealthAttempt}`,
+    scope: preflightRunId,
+  }, ctx);
+  return nestedScreenHealth(snapshot)?.wal === "ok";
+}, 20_000, 750);
+check("preflight_wal_ready", preflightWalReady);
+
+const helloCountBeforeRun = helloFullCount;
 const setRun = await channel.run(serial, {
   op: "set_run",
   requestId: "set-run-device",
@@ -268,8 +382,10 @@ const setRun = await channel.run(serial, {
   wakeStopped: true,
 }, ctx);
 check("set_run", setRun);
-
-const authObserved = await waitFor(() => authenticated, 8_000);
+const authObserved = await waitFor(
+  () => helloFullCount > helloCountBeforeRun,
+  8_000,
+);
 check("ws_authenticated", {
   observed: authObserved,
   appSignatureValid,
@@ -325,7 +441,75 @@ const openFirst = await channel.run(serial, openOp, ctx);
 check("open_delivery_first", openFirst);
 const openDuplicate = await channel.run(serial, openOp, ctx);
 check("open_delivery_duplicate", openDuplicate);
-await sleep(4_000);
+await waitFor(
+  () =>
+    oracleFrames.some(
+      (frame) =>
+        frame.event === "SCREEN_READY" && frame.screen === "DeliveryFragment",
+    ) &&
+    oracleFrames.some((frame) => frame.event === "DELIVERY_STARTED") &&
+    oracleFrames.some((frame) => frame.event === "HTTP_CALL"),
+  10_000,
+  100,
+);
+
+const expectedOracleSignals = [
+  {
+    name: "SCREEN_READY:StopListFragment",
+    observed: oracleFrames.some(
+      (frame) =>
+        frame.event === "SCREEN_READY" && frame.screen === "StopListFragment",
+    ),
+  },
+  {
+    name: "DELIVERY_STARTED",
+    observed: oracleFrames.some((frame) => frame.event === "DELIVERY_STARTED"),
+  },
+  {
+    name: "SCREEN_READY:DeliveryFragment",
+    observed: oracleFrames.some(
+      (frame) =>
+        frame.event === "SCREEN_READY" && frame.screen === "DeliveryFragment",
+    ),
+  },
+  {
+    name: "HTTP_CALL",
+    observed: oracleFrames.some((frame) => frame.event === "HTTP_CALL"),
+  },
+];
+const oracleMissing = expectedOracleSignals
+  .filter((signal) => !signal.observed)
+  .map((signal) => signal.name);
+const oraclePostCommit =
+  oracleFrames.length > 0 &&
+  oracleFrames.every((frame) => frame.raw.startsWith("DB|"));
+const oracleVerdict = {
+  complete: oracleMissing.length === 0 && oraclePostCommit,
+  missing: oracleMissing,
+  source: oraclePostCommit ? "durable_post_commit" : "pre_commit_or_mixed",
+  observed: expectedOracleSignals
+    .filter((signal) => signal.observed)
+    .map((signal) => signal.name),
+};
+check("oracle_verdict", oracleVerdict);
+
+const deliveryStartedCount = eventFrames.filter(
+  (frame) => frame.event === "DELIVERY_STARTED",
+).length;
+const deliveryReadyCount = eventFrames.filter(
+  (frame) =>
+    frame.event === "SCREEN_READY" && frame.screen === "DeliveryFragment",
+).length;
+const commandExecutedOnce =
+  openFirst.ok &&
+  openDuplicate.ok &&
+  deliveryStartedCount === 1 &&
+  deliveryReadyCount === 1;
+check("open_delivery_executed_once", {
+  commandExecutedOnce,
+  deliveryStartedCount,
+  deliveryReadyCount,
+});
 
 check(
   "get_state_after",
@@ -345,6 +529,14 @@ const screen = await channel.run(serial, {
 check("dump_screen_state", {
   elapsedMs: performance.now() - screenStarted,
   result: screen,
+});
+const verticalHealth = nestedScreenHealth(screen);
+const verticalWalHealthy =
+  verticalHealth?.wal === "ok" && Number(verticalHealth.droppedSince ?? -1) === 0;
+check("vertical_slice_wal_health", {
+  healthy: verticalWalHealthy,
+  wal: verticalHealth?.wal ?? null,
+  droppedSince: verticalHealth?.droppedSince ?? null,
 });
 
 const heavyStarted = performance.now();
@@ -408,8 +600,161 @@ check(
     .slice(0, 20),
 );
 
+// Rotate once more while the socket is still authenticated. This seals the
+// vertical-slice stream, replays any tail, receives cumulative ACKs, and gives
+// AckedSegmentSweeper a chance to remove that stream's WAL segment.
+const helloCountBeforeCleanup = helloFullCount;
+const cleanupRunId = `checkpoint4-cleanup-${Date.now()}`;
+const cleanupSetRun = await channel.run(serial, {
+  op: "set_run",
+  requestId: "set-run-cleanup",
+  // Register the rollover command in the incoming run's scope. Using the
+  // retiring scope lets onScopeRetired cancel its own response after the
+  // rollover has already succeeded on-device.
+  scope: cleanupRunId,
+  runId: cleanupRunId,
+  secret,
+  wsEnabled: true,
+  wsPort: 8765,
+  skipDeliveryWait: false,
+  wakeStopped: true,
+}, ctx);
+check("cleanup_set_run", cleanupSetRun);
+const cleanupAuthenticated = await waitFor(
+  () => helloFullCount > helloCountBeforeCleanup,
+  8_000,
+);
+check("cleanup_ws_authenticated", cleanupAuthenticated);
+
+const walCleared = await waitForAsync(async () => {
+  const result = await adbRun([
+    "shell",
+    `run-as ${applicationId} sh -c 'if grep -l -F -- "${runId}" no_backup/verdict/wal/seg-*.wal >/dev/null 2>&1; then echo present; else echo absent; fi'`,
+  ]);
+  return result.trim() === "absent";
+}, 15_000, 250);
+check("vertical_slice_wal_cleared", walCleared);
+
+const fanoutDrained = await waitForAsync(async () => {
+  const remaining = await prisma.verdictInbox.count({
+    where: { runId, processedAt: null },
+  });
+  return remaining === 0;
+}, 8_000, 100);
+check("durable_fanout_drained", fanoutDrained);
+
+const stream = await prisma.verdictStream.findFirst({ where: { runId } });
+const inboxRows = await prisma.verdictInbox.findMany({
+  where: { runId },
+  orderBy: { seq: "asc" },
+  select: { seq: true, payload: true, processedAt: true },
+});
+const gaps = await prisma.verdictGap.findMany({ where: { runId } });
+const inboxSeqs = inboxRows.map((row) => row.seq);
+const rowsMonotonic = inboxSeqs.every(
+  (seq, index) => seq === BigInt(index + 1),
+);
+const contiguousThrough = stream?.contiguousSeq ?? 0n;
+const ingestComplete =
+  stream !== null &&
+  rowsMonotonic &&
+  inboxSeqs.length > 0 &&
+  contiguousThrough === BigInt(inboxSeqs.length) &&
+  stream.pendingAbove.length === 0 &&
+  stream.fullRescanCount === 0 &&
+  gaps.length === 0 &&
+  inboxRows.every((row) => row.processedAt !== null);
+check("cockpit_ingest", {
+  ingestComplete,
+  rowCount: inboxRows.length,
+  contiguousThrough: contiguousThrough.toString(),
+  pendingAbove: stream?.pendingAbove.map(String) ?? [],
+  fullRescanCount: stream?.fullRescanCount ?? null,
+  gaps: gaps.length,
+  rowsMonotonic,
+  processedRows: inboxRows.filter((row) => row.processedAt !== null).length,
+  events: inboxRows.map((row) => {
+    const payload = row.payload as JsonObject;
+    return `${row.seq.toString()}:${String(payload.event ?? "unknown")}`;
+  }),
+});
+
+let ackSentThrough = 0n;
+for (const ack of eventAcks) {
+  if (ack.runId !== runId) continue;
+  const value = BigInt(String(ack.lastContiguousSeq ?? "0"));
+  if (value > ackSentThrough) ackSentThrough = value;
+}
+
+let deviceAckThrough = 0n;
+try {
+  const ackFile = JSON.parse(
+    await adbRun([
+      "shell",
+      `run-as ${applicationId} cat no_backup/verdict/wal/acks.json`,
+    ]),
+  ) as { streams?: Array<{ runId?: string; ackedThrough?: string }> };
+  const deviceAck = ackFile.streams?.find((entry) => entry.runId === runId);
+  deviceAckThrough = BigInt(deviceAck?.ackedThrough ?? "0");
+} catch {
+  deviceAckThrough = 0n;
+}
+const ackComplete =
+  contiguousThrough > 0n &&
+  ackSentThrough >= contiguousThrough &&
+  // AckedSegmentSweeper prunes the per-stream ack entry after deleting the
+  // final segment. Segment absence is therefore stronger applied-ACK evidence
+  // than retaining an acks.json watermark forever.
+  (deviceAckThrough >= contiguousThrough || walCleared);
+check("cockpit_ack", {
+  ackComplete,
+  sentThrough: ackSentThrough.toString(),
+  deviceAppliedThrough: deviceAckThrough.toString(),
+  deviceAppliedEvidence:
+    deviceAckThrough >= contiguousThrough ? "acks.json" : "acked_segment_swept",
+  expectedThrough: contiguousThrough.toString(),
+});
+
+const cleanupEndRun = await channel.run(serial, {
+  op: "end_run",
+  requestId: "end-run-cleanup",
+  scope: cleanupRunId,
+}, ctx);
+check("cleanup_end_run", cleanupEndRun);
+
+const gatePassed =
+  TestEventWsServer.isIngestReady() &&
+  preflightSetRun.ok &&
+  preflightAuthenticated &&
+  preflightWalReady &&
+  authObserved &&
+  appSignatureValid &&
+  openFirst.ok &&
+  openDuplicate.ok &&
+  commandExecutedOnce &&
+  oracleVerdict.complete &&
+  verticalWalHealthy &&
+  ingestComplete &&
+  fanoutDrained &&
+  ackComplete &&
+  walCleared &&
+  cleanupSetRun.ok &&
+  cleanupEndRun.ok &&
+  cleanupAuthenticated &&
+  observedRunAfterWsDenial === runId &&
+  screen.ok;
+check("vertical_slice_gate", {
+  passed: gatePassed,
+  runId,
+  shipmentId,
+  device: serial,
+});
+
+TestEventWsServer.removeSink(oracleSniffer);
 for (const socket of sockets) socket.close(1000, "checkpoint complete");
 await new Promise<void>((resolve) => server.close(() => resolve()));
+await adbRun(["reverse", "--remove", "tcp:8765"]);
+check("adb_reverse_removed", true);
 const fullLogcat = await adbRun(["logcat", "-d", "-v", "threadtime"]);
 check("full_logcat_secret_absent", !fullLogcat.includes(secret));
 const walSecretScan = await adb(
@@ -438,4 +783,5 @@ check(
   ).trim(),
 );
 secretBytes.fill(0);
-process.exit(0);
+await prisma.$disconnect();
+process.exit(gatePassed ? 0 : 1);

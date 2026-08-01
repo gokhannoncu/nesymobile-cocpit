@@ -11,6 +11,7 @@
  *  end, so it is safe against a shared database.
  * ===========================================================================
  */
+import "dotenv/config";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { prisma } from "@nesy/db";
@@ -56,10 +57,13 @@ function collector(socket: WebSocket): { frames: Record<string, unknown>[] } {
   return { frames };
 }
 
-const waitFor = async (predicate: () => boolean, ms = 8_000): Promise<void> => {
+const waitFor = async (
+  predicate: () => boolean | Promise<boolean>,
+  ms = 8_000,
+): Promise<void> => {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
-    if (predicate()) return;
+    if (await predicate()) return;
     await new Promise((r) => setTimeout(r, 50));
   }
   throw new Error("timed out waiting for condition");
@@ -117,6 +121,16 @@ suite("WS server durable ingest", () => {
     // worker in the same step would couple every run to database latency.
     expect(injected.map((e) => e.seq)).toContain(1);
     expect(injected[0]!.raw.startsWith("WS|")).toBe(true);
+  });
+
+  it("the ordered durable fan-out also feeds the oracle sink after commit", async () => {
+    await waitFor(() =>
+      injected.some((event) => event.seq === 1 && event.raw.startsWith("DB|")),
+    );
+    const rows = await prisma.$queryRaw<{ processed_at: Date | null }[]>`
+      SELECT processed_at FROM verdict_inbox
+      WHERE run_id = ${RUN} AND session_id = ${SESSION} AND seq = 1`;
+    expect(rows[0]?.processed_at).toBeInstanceOf(Date);
   });
 
   it("a hole holds the acked watermark back", async () => {
@@ -184,6 +198,32 @@ suite("WS server durable ingest", () => {
       SELECT to_seq FROM verdict_gap WHERE run_id = ${RUN} AND generation = 1`;
     expect(rows[0]!.to_seq).toBe(6n);
   });
+
+  it(
+    "coalesces a burst without leaving an unprocessed fan-out tail",
+    async () => {
+      for (let seq = 7; seq <= 20; seq += 1) socket.send(eventFrame(seq));
+      await waitFor(
+        () =>
+          injected.some(
+            (event) => event.seq === 20 && event.raw.startsWith("DB|"),
+          ),
+        20_000,
+      );
+      await waitFor(async () => {
+        const remaining = await prisma.verdictInbox.count({
+          where: { runId: RUN, sessionId: SESSION, processedAt: null },
+        });
+        return remaining === 0;
+      }, 20_000);
+
+      const stream = await prisma.verdictStream.findUnique({
+        where: { runId_sessionId: { runId: RUN, sessionId: SESSION } },
+      });
+      expect(stream?.contiguousSeq).toBe(20n);
+    },
+    30_000,
+  );
 
   it("a frame with an unusable seq is neither injected nor persisted", async () => {
     received.frames.length = 0;

@@ -19,7 +19,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { LogcatSniffer } from "./logcat-sniffer.js";
 import { parseTestEventLine, type TestBridgeEvent } from "./test-event-bridge.js";
 import { ingestFrame, type IngestFrame } from "./verdict-ingest.js";
-import { runFanoutOnce } from "./verdict-fanout.js";
+import { runFanoutOnce, type InboxRow } from "./verdict-fanout.js";
 import { MonotoneStreamWatermarks } from "./verdict-stream-order.js";
 import { prisma } from "@nesy/db";
 
@@ -33,6 +33,7 @@ const WS_PATH = "/nesy";
  * deployed, and Faz 0.2 exists so the host is READY before Faz 2 needs it.
  */
 const INGEST_DISABLED = process.env.VERDICT_INGEST_DISABLED === "1";
+const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
 
 /**
  * A device frame that is not a test event.
@@ -201,6 +202,73 @@ class TestEventWsServerImpl {
    */
   private ingestReady = false;
   private readonly sentAckThrough = new MonotoneStreamWatermarks();
+  /** Coalesces concurrent post-COMMIT fan-out nudges per stream. */
+  private readonly fanoutPending = new Set<string>();
+  private readonly fanoutRunning = new Set<string>();
+
+  private streamKey(runId: string, sessionId: string): string {
+    return JSON.stringify([runId, sessionId]);
+  }
+
+  /**
+   * Hands a persisted inbox row to the same sink seam OracleEngine uses.
+   * Parsing again at this trust boundary prevents a malformed JSONB payload
+   * from being marked processed without ever reaching a consumer.
+   */
+  private async consumeDurableRow(row: InboxRow): Promise<void> {
+    const serialized = JSON.stringify(row.payload);
+    const event = parseTestEventLine(`NESY_TEST_EVENT|${serialized}`);
+    if (!event) {
+      throw new Error(
+        `invalid durable event ${row.runId}/${row.sessionId}/${row.seq.toString()}`,
+      );
+    }
+    const durableEvent: TestBridgeEvent = {
+      ...event,
+      raw: `DB|${serialized}`,
+    };
+    for (const sink of this.sinks) sink.injectTestEvent(durableEvent);
+  }
+
+  /**
+   * A nudge arriving while a worker owns the stream is remembered, not dropped.
+   * Without this coalescer the final rows of a burst can remain unprocessed when
+   * every later nudge loses the advisory-lock race to the first worker.
+   */
+  private nudgeFanout(runId: string, sessionId: string): void {
+    const key = this.streamKey(runId, sessionId);
+    this.fanoutPending.add(key);
+    if (this.fanoutRunning.has(key)) return;
+    this.fanoutRunning.add(key);
+
+    void (async () => {
+      try {
+        while (this.fanoutPending.delete(key)) {
+          const stats = await runFanoutOnce(
+            runId,
+            sessionId,
+            (row) => this.consumeDurableRow(row),
+          );
+          if (stats.skippedLocked) {
+            this.fanoutPending.add(key);
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          } else if (stats.error) {
+            console.warn(
+              `[TestEventWS] fan-out stopped at seq ${stats.stoppedAtSeq?.toString() ?? "?"}: ${stats.error}`,
+            );
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[TestEventWS] fan-out nudge failed:",
+          err instanceof Error ? err.message : err,
+        );
+      } finally {
+        this.fanoutRunning.delete(key);
+        if (this.fanoutPending.has(key)) this.nudgeFanout(runId, sessionId);
+      }
+    })();
+  }
 
   /**
    * Verifies the ingest tables exist before claiming the durable path works.
@@ -279,15 +347,7 @@ class TestEventWsServerImpl {
           `cursor recomputed from persisted state. More than 10k concurrent holes is not normal.`,
       );
     }
-    // Nudge, do not process. The worker holds a DB lease, so a second nudge while
-    // one is running is a no-op rather than a duplicate delivery.
-    void runFanoutOnce(frame.runId, frame.sessionId, async () => {
-      // No consumer yet: the oracle is still fed by the synchronous sink path
-      // below during the dual-write period. Faz 2 replaces that with this worker,
-      // and `processed_at` is what makes the switch resumable.
-    }).catch((err: unknown) => {
-      console.warn("[TestEventWS] fan-out nudge failed:", err instanceof Error ? err.message : err);
-    });
+    this.nudgeFanout(frame.runId, frame.sessionId);
   }
 
   ensureStarted(): void {
@@ -351,8 +411,10 @@ class TestEventWsServerImpl {
               ...event,
               raw: `WS|${event.raw.replace(/^.*NESY_TEST_EVENT\|/, "")}`,
             };
-            for (const sink of this.sinks) {
-              sink.injectTestEvent(wsEvent);
+            if (!SYNC_SINK_DISABLED) {
+              for (const sink of this.sinks) {
+                sink.injectTestEvent(wsEvent);
+              }
             }
 
             if (this.ingestReady) {

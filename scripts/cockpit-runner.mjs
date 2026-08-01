@@ -6,6 +6,7 @@
  * Usage: node scripts/cockpit-runner.mjs --mode dev|prod|fastprod [--verbose]
  */
 import { spawn, execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -39,13 +40,23 @@ function parseArgs(argv) {
   return { mode, verbose }
 }
 
+/** True when prior `next build` / api `tsc` outputs exist for a skip-build start. */
+function hasProductionArtifacts() {
+  return (
+    existsSync(join(repoRoot, 'apps/web/.next/BUILD_ID')) &&
+    existsSync(join(repoRoot, 'apps/api/dist/server.js'))
+  )
+}
+
 const { mode, verbose } = parseArgs(process.argv.slice(2))
 if (!mode) {
   console.error('Usage: node scripts/cockpit-runner.mjs --mode dev|prod|fastprod [--verbose]')
   process.exit(1)
 }
 
-const skipBuild = mode === 'fastprod'
+// fastprod skips turbo's build→start chain only when artifacts already exist;
+// otherwise it falls through to the same build+start path as prod.
+const skipBuild = mode === 'fastprod' && hasProductionArtifacts()
 const turboTask = mode === 'dev' ? 'dev' : 'start'
 let turboBin
 try {
@@ -54,6 +65,12 @@ try {
   console.error('[cockpit] turbo not found — run pnpm install at repo root')
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
+}
+
+if (mode === 'fastprod' && !skipBuild) {
+  console.error(
+    '[cockpit] fastprod: no production build found (apps/web/.next/BUILD_ID) — building first',
+  )
 }
 
 const state = createCockpitState(mode, DEFAULT_PORTS)
