@@ -4,9 +4,9 @@ import { WebSocketServer } from "ws";
 import {
   VerdictChannel,
   type AdbRunner,
-} from "../../../packages/control-channels/src/index.js";
-import { createNodeAdbRunner } from "../../../packages/control-channels/src/node-executor.js";
-import { asSecret } from "../../../packages/control-contract/src/index.js";
+} from "@nesy/control-channels";
+import { createNodeAdbRunner } from "@nesy/control-channels/node";
+import { asSecret } from "@nesy/control-contract";
 
 const serial = "R6CW400BC8N";
 const applicationId = "com.arasdigital.nesymobile.rstest";
@@ -66,7 +66,11 @@ const frames: Array<{
   hasAppVersion: boolean;
   hasFlavor: boolean;
 }> = [];
-let helloIdentity: { runId: string; sessionId: string } | null = null;
+type HelloIdentity = { runId: string; sessionId: string };
+let helloIdentity: HelloIdentity | null = null;
+// Read through a function so control-flow analysis uses the declared type:
+// helloIdentity is only ever assigned inside the socket callback below.
+const readHelloIdentity = (): HelloIdentity | null => helloIdentity;
 
 const server = new WebSocketServer({
   host: "127.0.0.1",
@@ -149,7 +153,7 @@ const setRun = await new VerdictChannel().run(serial, {
 check("unauth_set_run", setRun);
 await sleep(11_000);
 
-const identity = helloIdentity;
+const identity = readHelloIdentity();
 const acks = await readAcks();
 check("unauth_peer", {
   connectionCount,

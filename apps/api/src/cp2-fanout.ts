@@ -8,6 +8,10 @@ import { prisma } from "@nesy/db";
 const runId = process.argv[2];
 const sessionId = process.argv[3];
 const label = process.argv[4] ?? "P?";
+if (runId === undefined || sessionId === undefined) {
+  console.error(`${label} FATAL usage: cp2-fanout <runId> <sessionId> [label]`);
+  process.exit(1);
+}
 const seen: bigint[] = [];
 
 (async () => {
@@ -16,7 +20,12 @@ const seen: bigint[] = [];
     await new Promise((r) => setTimeout(r, 2)); // make the window wide enough to race
   });
   let ordered = true;
-  for (let i = 1; i < seen.length; i++) if (seen[i] <= seen[i - 1]) ordered = false;
+  for (let i = 1; i < seen.length; i++) {
+    const prev = seen[i - 1];
+    const cur = seen[i];
+    if (prev === undefined || cur === undefined) continue;
+    if (cur <= prev) ordered = false;
+  }
   console.log(
     `${label} processed=${stats.processed} skippedLocked=${stats.skippedLocked} ` +
       `consumed=${seen.length} ascending=${ordered} range=${seen[0] ?? "-"}..${seen[seen.length - 1] ?? "-"}`,

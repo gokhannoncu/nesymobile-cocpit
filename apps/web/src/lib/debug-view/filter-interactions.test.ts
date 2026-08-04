@@ -18,6 +18,14 @@ function evt(partial: Partial<InteractionEvent> & Pick<InteractionEvent, 'id' | 
   }
 }
 
+// Fixture accessor: fails loudly instead of silently passing `undefined` into the
+// export builder when an index is out of range (noUncheckedIndexedAccess).
+function sampleAt(index: number): InteractionEvent {
+  const event = sample[index]
+  if (!event) throw new Error(`sample fixture missing at index ${index}`)
+  return event
+}
+
 const sample: InteractionEvent[] = [
   evt({
     id: '1',
@@ -124,7 +132,7 @@ describe('buildInteractionExport', () => {
 
   it('sorts newest-first input into ascending chronological order', () => {
     const payload = buildInteractionExport({
-      events: [sample[2], sample[0]],
+      events: [sampleAt(2), sampleAt(0)],
       filters: { kind: 'all', from: '', to: '', search: '' },
       device: { serial: 'a', name: 'b' },
       exportedAt: '2026-07-22T00:00:00.000Z',

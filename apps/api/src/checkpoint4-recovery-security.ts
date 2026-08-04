@@ -10,9 +10,9 @@ import { promisify } from "node:util";
 import {
   VerdictChannel,
   type AdbRunner,
-} from "../../../packages/control-channels/src/index.js";
-import { createNodeAdbRunner } from "../../../packages/control-channels/src/node-executor.js";
-import { asSecret } from "../../../packages/control-contract/src/index.js";
+} from "@nesy/control-channels";
+import { createNodeAdbRunner } from "@nesy/control-channels/node";
+import { asSecret } from "@nesy/control-contract";
 
 const execFileAsync = promisify(execFile);
 const adbPath =

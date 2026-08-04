@@ -1,0 +1,166 @@
+# ============================================================================
+#  Cockpit CI — typecheck / test / lint gate  (Phase 1, blockers B-3 + B-4)
+#
+#  Before this file the only workflow in this repo was `contract-fixtures.yml`,
+#  which gates the fixture corpus and nothing else. Its own header said the rest
+#  of the Cockpit CI was "a separate piece of work" — this is that work.
+#
+#  Why it matters: `pnpm typecheck` was RED for 17 errors and no gate caught it.
+#  A red baseline that nothing enforces stops being a signal, because every later
+#  phase then has to ask whether a failure is new or inherited debt.
+#
+#  Three jobs, deliberately separate so a green tick means something specific:
+#
+#    quality      — typecheck + unit tests.       BLOCKING.
+#    lint         — repo-wide eslint.             NON-BLOCKING, see below.
+#    integration  — real PostgreSQL ingest tests. BLOCKING.
+#
+#  `integration` is NOT folded into `quality`: the unit suite must stay runnable
+#  without a database, and a combined job could not distinguish "ingest logic is
+#  broken" from "the service container never came up".
+# ============================================================================
+name: cockpit-ci
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - run: pnpm install --frozen-lockfile
+
+      # Separate steps, not `turbo run typecheck test`: turbo aborts sibling
+      # tasks on the first failure (exit 129), so a combined run reports the
+      # second package as broken when it was only interrupted. Phase 0 hit
+      # exactly that and had to re-run the packages in isolation to get a real
+      # error count.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+  lint:
+    name: Lint (non-blocking)
+    runs-on: ubuntu-latest
+    # ⚠️ NON-BLOCKING ON PURPOSE — and this is a known debt, not an oversight.
+    #
+    # `pnpm lint` currently FAILS repo-wide, but only in two packages:
+    # `@nesy/db` and `@nesy/metronic` have no `eslint.config.js` and still
+    # expect the pre-v9 `.eslintrc` format, so eslint v9 exits 2 before linting
+    # a single file. Every other package, plus `@nesy/api` and `@nesy/web`,
+    # passes with warnings only.
+    #
+    # Migrating those two packages to flat config means editing packages that
+    # Phase 1 holds read-only, so it is tracked as its own blocker rather than
+    # done here in passing. Until it lands, a blocking lint job would fail 100%
+    # of PRs for a reason unrelated to the PR — the fastest way to teach people
+    # to ignore a gate.
+    #
+    # FLIP `continue-on-error` TO false the moment those two configs exist.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+  integration:
+    name: PostgreSQL integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: verdict_test
+        ports:
+          - 5432:5432
+        # Without the healthcheck the first Prisma call races the container's
+        # own startup and fails with a connection error that looks like a test
+        # failure.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Throwaway credentials for an ephemeral service container that is
+      # unreachable outside this job. Nothing here is a real secret, and no
+      # production database is ever contacted from CI.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/verdict_test
+      # The gate the suites read:
+      #   apps/api/src/services/verdict-ingest.integration.test.ts
+      #   apps/api/src/services/test-event-ws-server.integration.test.ts
+      # both check `VERDICT_DB_IT === "1" && DATABASE_URL`. Without it they
+      # SKIP — which is how 16+ ingest tests came to run nowhere at all.
+      VERDICT_DB_IT: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - run: pnpm install --frozen-lockfile
+
+      # Builds @nesy/db, whose `prebuild` runs `prisma generate`. The client has
+      # to exist before migrate deploy and before the suite imports it.
+      - name: Build database client
+        run: pnpm --filter @nesy/db build
+
+      # `migrate deploy`, never `migrate dev`: deploy applies the committed
+      # migrations and nothing else. `dev` would author new migration files
+      # against a schema drift and rewrite tracked state from inside CI.
+      - name: Apply migrations
+        run: pnpm --filter @nesy/db exec prisma migrate deploy
+
+      # Guard against the failure mode this job exists to remove: if the env
+      # gate is wrong, the suites skip and the job still goes green — a false
+      # "integration verified". Assert the tests actually ran.
+      - name: Ingest integration tests
+        run: |
+          pnpm --filter @nesy/api test -- \
+            src/services/verdict-ingest.integration.test.ts \
+            src/services/test-event-ws-server.integration.test.ts \
+            2>&1 | tee /tmp/integration.log
+          # No `^` anchor: vitest emits ANSI escapes before the summary label.
+          if grep -qE 'Tests.*[0-9]+ skipped' /tmp/integration.log; then
+            echo "::error::integration suites reported skipped tests; the VERDICT_DB_IT/DATABASE_URL gate did not open"
+            exit 1
+          fi

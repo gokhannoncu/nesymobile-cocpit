@@ -13,8 +13,8 @@ import {
   detectChannel,
   invalidateDetectedChannel,
   type AdbRunner,
-} from "../../../packages/control-channels/src/index.js";
-import { createNodeAdbRunner } from "../../../packages/control-channels/src/node-executor.js";
+} from "@nesy/control-channels";
+import { createNodeAdbRunner } from "@nesy/control-channels/node";
 import { asSecret } from "@nesy/control-contract";
 import { prisma } from "@nesy/db";
 import { LogcatSniffer } from "./services/logcat-sniffer.js";

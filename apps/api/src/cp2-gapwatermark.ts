@@ -41,7 +41,13 @@ const contig = async () => {
   // fan-out must deliver only <= contiguous, in ascending order
   const seen: bigint[] = [];
   const s = await runFanoutOnce(runId, sessionId, async (e) => { seen.push(e.seq); });
-  let asc = true; for (let i = 1; i < seen.length; i++) if (seen[i] <= seen[i - 1]) asc = false;
+  let asc = true;
+  for (let i = 1; i < seen.length; i++) {
+    const prev = seen[i - 1];
+    const cur = seen[i];
+    if (prev === undefined || cur === undefined) continue;
+    if (cur <= prev) asc = false;
+  }
   console.log(`#31 fanout processed=${s.processed} ascending=${asc} seqs=[${seen.join(",")}]`);
   await prisma.$disconnect();
 })().catch((e) => { console.error("FATAL", e instanceof Error ? e.message : e); process.exit(1); });

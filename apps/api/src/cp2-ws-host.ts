@@ -105,7 +105,10 @@ process.on("SIGINT", () => {
     const seqs = [...seqCounts.keys()].sort((a, b) => a - b);
     const gaps: string[] = [];
     for (let i = 1; i < seqs.length; i++) {
-      if (seqs[i] !== seqs[i - 1] + 1) gaps.push(`${seqs[i - 1]}->${seqs[i]}`);
+      const prev = seqs[i - 1];
+      const cur = seqs[i];
+      if (prev === undefined || cur === undefined) continue;
+      if (cur !== prev + 1) gaps.push(`${prev}->${cur}`);
     }
     const frames = [...seqCounts.values()].reduce((n, count) => n + count, 0);
     console.log(
