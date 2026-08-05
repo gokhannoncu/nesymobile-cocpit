@@ -1,3 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # First-party Domain Packs. Kept out of packages/* so that "shared contract"
+  # and "one tenant's business content" stay visibly different things.
+  - "domain-packs/*"

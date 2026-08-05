@@ -1,0 +1,32 @@
+{
+  "name": "@nesy/domain-pack-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Verdict Domain Pack SÖZLEŞMESİ — manifest, Application/Screen/Surface/Entity/Target registry, Target Resolution Provider Chain, Semantic Action/Macro, Evidence Source Registry, Launch/Test profile, Feature authoring-vs-executable split, Capability catalog, deterministic bundle digest. EXECUTION BİLGİSİ YOK: RunManifest, TestExecution, Lease, ResourceLease, SchedulerDisposition, WorkerHeartbeat, full ImpactGraph buraya giremez (Phase 5/6). RUNTIME CODE YOK: published bundle declarative ve deterministic; arbitrary TypeScript/JavaScript çalıştırılmaz.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@nesy/workflow-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "@types/node": "^22.10.10",
+    "eslint": "^9.39.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.5"
+  }
+}

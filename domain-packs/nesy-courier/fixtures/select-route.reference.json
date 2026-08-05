@@ -1,0 +1,1042 @@
+{
+  "sliceKey": "SELECT_ROUTE",
+  "displayName": "Select route",
+  "businessMeaning": "A courier selects the route they will work today, and both the app and the backend agree that this route is now assigned to them.",
+  "notResponsibleFor": [
+    "route planning or stop ordering — the pack asserts the route is assigned, not that its content is optimal",
+    "reassigning a route already worked by someone else",
+    "whether the offered route set is business-correct (only that the backend offered at least one)"
+  ],
+  "inputSchema": {
+    "fields": [
+      {
+        "name": "routeCode",
+        "type": "string",
+        "required": true,
+        "description": "Business key of the route to select."
+      }
+    ]
+  },
+  "outputSchema": {
+    "fields": [
+      {
+        "name": "routeSelected",
+        "type": "boolean",
+        "factKey": "APP.SELECTED_ROUTE_OBSERVED"
+      },
+      {
+        "name": "routeCode",
+        "type": "string"
+      }
+    ]
+  },
+  "preconditions": [
+    {
+      "kind": "FACT_TRUE",
+      "ref": "APP.USER_SESSION_AVAILABLE",
+      "deadlineMs": 10000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "SURFACE_ABSENT",
+      "ref": "nesy.mandatory-update-dialog",
+      "deadlineMs": 5000,
+      "onUnmet": "FAIL"
+    }
+  ],
+  "screenRefs": [
+    "nesy.route.stop-list"
+  ],
+  "surfaceRefs": [
+    "nesy.route.selection-dialog"
+  ],
+  "entityBindings": [
+    {
+      "entityTypeRef": "ROUTE",
+      "targetRef": "nesy.target.route-row",
+      "role": "Identifies the row by route business key rather than by position."
+    }
+  ],
+  "targetResolutionRefs": [
+    "nesy.target.route-row",
+    "nesy.target.route-dialog-confirm"
+  ],
+  "semanticMacroRef": "nesy.macro.select-route",
+  "macroExpansion": {
+    "macroRef": "nesy.macro.select-route",
+    "authoredBy": "HAND",
+    "genericIr": {
+      "schemaVersion": 2,
+      "workflowId": "nesy.reference.select-route",
+      "workflowVersion": 1,
+      "name": "Select the route to work",
+      "source": {
+        "kind": "DOMAIN_PACK_EXPANSION",
+        "ref": "nesy.macro.select-route"
+      },
+      "inputs": [
+        {
+          "name": "routeCode",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "offeredRouteRows",
+          "type": "stringList"
+        },
+        {
+          "name": "rowHandle",
+          "type": "string"
+        },
+        {
+          "name": "confirmHandle",
+          "type": "string"
+        }
+      ],
+      "steps": [
+        {
+          "planStepId": "wait-dialog",
+          "sourceMapRef": "sm-route-1",
+          "next": "read-offered-routes",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "UI.ROUTE_DIALOG_READY",
+          "sourceLane": "UI",
+          "stableForMs": 200,
+          "requireCorrelation": false,
+          "onTimeout": "FAIL"
+        },
+        {
+          "planStepId": "read-offered-routes",
+          "sourceMapRef": "sm-route-2",
+          "next": "check-offered",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.routeState",
+          "maxRows": 50,
+          "outputVariable": "offeredRouteRows"
+        },
+        {
+          "planStepId": "check-offered",
+          "sourceMapRef": "sm-route-3",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CONDITION",
+          "condition": {
+            "kind": "comparison",
+            "operator": "in",
+            "left": {
+              "kind": "operand",
+              "source": "run.input",
+              "path": "routeCode"
+            },
+            "right": {
+              "kind": "operand",
+              "source": "step.output",
+              "path": "read-offered-routes.codes"
+            }
+          },
+          "onTrue": "resolve-row",
+          "onFalse": "report-not-offered",
+          "unknownPolicy": "FAIL"
+        },
+        {
+          "planStepId": "report-not-offered",
+          "sourceMapRef": "sm-route-4",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ANNOTATE",
+          "message": "The requested route is not in the offered projection; no row was tapped."
+        },
+        {
+          "planStepId": "resolve-row",
+          "sourceMapRef": "sm-route-5",
+          "next": "tap-row",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.route-row",
+          "outputVariable": "rowHandle",
+          "entityBinding": {
+            "type": "ROUTE",
+            "id": "run.input.routeCode"
+          }
+        },
+        {
+          "planStepId": "tap-row",
+          "sourceMapRef": "sm-route-6",
+          "next": "resolve-confirm",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "rowHandle",
+          "entityBinding": {
+            "type": "ROUTE",
+            "id": "run.input.routeCode"
+          }
+        },
+        {
+          "planStepId": "resolve-confirm",
+          "sourceMapRef": "sm-route-7",
+          "next": "tap-confirm",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.route-dialog-confirm",
+          "outputVariable": "confirmHandle"
+        },
+        {
+          "planStepId": "tap-confirm",
+          "sourceMapRef": "sm-route-8",
+          "next": "verify-assignment",
+          "timeoutMs": 25000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "confirmHandle",
+          "continueGate": {
+            "allOf": [
+              "UI.ROUTE_LIST_READY",
+              "APP.AVAILABLE_STOPS_LOADED"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "verify-assignment",
+          "sourceMapRef": "sm-route-9",
+          "next": "assert-selection",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.remote.allowlisted-operation",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.read-route-assignment",
+            "role": "VALIDATION",
+            "effectClass": "READ_ONLY",
+            "idempotencyClass": "NATURALLY_IDEMPOTENT",
+            "inputBindings": [
+              {
+                "name": "route",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [
+              {
+                "factKey": "REMOTE.ROUTE_ASSIGNED",
+                "responsePath": "assignment.exists"
+              }
+            ],
+            "timeoutPolicy": {
+              "timeoutMs": 20000,
+              "maxAttempts": 2,
+              "backoffMs": 1000
+            },
+            "entityBinding": {
+              "type": "ROUTE",
+              "id": "run.input.routeCode"
+            },
+            "reconciliationPolicy": "NONE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "assignment.assignedCourierName"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "assert-selection",
+          "sourceMapRef": "sm-route-10",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ASSERT_FACT",
+          "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+          "expected": true,
+          "unknownPolicy": "FAIL",
+          "entityBinding": {
+            "type": "ROUTE",
+            "id": "run.input.routeCode"
+          },
+          "finalOraclePolicy": {
+            "requirements": [
+              {
+                "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "REMOTE.ROUTE_ASSIGNED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 60000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "REMOTE.ROUTES_AVAILABLE",
+                "obligation": "WARNING",
+                "timing": "IMMEDIATE",
+                "onTimeout": "WARNING"
+              }
+            ]
+          }
+        }
+      ],
+      "entryStepId": "wait-dialog",
+      "policies": {
+        "runDeadlineMs": 600000,
+        "cleanupDeadlineMs": 60000,
+        "defaultRetry": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "artifactPolicy": {
+          "captureOnSuccess": false,
+          "captureOnFailure": true,
+          "kinds": [
+            "SCREENSHOT",
+            "UI_TREE"
+          ]
+        },
+        "redactionPolicy": {
+          "redactPaths": [
+            "run.input.password"
+          ]
+        }
+      },
+      "capabilityRequirements": [
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.watch-fact",
+          "optional": false
+        }
+      ],
+      "sourceMap": [
+        {
+          "ref": "sm-route-1",
+          "planStepId": "wait-dialog",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-2",
+          "planStepId": "read-offered-routes",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-3",
+          "planStepId": "check-offered",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "guards against tapping a row that is not offered"
+        },
+        {
+          "ref": "sm-route-4",
+          "planStepId": "report-not-offered",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-5",
+          "planStepId": "resolve-row",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-6",
+          "planStepId": "tap-row",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-7",
+          "planStepId": "resolve-confirm",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-8",
+          "planStepId": "tap-confirm",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-9",
+          "planStepId": "verify-assignment",
+          "domainSourceRef": "nesy.macro.select-route"
+        },
+        {
+          "ref": "sm-route-10",
+          "planStepId": "assert-selection",
+          "domainSourceRef": "nesy.macro.select-route"
+        }
+      ]
+    },
+    "irSourceMap": [
+      {
+        "ref": "sm-route-1",
+        "planStepId": "wait-dialog",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-2",
+        "planStepId": "read-offered-routes",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-3",
+        "planStepId": "check-offered",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "guards against tapping a row that is not offered"
+      },
+      {
+        "ref": "sm-route-4",
+        "planStepId": "report-not-offered",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-5",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-6",
+        "planStepId": "tap-row",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-7",
+        "planStepId": "resolve-confirm",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-8",
+        "planStepId": "tap-confirm",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-9",
+        "planStepId": "verify-assignment",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-10",
+        "planStepId": "assert-selection",
+        "domainSourceRef": "nesy.macro.select-route"
+      }
+    ],
+    "domainSourceMap": [
+      {
+        "ref": "ds-route-1",
+        "macroRef": "nesy.macro.select-route",
+        "planStepIds": [
+          "wait-dialog",
+          "read-offered-routes",
+          "check-offered",
+          "report-not-offered",
+          "resolve-row",
+          "tap-row",
+          "resolve-confirm",
+          "tap-confirm",
+          "verify-assignment",
+          "assert-selection"
+        ],
+        "sliceRef": "SELECT_ROUTE",
+        "note": "One CONDITION branch: the not-offered path annotates and stops instead of tapping."
+      }
+    ]
+  },
+  "genericIrSnapshot": {
+    "schemaVersion": 2,
+    "workflowId": "nesy.reference.select-route",
+    "workflowVersion": 1,
+    "name": "Select the route to work",
+    "source": {
+      "kind": "DOMAIN_PACK_EXPANSION",
+      "ref": "nesy.macro.select-route"
+    },
+    "inputs": [
+      {
+        "name": "routeCode",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "variables": [
+      {
+        "name": "offeredRouteRows",
+        "type": "stringList"
+      },
+      {
+        "name": "rowHandle",
+        "type": "string"
+      },
+      {
+        "name": "confirmHandle",
+        "type": "string"
+      }
+    ],
+    "steps": [
+      {
+        "planStepId": "wait-dialog",
+        "sourceMapRef": "sm-route-1",
+        "next": "read-offered-routes",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "UI.ROUTE_DIALOG_READY",
+        "sourceLane": "UI",
+        "stableForMs": 200,
+        "requireCorrelation": false,
+        "onTimeout": "FAIL"
+      },
+      {
+        "planStepId": "read-offered-routes",
+        "sourceMapRef": "sm-route-2",
+        "next": "check-offered",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.routeState",
+        "maxRows": 50,
+        "outputVariable": "offeredRouteRows"
+      },
+      {
+        "planStepId": "check-offered",
+        "sourceMapRef": "sm-route-3",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CONDITION",
+        "condition": {
+          "kind": "comparison",
+          "operator": "in",
+          "left": {
+            "kind": "operand",
+            "source": "run.input",
+            "path": "routeCode"
+          },
+          "right": {
+            "kind": "operand",
+            "source": "step.output",
+            "path": "read-offered-routes.codes"
+          }
+        },
+        "onTrue": "resolve-row",
+        "onFalse": "report-not-offered",
+        "unknownPolicy": "FAIL"
+      },
+      {
+        "planStepId": "report-not-offered",
+        "sourceMapRef": "sm-route-4",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ANNOTATE",
+        "message": "The requested route is not in the offered projection; no row was tapped."
+      },
+      {
+        "planStepId": "resolve-row",
+        "sourceMapRef": "sm-route-5",
+        "next": "tap-row",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.route-row",
+        "outputVariable": "rowHandle",
+        "entityBinding": {
+          "type": "ROUTE",
+          "id": "run.input.routeCode"
+        }
+      },
+      {
+        "planStepId": "tap-row",
+        "sourceMapRef": "sm-route-6",
+        "next": "resolve-confirm",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "rowHandle",
+        "entityBinding": {
+          "type": "ROUTE",
+          "id": "run.input.routeCode"
+        }
+      },
+      {
+        "planStepId": "resolve-confirm",
+        "sourceMapRef": "sm-route-7",
+        "next": "tap-confirm",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.route-dialog-confirm",
+        "outputVariable": "confirmHandle"
+      },
+      {
+        "planStepId": "tap-confirm",
+        "sourceMapRef": "sm-route-8",
+        "next": "verify-assignment",
+        "timeoutMs": 25000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "confirmHandle",
+        "continueGate": {
+          "allOf": [
+            "UI.ROUTE_LIST_READY",
+            "APP.AVAILABLE_STOPS_LOADED"
+          ],
+          "deadlineMs": 25000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "verify-assignment",
+        "sourceMapRef": "sm-route-9",
+        "next": "assert-selection",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.remote.allowlisted-operation",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.read-route-assignment",
+          "role": "VALIDATION",
+          "effectClass": "READ_ONLY",
+          "idempotencyClass": "NATURALLY_IDEMPOTENT",
+          "inputBindings": [
+            {
+              "name": "route",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [
+            {
+              "factKey": "REMOTE.ROUTE_ASSIGNED",
+              "responsePath": "assignment.exists"
+            }
+          ],
+          "timeoutPolicy": {
+            "timeoutMs": 20000,
+            "maxAttempts": 2,
+            "backoffMs": 1000
+          },
+          "entityBinding": {
+            "type": "ROUTE",
+            "id": "run.input.routeCode"
+          },
+          "reconciliationPolicy": "NONE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "assignment.assignedCourierName"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "assert-selection",
+        "sourceMapRef": "sm-route-10",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ASSERT_FACT",
+        "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+        "expected": true,
+        "unknownPolicy": "FAIL",
+        "entityBinding": {
+          "type": "ROUTE",
+          "id": "run.input.routeCode"
+        },
+        "finalOraclePolicy": {
+          "requirements": [
+            {
+              "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "REMOTE.ROUTE_ASSIGNED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 60000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "APP.AVAILABLE_STOPS_LOADED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "REMOTE.ROUTES_AVAILABLE",
+              "obligation": "WARNING",
+              "timing": "IMMEDIATE",
+              "onTimeout": "WARNING"
+            }
+          ]
+        }
+      }
+    ],
+    "entryStepId": "wait-dialog",
+    "policies": {
+      "runDeadlineMs": 600000,
+      "cleanupDeadlineMs": 60000,
+      "defaultRetry": {
+        "maxAttempts": 1,
+        "effectClass": "READ_ONLY"
+      },
+      "artifactPolicy": {
+        "captureOnSuccess": false,
+        "captureOnFailure": true,
+        "kinds": [
+          "SCREENSHOT",
+          "UI_TREE"
+        ]
+      },
+      "redactionPolicy": {
+        "redactPaths": [
+          "run.input.password"
+        ]
+      }
+    },
+    "capabilityRequirements": [
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.watch-fact",
+        "optional": false
+      }
+    ],
+    "sourceMap": [
+      {
+        "ref": "sm-route-1",
+        "planStepId": "wait-dialog",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-2",
+        "planStepId": "read-offered-routes",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-3",
+        "planStepId": "check-offered",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "guards against tapping a row that is not offered"
+      },
+      {
+        "ref": "sm-route-4",
+        "planStepId": "report-not-offered",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-5",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-6",
+        "planStepId": "tap-row",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-7",
+        "planStepId": "resolve-confirm",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-8",
+        "planStepId": "tap-confirm",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-9",
+        "planStepId": "verify-assignment",
+        "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-10",
+        "planStepId": "assert-selection",
+        "domainSourceRef": "nesy.macro.select-route"
+      }
+    ]
+  },
+  "bridgeFlowPlanSnapshot": {
+    "macroRef": "nesy.macro.select-route",
+    "authoredBy": "HAND",
+    "requiredCapabilityRefs": [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.resolve-target"
+    ],
+    "legs": [
+      {
+        "planStepId": "wait-dialog",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "UI.ROUTE_DIALOG_READY"
+      },
+      {
+        "planStepId": "tap-row",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.route-row"
+      },
+      {
+        "planStepId": "tap-confirm",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.route-dialog-confirm",
+        "awaitFactKey": "APP.AVAILABLE_STOPS_LOADED"
+      }
+    ]
+  },
+  "oracle": {
+    "continueGate": {
+      "allOf": [
+        "UI.ROUTE_LIST_READY",
+        "APP.AVAILABLE_STOPS_LOADED"
+      ],
+      "deadlineMs": 25000,
+      "unknownPolicy": "RETRY"
+    },
+    "finalOracle": {
+      "requirements": [
+        {
+          "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "REMOTE.ROUTE_ASSIGNED",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 60000,
+          "onTimeout": "INCONCLUSIVE"
+        },
+        {
+          "factKey": "REMOTE.ROUTES_AVAILABLE",
+          "obligation": "WARNING",
+          "timing": "IMMEDIATE",
+          "onTimeout": "WARNING"
+        }
+      ]
+    },
+    "notResponsibleFor": [
+      "the ordering or completeness of the stop list that loads afterwards"
+    ]
+  },
+  "interruptPolicy": {
+    "handledSurfaceRefs": [
+      "nesy.permission-dialog",
+      "nesy.network-dialog"
+    ],
+    "fatalSurfaceRefs": [
+      "nesy.mandatory-update-dialog",
+      "nesy.session-expired-dialog"
+    ],
+    "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+    "maxHandledInterrupts": 3
+  },
+  "requiredCapabilityRefs": [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+    "verdict.core.remote.allowlisted-operation",
+    "nesy.adapter.named-query"
+  ],
+  "releaseIsolation": {
+    "automationOnly": false,
+    "releaseGuard": "automationRelease=false",
+    "assertionFactKey": "APP.SESSION_ISOLATION_ASSERTED",
+    "allowedEnvironments": [
+      "qa",
+      "staging",
+      "automation"
+    ]
+  },
+  "negativeCases": [
+    {
+      "caseKey": "EMPTY_DIALOG_REPORTED_AS_UI_DEFECT",
+      "scenario": "The backend offers this account no routes. The dialog is empty, target resolution fails, and the report blames the UI for a backend state.",
+      "refusedBy": "The CONDITION at check-offered branches to an explicit ANNOTATE instead of tapping, and REMOTE.ROUTES_AVAILABLE is carried as a WARNING requirement so the diagnosis is in the evidence."
+    },
+    {
+      "caseKey": "DIALOG_MODELLED_AS_SCREEN",
+      "scenario": "The route dialog is registered as a screen, so it needs an invented entry strategy and every other flow has to remember to handle it.",
+      "refusedBy": "validateDomainPackBundle raises DIALOG_DECLARED_AS_SCREEN for any screenKey naming a surface kind; the dialog lives in the Surface Registry with defaultPolicy HANDLE."
+    },
+    {
+      "caseKey": "APP_ONLY_SELECTION",
+      "scenario": "The app shows the route as selected while the backend never recorded the assignment, so the next day's work is attributed to nobody.",
+      "refusedBy": "REMOTE.ROUTE_ASSIGNED is a REQUIRED EVENTUAL requirement read through an allowlisted back-office operation."
+    }
+  ]
+}

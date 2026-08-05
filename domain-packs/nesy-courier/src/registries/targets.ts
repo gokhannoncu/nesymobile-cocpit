@@ -1,0 +1,233 @@
+/**
+ * ===========================================================================
+ *  Nesy Courier Target Registry  (Plan D.6B · 4B.15 · 4B.7)
+ *
+ *  `nesy.target.stop-row` is the target this whole registry design exists for,
+ *  so it is worth reading its chain top to bottom:
+ *
+ *    1. ACCESSIBILITY_ID   — the row's app-authored test id, when the build has
+ *                            one. Strongest identity available.
+ *    2. ENTITY_BINDING     — resolve by the stop's business key. This is what a
+ *                            human actually means by "the stop for order 42",
+ *                            and it survives a re-sort.
+ *    3. STRUCTURAL_FINGERPRINT — the row's shape inside the list container.
+ *                            Weaker, but real.
+ *    4. ROW_INDEX_HINT     — LAST, and `establishesIdentity: false`. It may
+ *                            narrow a search; it may never decide the target.
+ *
+ *  Why that last line matters concretely: a plan that taps "row 3" will
+ *  eventually tap the wrong stop after a background sync re-sorts the list, and
+ *  it will then deliver someone else's parcel *successfully*. Every oracle
+ *  passes. The report is green. The data is wrong.
+ *
+ *  `ambiguityPolicy: "FAIL"` and `reverifyBeforeAction: true` close the other two
+ *  windows: two matching candidates stop the run instead of picking one, and the
+ *  gap between resolving a row and tapping it is re-checked.
+ * ===========================================================================
+ */
+
+import type { TargetDefinition } from "@nesy/domain-pack-contracts";
+import { NESY_COURIER_APPLICATION_KEY } from "./application.js";
+import { NESY_ENTITIES } from "./entities.js";
+import { NESY_SCREENS, NESY_SURFACES } from "./screens.js";
+
+const APP = NESY_COURIER_APPLICATION_KEY;
+
+export const NESY_TARGETS = {
+  loginUserField: "nesy.target.login-user-field",
+  loginPasswordField: "nesy.target.login-password-field",
+  loginSubmit: "nesy.target.login-submit",
+  routeRow: "nesy.target.route-row",
+  routeDialogConfirm: "nesy.target.route-dialog-confirm",
+  stopRow: "nesy.target.stop-row",
+  taskRow: "nesy.target.task-row",
+  scanTrigger: "nesy.target.scan-trigger",
+  deliveryCompleteButton: "nesy.target.delivery-complete-button",
+  tourApprovalRequestButton: "nesy.target.tour-approval-request-button",
+} as const;
+
+export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
+  {
+    targetKey: NESY_TARGETS.loginUserField,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.login,
+    displayName: "Username field",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_user_input" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: false,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.loginPasswordField,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.login,
+    displayName: "Password field",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_password_input" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: false,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.loginSubmit,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.login,
+    displayName: "Sign-in button",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_submit_button" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.routeRow,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.routeSelectionDialog,
+    displayName: "Route row inside the selection dialog",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { idPrefix: "route_row_" }, establishesIdentity: true },
+        { kind: "ENTITY_BINDING", selector: { keyPath: "routeCode" }, establishesIdentity: true },
+        { kind: "ROW_INDEX_HINT", selector: { containerId: "route_list" }, establishesIdentity: false },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+    entityBinding: {
+      entityTypeRef: NESY_ENTITIES.route,
+      targetRef: NESY_TARGETS.routeRow,
+      projectedPaths: ["routeCode", "routeId"],
+      redactProjection: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.routeDialogConfirm,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.routeSelectionDialog,
+    displayName: "Route dialog confirm button",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "route_dialog_confirm" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    // The canonical provider chain. See the file header.
+    targetKey: NESY_TARGETS.stopRow,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Stop row in the route list",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { idPrefix: "stop_row_" }, establishesIdentity: true },
+        {
+          kind: "ENTITY_BINDING",
+          selector: { keyPath: "stopCode", collectionQueryRef: "nesy.availableStops" },
+          establishesIdentity: true,
+        },
+        {
+          kind: "STRUCTURAL_FINGERPRINT",
+          selector: { containerId: "stop_list", rowRole: "listItem" },
+          establishesIdentity: true,
+        },
+        { kind: "ROW_INDEX_HINT", selector: { containerId: "stop_list" }, establishesIdentity: false },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 15_000,
+      reverifyBeforeAction: true,
+    },
+    entityBinding: {
+      entityTypeRef: NESY_ENTITIES.stop,
+      targetRef: NESY_TARGETS.stopRow,
+      // Bounded: enough to identify the row, nothing more. An unbounded
+      // projection would put recipient addresses into every plan artifact.
+      projectedPaths: ["stopCode", "stopId", "sequenceLabel"],
+      redactProjection: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.taskRow,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.stopTaskList,
+    displayName: "Task row in the stop task list",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { idPrefix: "task_row_" }, establishesIdentity: true },
+        { kind: "ENTITY_BINDING", selector: { keyPath: "taskCode" }, establishesIdentity: true },
+        { kind: "ROW_INDEX_HINT", selector: { containerId: "task_list" }, establishesIdentity: false },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+    entityBinding: {
+      entityTypeRef: NESY_ENTITIES.task,
+      targetRef: NESY_TARGETS.taskRow,
+      projectedPaths: ["taskCode", "taskId"],
+      redactProjection: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.scanTrigger,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    surfaceRef: NESY_SURFACES.scannerSurface,
+    displayName: "Scan trigger",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { id: "scan_trigger" }, establishesIdentity: true },
+        { kind: "INSPECTOR_MAPPING", selector: { mappingRef: "nesy.inspector.scan-trigger" }, establishesIdentity: true },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: false,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.deliveryCompleteButton,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Complete delivery button",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { id: "delivery_complete_button" }, establishesIdentity: true },
+        { kind: "INSPECTOR_MAPPING", selector: { mappingRef: "nesy.inspector.delivery-complete" }, establishesIdentity: true },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.tourApprovalRequestButton,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.endOfDay,
+    displayName: "Request tour approval button",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { id: "tour_approval_request_button" }, establishesIdentity: true },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+];

@@ -1,0 +1,893 @@
+{
+  "sliceKey": "COMPLETE_DELIVERY",
+  "displayName": "Complete delivery",
+  "businessMeaning": "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
+  "notResponsibleFor": [
+    "payment collection and fiscal receipt printing",
+    "recipient signature quality or identity verification",
+    "failure/cancel reason codes (separate slices)",
+    "how long the backend takes to confirm — only that it confirms within the declared deadline"
+  ],
+  "inputSchema": {
+    "fields": [
+      {
+        "name": "shipment",
+        "type": "entityRef",
+        "required": true,
+        "entityTypeRef": "SHIPMENT"
+      }
+    ]
+  },
+  "outputSchema": {
+    "fields": [
+      {
+        "name": "submitted",
+        "type": "boolean",
+        "factKey": "APP.DELIVERY_SUBMITTED"
+      },
+      {
+        "name": "confirmed",
+        "type": "boolean",
+        "factKey": "REMOTE.DELIVERY_CONFIRMED"
+      }
+    ]
+  },
+  "preconditions": [
+    {
+      "kind": "FACT_TRUE",
+      "ref": "APP.ACTIVE_STOP_MATCHES",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "FACT_TRUE",
+      "ref": "APP.PARCEL_STATE_PROCESSED",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "SCREEN_READY",
+      "ref": "nesy.delivery.flow",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    }
+  ],
+  "screenRefs": [
+    "nesy.delivery.flow"
+  ],
+  "surfaceRefs": [
+    "nesy.payment.surface",
+    "nesy.fiscal.surface",
+    "nesy.network-dialog"
+  ],
+  "entityBindings": [
+    {
+      "entityTypeRef": "SHIPMENT",
+      "targetRef": "nesy.target.delivery-complete-button",
+      "role": "Scopes the completion and the backend read to one shipment."
+    },
+    {
+      "entityTypeRef": "PENDING_OPERATION",
+      "role": "Correlates the queued operation with this delivery."
+    }
+  ],
+  "targetResolutionRefs": [
+    "nesy.target.delivery-complete-button"
+  ],
+  "semanticMacroRef": "nesy.macro.complete-delivery",
+  "macroExpansion": {
+    "macroRef": "nesy.macro.complete-delivery",
+    "authoredBy": "HAND",
+    "genericIr": {
+      "schemaVersion": 2,
+      "workflowId": "nesy.reference.complete-delivery",
+      "workflowVersion": 1,
+      "name": "Complete a delivery, online or queued",
+      "source": {
+        "kind": "DOMAIN_PACK_EXPANSION",
+        "ref": "nesy.macro.complete-delivery"
+      },
+      "inputs": [
+        {
+          "name": "consignmentNumber",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "completeHandle",
+          "type": "string"
+        }
+      ],
+      "steps": [
+        {
+          "planStepId": "wait-flow",
+          "sourceMapRef": "sm-done-1",
+          "next": "resolve-complete",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "UI.DELIVERY_FLOW_READY",
+          "sourceLane": "UI",
+          "requireCorrelation": false,
+          "onTimeout": "FAIL"
+        },
+        {
+          "planStepId": "resolve-complete",
+          "sourceMapRef": "sm-done-2",
+          "next": "tap-complete",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-complete-button",
+          "outputVariable": "completeHandle"
+        },
+        {
+          "planStepId": "tap-complete",
+          "sourceMapRef": "sm-done-3",
+          "next": "branch-on-queue",
+          "timeoutMs": 25000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "completeHandle",
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "continueGate": {
+            "allOf": [
+              "APP.DELIVERY_SUBMITTED"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "branch-on-queue",
+          "sourceMapRef": "sm-done-4",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "SWITCH",
+          "branches": [
+            {
+              "branchId": "queued-offline",
+              "condition": {
+                "kind": "comparison",
+                "operator": "greaterThan",
+                "left": {
+                  "kind": "operand",
+                  "source": "local.result",
+                  "path": "pendingOperation.count"
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": 0
+                }
+              },
+              "next": "await-queue-drain"
+            }
+          ],
+          "default": {
+            "policy": "GOTO",
+            "next": "verify-backend-status"
+          },
+          "unknownPolicy": "FAIL"
+        },
+        {
+          "planStepId": "await-queue-drain",
+          "sourceMapRef": "sm-done-5",
+          "next": "verify-backend-status",
+          "timeoutMs": 120000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "LOCAL.OFFLINE_QUEUE_DRAINED",
+          "sourceLane": "LOCAL",
+          "requireCorrelation": true,
+          "onTimeout": "INCONCLUSIVE",
+          "entityBinding": {
+            "type": "PENDING_OPERATION",
+            "id": "run.input.consignmentNumber"
+          }
+        },
+        {
+          "planStepId": "verify-backend-status",
+          "sourceMapRef": "sm-done-6",
+          "next": "assert-confirmed",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.remote.allowlisted-operation",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.read-delivery-status",
+            "role": "VALIDATION",
+            "effectClass": "READ_ONLY",
+            "idempotencyClass": "NATURALLY_IDEMPOTENT",
+            "inputBindings": [
+              {
+                "name": "shipment",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [
+              {
+                "factKey": "REMOTE.DELIVERY_STATUS_COMPLETED",
+                "responsePath": "delivery.completed"
+              }
+            ],
+            "timeoutPolicy": {
+              "timeoutMs": 20000,
+              "maxAttempts": 3,
+              "backoffMs": 2000
+            },
+            "entityBinding": {
+              "type": "SHIPMENT",
+              "id": "run.input.consignmentNumber"
+            },
+            "reconciliationPolicy": "NONE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "delivery.recipientName"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "assert-confirmed",
+          "sourceMapRef": "sm-done-7",
+          "next": null,
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ASSERT_FACT",
+          "factKey": "REMOTE.DELIVERY_CONFIRMED",
+          "expected": true,
+          "unknownPolicy": "INCONCLUSIVE",
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "finalOraclePolicy": {
+            "requirements": [
+              {
+                "factKey": "REMOTE.DELIVERY_CONFIRMED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 120000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "REMOTE.DELIVERY_STATUS_COMPLETED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 120000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.DELIVERY_SUBMITTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+                "obligation": "OPTIONAL",
+                "timing": "IMMEDIATE",
+                "onTimeout": "WARNING"
+              }
+            ]
+          }
+        }
+      ],
+      "entryStepId": "wait-flow",
+      "policies": {
+        "runDeadlineMs": 600000,
+        "cleanupDeadlineMs": 60000,
+        "defaultRetry": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "artifactPolicy": {
+          "captureOnSuccess": false,
+          "captureOnFailure": true,
+          "kinds": [
+            "SCREENSHOT",
+            "UI_TREE"
+          ]
+        },
+        "redactionPolicy": {
+          "redactPaths": [
+            "run.input.password"
+          ]
+        }
+      },
+      "capabilityRequirements": [
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.remote.allowlisted-operation",
+          "optional": false
+        }
+      ],
+      "sourceMap": [
+        {
+          "ref": "sm-done-1",
+          "planStepId": "wait-flow",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2",
+          "planStepId": "resolve-complete",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-3",
+          "planStepId": "tap-complete",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-4",
+          "planStepId": "branch-on-queue",
+          "domainSourceRef": "nesy.macro.complete-delivery",
+          "note": "offline queue is a LOCAL evidence kind, not a plane"
+        },
+        {
+          "ref": "sm-done-5",
+          "planStepId": "await-queue-drain",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-6",
+          "planStepId": "verify-backend-status",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-7",
+          "planStepId": "assert-confirmed",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        }
+      ]
+    },
+    "irSourceMap": [
+      {
+        "ref": "sm-done-1",
+        "planStepId": "wait-flow",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2",
+        "planStepId": "resolve-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3",
+        "planStepId": "tap-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-4",
+        "planStepId": "branch-on-queue",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "offline queue is a LOCAL evidence kind, not a plane"
+      },
+      {
+        "ref": "sm-done-5",
+        "planStepId": "await-queue-drain",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-6",
+        "planStepId": "verify-backend-status",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-7",
+        "planStepId": "assert-confirmed",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      }
+    ],
+    "domainSourceMap": [
+      {
+        "ref": "ds-done-1",
+        "macroRef": "nesy.macro.complete-delivery",
+        "planStepIds": [
+          "wait-flow",
+          "resolve-complete",
+          "tap-complete",
+          "branch-on-queue",
+          "await-queue-drain",
+          "verify-backend-status",
+          "assert-confirmed"
+        ],
+        "sliceRef": "COMPLETE_DELIVERY",
+        "note": "One SWITCH separating the queued path from the online path; both converge on the backend verification."
+      }
+    ]
+  },
+  "genericIrSnapshot": {
+    "schemaVersion": 2,
+    "workflowId": "nesy.reference.complete-delivery",
+    "workflowVersion": 1,
+    "name": "Complete a delivery, online or queued",
+    "source": {
+      "kind": "DOMAIN_PACK_EXPANSION",
+      "ref": "nesy.macro.complete-delivery"
+    },
+    "inputs": [
+      {
+        "name": "consignmentNumber",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "variables": [
+      {
+        "name": "completeHandle",
+        "type": "string"
+      }
+    ],
+    "steps": [
+      {
+        "planStepId": "wait-flow",
+        "sourceMapRef": "sm-done-1",
+        "next": "resolve-complete",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "UI.DELIVERY_FLOW_READY",
+        "sourceLane": "UI",
+        "requireCorrelation": false,
+        "onTimeout": "FAIL"
+      },
+      {
+        "planStepId": "resolve-complete",
+        "sourceMapRef": "sm-done-2",
+        "next": "tap-complete",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-complete-button",
+        "outputVariable": "completeHandle"
+      },
+      {
+        "planStepId": "tap-complete",
+        "sourceMapRef": "sm-done-3",
+        "next": "branch-on-queue",
+        "timeoutMs": 25000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "completeHandle",
+        "entityBinding": {
+          "type": "SHIPMENT",
+          "id": "run.input.consignmentNumber"
+        },
+        "continueGate": {
+          "allOf": [
+            "APP.DELIVERY_SUBMITTED"
+          ],
+          "deadlineMs": 25000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "branch-on-queue",
+        "sourceMapRef": "sm-done-4",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "SWITCH",
+        "branches": [
+          {
+            "branchId": "queued-offline",
+            "condition": {
+              "kind": "comparison",
+              "operator": "greaterThan",
+              "left": {
+                "kind": "operand",
+                "source": "local.result",
+                "path": "pendingOperation.count"
+              },
+              "right": {
+                "kind": "literal",
+                "value": 0
+              }
+            },
+            "next": "await-queue-drain"
+          }
+        ],
+        "default": {
+          "policy": "GOTO",
+          "next": "verify-backend-status"
+        },
+        "unknownPolicy": "FAIL"
+      },
+      {
+        "planStepId": "await-queue-drain",
+        "sourceMapRef": "sm-done-5",
+        "next": "verify-backend-status",
+        "timeoutMs": 120000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "LOCAL.OFFLINE_QUEUE_DRAINED",
+        "sourceLane": "LOCAL",
+        "requireCorrelation": true,
+        "onTimeout": "INCONCLUSIVE",
+        "entityBinding": {
+          "type": "PENDING_OPERATION",
+          "id": "run.input.consignmentNumber"
+        }
+      },
+      {
+        "planStepId": "verify-backend-status",
+        "sourceMapRef": "sm-done-6",
+        "next": "assert-confirmed",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.remote.allowlisted-operation",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.read-delivery-status",
+          "role": "VALIDATION",
+          "effectClass": "READ_ONLY",
+          "idempotencyClass": "NATURALLY_IDEMPOTENT",
+          "inputBindings": [
+            {
+              "name": "shipment",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [
+            {
+              "factKey": "REMOTE.DELIVERY_STATUS_COMPLETED",
+              "responsePath": "delivery.completed"
+            }
+          ],
+          "timeoutPolicy": {
+            "timeoutMs": 20000,
+            "maxAttempts": 3,
+            "backoffMs": 2000
+          },
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "reconciliationPolicy": "NONE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "delivery.recipientName"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "assert-confirmed",
+        "sourceMapRef": "sm-done-7",
+        "next": null,
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ASSERT_FACT",
+        "factKey": "REMOTE.DELIVERY_CONFIRMED",
+        "expected": true,
+        "unknownPolicy": "INCONCLUSIVE",
+        "entityBinding": {
+          "type": "SHIPMENT",
+          "id": "run.input.consignmentNumber"
+        },
+        "finalOraclePolicy": {
+          "requirements": [
+            {
+              "factKey": "REMOTE.DELIVERY_CONFIRMED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 120000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "REMOTE.DELIVERY_STATUS_COMPLETED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 120000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "APP.DELIVERY_SUBMITTED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "obligation": "OPTIONAL",
+              "timing": "IMMEDIATE",
+              "onTimeout": "WARNING"
+            }
+          ]
+        }
+      }
+    ],
+    "entryStepId": "wait-flow",
+    "policies": {
+      "runDeadlineMs": 600000,
+      "cleanupDeadlineMs": 60000,
+      "defaultRetry": {
+        "maxAttempts": 1,
+        "effectClass": "READ_ONLY"
+      },
+      "artifactPolicy": {
+        "captureOnSuccess": false,
+        "captureOnFailure": true,
+        "kinds": [
+          "SCREENSHOT",
+          "UI_TREE"
+        ]
+      },
+      "redactionPolicy": {
+        "redactPaths": [
+          "run.input.password"
+        ]
+      }
+    },
+    "capabilityRequirements": [
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.remote.allowlisted-operation",
+        "optional": false
+      }
+    ],
+    "sourceMap": [
+      {
+        "ref": "sm-done-1",
+        "planStepId": "wait-flow",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2",
+        "planStepId": "resolve-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3",
+        "planStepId": "tap-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-4",
+        "planStepId": "branch-on-queue",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "offline queue is a LOCAL evidence kind, not a plane"
+      },
+      {
+        "ref": "sm-done-5",
+        "planStepId": "await-queue-drain",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-6",
+        "planStepId": "verify-backend-status",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-7",
+        "planStepId": "assert-confirmed",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      }
+    ]
+  },
+  "bridgeFlowPlanSnapshot": {
+    "macroRef": "nesy.macro.complete-delivery",
+    "authoredBy": "HAND",
+    "requiredCapabilityRefs": [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.resolve-target"
+    ],
+    "legs": [
+      {
+        "planStepId": "wait-flow",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "UI.DELIVERY_FLOW_READY"
+      },
+      {
+        "planStepId": "tap-complete",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.delivery-complete-button",
+        "awaitFactKey": "APP.DELIVERY_SUBMITTED"
+      }
+    ]
+  },
+  "oracle": {
+    "continueGate": {
+      "allOf": [
+        "APP.DELIVERY_SUBMITTED"
+      ],
+      "deadlineMs": 25000,
+      "unknownPolicy": "RETRY"
+    },
+    "finalOracle": {
+      "requirements": [
+        {
+          "factKey": "REMOTE.DELIVERY_CONFIRMED",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 120000,
+          "onTimeout": "INCONCLUSIVE"
+        },
+        {
+          "factKey": "APP.DELIVERY_SUBMITTED",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+          "obligation": "OPTIONAL",
+          "timing": "IMMEDIATE",
+          "onTimeout": "WARNING"
+        }
+      ]
+    },
+    "notResponsibleFor": [
+      "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+    ]
+  },
+  "interruptPolicy": {
+    "handledSurfaceRefs": [
+      "nesy.permission-dialog",
+      "nesy.network-dialog"
+    ],
+    "fatalSurfaceRefs": [
+      "nesy.mandatory-update-dialog",
+      "nesy.session-expired-dialog"
+    ],
+    "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+    "maxHandledInterrupts": 3
+  },
+  "requiredCapabilityRefs": [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+    "verdict.core.remote.allowlisted-operation",
+    "nesy.adapter.named-query",
+    "nesy.adapter.event-stream"
+  ],
+  "releaseIsolation": {
+    "automationOnly": false,
+    "releaseGuard": "automationRelease=false",
+    "assertionFactKey": "APP.SESSION_ISOLATION_ASSERTED",
+    "allowedEnvironments": [
+      "qa",
+      "staging",
+      "automation"
+    ]
+  },
+  "negativeCases": [
+    {
+      "caseKey": "HTTP_2XX_AS_DELIVERY",
+      "scenario": "The delivery POST returns 200 and the run reports a completed delivery. The backend rejected the payload downstream and nothing was recorded.",
+      "refusedBy": "nesy.remote.delivery-transport-ack declares transportSuccessOnly:true, so validateEvidenceSource refuses it a factKey and PRIMARY authority. REMOTE.DELIVERY_CONFIRMED is a correlated derivation over the backend status and the app's submission event."
+    },
+    {
+      "caseKey": "OFFLINE_TREATED_AS_FAILURE",
+      "scenario": "The courier is underground. The operation queues correctly, the backend has not confirmed yet, and the run reports FAIL — making the suite unusable in normal working conditions.",
+      "refusedBy": "REMOTE.DELIVERY_CONFIRMED is EVENTUAL with onTimeout INCONCLUSIVE, the queue wait uses onTimeout INCONCLUSIVE, and LOCAL.OFFLINE_QUEUE_ITEM_WAITING is carried as an OPTIONAL diagnostic requirement."
+    },
+    {
+      "caseKey": "QUEUE_AS_SEPARATE_PLANE",
+      "scenario": "The offline queue is modelled as a fifth evidence plane, so every future local mechanism needs a Core change.",
+      "refusedBy": "EVIDENCE_PLANES is a closed four-member union, FORBIDDEN_EVIDENCE_PLANES lists QUEUE explicitly, and the queue source is LOCAL/OFFLINE_QUEUE_WATCH."
+    },
+    {
+      "caseKey": "UNMATCHED_SWITCH_SKIPS_VERIFICATION",
+      "scenario": "Neither branch of the online/offline switch matches, the step is skipped, and the backend verification never runs — reading as success.",
+      "refusedBy": "The SWITCH declares an explicit default GOTO to verify-backend-status; validateWorkflowIrV2 raises MISSING_SWITCH_DEFAULT when a default is absent."
+    }
+  ]
+}

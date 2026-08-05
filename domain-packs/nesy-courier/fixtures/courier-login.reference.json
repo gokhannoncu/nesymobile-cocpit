@@ -1,0 +1,1065 @@
+{
+  "sliceKey": "COURIER_LOGIN",
+  "displayName": "Courier login",
+  "businessMeaning": "A courier signs in through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
+  "notResponsibleFor": [
+    "password reset and account recovery",
+    "biometric re-authentication",
+    "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
+    "multi-device session eviction"
+  ],
+  "inputSchema": {
+    "fields": [
+      {
+        "name": "userName",
+        "type": "string",
+        "required": true,
+        "description": "Courier login identifier."
+      },
+      {
+        "name": "password",
+        "type": "string",
+        "required": true,
+        "secret": true
+      },
+      {
+        "name": "sessionCorrelationId",
+        "type": "string",
+        "required": true,
+        "description": "Correlates the app sign-in with the backend session record."
+      }
+    ]
+  },
+  "outputSchema": {
+    "fields": [
+      {
+        "name": "sessionEstablished",
+        "type": "boolean",
+        "factKey": "APP.LOGIN_SUCCEEDED"
+      },
+      {
+        "name": "sessionCorrelationId",
+        "type": "string"
+      }
+    ]
+  },
+  "preconditions": [
+    {
+      "kind": "SCREEN_READY",
+      "ref": "nesy.auth.login",
+      "deadlineMs": 30000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "FACT_FALSE",
+      "ref": "APP.USER_SESSION_AVAILABLE",
+      "deadlineMs": 5000,
+      "onUnmet": "FAIL"
+    }
+  ],
+  "screenRefs": [
+    "nesy.auth.login",
+    "nesy.route.stop-list"
+  ],
+  "surfaceRefs": [],
+  "entityBindings": [],
+  "targetResolutionRefs": [
+    "nesy.target.login-user-field",
+    "nesy.target.login-password-field",
+    "nesy.target.login-submit"
+  ],
+  "semanticMacroRef": "nesy.macro.login",
+  "macroExpansion": {
+    "macroRef": "nesy.macro.login",
+    "authoredBy": "HAND",
+    "genericIr": {
+      "schemaVersion": 2,
+      "workflowId": "nesy.reference.login",
+      "workflowVersion": 1,
+      "name": "Courier login through the real UI",
+      "source": {
+        "kind": "DOMAIN_PACK_EXPANSION",
+        "ref": "nesy.macro.login"
+      },
+      "inputs": [
+        {
+          "name": "userName",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "required": true,
+          "secret": true
+        },
+        {
+          "name": "sessionCorrelationId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "userFieldHandle",
+          "type": "string"
+        },
+        {
+          "name": "secretFieldHandle",
+          "type": "string"
+        },
+        {
+          "name": "submitHandle",
+          "type": "string"
+        }
+      ],
+      "steps": [
+        {
+          "planStepId": "wait-login-ready",
+          "sourceMapRef": "sm-login-1",
+          "next": "resolve-user-field",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "UI.LOGIN_SCREEN_READY",
+          "sourceLane": "UI",
+          "stableForMs": 300,
+          "requireCorrelation": false,
+          "onTimeout": "FAIL"
+        },
+        {
+          "planStepId": "resolve-user-field",
+          "sourceMapRef": "sm-login-2",
+          "next": "enter-user",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.login-user-field",
+          "outputVariable": "userFieldHandle"
+        },
+        {
+          "planStepId": "enter-user",
+          "sourceMapRef": "sm-login-3",
+          "next": "resolve-secret-field",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.set-text",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "setText",
+          "targetVariable": "userFieldHandle",
+          "args": {
+            "valueRef": "run.input.userName"
+          }
+        },
+        {
+          "planStepId": "resolve-secret-field",
+          "sourceMapRef": "sm-login-4",
+          "next": "enter-secret",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.login-password-field",
+          "outputVariable": "secretFieldHandle"
+        },
+        {
+          "planStepId": "enter-secret",
+          "sourceMapRef": "sm-login-5",
+          "next": "resolve-submit",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.set-text",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "setText",
+          "targetVariable": "secretFieldHandle",
+          "args": {
+            "valueRef": "run.input.password"
+          },
+          "redactionPolicy": {
+            "redactAllInputs": true
+          }
+        },
+        {
+          "planStepId": "resolve-submit",
+          "sourceMapRef": "sm-login-6",
+          "next": "tap-submit",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.login-submit",
+          "outputVariable": "submitHandle"
+        },
+        {
+          "planStepId": "tap-submit",
+          "sourceMapRef": "sm-login-7",
+          "next": "verify-backend-session",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "submitHandle",
+          "continueGate": {
+            "allOf": [
+              "UI.ROUTE_LIST_READY"
+            ],
+            "noneOf": [
+              "UI.SESSION_EXPIRED_DIALOG_PRESENT"
+            ],
+            "deadlineMs": 30000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "verify-backend-session",
+          "sourceMapRef": "sm-login-8",
+          "next": "assert-login",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.remote.allowlisted-operation",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.read-session",
+            "role": "VALIDATION",
+            "effectClass": "READ_ONLY",
+            "idempotencyClass": "NATURALLY_IDEMPOTENT",
+            "inputBindings": [
+              {
+                "name": "sessionCorrelationId",
+                "source": {
+                  "kind": "runInput",
+                  "path": "sessionCorrelationId"
+                }
+              }
+            ],
+            "outputFactBindings": [
+              {
+                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "responsePath": "session.accepted"
+              }
+            ],
+            "timeoutPolicy": {
+              "timeoutMs": 20000,
+              "maxAttempts": 2,
+              "backoffMs": 1000
+            },
+            "reconciliationPolicy": "NONE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "session.tokenHint"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "assert-login",
+          "sourceMapRef": "sm-login-9",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ASSERT_FACT",
+          "factKey": "APP.LOGIN_SUCCEEDED",
+          "expected": true,
+          "unknownPolicy": "FAIL",
+          "finalOraclePolicy": {
+            "requirements": [
+              {
+                "factKey": "APP.LOGIN_SUCCEEDED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.USER_SESSION_AVAILABLE",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 30000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.USER_SESSION_AVAILABLE",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              }
+            ]
+          }
+        },
+        {
+          "planStepId": "clear-session",
+          "sourceMapRef": "sm-login-10",
+          "next": null,
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CLEANUP",
+          "compensatesStepIds": [
+            "tap-submit"
+          ],
+          "runOnFailure": true
+        }
+      ],
+      "entryStepId": "wait-login-ready",
+      "policies": {
+        "runDeadlineMs": 600000,
+        "cleanupDeadlineMs": 60000,
+        "defaultRetry": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "artifactPolicy": {
+          "captureOnSuccess": false,
+          "captureOnFailure": true,
+          "kinds": [
+            "SCREENSHOT",
+            "UI_TREE"
+          ]
+        },
+        "redactionPolicy": {
+          "redactPaths": [
+            "run.input.password"
+          ]
+        }
+      },
+      "capabilityRequirements": [
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.set-text",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.watch-fact",
+          "optional": false
+        }
+      ],
+      "sourceMap": [
+        {
+          "ref": "sm-login-1",
+          "planStepId": "wait-login-ready",
+          "domainSourceRef": "nesy.macro.login",
+          "note": "login screen readiness"
+        },
+        {
+          "ref": "sm-login-2",
+          "planStepId": "resolve-user-field",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-3",
+          "planStepId": "enter-user",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-4",
+          "planStepId": "resolve-secret-field",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-5",
+          "planStepId": "enter-secret",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-6",
+          "planStepId": "resolve-submit",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-7",
+          "planStepId": "tap-submit",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-8",
+          "planStepId": "verify-backend-session",
+          "domainSourceRef": "nesy.macro.login",
+          "note": "backend fact, not a screen transition"
+        },
+        {
+          "ref": "sm-login-9",
+          "planStepId": "assert-login",
+          "domainSourceRef": "nesy.macro.login"
+        },
+        {
+          "ref": "sm-login-10",
+          "planStepId": "clear-session",
+          "domainSourceRef": "nesy.macro.login"
+        }
+      ]
+    },
+    "irSourceMap": [
+      {
+        "ref": "sm-login-1",
+        "planStepId": "wait-login-ready",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "login screen readiness"
+      },
+      {
+        "ref": "sm-login-2",
+        "planStepId": "resolve-user-field",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-3",
+        "planStepId": "enter-user",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-4",
+        "planStepId": "resolve-secret-field",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-5",
+        "planStepId": "enter-secret",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-6",
+        "planStepId": "resolve-submit",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-7",
+        "planStepId": "tap-submit",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-8",
+        "planStepId": "verify-backend-session",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "backend fact, not a screen transition"
+      },
+      {
+        "ref": "sm-login-9",
+        "planStepId": "assert-login",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-10",
+        "planStepId": "clear-session",
+        "domainSourceRef": "nesy.macro.login"
+      }
+    ],
+    "domainSourceMap": [
+      {
+        "ref": "ds-login-1",
+        "macroRef": "nesy.macro.login",
+        "planStepIds": [
+          "wait-login-ready",
+          "resolve-user-field",
+          "enter-user",
+          "resolve-secret-field",
+          "enter-secret",
+          "resolve-submit",
+          "tap-submit",
+          "verify-backend-session",
+          "assert-login",
+          "clear-session"
+        ],
+        "sliceRef": "COURIER_LOGIN",
+        "note": "Whole macro expands into one linear leg plus a backend validation and a cleanup."
+      }
+    ]
+  },
+  "genericIrSnapshot": {
+    "schemaVersion": 2,
+    "workflowId": "nesy.reference.login",
+    "workflowVersion": 1,
+    "name": "Courier login through the real UI",
+    "source": {
+      "kind": "DOMAIN_PACK_EXPANSION",
+      "ref": "nesy.macro.login"
+    },
+    "inputs": [
+      {
+        "name": "userName",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "password",
+        "type": "string",
+        "required": true,
+        "secret": true
+      },
+      {
+        "name": "sessionCorrelationId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "variables": [
+      {
+        "name": "userFieldHandle",
+        "type": "string"
+      },
+      {
+        "name": "secretFieldHandle",
+        "type": "string"
+      },
+      {
+        "name": "submitHandle",
+        "type": "string"
+      }
+    ],
+    "steps": [
+      {
+        "planStepId": "wait-login-ready",
+        "sourceMapRef": "sm-login-1",
+        "next": "resolve-user-field",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "UI.LOGIN_SCREEN_READY",
+        "sourceLane": "UI",
+        "stableForMs": 300,
+        "requireCorrelation": false,
+        "onTimeout": "FAIL"
+      },
+      {
+        "planStepId": "resolve-user-field",
+        "sourceMapRef": "sm-login-2",
+        "next": "enter-user",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.login-user-field",
+        "outputVariable": "userFieldHandle"
+      },
+      {
+        "planStepId": "enter-user",
+        "sourceMapRef": "sm-login-3",
+        "next": "resolve-secret-field",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.set-text",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "setText",
+        "targetVariable": "userFieldHandle",
+        "args": {
+          "valueRef": "run.input.userName"
+        }
+      },
+      {
+        "planStepId": "resolve-secret-field",
+        "sourceMapRef": "sm-login-4",
+        "next": "enter-secret",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.login-password-field",
+        "outputVariable": "secretFieldHandle"
+      },
+      {
+        "planStepId": "enter-secret",
+        "sourceMapRef": "sm-login-5",
+        "next": "resolve-submit",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.set-text",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "setText",
+        "targetVariable": "secretFieldHandle",
+        "args": {
+          "valueRef": "run.input.password"
+        },
+        "redactionPolicy": {
+          "redactAllInputs": true
+        }
+      },
+      {
+        "planStepId": "resolve-submit",
+        "sourceMapRef": "sm-login-6",
+        "next": "tap-submit",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.login-submit",
+        "outputVariable": "submitHandle"
+      },
+      {
+        "planStepId": "tap-submit",
+        "sourceMapRef": "sm-login-7",
+        "next": "verify-backend-session",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "submitHandle",
+        "continueGate": {
+          "allOf": [
+            "UI.ROUTE_LIST_READY"
+          ],
+          "noneOf": [
+            "UI.SESSION_EXPIRED_DIALOG_PRESENT"
+          ],
+          "deadlineMs": 30000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "verify-backend-session",
+        "sourceMapRef": "sm-login-8",
+        "next": "assert-login",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.remote.allowlisted-operation",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.read-session",
+          "role": "VALIDATION",
+          "effectClass": "READ_ONLY",
+          "idempotencyClass": "NATURALLY_IDEMPOTENT",
+          "inputBindings": [
+            {
+              "name": "sessionCorrelationId",
+              "source": {
+                "kind": "runInput",
+                "path": "sessionCorrelationId"
+              }
+            }
+          ],
+          "outputFactBindings": [
+            {
+              "factKey": "REMOTE.AUTH_ACCEPTED",
+              "responsePath": "session.accepted"
+            }
+          ],
+          "timeoutPolicy": {
+            "timeoutMs": 20000,
+            "maxAttempts": 2,
+            "backoffMs": 1000
+          },
+          "reconciliationPolicy": "NONE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "session.tokenHint"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "assert-login",
+        "sourceMapRef": "sm-login-9",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ASSERT_FACT",
+        "factKey": "APP.LOGIN_SUCCEEDED",
+        "expected": true,
+        "unknownPolicy": "FAIL",
+        "finalOraclePolicy": {
+          "requirements": [
+            {
+              "factKey": "APP.LOGIN_SUCCEEDED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "REMOTE.AUTH_ACCEPTED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "LOCAL.USER_SESSION_AVAILABLE",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 30000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "APP.USER_SESSION_AVAILABLE",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            }
+          ]
+        }
+      },
+      {
+        "planStepId": "clear-session",
+        "sourceMapRef": "sm-login-10",
+        "next": null,
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CLEANUP",
+        "compensatesStepIds": [
+          "tap-submit"
+        ],
+        "runOnFailure": true
+      }
+    ],
+    "entryStepId": "wait-login-ready",
+    "policies": {
+      "runDeadlineMs": 600000,
+      "cleanupDeadlineMs": 60000,
+      "defaultRetry": {
+        "maxAttempts": 1,
+        "effectClass": "READ_ONLY"
+      },
+      "artifactPolicy": {
+        "captureOnSuccess": false,
+        "captureOnFailure": true,
+        "kinds": [
+          "SCREENSHOT",
+          "UI_TREE"
+        ]
+      },
+      "redactionPolicy": {
+        "redactPaths": [
+          "run.input.password"
+        ]
+      }
+    },
+    "capabilityRequirements": [
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.set-text",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.watch-fact",
+        "optional": false
+      }
+    ],
+    "sourceMap": [
+      {
+        "ref": "sm-login-1",
+        "planStepId": "wait-login-ready",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "login screen readiness"
+      },
+      {
+        "ref": "sm-login-2",
+        "planStepId": "resolve-user-field",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-3",
+        "planStepId": "enter-user",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-4",
+        "planStepId": "resolve-secret-field",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-5",
+        "planStepId": "enter-secret",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-6",
+        "planStepId": "resolve-submit",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-7",
+        "planStepId": "tap-submit",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-8",
+        "planStepId": "verify-backend-session",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "backend fact, not a screen transition"
+      },
+      {
+        "ref": "sm-login-9",
+        "planStepId": "assert-login",
+        "domainSourceRef": "nesy.macro.login"
+      },
+      {
+        "ref": "sm-login-10",
+        "planStepId": "clear-session",
+        "domainSourceRef": "nesy.macro.login"
+      }
+    ]
+  },
+  "bridgeFlowPlanSnapshot": {
+    "macroRef": "nesy.macro.login",
+    "authoredBy": "HAND",
+    "requiredCapabilityRefs": [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.set-text"
+    ],
+    "legs": [
+      {
+        "planStepId": "wait-login-ready",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "UI.LOGIN_SCREEN_READY"
+      },
+      {
+        "planStepId": "enter-user",
+        "bridgeVerb": "setText",
+        "targetRef": "nesy.target.login-user-field"
+      },
+      {
+        "planStepId": "enter-secret",
+        "bridgeVerb": "setText",
+        "targetRef": "nesy.target.login-password-field"
+      },
+      {
+        "planStepId": "tap-submit",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.login-submit",
+        "awaitFactKey": "UI.ROUTE_LIST_READY"
+      }
+    ]
+  },
+  "oracle": {
+    "continueGate": {
+      "allOf": [
+        "UI.ROUTE_LIST_READY"
+      ],
+      "noneOf": [
+        "UI.SESSION_EXPIRED_DIALOG_PRESENT"
+      ],
+      "deadlineMs": 30000,
+      "unknownPolicy": "RETRY"
+    },
+    "finalOracle": {
+      "requirements": [
+        {
+          "factKey": "APP.LOGIN_SUCCEEDED",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "REMOTE.AUTH_ACCEPTED",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "LOCAL.USER_SESSION_AVAILABLE",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 30000,
+          "onTimeout": "INCONCLUSIVE"
+        }
+      ]
+    },
+    "notResponsibleFor": [
+      "whether the route list content is correct — only that it became ready"
+    ]
+  },
+  "interruptPolicy": {
+    "handledSurfaceRefs": [
+      "nesy.permission-dialog",
+      "nesy.network-dialog"
+    ],
+    "fatalSurfaceRefs": [
+      "nesy.mandatory-update-dialog",
+      "nesy.session-expired-dialog"
+    ],
+    "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+    "maxHandledInterrupts": 3
+  },
+  "requiredCapabilityRefs": [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.set-text",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+    "verdict.core.remote.allowlisted-operation"
+  ],
+  "releaseIsolation": {
+    "automationOnly": false,
+    "releaseGuard": "automationRelease=false",
+    "assertionFactKey": "APP.SESSION_ISOLATION_ASSERTED",
+    "allowedEnvironments": [
+      "qa",
+      "staging",
+      "automation"
+    ]
+  },
+  "negativeCases": [
+    {
+      "caseKey": "PREPARED_SESSION_CLAIMS_LOGIN_PASS",
+      "scenario": "Someone speeds the suite up by running this slice under nesy.launch.prepared-session. The app is already signed in, the route list is ready, and the slice reports PASS without any login having happened.",
+      "refusedBy": "validateLaunchProfile: PREPARED_SESSION/DIRECT_STATE cannot declare producesProductVerdict:true. Additionally APP.LOGIN_SUCCEEDED is a CORRELATED_ALL_OF over the backend, app and local planes, which a session injection cannot satisfy."
+    },
+    {
+      "caseKey": "SCREEN_TRANSITION_AS_AUTHENTICATION",
+      "scenario": "The app navigates away from the login screen on a cached session while the backend rejected the credentials. A UI-only oracle would call that a pass.",
+      "refusedBy": "REMOTE.AUTH_ACCEPTED is a REQUIRED IMMEDIATE oracle requirement, sourced from an allowlisted back-office read with an entity status and a correlation id."
+    },
+    {
+      "caseKey": "SESSION_EXPIRY_SILENTLY_HANDLED",
+      "scenario": "A session-expired dialog appears and an interrupt handler dismisses it by signing in again, converting a real session regression into a slower green run.",
+      "refusedBy": "nesy.session-expired-dialog has defaultPolicy FAIL and blocksProductVerdict true, and it is listed in fatalSurfaceRefs rather than handledSurfaceRefs."
+    }
+  ]
+}

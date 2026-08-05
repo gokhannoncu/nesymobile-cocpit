@@ -1,0 +1,1199 @@
+{
+  "sliceKey": "TOUR_APPROVAL_LIFECYCLE",
+  "displayName": "Tour approval lifecycle",
+  "businessMeaning": "A courier requests approval for the completed tour on the device, a dispatcher approves it in the back office, and both the created record and its APPROVED status are confirmed for that specific request.",
+  "notResponsibleFor": [
+    "rejection and rework flows",
+    "dispatcher authorisation rules — the pack asserts an approval happened, not that this dispatcher was entitled to make it",
+    "push notification delivery reliability (carried as a WARNING only)",
+    "payroll or settlement consequences of an approved tour",
+    "approving a tour as a PRECONDITION for another test — that is the setup-mode launch profile, which cannot produce this verdict"
+  ],
+  "inputSchema": {
+    "fields": [
+      {
+        "name": "route",
+        "type": "entityRef",
+        "required": true,
+        "entityTypeRef": "ROUTE"
+      },
+      {
+        "name": "approvalRequest",
+        "type": "entityRef",
+        "required": true,
+        "entityTypeRef": "TOUR_APPROVAL_REQUEST",
+        "description": "Correlation anchor for both back-office fact reads."
+      }
+    ]
+  },
+  "outputSchema": {
+    "fields": [
+      {
+        "name": "requested",
+        "type": "boolean",
+        "factKey": "APP.TOUR_APPROVAL_REQUESTED"
+      },
+      {
+        "name": "recordCreated",
+        "type": "boolean",
+        "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED"
+      },
+      {
+        "name": "approved",
+        "type": "boolean",
+        "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED"
+      },
+      {
+        "name": "confirmed",
+        "type": "boolean",
+        "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED"
+      }
+    ]
+  },
+  "preconditions": [
+    {
+      "kind": "SCREEN_READY",
+      "ref": "nesy.end-of-day",
+      "deadlineMs": 25000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "FACT_TRUE",
+      "ref": "APP.SELECTED_ROUTE_OBSERVED",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "FACT_FALSE",
+      "ref": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+      "deadlineMs": 10000,
+      "onUnmet": "FAIL"
+    }
+  ],
+  "screenRefs": [
+    "nesy.end-of-day"
+  ],
+  "surfaceRefs": [
+    "nesy.network-dialog",
+    "nesy.session-expired-dialog"
+  ],
+  "entityBindings": [
+    {
+      "entityTypeRef": "ROUTE",
+      "role": "Scopes the request to the tour that was worked."
+    },
+    {
+      "entityTypeRef": "TOUR_APPROVAL_REQUEST",
+      "role": "Correlation anchor across the device event and both back-office reads; this is what stops yesterday's approval from satisfying today's oracle."
+    }
+  ],
+  "targetResolutionRefs": [
+    "nesy.target.tour-approval-request-button"
+  ],
+  "semanticMacroRef": "nesy.macro.tour-approval-lifecycle",
+  "macroExpansion": {
+    "macroRef": "nesy.macro.tour-approval-lifecycle",
+    "authoredBy": "HAND",
+    "genericIr": {
+      "schemaVersion": 2,
+      "workflowId": "nesy.reference.tour-approval-lifecycle",
+      "workflowVersion": 1,
+      "name": "Tour approval requested on device, approved in the back office",
+      "source": {
+        "kind": "DOMAIN_PACK_EXPANSION",
+        "ref": "nesy.macro.tour-approval-lifecycle"
+      },
+      "inputs": [
+        {
+          "name": "routeCode",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "approvalRequestCode",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "requestHandle",
+          "type": "string"
+        }
+      ],
+      "steps": [
+        {
+          "planStepId": "wait-day-close",
+          "sourceMapRef": "sm-appr-1",
+          "next": "resolve-request-button",
+          "timeoutMs": 25000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "UI.END_OF_DAY_READY",
+          "sourceLane": "UI",
+          "requireCorrelation": false,
+          "onTimeout": "FAIL"
+        },
+        {
+          "planStepId": "resolve-request-button",
+          "sourceMapRef": "sm-appr-2",
+          "next": "tap-request",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.tour-approval-request-button",
+          "outputVariable": "requestHandle"
+        },
+        {
+          "planStepId": "tap-request",
+          "sourceMapRef": "sm-appr-3",
+          "next": "verify-request-record",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "requestHandle",
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          },
+          "continueGate": {
+            "allOf": [
+              "APP.TOUR_APPROVAL_REQUESTED"
+            ],
+            "deadlineMs": 30000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "verify-request-record",
+          "sourceMapRef": "sm-appr-4",
+          "next": "dispatcher-approves",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.remote.allowlisted-operation",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.read-tour-approval-request",
+            "role": "VALIDATION",
+            "effectClass": "READ_ONLY",
+            "idempotencyClass": "NATURALLY_IDEMPOTENT",
+            "inputBindings": [
+              {
+                "name": "approvalRequest",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+                "responsePath": "request.exists"
+              }
+            ],
+            "timeoutPolicy": {
+              "timeoutMs": 20000,
+              "maxAttempts": 3,
+              "backoffMs": 2000
+            },
+            "entityBinding": {
+              "type": "TOUR_APPROVAL_REQUEST",
+              "id": "run.input.approvalRequestCode"
+            },
+            "reconciliationPolicy": "NONE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "request.requesterName"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "dispatcher-approves",
+          "sourceMapRef": "sm-appr-5",
+          "next": "verify-approved-status",
+          "timeoutMs": 40000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "IDEMPOTENT_MUTATION"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "nesy.backoffice.approval-operations",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.approve-tour-request",
+            "role": "SETUP",
+            "effectClass": "IDEMPOTENT_MUTATION",
+            "idempotencyClass": "KEYED",
+            "idempotencyKey": "run.input.approvalRequestCode",
+            "inputBindings": [
+              {
+                "name": "approvalRequest",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [],
+            "timeoutPolicy": {
+              "timeoutMs": 30000,
+              "maxAttempts": 2,
+              "backoffMs": 3000
+            },
+            "entityBinding": {
+              "type": "TOUR_APPROVAL_REQUEST",
+              "id": "run.input.approvalRequestCode"
+            },
+            "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "approverComment"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "verify-approved-status",
+          "sourceMapRef": "sm-appr-6",
+          "next": "await-push",
+          "timeoutMs": 40000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.remote.allowlisted-operation",
+              "optional": false
+            }
+          ],
+          "kind": "REMOTE_ACTION",
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.read-tour-approval-status",
+            "role": "VALIDATION",
+            "effectClass": "READ_ONLY",
+            "idempotencyClass": "NATURALLY_IDEMPOTENT",
+            "inputBindings": [
+              {
+                "name": "approvalRequest",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
+                "responsePath": "approval.statusIsApproved"
+              }
+            ],
+            "timeoutPolicy": {
+              "timeoutMs": 30000,
+              "maxAttempts": 3,
+              "backoffMs": 3000
+            },
+            "entityBinding": {
+              "type": "TOUR_APPROVAL_REQUEST",
+              "id": "run.input.approvalRequestCode"
+            },
+            "reconciliationPolicy": "NONE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": [
+                "approval.approverName"
+              ]
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
+        },
+        {
+          "planStepId": "await-push",
+          "sourceMapRef": "sm-appr-7",
+          "next": "assert-approved",
+          "timeoutMs": 120000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "WAIT_EVENT",
+          "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+          "sourceLane": "APP",
+          "requireCorrelation": true,
+          "onTimeout": "CONTINUE",
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          }
+        },
+        {
+          "planStepId": "assert-approved",
+          "sourceMapRef": "sm-appr-8",
+          "next": null,
+          "timeoutMs": 60000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ASSERT_FACT",
+          "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+          "expected": true,
+          "unknownPolicy": "INCONCLUSIVE",
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          },
+          "finalOraclePolicy": {
+            "requirements": [
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 180000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 60000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 120000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.TOUR_APPROVAL_REQUESTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+                "obligation": "WARNING",
+                "timing": "EVENTUAL",
+                "deadlineMs": 120000,
+                "onTimeout": "WARNING"
+              }
+            ]
+          }
+        },
+        {
+          "planStepId": "release-approval-fixture",
+          "sourceMapRef": "sm-appr-9",
+          "next": null,
+          "timeoutMs": 40000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CLEANUP",
+          "compensatesStepIds": [
+            "dispatcher-approves"
+          ],
+          "runOnFailure": true
+        }
+      ],
+      "entryStepId": "wait-day-close",
+      "policies": {
+        "runDeadlineMs": 600000,
+        "cleanupDeadlineMs": 60000,
+        "defaultRetry": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "artifactPolicy": {
+          "captureOnSuccess": false,
+          "captureOnFailure": true,
+          "kinds": [
+            "SCREENSHOT",
+            "UI_TREE"
+          ]
+        },
+        "redactionPolicy": {
+          "redactPaths": [
+            "run.input.password"
+          ]
+        }
+      },
+      "capabilityRequirements": [
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.remote.allowlisted-operation",
+          "optional": false
+        },
+        {
+          "capability": "nesy.backoffice.approval-operations",
+          "optional": false
+        }
+      ],
+      "sourceMap": [
+        {
+          "ref": "sm-appr-1",
+          "planStepId": "wait-day-close",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+        },
+        {
+          "ref": "sm-appr-2",
+          "planStepId": "resolve-request-button",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+        },
+        {
+          "ref": "sm-appr-3",
+          "planStepId": "tap-request",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "actor 1: the courier, real UI"
+        },
+        {
+          "ref": "sm-appr-4",
+          "planStepId": "verify-request-record",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "back-office fact check 1"
+        },
+        {
+          "ref": "sm-appr-5",
+          "planStepId": "dispatcher-approves",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "actor 2: dispatcher, typed and audited; produces no evidence"
+        },
+        {
+          "ref": "sm-appr-6",
+          "planStepId": "verify-approved-status",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "back-office fact check 2"
+        },
+        {
+          "ref": "sm-appr-7",
+          "planStepId": "await-push",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "confirmatory only"
+        },
+        {
+          "ref": "sm-appr-8",
+          "planStepId": "assert-approved",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+        },
+        {
+          "ref": "sm-appr-9",
+          "planStepId": "release-approval-fixture",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+        }
+      ]
+    },
+    "irSourceMap": [
+      {
+        "ref": "sm-appr-1",
+        "planStepId": "wait-day-close",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-2",
+        "planStepId": "resolve-request-button",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-3",
+        "planStepId": "tap-request",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "actor 1: the courier, real UI"
+      },
+      {
+        "ref": "sm-appr-4",
+        "planStepId": "verify-request-record",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "back-office fact check 1"
+      },
+      {
+        "ref": "sm-appr-5",
+        "planStepId": "dispatcher-approves",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "actor 2: dispatcher, typed and audited; produces no evidence"
+      },
+      {
+        "ref": "sm-appr-6",
+        "planStepId": "verify-approved-status",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "back-office fact check 2"
+      },
+      {
+        "ref": "sm-appr-7",
+        "planStepId": "await-push",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "confirmatory only"
+      },
+      {
+        "ref": "sm-appr-8",
+        "planStepId": "assert-approved",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-9",
+        "planStepId": "release-approval-fixture",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      }
+    ],
+    "domainSourceMap": [
+      {
+        "ref": "ds-appr-1",
+        "macroRef": "nesy.macro.tour-approval-lifecycle",
+        "planStepIds": [
+          "wait-day-close",
+          "resolve-request-button",
+          "tap-request",
+          "verify-request-record",
+          "dispatcher-approves",
+          "verify-approved-status",
+          "await-push",
+          "assert-approved",
+          "release-approval-fixture"
+        ],
+        "sliceRef": "TOUR_APPROVAL_LIFECYCLE",
+        "note": "Courier leg on the device, dispatcher leg through the back-office adapter, two independent fact reads, one correlated derivation."
+      }
+    ]
+  },
+  "genericIrSnapshot": {
+    "schemaVersion": 2,
+    "workflowId": "nesy.reference.tour-approval-lifecycle",
+    "workflowVersion": 1,
+    "name": "Tour approval requested on device, approved in the back office",
+    "source": {
+      "kind": "DOMAIN_PACK_EXPANSION",
+      "ref": "nesy.macro.tour-approval-lifecycle"
+    },
+    "inputs": [
+      {
+        "name": "routeCode",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "approvalRequestCode",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "variables": [
+      {
+        "name": "requestHandle",
+        "type": "string"
+      }
+    ],
+    "steps": [
+      {
+        "planStepId": "wait-day-close",
+        "sourceMapRef": "sm-appr-1",
+        "next": "resolve-request-button",
+        "timeoutMs": 25000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "UI.END_OF_DAY_READY",
+        "sourceLane": "UI",
+        "requireCorrelation": false,
+        "onTimeout": "FAIL"
+      },
+      {
+        "planStepId": "resolve-request-button",
+        "sourceMapRef": "sm-appr-2",
+        "next": "tap-request",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.tour-approval-request-button",
+        "outputVariable": "requestHandle"
+      },
+      {
+        "planStepId": "tap-request",
+        "sourceMapRef": "sm-appr-3",
+        "next": "verify-request-record",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "requestHandle",
+        "entityBinding": {
+          "type": "TOUR_APPROVAL_REQUEST",
+          "id": "run.input.approvalRequestCode"
+        },
+        "continueGate": {
+          "allOf": [
+            "APP.TOUR_APPROVAL_REQUESTED"
+          ],
+          "deadlineMs": 30000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "verify-request-record",
+        "sourceMapRef": "sm-appr-4",
+        "next": "dispatcher-approves",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.remote.allowlisted-operation",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.read-tour-approval-request",
+          "role": "VALIDATION",
+          "effectClass": "READ_ONLY",
+          "idempotencyClass": "NATURALLY_IDEMPOTENT",
+          "inputBindings": [
+            {
+              "name": "approvalRequest",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [
+            {
+              "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+              "responsePath": "request.exists"
+            }
+          ],
+          "timeoutPolicy": {
+            "timeoutMs": 20000,
+            "maxAttempts": 3,
+            "backoffMs": 2000
+          },
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          },
+          "reconciliationPolicy": "NONE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "request.requesterName"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "dispatcher-approves",
+        "sourceMapRef": "sm-appr-5",
+        "next": "verify-approved-status",
+        "timeoutMs": 40000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "IDEMPOTENT_MUTATION"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "nesy.backoffice.approval-operations",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.approve-tour-request",
+          "role": "SETUP",
+          "effectClass": "IDEMPOTENT_MUTATION",
+          "idempotencyClass": "KEYED",
+          "idempotencyKey": "run.input.approvalRequestCode",
+          "inputBindings": [
+            {
+              "name": "approvalRequest",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [],
+          "timeoutPolicy": {
+            "timeoutMs": 30000,
+            "maxAttempts": 2,
+            "backoffMs": 3000
+          },
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          },
+          "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "approverComment"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "verify-approved-status",
+        "sourceMapRef": "sm-appr-6",
+        "next": "await-push",
+        "timeoutMs": 40000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.remote.allowlisted-operation",
+            "optional": false
+          }
+        ],
+        "kind": "REMOTE_ACTION",
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.read-tour-approval-status",
+          "role": "VALIDATION",
+          "effectClass": "READ_ONLY",
+          "idempotencyClass": "NATURALLY_IDEMPOTENT",
+          "inputBindings": [
+            {
+              "name": "approvalRequest",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [
+            {
+              "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
+              "responsePath": "approval.statusIsApproved"
+            }
+          ],
+          "timeoutPolicy": {
+            "timeoutMs": 30000,
+            "maxAttempts": 3,
+            "backoffMs": 3000
+          },
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.approvalRequestCode"
+          },
+          "reconciliationPolicy": "NONE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": [
+              "approval.approverName"
+            ]
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
+      },
+      {
+        "planStepId": "await-push",
+        "sourceMapRef": "sm-appr-7",
+        "next": "assert-approved",
+        "timeoutMs": 120000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "WAIT_EVENT",
+        "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+        "sourceLane": "APP",
+        "requireCorrelation": true,
+        "onTimeout": "CONTINUE",
+        "entityBinding": {
+          "type": "TOUR_APPROVAL_REQUEST",
+          "id": "run.input.approvalRequestCode"
+        }
+      },
+      {
+        "planStepId": "assert-approved",
+        "sourceMapRef": "sm-appr-8",
+        "next": null,
+        "timeoutMs": 60000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ASSERT_FACT",
+        "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+        "expected": true,
+        "unknownPolicy": "INCONCLUSIVE",
+        "entityBinding": {
+          "type": "TOUR_APPROVAL_REQUEST",
+          "id": "run.input.approvalRequestCode"
+        },
+        "finalOraclePolicy": {
+          "requirements": [
+            {
+              "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 180000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 60000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
+              "obligation": "REQUIRED",
+              "timing": "EVENTUAL",
+              "deadlineMs": 120000,
+              "onTimeout": "INCONCLUSIVE"
+            },
+            {
+              "factKey": "APP.TOUR_APPROVAL_REQUESTED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+              "obligation": "WARNING",
+              "timing": "EVENTUAL",
+              "deadlineMs": 120000,
+              "onTimeout": "WARNING"
+            }
+          ]
+        }
+      },
+      {
+        "planStepId": "release-approval-fixture",
+        "sourceMapRef": "sm-appr-9",
+        "next": null,
+        "timeoutMs": 40000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CLEANUP",
+        "compensatesStepIds": [
+          "dispatcher-approves"
+        ],
+        "runOnFailure": true
+      }
+    ],
+    "entryStepId": "wait-day-close",
+    "policies": {
+      "runDeadlineMs": 600000,
+      "cleanupDeadlineMs": 60000,
+      "defaultRetry": {
+        "maxAttempts": 1,
+        "effectClass": "READ_ONLY"
+      },
+      "artifactPolicy": {
+        "captureOnSuccess": false,
+        "captureOnFailure": true,
+        "kinds": [
+          "SCREENSHOT",
+          "UI_TREE"
+        ]
+      },
+      "redactionPolicy": {
+        "redactPaths": [
+          "run.input.password"
+        ]
+      }
+    },
+    "capabilityRequirements": [
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.remote.allowlisted-operation",
+        "optional": false
+      },
+      {
+        "capability": "nesy.backoffice.approval-operations",
+        "optional": false
+      }
+    ],
+    "sourceMap": [
+      {
+        "ref": "sm-appr-1",
+        "planStepId": "wait-day-close",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-2",
+        "planStepId": "resolve-request-button",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-3",
+        "planStepId": "tap-request",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "actor 1: the courier, real UI"
+      },
+      {
+        "ref": "sm-appr-4",
+        "planStepId": "verify-request-record",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "back-office fact check 1"
+      },
+      {
+        "ref": "sm-appr-5",
+        "planStepId": "dispatcher-approves",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "actor 2: dispatcher, typed and audited; produces no evidence"
+      },
+      {
+        "ref": "sm-appr-6",
+        "planStepId": "verify-approved-status",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "back-office fact check 2"
+      },
+      {
+        "ref": "sm-appr-7",
+        "planStepId": "await-push",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "confirmatory only"
+      },
+      {
+        "ref": "sm-appr-8",
+        "planStepId": "assert-approved",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      },
+      {
+        "ref": "sm-appr-9",
+        "planStepId": "release-approval-fixture",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
+      }
+    ]
+  },
+  "bridgeFlowPlanSnapshot": {
+    "macroRef": "nesy.macro.tour-approval-lifecycle",
+    "authoredBy": "HAND",
+    "requiredCapabilityRefs": [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.resolve-target"
+    ],
+    "legs": [
+      {
+        "planStepId": "wait-day-close",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "UI.END_OF_DAY_READY"
+      },
+      {
+        "planStepId": "tap-request",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.tour-approval-request-button",
+        "awaitFactKey": "APP.TOUR_APPROVAL_REQUESTED"
+      },
+      {
+        "planStepId": "await-push",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED"
+      }
+    ]
+  },
+  "oracle": {
+    "continueGate": {
+      "allOf": [
+        "APP.TOUR_APPROVAL_REQUESTED"
+      ],
+      "deadlineMs": 30000,
+      "unknownPolicy": "RETRY"
+    },
+    "finalOracle": {
+      "requirements": [
+        {
+          "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 180000,
+          "onTimeout": "INCONCLUSIVE"
+        },
+        {
+          "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 60000,
+          "onTimeout": "INCONCLUSIVE"
+        },
+        {
+          "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
+          "obligation": "REQUIRED",
+          "timing": "EVENTUAL",
+          "deadlineMs": 120000,
+          "onTimeout": "INCONCLUSIVE"
+        },
+        {
+          "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+          "obligation": "WARNING",
+          "timing": "EVENTUAL",
+          "deadlineMs": 120000,
+          "onTimeout": "WARNING"
+        }
+      ]
+    },
+    "notResponsibleFor": [
+      "whether the dispatcher was authorised — only that an approval was recorded against this request"
+    ]
+  },
+  "interruptPolicy": {
+    "handledSurfaceRefs": [
+      "nesy.permission-dialog",
+      "nesy.network-dialog"
+    ],
+    "fatalSurfaceRefs": [
+      "nesy.mandatory-update-dialog",
+      "nesy.session-expired-dialog"
+    ],
+    "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+    "maxHandledInterrupts": 3
+  },
+  "requiredCapabilityRefs": [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+    "verdict.core.remote.allowlisted-operation",
+    "nesy.backoffice.approval-operations",
+    "nesy.adapter.event-stream"
+  ],
+  "releaseIsolation": {
+    "automationOnly": false,
+    "releaseGuard": "automationRelease=false",
+    "assertionFactKey": "APP.SESSION_ISOLATION_ASSERTED",
+    "allowedEnvironments": [
+      "qa",
+      "staging",
+      "automation"
+    ]
+  },
+  "negativeCases": [
+    {
+      "caseKey": "TRANSPORT_ACK_AS_APPROVAL",
+      "scenario": "The approve call returns 200 and the run reports the tour approved. A downstream rule rejected it and the record is still PENDING.",
+      "refusedBy": "The approve operation declares transportSuccessOnly:true and binds no output fact; validateRemoteAdapterOperation raises TRANSPORT_SUCCESS_AS_VALIDATION if it is used as VALIDATION. Two separate READ_ONLY fact operations carry the evidence."
+    },
+    {
+      "caseKey": "STALE_APPROVAL_SATISFIES_ORACLE",
+      "scenario": "An approval left over from an earlier run (or another courier's tour) is read as this run's approval, and the slice passes without anything having been approved today.",
+      "refusedBy": "REMOTE.TOUR_APPROVAL_CONFIRMED is CORRELATED_ALL_OF with requiresCorrelation:true on approvalRequestCode, and each back-office output declares both entityStatusPath and correlationPath."
+    },
+    {
+      "caseKey": "SETUP_MODE_CLAIMS_APPROVAL_VERDICT",
+      "scenario": "Another slice needs an approved tour, arranges one via direct state, and the run reports that tour approval works.",
+      "refusedBy": "nesy.launch.direct-state declares producesProductVerdict:false; validateLaunchProfile raises SETUP_LAUNCH_PRODUCES_VERDICT if a DIRECT_STATE/PREPARED_SESSION profile claims otherwise."
+    },
+    {
+      "caseKey": "RAW_HTTP_SETUP_HOOK",
+      "scenario": "The dispatcher half is implemented as an inline HTTP call or a shell script in the workflow row, bypassing the allowlist and the audit log.",
+      "refusedBy": "ExternalActionSpec has no url/method/header/body/script field and validateWorkflowIrV2 rejects those names outright; FORBIDDEN_REMOTE_OPERATION_FIELDS does the same for adapter operations, and findRuntimeCodeViolations rejects code-shaped bundle content."
+    },
+    {
+      "caseKey": "PUSH_REQUIRED_AS_GATE",
+      "scenario": "APP.TOUR_APPROVAL_PUSH_RECEIVED is made a REQUIRED requirement, and the suite starts going red about notification infrastructure instead of the product.",
+      "refusedBy": "The push source holds CONFIRMATORY authority, the requirement is WARNING, and the wait uses onTimeout CONTINUE."
+    },
+    {
+      "caseKey": "DOUBLE_APPROVAL_ON_RETRY",
+      "scenario": "The approve call's response is lost, the step retries, and two approvals are recorded against one tour.",
+      "refusedBy": "The operation is KEYED with an explicit idempotencyKey and reconciliationPolicy RECONCILE_BEFORE_RELEASE; validateExternalAction raises UNSAFE_RETRY for a non-idempotent retry and MISSING_IDEMPOTENCY_KEY for a keyed operation with no key."
+    }
+  ]
+}

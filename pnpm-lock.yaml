@@ -224,6 +224,34 @@ importers:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
+  domain-packs/nesy-courier:
+    dependencies:
+      '@nesy/domain-pack-contracts':
+        specifier: workspace:*
+        version: link:../../packages/domain-pack-contracts
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../../packages/workflow-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
   packages/bridge-client:
     dependencies:
       '@nesy/bridge-contract':
@@ -331,6 +359,31 @@ importers:
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.17)(tsx@4.23.0)(typescript@5.8.3)
+
+  packages/domain-pack-contracts:
+    dependencies:
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../workflow-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
   packages/eslint-config:
     devDependencies:

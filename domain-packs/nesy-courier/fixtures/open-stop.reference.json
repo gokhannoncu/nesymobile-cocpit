@@ -1,0 +1,867 @@
+{
+  "sliceKey": "OPEN_STOP",
+  "displayName": "Open stop",
+  "businessMeaning": "A courier opens a specific stop from the route list and the app is then working on THAT stop — identified by its business key, never by its position in the list.",
+  "notResponsibleFor": [
+    "what happens inside the stop once it is open (see PROCESS_PARCEL and COMPLETE_DELIVERY)",
+    "the ordering of the stop list",
+    "creating the stop — the stop must already exist in the available projection",
+    "navigation back out of the stop"
+  ],
+  "inputSchema": {
+    "fields": [
+      {
+        "name": "stop",
+        "type": "entityRef",
+        "required": true,
+        "entityTypeRef": "STOP",
+        "description": "The stop to open, identified by its business key."
+      }
+    ]
+  },
+  "outputSchema": {
+    "fields": [
+      {
+        "name": "activeStopMatches",
+        "type": "boolean",
+        "factKey": "APP.ACTIVE_STOP_MATCHES"
+      },
+      {
+        "name": "landedOnTaskList",
+        "type": "boolean",
+        "factKey": "UI.TASK_LIST_READY"
+      }
+    ]
+  },
+  "preconditions": [
+    {
+      "kind": "SCREEN_READY",
+      "ref": "nesy.route.stop-list",
+      "deadlineMs": 25000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "FACT_TRUE",
+      "ref": "APP.AVAILABLE_STOPS_LOADED",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "ENTITY_AVAILABLE",
+      "ref": "STOP",
+      "deadlineMs": 20000,
+      "onUnmet": "FAIL"
+    },
+    {
+      "kind": "SURFACE_ABSENT",
+      "ref": "nesy.mandatory-update-dialog",
+      "deadlineMs": 5000,
+      "onUnmet": "FAIL"
+    }
+  ],
+  "screenRefs": [
+    "nesy.route.stop-list",
+    "nesy.stop.task-list",
+    "nesy.delivery.flow"
+  ],
+  "surfaceRefs": [
+    "nesy.mandatory-update-dialog",
+    "nesy.network-dialog"
+  ],
+  "entityBindings": [
+    {
+      "entityTypeRef": "STOP",
+      "targetRef": "nesy.target.stop-row",
+      "role": "The row is identified by the stop's business key, which survives a background re-sort of the list."
+    }
+  ],
+  "targetResolutionRefs": [
+    "nesy.target.stop-row"
+  ],
+  "semanticMacroRef": "nesy.macro.open-stop",
+  "macroExpansion": {
+    "macroRef": "nesy.macro.open-stop",
+    "authoredBy": "HAND",
+    "genericIr": {
+      "schemaVersion": 2,
+      "workflowId": "nesy.reference.open-stop",
+      "workflowVersion": 1,
+      "name": "Open the requested stop",
+      "source": {
+        "kind": "DOMAIN_PACK_EXPANSION",
+        "ref": "nesy.macro.open-stop"
+      },
+      "inputs": [
+        {
+          "name": "requestedItemCode",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "availableRows",
+          "type": "stringList"
+        },
+        {
+          "name": "rowHandle",
+          "type": "string"
+        }
+      ],
+      "steps": [
+        {
+          "planStepId": "read-available",
+          "sourceMapRef": "sm-open-1",
+          "next": "check-present",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.availableStops",
+          "maxRows": 200,
+          "outputVariable": "availableRows"
+        },
+        {
+          "planStepId": "check-present",
+          "sourceMapRef": "sm-open-2",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CONDITION",
+          "condition": {
+            "kind": "comparison",
+            "operator": "in",
+            "left": {
+              "kind": "operand",
+              "source": "run.input",
+              "path": "requestedItemCode"
+            },
+            "right": {
+              "kind": "operand",
+              "source": "step.output",
+              "path": "read-available.codes"
+            }
+          },
+          "onTrue": "resolve-row",
+          "onFalse": "report-absent",
+          "unknownPolicy": "FAIL"
+        },
+        {
+          "planStepId": "report-absent",
+          "sourceMapRef": "sm-open-3",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ANNOTATE",
+          "message": "The requested item is not present in the available projection; nothing on screen was touched. This is a precondition mismatch, not a UI defect."
+        },
+        {
+          "planStepId": "resolve-row",
+          "sourceMapRef": "sm-open-4",
+          "next": "tap-row",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.stop-row",
+          "outputVariable": "rowHandle",
+          "entityBinding": {
+            "type": "STOP",
+            "id": "run.input.requestedItemCode"
+          }
+        },
+        {
+          "planStepId": "tap-row",
+          "sourceMapRef": "sm-open-5",
+          "next": "await-destination",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "rowHandle",
+          "entityBinding": {
+            "type": "STOP",
+            "id": "run.input.requestedItemCode"
+          },
+          "continueGate": {
+            "anyOf": [
+              "UI.TASK_LIST_READY",
+              "UI.DELIVERY_FLOW_READY"
+            ],
+            "noneOf": [
+              "UI.LOADING_BLOCKER_PRESENT"
+            ],
+            "deadlineMs": 20000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "await-destination",
+          "sourceMapRef": "sm-open-6",
+          "next": "assert-correct-item",
+          "timeoutMs": 25000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "wait_any",
+              "optional": true,
+              "fallback": "SEQUENTIAL_LEGS"
+            }
+          ],
+          "kind": "WAIT_ANY",
+          "maxLegs": 2,
+          "hostOnlyCancel": true,
+          "legs": [
+            {
+              "legId": "task-list",
+              "factKey": "UI.TASK_LIST_READY",
+              "onWin": "assert-correct-item"
+            },
+            {
+              "legId": "delivery",
+              "factKey": "UI.DELIVERY_FLOW_READY",
+              "onWin": "assert-correct-item"
+            }
+          ]
+        },
+        {
+          "planStepId": "assert-correct-item",
+          "sourceMapRef": "sm-open-7",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ASSERT_FACT",
+          "factKey": "APP.ACTIVE_STOP_MATCHES",
+          "expected": true,
+          "unknownPolicy": "FAIL",
+          "entityBinding": {
+            "type": "STOP",
+            "id": "run.input.requestedItemCode"
+          },
+          "finalOraclePolicy": {
+            "requirements": [
+              {
+                "factKey": "APP.ACTIVE_STOP_MATCHES",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.ACTIVE_STOP_OBSERVED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              }
+            ]
+          }
+        }
+      ],
+      "entryStepId": "read-available",
+      "policies": {
+        "runDeadlineMs": 600000,
+        "cleanupDeadlineMs": 60000,
+        "defaultRetry": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "artifactPolicy": {
+          "captureOnSuccess": false,
+          "captureOnFailure": true,
+          "kinds": [
+            "SCREENSHOT",
+            "UI_TREE"
+          ]
+        },
+        "redactionPolicy": {
+          "redactPaths": [
+            "run.input.password"
+          ]
+        }
+      },
+      "capabilityRequirements": [
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.resolve-target",
+          "optional": false
+        },
+        {
+          "capability": "wait_any",
+          "optional": true,
+          "fallback": "SEQUENTIAL_LEGS"
+        }
+      ],
+      "sourceMap": [
+        {
+          "ref": "sm-open-1",
+          "planStepId": "read-available",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguard 2: read the projection first"
+        },
+        {
+          "ref": "sm-open-2",
+          "planStepId": "check-present",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguard 2: verify presence before touching anything"
+        },
+        {
+          "ref": "sm-open-3",
+          "planStepId": "report-absent",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "precondition mismatch path"
+        },
+        {
+          "ref": "sm-open-4",
+          "planStepId": "resolve-row",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+        },
+        {
+          "ref": "sm-open-5",
+          "planStepId": "tap-row",
+          "domainSourceRef": "nesy.macro.open-stop"
+        },
+        {
+          "ref": "sm-open-6",
+          "planStepId": "await-destination",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguard 5: task list OR delivery flow"
+        },
+        {
+          "ref": "sm-open-7",
+          "planStepId": "assert-correct-item",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguard 6: the wrong-row guard"
+        }
+      ]
+    },
+    "irSourceMap": [
+      {
+        "ref": "sm-open-1",
+        "planStepId": "read-available",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 2: read the projection first"
+      },
+      {
+        "ref": "sm-open-2",
+        "planStepId": "check-present",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 2: verify presence before touching anything"
+      },
+      {
+        "ref": "sm-open-3",
+        "planStepId": "report-absent",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "precondition mismatch path"
+      },
+      {
+        "ref": "sm-open-4",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+      },
+      {
+        "ref": "sm-open-5",
+        "planStepId": "tap-row",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-6",
+        "planStepId": "await-destination",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 5: task list OR delivery flow"
+      },
+      {
+        "ref": "sm-open-7",
+        "planStepId": "assert-correct-item",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 6: the wrong-row guard"
+      }
+    ],
+    "domainSourceMap": [
+      {
+        "ref": "ds-open-1",
+        "macroRef": "nesy.macro.open-stop",
+        "planStepIds": [
+          "read-available",
+          "check-present",
+          "report-absent",
+          "resolve-row",
+          "tap-row",
+          "await-destination",
+          "assert-correct-item"
+        ],
+        "sliceRef": "OPEN_STOP",
+        "note": "Guard → resolve → act → await-either → verify. Every generic step traces back to this single macro."
+      }
+    ]
+  },
+  "genericIrSnapshot": {
+    "schemaVersion": 2,
+    "workflowId": "nesy.reference.open-stop",
+    "workflowVersion": 1,
+    "name": "Open the requested stop",
+    "source": {
+      "kind": "DOMAIN_PACK_EXPANSION",
+      "ref": "nesy.macro.open-stop"
+    },
+    "inputs": [
+      {
+        "name": "requestedItemCode",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "variables": [
+      {
+        "name": "availableRows",
+        "type": "stringList"
+      },
+      {
+        "name": "rowHandle",
+        "type": "string"
+      }
+    ],
+    "steps": [
+      {
+        "planStepId": "read-available",
+        "sourceMapRef": "sm-open-1",
+        "next": "check-present",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.availableStops",
+        "maxRows": 200,
+        "outputVariable": "availableRows"
+      },
+      {
+        "planStepId": "check-present",
+        "sourceMapRef": "sm-open-2",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CONDITION",
+        "condition": {
+          "kind": "comparison",
+          "operator": "in",
+          "left": {
+            "kind": "operand",
+            "source": "run.input",
+            "path": "requestedItemCode"
+          },
+          "right": {
+            "kind": "operand",
+            "source": "step.output",
+            "path": "read-available.codes"
+          }
+        },
+        "onTrue": "resolve-row",
+        "onFalse": "report-absent",
+        "unknownPolicy": "FAIL"
+      },
+      {
+        "planStepId": "report-absent",
+        "sourceMapRef": "sm-open-3",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ANNOTATE",
+        "message": "The requested item is not present in the available projection; nothing on screen was touched. This is a precondition mismatch, not a UI defect."
+      },
+      {
+        "planStepId": "resolve-row",
+        "sourceMapRef": "sm-open-4",
+        "next": "tap-row",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.stop-row",
+        "outputVariable": "rowHandle",
+        "entityBinding": {
+          "type": "STOP",
+          "id": "run.input.requestedItemCode"
+        }
+      },
+      {
+        "planStepId": "tap-row",
+        "sourceMapRef": "sm-open-5",
+        "next": "await-destination",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "rowHandle",
+        "entityBinding": {
+          "type": "STOP",
+          "id": "run.input.requestedItemCode"
+        },
+        "continueGate": {
+          "anyOf": [
+            "UI.TASK_LIST_READY",
+            "UI.DELIVERY_FLOW_READY"
+          ],
+          "noneOf": [
+            "UI.LOADING_BLOCKER_PRESENT"
+          ],
+          "deadlineMs": 20000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "await-destination",
+        "sourceMapRef": "sm-open-6",
+        "next": "assert-correct-item",
+        "timeoutMs": 25000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "wait_any",
+            "optional": true,
+            "fallback": "SEQUENTIAL_LEGS"
+          }
+        ],
+        "kind": "WAIT_ANY",
+        "maxLegs": 2,
+        "hostOnlyCancel": true,
+        "legs": [
+          {
+            "legId": "task-list",
+            "factKey": "UI.TASK_LIST_READY",
+            "onWin": "assert-correct-item"
+          },
+          {
+            "legId": "delivery",
+            "factKey": "UI.DELIVERY_FLOW_READY",
+            "onWin": "assert-correct-item"
+          }
+        ]
+      },
+      {
+        "planStepId": "assert-correct-item",
+        "sourceMapRef": "sm-open-7",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ASSERT_FACT",
+        "factKey": "APP.ACTIVE_STOP_MATCHES",
+        "expected": true,
+        "unknownPolicy": "FAIL",
+        "entityBinding": {
+          "type": "STOP",
+          "id": "run.input.requestedItemCode"
+        },
+        "finalOraclePolicy": {
+          "requirements": [
+            {
+              "factKey": "APP.ACTIVE_STOP_MATCHES",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "APP.ACTIVE_STOP_OBSERVED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "APP.AVAILABLE_STOPS_LOADED",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            }
+          ]
+        }
+      }
+    ],
+    "entryStepId": "read-available",
+    "policies": {
+      "runDeadlineMs": 600000,
+      "cleanupDeadlineMs": 60000,
+      "defaultRetry": {
+        "maxAttempts": 1,
+        "effectClass": "READ_ONLY"
+      },
+      "artifactPolicy": {
+        "captureOnSuccess": false,
+        "captureOnFailure": true,
+        "kinds": [
+          "SCREENSHOT",
+          "UI_TREE"
+        ]
+      },
+      "redactionPolicy": {
+        "redactPaths": [
+          "run.input.password"
+        ]
+      }
+    },
+    "capabilityRequirements": [
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.resolve-target",
+        "optional": false
+      },
+      {
+        "capability": "wait_any",
+        "optional": true,
+        "fallback": "SEQUENTIAL_LEGS"
+      }
+    ],
+    "sourceMap": [
+      {
+        "ref": "sm-open-1",
+        "planStepId": "read-available",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 2: read the projection first"
+      },
+      {
+        "ref": "sm-open-2",
+        "planStepId": "check-present",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 2: verify presence before touching anything"
+      },
+      {
+        "ref": "sm-open-3",
+        "planStepId": "report-absent",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "precondition mismatch path"
+      },
+      {
+        "ref": "sm-open-4",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+      },
+      {
+        "ref": "sm-open-5",
+        "planStepId": "tap-row",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-6",
+        "planStepId": "await-destination",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 5: task list OR delivery flow"
+      },
+      {
+        "ref": "sm-open-7",
+        "planStepId": "assert-correct-item",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 6: the wrong-row guard"
+      }
+    ]
+  },
+  "bridgeFlowPlanSnapshot": {
+    "macroRef": "nesy.macro.open-stop",
+    "authoredBy": "HAND",
+    "requiredCapabilityRefs": [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.resolve-target"
+    ],
+    "legs": [
+      {
+        "planStepId": "resolve-row",
+        "bridgeVerb": "resolveTarget",
+        "targetRef": "nesy.target.stop-row"
+      },
+      {
+        "planStepId": "tap-row",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.stop-row",
+        "awaitFactKey": "UI.TASK_LIST_READY"
+      },
+      {
+        "planStepId": "await-destination",
+        "bridgeVerb": "watch",
+        "awaitFactKey": "UI.DELIVERY_FLOW_READY"
+      }
+    ]
+  },
+  "oracle": {
+    "continueGate": {
+      "anyOf": [
+        "UI.TASK_LIST_READY",
+        "UI.DELIVERY_FLOW_READY"
+      ],
+      "noneOf": [
+        "UI.LOADING_BLOCKER_PRESENT"
+      ],
+      "deadlineMs": 20000,
+      "unknownPolicy": "RETRY"
+    },
+    "finalOracle": {
+      "requirements": [
+        {
+          "factKey": "APP.ACTIVE_STOP_MATCHES",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "APP.ACTIVE_STOP_OBSERVED",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        }
+      ]
+    },
+    "notResponsibleFor": [
+      "whether the opened stop's task list is complete — only that the opened stop is the requested one"
+    ]
+  },
+  "interruptPolicy": {
+    "handledSurfaceRefs": [
+      "nesy.permission-dialog",
+      "nesy.network-dialog"
+    ],
+    "fatalSurfaceRefs": [
+      "nesy.mandatory-update-dialog",
+      "nesy.session-expired-dialog"
+    ],
+    "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+    "maxHandledInterrupts": 3
+  },
+  "requiredCapabilityRefs": [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+    "nesy.adapter.named-query",
+    "nesy.adapter.state-projection"
+  ],
+  "releaseIsolation": {
+    "automationOnly": false,
+    "releaseGuard": "automationRelease=false",
+    "assertionFactKey": "APP.SESSION_ISOLATION_ASSERTED",
+    "allowedEnvironments": [
+      "qa",
+      "staging",
+      "automation"
+    ]
+  },
+  "negativeCases": [
+    {
+      "caseKey": "ROW_INDEX_AS_IDENTITY",
+      "scenario": "The plan opens 'row 3'. A background sync re-sorts the list between read and tap, the run opens someone else's stop, delivers there successfully, and every oracle passes.",
+      "refusedBy": "validateTargetResolutionPolicy raises ROW_INDEX_AS_IDENTITY for a rowIndex provider claiming establishesIdentity, and ROW_INDEX_NOT_LAST if the hint precedes a real provider. The chain must carry an identity provider."
+    },
+    {
+      "caseKey": "AMBIGUOUS_TARGET_FIRST_MATCH",
+      "scenario": "Two rows match the selector (a duplicated stop, a stale item). The resolver picks the first and the run operates on the wrong one.",
+      "refusedBy": "ambiguityPolicy is FAIL and the AmbiguityPolicy union has no FIRST_MATCH member, so 'just pick one' is not expressible."
+    },
+    {
+      "caseKey": "TAP_BEFORE_PRECONDITION_CHECK",
+      "scenario": "The requested stop is not on this route at all. The macro taps first and reports a target-resolution failure, having already touched the screen.",
+      "refusedBy": "read-available/check-present run before resolve-row; the not-present path goes to ANNOTATE with next=null and touches nothing."
+    },
+    {
+      "caseKey": "WAITED_ONLY_FOR_TASK_LIST",
+      "scenario": "A single-task stop opens straight into the delivery flow. A plan that waits only for the task list times out and reports a product failure that is not one.",
+      "refusedBy": "The WAIT_ANY step accepts either UI.TASK_LIST_READY or UI.DELIVERY_FLOW_READY, and the Continue Gate uses anyOf for the same reason."
+    },
+    {
+      "caseKey": "OPENED_SOMETHING_UNVERIFIED",
+      "scenario": "All resolution safeguards fail simultaneously and some stop opens. Readiness is satisfied, so the run continues into delivery on the wrong entity.",
+      "refusedBy": "APP.ACTIVE_STOP_MATCHES is a REQUIRED IMMEDIATE oracle requirement, derived with requiresCorrelation:true by comparing the app's active stop to the requested business key."
+    },
+    {
+      "caseKey": "UNTYPED_INDEX_INPUT",
+      "scenario": "The macro is changed to accept a numeric row position because it is simpler to author.",
+      "refusedBy": "The macro input is an entityRef bound to the STOP entity type; validateMacroDefinition raises MACRO_ENTITY_INPUT_UNTYPED for an entityRef with no entityTypeRef, and the reference test asserts the STOP input specifically."
+    }
+  ]
+}
