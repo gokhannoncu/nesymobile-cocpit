@@ -68,7 +68,7 @@ export const NESY_COURIER_SEMANTIC_ACTIONS: readonly SemanticActionDefinition[] 
     surfaceRefs: [NESY_SURFACES.scannerSurface],
     entityTypeRefs: [NESY_ENTITIES.parcel, NESY_ENTITIES.task, NESY_ENTITIES.shipment],
     targetRefs: [NESY_TARGETS.scanTrigger],
-    requiredCapabilityRefs: ["nesy.scanner.inject"],
+    requiredCapabilityRefs: ["domain.nesy.scanner.inject"],
   },
   {
     actionKey: NESY_ACTIONS.completeDelivery,
@@ -92,7 +92,7 @@ export const NESY_COURIER_SEMANTIC_ACTIONS: readonly SemanticActionDefinition[] 
     surfaceRefs: [],
     entityTypeRefs: [NESY_ENTITIES.route, NESY_ENTITIES.tourApprovalRequest],
     targetRefs: [NESY_TARGETS.tourApprovalRequestButton],
-    requiredCapabilityRefs: ["nesy.backoffice.approval-operations"],
+    requiredCapabilityRefs: ["domain.nesy.backoffice.approval-operations"],
   },
   {
     actionKey: NESY_ACTIONS.grantPermission,

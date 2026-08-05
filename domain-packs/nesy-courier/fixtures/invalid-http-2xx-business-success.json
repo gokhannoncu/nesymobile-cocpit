@@ -34,18 +34,18 @@
         "reason": "Target resolution provider chain."
       },
       {
-        "capabilityRef": "nesy.adapter.named-query",
+        "capabilityRef": "domain.nesy.adapter.named-query",
         "optional": false,
         "reason": "Bounded projections back the evidence sources."
       },
       {
-        "capabilityRef": "nesy.scanner.inject",
+        "capabilityRef": "domain.nesy.scanner.inject",
         "optional": true,
         "fallback": "DEGRADED_EVIDENCE",
         "reason": "A device without the injection seam can fall back to the app's manual-entry surface."
       },
       {
-        "capabilityRef": "nesy.backoffice.approval-operations",
+        "capabilityRef": "domain.nesy.backoffice.approval-operations",
         "optional": true,
         "fallback": "SKIP_SLICE",
         "reason": "Only TOUR_APPROVAL_LIFECYCLE needs the dispatcher operations; other slices run without them."
@@ -203,14 +203,14 @@
           }
         ],
         "capabilityRefs": [
-          "nesy.adapter.named-query",
-          "nesy.adapter.state-projection",
-          "nesy.adapter.event-stream",
-          "nesy.adapter.session-prepared",
-          "nesy.adapter.direct-state",
-          "nesy.adapter.release-isolation",
-          "nesy.scanner.inject",
-          "nesy.scanner.manual-entry"
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.adapter.state-projection",
+          "domain.nesy.adapter.event-stream",
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.direct-state",
+          "domain.nesy.adapter.release-isolation",
+          "domain.nesy.scanner.inject",
+          "domain.nesy.scanner.manual-entry"
         ]
       }
     ],
@@ -272,7 +272,7 @@
             "entryRef": "nesy.entry.gateway-route-list",
             "provesUserPath": false,
             "requiredCapabilityRefs": [
-              "nesy.adapter.direct-state"
+              "domain.nesy.adapter.direct-state"
             ]
           }
         ],
@@ -423,7 +423,7 @@
             "entryRef": "nesy.link.vehicle-loading",
             "provesUserPath": false,
             "requiredCapabilityRefs": [
-              "nesy.adapter.direct-state"
+              "domain.nesy.adapter.direct-state"
             ]
           },
           {
@@ -1678,7 +1678,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.state-projection"
+          "domain.nesy.adapter.state-projection"
         ]
       },
       {
@@ -1710,7 +1710,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -1743,7 +1743,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.state-projection"
+          "domain.nesy.adapter.state-projection"
         ]
       },
       {
@@ -1774,7 +1774,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.state-projection"
+          "domain.nesy.adapter.state-projection"
         ]
       },
       {
@@ -1808,7 +1808,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.event-stream"
+          "domain.nesy.adapter.event-stream"
         ]
       },
       {
@@ -1839,7 +1839,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -1871,7 +1871,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.event-stream"
+          "domain.nesy.adapter.event-stream"
         ]
       },
       {
@@ -1905,7 +1905,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.event-stream"
+          "domain.nesy.adapter.event-stream"
         ]
       },
       {
@@ -1935,7 +1935,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.event-stream"
+          "domain.nesy.adapter.event-stream"
         ]
       },
       {
@@ -1963,7 +1963,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.release-isolation"
         ]
       },
       {
@@ -1997,7 +1997,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -2028,7 +2028,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -2059,7 +2059,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -2093,7 +2093,7 @@
         },
         "preservesRawEvidence": true,
         "requiredCapabilityRefs": [
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ]
       },
       {
@@ -2447,7 +2447,7 @@
           "nesy.target.scan-trigger"
         ],
         "requiredCapabilityRefs": [
-          "nesy.scanner.inject"
+          "domain.nesy.scanner.inject"
         ]
       },
       {
@@ -2501,7 +2501,7 @@
           "nesy.target.tour-approval-request-button"
         ],
         "requiredCapabilityRefs": [
-          "nesy.backoffice.approval-operations"
+          "domain.nesy.backoffice.approval-operations"
         ]
       },
       {
@@ -3334,7 +3334,7 @@
           "verdict.core.bridge.resolve-target",
           "verdict.core.bridge.watch-fact",
           "verdict.core.remote.allowlisted-operation",
-          "nesy.adapter.named-query"
+          "domain.nesy.adapter.named-query"
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.select-route",
@@ -3398,7 +3398,7 @@
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "nesy.adapter.named-query",
+                    "capability": "domain.nesy.adapter.named-query",
                     "optional": false
                   }
                 ],
@@ -3976,8 +3976,8 @@
           "verdict.core.bridge.tap",
           "verdict.core.bridge.resolve-target",
           "verdict.core.bridge.watch-fact",
-          "nesy.adapter.named-query",
-          "nesy.adapter.state-projection"
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.adapter.state-projection"
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.open-stop",
@@ -4020,7 +4020,7 @@
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "nesy.adapter.named-query",
+                    "capability": "domain.nesy.adapter.named-query",
                     "optional": false
                   }
                 ],
@@ -4517,10 +4517,10 @@
         "requiredCapabilityRefs": [
           "verdict.core.bridge.resolve-target",
           "verdict.core.bridge.watch-fact",
-          "nesy.adapter.named-query",
-          "nesy.adapter.event-stream",
-          "nesy.scanner.inject",
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.adapter.event-stream",
+          "domain.nesy.scanner.inject",
+          "domain.nesy.adapter.release-isolation"
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.process-parcel",
@@ -4605,7 +4605,7 @@
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "nesy.scanner.inject",
+                    "capability": "domain.nesy.scanner.inject",
                     "optional": false
                   }
                 ],
@@ -4683,7 +4683,7 @@
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "nesy.adapter.named-query",
+                    "capability": "domain.nesy.adapter.named-query",
                     "optional": false
                   }
                 ],
@@ -4785,7 +4785,7 @@
                 "optional": false
               },
               {
-                "capability": "nesy.scanner.inject",
+                "capability": "domain.nesy.scanner.inject",
                 "optional": false
               }
             ],
@@ -4891,7 +4891,7 @@
           "authoredBy": "HAND",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.resolve-target",
-            "nesy.scanner.inject"
+            "domain.nesy.scanner.inject"
           ],
           "legs": [
             {
@@ -5052,8 +5052,8 @@
           "verdict.core.bridge.resolve-target",
           "verdict.core.bridge.watch-fact",
           "verdict.core.remote.allowlisted-operation",
-          "nesy.adapter.named-query",
-          "nesy.adapter.event-stream"
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.adapter.event-stream"
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.complete-delivery",
@@ -5627,8 +5627,8 @@
           "verdict.core.bridge.resolve-target",
           "verdict.core.bridge.watch-fact",
           "verdict.core.remote.allowlisted-operation",
-          "nesy.backoffice.approval-operations",
-          "nesy.adapter.event-stream"
+          "domain.nesy.backoffice.approval-operations",
+          "domain.nesy.adapter.event-stream"
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.tour-approval-lifecycle",
@@ -5796,7 +5796,7 @@
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "nesy.backoffice.approval-operations",
+                    "capability": "domain.nesy.backoffice.approval-operations",
                     "optional": false
                   }
                 ],
@@ -6025,7 +6025,7 @@
                 "optional": false
               },
               {
-                "capability": "nesy.backoffice.approval-operations",
+                "capability": "domain.nesy.backoffice.approval-operations",
                 "optional": false
               }
             ],
@@ -6766,7 +6766,7 @@
         "requiredCapabilityRefs": [
           "verdict.core.bridge.tap",
           "verdict.core.bridge.set-text",
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.release-isolation"
         ]
       },
       {
@@ -6805,8 +6805,8 @@
           ]
         },
         "requiredCapabilityRefs": [
-          "nesy.adapter.session-prepared",
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.release-isolation"
         ]
       },
       {
@@ -6847,9 +6847,9 @@
           ]
         },
         "requiredCapabilityRefs": [
-          "nesy.adapter.direct-state",
-          "nesy.adapter.session-prepared",
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.direct-state",
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.release-isolation"
         ]
       },
       {
@@ -6889,8 +6889,8 @@
           ]
         },
         "requiredCapabilityRefs": [
-          "nesy.adapter.session-prepared",
-          "nesy.adapter.release-isolation"
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.release-isolation"
         ]
       }
     ],
@@ -6929,9 +6929,9 @@
         "requiredCapabilityRefs": [
           "verdict.core.bridge.tap",
           "verdict.core.remote.allowlisted-operation",
-          "nesy.adapter.named-query",
-          "nesy.scanner.inject",
-          "nesy.backoffice.approval-operations"
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.scanner.inject",
+          "domain.nesy.backoffice.approval-operations"
         ]
       },
       {
@@ -6953,8 +6953,8 @@
         },
         "performanceBudgetRefs": [],
         "requiredCapabilityRefs": [
-          "nesy.adapter.session-prepared",
-          "nesy.scanner.inject"
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.scanner.inject"
         ]
       },
       {
@@ -6996,7 +6996,7 @@
         "performanceBudgetRefs": [],
         "requiredCapabilityRefs": [
           "verdict.core.remote.allowlisted-operation",
-          "nesy.backoffice.approval-operations"
+          "domain.nesy.backoffice.approval-operations"
         ]
       },
       {
@@ -7032,7 +7032,7 @@
           }
         ],
         "requiredCapabilityRefs": [
-          "nesy.adapter.session-prepared"
+          "domain.nesy.adapter.session-prepared"
         ]
       }
     ],
@@ -7103,7 +7103,7 @@
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.resolve-target",
-            "nesy.adapter.named-query"
+            "domain.nesy.adapter.named-query"
           ],
           "screenRefs": [
             "nesy.route.stop-list",
@@ -7117,7 +7117,7 @@
             "the work performed inside an opened stop"
           ]
         },
-        "executableDigest": "sha256:013a073255f77eb24df49ddc3e44e3a559d4cace1d5898565b5a87cdcf361856"
+        "executableDigest": "sha256:100532e4dc8586dfb550f7e1321391d9f569020ec5bcf703e4d7dd2091b59dc1"
       },
       {
         "featureKey": "nesy.feature.delivery-completion",
@@ -7170,8 +7170,8 @@
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.remote.allowlisted-operation",
-            "nesy.scanner.inject",
-            "nesy.adapter.named-query"
+            "domain.nesy.scanner.inject",
+            "domain.nesy.adapter.named-query"
           ],
           "screenRefs": [
             "nesy.delivery.flow"
@@ -7187,7 +7187,7 @@
             "failure and cancellation reason codes"
           ]
         },
-        "executableDigest": "sha256:1f09f8a4e7f6681ae9bdf8a9a27eab9dec9baf7dc377250633f7f5fabf8a1f81"
+        "executableDigest": "sha256:bd21e1fc9980e2f0f4a74ce26508b360e555889057cefd50f37f5e7804c93e96"
       },
       {
         "featureKey": "nesy.feature.tour-approval",
@@ -7228,7 +7228,7 @@
           ],
           "requiredCapabilityRefs": [
             "verdict.core.remote.allowlisted-operation",
-            "nesy.backoffice.approval-operations"
+            "domain.nesy.backoffice.approval-operations"
           ],
           "screenRefs": [
             "nesy.end-of-day"
@@ -7240,7 +7240,7 @@
             "push notification delivery reliability"
           ]
         },
-        "executableDigest": "sha256:112721787532debad57a568cf8e61e68b00f721407e8e915d2981ab2a869ab88"
+        "executableDigest": "sha256:bde38f9545b7d2fdbb09283f98121f4654003e438f46f88d055c484f52460276"
       }
     ],
     "capabilities": [
@@ -7304,8 +7304,8 @@
         "automationOnly": false
       },
       {
-        "capabilityKey": "nesy.adapter.named-query",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.named-query",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Nesy named queries",
         "description": "Bounded read of route/task/shipment projections from the courier app.",
@@ -7314,8 +7314,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.adapter.state-projection",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.state-projection",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Nesy state projection",
         "description": "Read a bounded projection of the courier app's own state providers.",
@@ -7324,8 +7324,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.adapter.event-stream",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.event-stream",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Nesy critical event stream",
         "description": "Subscribe to the courier app's structured critical-event seam.",
@@ -7334,8 +7334,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.adapter.session-prepared",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.session-prepared",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Prepared session",
         "description": "Install an already-authenticated session, skipping the login screens.",
@@ -7344,8 +7344,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.adapter.direct-state",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.direct-state",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Direct state preparation",
         "description": "Write a bounded business precondition directly, skipping the UI path that creates it.",
@@ -7354,8 +7354,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.adapter.release-isolation",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.adapter.release-isolation",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Release isolation assertion",
         "description": "Assert at run time that automation-only seams are absent from a non-automation build.",
@@ -7364,8 +7364,8 @@
         "automationOnly": false
       },
       {
-        "capabilityKey": "nesy.scanner.inject",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.scanner.inject",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Scanner injection",
         "description": "Feed a scan payload to the app as if the camera had read it.",
@@ -7374,8 +7374,8 @@
         "automationOnly": true
       },
       {
-        "capabilityKey": "nesy.scanner.manual-entry",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.scanner.manual-entry",
+        "layer": "domain.nesy",
         "provider": "APP_ADAPTER",
         "displayName": "Manual scan entry fallback",
         "description": "Enter a scan payload through the app's own manual-entry surface when injection is unavailable.",
@@ -7384,23 +7384,13 @@
         "automationOnly": false
       },
       {
-        "capabilityKey": "nesy.backoffice.approval-operations",
-        "layer": "nesy",
+        "capabilityKey": "domain.nesy.backoffice.approval-operations",
+        "layer": "domain.nesy",
         "provider": "BACKOFFICE_ADAPTER",
         "displayName": "Nesy back-office approval operations",
         "description": "Typed, audited dispatcher/supervisor operations used by multi-actor slices.",
         "runtimeDetected": false,
         "automationOnly": false
-      },
-      {
-        "capabilityKey": "mackolik.adapter.named-query",
-        "layer": "mackolik",
-        "provider": "APP_ADAPTER",
-        "displayName": "Maçkolik named queries",
-        "description": "Second-tenant named query seam; declared here only to keep the catalog layered.",
-        "runtimeDetected": true,
-        "detectionRef": "mackolik.adapter.capabilities.namedQuery",
-        "automationOnly": true
       }
     ],
     "remoteAdapters": [
@@ -7409,7 +7399,7 @@
         "displayName": "Nesy Back-office Adapter",
         "systemName": "Nesy dispatch back office",
         "requiredCapabilityRefs": [
-          "nesy.backoffice.approval-operations",
+          "domain.nesy.backoffice.approval-operations",
           "verdict.core.remote.allowlisted-operation"
         ],
         "operations": [

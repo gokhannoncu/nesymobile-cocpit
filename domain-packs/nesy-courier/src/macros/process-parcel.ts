@@ -68,7 +68,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       next: "await-accepted",
       timeoutMs: 20_000,
       retryPolicy: KEYED_MUTATION_RETRY,
-      capabilityRequirements: [requires("nesy.scanner.inject")],
+      capabilityRequirements: [requires("domain.nesy.scanner.inject")],
     }),
     kind: "REMOTE_ACTION",
     spec: {
@@ -107,7 +107,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       planStepId: "read-item-state",
       sourceMapRef: "sm-scan-5",
       next: "assert-processed",
-      capabilityRequirements: [requires("nesy.adapter.named-query")],
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
     queryRef: NESY_ADAPTER_QUERY_REFS.parcelState,
@@ -164,7 +164,7 @@ const GENERIC_IR = irDocument({
   ],
   steps: STEPS,
   entryStepId: "wait-scanner",
-  capabilityRequirements: [requires("verdict.core.bridge.watch-fact"), requires("nesy.scanner.inject")],
+  capabilityRequirements: [requires("verdict.core.bridge.watch-fact"), requires("domain.nesy.scanner.inject")],
   sourceMap: [
     sourceMapEntry("sm-scan-1", "wait-scanner", NESY_PROCESS_PARCEL_MACRO_KEY),
     sourceMapEntry("sm-scan-2", "resolve-trigger", NESY_PROCESS_PARCEL_MACRO_KEY),
@@ -195,7 +195,7 @@ const EXPANSION: MacroExpansionSnapshot = {
 const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   macroRef: NESY_PROCESS_PARCEL_MACRO_KEY,
   authoredBy: "HAND",
-  requiredCapabilityRefs: ["verdict.core.bridge.resolve-target", "nesy.scanner.inject"],
+  requiredCapabilityRefs: ["verdict.core.bridge.resolve-target", "domain.nesy.scanner.inject"],
   legs: [
     { planStepId: "wait-scanner", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.SCANNER_SURFACE_READY },
     { planStepId: "resolve-trigger", bridgeVerb: "resolveTarget", targetRef: NESY_TARGETS.scanTrigger },
@@ -273,10 +273,10 @@ export const NESY_PROCESS_PARCEL_MACRO: MacroDefinition = {
   requiredCapabilityRefs: [
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
-    "nesy.adapter.named-query",
-    "nesy.adapter.event-stream",
-    "nesy.scanner.inject",
-    "nesy.adapter.release-isolation",
+    "domain.nesy.adapter.named-query",
+    "domain.nesy.adapter.event-stream",
+    "domain.nesy.scanner.inject",
+    "domain.nesy.adapter.release-isolation",
   ],
   expansionSnapshot: EXPANSION,
   bridgeFlowPlanSnapshot: BRIDGE_PLAN,

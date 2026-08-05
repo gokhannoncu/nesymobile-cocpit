@@ -120,7 +120,7 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "nesy.adapter.named-query",
+              "capability": "domain.nesy.adapter.named-query",
               "optional": false
             }
           ],
@@ -482,7 +482,7 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "nesy.adapter.named-query",
+            "capability": "domain.nesy.adapter.named-query",
             "optional": false
           }
         ],
@@ -819,8 +819,8 @@
     "verdict.core.bridge.tap",
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
-    "nesy.adapter.named-query",
-    "nesy.adapter.state-projection"
+    "domain.nesy.adapter.named-query",
+    "domain.nesy.adapter.state-projection"
   ],
   "releaseIsolation": {
     "automationOnly": false,

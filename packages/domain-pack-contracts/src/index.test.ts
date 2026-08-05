@@ -1219,8 +1219,8 @@ describe("feature authoring / executable split", () => {
 });
 
 describe("capability catalog", () => {
-  it("layers the catalog across a platform layer and two tenants", () => {
-    expect(featureCapability.CAPABILITY_LAYERS).toEqual(["verdict.core", "nesy", "mackolik"]);
+  it("keeps the shared catalog free of hardcoded tenant layers", () => {
+    expect(featureCapability.CAPABILITY_LAYERS).toEqual(["verdict.core"]);
     expect(featureCapability.CORE_CAPABILITY_LAYER).toBe("verdict.core");
   });
 
@@ -1243,7 +1243,7 @@ describe("capability catalog", () => {
   it("refuses a tenant-shaped capability promoted to core with no evidence", () => {
     const codes = validateCapabilityContract(
       {
-        capabilityKey: "verdict.core.nesy.scanner-inject",
+        capabilityKey: "verdict.core.domain.fixture.scanner-inject",
         layer: "verdict.core",
         provider: "APP_ADAPTER",
         displayName: "Injection",
@@ -1260,7 +1260,7 @@ describe("capability catalog", () => {
     expect(
       validateCapabilityContract(
         {
-          capabilityKey: "verdict.core.nesy.scanner-inject",
+          capabilityKey: "verdict.core.domain.fixture.scanner-inject",
           layer: "verdict.core",
           provider: "APP_ADAPTER",
           displayName: "Injection",
@@ -1277,8 +1277,8 @@ describe("capability catalog", () => {
   it("refuses a runtime-detected capability with no detection ref", () => {
     const codes = validateCapabilityContract(
       {
-        capabilityKey: "nesy.thing",
-        layer: "nesy",
+        capabilityKey: "domain.fixture.thing",
+        layer: "domain.fixture",
         provider: "APP_ADAPTER",
         displayName: "Thing",
         description: "",

@@ -236,8 +236,8 @@ apps/api/src/routes/verdict-events.routes.ts
 
 Yeni shared contract gerekiyorsa önce mevcut `packages/control-contract` export
 yapısı incelenir. Contract sadece domain-neutral event delivery, lane, cursor,
-waitEvent ve diagnostic outcome tiplerini taşımalıdır. `STOP`, `PARCEL`, `MATCH`,
-`BETTING`, `COURIER_LOGIN`, `OPEN_STOP` gibi domain kavramları Phase 2 contract'ına
+waitEvent ve diagnostic outcome tiplerini taşımalıdır. `STOP`, `PARCEL`,
+`COURIER_LOGIN`, `OPEN_STOP` gibi domain kavramları Phase 2 contract'ına
 giremez.
 
 ## 8. Read-only context paths

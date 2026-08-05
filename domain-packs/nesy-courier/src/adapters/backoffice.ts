@@ -51,7 +51,7 @@ export const NESY_BACKOFFICE_ADAPTER: RemoteAdapterDefinition = {
   adapterRef: NESY_BACKOFFICE_ADAPTER_REF,
   displayName: "Nesy Back-office Adapter",
   systemName: "Nesy dispatch back office",
-  requiredCapabilityRefs: ["nesy.backoffice.approval-operations", "verdict.core.remote.allowlisted-operation"],
+  requiredCapabilityRefs: ["domain.nesy.backoffice.approval-operations", "verdict.core.remote.allowlisted-operation"],
   operations: [
     {
       // The dispatcher's action. Note `transportSuccessOnly: true` and the empty

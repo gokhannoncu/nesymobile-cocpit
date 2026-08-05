@@ -649,7 +649,7 @@ Kaynaklar: `Development_Flow.pdf` (C/D/B + sıra) · `18._ai_architecture.pdf` (
 | **Yol A — Build-time AI Design Audit** → `expected_rules.json` (Figma+dump+kod → LLM → statik kurallar) | AI Arch Faz 2 Yol A | **İz C (AI)** — BridgeFlow/koşul motorunu **bloklamaz**. Runtime’da AI yok (AI Arch Faz 3). Yol B (Live Inspector) İz B’de. |
 | Design Audit Smart Matching (regex / topoloji / uzamsal indeks) | AI Arch Faz 2 | İz C; CE/BridgeFlow v1 değil |
 | Bridge APK “~100KB mikro-sunucu” iddiası | AI Arch Faz 1 | Boyut hedefi değil; işlevsel kapılar (C15–C16) bağlayıcı |
-| Mackolik bridge port | Dev Flow E | **Sıfırdan** (VERDICT_START); referans only |
+| Second-domain bridge port | Dev Flow E | **Sıfırdan** (VERDICT_START); referans only |
 
 ### 14.4 Sıra (PDF F ile hizalı — değişmedi)
 

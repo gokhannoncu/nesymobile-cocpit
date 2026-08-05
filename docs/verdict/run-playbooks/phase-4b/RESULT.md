@@ -163,7 +163,7 @@ Preflight `2026-08-05 12:45–12:49 +03` arasında alındı.
 | `src/registries/entities.ts` | 7 entity, her biri business key + redaction + freshness ile |
 | `src/registries/targets.ts` | 10 target; `nesy.target.stop-row` canonical 4 aşamalı provider chain |
 | `src/registries/actions.ts` | 8 semantic action |
-| `src/registries/capabilities.ts` | 16 capability, 3 katman (`verdict.core` 6 / `nesy` 9 / `mackolik` 1) |
+| `src/registries/capabilities.ts` | 15 capability, 2 katman (`verdict.core` 6 / `domain.nesy` 9) |
 | `src/registries/features.ts` | 3 feature blueprint; digest yalnız executable half'tan |
 | `src/evidence/sources.ts` | 35 evidence source (UI 16 / APP 10 / LOCAL 4 / REMOTE 5) |
 | `src/evidence/derived.ts` | 4 derived fact, hepsi correlated + `preserveInputs` |
@@ -255,7 +255,7 @@ gevşetilmedi, `.skip`/`.only` eklenmedi.
 ### 7.1 Leakage taramaları (4B.19)
 
 ```bash
-rg -n "OPEN_STOP|COURIER_LOGIN|SELECT_ROUTE|PROCESS_PARCEL|COMPLETE_DELIVERY|TOUR_APPROVAL|APPROVE_TOUR|STOP|PARCEL|SHIPMENT|DELIVERY|COURIER|ROUTE|MATCH|BETTING" \
+rg -n "OPEN_STOP|COURIER_LOGIN|SELECT_ROUTE|PROCESS_PARCEL|COMPLETE_DELIVERY|TOUR_APPROVAL|APPROVE_TOUR|STOP|PARCEL|SHIPMENT|DELIVERY|COURIER|ROUTE" \
   packages/workflow-contract/src packages/bridge-contract/src packages/bridge-client/src
 ```
 
@@ -266,8 +266,7 @@ kategoriden:
    kelime listesi (`FORBIDDEN_DOMAIN_TOKENS`, `FORBIDDEN_DOMAIN_WORDS`).
 2. `*_MISMATCH` identifier'ları (`PROTOCOL_VERSION_MISMATCH`,
    `ENTITY_MISMATCH`, `OPERAND_PATH_MISMATCH`, `EXPECTED_MATCH` …). Phase 4A'nın
-   guard precision testi bunları bilinçli olarak temiz sayıyor: `MATCH` segment
-   bazlı eşleşir, `MISMATCH` tek segmenttir.
+   guard precision testi bunları bilinçli olarak temiz sayıyor.
 3. Doc yorumlarındaki yasak açıklamaları.
 
 ```bash
@@ -314,7 +313,7 @@ testlerin negatif payload string'leri (`"eval('x')"`,
 | 15 | LaunchProfile setup vs real product verdict ayrımını taşıyor | `PASS` | `SETUP_LAUNCH_PRODUCES_VERDICT` + `SETUP_LAUNCH_WITHOUT_ISOLATION` + `REAL_LOGIN_WITH_PREPARATION_OPS`; `invalid-setup-produces-verdict.json` fixture'ı reddediliyor |
 | 16 | TestProfile preview/release/fault/differential policy validation var | `PASS` | `PREVIEW_PROFILE_GATES_RELEASE`, `GATING_PROFILE_SAMPLES_EVIDENCE`, `FAULT_WITHOUT_CORRELATION`, `FAULT_WITHOUT_EXPECTED_RECOVERY`, `DIFFERENTIAL_WITHOUT_BASELINE`, `DIFFERENTIAL_WITHOUT_CRITICAL_FACTS`; gating campaign'in gating profile içermesi de zorunlu |
 | 17 | FeatureAuthoringMetadata ve FeatureExecutableContract digest ayrımı var | `PASS` | `computeFeatureExecutableDigest` yalnız executable half'ı alıyor; "computes the digest over the executable contract alone" testi description/tags/reviewNotes/lastEditedBy değişince digest'in **değişmediğini**, `contractVersion` değişince değiştiğini kanıtlıyor. `AUTHORING_FIELD_IN_EXECUTABLE` split'in tekrar bozulmasını engelliyor. |
-| 18 | Capability catalog katmanlı | `PASS` | `CAPABILITY_LAYERS = [verdict.core, nesy, mackolik]`; `CAPABILITY_LAYER_PREFIX_MISMATCH`, `DOMAIN_CAPABILITY_CLAIMS_CORE` (promotion evidence'ı olmadan core'a terfi reddi), `UNDETECTED_RUNTIME_CAPABILITY`. Nesy pack 16 capability'yi 3 katmana dağıtıyor. |
+| 18 | Capability catalog katmanlı | `PASS` | Shared `CAPABILITY_LAYERS = [verdict.core]`; domain-specific capability'ler generic `domain.<pack>` namespace'i altında kalıyor. `CAPABILITY_LAYER_PREFIX_MISMATCH`, `DOMAIN_CAPABILITY_CLAIMS_CORE` (promotion evidence'ı olmadan core'a terfi reddi), `UNDETECTED_RUNTIME_CAPABILITY`. Nesy pack 15 capability'yi 2 katmana dağıtıyor: `verdict.core` ve `domain.nesy`. |
 | 19 | AI_SUGGESTED invariant release gate'e bağlanamıyor | `PASS` | `GATING_INVARIANT_AUTHORITIES = [PRODUCT_APPROVED, TECHNICAL_DEFAULT]`; `AI_INVARIANT_GATES_RELEASE`. Nesy pack'te gerçek bir AI_SUGGESTED invariant var (`queue-drains-within-five-minutes`) ve `bindsReleaseGate: false`; gate'e çevrilirse test kırmızı. |
 | 20 | Reusable Flow Fragment terminal verdict üretemiyor | `PASS` | `producesTerminalVerdict: false` literal tipte + runtime `FRAGMENT_PRODUCES_VERDICT`; `FRAGMENT_HAS_FINAL_ORACLE` fragment'a oracle eklenmesini de reddediyor |
 | 21 | Deterministic bundle serialization/digest var | `PASS` | `canonical.ts`; key sırası bağımsız, `undefined` düşer / `null` kalır, array sırası korunur, non-finite sayı reddedilir (`JSON.stringify(NaN)` → `null` tuzağı), digest `sha256:` prefixli. Aynı bundle iki kez → aynı digest; tek alan değişince farklı. |
@@ -358,7 +357,7 @@ Bu işler Phase 4B sonucunu bloklamaz; ilgili fazlara devredilecektir:
 | BridgeFlowExecutor / Run Queue / Test Data Broker runtime | Phase 5 | Execution plane Phase 4B contract scope'u değildir. |
 | Cockpit Domain Pack Manager UI | Phase 6 | API/contract olmadan UI premature olur. |
 | Maestro removal / live cutover | Phase 9 | BridgeFlow runtime ve UI cutover tamamlanmadan yapılamaz. |
-| Maçkolik production Domain Pack | Later CP6/CP7+ | Phase 4B Nesy reference ve shared Domain Pack modelini hazırlar; Maçkolik reference hazırlıkları future scope. |
+| Second-domain production Domain Pack | Later CP6/CP7+ | Phase 4B Nesy reference ve shared Domain Pack modelini hazırlar; başka müşteri/domain reference hazırlıkları future scope. |
 
 ## 11. Notes for Phase 4C
 

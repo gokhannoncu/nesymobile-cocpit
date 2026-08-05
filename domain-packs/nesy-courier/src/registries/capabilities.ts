@@ -2,15 +2,13 @@
  * ===========================================================================
  *  Nesy Courier capability catalog  (Plan D.6B · 4B.15)
  *
- *  Three layers, deliberately: `verdict.core` for what every tenant needs,
- *  `nesy` for this tenant's App Adapter and back-office seams, and a single
- *  `mackolik` entry.
+ *  Two layers: `verdict.core` for platform capabilities and `domain.nesy` for
+ *  this pack's App Adapter and back-office seams.
  *
- *  That last one is not filler. A catalog with one tenant looks identical to a
- *  catalog with no tenant concept at all, and the first time a second tenant
- *  arrives, `nesy`-shaped assumptions have already hardened into the core layer.
- *  One foreign entry keeps the layering honest and gives the promotion rule
- *  something to be tested against.
+ *  A Nesy reference pack must not contain another customer's layer. Cross-domain
+ *  portability is proven by the shared `domain.<pack>` contract and synthetic
+ *  contract fixtures, not by carrying foreign tenant capabilities inside this
+ *  repository.
  * ===========================================================================
  */
 
@@ -82,8 +80,8 @@ const CORE_CAPABILITIES: readonly CapabilityContract[] = [
 /** Nesy-specific seams. Every automation-only one names its release guard. */
 const NESY_CAPABILITIES: readonly CapabilityContract[] = [
   {
-    capabilityKey: "nesy.adapter.named-query",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.named-query",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Nesy named queries",
     description: "Bounded read of route/task/shipment projections from the courier app.",
@@ -92,8 +90,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.adapter.state-projection",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.state-projection",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Nesy state projection",
     description: "Read a bounded projection of the courier app's own state providers.",
@@ -102,8 +100,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.adapter.event-stream",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.event-stream",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Nesy critical event stream",
     description: "Subscribe to the courier app's structured critical-event seam.",
@@ -112,8 +110,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.adapter.session-prepared",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.session-prepared",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Prepared session",
     description: "Install an already-authenticated session, skipping the login screens.",
@@ -122,8 +120,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.adapter.direct-state",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.direct-state",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Direct state preparation",
     description: "Write a bounded business precondition directly, skipping the UI path that creates it.",
@@ -132,8 +130,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.adapter.release-isolation",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.adapter.release-isolation",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Release isolation assertion",
     description: "Assert at run time that automation-only seams are absent from a non-automation build.",
@@ -142,8 +140,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: false,
   },
   {
-    capabilityKey: "nesy.scanner.inject",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.scanner.inject",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Scanner injection",
     description: "Feed a scan payload to the app as if the camera had read it.",
@@ -152,8 +150,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: true,
   },
   {
-    capabilityKey: "nesy.scanner.manual-entry",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.scanner.manual-entry",
+    layer: "domain.nesy",
     provider: "APP_ADAPTER",
     displayName: "Manual scan entry fallback",
     description: "Enter a scan payload through the app's own manual-entry surface when injection is unavailable.",
@@ -162,8 +160,8 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: false,
   },
   {
-    capabilityKey: "nesy.backoffice.approval-operations",
-    layer: "nesy",
+    capabilityKey: "domain.nesy.backoffice.approval-operations",
+    layer: "domain.nesy",
     provider: "BACKOFFICE_ADAPTER",
     displayName: "Nesy back-office approval operations",
     description: "Typed, audited dispatcher/supervisor operations used by multi-actor slices.",
@@ -172,26 +170,7 @@ const NESY_CAPABILITIES: readonly CapabilityContract[] = [
   },
 ];
 
-/**
- * The second tenant.
- *
- * Present so the layering is exercised rather than asserted. See the header.
- */
-const MACKOLIK_CAPABILITIES: readonly CapabilityContract[] = [
-  {
-    capabilityKey: "mackolik.adapter.named-query",
-    layer: "mackolik",
-    provider: "APP_ADAPTER",
-    displayName: "Maçkolik named queries",
-    description: "Second-tenant named query seam; declared here only to keep the catalog layered.",
-    runtimeDetected: true,
-    detectionRef: "mackolik.adapter.capabilities.namedQuery",
-    automationOnly: true,
-  },
-];
-
 export const NESY_COURIER_CAPABILITIES: readonly CapabilityContract[] = [
   ...CORE_CAPABILITIES,
   ...NESY_CAPABILITIES,
-  ...MACKOLIK_CAPABILITIES,
 ];

@@ -28,10 +28,10 @@
  *
  *  CAPABILITY CATALOG IS LAYERED
  *
- *  `verdict.core` capabilities are platform-wide; `nesy` and `mackolik` are
- *  tenant layers. A domain capability may not be declared as core, and may not
- *  be promoted into the core layer without recorded evidence — otherwise the
- *  first tenant's assumptions become everyone's platform.
+ *  `verdict.core` capabilities are platform-wide. Domain-specific capabilities
+ *  live under `domain.<pack>`. A domain capability may not be declared as core,
+ *  and may not be promoted into the core layer without recorded evidence —
+ *  otherwise the first tenant's assumptions become everyone's platform.
  * ===========================================================================
  */
 
@@ -141,15 +141,20 @@ export function computeFeatureExecutableDigest(executable: FeatureExecutableCont
 /**
  * Catalog layers.
  *
- * `verdict.core` is the platform layer. `nesy` and `mackolik` are tenant layers
- * — two of them on purpose, so "is this really platform-wide?" is a question the
- * type system asks at least once.
+ * `verdict.core` is the platform layer. Domain-specific layers use the
+ * `domain.<pack>` namespace. The shared contract deliberately does not hardcode
+ * customer or product names; concrete tenant layers belong in their own Domain
+ * Pack.
  */
-export type CapabilityLayer = "verdict.core" | "nesy" | "mackolik";
+export type CoreCapabilityLayer = "verdict.core";
 
-export const CAPABILITY_LAYERS: readonly CapabilityLayer[] = ["verdict.core", "nesy", "mackolik"];
+export type DomainCapabilityLayer = `domain.${string}`;
 
-export const CORE_CAPABILITY_LAYER: CapabilityLayer = "verdict.core";
+export type CapabilityLayer = CoreCapabilityLayer | DomainCapabilityLayer;
+
+export const CAPABILITY_LAYERS: readonly CoreCapabilityLayer[] = ["verdict.core"];
+
+export const CORE_CAPABILITY_LAYER: CoreCapabilityLayer = "verdict.core";
 
 /** Which side provides the capability. */
 export type CapabilityProvider = "BRIDGE" | "APP_ADAPTER" | "BACKOFFICE_ADAPTER" | "COCKPIT_RUNTIME" | "DEVICE";
@@ -170,7 +175,7 @@ export const CAPABILITY_PROVIDERS: readonly CapabilityProvider[] = [
  * `verdict.core` must carry evidence that a second tenant needs the same shape.
  */
 export interface CapabilityContract {
-  /** Layer-prefixed id, e.g. "verdict.core.bridge.tap" or "nesy.scanner.inject". */
+  /** Layer-prefixed id, e.g. "verdict.core.bridge.tap" or "domain.example.scanner.inject". */
   capabilityKey: string;
   layer: CapabilityLayer;
   provider: CapabilityProvider;
@@ -274,10 +279,7 @@ export function validateCapabilityContract(
   }
 
   if (capability.layer === CORE_CAPABILITY_LAYER) {
-    const tenantLayers = CAPABILITY_LAYERS.filter((layer) => layer !== CORE_CAPABILITY_LAYER);
-    const looksTenantSpecific = tenantLayers.some((layer) =>
-      capability.capabilityKey.toLowerCase().includes(`.${layer}.`),
-    );
+    const looksTenantSpecific = capability.capabilityKey.toLowerCase().includes(".domain.");
     if (looksTenantSpecific && (capability.promotionEvidenceRefs ?? []).length === 0) {
       violations.push({
         code: "DOMAIN_CAPABILITY_CLAIMS_CORE",

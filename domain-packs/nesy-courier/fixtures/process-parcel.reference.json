@@ -162,7 +162,7 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "nesy.scanner.inject",
+              "capability": "domain.nesy.scanner.inject",
               "optional": false
             }
           ],
@@ -240,7 +240,7 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "nesy.adapter.named-query",
+              "capability": "domain.nesy.adapter.named-query",
               "optional": false
             }
           ],
@@ -342,7 +342,7 @@
           "optional": false
         },
         {
-          "capability": "nesy.scanner.inject",
+          "capability": "domain.nesy.scanner.inject",
           "optional": false
         }
       ],
@@ -523,7 +523,7 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "nesy.scanner.inject",
+            "capability": "domain.nesy.scanner.inject",
             "optional": false
           }
         ],
@@ -601,7 +601,7 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "nesy.adapter.named-query",
+            "capability": "domain.nesy.adapter.named-query",
             "optional": false
           }
         ],
@@ -703,7 +703,7 @@
         "optional": false
       },
       {
-        "capability": "nesy.scanner.inject",
+        "capability": "domain.nesy.scanner.inject",
         "optional": false
       }
     ],
@@ -752,7 +752,7 @@
     "authoredBy": "HAND",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.resolve-target",
-      "nesy.scanner.inject"
+      "domain.nesy.scanner.inject"
     ],
     "legs": [
       {
@@ -823,10 +823,10 @@
   "requiredCapabilityRefs": [
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
-    "nesy.adapter.named-query",
-    "nesy.adapter.event-stream",
-    "nesy.scanner.inject",
-    "nesy.adapter.release-isolation"
+    "domain.nesy.adapter.named-query",
+    "domain.nesy.adapter.event-stream",
+    "domain.nesy.scanner.inject",
+    "domain.nesy.adapter.release-isolation"
   ],
   "releaseIsolation": {
     "automationOnly": true,

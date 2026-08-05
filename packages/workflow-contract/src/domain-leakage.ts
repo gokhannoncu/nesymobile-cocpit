@@ -26,8 +26,8 @@
 /**
  * Business words that must not appear in Core vocabulary.
  *
- * Two domains on purpose: courier words prove Nesy is not baked in, sports
- * words prove the second tenant is not either.
+ * Courier words prove Nesy is not baked into Core. Additional future-domain
+ * examples must be synthetic unless a real tenant pack exists in this repo.
  */
 export const FORBIDDEN_DOMAIN_TOKENS: readonly string[] = [
   "COURIER",
@@ -39,14 +39,11 @@ export const FORBIDDEN_DOMAIN_TOKENS: readonly string[] = [
   "OPEN_STOP",
   "APPROVE_TOUR",
   "COURIER_LOGIN",
-  "BETTING",
-  "ODDS",
 ];
 
 /**
  * Words too generic to match as substrings.
  *
- * `MATCH` hides inside `MATCHES`, `matchesAllowlistedPattern` and `mismatch`;
  * `STOP` hides inside `STOPPED` and `NONSTOP`. A guard that flagged those would
  * cry wolf, and a test that cries wolf gets deleted — so precision here is part
  * of the contract.
@@ -57,7 +54,7 @@ export const FORBIDDEN_DOMAIN_TOKENS: readonly string[] = [
  * whole segments — an identifier that wants the word `stop` as its own segment
  * must find another word, which for Core vocabulary is always possible.
  */
-export const FORBIDDEN_DOMAIN_WORDS: readonly string[] = ["STOP", "STOPS", "MATCH", "TOURS"];
+export const FORBIDDEN_DOMAIN_WORDS: readonly string[] = ["STOP", "STOPS", "TOURS"];
 
 /**
  * Splits an identifier into uppercase segments.

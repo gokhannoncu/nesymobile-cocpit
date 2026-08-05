@@ -855,8 +855,8 @@
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
     "verdict.core.remote.allowlisted-operation",
-    "nesy.adapter.named-query",
-    "nesy.adapter.event-stream"
+    "domain.nesy.adapter.named-query",
+    "domain.nesy.adapter.event-stream"
   ],
   "releaseIsolation": {
     "automationOnly": false,

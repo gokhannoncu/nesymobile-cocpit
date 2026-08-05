@@ -65,15 +65,15 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   capabilityRequirements: [
     { capabilityRef: "verdict.core.bridge.tap", optional: false, reason: "Every slice acts on the UI." },
     { capabilityRef: "verdict.core.bridge.resolve-target", optional: false, reason: "Target resolution provider chain." },
-    { capabilityRef: "nesy.adapter.named-query", optional: false, reason: "Bounded projections back the evidence sources." },
+    { capabilityRef: "domain.nesy.adapter.named-query", optional: false, reason: "Bounded projections back the evidence sources." },
     {
-      capabilityRef: "nesy.scanner.inject",
+      capabilityRef: "domain.nesy.scanner.inject",
       optional: true,
       fallback: "DEGRADED_EVIDENCE",
       reason: "A device without the injection seam can fall back to the app's manual-entry surface.",
     },
     {
-      capabilityRef: "nesy.backoffice.approval-operations",
+      capabilityRef: "domain.nesy.backoffice.approval-operations",
       optional: true,
       fallback: "SKIP_SLICE",
       reason: "Only TOUR_APPROVAL_LIFECYCLE needs the dispatcher operations; other slices run without them.",

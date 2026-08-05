@@ -66,7 +66,7 @@ export const NESY_COURIER_LAUNCH_PROFILES: readonly LaunchProfile[] = [
       assertionFactKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED,
       allowedEnvironments: ["qa", "staging", "automation"],
     },
-    requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.set-text", "nesy.adapter.release-isolation"],
+    requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.set-text", "domain.nesy.adapter.release-isolation"],
   },
   {
     profileKey: NESY_LAUNCH_PROFILES.preparedSession,
@@ -95,7 +95,7 @@ export const NESY_COURIER_LAUNCH_PROFILES: readonly LaunchProfile[] = [
       assertionFactKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED,
       allowedEnvironments: ["qa", "automation"],
     },
-    requiredCapabilityRefs: ["nesy.adapter.session-prepared", "nesy.adapter.release-isolation"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.session-prepared", "domain.nesy.adapter.release-isolation"],
   },
   {
     profileKey: NESY_LAUNCH_PROFILES.directState,
@@ -123,7 +123,7 @@ export const NESY_COURIER_LAUNCH_PROFILES: readonly LaunchProfile[] = [
       assertionFactKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED,
       allowedEnvironments: ["qa", "automation"],
     },
-    requiredCapabilityRefs: ["nesy.adapter.direct-state", "nesy.adapter.session-prepared", "nesy.adapter.release-isolation"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.direct-state", "domain.nesy.adapter.session-prepared", "domain.nesy.adapter.release-isolation"],
   },
   {
     profileKey: NESY_LAUNCH_PROFILES.reuseSession,
@@ -153,6 +153,6 @@ export const NESY_COURIER_LAUNCH_PROFILES: readonly LaunchProfile[] = [
       assertionFactKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED,
       allowedEnvironments: ["qa", "automation"],
     },
-    requiredCapabilityRefs: ["nesy.adapter.session-prepared", "nesy.adapter.release-isolation"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.session-prepared", "domain.nesy.adapter.release-isolation"],
   },
 ];

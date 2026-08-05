@@ -68,9 +68,9 @@ export const NESY_COURIER_TEST_PROFILES: readonly TestProfileDefinition[] = [
     requiredCapabilityRefs: [
       "verdict.core.bridge.tap",
       "verdict.core.remote.allowlisted-operation",
-      "nesy.adapter.named-query",
-      "nesy.scanner.inject",
-      "nesy.backoffice.approval-operations",
+      "domain.nesy.adapter.named-query",
+      "domain.nesy.scanner.inject",
+      "domain.nesy.backoffice.approval-operations",
     ],
   },
   {
@@ -84,7 +84,7 @@ export const NESY_COURIER_TEST_PROFILES: readonly TestProfileDefinition[] = [
     releaseGate: false,
     telemetry: { captureArtifacts: false, evidenceSampleEveryN: 3, retainRawEvidence: false },
     performanceBudgetRefs: [],
-    requiredCapabilityRefs: ["nesy.adapter.session-prepared", "nesy.scanner.inject"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.session-prepared", "domain.nesy.scanner.inject"],
   },
   {
     profileKey: NESY_TEST_PROFILES.badDay,
@@ -118,7 +118,7 @@ export const NESY_COURIER_TEST_PROFILES: readonly TestProfileDefinition[] = [
       ],
     },
     performanceBudgetRefs: [],
-    requiredCapabilityRefs: ["verdict.core.remote.allowlisted-operation", "nesy.backoffice.approval-operations"],
+    requiredCapabilityRefs: ["verdict.core.remote.allowlisted-operation", "domain.nesy.backoffice.approval-operations"],
   },
   {
     profileKey: NESY_TEST_PROFILES.differentialBaseline,
@@ -142,7 +142,7 @@ export const NESY_COURIER_TEST_PROFILES: readonly TestProfileDefinition[] = [
       onCriticalDiff: "OPERATOR_ATTENTION",
     },
     performanceBudgetRefs: [{ budgetRef: "nesy.budget.stop-open-latency", appliesToRef: "nesy.macro.open-stop" }],
-    requiredCapabilityRefs: ["nesy.adapter.session-prepared"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.session-prepared"],
   },
 ];
 

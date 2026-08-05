@@ -69,7 +69,7 @@ artifact tek bir yolculuk olarak okunabilir.
 | Test profile | 4 | `release-core`, `preview-smoke`, `bad-day`, `differential-baseline` |
 | Campaign | 1 | `nesy.campaign.release-gate` |
 | Feature blueprint | 3 | stop-handling, delivery-completion, tour-approval |
-| Capability | 16 | `verdict.core` 6, `nesy` 9, `mackolik` 1 |
+| Capability | 15 | `verdict.core` 6, `domain.nesy` 9 |
 | Remote adapter | 1 | `nesy.backoffice`, 9 allowlisted operation |
 
 ### 2.1 Screen / Surface ayrımı neden zorunlu

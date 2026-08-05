@@ -257,7 +257,7 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "nesy.backoffice.approval-operations",
+              "capability": "domain.nesy.backoffice.approval-operations",
               "optional": false
             }
           ],
@@ -486,7 +486,7 @@
           "optional": false
         },
         {
-          "capability": "nesy.backoffice.approval-operations",
+          "capability": "domain.nesy.backoffice.approval-operations",
           "optional": false
         }
       ],
@@ -778,7 +778,7 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "nesy.backoffice.approval-operations",
+            "capability": "domain.nesy.backoffice.approval-operations",
             "optional": false
           }
         ],
@@ -1007,7 +1007,7 @@
         "optional": false
       },
       {
-        "capability": "nesy.backoffice.approval-operations",
+        "capability": "domain.nesy.backoffice.approval-operations",
         "optional": false
       }
     ],
@@ -1151,8 +1151,8 @@
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
     "verdict.core.remote.allowlisted-operation",
-    "nesy.backoffice.approval-operations",
-    "nesy.adapter.event-stream"
+    "domain.nesy.backoffice.approval-operations",
+    "domain.nesy.adapter.event-stream"
   ],
   "releaseIsolation": {
     "automationOnly": false,

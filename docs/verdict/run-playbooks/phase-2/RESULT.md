@@ -148,7 +148,7 @@ ayrı state yoktu, ve poison row restart'ta attempt sayacını sıfırlıyordu.
 ### Yeni shared contract
 
 `packages/control-contract/src/durable-events.ts` (yeni, `index.ts`'den `export *`).
-Domain-neutral: `STOP`, `PARCEL`, `MATCH`, `BETTING`, `COURIER_LOGIN`, `OPEN_STOP`
+Domain-neutral: `STOP`, `PARCEL`, `COURIER_LOGIN`, `OPEN_STOP`
 **yok**. Taşıdığı tipler: `EvidenceDeliveryLane`, `EvidenceDeliveryContract`,
 `DurableEventRef`, `DurableEventCursor` (+ encode/decode), `DurableEventFilter`,
 `DurableEventCorrelation`, `DurableReceipt`, `OrderedEvidence`, `WaitEventRequest`,

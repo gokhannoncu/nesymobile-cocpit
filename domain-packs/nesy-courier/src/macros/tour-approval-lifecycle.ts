@@ -149,7 +149,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       next: "verify-approved-status",
       timeoutMs: 40_000,
       retryPolicy: KEYED_MUTATION_RETRY,
-      capabilityRequirements: [requires("nesy.backoffice.approval-operations")],
+      capabilityRequirements: [requires("domain.nesy.backoffice.approval-operations")],
     }),
     kind: "REMOTE_ACTION",
     spec: {
@@ -275,7 +275,7 @@ const GENERIC_IR = irDocument({
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.remote.allowlisted-operation"),
-    requires("nesy.backoffice.approval-operations"),
+    requires("domain.nesy.backoffice.approval-operations"),
   ],
   sourceMap: [
     sourceMapEntry("sm-appr-1", "wait-day-close", NESY_TOUR_APPROVAL_MACRO_KEY),
@@ -429,8 +429,8 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
     "verdict.core.remote.allowlisted-operation",
-    "nesy.backoffice.approval-operations",
-    "nesy.adapter.event-stream",
+    "domain.nesy.backoffice.approval-operations",
+    "domain.nesy.adapter.event-stream",
   ],
   expansionSnapshot: EXPANSION,
   bridgeFlowPlanSnapshot: BRIDGE_PLAN,

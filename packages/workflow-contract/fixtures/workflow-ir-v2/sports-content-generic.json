@@ -43,7 +43,7 @@
       "timeoutMs": 12000,
       "retryPolicy": { "maxAttempts": 2, "backoffMs": 400, "effectClass": "READ_ONLY" },
       "capabilityRequirements": [{ "capability": "sdk.named_query", "optional": false }],
-      "queryRef": "mackolik.feed.listed_events",
+      "queryRef": "fixture.feed.listed_events",
       "maxRows": 25,
       "outputVariable": "listedEvents",
       "next": "switch-surface"

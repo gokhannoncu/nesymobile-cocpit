@@ -93,7 +93,7 @@ Bu fazın hedefi CP4B-Core'dur:
 - Evidence Source Registry contract'ını yaz.
 - LaunchProfile, TestProfileDefinition ve minimal Campaign/Profile contract'larını yaz.
 - FeatureAuthoringMetadata ile FeatureExecutableContract ayrımını yaz.
-- CapabilityContract katmanlarını yaz: verdict.core, nesy, mackolik.
+- CapabilityContract katmanlarını yaz: `verdict.core` ve generic `domain.<pack>`. Shared contract içinde gerçek müşteri/tenant adı hardcode etme.
 - Domain Pack deterministic canonical serialization/digest/immutable bundle contract'ını yaz.
 - Runtime arbitrary TypeScript/JavaScript execution'ını reddeden validation yaz.
 - Domain Pack'in RunManifest/TestExecution/Lease/ResourceLease/SchedulerDisposition/full ImpactGraph gibi execution/scheduler tiplerini taşımadığını contract testleriyle koru.
@@ -349,7 +349,7 @@ Test Data Broker runtime
 Full Impact Graph runtime
 Full Coverage Graph runtime
 Full Component Registry UI
-Cross-feature Maçkolik production catalog
+Cross-feature second-domain production catalog
 PR impact selection runtime
 BridgeFlowCompiler production implementation
 BridgeFlowExecutor production implementation
@@ -476,8 +476,6 @@ COURIER
 ROUTE
 PAYMENT
 FISCAL
-MATCH
-BETTING
 ```
 
 Bu kelimeler yalnız Domain Pack ve reference fixture/artifact içinde bulunabilir.
@@ -922,7 +920,7 @@ invalid-domain-execution-leakage.json
 Minimum taramalar:
 
 ```bash
-rg -n "OPEN_STOP|COURIER_LOGIN|SELECT_ROUTE|PROCESS_PARCEL|COMPLETE_DELIVERY|TOUR_APPROVAL|APPROVE_TOUR|STOP|PARCEL|SHIPMENT|DELIVERY|COURIER|ROUTE|MATCH|BETTING" packages/workflow-contract packages/bridge-contract packages/bridge-client
+rg -n "OPEN_STOP|COURIER_LOGIN|SELECT_ROUTE|PROCESS_PARCEL|COMPLETE_DELIVERY|TOUR_APPROVAL|APPROVE_TOUR|STOP|PARCEL|SHIPMENT|DELIVERY|COURIER|ROUTE" packages/workflow-contract packages/bridge-contract packages/bridge-client
 rg -n "RunManifest|TestExecution|Lease|ResourceLease|SchedulerDisposition|WorkerHeartbeat|ExecutionLifecycle|ImpactGraph" packages/domain-pack-contracts/src
 ```
 

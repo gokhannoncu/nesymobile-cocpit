@@ -104,7 +104,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["sessionId"], crossPlane: true },
     redaction: { redactPaths: ["accessToken", "refreshToken"], hashPaths: ["userId"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.state-projection"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.state-projection"],
   },
   {
     sourceKey: "nesy.app.available-stops",
@@ -118,7 +118,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["routeCode"], crossPlane: true },
     redaction: { redactPaths: ["items[].address", "items[].recipientName", "items[].recipientPhone"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
   {
     sourceKey: "nesy.app.active-stop",
@@ -132,7 +132,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["address", "recipientName", "recipientPhone"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.state-projection"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.state-projection"],
   },
   {
     sourceKey: "nesy.app.selected-route",
@@ -146,7 +146,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["assignedCourierName"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.state-projection"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.state-projection"],
   },
   {
     sourceKey: "nesy.app.scan-accepted",
@@ -160,7 +160,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["rawScanPayload"], hashPaths: ["scanValue"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.event-stream"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
     sourceKey: "nesy.app.parcel-state",
@@ -174,7 +174,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["contentsDescription"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
   {
     sourceKey: "nesy.app.delivery-submitted",
@@ -188,7 +188,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["signatureImage", "recipientName"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.event-stream"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
     sourceKey: "nesy.app.approval-requested",
@@ -202,7 +202,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["requesterName"], hashPaths: ["requesterId"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.event-stream"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
     sourceKey: "nesy.app.approval-push",
@@ -219,7 +219,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactWholePayload: true, redactPaths: [] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.event-stream"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
     sourceKey: "nesy.app.release-isolation",
@@ -233,7 +233,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["buildFingerprint"], crossPlane: false },
     redaction: { redactPaths: [] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.release-isolation"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.release-isolation"],
   },
 ];
 
@@ -250,7 +250,7 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["sessionId"], crossPlane: true },
     redaction: { redactPaths: ["accessToken", "refreshToken"], hashPaths: ["userId"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
   {
     // The queue-is-not-a-plane entry. See the file header.
@@ -265,7 +265,7 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["payload"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
   {
     sourceKey: "nesy.local.offline-queue-drained",
@@ -279,7 +279,7 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["payload"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
   {
     sourceKey: "nesy.local.parcel-record",
@@ -293,7 +293,7 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["contentsDescription"], hashPaths: ["parcelBarcode"] },
     preservesRawEvidence: true,
-    requiredCapabilityRefs: ["nesy.adapter.named-query"],
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
 ];
 

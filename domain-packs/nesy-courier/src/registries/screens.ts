@@ -92,7 +92,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
         kind: "TEST_GATEWAY",
         entryRef: "nesy.entry.gateway-route-list",
         provesUserPath: false,
-        requiredCapabilityRefs: ["nesy.adapter.direct-state"],
+        requiredCapabilityRefs: ["domain.nesy.adapter.direct-state"],
       },
     ],
     readiness: {
@@ -186,7 +186,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
         kind: "DEEP_LINK",
         entryRef: "nesy.link.vehicle-loading",
         provesUserPath: false,
-        requiredCapabilityRefs: ["nesy.adapter.direct-state"],
+        requiredCapabilityRefs: ["domain.nesy.adapter.direct-state"],
       },
       {
         kind: "WORKFLOW_ENTRY",

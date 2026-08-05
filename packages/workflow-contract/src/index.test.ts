@@ -748,7 +748,7 @@ describe("domain leakage guard", () => {
     expect(findDomainLeakage("approveTour", "x").map((h) => h.token)).toContain("TOUR");
     expect(findDomainLeakage("courierLogin", "x").map((h) => h.token)).toContain("COURIER");
     expect(findDomainLeakage("parcelCount", "x").map((h) => h.token)).toContain("PARCEL");
-    expect(findDomainLeakage("bettingOdds", "x").map((h) => h.token)).toContain("BETTING");
+    expect(findDomainLeakage("shipmentBarcode", "x").map((h) => h.token)).toContain("SHIPMENT");
   });
 
   it("does not fire on Core words that merely contain a business substring", () => {

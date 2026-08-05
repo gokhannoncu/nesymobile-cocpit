@@ -154,7 +154,7 @@ describe("registries", () => {
       testProfiles: 4,
       campaigns: 1,
       features: 3,
-      capabilities: 16,
+      capabilities: 15,
       adapterOperations: 9,
     });
   });
@@ -249,10 +249,10 @@ describe("registries", () => {
     }
   });
 
-  it("keeps the capability catalog layered across three layers", () => {
+  it("keeps the capability catalog limited to platform and the Nesy domain layer", () => {
     const bundle = buildNesyCourierBundle();
     const layers = new Set(bundle.registries.capabilities.map((c) => c.layer));
-    expect([...layers].sort()).toEqual(["mackolik", "nesy", "verdict.core"]);
+    expect([...layers].sort()).toEqual(["domain.nesy", "verdict.core"]);
     for (const capability of bundle.registries.capabilities) {
       expect(capability.capabilityKey.startsWith(`${capability.layer}.`)).toBe(true);
     }

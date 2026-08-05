@@ -70,7 +70,7 @@ const STOP_HANDLING_EXECUTABLE: FeatureExecutableContract = {
   requiredCapabilityRefs: [
     "verdict.core.bridge.tap",
     "verdict.core.bridge.resolve-target",
-    "nesy.adapter.named-query",
+    "domain.nesy.adapter.named-query",
   ],
   screenRefs: [NESY_SCREENS.routeStopList, NESY_SCREENS.stopTaskList],
   surfaceRefs: [NESY_SURFACES.routeSelectionDialog],
@@ -107,8 +107,8 @@ const DELIVERY_EXECUTABLE: FeatureExecutableContract = {
   requiredCapabilityRefs: [
     "verdict.core.bridge.tap",
     "verdict.core.remote.allowlisted-operation",
-    "nesy.scanner.inject",
-    "nesy.adapter.named-query",
+    "domain.nesy.scanner.inject",
+    "domain.nesy.adapter.named-query",
   ],
   screenRefs: [NESY_SCREENS.deliveryFlow],
   surfaceRefs: [NESY_SURFACES.scannerSurface, NESY_SURFACES.paymentSurface, NESY_SURFACES.fiscalSurface],
@@ -135,7 +135,7 @@ const TOUR_APPROVAL_EXECUTABLE: FeatureExecutableContract = {
       bindsReleaseGate: true,
     },
   ],
-  requiredCapabilityRefs: ["verdict.core.remote.allowlisted-operation", "nesy.backoffice.approval-operations"],
+  requiredCapabilityRefs: ["verdict.core.remote.allowlisted-operation", "domain.nesy.backoffice.approval-operations"],
   screenRefs: [NESY_SCREENS.endOfDay],
   surfaceRefs: [],
   notResponsibleFor: [

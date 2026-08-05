@@ -124,7 +124,7 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "nesy.adapter.named-query",
+              "capability": "domain.nesy.adapter.named-query",
               "optional": false
             }
           ],
@@ -594,7 +594,7 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "nesy.adapter.named-query",
+            "capability": "domain.nesy.adapter.named-query",
             "optional": false
           }
         ],
@@ -1010,7 +1010,7 @@
     "verdict.core.bridge.resolve-target",
     "verdict.core.bridge.watch-fact",
     "verdict.core.remote.allowlisted-operation",
-    "nesy.adapter.named-query"
+    "domain.nesy.adapter.named-query"
   ],
   "releaseIsolation": {
     "automationOnly": false,

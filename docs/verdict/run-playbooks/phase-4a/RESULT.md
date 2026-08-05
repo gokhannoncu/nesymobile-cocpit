@@ -196,8 +196,8 @@ Yasak pattern taraması (`packages/workflow-contract/src/`): `as any`, `@ts-igno
 | 15. `REMOTE_ACTION` / `EXTERNAL_ACTION` domain-neutral allowlisted adapter primitive | `PASS` | `adapterRef`/`operationRef` + 13 alan; `url`/`endpoint`/`method`/`headers`/`body`/`host`/`path`/`script`/`query` field'ları `EXTERNAL_ACTION_INVALID` |
 | 16. Non-idempotent external action unsafe retry ile validate edilemiyor | `PASS` | `UNSAFE_RETRY` (non-idempotent + keyed değil, ve `UNKNOWN` effect); step-level `retryPolicy` için de aynı kural |
 | 17. Setup remote action ürün PASS'i üretemiyor | `PASS` | `SETUP_PRODUCES_VERDICT`; ayrıca `VALIDATION` + output fact yoksa `MISSING_OUTPUT_FACT` |
-| 18. En az iki generic domain fixture aynı IR union'larıyla validate/hash ediliyor | `PASS` | `courier-generic` + `sports-content-generic`; ikisi birlikte `FOR_EACH/SWITCH/CONDITION/WAIT_EVENT/WAIT_ANY/REMOTE_ACTION/EXTERNAL_ACTION/CLEANUP` kapsıyor (test assert ediyor); farklı deterministic hash |
-| 19. Shared IR package surface içinde Nesy/Maçkolik business type yok | `PASS` | 10 modülün export surface'i `scanExportSurface` ile taranıyor → 0 hit; guard precision testleri (`matchesAllowlistedPattern`, `correlationMatches`, `STOPPED` false-positive üretmiyor); `legacy-migration.ts` gövdesinde 0 hit |
+| 18. En az iki generic domain fixture aynı IR union'larıyla validate/hash ediliyor | `PASS` | `courier-generic` + synthetic second-domain fixture; ikisi birlikte `FOR_EACH/SWITCH/CONDITION/WAIT_EVENT/WAIT_ANY/REMOTE_ACTION/EXTERNAL_ACTION/CLEANUP` kapsıyor (test assert ediyor); farklı deterministic hash |
+| 19. Shared IR package surface içinde Nesy veya başka gerçek müşteri business type yok | `PASS` | 10 modülün export surface'i `scanExportSurface` ile taranıyor → 0 hit; guard precision testleri (`matchesAllowlistedPattern`, `correlationMatches`, `STOPPED` false-positive üretmiyor); `legacy-migration.ts` gövdesinde 0 hit |
 | 20. Legacy workflow migration source-map üretiyor | `PASS` | Her step için `sourceMapRef` → `ref`/`sourceNodeId`/`legacyPath`; deterministic hash; unmapped node type `UNSUPPORTED_LEGACY_ACTION` (drop yok) |
 | 21. Phase 4B Domain Pack implementation'ı CP4A geçmeden başlamadı | `PASS` | `packages/domain-pack-contracts` yok; App Adapter/BridgeFlowCompiler/Executor yok; Mobile repo'ya yazılmadı |
 | 22. Typecheck/test green | `PASS` | §7 |
@@ -214,7 +214,7 @@ Devralınan CP3-DUT / B-12 / B-13 / B-14 / B-8 durumları §3'te.
 
 Bilinçli olarak yapılmadı (RUN_PLAY §6 kapsam dışı):
 
-- `packages/domain-pack-contracts` ve Nesy/Maçkolik Domain Pack implementation.
+- `packages/domain-pack-contracts` ve başka müşteri/domain pack implementation.
 - Nesy App Adapter, Mobile `automationRelease` refactor.
 - BridgeFlowCompiler / BridgeFlowExecutor.
 - Cockpit UI route cutover, Maestro sökümü.

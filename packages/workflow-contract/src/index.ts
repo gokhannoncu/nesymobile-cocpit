@@ -7,7 +7,7 @@
  *    1. NO TRANSPORT, NO PERSISTENCE. This package does not know TCP, HTTP,
  *       Prisma or Socket.io. API and Web both consume it; nothing here consumes
  *       them.
- *    2. NO DOMAIN. `STOP`, `PARCEL`, `TOUR`, `COURIER`, `MATCH`, `BETTING`,
+ *    2. NO DOMAIN. `STOP`, `PARCEL`, `TOUR`, `COURIER`,
  *       `OPEN_STOP`, `APPROVE_TOUR`, `COURIER_LOGIN` cannot appear in this
  *       package's surface. A Domain Pack expands INTO this union; it never
  *       extends it. `domain-leakage.ts` makes that a failing test rather than a

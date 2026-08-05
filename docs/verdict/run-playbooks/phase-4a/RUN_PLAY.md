@@ -101,8 +101,8 @@ komutlarını çalıştır.
 
 Kurallar:
 - CP4A geçmeden Domain Pack implementation yazma.
-- Nesy-specific veya Maçkolik-specific business type shared IR'a sokma.
-- STOP, PARCEL, TOUR, COURIER, MATCH, BETTING, OPEN_STOP, APPROVE_TOUR,
+- Nesy-specific veya başka gerçek müşteriye/domain'e özel business type shared IR'a sokma.
+- STOP, PARCEL, TOUR, COURIER, OPEN_STOP, APPROVE_TOUR,
   COURIER_LOGIN gibi domain semantic type/command shared workflow contract'ta
   bulunamaz.
 - Condition expression serbest JavaScript/eval/function constructor kullanamaz.
@@ -155,10 +155,11 @@ External Action Primitive
   → typed allowlisted REMOTE_ACTION / EXTERNAL_ACTION
 ```
 
-Bu faz Domain Pack implementation fazı değildir. Courier, stop, parcel, tour,
-match, betting gibi kavramlar yalnız acceptance fixture adı veya test açıklaması
-olabilir; shared IR union, runtime schema veya package export'u içinde business
-type olarak bulunamaz.
+Bu faz Domain Pack implementation fazı değildir. Courier, stop, parcel, tour
+gibi kavramlar yalnız acceptance fixture adı veya test açıklaması olabilir;
+shared IR union, runtime schema veya package export'u içinde business type olarak
+bulunamaz. İkinci domain örnekleri gerçek müşteri adıyla değil synthetic fixture
+olarak yazılmalıdır.
 
 ## 3. Neden bu sırada?
 
@@ -171,8 +172,8 @@ Master planın bağlayıcı sırası:
 ```
 
 Domain Pack mevcut sınırlı IR'a göre yazılırsa geçici Nesy tipleri kalıcı Core
-contract'a sızar. Sonra Maçkolik gibi ikinci domain geldiğinde Core yeniden
-tasarlanır. Phase 4A bu riski kapatır: önce generic union ve policy alanları
+contract'a sızar. Sonra ikinci domain geldiğinde Core yeniden tasarlanır.
+Phase 4A bu riski kapatır: önce generic union ve policy alanları
 dondurulur, sonra Domain Pack bu contract'ın tüketicisi olur.
 
 ## 4. Recovery state
@@ -275,7 +276,7 @@ Phase 4A'da aşağıdakiler yapılmaz:
 
 - `packages/domain-pack-contracts` production implementation.
 - Nesy Courier Domain Pack implementation.
-- Maçkolik Domain Pack implementation.
+- Başka müşteri/domain pack implementation.
 - Nesy App Adapter veya Mobile `automationRelease` refactor.
 - BridgeFlowCompiler.
 - BridgeFlowExecutor.
@@ -710,8 +711,6 @@ STOP
 PARCEL
 TOUR
 COURIER
-MATCH
-BETTING
 OPEN_STOP
 APPROVE_TOUR
 COURIER_LOGIN
@@ -762,7 +761,7 @@ Phase 4A tamamlandı demek için:
 16. Non-idempotent external action unsafe retry ile compile/validate edilemiyor.
 17. Setup remote action ürün PASS'i üretemiyor.
 18. En az iki generic domain fixture aynı IR union'larıyla validate/hash ediliyor.
-19. Shared IR package surface içinde Nesy/Maçkolik business type yok.
+19. Shared IR package surface içinde Nesy veya başka gerçek müşteri business type'ı yok.
 20. Legacy workflow migration source-map üretiyor.
 21. Phase 4B Domain Pack implementation'ı CP4A geçmeden başlamadı.
 22. Typecheck/test green.
@@ -850,7 +849,7 @@ outcome axes ve typed allowlisted REMOTE_ACTION/EXTERNAL_ACTION primitive'i yaz.
 
 Önemli kurallar:
 - CP4A geçmeden Domain Pack implementation yok.
-- Shared IR domain bilmez. STOP, PARCEL, TOUR, COURIER, MATCH, BETTING,
+- Shared IR domain bilmez. STOP, PARCEL, TOUR, COURIER,
   OPEN_STOP, APPROVE_TOUR, COURIER_LOGIN gibi kavramlar shared IR union/type/export
   surface içinde bulunamaz.
 - Condition engine eval, Function constructor veya arbitrary JS çalıştıramaz.
@@ -885,5 +884,5 @@ Kapanışta:
 ```text
 Bu repo içinde docs/verdict/run-playbooks/phase-4a/RUN_PLAY.md dosyasını oku ve Phase 4A'yı uygula.
 Önce docs/verdict/run-playbooks/phase-4a/RESULT.md dosyasını IN_PROGRESS yap, recovery state'i güncelle, sonra RUN_PLAY sırasıyla ilerle.
-Domain Pack implementation'a başlama. Shared WorkflowIR v2 contract'a Nesy/Maçkolik business type sokma. Kapanışta RESULT.md'e kanıtları ve Phase 4B readiness kararını yaz.
+Domain Pack implementation'a başlama. Shared WorkflowIR v2 contract'a Nesy veya başka gerçek müşteri business type'ı sokma. Kapanışta RESULT.md'e kanıtları ve Phase 4B readiness kararını yaz.
 ```
