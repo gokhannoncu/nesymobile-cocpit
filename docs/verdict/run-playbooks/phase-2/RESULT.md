@@ -15,7 +15,7 @@ masterPlanVersionAtClose: "v1.1.3"
 masterPlanDigestAtClose: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
 runPlayFile: "docs/verdict/run-playbooks/phase-2/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
-phase3Readiness: "READY_WITH_BLOCKERS"
+phase3Readiness: "READY_WITH_NON_BLOCKING_DEBT"
 ```
 
 > **Master plan sürüm notu.** Phase 2 **v1.1.2**'ye karşı yürütüldü. Faz devam
@@ -45,12 +45,13 @@ kaldırıldı ve suite koşuldu.
 
 ### Bu turda ortaya çıkan üç gerçek bulgu
 
-1. **Migration geçmişi kırık (B-10, YENİ, Phase 2 öncesinden).** `prisma migrate
-   deploy` boş bir veritabanında **9. migration'da patlıyor**: `relation
-   "workflow_runs" does not exist`. Şema `db push` ile kurulmuş — **22 tablodan
-   13'ü hiçbir migration tarafından yaratılmıyor.** Sonuç: CI'ın `integration`
-   job'ı bugün *hiçbir koşulda* yeşile dönemez, ve bunun Phase 2 ile ilgisi yok.
-   Bu, B-4'ün neden bir türlü doğrulanamadığının da cevabı.
+1. **Migration geçmişi kırık bulundu (B-10, Phase 2 öncesinden) ve Phase 2B'de
+   kapandı.** İlk bulgu doğruydu: `prisma migrate deploy` boş bir veritabanında
+   `workflow_runs` yok diye patlıyordu. Bu, Phase 2 durable runtime'ın değil,
+   geçmişte `db push` ile oluşmuş ama migration history'ye baseline olarak girmemiş
+   legacy schema'nın sonucuydu. Phase 2B, eksik baseline migration'ı ve schema
+   default alignment migration'ını ekleyerek boş `postgres:16` üzerinde
+   `migrate deploy`, `migrate diff` ve 37/37 integration suite kanıtını aldı.
 
 2. **Integration suite'i ~%50 flaky'di (B-11, düzeltildi).** Ölçüm: paralel
    koşuda 4 denemenin 2'si kırmızı; sıralı koşuda 5/5 yeşil. Kök neden **lease
@@ -88,7 +89,7 @@ sırasında **durur**. Dead-letter artık *retry*'ı bitirir, *blocking*'i bitir
 | Last successful step | `2.11` |
 | Last attempted step | `2.11` |
 | Last update | `2026-08-05 06:20:00 +03` |
-| Recovery instruction | `Phase 2 kapandı: unit 202 passed / 38 skipped, integration 37/37 gerçek PostgreSQL 16'da yeşil (5 sıralı koşu kararlı). Phase 3'e geçilebilir. AÇIK İŞ: B-10 — migration geçmişi eksik (22 tablodan 13'ü hiçbir migration'da yok), bu yüzden CI integration job'ı hâlâ yeşile dönemez. B-10 Phase 2'nin ürünü değil, Phase 2'yi de bloke etmiyor; ama release gate'inden önce baseline migration ile kapatılmalı.` |
+| Recovery instruction | `Phase 2 kapandı: unit 202 passed / 38 skipped, integration 37/37 gerçek PostgreSQL 16'da yeşil (5 sıralı koşu kararlı). B-10 Phase 2B'de kapandı: boş postgres:16 üzerinde migrate deploy PASS, migrate diff empty, integration 37/37 PASS. Phase 3'e geçilebilir; kalanlar B-8 lint ve external DUT/SSOT borçlarıdır.` |
 
 ## 3. Step execution log
 
@@ -548,7 +549,7 @@ kapanışı kanıta bağlıydı, CI job'ının yeşile dönmesine değil — ve 
 | ID | Severity | Description | Owner | Status |
 |---|---|---|---|---|
 | **B-4** | — | Durable delivery'nin SQL katmanı (watermark JOIN, advisory lease, yeni kolonlar/constraint'ler, closure upsert, 2^53 üstü seq) **gerçek `postgres:16` üzerinde kanıtlandı**: 37/37, 0 skip, 5 ardışık koşu kararlı (§13). B-4'ün özü — "integration testleri gerçekten koştu mu" — kapandı. Geriye kalan **CI otomasyonu** kısmı B-10'a devredildi. | API owner | **`CLOSED`** (lokal gerçek-PG kanıtıyla) |
-| **B-10** | **HIGH** | **Migration geçmişi eksik.** `prisma migrate deploy` boş DB'de 9. migration'da patlıyor (`relation "workflow_runs" does not exist`). **22 tablodan 13'ü** hiçbir migration'da yaratılmıyor (`workflow_runs`, `workflows`, `workflow_versions`, `workflow_step_results`, `AutomationRun`, `Note`, `Pickup`, `Shipment`, `courier_wallets`, `field_courier_logins`, `graylog_query_runs`, `mobile_devices`, `mongo_query_runs`) — şema `db push` ile kurulmuş. Sonuç: **CI `integration` job'ı bugün hiçbir koşulda yeşile dönemez**, ve B-4'ün aylardır doğrulanamamasının gerçek sebebi budur. Phase 2 öncesinden gelir, Phase 2'nin ürünü değildir. Önerilen çözüm: `prisma migrate diff --from-empty --to-schema-datamodel` ile baseline migration üretmek + mevcut ortamlarda `prisma migrate resolve --applied`. **Bilinçli olarak yapılmadı**: paylaşımlı production-benzeri DB'nin gerçek durumunu göremiyorum ve baseline'lamak operasyonel bir karar. | Platform/DB owner | `OPEN` (yeni) |
+| **B-10** | — | **Migration geçmişi Phase 2B'de onarıldı.** `20260401000000_init_legacy_baseline` eksik legacy/core tabloları migration geçmişine aldı; `20260805010000_align_schema_defaults` schema drift'i sıfırladı. Boş `postgres:16` üzerinde `migrate deploy` PASS, `migrate status` up-to-date, `migrate diff` empty, integration 37/37 PASS. Existing shared DB'lerde baseline migration kör uygulanmaz; inspection sonrası `migrate resolve --applied 20260401000000_init_legacy_baseline` gerekir. | Platform/DB owner | **`CLOSED`** — Phase 2B |
 | **B-11** | — | Integration suite'i paralel koşuda ~%50 flaky'di (4'te 2 kırmızı). Kök neden lease değil, **suite izolasyonu**: `bootstrap()` tüm stream'leri tarıyor ve dosyalar birbirinin lease'ini alıyordu. `--no-file-parallelism` ile düzeltildi; ölçüm ve gerekçe workflow'a yazıldı. Sıralı: 5/5 yeşil. | API owner | **`CLOSED`** (yeni, aynı turda kapandı) |
 | **B-9** | — | Sync-vs-durable eşitliği artık **uçtan uca** kanıtlı (gerçek socket + gerçek PostgreSQL, 17 event, sıfır mismatch, vacuous-pass koruması). `VERDICT_SYNC_SINK_DISABLED=1` cutover'ı için kanıt engeli kalktı. | API owner | **`CLOSED`** |
 | B-8 | MEDIUM | Repo-wide lint ESLint v9 flat-config borcu yüzünden blocking değil. | Platform owner | `OPEN_NON_BLOCKING` |
@@ -573,7 +574,7 @@ kararıdır ve rollback'i de aynı flag'dir.
 ## 18. Phase 3 handoff
 
 ```text
-phase3Readiness: READY_WITH_BLOCKERS
+phase3Readiness: READY_WITH_NON_BLOCKING_DEBT
 ```
 
 **Hazır olan taraf.** Phase 3'ün üstüne inşa edeceği contract ve runtime yerinde ve
@@ -583,14 +584,11 @@ görünür, sync-vs-durable eşitliği uçtan uca kanıtlı, sync sink kaldırma
 indi ve rollback aynı flag. Typecheck ve test yeşil, mevcut 273 testin hiçbiri
 kırılmadı, `as any`/`rootDir` gevşetmesi/test skip'i yok.
 
-**Blocker'lı olan taraf: tek madde, ve Phase 2'nin ürünü değil.**
-
-**B-10** — migration geçmişi eksik olduğu için CI `integration` job'ı yeşile
-dönemez. Bu Phase 3'ü *başlatmayı* engellemez (Phase 2 kanıtı elde var, lokal
-tekrarlanabilir), ama **release gate'inden önce kapatılmalı**: kapatılmadığı sürece
-durable runtime'ın her regresyonu ancak elle Docker kaldırıp koşan biri tarafından
-yakalanır. Bu, Phase 1'in "kırmızı baseline sinyal olmaktan çıkar" endişesinin
-integration tarafındaki aynısıdır.
+**Phase 2B notu.** Bu dosyanın ilk kapanışında B-10 açıktı. Phase 2B'de baseline
+migration repair tamamlandı: boş `postgres:16` üzerinde `migrate deploy` artık
+geçiyor, migration-history/schema diff empty ve integration suite 37/37 yeşil.
+Existing shared DB'ler için tek özel durum, baseline migration'ın kör uygulanmaması;
+önce inspection, sonra gerekirse `migrate resolve --applied` yapılmasıdır.
 
 **Değişmeyen gerçek:** master planın yedi ana işinden hiçbiri `DONE` değil. Phase 2
 "durable event consumer cutover" işini **çalışır, testli ve gerçek PostgreSQL'de
@@ -611,8 +609,7 @@ kanıtlı** hale getirdi ama production cutover'ı hâlâ flag arkasında. CP0 h
    (CI `--no-file-parallelism`, eşitlik gate'i, `compareModeEnabled`, master plan
    v1.1.3). Master plan v1.1.3 değişikliği **user'ındır**, bu agent'ın değil.
    Çalışma ağacında yalnız bu iki playbook dosyası kalır.
-4. **B-10'u kapat** (Platform/DB owner ile): baseline migration + mevcut ortamlarda
-   `migrate resolve --applied`. Sonra CI'da `integration` job'ının ilk yeşilini gör.
+4. Phase 2B RESULT'u oku: `docs/verdict/run-playbooks/phase-2b/RESULT.md`.
 5. Phase 3 RUN_PLAY'ini **v1.1.3 digest'iyle** oluştur.
 6. Cutover kararı: `VERDICT_SYNC_SINK_DISABLED=1` artık kanıt açısından meşru;
    çevirmek operasyon kararı, rollback aynı flag.
@@ -624,17 +621,10 @@ open -a Docker
 docker run -d --name verdict-it-pg -p 55432:5432 \
   -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
   -e POSTGRES_DB=verdict_test postgres:16
-# B-10 kapanana kadar migrate deploy yerine:
 DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
-  pnpm --filter @nesy/db exec prisma db push --skip-generate
-docker exec verdict-it-pg psql -U postgres -d verdict_test \
-  -c 'DROP TABLE IF EXISTS verdict_inbox, verdict_gap, verdict_stream, verdict_run_closure CASCADE;'
-for m in 20260727210000_add_verdict_ingest 20260805000000_add_verdict_durable_dispatch; do
-  docker exec -i verdict-it-pg psql -U postgres -d verdict_test -v ON_ERROR_STOP=1 \
-    < packages/db/prisma/migrations/$m/migration.sql
-done
-cd apps/api && DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
-  VERDICT_DB_IT=1 npx vitest run --no-file-parallelism \
+  pnpm --filter @nesy/db exec prisma migrate deploy
+DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
+  VERDICT_DB_IT=1 pnpm --filter @nesy/api test -- --no-file-parallelism \
     src/services/verdict-ingest.integration.test.ts \
     src/services/test-event-ws-server.integration.test.ts \
     src/services/verdict-durable-runtime.integration.test.ts

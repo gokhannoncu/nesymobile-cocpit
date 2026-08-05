@@ -18,7 +18,7 @@ verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-2/RESULT.md"
 phase1Readiness: "READY_WITH_BLOCKERS"
-phase2Readiness: "NOT_EVALUATED"
+phase2Readiness: "COMPLETED"
 blockingPreflight:
   - id: "B-4"
     status: "IMPLEMENTED_UNVERIFIED"
@@ -105,7 +105,7 @@ Bu yüzden Phase 2, Bridge Host Client ve WorkflowIR production cutover'dan önc
 | Last successful step | `2.11` |
 | Last attempted step | `2.11` |
 | Last update | `2026-08-05 06:20:00 +03` |
-| Recovery instruction | `Phase 2 KAPANDI. Unit 202 passed / 38 skipped; integration 37/37 gerçek postgres:16 üzerinde yeşil, 0 skip, 5 ardışık sıralı koşu kararlı. 18/18 acceptance PASS. Açık iş Phase 2'nin ürünü değil: B-10 migration geçmişi eksik (22 tablodan 13'ü hiçbir migration'da yok) → CI integration job'ı yeşile dönemez; release gate öncesi baseline migration ile kapatılmalı. Detay RESULT.md §13/§16.` |
+| Recovery instruction | `Phase 2 KAPANDI. Unit 202 passed / 38 skipped; integration 37/37 gerçek postgres:16 üzerinde yeşil, 0 skip, 5 ardışık sıralı koşu kararlı. 18/18 acceptance PASS. B-10 Phase 2B'de kapandı: boş postgres:16 üzerinde migrate deploy PASS, migration diff empty, integration 37/37 PASS. Phase 3 RUN_PLAY v1.1.3 digest ile açılabilir. Detay RESULT.md ve phase-2b/RESULT.md.` |
 
 Step sonuçları başlangıçta:
 
@@ -818,4 +818,3 @@ Owned paths dışına çıkma. Kapanışta verification komutlarını çalışt�
 ```
 
 Bu kısa komut ancak agent repo dosyalarına erişebiliyorsa yeterlidir.
-
