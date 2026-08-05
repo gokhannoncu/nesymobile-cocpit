@@ -14,8 +14,6 @@ import {
   finalizeRunOutcome,
 } from "@nesy/execution-contract";
 import {
-  evaluateContinueGate,
-  evaluateFinalOracle,
   type ContinueGateEvaluation,
   type FinalOracleEvaluation,
   type NormalizedEvidenceFact,
@@ -41,6 +39,7 @@ export interface BridgeRuntimePort {
   act(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<BridgeActionResult>;
   waitAny(plan: UiWaitPlan, context: StepExecutionContext): Promise<WaitAnyResult>;
   cancelWait(context: StepExecutionContext): Promise<unknown>;
+  cancelAction(requestId: string, context: StepExecutionContext): Promise<unknown>;
 }
 
 export interface EvidenceRuntimePort {
@@ -56,6 +55,9 @@ export interface StepExecutionContext {
   occurrenceIndex: number;
   iterationKey: string;
   requestId: string;
+  /** Pinned once when the occurrence starts and reused by every Oracle revision. */
+  startedAtMs: number;
+  recoveryFence?: RecoveryFence;
 }
 
 export interface ExecuteBridgeFlowInput {
@@ -74,9 +76,16 @@ export interface ExecuteBridgeFlowInput {
     telemetryPolicyRef?: string;
     releaseGate: boolean;
   };
+  signal?: AbortSignal;
+  recovery?: RecoveryResumeState;
 }
 
 export type MaybePromise<T> = T | Promise<T>;
+
+export interface RecoveryFence {
+  token: string;
+  epoch: number;
+}
 
 export interface PersistedRunStart {
   runId: string;
@@ -88,6 +97,12 @@ export interface PersistedActionTransition {
   runId: string;
   occurrenceId: string;
   transition: ActionTransition;
+  recoveryFence?: RecoveryFence;
+}
+
+export interface PersistedStepOccurrence extends StepOccurrence {
+  startedAtMs: number;
+  recoveryFence?: RecoveryFence;
 }
 
 export interface PersistedWaitResult {
@@ -98,6 +113,57 @@ export interface PersistedWaitResult {
   status: WaitAnyResult["status"];
   key?: string;
   cancelStatus?: string;
+  recoveryFence?: RecoveryFence;
+}
+
+export interface WaitTerminalSettlement {
+  won: boolean;
+  result: PersistedWaitResult;
+}
+
+export interface RecoveryContinuationFrame {
+  loopStepId: string;
+  parentIterationKey: string;
+  bodyStepId: string;
+  stopBeforeStepId: string | null;
+  returnStepId: string | null;
+  currentIndex: number;
+  itemCount: number;
+  currentIterationKey: string;
+}
+
+export interface RecoveryOutcomeState {
+  stopped: boolean;
+  unknownEffect: boolean;
+  automationFailure: boolean;
+  evidenceInsufficient: boolean;
+  productVerdicts: readonly ProductVerdict[];
+  cleanupResult: RunOutcomeAxes["cleanupResult"];
+  resourceReleaseResult: RunOutcomeAxes["resourceReleaseResult"];
+  schedulerDisposition: RunOutcomeAxes["schedulerDisposition"];
+  operationalDisposition: RunOutcomeAxes["operationalDisposition"];
+}
+
+export interface RecoveryResumeState {
+  revision?: number;
+  nextStepId: string | null;
+  runtimeIterationKey: string;
+  occurrenceCounts: Readonly<Record<string, number>>;
+  completedOccurrenceIds: readonly string[];
+  completedIterationKeys: readonly string[];
+  startedAtMsByOccurrenceId?: Readonly<Record<string, number>>;
+  continuationStack?: readonly RecoveryContinuationFrame[];
+  outcomeState?: RecoveryOutcomeState;
+  recoveryFence?: RecoveryFence;
+  lastCompletedControl?: {
+    occurrenceId: string;
+    nextStepId: string | null;
+    runtimeIterationKey: string;
+  };
+}
+
+export interface PersistedRecoveryCheckpoint extends RecoveryResumeState {
+  runId: string;
 }
 
 export interface PersistedOracleEvaluation {
@@ -105,20 +171,31 @@ export interface PersistedOracleEvaluation {
   occurrenceId: string;
   evaluatorKind: "CONTINUE_GATE" | "FINAL_ORACLE";
   evaluation: ContinueGateEvaluation | FinalOracleEvaluation;
+  recoveryFence?: RecoveryFence;
 }
 
 export interface PersistedRunResult {
   runId: string;
   result: RunOutcomeAxes;
+  recoveryFence?: RecoveryFence;
 }
 
 export interface ExecutionPersistencePort {
-  persistRunStart(record: PersistedRunStart): MaybePromise<void>;
-  persistStepOccurrence(occurrence: StepOccurrence): MaybePromise<void>;
+  /**
+   * Persist the immutable run start and acquire the fresh-execution fence.
+   * Fresh runs must receive a fence; missing fences fail closed in the executor.
+   */
+  persistRunStart(record: PersistedRunStart): MaybePromise<RecoveryFence | void>;
+  persistStepOccurrence(occurrence: PersistedStepOccurrence): MaybePromise<void>;
   persistActionTransition(record: PersistedActionTransition): MaybePromise<void>;
+  /** @deprecated Use settleWaitTerminal so every terminal source competes atomically. */
   persistWaitResult(result: PersistedWaitResult): MaybePromise<void>;
+  settleWaitTerminal(result: PersistedWaitResult): MaybePromise<WaitTerminalSettlement>;
+  persistRecoveryCheckpoint(checkpoint: PersistedRecoveryCheckpoint): MaybePromise<void>;
   persistOracleEvaluation(record: PersistedOracleEvaluation): MaybePromise<void>;
   persistRunResult(record: PersistedRunResult): MaybePromise<void>;
+  /** Optional: fail closed before a physical/remote dispatch when the fence rotated. */
+  assertExecutionFence?(runId: string, fence: RecoveryFence | undefined): MaybePromise<void>;
 }
 
 export interface MutationAdmissionPort {
@@ -143,6 +220,40 @@ export interface GenericStepRuntimePort {
   execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult>;
 }
 
+export interface RemoteRuntimePort {
+  execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult>;
+}
+
+export interface OracleRuntimePort {
+  runContinueGate(work: {
+    runId: string;
+    occurrenceId: string;
+    iterationKey: string;
+    policy: NonNullable<BridgeFlowPlanStep["continueGate"]>;
+    startedAtMs: number;
+    signal?: AbortSignal;
+    recoveryFence?: RecoveryFence;
+  }): Promise<
+    | { status: "SATISFIED" | "TIMED_OUT"; evaluation: ContinueGateEvaluation }
+    | { status: "CANCELLED" | "CLOSED" | "BLOCKED"; reason?: string }
+  >;
+  runFinalOracle(work: {
+    runId: string;
+    occurrenceId: string;
+    iterationKey: string;
+    policy: NonNullable<BridgeFlowPlanStep["finalOraclePolicy"]>;
+    startedAtMs: number;
+    signal?: AbortSignal;
+    recoveryFence?: RecoveryFence;
+  }): Promise<
+    | {
+        status: "SATISFIED" | "VIOLATED" | "INCONCLUSIVE" | "NOT_APPLICABLE";
+        evaluation: FinalOracleEvaluation;
+      }
+    | { status: "CANCELLED" | "CLOSED" | "BLOCKED"; reason?: string }
+  >;
+}
+
 export interface BridgeFlowExecutorOptions {
   persistence: ExecutionPersistencePort;
   mutationAdmission: MutationAdmissionPort;
@@ -151,44 +262,98 @@ export interface BridgeFlowExecutorOptions {
   conditionContext?: ConditionEvaluationContext;
   variables?: VariableRuntimePort;
   genericSteps?: GenericStepRuntimePort;
+  remoteRuntime?: RemoteRuntimePort;
+  oracle?: OracleRuntimePort;
   clock: () => number;
 }
 
 export class InMemoryExecutionPersistence implements ExecutionPersistencePort {
   readonly runs: PersistedRunStart[] = [];
-  readonly stepOccurrences: StepOccurrence[] = [];
+  readonly stepOccurrences: PersistedStepOccurrence[] = [];
   readonly actionTransitions: ActionTransition[] = [];
   readonly actionTransitionRecords: PersistedActionTransition[] = [];
   readonly waitResults: PersistedWaitResult[] = [];
+  readonly recoveryCheckpoints: PersistedRecoveryCheckpoint[] = [];
   readonly oracleEvaluations: PersistedOracleEvaluation[] = [];
   readonly runResults: RunOutcomeAxes[] = [];
+  readonly runResultRecords: PersistedRunResult[] = [];
+  private readonly fences = new Map<string, RecoveryFence>();
 
-  persistRunStart(record: PersistedRunStart): void {
+  persistRunStart(record: PersistedRunStart): RecoveryFence {
     this.runs.push(record);
+    const fence = { token: `fence:${record.runId}`, epoch: 1 };
+    this.fences.set(record.runId, fence);
+    return { ...fence };
   }
 
-  persistStepOccurrence(occurrence: StepOccurrence): void {
+  currentExecutionFence(runId: string): RecoveryFence | undefined {
+    const fence = this.fences.get(runId);
+    return fence === undefined ? undefined : { ...fence };
+  }
+
+  rotateExecutionFence(runId: string): RecoveryFence {
+    const current = this.fences.get(runId) ?? { token: `fence:${runId}`, epoch: 0 };
+    const next = { token: `${current.token}:rotated`, epoch: current.epoch + 1 };
+    this.fences.set(runId, next);
+    return { ...next };
+  }
+
+  assertExecutionFence(runId: string, fence: RecoveryFence | undefined): void {
+    if (fence === undefined) return;
+    const current = this.fences.get(runId);
+    if (current === undefined) {
+      // Recovery resumes install the durable fence on first assertion.
+      this.fences.set(runId, { ...fence });
+      return;
+    }
+    if (current.token !== fence.token || current.epoch !== fence.epoch) {
+      throw new Error("execution fence lost");
+    }
+  }
+
+  persistStepOccurrence(occurrence: PersistedStepOccurrence): void {
+    this.assertExecutionFence(occurrence.runId, occurrence.recoveryFence);
     const existingIndex = this.stepOccurrences.findIndex((existing) => existing.occurrenceId === occurrence.occurrenceId);
     if (existingIndex === -1) this.stepOccurrences.push(occurrence);
     else this.stepOccurrences[existingIndex] = occurrence;
   }
 
   persistActionTransition(record: PersistedActionTransition): void {
+    this.assertExecutionFence(record.runId, record.recoveryFence);
     this.actionTransitionRecords.push(record);
     this.actionTransitions.push(record.transition);
   }
 
   persistWaitResult(result: PersistedWaitResult): void {
-    if (!this.waitResults.some((existing) => existing.occurrenceId === result.occurrenceId)) {
-      this.waitResults.push(result);
-    }
+    void this.settleWaitTerminal(result);
+  }
+
+  settleWaitTerminal(incoming: PersistedWaitResult): WaitTerminalSettlement {
+    this.assertExecutionFence(incoming.runId, incoming.recoveryFence);
+    const current = this.waitResults.find((existing) =>
+      existing.runId === incoming.runId &&
+      existing.occurrenceId === incoming.occurrenceId &&
+      existing.waitPlanId === incoming.waitPlanId
+    );
+    if (current !== undefined) return { won: false, result: { ...current } };
+    const result = { ...incoming };
+    this.waitResults.push(result);
+    return { won: true, result: { ...result } };
+  }
+
+  persistRecoveryCheckpoint(checkpoint: PersistedRecoveryCheckpoint): void {
+    this.assertExecutionFence(checkpoint.runId, checkpoint.recoveryFence);
+    this.recoveryCheckpoints.push(structuredClone(checkpoint));
   }
 
   persistOracleEvaluation(record: PersistedOracleEvaluation): void {
+    this.assertExecutionFence(record.runId, record.recoveryFence);
     this.oracleEvaluations.push(record);
   }
 
   persistRunResult(record: PersistedRunResult): void {
+    this.assertExecutionFence(record.runId, record.recoveryFence);
+    this.runResultRecords.push(record);
     this.runResults.push(record.result);
   }
 }
@@ -242,7 +407,21 @@ interface ExecutionState {
   automationFailure: boolean;
   evidenceInsufficient: boolean;
   productVerdicts: ProductVerdict[];
+  cleanupResult: RunOutcomeAxes["cleanupResult"];
+  resourceReleaseResult: RunOutcomeAxes["resourceReleaseResult"];
+  schedulerDisposition: RunOutcomeAxes["schedulerDisposition"];
+  operationalDisposition: RunOutcomeAxes["operationalDisposition"];
   occurrenceCounts: Map<string, number>;
+  completedOccurrenceIds: Set<string>;
+  completedIterationKeys: Set<string>;
+  startedAtMsByOccurrenceId: Map<string, number>;
+  continuationStack: RecoveryContinuationFrame[];
+  checkpointRevision: number;
+  recoveryFence?: RecoveryFence;
+  lastCompletedControl?: RecoveryResumeState["lastCompletedControl"];
+  checkpointNextStepId: string | null;
+  checkpointIterationKey: string;
+  checkpointedStopped: boolean;
   transitionCount: number;
 }
 
@@ -252,9 +431,13 @@ interface StepResult {
 }
 
 export class BridgeFlowExecutor {
+  private readonly activeWaits = new Map<string, StepExecutionContext>();
+  private readonly activeActions = new Map<string, StepExecutionContext>();
+
   constructor(private readonly options: BridgeFlowExecutorOptions) {}
 
   async execute(input: ExecuteBridgeFlowInput): Promise<RunOutcomeAxes> {
+    let recoveryFence = input.recovery?.recoveryFence;
     const manifest = buildRunManifest({
       runId: input.runId,
       workflowRef: input.plan.workflowRef,
@@ -277,27 +460,75 @@ export class BridgeFlowExecutor {
       },
       reducerGraphDigest: input.plan.evidenceManifest.derivedGraphDigest,
     });
-    await this.options.persistence.persistRunStart({ runId: input.runId, engineType: "BRIDGEFLOW", manifest });
+    if (input.recovery === undefined) {
+      const acquired = await this.options.persistence.persistRunStart({
+        runId: input.runId,
+        engineType: "BRIDGEFLOW",
+        manifest,
+      });
+      if (
+        acquired === undefined ||
+        acquired === null ||
+        typeof acquired !== "object" ||
+        typeof acquired.token !== "string" ||
+        acquired.token.trim() === "" ||
+        !Number.isInteger(acquired.epoch) ||
+        acquired.epoch < 1
+      ) {
+        throw new Error("execution fence required from persistRunStart");
+      }
+      recoveryFence = { token: acquired.token, epoch: acquired.epoch };
+    }
 
     const stepsById = new Map(input.plan.steps.map((step) => [step.planStepId, step]));
     if (stepsById.size !== input.plan.steps.length) {
-      return this.closeFailedRun(input.runId, "duplicate planStepId in compiled plan");
+      return this.closeFailedRun(
+        input.runId,
+        "duplicate planStepId in compiled plan",
+        recoveryFence,
+      );
     }
     if (!stepsById.has(input.plan.entryStepId)) {
-      return this.closeFailedRun(input.runId, `entryStepId ${input.plan.entryStepId} not found`);
+      return this.closeFailedRun(
+        input.runId,
+        `entryStepId ${input.plan.entryStepId} not found`,
+        recoveryFence,
+      );
     }
 
     const state: ExecutionState = {
-      stopped: false,
-      unknownEffect: false,
-      automationFailure: false,
-      evidenceInsufficient: false,
-      productVerdicts: [],
-      occurrenceCounts: new Map(),
+      stopped: input.recovery?.outcomeState?.stopped ?? false,
+      unknownEffect: input.recovery?.outcomeState?.unknownEffect ?? false,
+      automationFailure: input.recovery?.outcomeState?.automationFailure ?? false,
+      evidenceInsufficient: input.recovery?.outcomeState?.evidenceInsufficient ?? false,
+      productVerdicts: [...(input.recovery?.outcomeState?.productVerdicts ?? [])],
+      cleanupResult: input.recovery?.outcomeState?.cleanupResult ?? "SUCCEEDED",
+      resourceReleaseResult: input.recovery?.outcomeState?.resourceReleaseResult ?? "RELEASED",
+      schedulerDisposition: input.recovery?.outcomeState?.schedulerDisposition ?? "RELEASED",
+      operationalDisposition: input.recovery?.outcomeState?.operationalDisposition ?? "OK",
+      occurrenceCounts: new Map(Object.entries(input.recovery?.occurrenceCounts ?? {})),
+      completedOccurrenceIds: new Set(input.recovery?.completedOccurrenceIds ?? []),
+      completedIterationKeys: new Set(input.recovery?.completedIterationKeys ?? []),
+      startedAtMsByOccurrenceId: new Map(
+        Object.entries(input.recovery?.startedAtMsByOccurrenceId ?? {}),
+      ),
+      continuationStack: (input.recovery?.continuationStack ?? []).map((frame) => ({ ...frame })),
+      checkpointRevision: input.recovery?.revision ?? 0,
+      ...(recoveryFence === undefined ? {} : { recoveryFence: { ...recoveryFence } }),
+      ...(input.recovery?.lastCompletedControl === undefined
+        ? {}
+        : { lastCompletedControl: { ...input.recovery.lastCompletedControl } }),
+      checkpointNextStepId:
+        input.recovery?.nextStepId ?? input.plan.entryStepId,
+      checkpointIterationKey:
+        input.recovery?.runtimeIterationKey ?? "root",
+      checkpointedStopped: input.recovery?.outcomeState?.stopped ?? false,
       transitionCount: 0,
     };
 
-    const needsMutationLease = input.plan.steps.some((step) => step.kind === "BRIDGE_ACTION");
+    const needsMutationLease =
+      !state.stopped &&
+      input.plan.steps.some((step) => step.kind === "BRIDGE_ACTION");
     let leaseHeld = false;
     if (needsMutationLease) {
       leaseHeld = await this.options.mutationAdmission.acquire(input.deviceId, input.runId);
@@ -309,14 +540,42 @@ export class BridgeFlowExecutor {
 
     try {
       if (!state.stopped) {
-        await this.executeFlow(input, stepsById, input.plan.entryStepId, null, "root", state);
+        if (input.recovery !== undefined && state.continuationStack.length > 0) {
+          await this.resumeContinuations(input, stepsById, state);
+        } else {
+          await this.executeFlow(
+            input,
+            stepsById,
+            input.recovery?.nextStepId ?? input.plan.entryStepId,
+            null,
+            input.recovery?.runtimeIterationKey ?? "root",
+            state,
+          );
+        }
       }
     } finally {
+      if (input.signal?.aborted) {
+        state.automationFailure = true;
+        state.stopped = true;
+      }
+      await this.cancelInFlight(input.runId);
       if (leaseHeld) await this.options.mutationAdmission.release(input.deviceId, input.runId);
     }
 
+    if (state.stopped && !state.checkpointedStopped) {
+      await this.persistRecoveryCheckpoint(
+        input.runId,
+        state.checkpointNextStepId,
+        state.checkpointIterationKey,
+        state,
+      );
+    }
     const result = this.buildRunOutcome(state);
-    await this.options.persistence.persistRunResult({ runId: input.runId, result });
+    await this.options.persistence.persistRunResult({
+      runId: input.runId,
+      result,
+      ...this.fenceRecord(state),
+    });
     return result;
   }
 
@@ -344,6 +603,17 @@ export class BridgeFlowExecutor {
         state.automationFailure = true;
         state.stopped = true;
         return;
+      }
+
+      if (step.kind !== "FOR_EACH") {
+        const occurrenceIndex = state.occurrenceCounts.get(step.planStepId) ?? 0;
+        const occurrenceId = `${input.runId}:${step.planStepId}:${occurrenceIndex}`;
+        if (state.completedOccurrenceIds.has(occurrenceId)) {
+          state.occurrenceCounts.set(step.planStepId, occurrenceIndex + 1);
+          currentStepId = step.next;
+          await this.persistRecoveryCheckpoint(input.runId, currentStepId, iterationKey, state);
+          continue;
+        }
       }
 
       if (step.kind === "FOR_EACH") {
@@ -389,18 +659,118 @@ export class BridgeFlowExecutor {
       state.stopped = true;
       return null;
     }
+    if (items.length === 0) return step.next;
 
-    for (const [index, item] of items.entries()) {
-      variables.set(itemVariable, item);
-      variables.set(indexVariable, index);
+    const frame: RecoveryContinuationFrame = {
+      loopStepId: step.planStepId,
+      parentIterationKey,
+      bodyStepId: body,
+      stopBeforeStepId: step.next,
+      returnStepId: step.next,
+      currentIndex: 0,
+      itemCount: items.length,
+      currentIterationKey: iterationKeyFor(parentIterationKey, step.planStepId, 0),
+    };
+    state.continuationStack.push(frame);
+    for (let index = 0; index < items.length; index += 1) {
+      frame.currentIndex = index;
       const iterationKey =
-        parentIterationKey === "root"
-          ? `${step.planStepId}[${index}]`
-          : `${parentIterationKey}/${step.planStepId}[${index}]`;
+        iterationKeyFor(parentIterationKey, step.planStepId, index);
+      frame.currentIterationKey = iterationKey;
+      variables.set(itemVariable, items[index]);
+      variables.set(indexVariable, index);
+      if (state.completedIterationKeys.has(iterationKey)) {
+        continue;
+      }
+      await this.persistRecoveryCheckpoint(input.runId, body, iterationKey, state);
       await this.executeFlow(input, stepsById, body, step.next, iterationKey, state);
       if (state.stopped) break;
+      state.completedIterationKeys.add(iterationKey);
+      await this.persistRecoveryCheckpoint(input.runId, step.planStepId, parentIterationKey, state);
     }
+    state.continuationStack.pop();
+    await this.persistRecoveryCheckpoint(input.runId, step.next, parentIterationKey, state);
     return step.next;
+  }
+
+  private async resumeContinuations(
+    input: ExecuteBridgeFlowInput,
+    stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
+    state: ExecutionState,
+  ): Promise<void> {
+    let nextStepId = input.recovery?.nextStepId ?? null;
+    let iterationKey = input.recovery?.runtimeIterationKey ?? "root";
+    this.restoreLoopVariables(stepsById, state);
+
+    while (!state.stopped) {
+      const frame = state.continuationStack.at(-1);
+      if (frame === undefined) {
+        await this.executeFlow(input, stepsById, nextStepId, null, iterationKey, state);
+        return;
+      }
+      await this.executeFlow(
+        input,
+        stepsById,
+        nextStepId,
+        frame.stopBeforeStepId,
+        frame.currentIterationKey,
+        state,
+      );
+      if (state.stopped) return;
+      state.completedIterationKeys.add(frame.currentIterationKey);
+      if (frame.currentIndex + 1 < frame.itemCount) {
+        frame.currentIndex += 1;
+        frame.currentIterationKey = iterationKeyFor(
+          frame.parentIterationKey,
+          frame.loopStepId,
+          frame.currentIndex,
+        );
+        this.restoreLoopFrameVariables(stepsById, frame);
+        nextStepId = frame.bodyStepId;
+        iterationKey = frame.currentIterationKey;
+        await this.persistRecoveryCheckpoint(input.runId, nextStepId, iterationKey, state);
+        continue;
+      }
+      state.continuationStack.pop();
+      nextStepId = frame.returnStepId;
+      iterationKey = frame.parentIterationKey;
+      await this.persistRecoveryCheckpoint(input.runId, nextStepId, iterationKey, state);
+    }
+  }
+
+  private restoreLoopVariables(
+    stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
+    state: ExecutionState,
+  ): void {
+    for (const frame of state.continuationStack) {
+      this.restoreLoopFrameVariables(stepsById, frame);
+    }
+  }
+
+  private restoreLoopFrameVariables(
+    stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
+    frame: RecoveryContinuationFrame,
+  ): void {
+    const variables = this.options.variables;
+    const loop = stepsById.get(frame.loopStepId);
+    const itemsVariable = loop === undefined ? undefined : asString(loop.params["itemsVariable"]);
+    const itemVariable = loop === undefined ? undefined : asString(loop.params["itemVariable"]);
+    const indexVariable = loop === undefined ? undefined : asString(loop.params["indexVariable"]);
+    const items = itemsVariable === undefined ? undefined : variables?.get(itemsVariable);
+    if (
+      variables === undefined ||
+      loop?.kind !== "FOR_EACH" ||
+      !itemVariable ||
+      !indexVariable ||
+      !Array.isArray(items) ||
+      items.length !== frame.itemCount ||
+      frame.currentIndex < 0 ||
+      frame.currentIndex >= items.length
+    ) {
+      throw new Error(`cannot restore continuation frame ${frame.loopStepId}`);
+    }
+    variables.set(itemVariable, items[frame.currentIndex]);
+    variables.set(indexVariable, frame.currentIndex);
   }
 
   private async executeStep(
@@ -413,6 +783,9 @@ export class BridgeFlowExecutor {
     state.occurrenceCounts.set(step.planStepId, occurrenceIndex + 1);
     const occurrenceId = `${input.runId}:${step.planStepId}:${occurrenceIndex}`;
     const iterationKey = this.iterationKey(step, runtimeIterationKey);
+    const startedAtMs =
+      state.startedAtMsByOccurrenceId.get(occurrenceId) ?? this.options.clock();
+    state.startedAtMsByOccurrenceId.set(occurrenceId, startedAtMs);
     const context: StepExecutionContext = {
       runId: input.runId,
       deviceId: input.deviceId,
@@ -420,17 +793,20 @@ export class BridgeFlowExecutor {
       occurrenceIndex,
       iterationKey,
       requestId: `${input.runId}:${step.planStepId}:${occurrenceIndex}:attempt-1`,
+      startedAtMs,
+      ...this.fenceRecord(state),
     };
     const outcome = createInitialStepOutcome();
     outcome.actionResult = "RUNNING";
     await this.persistOccurrence(input.runId, step, context, outcome);
+    await this.persistRecoveryCheckpoint(input.runId, step.planStepId, runtimeIterationKey, state);
 
     let next = step.next;
     let stop = false;
 
     switch (step.kind) {
       case "BRIDGE_ACTION": {
-        const actionResult = await this.executeBridgeAction(input.runId, step, context);
+        const actionResult = await this.executeBridgeAction(input.runId, step, context, input.signal);
         if (actionResult.terminalState === "UNKNOWN_EFFECT") {
           state.unknownEffect = true;
           outcome.actionResult = "UNKNOWN_EFFECT";
@@ -489,6 +865,26 @@ export class BridgeFlowExecutor {
       case "NOOP":
         outcome.actionResult = "SUCCEEDED";
         break;
+      case "REMOTE_ACTION":
+      case "EXTERNAL_ACTION": {
+        const remote = this.options.remoteRuntime;
+        if (remote === undefined) {
+          outcome.actionResult = "FAILED";
+          state.automationFailure = true;
+          stop = true;
+          break;
+        }
+        await this.assertLiveFence(input.runId, context.recoveryFence);
+        const result = await remote.execute(step, context);
+        outcome.actionResult = result.actionResult ?? (result.succeeded ? "SUCCEEDED" : "FAILED");
+        if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
+        if (result.next !== undefined) next = result.next;
+        if (!result.succeeded) {
+          state.automationFailure = true;
+          stop = true;
+        }
+        break;
+      }
       default: {
         const generic = this.options.genericSteps;
         if (!generic) {
@@ -497,6 +893,7 @@ export class BridgeFlowExecutor {
           stop = true;
           break;
         }
+        await this.assertLiveFence(input.runId, context.recoveryFence);
         const result = await generic.execute(step, context);
         outcome.actionResult = result.actionResult ?? (result.succeeded ? "SUCCEEDED" : "FAILED");
         if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
@@ -509,48 +906,84 @@ export class BridgeFlowExecutor {
     }
 
     if (!stop && step.continueGate) {
-      const gate = evaluateContinueGate({
-        policy: step.continueGate,
-        facts: this.correlatedFacts(context),
-        occurrenceId,
-        iterationKey,
-        nowMs: this.options.clock(),
-        startedAtMs: this.options.clock(),
-      });
+      const gateResult = this.options.oracle === undefined
+        ? undefined
+        : await this.options.oracle.runContinueGate({
+            policy: step.continueGate,
+            runId: input.runId,
+            occurrenceId,
+            iterationKey,
+            startedAtMs,
+            ...(input.signal === undefined ? {} : { signal: input.signal }),
+            ...this.fenceRecord(state),
+          });
+      const gate = gateResult !== undefined && "evaluation" in gateResult
+        ? gateResult.evaluation
+        : undefined;
+      if (gate === undefined) {
+        outcome.continueGateResult = "UNSATISFIED";
+        state.evidenceInsufficient = true;
+        if (input.signal?.aborted) state.automationFailure = true;
+        stop = true;
+      } else {
       await this.options.persistence.persistOracleEvaluation({
         runId: input.runId,
         occurrenceId,
         evaluatorKind: "CONTINUE_GATE",
         evaluation: gate,
+        ...this.fenceRecord(state),
       });
       outcome.continueGateResult = gate.outcome;
       if (gate.outcome !== "SATISFIED") {
         state.evidenceInsufficient = true;
         stop = true;
       }
+      }
     }
 
     if (step.finalOraclePolicy) {
-      const oracle = evaluateFinalOracle({
-        policy: step.finalOraclePolicy,
-        facts: this.correlatedFacts(context),
-        occurrenceId,
-        iterationKey,
-        nowMs: this.options.clock(),
-        startedAtMs: this.options.clock(),
-      });
+      const oracleResult = this.options.oracle === undefined
+        ? undefined
+        : await this.options.oracle.runFinalOracle({
+            policy: step.finalOraclePolicy,
+            runId: input.runId,
+            occurrenceId,
+            iterationKey,
+            startedAtMs,
+            ...(input.signal === undefined ? {} : { signal: input.signal }),
+            ...this.fenceRecord(state),
+          });
+      const oracle = oracleResult !== undefined && "evaluation" in oracleResult
+        ? oracleResult.evaluation
+        : undefined;
+      if (oracle === undefined) {
+        outcome.finalOracleResult = "INCONCLUSIVE";
+        state.evidenceInsufficient = true;
+        if (input.signal?.aborted) state.automationFailure = true;
+        stop = true;
+      } else {
       await this.options.persistence.persistOracleEvaluation({
         runId: input.runId,
         occurrenceId,
         evaluatorKind: "FINAL_ORACLE",
         evaluation: oracle,
+        ...this.fenceRecord(state),
       });
       outcome.finalOracleResult = oracle.outcome;
       state.productVerdicts.push(oracle.productVerdict);
       if (oracle.evaluationFailureClass === "EVIDENCE_INSUFFICIENT") state.evidenceInsufficient = true;
       if (oracle.productVerdict === "FAIL_PRODUCT" || oracle.productVerdict === "INCONCLUSIVE") stop = true;
+      }
     }
 
+    if (stop) state.stopped = true;
+    state.completedOccurrenceIds.add(occurrenceId);
+    state.lastCompletedControl = {
+      occurrenceId,
+      nextStepId: next,
+      runtimeIterationKey,
+    };
+    await this.persistRecoveryCheckpoint(input.runId, next, runtimeIterationKey, state);
     await this.persistOccurrence(input.runId, step, context, outcome);
     return { next, stop };
   }
@@ -559,17 +992,40 @@ export class BridgeFlowExecutor {
     runId: string,
     step: BridgeFlowPlanStep,
     context: StepExecutionContext,
+    signal?: AbortSignal,
   ): Promise<BridgeActionResult> {
+    if (signal?.aborted) {
+      return {
+        terminalState: "CANCELLED",
+        effectVerified: false,
+        evidenceRef: "executor:aborted-before-dispatch",
+      };
+    }
+    await this.assertLiveFence(runId, context.recoveryFence);
     const transitions = this.buildPreEffectTransitions(context);
     for (const transition of transitions) {
       await this.options.persistence.persistActionTransition({
         runId,
         occurrenceId: context.occurrenceId,
         transition,
+        ...(context.recoveryFence === undefined
+          ? {}
+          : { recoveryFence: context.recoveryFence }),
       });
     }
 
-    const result = await this.options.bridge.act(step, context);
+    if (typeof this.options.bridge.cancelAction !== "function") {
+      return {
+        terminalState: "FAILED",
+        effectVerified: false,
+        evidenceRef: "executor:missing-cancel-action-port",
+      };
+    }
+    await this.assertLiveFence(runId, context.recoveryFence);
+    this.activeActions.set(context.requestId, context);
+    const actionPromise = this.options.bridge.act(step, context);
+    const result = await this.raceActionWithAbort(actionPromise, context, signal);
+    this.activeActions.delete(context.requestId);
     const terminal: ActionTerminalState =
       result.terminalState === "SUCCEEDED" && !result.effectVerified ? "FAILED" : result.terminalState;
     const finalTransition = appendActionTransition(transitions, {
@@ -584,6 +1040,9 @@ export class BridgeFlowExecutor {
         runId,
         occurrenceId: context.occurrenceId,
         transition: finalTransition,
+        ...(context.recoveryFence === undefined
+          ? {}
+          : { recoveryFence: context.recoveryFence }),
       });
     }
     return result;
@@ -600,28 +1059,37 @@ export class BridgeFlowExecutor {
     stop: boolean;
   }> {
     const compiled = input.plan.waitPlans.find((candidate) => candidate.planStepId === step.planStepId);
-    if (!compiled) {
+    if (!compiled || compiled.hostOnlyCancel !== true || typeof this.options.bridge.cancelWait !== "function") {
       return { actionResult: "FAILED", continueGateResult: "UNSATISFIED", next: null, stop: true };
     }
 
-    let waitResult: WaitAnyResult;
-    let cancelStatus: string | undefined;
+    await this.assertLiveFence(input.runId, context.recoveryFence);
+    this.activeWaits.set(context.requestId, context);
+    const waitPromise = this.options.bridge
+      .waitAny(adaptCompiledUiWaitPlan(compiled), context)
+      .then((candidate) => this.options.persistence.settleWaitTerminal({
+        runId: input.runId,
+        occurrenceId: context.occurrenceId,
+        waitPlanId: compiled.waitPlanId,
+        requestId: context.requestId,
+        status: candidate.status,
+        ...("key" in candidate ? { key: candidate.key } : {}),
+        ...(context.recoveryFence === undefined
+          ? {}
+          : { recoveryFence: context.recoveryFence }),
+      }));
+    const abortRace = this.waitAbortSettlement(input, compiled.waitPlanId, context);
+    let settled: WaitTerminalSettlement;
     try {
-      waitResult = await this.options.bridge.waitAny(adaptCompiledUiWaitPlan(compiled), context);
+      settled = abortRace === undefined
+        ? await waitPromise
+        : await Promise.race([waitPromise, abortRace.promise]);
     } finally {
-      const cancel = await this.options.bridge.cancelWait(context);
-      if (isRecord(cancel) && typeof cancel["status"] === "string") cancelStatus = cancel["status"];
+      abortRace?.dispose();
+      await Promise.resolve(this.options.bridge.cancelWait(context)).catch(() => undefined);
+      this.activeWaits.delete(context.requestId);
     }
-
-    await this.options.persistence.persistWaitResult({
-      runId: input.runId,
-      occurrenceId: context.occurrenceId,
-      waitPlanId: compiled.waitPlanId,
-      requestId: context.requestId,
-      status: waitResult.status,
-      ...("key" in waitResult ? { key: waitResult.key } : {}),
-      ...(cancelStatus ? { cancelStatus } : {}),
-    });
+    const waitResult = persistedWaitToBridgeResult(settled.result);
 
     if (waitResult.status === "EXPECTED_MATCH") {
       const legs = Array.isArray(step.params["legs"]) ? step.params["legs"] : [];
@@ -732,8 +1200,172 @@ export class BridgeFlowExecutor {
       occurrenceIndex: context.occurrenceIndex,
       iterationKey: context.iterationKey,
       requestId: context.requestId,
+      startedAtMs: context.startedAtMs,
       outcome: { ...outcome },
+      ...(context.recoveryFence === undefined
+        ? {}
+        : { recoveryFence: context.recoveryFence }),
     });
+  }
+
+  private async persistRecoveryCheckpoint(
+    runId: string,
+    nextStepId: string | null,
+    runtimeIterationKey: string,
+    state: ExecutionState,
+  ): Promise<void> {
+    state.checkpointRevision += 1;
+    await this.options.persistence.persistRecoveryCheckpoint({
+      runId,
+      revision: state.checkpointRevision,
+      nextStepId,
+      runtimeIterationKey,
+      occurrenceCounts: Object.fromEntries(state.occurrenceCounts),
+      completedOccurrenceIds: [...state.completedOccurrenceIds],
+      completedIterationKeys: [...state.completedIterationKeys],
+      startedAtMsByOccurrenceId: Object.fromEntries(state.startedAtMsByOccurrenceId),
+      continuationStack: state.continuationStack.map((frame) => ({ ...frame })),
+      outcomeState: {
+        stopped: state.stopped,
+        unknownEffect: state.unknownEffect,
+        automationFailure: state.automationFailure,
+        evidenceInsufficient: state.evidenceInsufficient,
+        productVerdicts: [...state.productVerdicts],
+        cleanupResult: state.cleanupResult,
+        resourceReleaseResult: state.resourceReleaseResult,
+        schedulerDisposition: state.schedulerDisposition,
+        operationalDisposition: state.operationalDisposition,
+      },
+      ...(state.lastCompletedControl === undefined
+        ? {}
+        : { lastCompletedControl: { ...state.lastCompletedControl } }),
+      ...this.fenceRecord(state),
+    });
+    state.checkpointNextStepId = nextStepId;
+    state.checkpointIterationKey = runtimeIterationKey;
+    state.checkpointedStopped = state.stopped;
+  }
+
+  private waitAbortSettlement(
+    input: ExecuteBridgeFlowInput,
+    waitPlanId: string,
+    context: StepExecutionContext,
+  ): { promise: Promise<WaitTerminalSettlement>; dispose: () => void } | undefined {
+    if (input.signal === undefined) return undefined;
+    let listener: (() => void) | undefined;
+    const promise = new Promise<WaitTerminalSettlement>((resolve, reject) => {
+      const settleCancelled = () => {
+        void Promise.resolve(this.options.persistence.settleWaitTerminal({
+            runId: input.runId,
+            occurrenceId: context.occurrenceId,
+            waitPlanId,
+            requestId: context.requestId,
+            status: "CANCELLED",
+            ...(context.recoveryFence === undefined
+              ? {}
+              : { recoveryFence: context.recoveryFence }),
+          }))
+          .then(resolve, reject);
+      };
+      if (input.signal?.aborted) settleCancelled();
+      else {
+        listener = settleCancelled;
+        input.signal?.addEventListener("abort", listener, { once: true });
+      }
+    });
+    return {
+      promise,
+      dispose: () => {
+        if (listener !== undefined) input.signal?.removeEventListener("abort", listener);
+      },
+    };
+  }
+
+  private raceActionWithAbort(
+    action: Promise<BridgeActionResult>,
+    context: StepExecutionContext,
+    signal?: AbortSignal,
+  ): Promise<BridgeActionResult> {
+    if (signal === undefined) return action;
+    return new Promise((resolve) => {
+      let abortOwned = false;
+      let settled = false;
+      const finish = (result: BridgeActionResult) => {
+        if (settled) return;
+        settled = true;
+        signal.removeEventListener("abort", cancel);
+        resolve(result);
+      };
+      const cancel = () => {
+        if (settled || abortOwned) return;
+        abortOwned = true;
+        void this.options.bridge.cancelAction(context.requestId, context)
+          .then((confirmation) => finish(
+            isRecord(confirmation) &&
+            (confirmation["status"] === "CANCELLED" ||
+              confirmation["status"] === "CANCELLED_BEFORE_EFFECT")
+              ? {
+                  terminalState: "CANCELLED",
+                  effectVerified: false,
+                  evidenceRef: "executor:run-abort",
+                }
+              : {
+                  terminalState: "UNKNOWN_EFFECT",
+                  effectVerified: false,
+                  evidenceRef: "executor:cancel-unconfirmed",
+                },
+          ), () => finish({
+            terminalState: "UNKNOWN_EFFECT",
+            effectVerified: false,
+            evidenceRef: "executor:cancel-failed",
+          }));
+      };
+      action.then(
+        (result) => {
+          if (!abortOwned) finish(result);
+        },
+        () => finish({
+          terminalState: abortOwned ? "UNKNOWN_EFFECT" : "FAILED",
+          effectVerified: false,
+          evidenceRef: "executor:action-failed",
+        }),
+      );
+      if (signal.aborted) cancel();
+      else signal.addEventListener("abort", cancel, { once: true });
+    });
+  }
+
+  private fenceRecord(state: ExecutionState): { recoveryFence?: RecoveryFence } {
+    return state.recoveryFence === undefined
+      ? {}
+      : { recoveryFence: { ...state.recoveryFence } };
+  }
+
+  private async assertLiveFence(
+    runId: string,
+    fence: RecoveryFence | undefined,
+  ): Promise<void> {
+    const assert = this.options.persistence.assertExecutionFence?.bind(
+      this.options.persistence,
+    );
+    if (assert !== undefined) {
+      await assert(runId, fence);
+    }
+  }
+
+  private async cancelInFlight(runId: string): Promise<void> {
+    const waits = [...this.activeWaits.entries()]
+      .filter(([, context]) => context.runId === runId);
+    const actions = [...this.activeActions.entries()]
+      .filter(([, context]) => context.runId === runId);
+    await Promise.allSettled([
+      ...waits.map(([, context]) => this.options.bridge.cancelWait(context)),
+      ...actions.map(([, context]) =>
+        this.options.bridge.cancelAction(context.requestId, context)
+      ),
+    ]);
+    for (const [requestId] of waits) this.activeWaits.delete(requestId);
+    for (const [requestId] of actions) this.activeActions.delete(requestId);
   }
 
   private iterationKey(step: BridgeFlowPlanStep, runtimeIterationKey: string): string {
@@ -755,14 +1387,21 @@ export class BridgeFlowExecutor {
           ? "AUTOMATION_FAILURE"
           : "NONE",
       terminationReason: state.unknownEffect ? "UNKNOWN_ACTION_EFFECT" : state.automationFailure ? "ABORTED" : "COMPLETED",
-      cleanupResult: "SUCCEEDED",
-      resourceReleaseResult: "RELEASED",
-      schedulerDisposition: "RELEASED",
-      operationalDisposition: state.automationFailure || state.evidenceInsufficient ? "NEEDS_ATTENTION" : "OK",
+      cleanupResult: state.cleanupResult,
+      resourceReleaseResult: state.resourceReleaseResult,
+      schedulerDisposition: state.schedulerDisposition,
+      operationalDisposition:
+        state.automationFailure || state.evidenceInsufficient
+          ? "NEEDS_ATTENTION"
+          : state.operationalDisposition,
     });
   }
 
-  private async closeFailedRun(runId: string, _reason: string): Promise<RunOutcomeAxes> {
+  private async closeFailedRun(
+    runId: string,
+    _reason: string,
+    recoveryFence?: RecoveryFence,
+  ): Promise<RunOutcomeAxes> {
     const result = finalizeRunOutcome({
       lifecycle: "CLOSED",
       productVerdict: "INCONCLUSIVE",
@@ -773,7 +1412,11 @@ export class BridgeFlowExecutor {
       schedulerDisposition: "RELEASED",
       operationalDisposition: "NEEDS_ATTENTION",
     });
-    await this.options.persistence.persistRunResult({ runId, result });
+    await this.options.persistence.persistRunResult({
+      runId,
+      result,
+      ...(recoveryFence === undefined ? {} : { recoveryFence }),
+    });
     return result;
   }
 }
@@ -787,6 +1430,35 @@ function aggregateProductVerdicts(verdicts: readonly ProductVerdict[], state: Ex
   if (evaluated.every((verdict) => verdict === "PASS_QUEUED_OFFLINE")) return "PASS_QUEUED_OFFLINE";
   if (evaluated.every((verdict) => verdict === "PASS_ONLINE" || verdict === "PASS_QUEUED_OFFLINE")) return "PASS_ONLINE";
   return "INCONCLUSIVE";
+}
+
+function iterationKeyFor(
+  parentIterationKey: string,
+  loopStepId: string,
+  index: number,
+): string {
+  return parentIterationKey === "root"
+    ? `${loopStepId}[${index}]`
+    : `${parentIterationKey}/${loopStepId}[${index}]`;
+}
+
+function persistedWaitToBridgeResult(result: PersistedWaitResult): WaitAnyResult {
+  switch (result.status) {
+    case "EXPECTED_MATCH":
+      if (result.key === undefined) return { status: "WAIT_CONNECTION_LOST", elapsedMs: 0 };
+      return { status: "EXPECTED_MATCH", key: result.key, elapsedMs: 0 };
+    case "INTERRUPT_MATCH":
+      if (result.key === undefined) return { status: "WAIT_CONNECTION_LOST", elapsedMs: 0 };
+      return { status: "INTERRUPT_MATCH", key: result.key, expectedInterrupt: false, elapsedMs: 0 };
+    case "AMBIGUOUS":
+      return { status: "AMBIGUOUS", key: result.key ?? "unknown", matchedCount: 2, elapsedMs: 0 };
+    case "TIMEOUT":
+      return { status: "TIMEOUT", elapsedMs: 0 };
+    case "CANCELLED":
+      return { status: "CANCELLED", elapsedMs: 0 };
+    case "WAIT_CONNECTION_LOST":
+      return { status: "WAIT_CONNECTION_LOST", elapsedMs: 0 };
+  }
 }
 
 function asString(value: unknown): string | undefined {

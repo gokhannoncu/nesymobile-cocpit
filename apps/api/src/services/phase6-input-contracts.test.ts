@@ -1,0 +1,149 @@
+import { describe, expect, it } from 'vitest'
+import { createDeviceCommandAdmission } from './device-command-admission.js'
+import { DeviceReadinessService } from './device-readiness.service.js'
+import { DomainPackAdminService } from './domain-pack-admin.service.js'
+import { DurableInteractionSubscription } from './durable-interaction-subscription.js'
+import { TestCampaignService } from './test-campaign.service.js'
+import { TestProfileCatalogService } from './test-profile-catalog.service.js'
+import { createHashPinnedCompileStub } from './workflow-compile.service.js'
+import { WorkflowRunService } from './workflow-run.service.js'
+
+describe('phase 6 input contracts', () => {
+  it('keeps compile preview hash identical to the hash pinned on run start', () => {
+    const compile = createHashPinnedCompileStub()
+    const runs = new WorkflowRunService()
+    const request = {
+      workflowRef: 'courier.login',
+      workflowIr: { entryStepId: 'open', steps: [{ planStepId: 'open' }] },
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: 'sha256:pack',
+    }
+    const preview = compile.compileWorkflow(request)
+    const started = runs.startFromCompile(preview, {
+      workflowRef: request.workflowRef,
+      deviceId: 'device-1',
+      domainPackKey: request.domainPackKey,
+      domainPackVersion: request.domainPackVersion,
+      domainPackDigest: request.domainPackDigest,
+    })
+    expect(preview.ok).toBe(true)
+    expect(started.compiledPlanHash).toBe(preview.compiledPlanHash)
+    expect(started.engineType).toBe('BRIDGEFLOW')
+  })
+
+  it('enforces domain pack publish immutability and optimistic concurrency', () => {
+    const admin = new DomainPackAdminService()
+    const draft = admin.saveDraft({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:a',
+      bundle: { ok: true },
+    })
+    const published = admin.publish({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      publishedBy: 'owner',
+      expectedRevision: draft.pack.revision,
+    })
+    expect(published.pack.publicationState).toBe('PUBLISHED')
+    expect(() =>
+      admin.saveDraft({
+        packKey: 'nesy-courier',
+        version: '1.0.0',
+        bundleDigest: 'sha256:b',
+        bundle: { ok: false },
+      }),
+    ).toThrow(/immutable/i)
+    expect(() =>
+      admin.publish({
+        packKey: 'nesy-courier',
+        version: '1.0.0',
+        publishedBy: 'owner',
+        expectedRevision: published.pack.revision,
+      }),
+    ).toThrow(/immutable/i)
+  })
+
+  it('rejects preview profiles with releaseGate=true', () => {
+    const profiles = new TestProfileCatalogService()
+    expect(
+      profiles.validate({
+        profileKey: 'preview-login',
+        version: 1,
+        kind: 'PREVIEW',
+        releaseGate: true,
+        packKey: 'nesy-courier',
+        packVersion: '1.0.0',
+        definition: { includedWorkflowRefs: ['login'] },
+        owner: 'qa',
+      }).ok,
+    ).toBe(false)
+  })
+
+  it('does not invent PASS/FAIL for campaign cells without evidence', () => {
+    const campaigns = new TestCampaignService()
+    const started = campaigns.start({
+      campaignKey: 'nightly',
+      campaignVersion: 1,
+      cells: [
+        {
+          cellKey: 'loginxpixel',
+          profileKey: 'preview-login',
+          profileVersion: 1,
+          deviceCell: 'pixel',
+        },
+      ],
+    })
+    const withoutEvidence = campaigns.attachCellEvidence({
+      campaignId: started.campaignId,
+      cellKey: 'loginxpixel',
+      runId: 'run-1',
+    })
+    expect(withoutEvidence?.cells[0]?.result).toBe('PENDING')
+    expect(withoutEvidence?.cells[0]?.blockedReason).toMatch(/evidence/i)
+
+    const withEvidence = campaigns.attachCellEvidence({
+      campaignId: started.campaignId,
+      cellKey: 'loginxpixel',
+      runId: 'run-1',
+      evidenceSummaryRef: 'evidence:1',
+      result: 'PASS',
+    })
+    expect(withEvidence?.cells[0]?.result).toBe('PASS')
+    expect(withEvidence?.cells[0]?.runDetailPath).toBe('/automation/runs/run-1')
+  })
+
+  it('exposes multi-lane device readiness with admission and external blockers', () => {
+    const admission = createDeviceCommandAdmission()
+    admission.acquireMutation('device-1', 'run-owner')
+    const readiness = new DeviceReadinessService(admission, {
+      adb: () => 'UP',
+      receiptBus: () => 'UP',
+      orderedBus: () => 'DEGRADED',
+    }).get('device-1')
+    expect(readiness.lanes.some((lane) => lane.lane === 'RECEIPT_BUS')).toBe(true)
+    expect(readiness.lanes.some((lane) => lane.lane === 'ORDERED_BUS')).toBe(true)
+    expect(readiness.commandAdmission.blockedReason).toMatch(/run-owner/)
+    expect(readiness.externalBlockers.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['B-12', 'CP3-DUT']),
+    )
+  })
+
+  it('reads interactions by revision cursor and redacts secrets', () => {
+    const subscription = new DurableInteractionSubscription()
+    subscription.append({
+      eventId: 'e1',
+      runId: 'run-1',
+      origin: 'BRIDGE_INJECTED',
+      confidence: 0.9,
+      occurredAtMs: 1,
+      summary: 'tap password=super-secret token:abc123',
+    })
+    const page = subscription.read({ runId: 'run-1', afterRevision: 0 })
+    expect(page.items).toHaveLength(1)
+    expect(page.items[0]?.summary).toMatch(/REDACTED/)
+    expect(page.items[0]?.summary).not.toMatch(/super-secret|abc123/)
+    expect(page.reconnectCursor.afterRevision).toBe(1)
+  })
+})

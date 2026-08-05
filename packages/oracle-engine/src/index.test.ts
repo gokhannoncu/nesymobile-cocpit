@@ -188,6 +188,125 @@ describe("oracle engine v2", () => {
     expect(result.requirementsByFact["remote.confirmed"]?.state).toBe("EVIDENCE_CONFLICT");
   });
 
+  it("does not let confirmatory or fallback evidence independently create Final Oracle PASS", () => {
+    for (const authority of ["CONFIRMATORY", "FALLBACK"] as const) {
+      const result = evaluateFinalOracle({
+        policy: {
+          requirements: [
+            {
+              factKey: "delivery.persisted",
+              obligation: "REQUIRED",
+              timing: "IMMEDIATE",
+              onTimeout: "FAIL",
+            },
+          ],
+        },
+        facts: [
+          {
+            ...baseFact,
+            factKey: "delivery.persisted",
+            plane: "APP",
+            subtype: "sdk",
+            value: true,
+            authority,
+            deliveryLane: "ORDERED_REQUIRED",
+          },
+        ],
+        occurrenceId: "occ-1",
+        iterationKey: "iteration-1",
+        nowMs: 120,
+        startedAtMs: 100,
+      });
+
+      expect(result.productVerdict).not.toMatch(/^PASS_/);
+      expect(result.requirementsByFact["delivery.persisted"]?.state).toBe("REQUIRED_TIMEOUT");
+    }
+  });
+
+  it("does not let receipt-safe evidence satisfy Final Oracle directly", () => {
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [
+          {
+            factKey: "delivery.persisted",
+            obligation: "REQUIRED",
+            timing: "IMMEDIATE",
+            onTimeout: "FAIL",
+          },
+        ],
+      },
+      facts: [
+        {
+          ...baseFact,
+          factKey: "delivery.persisted",
+          plane: "APP",
+          subtype: "sdk",
+          value: true,
+          authority: "PRIMARY",
+          deliveryLane: "RECEIPT_SAFE",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 120,
+      startedAtMs: 100,
+    });
+
+    expect(result.productVerdict).toBe("FAIL_PRODUCT");
+    expect(result.requirementsByFact["delivery.persisted"]?.state).toBe("REQUIRED_TIMEOUT");
+  });
+
+  it("applies each eventual requirement's own evidence deadline", () => {
+    const policy = {
+      requirements: [
+        {
+          factKey: "early.fact",
+          obligation: "REQUIRED" as const,
+          timing: "EVENTUAL" as const,
+          deadlineMs: 10,
+          onTimeout: "FAIL" as const,
+        },
+        {
+          factKey: "late.fact",
+          obligation: "REQUIRED" as const,
+          timing: "EVENTUAL" as const,
+          deadlineMs: 100,
+          onTimeout: "INCONCLUSIVE" as const,
+        },
+      ],
+    };
+    const makeFact = (factKey: string, observedAtMs: number) => ({
+      ...baseFact,
+      factKey,
+      observedAtMs,
+      plane: "APP" as const,
+      subtype: "sdk",
+      value: true as const,
+      deliveryLane: "ORDERED_REQUIRED" as const,
+    });
+
+    const lateEarlyFact = evaluateFinalOracle({
+      policy,
+      facts: [makeFact("early.fact", 110), makeFact("late.fact", 150)],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 160,
+      startedAtMs: 100,
+    });
+    expect(lateEarlyFact.productVerdict).toBe("FAIL_PRODUCT");
+    expect(lateEarlyFact.requirementsByFact["early.fact"]?.state).toBe("REQUIRED_TIMEOUT");
+
+    const validEarlyFact = evaluateFinalOracle({
+      policy,
+      facts: [makeFact("early.fact", 109), makeFact("late.fact", 150)],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 160,
+      startedAtMs: 100,
+    });
+    expect(validEarlyFact.productVerdict).toBe("PASS_ONLINE");
+  });
+
   it("keeps HTTP transport success as raw audit evidence, not business truth", () => {
     const facts = normalizeEvidence([
       {

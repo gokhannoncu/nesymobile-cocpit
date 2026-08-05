@@ -1,3 +1,4 @@
+import type { BridgeActionTerminalState, WaitAnyResult } from "@nesy/bridge-contract";
 import type {
   EvaluationFailureClass,
   OperationalDisposition,
@@ -57,7 +58,7 @@ export type ActionTransitionPhase =
   | "GESTURE_COMPLETED"
   | "EFFECT_VERIFIED";
 
-export type ActionTerminalState = "SUCCEEDED" | "FAILED" | "UNKNOWN_EFFECT" | "REJECTED" | "CANCELLED";
+export type ActionTerminalState = BridgeActionTerminalState;
 
 export interface ActionTransition {
   phase: ActionTransitionPhase;
@@ -77,16 +78,19 @@ export interface StepOccurrence {
   outcome: StepOutcomeAxes;
 }
 
-export type EvidenceJourneyStage =
-  | "EMIT"
-  | "WAL"
-  | "TRANSPORT"
-  | "INBOX"
-  | "RECEIPT"
-  | "ORDERED"
-  | "NORMALIZATION"
-  | "CORRELATION"
-  | "EVALUATION";
+export const EVIDENCE_JOURNEY_STAGES = [
+  "EMIT",
+  "WAL",
+  "TRANSPORT",
+  "INBOX",
+  "RECEIPT",
+  "ORDERED",
+  "NORMALIZATION",
+  "CORRELATION",
+  "EVALUATION",
+] as const;
+
+export type EvidenceJourneyStage = (typeof EVIDENCE_JOURNEY_STAGES)[number];
 
 export type EvidenceJourneyState = "PENDING" | "OBSERVED" | "NOT_OBSERVED" | "UNKNOWN" | "BLOCKED";
 
@@ -110,6 +114,35 @@ export type TestExecutionDisposition =
   | "ORPHANED"
   | "RECONCILIATION_REQUIRED"
   | "UNKNOWN_EFFECT";
+
+export type SchedulerOccurrenceState = "NOT_STARTED" | "PHYSICAL_EFFECT_IN_FLIGHT" | "COMPLETED";
+
+export interface SchedulerRecoveryInput {
+  lifecycle: TestExecutionLifecycle;
+  schedulerDisposition: SchedulerDisposition;
+  disposition: TestExecutionDisposition;
+  leaseOwner?: string;
+  leaseExpiresAtMs?: number;
+  heartbeatAtMs?: number;
+  heartbeatTimeoutMs: number;
+  nowMs: number;
+  occurrenceState: SchedulerOccurrenceState;
+}
+
+export type SchedulerRecoveryAction =
+  | "KEEP_LEASE"
+  | "KEEP_TERMINAL"
+  | "MARK_ORPHANED"
+  | "REQUEUE"
+  | "STOP_UNKNOWN_EFFECT"
+  | "SKIP_COMPLETED";
+
+export interface SchedulerRecoveryDecision {
+  action: SchedulerRecoveryAction;
+  lifecycle: TestExecutionLifecycle;
+  schedulerDisposition: SchedulerDisposition;
+  disposition: TestExecutionDisposition;
+}
 
 export interface TestExecution {
   executionId: string;
@@ -170,6 +203,31 @@ export interface RemoteActionRuntimeRequest {
   resourceLeaseId?: string;
 }
 
+export type RemoteActionTerminalResult =
+  | { status: Extract<ActionTerminalState, "SUCCEEDED">; responseRef?: string }
+  | { status: Extract<ActionTerminalState, "FAILED">; error: string }
+  | { status: Extract<ActionTerminalState, "UNKNOWN_EFFECT">; error: string }
+  | {
+      status: Extract<TestExecutionDisposition, "RECONCILIATION_REQUIRED">;
+      reconciliationRef?: string;
+    };
+
+export interface EvidenceRevisionIdentity {
+  runId: string;
+  occurrenceId: string;
+  iterationKey: string;
+  factKey: string;
+  deliveryLane: "RECEIPT_SAFE" | "ORDERED_REQUIRED";
+  revision: number;
+}
+
+export interface OracleRevisionIdentity {
+  runId: string;
+  occurrenceId: string;
+  evaluatorKind: "CONTINUE_GATE" | "FINAL_ORACLE";
+  revision: number;
+}
+
 const ACTION_PHASE_ORDER: readonly ActionTransitionPhase[] = [
   "RECEIVED",
   "TARGET_RESOLVED",
@@ -210,6 +268,109 @@ export function appendActionTransition(
   }
 
   return [...current, { ...transition }];
+}
+
+export function applyWaitTerminalTransition(
+  current: WaitAnyResult | undefined,
+  incoming: WaitAnyResult,
+): WaitAnyResult {
+  return current ?? incoming;
+}
+
+export function decideSchedulerRecovery(input: SchedulerRecoveryInput): SchedulerRecoveryDecision {
+  if (input.lifecycle === "TERMINAL") {
+    return {
+      action: "KEEP_TERMINAL",
+      lifecycle: input.lifecycle,
+      schedulerDisposition: input.schedulerDisposition,
+      disposition: input.disposition,
+    };
+  }
+
+  if (input.occurrenceState === "COMPLETED") {
+    return {
+      action: "SKIP_COMPLETED",
+      lifecycle: "TERMINAL",
+      schedulerDisposition: "RELEASED",
+      disposition: "COMPLETED",
+    };
+  }
+
+  const leaseExpiresAtMs = input.leaseExpiresAtMs;
+  if (
+    input.lifecycle !== "RUNNING" ||
+    input.schedulerDisposition !== "LEASED" ||
+    input.leaseOwner === undefined ||
+    input.leaseOwner.trim() === "" ||
+    leaseExpiresAtMs === undefined ||
+    !Number.isFinite(leaseExpiresAtMs)
+  ) {
+    if (input.occurrenceState === "PHYSICAL_EFFECT_IN_FLIGHT") {
+      return unknownEffectRecovery();
+    }
+    return {
+      action: "MARK_ORPHANED",
+      lifecycle: "TERMINAL",
+      schedulerDisposition: "WORKER_LOST",
+      disposition: "ORPHANED",
+    };
+  }
+
+  const leaseIsLive = input.nowMs < leaseExpiresAtMs;
+  const heartbeatIsFresh =
+    input.heartbeatAtMs !== undefined &&
+    Number.isFinite(input.heartbeatAtMs) &&
+    input.heartbeatAtMs <= input.nowMs &&
+    input.heartbeatTimeoutMs > 0 &&
+    input.nowMs - input.heartbeatAtMs <= input.heartbeatTimeoutMs;
+  if (leaseIsLive && heartbeatIsFresh) {
+    return {
+      action: "KEEP_LEASE",
+      lifecycle: input.lifecycle,
+      schedulerDisposition: input.schedulerDisposition,
+      disposition: input.disposition,
+    };
+  }
+
+  if (input.occurrenceState === "PHYSICAL_EFFECT_IN_FLIGHT") {
+    return unknownEffectRecovery();
+  }
+
+  return {
+    action: "REQUEUE",
+    lifecycle: "READY",
+    schedulerDisposition: "REQUEUED",
+    disposition: "RETRYABLE",
+  };
+}
+
+function unknownEffectRecovery(): SchedulerRecoveryDecision {
+  return {
+    action: "STOP_UNKNOWN_EFFECT",
+    lifecycle: "TERMINAL",
+    schedulerDisposition: "WORKER_LOST",
+    disposition: "UNKNOWN_EFFECT",
+  };
+}
+
+export function buildEvidenceRevisionIdempotencyKey(identity: EvidenceRevisionIdentity): string {
+  return buildRevisionKey("evidence-revision", [
+    identity.runId,
+    identity.occurrenceId,
+    identity.iterationKey,
+    identity.factKey,
+    identity.deliveryLane,
+    identity.revision,
+  ], 2);
+}
+
+export function buildOracleRevisionIdempotencyKey(identity: OracleRevisionIdentity): string {
+  return buildRevisionKey("oracle-revision", [
+    identity.runId,
+    identity.occurrenceId,
+    identity.evaluatorKind,
+    identity.revision,
+  ]);
 }
 
 export function finalizeRunOutcome(axes: RunOutcomeAxes): RunOutcomeAxes {
@@ -319,6 +480,17 @@ export function createInitialStepOutcome(): StepOutcomeAxes {
 
 function isPassingVerdict(verdict: ProductVerdict): boolean {
   return verdict === "PASS_ONLINE" || verdict === "PASS_QUEUED_OFFLINE";
+}
+
+function buildRevisionKey(
+  namespace: string,
+  parts: readonly (string | number)[],
+  version = 1,
+): string {
+  return `${namespace}:v${version}:${parts
+    .map((part) => String(part))
+    .map((part) => `${part.length}:${part}`)
+    .join(":")}`;
 }
 
 function deepFreeze<T>(value: T): T {

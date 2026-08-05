@@ -4,12 +4,12 @@
 runPlayId: verdict-cockpit-phase-6-run-play
 phase: "6"
 phaseName: "Cockpit UI + PageMigrationManifest + Live Inspector + Run Detail + Test Profile/Campaign UI"
-status: NOT_STARTED
-recoveryState: WAITING_FOR_PHASE_5_COMPLETION
+status: READY_TO_START
+recoveryState: READY_TO_START
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-05 14:39:38 +03"
+lastUpdatedAt: "2026-08-05 20:54:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -23,8 +23,8 @@ phase6Target: "CHECKPOINT_6"
 phase7ReadinessTarget: "READY_WITH_EXTERNAL_BLOCKERS"
 blockingPreflight:
   - id: "PHASE_5_NOT_COMPLETE"
-    status: "BLOCKING"
-    meaning: "Phase 6 UI, Phase 5 runtime/read-model DTO'larına dayanır. Phase 5 tamamlanmadan UI kendi runtime davranışını icat edemez."
+    status: "RESOLVED"
+    meaning: "Phase 5 RESULT is COMPLETED with READY_WITH_EXTERNAL_BLOCKERS; Phase 6 may start."
   - id: "CP3-DUT"
     status: "OPEN_EXTERNAL"
     meaning: "Real DUT mutation acceptance external. Phase 6 UI read/preview/blocked state kurulabilir; production Act/release acceptance için external blocker taşınır."
@@ -387,12 +387,12 @@ Page DTO versioning contract
 | Alan | Değer |
 |---|---|
 | Current phase | `6` |
-| Current step | `6.0` |
-| Current state | `WAITING_FOR_PHASE_5_COMPLETION` |
-| Last successful step | `5.0` |
-| Last attempted step | `6.0` |
-| Last update | `2026-08-05 14:39:38 +03` |
-| Recovery instruction | `Phase 6 playbook hazır. Phase 5 RESULT COMPLETED + phase6Readiness READY_WITH_EXTERNAL_BLOCKERS olmadan implementation başlatma.` |
+| Current step | `6.1` |
+| Current state | `READY_TO_START` |
+| Last successful step | `6.1` |
+| Last attempted step | `6.1` |
+| Last update | `2026-08-05 20:54:00 +03` |
+| Recovery instruction | `Phase 5 COMPLETED. Continue from step 6.2 preflight baseline, then PageMigrationManifest and UI cutover.` |
 
 ## 5. Owned paths
 
@@ -438,7 +438,7 @@ duplicate local type/enum icat edilmemelidir.
 | Step | Status | Açıklama | Output |
 |---|---|---|---|
 | 6.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` oluşturuldu. | Phase 6 hazır ama gated |
-| 6.1 Phase 5 gate doğrulama | `PENDING` | Phase 5 `COMPLETED` ve `phase6Readiness` doğrula. | Gate evidence |
+| 6.1 Phase 5 gate doğrulama | `DONE` | Phase 5 `COMPLETED` ve `phase6Readiness` doğrulandı. | Gate evidence |
 | 6.2 Preflight baseline | `PENDING` | Digest, branch, status, typecheck, test, web route inventory. | Baseline |
 | 6.3 PageMigrationManifest | `PENDING` | Production route manifest ve acceptance refs. | Manifest |
 | 6.4 Navigation/yedi workspace | `PENDING` | Domain Packs/Test Profiles/Test Campaigns/Root Cause nav. | Navigation |

@@ -1,15 +1,13 @@
 import type { FastifyInstance, FastifyReply } from 'fastify'
 
 import {
-  getDeviceReadiness,
   getEvidenceJourney,
   getLegacyRunSummary,
   getRunDetail,
-  getTestCampaignResult,
-  getTestProfileCatalog,
   getWorkflowCatalog,
   queryRunHistory,
 } from '../services/verdict-runtime-read-model.js'
+import { __phase6ContractSingletons } from './verdict-phase6-contracts.routes.js'
 
 async function withRuntimeRead<T>(reply: FastifyReply, read: () => Promise<T>): Promise<T | undefined> {
   try {
@@ -63,11 +61,9 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
     return result
   })
 
-  app.get<{ Params: { deviceId: string } }>('/runtime/devices/:deviceId/readiness', async (request, reply) => {
-    const result = await withRuntimeRead(reply, () => getDeviceReadiness(request.params.deviceId))
-    if (!result) return
-    return result
-  })
+  app.get<{ Params: { deviceId: string } }>('/runtime/devices/:deviceId/readiness', async (request) =>
+    __phase6ContractSingletons.deviceReadiness.get(request.params.deviceId),
+  )
 
   app.get<{ Querystring: { limit?: string } }>('/runtime/catalog/workflows', async (request, reply) => {
     const result = await withRuntimeRead(reply, () => getWorkflowCatalog(parsePositiveInt(request.query.limit, 50)))
@@ -75,11 +71,15 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
     return result
   })
 
-  app.get('/runtime/test-profiles', async () => getTestProfileCatalog())
+  app.get('/runtime/test-profiles', async () => __phase6ContractSingletons.testProfiles.list())
 
-  app.get<{ Params: { campaignId: string } }>('/runtime/test-campaigns/:campaignId', async (request) =>
-    getTestCampaignResult(request.params.campaignId),
-  )
+  app.get<{ Params: { campaignId: string } }>('/runtime/test-campaigns/:campaignId', async (request, reply) => {
+    const result = __phase6ContractSingletons.testCampaigns.get(request.params.campaignId)
+    if (!result) {
+      return reply.code(404).send({ status: 'not_found', detail: 'campaign not found' })
+    }
+    return result
+  })
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {

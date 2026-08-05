@@ -154,7 +154,13 @@ export function evaluateFinalOracle(input: FinalOracleEvaluationInput): FinalOra
   let hasQueueOfflinePass = false;
 
   for (const requirement of input.policy.requirements) {
-    const matchingFacts = factsForRequirement(input.facts, requirement.factKey, input);
+    const matchingFacts = factsForRequirement(input.facts, requirement.factKey, input).filter(
+      (fact) =>
+        fact.authority === "PRIMARY" &&
+        fact.deliveryLane === "ORDERED_REQUIRED" &&
+        (requirement.timing !== "EVENTUAL" ||
+          fact.observedAtMs < input.startedAtMs + (requirement.deadlineMs ?? 0)),
+    );
     for (const fact of matchingFacts) evidenceRefs.add(fact.factKey);
 
     const evaluation = evaluateRequirement(requirement, matchingFacts, input);
@@ -277,7 +283,15 @@ function evaluateRequirement(
   if (requirement.applicabilityCondition) {
     const applicability = evaluateEvidenceExpression(requirement.applicabilityCondition, (factKey) => {
       const applicableFacts = factsForRequirement(input.facts, factKey, input);
-      const values = new Set(applicableFacts.map((fact) => fact.value));
+      const values = new Set(
+        applicableFacts
+          .filter(
+            (fact) =>
+              fact.authority === "PRIMARY" &&
+              fact.deliveryLane === "ORDERED_REQUIRED",
+          )
+          .map((fact) => fact.value),
+      );
       if (values.has(true) && values.has(false)) return "UNKNOWN";
       if (values.has(true)) return "TRUE";
       if (values.has(false)) return "FALSE";

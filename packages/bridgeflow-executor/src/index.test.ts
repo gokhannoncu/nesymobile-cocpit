@@ -108,6 +108,7 @@ describe("bridgeflow executor", () => {
         act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: {
         factsForOccurrence: () => [
@@ -152,6 +153,7 @@ describe("bridgeflow executor", () => {
         act: async () => ({ terminalState: "SUCCEEDED", effectVerified: false, evidenceRef: "bridge:act" }),
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,
@@ -180,6 +182,7 @@ describe("bridgeflow executor", () => {
         },
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1_000 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,
@@ -208,6 +211,7 @@ describe("bridgeflow executor", () => {
           cancelCount += 1;
           return { status: "CANCELLED" };
         },
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,
@@ -268,6 +272,7 @@ describe("bridgeflow executor", () => {
         },
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 4 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,
@@ -343,6 +348,7 @@ describe("bridgeflow executor", () => {
         act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 1 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: {
         factsForOccurrence: (occurrenceId) => [
@@ -429,6 +435,7 @@ describe("bridgeflow executor", () => {
         },
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,
@@ -489,6 +496,7 @@ describe("bridgeflow executor", () => {
         },
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       conditionContext: {
@@ -550,7 +558,7 @@ describe("bridgeflow executor", () => {
     expect(actedSteps).toEqual(["selected"]);
   });
 
-  it("uses Final Oracle v2 and never derives PASS from bridge success alone", async () => {
+  it("uses Final Oracle v2 and never derives PASS from receipt-safe evidence", async () => {
     const persistence = new InMemoryExecutionPersistence();
     const executor = new BridgeFlowExecutor({
       persistence,
@@ -559,8 +567,52 @@ describe("bridgeflow executor", () => {
         act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
-      evidence: { factsForOccurrence: () => [] },
+      evidence: {
+        factsForOccurrence: (occurrenceId) => [
+          {
+            factKey: "app.persisted",
+            occurrenceId,
+            iterationKey: "root",
+            observedAtMs: 1_000,
+            freshnessMaxAgeMs: 1_000,
+            plane: "APP",
+            subtype: "sdk",
+            value: true,
+            authority: "PRIMARY",
+            deliveryLane: "RECEIPT_SAFE",
+            rawEventId: "receipt:app.persisted",
+            reducerTrace: ["trusted:test"],
+          },
+        ],
+      },
+      oracle: {
+        runContinueGate: async () => ({
+          status: "SATISFIED",
+          evaluation: {
+            outcome: "SATISFIED",
+            completedAtMs: 1_000,
+            evidenceRefs: [],
+            reason: "not used by this plan",
+          },
+        }),
+        runFinalOracle: async () => ({
+          status: "VIOLATED",
+          evaluation: {
+            outcome: "VIOLATED",
+            productVerdict: "FAIL_PRODUCT",
+            evaluationFailureClass: "NONE",
+            requirementsByFact: {
+              "app.persisted": {
+                state: "VIOLATED",
+                reason: "receipt-safe evidence cannot authorize Final Oracle",
+              },
+            },
+            evidenceRefs: [],
+          },
+        }),
+      },
       clock: () => 1_000,
     });
 
@@ -610,6 +662,7 @@ describe("bridgeflow executor", () => {
         act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
         waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1 }),
         cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
       },
       evidence: { factsForOccurrence: () => [] },
       clock: () => 10,

@@ -42,3 +42,55 @@ export interface EvidenceJourneyResult {
   runId: string
   items: Record<string, unknown>[]
 }
+
+export interface WorkflowCompileApi {
+  apiVersion: VerdictRuntimeApiVersion
+  ok: boolean
+  compiledPlanRef: string
+  compiledPlanHash: string
+  sourceMap: Record<string, string>
+  provenance: Record<string, unknown>
+  issues: Record<string, unknown>[]
+}
+
+export interface WorkflowRunStartApi {
+  apiVersion: VerdictRuntimeApiVersion
+  runId: string
+  executionId: string
+  compiledPlanHash: string
+  status: 'QUEUED'
+  engineType: 'BRIDGEFLOW'
+}
+
+export interface DeviceReadinessApi {
+  apiVersion: VerdictRuntimeApiVersion
+  deviceId: string
+  overall: string
+  lanes: Record<string, unknown>[]
+  commandAdmission: Record<string, unknown>
+  externalBlockers: Record<string, unknown>[]
+  partial: boolean
+}
+
+export interface TestProfileCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  partial: boolean
+  items: Record<string, unknown>[]
+}
+
+export interface TestCampaignResultApi {
+  apiVersion: VerdictRuntimeApiVersion
+  campaignId: string
+  cells: Record<string, unknown>[]
+  failedCells: string[]
+  partial: boolean
+}
+
+export interface DurableInteractionPageApi {
+  apiVersion: VerdictRuntimeApiVersion
+  runId: string
+  afterRevision: number
+  latestRevision: number
+  items: Record<string, unknown>[]
+  reconnectCursor: { runId: string; afterRevision: number }
+}

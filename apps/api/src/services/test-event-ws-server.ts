@@ -26,6 +26,10 @@ import {
   type DurableInboxRow,
 } from "./verdict-durable-runtime.js";
 import { getVerdictDurableRuntime } from "./verdict-wait-event.js";
+import { getBridgeFlowEvidenceRuntime } from "./bridgeflow-evidence-runtime.js";
+import { createPrismaEvidenceJourneyWriter } from "./evidence-journey-writer.js";
+import { EvidenceSourceRegistry } from "./evidence-source-resolver.js";
+import { DurableBridgeFlowEvidenceIngest } from "./bridgeflow-durable-evidence-ingest.js";
 import { prisma } from "@nesy/db";
 
 export const TEST_EVENT_WS_PORT = 8765;
@@ -51,6 +55,59 @@ const INGEST_DISABLED = process.env.VERDICT_INGEST_DISABLED === "1";
  */
 const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
 
+export function parseOrderedDurableEvent(row: DurableInboxRow): TestBridgeEvent {
+  const serialized = JSON.stringify(row.payload);
+  const event = parseTestEventLine(`NESY_TEST_EVENT|${serialized}`);
+  if (!event) {
+    throw new Error(
+      `malformed ordered durable event ${row.runId}/${row.sessionId}/${row.seq.toString()}`,
+    );
+  }
+  return {
+    ...event,
+    raw: `DB|${serialized}`,
+  };
+}
+
+export async function consumeOrderedDurableEvidenceRow(
+  row: DurableInboxRow,
+  options: {
+    evidence: Pick<
+      DurableBridgeFlowEvidenceIngest,
+      "persist" | "publish" | "observeOrderedBlock" | "observeMalformedOrderedRow"
+    >;
+    onEvent(event: TestBridgeEvent): void;
+  },
+): Promise<void> {
+  const audit = {
+    runId: row.runId,
+    sessionId: row.sessionId,
+    seq: row.seq.toString(),
+    rawEventRef: `durable:${row.runId}:${row.sessionId}:${row.seq.toString()}`,
+  };
+  let durableEvent: TestBridgeEvent;
+  try {
+    durableEvent = parseOrderedDurableEvent(row);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    await options.evidence.observeMalformedOrderedRow(audit, reason);
+    throw error;
+  }
+  try {
+    const prepared = await options.evidence.persist(
+      durableEvent,
+      "ORDERED_REQUIRED",
+      audit,
+    );
+    options.onEvent(durableEvent);
+    options.evidence.publish(prepared);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    await options.evidence.observeOrderedBlock(row.payload, audit, reason);
+    throw error;
+  }
+}
+
 /**
  * Records both paths' observations so their equality can be asserted.
  *
@@ -66,6 +123,13 @@ const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
  * database transaction.
  */
 const compareModeEnabled = (): boolean => process.env.VERDICT_COMPARE_MODE === "1";
+const bridgeFlowEvidenceWriter = createPrismaEvidenceJourneyWriter();
+export const BridgeFlowEvidenceSources = new EvidenceSourceRegistry();
+export const BridgeFlowDurableEvidence = new DurableBridgeFlowEvidenceIngest({
+  resolver: BridgeFlowEvidenceSources,
+  writer: bridgeFlowEvidenceWriter,
+  runtime: getBridgeFlowEvidenceRuntime(),
+});
 
 /**
  * A device frame that is not a test event.
@@ -257,18 +321,12 @@ class TestEventWsServerImpl {
    * than skipping it (see `verdict-ordered-evidence-bus.ts`).
    */
   private async consumeDurableRow(row: DurableInboxRow): Promise<void> {
-    const serialized = JSON.stringify(row.payload);
-    const event = parseTestEventLine(`NESY_TEST_EVENT|${serialized}`);
-    if (!event) {
-      throw new Error(
-        `invalid durable event ${row.runId}/${row.sessionId}/${row.seq.toString()}`,
-      );
-    }
-    const durableEvent: TestBridgeEvent = {
-      ...event,
-      raw: `DB|${serialized}`,
-    };
-    for (const sink of this.sinks) sink.injectTestEvent(durableEvent);
+    await consumeOrderedDurableEvidenceRow(row, {
+      evidence: BridgeFlowDurableEvidence,
+      onEvent: (durableEvent) => {
+        for (const sink of this.sinks) sink.injectTestEvent(durableEvent);
+      },
+    });
 
     if (compareModeEnabled()) {
       this.comparison.recordDurable({
@@ -362,6 +420,27 @@ class TestEventWsServerImpl {
       // would clear a journal entry for a range the host never recorded.
       console.error(`[TestEventWS] ingest rejected (${res.code}):`, res.detail);
       return;
+    }
+    if (frame.kind === "event") {
+      const audit = {
+        runId: frame.runId,
+        sessionId: frame.sessionId,
+        seq: frame.seq,
+        rawEventRef: `durable:${frame.runId}:${frame.sessionId}:${frame.seq}`,
+      };
+      try {
+        const prepared = await BridgeFlowDurableEvidence.persist(
+          frame.payload,
+          "RECEIPT_SAFE",
+          audit,
+        );
+        BridgeFlowDurableEvidence.publish(prepared);
+      } catch (error) {
+        console.warn(
+          "[TestEventWS] receipt-safe evidence persistence failed:",
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
     const send = (payload: unknown) => {
       if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(payload));

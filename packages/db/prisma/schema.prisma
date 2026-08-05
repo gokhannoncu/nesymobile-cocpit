@@ -210,6 +210,7 @@ model WorkflowRun {
   bridgeflowActions  BridgeFlowActionTransition[]
   bridgeflowWaits    BridgeFlowWaitEvent[]
   bridgeflowFacts    BridgeFlowEvidenceFact[]
+  bridgeflowRunBlocks BridgeFlowEvidenceRunBlock[]
   bridgeflowOracle   BridgeFlowOracleEvaluation[]
   testExecutions     VerdictTestExecution[]
   resourceLeases     VerdictResourceLease[]
@@ -587,6 +588,13 @@ model BridgeFlowRunRuntime {
   resourceReleaseResult  String   @default("NOT_REQUIRED") @map("resource_release_result")
   schedulerDisposition   String   @default("NOT_SCHEDULED") @map("scheduler_disposition")
   operationalDisposition String   @default("OK") @map("operational_disposition")
+  recoveryLeaseToken     String?  @unique(map: "bridgeflow_run_runtime_recovery_token_key") @map("recovery_lease_token")
+  recoveryLeaseEpoch     BigInt   @default(0) @map("recovery_lease_epoch")
+  recoveryLeaseOwner     String?  @map("recovery_lease_owner")
+  recoveryLeaseExpiresAt DateTime? @map("recovery_lease_expires_at") @db.Timestamptz(6)
+  recoveryLeaseRenewedAt DateTime? @map("recovery_lease_renewed_at") @db.Timestamptz(6)
+  recoveryCheckpointRevision Int @default(0) @map("recovery_checkpoint_revision")
+  recoveryCheckpoint     Json?    @map("recovery_checkpoint")
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -594,6 +602,7 @@ model BridgeFlowRunRuntime {
 
   @@index([engineType, createdAt], map: "bridgeflow_run_runtime_engine_created_idx")
   @@index([lifecycle, schedulerDisposition], map: "bridgeflow_run_runtime_state_idx")
+  @@index([recoveryLeaseExpiresAt, recoveryLeaseEpoch], map: "bridgeflow_run_runtime_recovery_lease_idx")
   @@map("bridgeflow_run_runtime")
 }
 
@@ -673,6 +682,8 @@ model BridgeFlowEvidenceFact {
   occurrenceId       String   @map("occurrence_id")
   iterationKey       String   @default("root") @map("iteration_key")
   factKey            String   @map("fact_key")
+  revision           Int      @default(1)
+  idempotencyKey     String   @map("idempotency_key")
   plane              String
   sourceSubtype      String   @map("source_subtype")
   value              Json
@@ -688,9 +699,27 @@ model BridgeFlowEvidenceFact {
 
   run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
+  @@unique([runId, idempotencyKey], map: "bridgeflow_evidence_fact_idempotency_key")
+  @@unique([runId, occurrenceId, iterationKey, factKey, deliveryLane, revision], map: "bridgeflow_evidence_fact_revision_key")
   @@index([runId, occurrenceId, iterationKey, factKey], map: "bridgeflow_evidence_fact_correlation_idx")
   @@index([runId, plane, sourceSubtype], map: "bridgeflow_evidence_fact_source_idx")
   @@map("bridgeflow_evidence_fact")
+}
+
+/// Durable poison/block observation when ordered evidence cannot be scoped to an occurrence.
+model BridgeFlowEvidenceRunBlock {
+  id             String   @id @default(cuid())
+  runId          String   @map("run_id")
+  idempotencyKey String   @map("idempotency_key")
+  reason         String
+  evidenceRef    String?  @map("evidence_ref")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, idempotencyKey], map: "bridgeflow_evidence_run_block_idempotency_key")
+  @@index([runId, createdAt], map: "bridgeflow_evidence_run_block_run_idx")
+  @@map("bridgeflow_evidence_run_block")
 }
 
 /// Continue Gate and Final Oracle v2 evaluation read model.
@@ -699,6 +728,8 @@ model BridgeFlowOracleEvaluation {
   runId                  String   @map("run_id")
   occurrenceId           String   @map("occurrence_id")
   evaluatorKind          String   @map("evaluator_kind")
+  revision               Int      @default(1)
+  idempotencyKey         String   @map("idempotency_key")
   outcome                String
   productVerdict         String?  @map("product_verdict")
   evaluationFailureClass String?  @map("evaluation_failure_class")
@@ -708,6 +739,8 @@ model BridgeFlowOracleEvaluation {
 
   run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
+  @@unique([runId, idempotencyKey], map: "bridgeflow_oracle_evaluation_idempotency_key")
+  @@unique([runId, occurrenceId, evaluatorKind, revision], map: "bridgeflow_oracle_evaluation_revision_key")
   @@index([runId, occurrenceId, evaluatorKind], map: "bridgeflow_oracle_evaluation_occurrence_idx")
   @@map("bridgeflow_oracle_evaluation")
 }
@@ -723,6 +756,8 @@ model VerdictTestExecution {
   disposition          String    @default("BLOCKED")
   recoveryState        String?   @map("recovery_state")
   manifest             Json?
+  leaseOwner           String?   @map("lease_owner")
+  leaseExpiresAt       DateTime? @map("lease_expires_at") @db.Timestamptz(6)
   heartbeatAt          DateTime? @map("heartbeat_at") @db.Timestamptz(6)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -730,6 +765,7 @@ model VerdictTestExecution {
   run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([lifecycle, schedulerDisposition], map: "verdict_test_execution_state_idx")
+  @@index([leaseExpiresAt, heartbeatAt], map: "verdict_test_execution_recovery_idx")
   @@map("verdict_test_execution")
 }
 
@@ -776,4 +812,105 @@ model VerdictRemoteActionAttempt {
   @@unique([runId, occurrenceId, operationRef, idempotencyKey], map: "verdict_remote_action_idempotency_key")
   @@index([runId, status], map: "verdict_remote_action_status_idx")
   @@map("verdict_remote_action_attempt")
+}
+
+/// Stable Domain Pack identity. Version snapshots are append-only children.
+model VerdictDomainPack {
+  id        String   @id @default(cuid())
+  packKey   String   @unique @map("pack_key")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  versions VerdictDomainPackVersion[]
+
+  @@map("verdict_domain_pack")
+}
+
+/// Versioned Domain Pack bundle snapshot. Once `publicationState` is PUBLISHED,
+/// the database migration rejects updates and deletes; changes require a new row.
+model VerdictDomainPackVersion {
+  id               String    @id @default(cuid())
+  domainPackId     String    @map("domain_pack_id")
+  version          String
+  bundleDigest     String    @map("bundle_digest")
+  publicationState String    @default("DRAFT") @map("publication_state")
+  bundle           Json
+  immutableAt      DateTime? @map("immutable_at") @db.Timestamptz(6)
+  publishedAt      DateTime? @map("published_at") @db.Timestamptz(6)
+  publishedBy      String?   @map("published_by")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  domainPack   VerdictDomainPack           @relation(fields: [domainPackId], references: [id], onDelete: Restrict)
+  testProfiles VerdictTestProfileVersion[]
+  campaigns    VerdictTestCampaign[]
+
+  @@unique([domainPackId, version], map: "verdict_domain_pack_version_key")
+  @@unique([domainPackId, bundleDigest], map: "verdict_domain_pack_digest_key")
+  @@index([publicationState, createdAt], map: "verdict_domain_pack_publication_idx")
+  @@map("verdict_domain_pack_version")
+}
+
+/// Versioned Test Profile definition snapshot used by later catalog APIs.
+model VerdictTestProfileVersion {
+  id                  String   @id @default(cuid())
+  profileKey          String   @map("profile_key")
+  version             Int
+  domainPackVersionId String?  @map("domain_pack_version_id")
+  definition          Json
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  domainPackVersion VerdictDomainPackVersion? @relation(fields: [domainPackVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([profileKey, version], map: "verdict_test_profile_version_key")
+  @@index([domainPackVersionId], map: "verdict_test_profile_pack_version_idx")
+  @@map("verdict_test_profile_version")
+}
+
+/// One durable execution of a versioned Test Campaign definition.
+model VerdictTestCampaign {
+  id                  String    @id @default(cuid())
+  campaignId          String    @unique @map("campaign_id")
+  campaignKey         String    @map("campaign_key")
+  campaignVersion     Int       @map("campaign_version")
+  domainPackVersionId String?   @map("domain_pack_version_id")
+  definition          Json
+  status              String    @default("PENDING")
+  failedCells         Json?     @map("failed_cells")
+  releaseGateResult   String?   @map("release_gate_result")
+  evidenceSummaryRef  String?   @map("evidence_summary_ref")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  domainPackVersion VerdictDomainPackVersion? @relation(fields: [domainPackVersionId], references: [id], onDelete: Restrict)
+  cells             VerdictCampaignCell[]
+
+  @@index([campaignKey, campaignVersion], map: "verdict_test_campaign_version_idx")
+  @@index([status, createdAt], map: "verdict_test_campaign_status_idx")
+  @@map("verdict_test_campaign")
+}
+
+/// One profile/build/device/repetition cell within a durable campaign.
+model VerdictCampaignCell {
+  id                 String   @id @default(cuid())
+  campaignId         String   @map("campaign_id")
+  cellKey            String   @map("cell_key")
+  profileKey         String   @map("profile_key")
+  profileVersion     Int      @map("profile_version")
+  buildRef           String?  @map("build_ref")
+  environment        String?
+  deviceCell         String?  @map("device_cell")
+  repetitionIndex    Int      @default(0) @map("repetition_index")
+  runIds             Json     @map("run_ids")
+  result             String   @default("PENDING")
+  blockedReason      String?  @map("blocked_reason")
+  evidenceSummaryRef String?  @map("evidence_summary_ref")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  campaign VerdictTestCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, cellKey], map: "verdict_campaign_cell_key")
+  @@index([profileKey, profileVersion], map: "verdict_campaign_cell_profile_idx")
+  @@index([result, updatedAt], map: "verdict_campaign_cell_result_idx")
+  @@map("verdict_campaign_cell")
 }
