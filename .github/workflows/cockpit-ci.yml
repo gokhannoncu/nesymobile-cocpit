@@ -154,9 +154,21 @@ jobs:
       # Guard against the failure mode this job exists to remove: if the env
       # gate is wrong, the suites skip and the job still goes green — a false
       # "integration verified". Assert the tests actually ran.
+      # `--no-file-parallelism` is REQUIRED, not a speed preference.
+      #
+      # The three suites share one database, and the durable runtime's restart
+      # scan (`VerdictDurableRuntime.bootstrap()`) deliberately scans EVERY
+      # stream with pending rows — that is correct in production, where one
+      # process owns recovery. Run in parallel, one file's bootstrap picks up
+      # another file's stream and takes its advisory lease, so the other file's
+      # drain correctly returns `skippedLocked` and its assertion fails.
+      #
+      # Measured before this flag was added: ~50% of parallel runs red (2 of 4),
+      # 5 of 5 green sequentially. The lease was doing its job; the suites were
+      # not isolated. Removing this flag brings the flakiness straight back.
       - name: Ingest and durable runtime integration tests
         run: |
-          pnpm --filter @nesy/api test -- \
+          pnpm --filter @nesy/api test -- --no-file-parallelism \
             src/services/verdict-ingest.integration.test.ts \
             src/services/test-event-ws-server.integration.test.ts \
             src/services/verdict-durable-runtime.integration.test.ts \

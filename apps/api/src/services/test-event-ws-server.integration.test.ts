@@ -74,6 +74,11 @@ suite("WS server durable ingest", () => {
   let received: { frames: Record<string, unknown>[] };
 
   beforeAll(async () => {
+    // Comparison mode is read per frame (see `compareModeEnabled`), so it can be
+    // switched on here — the whole point of the sync-sink cutover gate is that
+    // the equality it claims is measured on a REAL socket against a REAL
+    // database, not on two in-memory arrays.
+    process.env.VERDICT_COMPARE_MODE = "1";
     TestEventWsServer.addSink(fakeSniffer);
     TestEventWsServer.ensureStarted();
     // ingestReady is decided asynchronously on `listening`.
@@ -89,6 +94,7 @@ suite("WS server durable ingest", () => {
 
   afterAll(async () => {
     socket?.close();
+    delete process.env.VERDICT_COMPARE_MODE;
     TestEventWsServer.removeSink(fakeSniffer);
     await prisma.$executeRaw`DELETE FROM verdict_inbox  WHERE run_id = ${RUN}`;
     await prisma.$executeRaw`DELETE FROM verdict_gap    WHERE run_id = ${RUN}`;
@@ -223,6 +229,37 @@ suite("WS server durable ingest", () => {
       expect(stream?.contiguousSeq).toBe(20n);
     },
     30_000,
+  );
+
+  it(
+    "the synchronous sink and the durable lane produce identical logical evidence",
+    async () => {
+      // THE CUTOVER GATE (B.5, RUN_PLAY 2.9). The synchronous sink cannot be
+      // removed because the durable path "also works" — only because the two
+      // produce the SAME logical evidence. The failure this guards against is
+      // not "durable is broken" but "durable is subtly different", which would
+      // surface as changed verdicts long after the sink was deleted.
+      //
+      // By this point the burst test above has driven 20 events through BOTH
+      // paths on one socket, so the recorder has real dual-path data.
+      const report = TestEventWsServer.getComparisonReport();
+
+      expect(report.missingFromDurable).toEqual([]);
+      expect(report.missingFromSync).toEqual([]);
+      // The most dangerous case: same (runId, sessionId, seq), different content.
+      expect(report.payloadMismatches).toEqual([]);
+      expect(report.equal).toBe(true);
+      // Guards against a vacuous pass: an empty recorder is "equal" too, and a
+      // gate that passes when nothing was observed is not a gate.
+      //
+      // 17, not 20: this suite sends seq 1-3 and 7-20 as events, while 4-6 are a
+      // GAP range the device declares it will never send. A gap is not a test
+      // event, so neither path observes one — which is itself the correct
+      // behaviour and is asserted separately above.
+      expect(report.syncCount).toBeGreaterThanOrEqual(17);
+      expect(report.durableCount).toBe(report.syncCount);
+    },
+    20_000,
   );
 
   it("a frame with an unusable seq is neither injected nor persisted", async () => {

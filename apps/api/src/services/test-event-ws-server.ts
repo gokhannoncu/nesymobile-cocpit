@@ -57,8 +57,15 @@ const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
  * Off by default because it accumulates per-event observations in memory: an
  * always-on comparison recorder in a long-lived API process is a leak, and a
  * cutover gate that degrades production is not a gate anyone will use.
+ *
+ * Read per frame rather than captured at module load, unlike the two flags
+ * above. Those decide a startup behaviour; this one has to be switchable by the
+ * equality test, and an ESM module constant cannot be — imports are hoisted, so
+ * the test would have to set the variable before its own import statement ran.
+ * The cost is one string comparison per event on a path that already does a
+ * database transaction.
  */
-const COMPARE_MODE = process.env.VERDICT_COMPARE_MODE === "1";
+const compareModeEnabled = (): boolean => process.env.VERDICT_COMPARE_MODE === "1";
 
 /**
  * A device frame that is not a test event.
@@ -263,7 +270,7 @@ class TestEventWsServerImpl {
     };
     for (const sink of this.sinks) sink.injectTestEvent(durableEvent);
 
-    if (COMPARE_MODE) {
+    if (compareModeEnabled()) {
       this.comparison.recordDurable({
         runId: row.runId,
         sessionId: row.sessionId,
@@ -460,7 +467,7 @@ class TestEventWsServerImpl {
               for (const sink of this.sinks) {
                 sink.injectTestEvent(wsEvent);
               }
-              if (COMPARE_MODE) {
+              if (compareModeEnabled()) {
                 // Recorded from the SYNC path's own view of the event, before it
                 // ever reaches the database. Comparing the durable path against
                 // a re-read of the durable row would prove nothing.

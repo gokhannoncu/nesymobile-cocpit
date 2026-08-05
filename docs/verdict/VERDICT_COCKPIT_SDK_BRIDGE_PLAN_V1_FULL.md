@@ -1,5 +1,5 @@
 ---
-name: Verdict Cockpit SDK + Bridge plan v1.1.2
+name: Verdict Cockpit SDK + Bridge plan v1.1.3
 overview: NesyMobileCocpit'i mevcut Maestro merkezli otomasyon koşucusundan; Verdict SDK kontrol ve canonical evidence düzlemi, Verdict Accessibility Bridge fiziksel UI eylem düzlemi, kalıcı event fan-out'u, WorkflowIR v2 sonrasında kurulan versioned Domain Pack/App Adapter ve Application/Screen/Surface/Launch/Evidence Source/Test Profile registry'leri, event-driven Continue Gate, request-response UiWaitPlan/wait_any, BridgeFlowCompiler/Executor, Evidence Journey teşhisi, dört katmanlı Final Oracle ve Nesy Cockpit v1 için Smoke/Regression/Recovery/Bad Day/Load/Compatibility/Security test profilleri bulunan app-agnostic bir test ve operasyon platformuna dönüştüren bağlayıcı master plan. Planın ürün tezi “yalnız test sonucu değil, uygulanabilir kanıtlarla ispat” ilkesidir; beachhead pazar Android saha/offline operasyon uygulamalarıdır fakat Core mimari bu pazara daraltılmaz. Geçiş sonunda Maestro yalnız devre dışı bırakılmaz; runtime, driver, CLI, dependency, YAML üretimi, feature flag, API/DB alanı, UI, script, test, fixture ve aktif doküman yapısıyla birlikte Cockpit projesinden tamamen sökülür. Plan; mevcut doğru parçaları korur, production WebSocket mutual-HMAC boşluğunu, durable consumer/recovery boşluğunu, Bridge host client ve device gate eksikliğini, Workflow IR/Condition Engine/Domain Pack/BridgeFlow runtime ihtiyacını, Test Profile Catalog ve Test Campaign ürün katmanını, yedi-workspace route/PageDataSource cutover ve ekran kabul matrisini, veri modelini, fiziksel DUT kapılarını, güvenlik/retention kurallarını, Cockpit ürün kabuğu borçlarını ve teknik checkpoint'lerden ayrı izlenecek Business Validation Gate'lerini tek yerde toplar.
 todos:
   - id: faz-0
@@ -15,7 +15,7 @@ todos:
     content: "FAZ 3 — Bridge host temeli ve cihaz kapısı: packages/bridge-contract + bridge-client; NDJSON framing, handshake, typed command/result, semantic TargetFingerprint ve Target Resolution Provider Chain, requestId idempotency, injected gesture interval/origin evidence taşıyan fiziksel aksiyon yaşam döngüsü, event-driven wait_any + cancel_request, timeout/cancel/reconnect ve screenshot artifact; cihaz başına dinamik host port -> sabit device 9876; Bridge APK/version/hash/accessibility/capability/ping preflight; lab allowlist ve production deny. İlk B2'de persistent register_watch/unsolicited push yoktur. CHECKPOINT 3: gerçek DUT'ta scoped dump/find/tap/input/swipe/back/screenshot/wait_node/wait_any, cancellation race, ambiguity/stale-tree ve action lifecycle sözleşmesi geçer."
     status: pending
   - id: faz-4
-    content: "FAZ 4 — Zorunlu üç sıralı kapı: 4A'da shared workflow-contract + WorkflowIR v2 + Condition Engine tamamlanır ve kabul edilir; 4A geçmeden 4B Domain Pack implementasyonu başlamaz. 4B'de Control Plane Domain Pack contract'ı, Application/Screen/Surface/Launch/Evidence Source/Test Profile registry'leri, Nesy Courier Domain Pack ve automationRelease App Adapter mevcut NesyCommands/NesyStateProvider/named-query/event temeli refactor edilerek kurulur; 4B geçmeden 4C tam Domain Pack expansion + BridgeFlowCompiler yapılmaz. 4C semantic macro/entity/query/surface/oracle/test-profile tanımlarını generic IR v2 ve UiWaitPlan'a deterministik derler. CHECKPOINT 4: aynı input aynı plan hash'ini üretir; unsupported/ambiguous/unbounded/risky plan, eksik pack/adapter/evidence capability, yanlış test profile policy'si ve hot-path full dump cihazdan önce fail eder."
+    content: "FAZ 4 — Zorunlu üç sıralı kapı: 4A'da shared workflow-contract + WorkflowIR v2 + Condition Engine + typed allowlisted REMOTE_ACTION primitive'i tamamlanır ve kabul edilir; 4A geçmeden 4B Domain Pack implementasyonu başlamaz. 4B'de Control Plane Domain Pack contract'ı, Application/Screen/Surface/Launch/Evidence Source/Test Profile registry'leri, Nesy Courier Domain Pack ve automationRelease App Adapter mevcut NesyCommands/NesyStateProvider/named-query/event temeli refactor edilerek kurulur; Nesy tur onayı lifecycle'ı Domain Pack reference slice olarak tanımlanır. 4B geçmeden 4C tam Domain Pack expansion + BridgeFlowCompiler yapılmaz. 4C semantic macro/entity/query/surface/oracle/test-profile tanımlarını generic IR v2 ve UiWaitPlan'a deterministik derler. CHECKPOINT 4: aynı input aynı plan hash'ini üretir; unsupported/ambiguous/unbounded/risky plan, eksik pack/adapter/evidence capability, yanlış test profile policy'si ve hot-path full dump cihazdan önce fail eder."
     status: pending
   - id: faz-5
     content: "FAZ 5 — BridgeFlowExecutor + Continue Gate + dört katmanlı Final Oracle + Evidence Source/normalization + Evidence Journey runtime + Test Profile/Campaign execution parametreleri + yeni kalıcılık modeli: step occurrence/iteration/entity/requestId/treeGen/eventSeq, expected/interrupt wait_any lifecycle, SDK/Bridge/local/remote evidence applicability ve fact authority/freshness/correlation, orthogonal business verdict/evaluation/layer root-cause/termination sonuçları, Remote business doğrulaması, CLOCK_BOOTTIME host-device korelasyonu, cancellation/recovery/cleanup, repetition/fault/device/telemetry policy ve stuck-run detection; eski engine'e ait run verileri engine-neutral arşiv modeline taşınır. CHECKPOINT 5: readiness sağlanınca kör deadline beklenmez, eventual Oracle ayrı tamamlanır, event yokluğu kanıtsız SDK failure yapılmaz, process restart ve duplicate action deterministik, transport success business success sayılmaz, ekran yeşili tek başına başarı üretmez, Test Profile yeni motor açmadan aynı BridgeFlow runtime'ına derlenir."
@@ -37,13 +37,13 @@ isProject: false
 
 # Verdict Cockpit — SDK + Bridge Tam İmplementasyon Planı
 
-**Sürüm:** v1.1.2
-**Tarih:** 2026-08-04
-**FrozenAt:** 2026-08-04
-**MasterDigest:** `sha256:5e7deff018a61b71eb215d2406615dae3304fb63080005e1130297401f15fa01`
+**Sürüm:** v1.1.3
+**Tarih:** 2026-08-05
+**FrozenAt:** 2026-08-05
+**MasterDigest:** `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
-**DecisionIndexVersion:** `decision-index-v1.1.2`
+**DecisionIndexVersion:** `decision-index-v1.1.3`
 **Durum:** Bağlayıcı master plan; uygulama ve kabul kapıları tamamlanmamıştır.  
 **Kapsam:** `/NesyMobileCocpit` içindeki API, Web, workspace paketleri, veritabanı, cihaz işçileri, otomasyon editörü, runtime, oracle, artifact, teşhis, güvenlik ve geçiş kodları.  
 **Mobile SSOT:** `/NesyMobile/verdict-status.json`  
@@ -736,7 +736,7 @@ Core veya Bridge protocol içine sızmaz. Bunlar Domain Pack, App Adapter, Test 
 ve workflow authoring katmanında kalır.
 
 Faz 4B'nin ilk teslimlerinden biri `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` olmalıdır.
-Bu referans spec en az beş vertical slice içerir:
+Bu referans spec en az altı vertical slice içerir:
 
 ```text
 COURIER_LOGIN
@@ -744,6 +744,7 @@ SELECT_ROUTE
 OPEN_STOP
 PROCESS_PARCEL
 COMPLETE_DELIVERY
+TOUR_APPROVAL_LIFECYCLE
 ```
 
 Her vertical slice için zorunlu alanlar:
@@ -770,6 +771,48 @@ Source-map/provenance örneği
 Bu spec olmadan D.6C implementation “tamamlandı” sayılamaz. Macro'nun yalnız isminin
 bulunması yeterli değildir; compiler expansion ve runtime occurrence davranışı
 kanıtlanmalıdır.
+
+`TOUR_APPROVAL_LIFECYCLE` özel bir Core veya Bridge komutu değildir. Bu slice,
+kurye aktörünün Mobile UI üzerinden tur onayı istemesi ile dispatcher/supervisor
+aktörünün Nesy Backoffice/Backend adapter üzerinden turu onaylamasını aynı workflow
+occurrence'ında koordine eden **multi-actor Domain Pack reference** örneğidir.
+
+Bu slice'ın canonical expansion'ı generic primitive'lere açılır:
+
+```text
+BRIDGE_ACTION
+WAIT_FACT
+REMOTE_ACTION
+ASSERT_REMOTE
+WAIT_ANY
+ASSERT_APP
+ASSERT_UI
+```
+
+Core'un bildiği şey `REMOTE_ACTION`, adapterRef, operationRef, typed input,
+idempotency, correlation, resource requirement ve output fact binding'dir. Core ve
+Bridge `APPROVE_TOUR`, `TOUR`, `DISPATCHER` veya Nesy backoffice endpoint adlarını
+bilmez.
+
+Bu slice iki ayrı kullanım modunu zorunlu olarak ayırır:
+
+| Mod | Amaç | Ürün verdict'i üretir mi? |
+|---|---|---|
+| Gerçek tur onayı testi | Backend approval + push/notification + app state + UI zincirini kanıtlamak | Evet |
+| Precondition / fixture setup | Başka delivery/payment/tur adımı için remote state hazırlamak | Hayır; setup PASS'i tur onayı ürün PASS'i olamaz |
+
+Gerçek tur onayı testinde Continue Gate minimum şu kanıtlarla açılır:
+
+```text
+REMOTE.TOUR_STATUS_APPROVED
+AND APP.TOUR_APPROVED
+AND UI.TOUR_APPROVED_MESSAGE_VISIBLE
+```
+
+Push/bildirim gerçekten test ediliyorsa `REMOTE.APPROVAL_NOTIFICATION_DISPATCHED`
+ve mobile receive/app state kanıtı zorunludur. Amaç yalnız sonraki testi hazırlamaksa
+kontrollü refresh/direct synchronization kullanılabilir; fakat bu koşum “push
+başarıyla geldi” veya “tur onayı UI entegrasyonu doğru” hükmü üretemez.
 
 ## Denetim Turu 10 — Feature Blueprint, Capability Contract ve Run Plan kararı
 
@@ -912,7 +955,107 @@ yaklaşmıştır. Bu planın v1.1.0 düzeltmesi şu kararları bağlayıcı hale
 
 Bu amendment CP4B ve CP5 başlamadan uygulanması gereken P0 mimari sınır düzeltmesidir.
 
-## Decision Index v1.1.2
+## Denetim Turu 12 — Multi-actor Remote Action ve Nesy tur onayı kararı
+
+Nesy tur onayı gibi senaryolarda test yalnız cihazdaki kurye aktöründen ibaret
+değildir. Gerçek ürün akışında ikinci aktör vardır: dispatcher/supervisor/backoffice
+operatörü. Verdict bu ikinci aktörü görünmeyen script veya rastgele HTTP çağrısı
+olarak değil, typed, allowlisted, effect-aware ve audited `REMOTE_ACTION` primitive'i
+ile modeller.
+
+Bağlayıcı karar:
+
+```text
+Courier Actor
+  → Mobile UI / Bridge action / App evidence
+
+Dispatcher Actor
+  → Nesy Backoffice Adapter / Remote business mutation / Remote validation
+```
+
+`REMOTE_ACTION` WorkflowIR v2 içinde domain-neutral primitive'dir. En az şu alanları
+taşır:
+
+```ts
+interface RemoteActionStep {
+  kind: "REMOTE_ACTION";
+  adapterRef: string;
+  operationRef: string;
+  inputBindings: Record<string, ValueExpression>;
+  idempotency: {
+    class: "READ_ONLY" | "IDEMPOTENT" | "IDEMPOTENCY_KEY_REQUIRED" | "NON_IDEMPOTENT";
+    keyExpression?: ValueExpression;
+  };
+  correlation: {
+    runId: true;
+    occurrenceId: true;
+    entityBindings: string[];
+  };
+  timeoutPolicy: TimeoutPolicy;
+  resourceRequirements: ResourceRequirementRef[];
+  outputFactBindings: FactBinding[];
+  reconciliationPolicy?: ReconciliationPolicyRef;
+}
+```
+
+Nesy tur onayı özelinde Domain Pack şu semantic node'ları tanımlayabilir:
+
+```text
+REQUEST_TOUR_APPROVAL
+APPROVE_TOUR_AS_DISPATCHER
+WAIT_FOR_TOUR_APPROVAL
+```
+
+veya editörde tek macro:
+
+```text
+COMPLETE_TOUR_APPROVAL
+```
+
+Ancak compiler bu macro'yu generic IR adımlarına açar; Bridge veya Core'a
+`APPROVE_TOUR` business komutu gitmez.
+
+Nesy Backoffice Adapter iki backend çağrısını ve remote doğrulamasını typed/audited
+şekilde taşır:
+
+```text
+nesy.backoffice.approve-tour.request
+nesy.backoffice.approve-tour.confirm
+nesy.backoffice.approve-tour.status
+```
+
+HTTP 2xx transport başarısı business success değildir. Minimum remote fact'ler:
+
+```text
+REMOTE.TOUR_APPROVAL_CALL_1_ACCEPTED
+REMOTE.TOUR_APPROVAL_CALL_2_ACCEPTED
+REMOTE.TOUR_STATUS_APPROVED
+REMOTE.APPROVAL_NOTIFICATION_DISPATCHED   // push gerçekten test ediliyorsa
+```
+
+Her remote mutation `workflowRunId`, `testExecutionId`, `occurrenceId`, `tourId`,
+`courierId`, `requestId`, `idempotencyKey`, `environment` ve `serviceOperation`
+correlation'ı taşır. Önerilen idempotency key:
+
+```text
+tour-approval:{workflowRunId}:{occurrenceId}:{tourId}
+```
+
+Partial mutation politikası:
+
+```text
+Servis 1 başarılı, Servis 2 başarısız
+  → kör retry yok
+  → remote state sorgula
+  → idempotency durumunu kontrol et
+  → resource RECONCILIATION_REQUIRED veya QUARANTINED
+```
+
+Bu karar master planın genel Core + Domain Pack modelini değiştirmez; yalnız CP4A,
+CP4B, CP5 ve CP7 work-package'larında unutulmaması gereken acceptance maddelerini
+bağlayıcı hale getirir.
+
+## Decision Index v1.1.3
 
 Bu index master plan içindeki bağlayıcı kararların hızlı denetimi içindir. Yeni fikirler
 doğrudan master plana eklenmez; yalnız P0 güvenlik/correctness açığı, contract
@@ -936,6 +1079,7 @@ doğrudan master plana eklenmez; yalnız P0 güvenlik/correctness açığı, con
 | DEC-048 | Master digest executable policy | MasterDigest satırı çıkarılarak LF/final-newline normalizasyonuyla SHA-256 hesaplanır; doğrulama komutu `pnpm verdict:verify-master-plan` olur. | Header · Decision Index | v1.1.1 | CP0, release docs | v1.1.0 digest policy |
 | DEC-049 | Oracle taxonomy ProductVerdict ile hizalandı | `FAIL_AUTOMATION` ve `FAIL_ENVIRONMENT` ProductVerdict değildir; automation/environment/evidence sorunları EvaluationFailureClass ekseninde saklanır. | Oracle sonuç taksonomisi · CP5 | v1.1.2 | CP4A, CP5, CP6 | DEC-043 stale Oracle taxonomy wording |
 | DEC-050 | Feature Blueprint canonical örneği schema ile hizalandı | Transfer Agenda YAML örneği nested canonical schema ile birebir uyumludur: uppercase risk, components/capabilityRef/targetRef, oracleTemplateRef, dependencies ve impactRefs içerir. | B.19 | v1.1.2 | CP4B, CP6 | DEC-046 incomplete canonical example |
+| DEC-051 | Multi-actor remote action domain içinde kalır | Backend/backoffice aktörü typed allowlisted `REMOTE_ACTION` primitive'iyle modellenir; Nesy `TOUR_APPROVAL_LIFECYCLE` Domain Pack reference slice'tır, Core/Bridge `APPROVE_TOUR` bilmez; fixture setup tur onayı ürün PASS'i üretemez. | Denetim Turu 12 · CP4A · CP4B · CP5 · CP7 | v1.1.3 | CP4A, CP4B, CP5, CP7 | Yok |
 
 ---
 
@@ -5338,7 +5482,9 @@ geçmeden D.6B/D.6C Domain Pack implementasyonu başlamaz:
 27. Pack/app-version/profile migration ve backward-compatibility testleri.
 28. `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` artifact'i:
     `COURIER_LOGIN`, `SELECT_ROUTE`, `OPEN_STOP`, `PROCESS_PARCEL` ve
-    `COMPLETE_DELIVERY` vertical slice'larını canonical örnek sözleşme olarak taşır.
+    `COMPLETE_DELIVERY` vertical slice'larını canonical örnek sözleşme olarak taşır;
+    v1.1.3 itibarıyla `TOUR_APPROVAL_LIFECYCLE` altıncı multi-actor reference
+    slice olarak eklenir.
 29. Her reference slice için business meaning, notResponsibleFor, input/output,
     precondition, screen/surface, entity binding, target resolution, macro expansion,
     Continue Gate, Final Oracle, interrupt policy, required capability, source-map,
@@ -5356,10 +5502,24 @@ geçmeden D.6B/D.6C Domain Pack implementasyonu başlamaz:
     - Route Selection veya Home readiness'i bekler,
     - `APP.USER_SESSION_AVAILABLE`, `LOCAL.USER_SESSION_AVAILABLE` ve
       `REMOTE.AUTH_ACCEPTED` kanıtlarını doğru timing/obligation ile ayırır.
-32. Setup login ile gerçek login testi ayrımı:
+32. `TOUR_APPROVAL_LIFECYCLE` reference slice'ı:
+    - kurye aktörünün Mobile UI'da tur onayı istemesini Bridge action ve
+      `APP.TOUR_APPROVAL_REQUESTED` kanıtıyla başlatır,
+    - dispatcher/supervisor aktörünü `REMOTE_ACTION` üzerinden Nesy Backoffice
+      Adapter'a bağlar,
+    - iki backend servis çağrısını ayrı remote evidence fact olarak taşır,
+    - HTTP 2xx'i business success saymaz; backend entity status ve correlation
+      doğrulaması ister,
+    - gerçek tur onayı testi ile precondition/fixture setup modunu ayırır,
+    - setup modu tur onayı ürün PASS'i veya push başarı hükmü üretemez,
+    - idempotency key, resource lease, partial mutation ve reconciliation policy
+      taşır,
+    - Continue Gate ve Final Oracle'da remote/app/UI/push kanıt yükümlülüklerini
+      açıkça ayırır.
+33. Setup login ile gerçek login testi ayrımı:
     `PREPARED_SESSION` veya `DIRECT_STATE` launch profile'ı login testi PASS'i
     üretmez; yalnız başlangıç koşulu hazırlar.
-33. Editor palette üretim contract'ı:
+34. Editor palette üretim contract'ı:
     Domain Pack semantic node'ları Cockpit palette'inde iş diliyle görünür; Advanced
     generic node'lar ayrı gruptadır ve Core business macro ismi bilmez.
 34. Domain node → Generic WorkflowIR → BridgeFlowPlan source-map golden snapshot'ları;
@@ -6978,6 +7138,11 @@ pack expansion ve compatibility sözleşmesi kabul edildikten sonra tamamlanır.
    production Domain Pack kodu olmadan domain-neutral union kanıtı.
 8. Final Oracle için unified `OracleRequirement` ve eski paralel listelerden migration.
 9. Run/step outcome eksenlerinin shared typed contract'ı.
+10. Typed, allowlisted ve effect-aware `REMOTE_ACTION` / `EXTERNAL_ACTION` primitive'i:
+    adapterRef, operationRef, input binding, idempotency class/key, occurrence/entity
+    correlation, timeout policy, resource requirement, output fact binding ve
+    reconciliation policy taşır. Primitive domain-neutral'dır; `Tour`, `Courier`,
+    `ApproveTour` veya endpoint adı shared IR union'ına girmez.
 
 **Kural:** Checkpoint 4A geçmeden Faz 4B Domain Pack implementation PR'ı merge
 edilemez. Contract spike yapılabilir; production pack kodu ve Nesy-specific shared
@@ -7023,8 +7188,9 @@ Bu scale işleri ayrı hayali checkpoint adıyla izlenmez:
 
 1. D.6B ve D.6C işlerinin tamamı.
 2. `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` canonical vertical-slice spec'inin
-   review edilmesi; `COURIER_LOGIN`, `SELECT_ROUTE`, `OPEN_STOP`, `PROCESS_PARCEL`
-   ve `COMPLETE_DELIVERY` için source-map, Generic IR ve BridgeFlowPlan snapshot'ları.
+   review edilmesi; `COURIER_LOGIN`, `SELECT_ROUTE`, `OPEN_STOP`, `PROCESS_PARCEL`,
+   `COMPLETE_DELIVERY` ve `TOUR_APPROVAL_LIFECYCLE` için source-map, Generic IR ve
+   BridgeFlowPlan snapshot'ları.
 3. Control Plane Domain Pack registry/manifest/migration.
 4. Formal Application/Screen/Surface/Entity/Target Registry.
 5. Semantic action/macro, Domain Oracle, Evidence Source Registry ve formal Launch
@@ -7053,6 +7219,13 @@ Bu scale işleri ayrı hayali checkpoint adıyla izlenmez:
 20. Domain Pack yalnız `ResourceRequirementRef`, `DomainDependencyRef` ve
     `DomainImpactRef` beyan eder; execution lease/scheduler state veya full
     ImpactGraph publish etmeye çalışırsa contract validation fail eder.
+21. Nesy Backoffice Adapter contract'ı `nesy.backoffice.approve-tour.*`
+    operationRef'lerini allowlist, typed input/output, audit, idempotency key,
+    environment ve remote validator sözleşmesiyle taşır; raw HTTP script'i veya
+    görünmeyen setup hook'u kabul edilmez.
+22. `TOUR_APPROVAL_LIFECYCLE` için resource requirement:
+    exclusive courier/account, exclusive backend tour fixture, mutation conflict
+    group ve `RECONCILE_BEFORE_RELEASE` cleanup policy'si taşır.
 
 **Kural:** Checkpoint 4B geçmeden tam Domain Pack expansion kullanan
 BridgeFlowCompiler ve referans kurye planı kabul edilmez.
@@ -7092,6 +7265,10 @@ BridgeFlowCompiler ve referans kurye planı kabul edilmez.
 - Lifecycle/verdict/termination/cleanup/operational disposition ile step action/gate/
   oracle/cleanup outcome tipleri ortak contract'ta ayrı.
 - Occurrence/iteration/entity/event correlation generic contract'ta mevcut.
+- WorkflowIR v2 typed `REMOTE_ACTION` primitive'i içeriyor; primitive allowlisted
+  adapter operation, effect/idempotency, correlation, resource requirement,
+  output fact binding ve reconciliation policy taşırken shared IR'a Nesy business
+  command/type sızdırmıyor.
 - Shared IR'da Nesy-specific business type veya app class adı yok.
 - Condition `eval` kullanmıyor; fuzz suite güvenli.
 - TRUE/FALSE/UNKNOWN kararları kanıtla persist edilebilir DTO üretiyor.
@@ -7103,8 +7280,9 @@ BridgeFlowCompiler ve referans kurye planı kabul edilmez.
 
 - Nesy Courier Domain Pack manifest/registry/migration suite yeşil.
 - `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` mevcut, reviewed ve bundle testlerine bağlı;
-  beş vertical slice canonical input/output, expansion, gates, oracle ve snapshots
-  taşıyor.
+  altı vertical slice canonical input/output, expansion, gates, oracle ve snapshots
+  taşıyor: `COURIER_LOGIN`, `SELECT_ROUTE`, `OPEN_STOP`, `PROCESS_PARCEL`,
+  `COMPLETE_DELIVERY`, `TOUR_APPROVAL_LIFECYCLE`.
 - Application/Screen/Surface/Entity/Target kayıtları formal contract ve app-version
   compatibility taşıyor.
 - Existing `NesyCommands`/state/query/event kodu tek App Adapter altında.
@@ -7113,6 +7291,10 @@ BridgeFlowCompiler ve referans kurye planı kabul edilmez.
 - Domain macro'ları generic IR v2 dışına çıkmıyor.
 - `OPEN_STOP` ve `COURIER_LOGIN` macro'ları reference spec'teki canonical expansion,
   Continue Gate, Final Oracle ve source-map snapshot'larıyla uyumlu.
+- `TOUR_APPROVAL_LIFECYCLE` gerçek tur onayı testi ile precondition/setup modunu
+  ayırıyor; setup modu push/UI/tur-onayı ürün PASS'i üretemiyor.
+- Nesy Backoffice Adapter operation'ları typed/allowlisted/audited; iki servis çağrısı
+  ve backend status validation ayrı remote fact olarak izleniyor.
 - Bridge protocol veya Core shared package'ında `OPEN_STOP/COURIER_LOGIN/STOP/PARCEL/
   DELIVERY` gibi business command/type yok.
 - Setup login ile gerçek `COURIER_LOGIN` ayrılmış; prepared/direct launch profile'ları
@@ -7259,6 +7441,16 @@ correctness kurulmalıdır.
     resource state, cleanup/quarantine/destroy/manual release ve reconciliation ref.
 36. Dependency/Impact evaluator read model'i: prerequisite blocked/failed ayrımı ve
     PR/build impact selection sonucu.
+37. `REMOTE_ACTION` executor runtime'ı: allowlisted adapter operation lookup,
+    effect/idempotency enforcement, idempotency key persistence, timeout/cancel,
+    run/occurrence/entity correlation, output fact binding ve audit kaydı.
+38. Remote mutation partial failure policy: ilk servis başarılı ikinci servis
+    başarısız, timeout sonrası unknown remote effect veya idempotency conflict
+    durumunda kör retry yapılmaz; Test Data Broker ilgili account/backend fixture
+    kaynağını `RECONCILIATION_REQUIRED` veya `QUARANTINED` durumuna alır.
+39. Nesy Backoffice Adapter execution path'i: HTTP transport result, business response,
+    backend entity state, push/notification dispatch ve mobile/app/UI receive kanıtları
+    ayrı fact authority olarak saklanır; HTTP 2xx business success yerine geçmez.
 
 ### CHECKPOINT 5
 
@@ -7290,6 +7482,13 @@ correctness kurulmalıdır.
 - Required+eventual fact tek requirement olarak deadline/onTimeout politikasını
   uyguluyor; aynı fact paralel listelerde belirsizleşmiyor.
 - `DELIVERY_PERSISTED` ve `QUEUE_OFFLINE` doğru Local/queue subtype'ında değerlendiriliyor.
+- `REMOTE_ACTION` step'i idempotency/correlation/resource lease olmadan çalışmıyor;
+  non-idempotent veya unknown-effect remote mutation otomatik retry edilmiyor.
+- Remote mutation partial failure kaynakları `FAILED` test sonucu üretmeden önce
+  reconciliation/disposition ekseninde ayrılıyor; dependent workflow'lar gerekirse
+  `BLOCKED` oluyor.
+- Nesy tur onayı setup modu fixture/precondition sonucu üretirken gerçek tur onayı
+  ürün PASS'i, push başarı hükmü veya UI integration PASS'i üretmiyor.
 - Expected/interrupt `wait_any` sonucu doğru occurrence'a route ediliyor ve step/run
   bitince in-flight request cancel/cleanup ediliyor.
 - Match/timeout/cancel aynı anda yarıştığında yalnız bir terminal sonuç persist
@@ -7541,6 +7740,11 @@ kurulmadan cutover ölçümü yapılamaz.
     preview etiketiyle çalıştırma.
 25. PR/nightly/weekly/release campaign schedule sınıflarını en az fake ve bir gerçek
     DUT fixture'ıyla doğrulama.
+26. `TOUR_APPROVAL_LIFECYCLE` gerçek DUT vertical slice'ı:
+    kurye Mobile UI'da tur onayı ister; Nesy Backoffice Adapter iki remote servis
+    çağrısını idempotent/correlated çalıştırır; backend entity approved state'i,
+    push/notification dispatch, mobile receive/app state ve UI approved surface
+    kanıtları Continue Gate ve Final Oracle'da ayrı değerlendirilir.
 
 Opsiyonel D.21 İz C bu fazdan sonra veya paralel başlayabilir; AI Design Audit
 ve post-run explanation kapalıyken checkpoint davranışı aynı kalır.
@@ -7555,6 +7759,15 @@ ve post-run explanation kapalıyken checkpoint davranışı aynı kalır.
 - Stop/task/shipment/parcel stable entity key'leri doğru occurrence'a bağlı.
 - Offline queue false failure üretmiyor.
 - Backend confirmation doğru node/iteration'a bağlanıyor.
+- `TOUR_APPROVAL_LIFECYCLE` gerçek tur onayı modunda backend approved + push/mobile
+  receive + app state + UI surface zinciriyle geçiyor; backend approved ama mobile
+  notification/app state gelmezse test devam etmiyor ve failure boundary remote→mobile
+  notification/app sync olarak raporlanıyor.
+- `TOUR_APPROVAL_LIFECYCLE` setup/precondition modunda controlled remote approval ve
+  refresh/direct sync kullanabiliyor; ancak push/UI integration veya tur onayı ürün
+  PASS'i üretmiyor.
+- Tur onayı partial mutation, timeout veya unknown remote effect durumunda account/tour
+  fixture Test Data Broker tarafından `RECONCILIATION_REQUIRED`/`QUARANTINED` yapılıyor.
 - Unknown dialog STOP + screenshot + scoped dump üretiyor.
 - `wait_any` beklenen surface'te küçük correlated match sonucu döndürüyor; aynı
   beklemedeki interrupt predicate session/update yüzeyini kesiyor.
@@ -9131,6 +9344,10 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 81. Nesy Stop/Parcel/Payment/Queue akışları da aynı Feature Blueprint + Capability
     Contract + Resource Isolation modeliyle tanımlanır; Nesy'ye özel runner veya
     ikinci queue modeli oluşmaz.
+82. Nesy `TOUR_APPROVAL_LIFECYCLE`, multi-actor remote action modeliyle tanımlanır:
+    Core/Bridge `APPROVE_TOUR` bilmez; Domain Pack semantic node generic
+    `REMOTE_ACTION` + evidence/assertion adımlarına açılır; gerçek test ile setup
+    modu ayrı verdict semantics taşır.
 
 ## H.9 İlk uygulanacak iş sırası — kısa özet
 
@@ -9142,11 +9359,13 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 6. **CP4A sonrasında** immutable bundle/trust, Derived Fact DAG ve Domain Pack
    contract/registry + Feature Blueprint/Capability Contract + Test Profile/Campaign
    contract.
-7. `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` canonical vertical slice spec'i; ardından
+7. `NESY_COURIER_DOMAIN_PACK_REFERENCE_V1` canonical vertical slice spec'i; altıncı
+   `TOUR_APPROVAL_LIFECYCLE` multi-actor slice dahil; ardından
    Nesy Courier Domain Pack + mevcut Mobile kodundan App Adapter + Nesy Feature
    Blueprint set'i + Nesy v1 Test Profile definitions ve CP4B kabulü.
 8. **CP4B sonrasında** Domain expansion + BridgeFlowCompiler + `UiWaitPlan` ve CP4C.
-9. Evidence Source/normalization runtime + BridgeFlowExecutor + receipt-safe Continue
+9. Evidence Source/normalization runtime + BridgeFlowExecutor + typed `REMOTE_ACTION`
+   executor + receipt-safe Continue
    Gate + unified OracleRequirement + orthogonal run outcomes + Evidence Journey
    classifier/read model + Run Manifest/Test Execution Queue/Test Data Broker +
    Test Profile/Campaign persistence.
@@ -9159,7 +9378,8 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
     Inspector + Launch Profile/Test Profile/Expected-Interrupt Wait UI + Feature
     Registry/Capability Contracts/Run Planner/Execution Queue/Coverage Graph +
     page acceptance.
-13. Nesy Courier Reference Domain Pack E2E + Field Login/Load Tour + v1 core Test
+13. Nesy Courier Reference Domain Pack E2E + Field Login/Load Tour +
+    `TOUR_APPROVAL_LIFECYCLE` gerçek DUT slice + v1 core Test
     Profile Catalog + interaction origin ve failure-scoped capture cihaz acceptance +
     diagnostics/security/campaign matrix.
 14. Maçkolik Domain Pack'e başlamadan `MACKOLIK_DOMAIN_PACK_REFERENCE_V1` blueprint
