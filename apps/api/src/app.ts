@@ -12,6 +12,7 @@ import { healthRoutes } from './routes/health.routes.js'
 import { nesyAuthRoutes } from './routes/nesy-auth.routes.js'
 import { nesyEnvRoutes } from './routes/nesy-env.routes.js'
 import { verdictEventsRoutes } from './routes/verdict-events.routes.js'
+import { verdictRuntimeRoutes } from './routes/verdict-runtime.routes.js'
 import shipmentsRouter from './legacy/shipments.router.js'
 import customersRouter from './legacy/customers.router.js'
 import pickupsRouter from './legacy/pickups.router.js'
@@ -49,6 +50,7 @@ export async function buildApp(env: Env) {
   // Prisma-backed runtime is not constructed until a route is actually called,
   // so registering it costs nothing when nobody asks about durable health.
   await app.register(verdictEventsRoutes, { prefix: '/api/verdict' })
+  await app.register(verdictRuntimeRoutes, { prefix: '/api/verdict' })
 
   // The @fastify/express bridge breaks light-my-request payload capture,
   // so skip the Express data-center API in tests (mirrors the socket.io skip below).

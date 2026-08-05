@@ -104,7 +104,7 @@ describe("golden contract fixtures", () => {
    * code without having to fake a logcat frame.
    */
   const readLine = (f: string) => {
-    const message = readFileSync(join(legacyDir, f), "utf8").replace(/\n$/, "");
+    const message = readFileSync(join(legacyDir, f), "utf8").replace(/\r?\n$/, "");
     return `01-01 00:00:00.000 D/NESY_AUTO_BRIDGE( 1234): ${message}`;
   };
   const readExpected = (f: string) =>
@@ -184,7 +184,7 @@ describe("golden contract fixtures", () => {
     .filter((f) => f.endsWith(".json"))
     .sort();
   const readEvent = (f: string) =>
-    readFileSync(join(structuredDir, f), "utf8").replace(/\n$/, "");
+    readFileSync(join(structuredDir, f), "utf8").replace(/\r?\n$/, "");
 
   it("corpus carries all 49 frozen wire names", () => {
     const names = structuredFiles

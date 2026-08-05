@@ -205,6 +205,15 @@ model WorkflowRun {
   version            WorkflowVersion            @relation(fields: [versionId], references: [id])
   stepResults        WorkflowStepResult[]
   diagnosticCaptures VerdictDiagnosticCapture[]
+  bridgeflowRuntime  BridgeFlowRunRuntime?
+  bridgeflowSteps    BridgeFlowStepOccurrence[]
+  bridgeflowActions  BridgeFlowActionTransition[]
+  bridgeflowWaits    BridgeFlowWaitEvent[]
+  bridgeflowFacts    BridgeFlowEvidenceFact[]
+  bridgeflowOracle   BridgeFlowOracleEvaluation[]
+  testExecutions     VerdictTestExecution[]
+  resourceLeases     VerdictResourceLease[]
+  remoteActions      VerdictRemoteActionAttempt[]
 
   @@index([workflowId, createdAt])
   @@index([status])
@@ -538,4 +547,233 @@ model VerdictStream {
 
   @@id([runId, sessionId])
   @@map("verdict_stream")
+}
+
+/// Phase 5 BridgeFlow durable runtime manifest and orthogonal run axes.
+///
+/// This is intentionally additive to the legacy `WorkflowRun` shape: Maestro
+/// artifacts (`yamlContent`, `maestroOutput`) remain optional legacy artifacts,
+/// while BridgeFlow runs pin compiler/domain/profile/runtime metadata here.
+model BridgeFlowRunRuntime {
+  id                     String   @id @default(cuid())
+  runId                  String   @unique @map("run_id")
+  engineType             String   @default("BRIDGEFLOW") @map("engine_type")
+  compiledPlanRef        String?  @map("compiled_plan_ref")
+  compiledPlanHash       String?  @map("compiled_plan_hash")
+  domainPackKey          String?  @map("domain_pack_key")
+  domainPackVersion      String?  @map("domain_pack_version")
+  domainPackDigest       String?  @map("domain_pack_digest")
+  workflowIrSchemaVersion Int?    @map("workflow_ir_schema_version")
+  compilerVersion        String?  @map("compiler_version")
+  bridgeProtocolVersion  String?  @map("bridge_protocol_version")
+  sdkProtocolVersion     String?  @map("sdk_protocol_version")
+  runSessionId           String?  @map("run_session_id")
+  runEpochMs             BigInt?  @map("run_epoch_ms")
+  runEpochUnit           String   @default("MONOTONIC_MS") @map("run_epoch_unit")
+  profileSnapshot        Json?    @map("profile_snapshot")
+  campaignId             String?  @map("campaign_id")
+  buildRef               String?  @map("build_ref")
+  datasetRef             String?  @map("dataset_ref")
+  deviceCell             String?  @map("device_cell")
+  repetitionIndex        Int?     @map("repetition_index")
+  faultPlanRef           String?  @map("fault_plan_ref")
+  telemetryPolicyRef     String?  @map("telemetry_policy_ref")
+  releaseGate            Boolean  @default(false) @map("release_gate")
+  lifecycle              String   @default("PENDING")
+  productVerdict         String   @default("NOT_EVALUATED") @map("product_verdict")
+  evaluationFailureClass String   @default("NONE") @map("evaluation_failure_class")
+  terminationReason      String   @default("NOT_TERMINATED") @map("termination_reason")
+  cleanupResult          String   @default("NOT_STARTED") @map("cleanup_result")
+  resourceReleaseResult  String   @default("NOT_REQUIRED") @map("resource_release_result")
+  schedulerDisposition   String   @default("NOT_SCHEDULED") @map("scheduler_disposition")
+  operationalDisposition String   @default("OK") @map("operational_disposition")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([engineType, createdAt], map: "bridgeflow_run_runtime_engine_created_idx")
+  @@index([lifecycle, schedulerDisposition], map: "bridgeflow_run_runtime_state_idx")
+  @@map("bridgeflow_run_runtime")
+}
+
+/// One durable row per executed plan-step occurrence, including repeated
+/// occurrences of the same editor node.
+model BridgeFlowStepOccurrence {
+  id                 String    @id @default(cuid())
+  runId              String    @map("run_id")
+  occurrenceId       String    @map("occurrence_id")
+  planStepId         String    @map("plan_step_id")
+  sourceMapRef       String?   @map("source_map_ref")
+  occurrenceIndex    Int       @map("occurrence_index")
+  iterationKey       String    @default("root") @map("iteration_key")
+  entityRef          Json?     @map("entity_ref")
+  requestId          String?   @map("request_id")
+  lifecycle          String    @default("PENDING")
+  actionResult       String    @default("NOT_STARTED") @map("action_result")
+  continueGateResult String    @default("NOT_EVALUATED") @map("continue_gate_result")
+  finalOracleResult  String    @default("NOT_EVALUATED") @map("final_oracle_result")
+  cleanupResult      String    @default("NOT_STARTED") @map("cleanup_result")
+  metadata           Json?
+  startedAt          DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, occurrenceId], map: "bridgeflow_step_occurrence_run_occurrence_key")
+  @@index([runId, planStepId, occurrenceIndex], map: "bridgeflow_step_occurrence_step_idx")
+  @@index([runId, iterationKey], map: "bridgeflow_step_occurrence_iteration_idx")
+  @@map("bridgeflow_step_occurrence")
+}
+
+/// Per-attempt physical action transition log.
+model BridgeFlowActionTransition {
+  id           String   @id @default(cuid())
+  runId        String   @map("run_id")
+  occurrenceId String   @map("occurrence_id")
+  requestId    String   @map("request_id")
+  phase        String
+  atMs         BigInt   @map("at_ms")
+  evidenceRef  String?  @map("evidence_ref")
+  terminal     String?
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, occurrenceId, requestId, phase], map: "bridgeflow_action_transition_phase_key")
+  @@index([runId, occurrenceId, requestId, atMs], map: "bridgeflow_action_transition_request_idx")
+  @@map("bridgeflow_action_transition")
+}
+
+/// wait_any/cancel_request routing result, one terminal result per occurrence.
+model BridgeFlowWaitEvent {
+  id            String   @id @default(cuid())
+  runId         String   @map("run_id")
+  occurrenceId  String   @map("occurrence_id")
+  waitPlanId    String?  @map("wait_plan_id")
+  requestId     String?  @map("request_id")
+  status        String
+  resultKey     String?  @map("result_key")
+  cancelStatus  String?  @map("cancel_status")
+  terminalAt    DateTime @default(now()) @map("terminal_at") @db.Timestamptz(6)
+  metadata      Json?
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, occurrenceId, waitPlanId], map: "bridgeflow_wait_event_one_terminal_key")
+  @@index([runId, status], map: "bridgeflow_wait_event_status_idx")
+  @@map("bridgeflow_wait_event")
+}
+
+/// Normalized semantic fact with raw audit and evidence journey state.
+model BridgeFlowEvidenceFact {
+  id                 String   @id @default(cuid())
+  runId              String   @map("run_id")
+  occurrenceId       String   @map("occurrence_id")
+  iterationKey       String   @default("root") @map("iteration_key")
+  factKey            String   @map("fact_key")
+  plane              String
+  sourceSubtype      String   @map("source_subtype")
+  value              Json
+  authority          String
+  deliveryLane       String   @map("delivery_lane")
+  rawEventRef        String?  @map("raw_event_ref")
+  reducerTrace       Json?    @map("reducer_trace")
+  freshnessMaxAgeMs  Int?     @map("freshness_max_age_ms")
+  correlationStatus  String   @default("PENDING") @map("correlation_status")
+  journeyStage       String   @default("INBOX") @map("journey_stage")
+  journeyState       String   @default("PENDING") @map("journey_state")
+  observedAt         DateTime @default(now()) @map("observed_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, occurrenceId, iterationKey, factKey], map: "bridgeflow_evidence_fact_correlation_idx")
+  @@index([runId, plane, sourceSubtype], map: "bridgeflow_evidence_fact_source_idx")
+  @@map("bridgeflow_evidence_fact")
+}
+
+/// Continue Gate and Final Oracle v2 evaluation read model.
+model BridgeFlowOracleEvaluation {
+  id                     String   @id @default(cuid())
+  runId                  String   @map("run_id")
+  occurrenceId           String   @map("occurrence_id")
+  evaluatorKind          String   @map("evaluator_kind")
+  outcome                String
+  productVerdict         String?  @map("product_verdict")
+  evaluationFailureClass String?  @map("evaluation_failure_class")
+  requirements           Json?
+  evidenceRefs           Json?    @map("evidence_refs")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, occurrenceId, evaluatorKind], map: "bridgeflow_oracle_evaluation_occurrence_idx")
+  @@map("bridgeflow_oracle_evaluation")
+}
+
+/// Phase 5 TestExecutionQueue foundation.
+model VerdictTestExecution {
+  id                   String    @id @default(cuid())
+  executionId          String    @unique @map("execution_id")
+  runId                String    @map("run_id")
+  lifecycle            String    @default("PENDING")
+  productVerdict       String    @default("NOT_EVALUATED") @map("product_verdict")
+  schedulerDisposition String    @default("NOT_SCHEDULED") @map("scheduler_disposition")
+  disposition          String    @default("BLOCKED")
+  recoveryState        String?   @map("recovery_state")
+  manifest             Json?
+  heartbeatAt          DateTime? @map("heartbeat_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([lifecycle, schedulerDisposition], map: "verdict_test_execution_state_idx")
+  @@map("verdict_test_execution")
+}
+
+/// Phase 5 TestDataBroker resource lease foundation.
+model VerdictResourceLease {
+  id                   String    @id @default(cuid())
+  leaseId              String    @unique @map("lease_id")
+  runId                String    @map("run_id")
+  resourceId           String    @map("resource_id")
+  conflictGroup        String    @map("conflict_group")
+  exclusive            Boolean   @default(true)
+  state                String    @default("DIRTY")
+  reconciliationReason String?   @map("reconciliation_reason")
+  leasedAt             DateTime  @default(now()) @map("leased_at") @db.Timestamptz(6)
+  releasedAt           DateTime? @map("released_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([conflictGroup, state], map: "verdict_resource_lease_conflict_idx")
+  @@index([runId, state], map: "verdict_resource_lease_run_state_idx")
+  @@map("verdict_resource_lease")
+}
+
+/// Remote action runtime foundation. Success here is transport/action status;
+/// Final Oracle still owns business verdict.
+model VerdictRemoteActionAttempt {
+  id              String    @id @default(cuid())
+  runId           String    @map("run_id")
+  occurrenceId    String    @map("occurrence_id")
+  operationRef    String    @map("operation_ref")
+  idempotencyKey  String    @map("idempotency_key")
+  effectClass     String    @map("effect_class")
+  timeoutMs       Int       @map("timeout_ms")
+  status          String    @default("PENDING")
+  resourceLeaseId String?   @map("resource_lease_id")
+  requestPayload  Json?     @map("request_payload")
+  responsePayload Json?     @map("response_payload")
+  errorMessage    String?   @map("error_message")
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, occurrenceId, operationRef, idempotencyKey], map: "verdict_remote_action_idempotency_key")
+  @@index([runId, status], map: "verdict_remote_action_status_idx")
+  @@map("verdict_remote_action_attempt")
 }

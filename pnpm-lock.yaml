@@ -32,6 +32,9 @@ importers:
       '@nesy/bridge-contract':
         specifier: workspace:*
         version: link:../../packages/bridge-contract
+      '@nesy/bridgeflow-executor':
+        specifier: workspace:^
+        version: link:../../packages/bridgeflow-executor
       '@nesy/control-channels':
         specifier: workspace:*
         version: link:../../packages/control-channels
@@ -41,6 +44,12 @@ importers:
       '@nesy/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@nesy/execution-contract':
+        specifier: workspace:*
+        version: link:../../packages/execution-contract
+      '@nesy/oracle-engine':
+        specifier: workspace:*
+        version: link:../../packages/oracle-engine
       '@nesy/platform-paths':
         specifier: workspace:*
         version: link:../../packages/platform-paths
@@ -329,6 +338,43 @@ importers:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
+  packages/bridgeflow-executor:
+    dependencies:
+      '@nesy/bridge-contract':
+        specifier: workspace:*
+        version: link:../bridge-contract
+      '@nesy/bridgeflow-compiler':
+        specifier: workspace:*
+        version: link:../bridgeflow-compiler
+      '@nesy/execution-contract':
+        specifier: workspace:*
+        version: link:../execution-contract
+      '@nesy/oracle-engine':
+        specifier: workspace:*
+        version: link:../oracle-engine
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../workflow-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
   packages/control-channels:
     dependencies:
       '@nesy/control-contract':
@@ -452,6 +498,40 @@ importers:
         specifier: ^8.50.0
         version: 8.63.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.8.3)
 
+  packages/execution-contract:
+    dependencies:
+      '@nesy/bridge-contract':
+        specifier: workspace:*
+        version: link:../bridge-contract
+      '@nesy/bridgeflow-compiler':
+        specifier: workspace:*
+        version: link:../bridgeflow-compiler
+      '@nesy/control-contract':
+        specifier: workspace:*
+        version: link:../control-contract
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../workflow-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
   packages/metronic:
     dependencies:
       '@tanstack/react-table':
@@ -506,6 +586,34 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+
+  packages/oracle-engine:
+    dependencies:
+      '@nesy/execution-contract':
+        specifier: workspace:*
+        version: link:../execution-contract
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../workflow-contract
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
   packages/platform-paths:
     devDependencies:

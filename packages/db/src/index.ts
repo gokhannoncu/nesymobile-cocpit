@@ -20,12 +20,17 @@ function resolvePrismaClient(): PrismaClient {
       typeof (cached as { engineeringIncidentEvent?: unknown }).engineeringIncidentEvent !== "undefined";
     const hasVerdictDiagnosticCaptures =
       typeof (cached as { verdictDiagnosticCapture?: unknown }).verdictDiagnosticCapture !== "undefined";
+    const hasBridgeFlowRuntime =
+      typeof (cached as { bridgeFlowRunRuntime?: unknown }).bridgeFlowRunRuntime !== "undefined" &&
+      typeof (cached as { bridgeFlowStepOccurrence?: unknown }).bridgeFlowStepOccurrence !== "undefined" &&
+      typeof (cached as { verdictTestExecution?: unknown }).verdictTestExecution !== "undefined";
     if (
       hasGraylog &&
       hasMongo &&
       hasEngineeringIncidents &&
       hasEngineeringIncidentEvents &&
-      hasVerdictDiagnosticCaptures
+      hasVerdictDiagnosticCaptures &&
+      hasBridgeFlowRuntime
     ) {
       return cached;
     }
