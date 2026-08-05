@@ -20,6 +20,7 @@
     "@nesy/metronic": "workspace:*",
     "@nesy/platform-paths": "workspace:*",
     "@nesy/types": "workspace:*",
+    "@nesy/workflow-contract": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

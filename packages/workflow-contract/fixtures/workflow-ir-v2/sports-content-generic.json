@@ -1,0 +1,197 @@
+{
+  "_fixtureNote": "Sports/content-shaped acceptance fixture. Same Core union as courier-generic.json, entirely different business shape — that is the point. Business language appears only in opaque Domain-Pack-owned refs. Exercises SWITCH, WAIT_ANY (B-13 host-only cancel), a CONDITION with an explicit unknown branch, and an EXTERNAL_ACTION against a third-party adapter.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-sports-content-generic",
+  "workflowVersion": 3,
+  "name": "Sports/content-shaped generic acceptance fixture",
+  "source": { "kind": "FIXTURE", "ref": "sports-content-generic" },
+  "inputs": [
+    { "name": "contentId", "type": "string", "required": true },
+    { "name": "locale", "type": "string", "required": false }
+  ],
+  "variables": [
+    { "name": "listedEvents", "type": "stringList" },
+    { "name": "detailTarget", "type": "string" }
+  ],
+  "entryStepId": "q-listing",
+  "policies": {
+    "runDeadlineMs": 300000,
+    "cleanupDeadlineMs": 30000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": true, "captureOnFailure": true },
+    "redactionPolicy": { "redactAllInputs": false }
+  },
+  "capabilityRequirements": [
+    { "capability": "sdk.named_query", "optional": false },
+    { "capability": "bridge.wait_any", "optional": true, "fallback": "SEQUENTIAL_LEGS" }
+  ],
+  "sourceMap": [
+    { "ref": "sm-a", "planStepId": "q-listing", "domainSourceRef": "pack.macro.open_listing" },
+    { "ref": "sm-b", "planStepId": "switch-surface", "domainSourceRef": "pack.macro.open_listing" },
+    { "ref": "sm-c", "planStepId": "wait-first-surface", "domainSourceRef": "pack.macro.open_listing" },
+    { "ref": "sm-d", "planStepId": "cond-locale", "domainSourceRef": "pack.macro.localize" },
+    { "ref": "sm-e", "planStepId": "annotate-fallback", "domainSourceRef": "pack.macro.localize" },
+    { "ref": "sm-f", "planStepId": "external-verify", "domainSourceRef": "pack.macro.verify_feed" },
+    { "ref": "sm-g", "planStepId": "noop-end", "domainSourceRef": "pack.macro.verify_feed" },
+    { "ref": "sm-h", "planStepId": "attention-end", "domainSourceRef": "pack.macro.open_listing" }
+  ],
+  "steps": [
+    {
+      "planStepId": "q-listing",
+      "kind": "SDK_QUERY",
+      "sourceMapRef": "sm-a",
+      "timeoutMs": 12000,
+      "retryPolicy": { "maxAttempts": 2, "backoffMs": 400, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [{ "capability": "sdk.named_query", "optional": false }],
+      "queryRef": "mackolik.feed.listed_events",
+      "maxRows": 25,
+      "outputVariable": "listedEvents",
+      "next": "switch-surface"
+    },
+    {
+      "planStepId": "switch-surface",
+      "kind": "SWITCH",
+      "sourceMapRef": "sm-b",
+      "timeoutMs": 8000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "unknownPolicy": "OPERATOR_ATTENTION",
+      "overlapAudited": true,
+      "branches": [
+        {
+          "branchId": "live-surface",
+          "condition": {
+            "kind": "comparison",
+            "operator": "equals",
+            "left": { "kind": "operand", "source": "sdk.state", "path": "feed.surface" },
+            "right": { "kind": "literal", "value": "LIVE" }
+          },
+          "next": "wait-first-surface"
+        },
+        {
+          "branchId": "archive-surface",
+          "condition": {
+            "kind": "comparison",
+            "operator": "in",
+            "left": { "kind": "operand", "source": "sdk.state", "path": "feed.surface" },
+            "right": { "kind": "literalList", "values": ["ARCHIVE", "REPLAY"] }
+          },
+          "next": "cond-locale"
+        }
+      ],
+      "default": { "policy": "OPERATOR_ATTENTION" },
+      "next": null
+    },
+    {
+      "planStepId": "wait-first-surface",
+      "kind": "WAIT_ANY",
+      "sourceMapRef": "sm-c",
+      "timeoutMs": 25000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [
+        { "capability": "bridge.wait_any", "optional": true, "fallback": "SEQUENTIAL_LEGS" },
+        { "capability": "bridge.cancel_request", "optional": true, "fallback": "HOST_ONLY_CANCEL" }
+      ],
+      "maxLegs": 3,
+      "hostOnlyCancel": true,
+      "legs": [
+        { "legId": "leg-detail", "factKey": "ui.detail_surface_ready", "onWin": "cond-locale" },
+        { "legId": "leg-empty", "factKey": "ui.empty_state_visible", "onWin": "attention-end" },
+        { "legId": "leg-error", "factKey": "ui.error_surface_visible", "onWin": "attention-end" }
+      ],
+      "next": "cond-locale"
+    },
+    {
+      "planStepId": "cond-locale",
+      "kind": "CONDITION",
+      "sourceMapRef": "sm-d",
+      "timeoutMs": 5000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "condition": {
+        "kind": "and",
+        "operands": [
+          { "kind": "existence", "operator": "exists", "operand": { "kind": "operand", "source": "run.input", "path": "locale" } },
+          {
+            "kind": "comparison",
+            "operator": "notEquals",
+            "left": { "kind": "operand", "source": "country" },
+            "right": { "kind": "literal", "value": "XX" }
+          }
+        ]
+      },
+      "unknownPolicy": "BRANCH",
+      "onTrue": "external-verify",
+      "onFalse": "annotate-fallback",
+      "onUnknown": "annotate-fallback",
+      "next": null
+    },
+    {
+      "planStepId": "annotate-fallback",
+      "kind": "ANNOTATE",
+      "sourceMapRef": "sm-e",
+      "timeoutMs": 1000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "message": "Locale unresolved; continuing on the default content surface.",
+      "next": "external-verify"
+    },
+    {
+      "planStepId": "external-verify",
+      "kind": "EXTERNAL_ACTION",
+      "sourceMapRef": "sm-f",
+      "timeoutMs": 30000,
+      "retryPolicy": { "maxAttempts": 3, "backoffMs": 1500, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "spec": {
+        "adapterRef": "thirdparty.feed",
+        "operationRef": "thirdparty.feed.event-state.read",
+        "role": "VALIDATION",
+        "effectClass": "READ_ONLY",
+        "idempotencyClass": "NATURALLY_IDEMPOTENT",
+        "inputBindings": [
+          { "name": "contentId", "source": { "kind": "runInput", "path": "contentId" } }
+        ],
+        "outputFactBindings": [
+          { "factKey": "remote.feed_state_confirmed", "responsePath": "state" }
+        ],
+        "timeoutPolicy": { "timeoutMs": 20000, "maxAttempts": 3, "backoffMs": 1500 },
+        "reconciliationPolicy": "NONE",
+        "auditPolicy": { "recordRequest": false, "recordResponse": true }
+      },
+      "finalOraclePolicy": {
+        "requirements": [
+          {
+            "factKey": "remote.feed_state_confirmed",
+            "obligation": "REQUIRED",
+            "timing": "EVENTUAL",
+            "deadlineMs": 60000,
+            "onTimeout": "INCONCLUSIVE",
+            "applicabilityCondition": { "noneOf": ["environment.offline"] }
+          }
+        ]
+      },
+      "next": "noop-end"
+    },
+    {
+      "planStepId": "noop-end",
+      "kind": "NOOP",
+      "sourceMapRef": "sm-g",
+      "timeoutMs": 1000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "reason": "explicit terminal step so every branch has a declared target",
+      "next": null
+    },
+    {
+      "planStepId": "attention-end",
+      "kind": "ANNOTATE",
+      "sourceMapRef": "sm-h",
+      "timeoutMs": 1000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "message": "Listing surface did not become usable; operator attention required.",
+      "next": null
+    }
+  ]
+}

@@ -47,6 +47,9 @@ importers:
       '@nesy/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../../packages/workflow-contract
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.19.3(prisma@6.19.3(typescript@5.8.3))(typescript@5.8.3)
@@ -123,6 +126,9 @@ importers:
       '@nesy/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../../packages/workflow-contract
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -506,6 +512,27 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+
+  packages/workflow-contract:
+    devDependencies:
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
 packages:
 

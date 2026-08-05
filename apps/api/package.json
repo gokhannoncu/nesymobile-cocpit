@@ -25,6 +25,7 @@
     "@nesy/db": "workspace:*",
     "@nesy/platform-paths": "workspace:*",
     "@nesy/types": "workspace:*",
+    "@nesy/workflow-contract": "workspace:*",
     "@prisma/client": "^6.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

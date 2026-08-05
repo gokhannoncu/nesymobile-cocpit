@@ -1,0 +1,47 @@
+{
+  "_fixtureNote": "Defect: FOR_EACH with no iteration bound and no empty-collection policy. Expected issue code UNBOUNDED_LOOP.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-invalid-unbounded-loop",
+  "workflowVersion": 1,
+  "name": "Unbounded loop must be rejected",
+  "source": { "kind": "FIXTURE", "ref": "invalid-unbounded-loop" },
+  "inputs": [],
+  "variables": [{ "name": "items", "type": "stringList" }],
+  "entryStepId": "loop",
+  "policies": {
+    "runDeadlineMs": 60000,
+    "cleanupDeadlineMs": 10000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": false, "captureOnFailure": true },
+    "redactionPolicy": {}
+  },
+  "capabilityRequirements": [],
+  "sourceMap": [
+    { "ref": "sm1", "planStepId": "loop" },
+    { "ref": "sm2", "planStepId": "body" }
+  ],
+  "steps": [
+    {
+      "planStepId": "loop",
+      "kind": "FOR_EACH",
+      "sourceMapRef": "sm1",
+      "timeoutMs": 60000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "itemsVariable": "items",
+      "itemVariable": "item",
+      "indexVariable": "idx",
+      "body": "body",
+      "next": null
+    },
+    {
+      "planStepId": "body",
+      "kind": "NOOP",
+      "sourceMapRef": "sm2",
+      "timeoutMs": 1000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "next": null
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "_fixtureNote": "Defect: pre-v2 parallel required[]/eventual[] oracle lists. Expected issue code ORACLE_PARALLEL_LISTS.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-invalid-parallel-oracle-lists",
+  "workflowVersion": 1,
+  "name": "Parallel oracle lists must be rejected",
+  "source": { "kind": "FIXTURE", "ref": "invalid-parallel-oracle-lists" },
+  "inputs": [],
+  "variables": [],
+  "entryStepId": "s1",
+  "policies": {
+    "runDeadlineMs": 60000,
+    "cleanupDeadlineMs": 10000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": false, "captureOnFailure": true },
+    "redactionPolicy": {}
+  },
+  "capabilityRequirements": [],
+  "sourceMap": [{ "ref": "sm1", "planStepId": "s1" }],
+  "steps": [
+    {
+      "planStepId": "s1",
+      "kind": "ASSERT_FACT",
+      "sourceMapRef": "sm1",
+      "timeoutMs": 5000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "factKey": "local.thing_persisted",
+      "expected": true,
+      "unknownPolicy": "FAIL",
+      "finalOraclePolicy": {
+        "requirements": [],
+        "required": ["local.thing_persisted"],
+        "eventual": ["remote.thing_confirmed"]
+      },
+      "next": null
+    }
+  ]
+}

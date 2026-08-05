@@ -1,0 +1,43 @@
+{
+  "_fixtureNote": "Defect: a non-idempotent external mutation retried without a keyed idempotency class, and a step-level retry over the same effect. Expected issue codes UNSAFE_RETRY and EXTERNAL_ACTION_INVALID.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-invalid-unsafe-retry",
+  "workflowVersion": 1,
+  "name": "Unsafe retry over a non-idempotent mutation must be rejected",
+  "source": { "kind": "FIXTURE", "ref": "invalid-unsafe-retry" },
+  "inputs": [],
+  "variables": [],
+  "entryStepId": "s1",
+  "policies": {
+    "runDeadlineMs": 60000,
+    "cleanupDeadlineMs": 10000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": false, "captureOnFailure": true },
+    "redactionPolicy": {}
+  },
+  "capabilityRequirements": [],
+  "sourceMap": [{ "ref": "sm1", "planStepId": "s1" }],
+  "steps": [
+    {
+      "planStepId": "s1",
+      "kind": "REMOTE_ACTION",
+      "sourceMapRef": "sm1",
+      "timeoutMs": 30000,
+      "retryPolicy": { "maxAttempts": 3, "backoffMs": 1000, "effectClass": "NON_IDEMPOTENT_MUTATION" },
+      "capabilityRequirements": [],
+      "spec": {
+        "adapterRef": "nesy.backoffice",
+        "operationRef": "nesy.backoffice.thing.create",
+        "role": "VALIDATION",
+        "effectClass": "NON_IDEMPOTENT_MUTATION",
+        "idempotencyClass": "NONE",
+        "inputBindings": [],
+        "outputFactBindings": [{ "factKey": "remote.thing_created", "responsePath": "id" }],
+        "timeoutPolicy": { "timeoutMs": 20000, "maxAttempts": 3 },
+        "reconciliationPolicy": "NONE",
+        "auditPolicy": { "recordRequest": false, "recordResponse": false }
+      },
+      "next": null
+    }
+  ]
+}

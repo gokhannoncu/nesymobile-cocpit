@@ -1,0 +1,26 @@
+{
+  "_fixtureNote": "A pre-v2 editor graph, shaped like the real ones in apps/api (LAUNCH_APP entry, an IF_* condition with true/false handles, business action nodes carrying completionPolicy.required). Core does not know these type names — the test supplies the mapping, which is exactly the seam Phase 4A is protecting.",
+  "workflowId": "legacy-wf-1",
+  "workflowVersion": 4,
+  "name": "Legacy graph migration input",
+  "entryNodeId": "n1",
+  "nodes": [
+    { "id": "n1", "type": "LAUNCH_APP", "title": "Launch the app" },
+    { "id": "n2", "type": "IF_LOGIN", "title": "Already signed in?" },
+    { "id": "n3", "type": "DO_LOGIN", "title": "Sign in", "config": { "timeoutMs": 45000 } },
+    {
+      "id": "n4",
+      "type": "BUSINESS_OPERATION",
+      "title": "Perform the business operation",
+      "config": { "completionPolicy": { "required": ["ui", "mobileEvent", "backend"] } }
+    },
+    { "id": "n5", "type": "UNSUPPORTED_LEGACY_THING", "title": "Something the mapping does not cover" }
+  ],
+  "edges": [
+    { "sourceNodeId": "n1", "targetNodeId": "n2", "sourceHandle": "default" },
+    { "sourceNodeId": "n2", "targetNodeId": "n4", "sourceHandle": "true" },
+    { "sourceNodeId": "n2", "targetNodeId": "n3", "sourceHandle": "false" },
+    { "sourceNodeId": "n3", "targetNodeId": "n4", "sourceHandle": "default" },
+    { "sourceNodeId": "n4", "targetNodeId": null, "sourceHandle": "default", "isPlaceholder": true }
+  ]
+}

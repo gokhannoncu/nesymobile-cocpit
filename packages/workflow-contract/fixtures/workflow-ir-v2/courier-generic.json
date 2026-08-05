@@ -1,0 +1,211 @@
+{
+  "_fixtureNote": "Courier-shaped acceptance fixture. NOT a Domain Pack: every business word lives in an opaque Domain-Pack-owned ref (queryRef/targetRef/factKey/operationRef), never in a Core union member, capability id, variable name or bridge verb. Its twin is sports-content-generic.json — the pair is what proves the Core union is domain-neutral.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-courier-generic",
+  "workflowVersion": 1,
+  "name": "Courier-shaped generic acceptance fixture",
+  "source": { "kind": "FIXTURE", "ref": "courier-generic" },
+  "inputs": [
+    { "name": "routeCode", "type": "string", "required": true },
+    { "name": "deviceToken", "type": "string", "required": true, "secret": true }
+  ],
+  "variables": [
+    { "name": "routeItems", "type": "stringList" },
+    { "name": "rowTarget", "type": "string" },
+    { "name": "loopItem", "type": "string" },
+    { "name": "loopIndex", "type": "number" }
+  ],
+  "entryStepId": "q-route-items",
+  "policies": {
+    "runDeadlineMs": 600000,
+    "cleanupDeadlineMs": 60000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": false, "captureOnFailure": true, "kinds": ["SCREENSHOT", "UI_TREE"] },
+    "redactionPolicy": { "redactPaths": ["run.input.deviceToken"] }
+  },
+  "capabilityRequirements": [
+    { "capability": "bridge.tap", "optional": false },
+    { "capability": "bridge.wait_any", "optional": true, "fallback": "SEQUENTIAL_LEGS" },
+    { "capability": "bridge.cancel_request", "optional": true, "fallback": "HOST_ONLY_CANCEL" }
+  ],
+  "sourceMap": [
+    { "ref": "sm-1", "planStepId": "q-route-items", "domainSourceRef": "pack.macro.list_items" },
+    { "ref": "sm-2", "planStepId": "loop-items", "domainSourceRef": "pack.macro.list_items" },
+    { "ref": "sm-3", "planStepId": "resolve-row", "domainSourceRef": "pack.macro.open_item" },
+    { "ref": "sm-4", "planStepId": "tap-row", "domainSourceRef": "pack.macro.open_item" },
+    { "ref": "sm-5", "planStepId": "await-detail", "domainSourceRef": "pack.macro.open_item" },
+    { "ref": "sm-6", "planStepId": "assert-persisted", "domainSourceRef": "pack.macro.complete_item" },
+    { "ref": "sm-7", "planStepId": "remote-approve", "domainSourceRef": "pack.macro.approve_lifecycle" },
+    { "ref": "sm-8", "planStepId": "cleanup-release", "domainSourceRef": "pack.macro.approve_lifecycle" }
+  ],
+  "steps": [
+    {
+      "planStepId": "q-route-items",
+      "kind": "SDK_QUERY",
+      "sourceMapRef": "sm-1",
+      "timeoutMs": 15000,
+      "retryPolicy": { "maxAttempts": 2, "backoffMs": 500, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [{ "capability": "sdk.named_query", "optional": false }],
+      "queryRef": "nesy.courier.route_stops",
+      "maxRows": 50,
+      "outputVariable": "routeItems",
+      "next": "loop-items"
+    },
+    {
+      "planStepId": "loop-items",
+      "kind": "FOR_EACH",
+      "sourceMapRef": "sm-2",
+      "timeoutMs": 480000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "itemsVariable": "routeItems",
+      "maxIterations": 20,
+      "itemVariable": "loopItem",
+      "indexVariable": "loopIndex",
+      "body": "resolve-row",
+      "emptyPolicy": "OPERATOR_ATTENTION",
+      "next": "remote-approve"
+    },
+    {
+      "planStepId": "resolve-row",
+      "kind": "RESOLVE_TARGET",
+      "sourceMapRef": "sm-3",
+      "timeoutMs": 10000,
+      "retryPolicy": { "maxAttempts": 2, "backoffMs": 250, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "targetRef": "nesy.courier.stop_row",
+      "outputVariable": "rowTarget",
+      "next": "tap-row"
+    },
+    {
+      "planStepId": "tap-row",
+      "kind": "BRIDGE_ACTION",
+      "sourceMapRef": "sm-4",
+      "timeoutMs": 10000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "UNKNOWN" },
+      "capabilityRequirements": [{ "capability": "bridge.tap", "optional": false }],
+      "action": "tap",
+      "targetVariable": "rowTarget",
+      "next": "await-detail"
+    },
+    {
+      "planStepId": "await-detail",
+      "kind": "WAIT_EVENT",
+      "sourceMapRef": "sm-5",
+      "timeoutMs": 20000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "factKey": "ui.item_detail_surface_ready",
+      "sourceLane": "UI",
+      "stableForMs": 250,
+      "requireCorrelation": true,
+      "onTimeout": "FAIL",
+      "continueGate": {
+        "allOf": ["ui.item_detail_surface_ready"],
+        "noneOf": ["ui.blocking_overlay_visible"],
+        "deadlineMs": 20000,
+        "stableForMs": 250,
+        "unknownPolicy": "RETRY"
+      },
+      "next": "assert-persisted"
+    },
+    {
+      "planStepId": "assert-persisted",
+      "kind": "ASSERT_FACT",
+      "sourceMapRef": "sm-6",
+      "timeoutMs": 30000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "factKey": "local.item_completion_persisted",
+      "expected": true,
+      "unknownPolicy": "INCONCLUSIVE",
+      "finalOraclePolicy": {
+        "requirements": [
+          {
+            "factKey": "local.item_completion_persisted",
+            "obligation": "REQUIRED",
+            "timing": "IMMEDIATE",
+            "onTimeout": "FAIL"
+          },
+          {
+            "factKey": "remote.item_completion_confirmed",
+            "obligation": "REQUIRED",
+            "timing": "EVENTUAL",
+            "deadlineMs": 120000,
+            "onTimeout": "INCONCLUSIVE"
+          },
+          {
+            "factKey": "remote.config_resolved",
+            "obligation": "WARNING",
+            "timing": "EVENTUAL",
+            "deadlineMs": 30000,
+            "onTimeout": "WARNING"
+          },
+          {
+            "factKey": "app.push_registration_completed",
+            "obligation": "NOT_APPLICABLE",
+            "timing": "IMMEDIATE",
+            "onTimeout": "WARNING"
+          }
+        ],
+        "completionExpression": {
+          "allOf": ["local.item_completion_persisted"],
+          "anyOf": ["remote.item_completion_confirmed", "local.offline_queue_accepted"]
+        }
+      },
+      "next": null
+    },
+    {
+      "planStepId": "remote-approve",
+      "kind": "REMOTE_ACTION",
+      "sourceMapRef": "sm-7",
+      "timeoutMs": 40000,
+      "retryPolicy": { "maxAttempts": 3, "backoffMs": 2000, "effectClass": "IDEMPOTENT_MUTATION" },
+      "capabilityRequirements": [],
+      "spec": {
+        "adapterRef": "nesy.backoffice",
+        "operationRef": "nesy.backoffice.approve-lifecycle.submit",
+        "role": "VALIDATION",
+        "effectClass": "IDEMPOTENT_MUTATION",
+        "idempotencyClass": "KEYED",
+        "idempotencyKey": "run:${workflowRunId}:approve",
+        "inputBindings": [
+          { "name": "routeCode", "source": { "kind": "runInput", "path": "routeCode" } }
+        ],
+        "outputFactBindings": [
+          { "factKey": "remote.lifecycle_approved", "responsePath": "state" }
+        ],
+        "timeoutPolicy": { "timeoutMs": 30000, "maxAttempts": 3, "backoffMs": 2000 },
+        "resourceRequirementRefs": ["exclusive.account", "exclusive.backend_fixture"],
+        "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+        "auditPolicy": { "recordRequest": true, "recordResponse": true, "redactFields": ["authorization"] },
+        "allowedEnvironments": ["test", "preprod"]
+      },
+      "next": null
+    },
+    {
+      "planStepId": "cleanup-release",
+      "kind": "CLEANUP",
+      "sourceMapRef": "sm-8",
+      "timeoutMs": 30000,
+      "retryPolicy": { "maxAttempts": 2, "backoffMs": 1000, "effectClass": "IDEMPOTENT_MUTATION" },
+      "capabilityRequirements": [],
+      "compensatesStepIds": ["remote-approve"],
+      "runOnFailure": true,
+      "spec": {
+        "adapterRef": "nesy.backoffice",
+        "operationRef": "nesy.backoffice.approve-lifecycle.revert",
+        "role": "TEARDOWN",
+        "effectClass": "IDEMPOTENT_MUTATION",
+        "idempotencyClass": "KEYED",
+        "idempotencyKey": "run:${workflowRunId}:revert",
+        "inputBindings": [],
+        "outputFactBindings": [],
+        "timeoutPolicy": { "timeoutMs": 20000, "maxAttempts": 2, "backoffMs": 1000 },
+        "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+        "auditPolicy": { "recordRequest": true, "recordResponse": true }
+      },
+      "next": null
+    }
+  ]
+}

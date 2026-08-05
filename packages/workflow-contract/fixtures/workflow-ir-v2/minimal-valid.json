@@ -1,0 +1,31 @@
+{
+  "_fixtureNote": "Smallest document the validator accepts. Base for the invalid-* fixtures: each of those is this file plus exactly one defect, so a failing test names one rule.",
+  "schemaVersion": 2,
+  "workflowId": "fixture-minimal-valid",
+  "workflowVersion": 1,
+  "name": "Minimal valid IR v2 document",
+  "source": { "kind": "FIXTURE", "ref": "minimal-valid" },
+  "inputs": [],
+  "variables": [],
+  "entryStepId": "s1",
+  "policies": {
+    "runDeadlineMs": 60000,
+    "cleanupDeadlineMs": 10000,
+    "defaultRetry": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+    "artifactPolicy": { "captureOnSuccess": false, "captureOnFailure": true },
+    "redactionPolicy": {}
+  },
+  "capabilityRequirements": [],
+  "sourceMap": [{ "ref": "sm1", "planStepId": "s1" }],
+  "steps": [
+    {
+      "planStepId": "s1",
+      "kind": "NOOP",
+      "sourceMapRef": "sm1",
+      "timeoutMs": 1000,
+      "retryPolicy": { "maxAttempts": 1, "effectClass": "READ_ONLY" },
+      "capabilityRequirements": [],
+      "next": null
+    }
+  ]
+}
