@@ -1,0 +1,29 @@
+{
+  "name": "@nesy/bridge-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Verdict Accessibility Bridge protocol v1 SÖZLEŞMESİ — wire envelope, komut/sonuç union'ları, hata taksonomisi, TargetFingerprint, action lifecycle, UiWaitPlan. TAŞIMA BİLGİSİ YOK: bu paket TCP, socket, adb veya NDJSON I/O bilmez (D.3). DOMAIN BİLGİSİ YOK: STOP/PARCEL/TOUR/COURIER_LOGIN buraya giremez.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "@types/node": "^22.10.10",
+    "eslint": "^9.39.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.5"
+  }
+}

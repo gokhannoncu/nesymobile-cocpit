@@ -21,6 +21,10 @@ import { LogcatSniffer } from "./logcat-sniffer.js";
 import { WorkflowRunner } from "./workflow-runner.js";
 import { resolveWorkflowAppId } from "./yaml-generator.js";
 import { TestEventWsServer, TEST_EVENT_WS_PORT } from "./test-event-ws-server.js";
+import { BridgeDeviceManager, BridgeUnavailableError } from "./bridge-device-manager.js";
+import { createAdbFacade, resolveDeviceGatePolicy } from "./bridge-adb-facade.js";
+import { BridgeDeviceGate } from "./bridge-device-gate.js";
+import { disposeAdmissionScheduler } from "./bridge-admission.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -108,6 +112,17 @@ export class DeviceWorker {
   private readonly compatDismissedApps = new Set<string>();
   /** True once the maestro driver is pre-installed → runs pass --no-reinstall-driver. */
   private driverPreinstalled = false;
+  /**
+   * Typed Verdict Bridge host client for this device (Faz 3).
+   *
+   * Lazily built and NEVER auto-started: `prepare()` deliberately does not
+   * reach for the Bridge. Doing so would make every existing Maestro run
+   * depend on a Bridge preflight that has nothing to do with it, and a
+   * preflight failure would then look like a run failure. The Bridge is
+   * acquired only when a caller actually asks for it.
+   */
+  private bridge: BridgeDeviceManager | null = null;
+  private bridgeFailure: BridgeUnavailableError | null = null;
 
   constructor(deviceId: string) {
     this.deviceId = deviceId;
@@ -163,10 +178,75 @@ export class DeviceWorker {
     return this.activeRunId === runId;
   }
 
+  /**
+   * Acquires the typed Bridge host client for a run, or fails EXPLICITLY.
+   *
+   * There is no fallback on purpose (RUN_PLAY §13): no Maestro tap, no
+   * `adb shell input tap`, no coordinates. A fallback here would silently
+   * downgrade a physical-action proof into a coordinate tap and still report
+   * success — and a success that proves nothing is the most expensive kind of
+   * failure this project can produce.
+   */
+  async acquireBridge(runId: string, sessionId: string, runEpoch: number): Promise<BridgeDeviceManager> {
+    if (this.bridge) return this.bridge;
+
+    const manager = new BridgeDeviceManager({
+      deviceId: this.deviceId,
+      gate: new BridgeDeviceGate(createAdbFacade(), resolveDeviceGatePolicy()),
+      scope: { runId, sessionId, runEpoch },
+      artifactRoot: path.join(os.tmpdir(), "nesy-bridge-artifacts"),
+      logger: (message) => console.log(message),
+    });
+
+    try {
+      await manager.ensureReady();
+    } catch (err) {
+      if (err instanceof BridgeUnavailableError) {
+        // Kaydedilir ve YENİDEN FIRLATILIR. Yutup `null` dönmek, çağıranın
+        // "Bridge yok, devam edeyim" demesine yol açardı.
+        this.bridgeFailure = err;
+        console.error(
+          `[DeviceWorker:${this.deviceId}] bridge preflight FAILED (${err.failure.check}): ` +
+            `${err.failure.detail} — ${err.failure.remediation}`,
+        );
+      }
+      await manager.dispose("preflight failed");
+      throw err;
+    }
+
+    manager.getScheduler().setState({ activeRunId: runId });
+    this.bridge = manager;
+    return manager;
+  }
+
+  /** Last Bridge preflight failure, for health/debug surfaces. */
+  getBridgeFailure(): BridgeUnavailableError | null {
+    return this.bridgeFailure;
+  }
+
+  getBridge(): BridgeDeviceManager | null {
+    return this.bridge;
+  }
+
   dispose(): void {
     this.disposed = true;
     TestEventWsServer.removeSink(this.sniffer);
     this.sniffer.stop();
+    // Socket, adb forward ve bekleme temizliği. `void` kasıtlı: dispose
+    // senkron bir API ve temizliği bekletmek çağıranı bloke ederdi; ama
+    // temizliğin ATLANMASI sızdırılmış bir `adb forward` demek olurdu, o yüzden
+    // hata da yutulmaz, loglanır.
+    const bridge = this.bridge;
+    this.bridge = null;
+    if (bridge) {
+      void bridge.dispose("device worker disposed").catch((err: unknown) => {
+        console.warn(
+          `[DeviceWorker:${this.deviceId}] bridge dispose failed (leaked adb forward?):`,
+          err instanceof Error ? err.message : err,
+        );
+      });
+    }
+    disposeAdmissionScheduler(this.deviceId);
   }
 
   /** One-time device preparation: metadata cache + adb reverse for the WS bridge. */
