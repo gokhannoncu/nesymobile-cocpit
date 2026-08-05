@@ -331,3 +331,15 @@ export const EVENT_ALIAS: Readonly<Record<string, string>> = Object.freeze({
 /** Doküman/test adını dondurulmuş wire name'e çevirir. */
 export const resolveEventName = (name: string): string =>
   EVENT_ALIAS[name] ?? name;
+
+/**
+ * ---------------------------------------------------------------------------
+ *  DURABLE EVENT DELIVERY (Faz 2 · B.5 · D.2)
+ *
+ *  Ayrı dosyada tutuluyor çünkü kontrol düzlemi (host → cihaz komut) ile
+ *  kanıt teslimi (cihaz → host durable event) iki farklı yön ve iki farklı
+ *  invariant setidir. Aynı dosyada olsalar biri diğerinin tiplerini "elde
+ *  varken" kullanmaya başlar.
+ * ---------------------------------------------------------------------------
+ */
+export * from "./durable-events.js";

@@ -19,8 +19,13 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { LogcatSniffer } from "./logcat-sniffer.js";
 import { parseTestEventLine, type TestBridgeEvent } from "./test-event-bridge.js";
 import { ingestFrame, type IngestFrame } from "./verdict-ingest.js";
-import { runFanoutOnce, type InboxRow } from "./verdict-fanout.js";
 import { MonotoneStreamWatermarks } from "./verdict-stream-order.js";
+import {
+  SyncDurableComparisonRecorder,
+  payloadFingerprint,
+  type DurableInboxRow,
+} from "./verdict-durable-runtime.js";
+import { getVerdictDurableRuntime } from "./verdict-wait-event.js";
 import { prisma } from "@nesy/db";
 
 export const TEST_EVENT_WS_PORT = 8765;
@@ -33,7 +38,27 @@ const WS_PATH = "/nesy";
  * deployed, and Faz 0.2 exists so the host is READY before Faz 2 needs it.
  */
 const INGEST_DISABLED = process.env.VERDICT_INGEST_DISABLED === "1";
+
+/**
+ * Removes the synchronous sink from the primary production path (Faz 2 cutover).
+ *
+ * Default OFF — i.e. the sync sink still runs — and that default is the rollback
+ * plan. Flipping this to `1` is the entire cutover, and flipping it back is the
+ * entire rollback; there is no code change and no migration in either direction.
+ * It must not be flipped for a stream until `VERDICT_COMPARE_MODE=1` has shown
+ * the two paths produce identical logical evidence (B.5: "synchronous sink yalnız
+ * karşılaştırmalı geçişte bulunabilir").
+ */
 const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
+
+/**
+ * Records both paths' observations so their equality can be asserted.
+ *
+ * Off by default because it accumulates per-event observations in memory: an
+ * always-on comparison recorder in a long-lived API process is a leak, and a
+ * cutover gate that degrades production is not a gate anyone will use.
+ */
+const COMPARE_MODE = process.env.VERDICT_COMPARE_MODE === "1";
 
 /**
  * A device frame that is not a test event.
@@ -202,9 +227,14 @@ class TestEventWsServerImpl {
    */
   private ingestReady = false;
   private readonly sentAckThrough = new MonotoneStreamWatermarks();
-  /** Coalesces concurrent post-COMMIT fan-out nudges per stream. */
-  private readonly fanoutPending = new Set<string>();
-  private readonly fanoutRunning = new Set<string>();
+  /**
+   * Sync-vs-durable equality evidence. Populated only under
+   * `VERDICT_COMPARE_MODE=1`; exposed so the health route and the integration
+   * suite can read the report without reaching into the WS server's internals.
+   */
+  private readonly comparison = new SyncDurableComparisonRecorder();
+  /** Registered once, on the first successful ingest-readiness check. */
+  private orderedConsumerRegistered = false;
 
   private streamKey(runId: string, sessionId: string): string {
     return JSON.stringify([runId, sessionId]);
@@ -214,8 +244,12 @@ class TestEventWsServerImpl {
    * Hands a persisted inbox row to the same sink seam OracleEngine uses.
    * Parsing again at this trust boundary prevents a malformed JSONB payload
    * from being marked processed without ever reaching a consumer.
+   *
+   * This is the ORDERED lane's consumer: it runs below the contiguous watermark,
+   * under the stream lease, and a throw here stops the stream at this seq rather
+   * than skipping it (see `verdict-ordered-evidence-bus.ts`).
    */
-  private async consumeDurableRow(row: InboxRow): Promise<void> {
+  private async consumeDurableRow(row: DurableInboxRow): Promise<void> {
     const serialized = JSON.stringify(row.payload);
     const event = parseTestEventLine(`NESY_TEST_EVENT|${serialized}`);
     if (!event) {
@@ -228,46 +262,52 @@ class TestEventWsServerImpl {
       raw: `DB|${serialized}`,
     };
     for (const sink of this.sinks) sink.injectTestEvent(durableEvent);
+
+    if (COMPARE_MODE) {
+      this.comparison.recordDurable({
+        runId: row.runId,
+        sessionId: row.sessionId,
+        seq: row.seq.toString(),
+        fingerprint: payloadFingerprint(row.payload),
+      });
+    }
   }
 
   /**
-   * A nudge arriving while a worker owns the stream is remembered, not dropped.
-   * Without this coalescer the final rows of a burst can remain unprocessed when
-   * every later nudge loses the advisory-lock race to the first worker.
+   * Registers the ordered consumer and replays anything a previous process left
+   * behind.
+   *
+   * Both happen here rather than at module load: the runtime construction
+   * touches Prisma, and the restart scan is only meaningful once the tables are
+   * known to exist.
    */
-  private nudgeFanout(runId: string, sessionId: string): void {
-    const key = this.streamKey(runId, sessionId);
-    this.fanoutPending.add(key);
-    if (this.fanoutRunning.has(key)) return;
-    this.fanoutRunning.add(key);
-
-    void (async () => {
-      try {
-        while (this.fanoutPending.delete(key)) {
-          const stats = await runFanoutOnce(
-            runId,
-            sessionId,
-            (row) => this.consumeDurableRow(row),
-          );
-          if (stats.skippedLocked) {
-            this.fanoutPending.add(key);
-            await new Promise((resolve) => setTimeout(resolve, 25));
-          } else if (stats.error) {
-            console.warn(
-              `[TestEventWS] fan-out stopped at seq ${stats.stoppedAtSeq?.toString() ?? "?"}: ${stats.error}`,
-            );
-          }
-        }
-      } catch (err) {
-        console.warn(
-          "[TestEventWS] fan-out nudge failed:",
-          err instanceof Error ? err.message : err,
+  private async startDurableRuntime(): Promise<void> {
+    const runtime = getVerdictDurableRuntime();
+    if (!this.orderedConsumerRegistered) {
+      runtime.registerOrderedConsumer((row) => this.consumeDurableRow(row));
+      this.orderedConsumerRegistered = true;
+    }
+    try {
+      // Closes the commit-before-publish crash window: rows this process never
+      // saw are found from persisted state, not from remembered intent.
+      const scan = await runtime.bootstrap();
+      if (scan.receiptStreams > 0 || scan.orderedStreams > 0) {
+        console.log(
+          `[TestEventWS] restart recovery: ${scan.receiptStreams} receipt-pending, ` +
+            `${scan.orderedStreams} ordered-pending stream(s) resumed`,
         );
-      } finally {
-        this.fanoutRunning.delete(key);
-        if (this.fanoutPending.has(key)) this.nudgeFanout(runId, sessionId);
       }
-    })();
+    } catch (err) {
+      console.warn(
+        "[TestEventWS] durable restart scan failed:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  /** Sync-vs-durable equality report. Empty unless `VERDICT_COMPARE_MODE=1`. */
+  getComparisonReport(): ReturnType<SyncDurableComparisonRecorder["report"]> {
+    return this.comparison.report();
   }
 
   /**
@@ -286,6 +326,7 @@ class TestEventWsServerImpl {
       await prisma.$queryRaw`SELECT 1 FROM verdict_stream LIMIT 1`;
       this.ingestReady = true;
       console.log("[TestEventWS] durable ingest enabled (at-least-once ACKs active)");
+      await this.startDurableRuntime();
     } catch (err) {
       console.error(
         "[TestEventWS] durable ingest UNAVAILABLE — verdict_* tables missing? " +
@@ -347,7 +388,11 @@ class TestEventWsServerImpl {
           `cursor recomputed from persisted state. More than 10k concurrent holes is not normal.`,
       );
     }
-    this.nudgeFanout(frame.runId, frame.sessionId);
+    // Post-COMMIT, both lanes. The receipt lane can publish this row immediately
+    // even if it sits above a hole; the ordered lane drains only below the
+    // watermark. Neither is the delivery guarantee — the guarantee is the
+    // committed row plus the restart scan.
+    getVerdictDurableRuntime().nudge({ runId: frame.runId, sessionId: frame.sessionId });
   }
 
   ensureStarted(): void {
@@ -414,6 +459,17 @@ class TestEventWsServerImpl {
             if (!SYNC_SINK_DISABLED) {
               for (const sink of this.sinks) {
                 sink.injectTestEvent(wsEvent);
+              }
+              if (COMPARE_MODE) {
+                // Recorded from the SYNC path's own view of the event, before it
+                // ever reaches the database. Comparing the durable path against
+                // a re-read of the durable row would prove nothing.
+                this.comparison.recordSync({
+                  runId: event.runId,
+                  sessionId: event.sessionId,
+                  seq: String(event.seq),
+                  fingerprint: payloadFingerprint(event),
+                });
               }
             }
 

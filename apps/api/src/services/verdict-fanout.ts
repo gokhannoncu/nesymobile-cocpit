@@ -2,6 +2,17 @@
  * ===========================================================================
  *  ORDERED FAN-OUT WORKER — one consumer per stream  (plan C.5.3)
  *
+ *  ⚠️ SUPERSEDED for the production path as of Faz 2. `OrderedEvidenceBus`
+ *  (`verdict-ordered-evidence-bus.ts`) is what the WS server drives now: this
+ *  worker has no cursor, no retry budget, no dead-letter state and no
+ *  subscriber, so a poisonous row here retries forever without ever becoming
+ *  visibly stuck. It is kept — not deleted — because the CP2 spikes
+ *  (`cp2-*.ts`) and `verdict-ingest.integration.test.ts` exercise it as the
+ *  baseline the new lane must not regress against. Both take the SAME advisory
+ *  lock key, so they cannot double-process a stream during the cutover.
+ *
+ *  New code should use `OrderedEvidenceBus`.
+ *
  *  ## Why fan-out is not on the ingest path
  *
  *  The ingest transaction releases its row lock at COMMIT. Fanning out inside it

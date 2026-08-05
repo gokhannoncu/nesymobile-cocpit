@@ -122,7 +122,8 @@ jobs:
       # The gate the suites read:
       #   apps/api/src/services/verdict-ingest.integration.test.ts
       #   apps/api/src/services/test-event-ws-server.integration.test.ts
-      # both check `VERDICT_DB_IT === "1" && DATABASE_URL`. Without it they
+      #   apps/api/src/services/verdict-durable-runtime.integration.test.ts
+      # all check `VERDICT_DB_IT === "1" && DATABASE_URL`. Without it they
       # SKIP — which is how 16+ ingest tests came to run nowhere at all.
       VERDICT_DB_IT: '1'
 
@@ -153,11 +154,12 @@ jobs:
       # Guard against the failure mode this job exists to remove: if the env
       # gate is wrong, the suites skip and the job still goes green — a false
       # "integration verified". Assert the tests actually ran.
-      - name: Ingest integration tests
+      - name: Ingest and durable runtime integration tests
         run: |
           pnpm --filter @nesy/api test -- \
             src/services/verdict-ingest.integration.test.ts \
             src/services/test-event-ws-server.integration.test.ts \
+            src/services/verdict-durable-runtime.integration.test.ts \
             2>&1 | tee /tmp/integration.log
           # No `^` anchor: vitest emits ANSI escapes before the summary label.
           if grep -qE 'Tests.*[0-9]+ skipped' /tmp/integration.log; then

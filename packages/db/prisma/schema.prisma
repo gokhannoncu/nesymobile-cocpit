@@ -454,9 +454,51 @@ model VerdictInbox {
   /// Restart resumes from exactly these rows.
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
 
+  /// NULL until the RECEIPT lane has handed the row to its subscribers.
+  ///
+  /// Separate from `processedAt` on purpose (B.5 / C.40). The receipt lane
+  /// publishes committed rows even when they sit above a hole; the ordered lane
+  /// may not. One shared timestamp would force one of those two rules to break.
+  receiptDispatchedAt DateTime? @map("receipt_dispatched_at") @db.Timestamptz(6)
+  /// Ordered-consumer failure count for this row. Persisted rather than kept in
+  /// memory so a restart cannot reset a poisonous row's budget and retry it
+  /// forever.
+  attempt         Int       @default(0)
+  /// Last ordered-consumer error. The only diagnosis a dead-lettered row has.
+  lastError       String?   @map("last_error")
+  /// Earliest permitted ordered retry. NULL = retry immediately.
+  nextRetryAt     DateTime? @map("next_retry_at") @db.Timestamptz(6)
+  /// Set when the retry budget is exhausted. The ordered lane STOPS here; it is
+  /// never skipped, because skipping reorders the stream permanently.
+  deadLetteredAt  DateTime? @map("dead_lettered_at") @db.Timestamptz(6)
+
   @@id([runId, sessionId, seq])
   @@index([runId, sessionId, processedAt, seq], map: "verdict_inbox_pending_idx")
+  @@index([runId, sessionId, receiptDispatchedAt, seq], map: "verdict_inbox_receipt_pending_idx")
   @@map("verdict_inbox")
+}
+
+/// Evidence closure for one stream — the durable half of the late-event policy.
+///
+/// Without a persisted answer to "is this run still accepting evidence?", a
+/// restarted host cannot distinguish a legitimately late event from an event
+/// belonging to a run that ended hours ago, and a closed run's oracle can be
+/// re-woken by an event it must ignore.
+///
+/// Intentionally NOT a relation to `WorkflowRun`: a stream may be closed for
+/// evidence purposes while the run row still exists, and the durable runtime
+/// must not depend on the run lifecycle table's shape.
+model VerdictRunClosure {
+  runId          String   @map("run_id")
+  sessionId      String   @map("session_id")
+  closedAt       DateTime @default(now()) @map("closed_at") @db.Timestamptz(6)
+  reason         String
+  /// Late events are COUNTED, not dropped. A run that keeps receiving events
+  /// after closure means the device never learned the run ended.
+  lateEventCount Int      @default(0) @map("late_event_count")
+
+  @@id([runId, sessionId])
+  @@map("verdict_run_closure")
 }
 
 /// Ranges the device permanently skipped (ENOSPC, capacity, retention purge).
