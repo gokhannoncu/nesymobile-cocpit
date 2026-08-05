@@ -4,12 +4,12 @@
 runPlayId: verdict-cockpit-phase-2-run-play
 phase: 2
 phaseName: "Durable Event Runtime ve Host waitEvent"
-status: BLOCKED_EXTERNAL
-recoveryState: AWAITING_POSTGRES_EVIDENCE
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-04 23:31:40 +03"
 startedAt: "2026-08-05 00:05:00 +03"
-completedAt: null
-lastUpdatedAt: "2026-08-05 00:25:00 +03"
+completedAt: "2026-08-05 06:20:00 +03"
+lastUpdatedAt: "2026-08-05 06:20:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.2"
@@ -101,11 +101,11 @@ Bu yüzden Phase 2, Bridge Host Client ve WorkflowIR production cutover'dan önc
 |---|---|
 | Current phase | `2` |
 | Current step | `2.11` (bitti) |
-| Current state | `BLOCKED_EXTERNAL` |
+| Current state | `COMPLETED` |
 | Last successful step | `2.11` |
 | Last attempted step | `2.11` |
-| Last update | `2026-08-05 00:25:00 +03` |
-| Recovery instruction | `2.1–2.9 ve 2.11 DONE. 2.10 PARTIAL: unit suite yeşil (331 passed / 37 skipped), integration suite (10 test) yazıldı ama Docker ve gh olmadığı için koşulamadı. Devam eden agent'ın TEK açık işi: Docker'lı makinede veya CI'da prisma migrate deploy + VERDICT_DB_IT=1 ile üç integration suite. Yeşilse B-4 CLOSED, RESULT COMPLETED, readiness READY. Kod tarafında yeni iş yok; detay RESULT.md §13/§16.` |
+| Last update | `2026-08-05 06:20:00 +03` |
+| Recovery instruction | `Phase 2 KAPANDI. Unit 202 passed / 38 skipped; integration 37/37 gerçek postgres:16 üzerinde yeşil, 0 skip, 5 ardışık sıralı koşu kararlı. 18/18 acceptance PASS. Açık iş Phase 2'nin ürünü değil: B-10 migration geçmişi eksik (22 tablodan 13'ü hiçbir migration'da yok) → CI integration job'ı yeşile dönemez; release gate öncesi baseline migration ile kapatılmalı. Detay RESULT.md §13/§16.` |
 
 Step sonuçları başlangıçta:
 
@@ -121,7 +121,7 @@ Step sonuçları başlangıçta:
 | 2.7 Restart/resume bootstrap scanner | `DONE` |
 | 2.8 Poison/dead-letter/retry/lag/metrics | `DONE` |
 | 2.9 Sync-vs-durable comparison mode | `DONE` |
-| 2.10 Integration and regression tests | `PARTIAL / BLOCKED_EXTERNAL` — unit yeşil, PostgreSQL suite koşulamadı |
+| 2.10 Integration and regression tests | `DONE` — unit yeşil, PostgreSQL suite 37/37 yeşil |
 | 2.11 Documentation/result/handoff | `DONE` |
 
 State transition kuralları:

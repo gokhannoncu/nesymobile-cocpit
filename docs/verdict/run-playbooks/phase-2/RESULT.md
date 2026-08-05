@@ -4,35 +4,67 @@
 runPlayId: verdict-cockpit-phase-2-run-play
 phase: 2
 phaseName: "Durable Event Runtime ve Host waitEvent"
-resultState: BLOCKED_EXTERNAL
+resultState: COMPLETED
 startedAt: "2026-08-05 00:05:00 +03"
-completedAt: null
-lastUpdatedAt: "2026-08-05 00:25:00 +03"
+completedAt: "2026-08-05 06:20:00 +03"
+lastUpdatedAt: "2026-08-05 06:20:00 +03"
 timezone: "Europe/Istanbul"
-masterPlanVersion: "v1.1.2"
-masterPlanDigest: "sha256:5e7deff018a61b71eb215d2406615dae3304fb63080005e1130297401f15fa01"
+executedAgainstMasterPlanVersion: "v1.1.2"
+executedAgainstMasterPlanDigest: "sha256:5e7deff018a61b71eb215d2406615dae3304fb63080005e1130297401f15fa01"
+masterPlanVersionAtClose: "v1.1.3"
+masterPlanDigestAtClose: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
 runPlayFile: "docs/verdict/run-playbooks/phase-2/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
 phase3Readiness: "READY_WITH_BLOCKERS"
 ```
 
+> **Master plan sürüm notu.** Phase 2 **v1.1.2**'ye karşı yürütüldü. Faz devam
+> ederken plan bu agent tarafından **değil**, başka bir eliyle **v1.1.3**'e
+> güncellendi (239 satır; digest kendi içinde tutarlı). Diff Phase 2 kapsamına
+> **dokunmuyor** — `durable`, `ReceiptBus`, `OrderedEvidence`, `waitEvent`
+> terimlerinde **0 değişiklik**; eklemeler Faz 4'e ait (typed allowlisted
+> `REMOTE_ACTION` primitive'i, Nesy tur onayı Domain Pack reference slice'ı).
+> Bu yüzden Phase 2 sonuçları geçerli sayıldı; yeniden yürütme gerekmiyor.
+> Phase 3 RUN_PLAY'i v1.1.3 digest'iyle açılmalı.
+
 ## 1. Executive result
 
-Phase 2'nin **implementasyonu tamamlandı**; **kapanışı gerçek PostgreSQL kanıtına
-takılı**.
+Phase 2 **kanıtla tamamlandı**. Durable runtime gerçek PostgreSQL 16 üzerinde
+doğrulandı: **37/37 integration testi yeşil, sıfır skip, üst üste 5 sıralı koşuda
+kararlı.**
 
 İki durable lane ayrı contract ve ayrı runtime olarak kuruldu, `waitEvent` host
 subscription'ı beş sonuç durumuyla çalışıyor, restart recovery persisted state
-üzerinden çalışıyor, poison/retry/dead-letter/lag görünür, sync-vs-durable eşitlik
-raporu var ve sync sink kaldırma tek env flag'ine indirildi. **58 yeni unit test**
-yeşil, **10 yeni integration test** yazıldı ama bu makinede **koşulamadı**.
+üzerinden çalışıyor, poison/retry/dead-letter/lag görünür, sync-vs-durable eşitliği
+**gerçek socket + gerçek veritabanı** üzerinde kanıtlandı ve sync sink kaldırma tek
+env flag'ine indirildi. Toplam **58 yeni unit + 11 yeni integration testi**.
 
-`resultState` neden `COMPLETED` değil: RUN_PLAY §13 kriter 18 açık — "durable runtime
-correctness bu kanıta bağlıysa Phase 2 `COMPLETED` değil `BLOCKED_EXTERNAL` olmalı."
-Bu makinede **Docker kapalı** ve **`gh` kurulu değil**; erişilebilir tek `DATABASE_URL`
-paylaşımlı uzak bir DB (Phase 1 §9.1). Yeni migration'ı ve write-heavy delivery
-testlerini o veritabanına koşmak RUN_PLAY §12/§15.7 tarafından yasaklanmış. Yani
-lane semantiği kanıtlandı, **SQL katmanı kanıtlanmadı**.
+Kapanış kanıtı ilk raporda eksikti; bu turda Docker Desktop'ın **kurulu ama kapalı**
+olduğu görülüp CI ile birebir aynı `postgres:16` image'ı atılabilir bir container'da
+kaldırıldı ve suite koşuldu.
+
+### Bu turda ortaya çıkan üç gerçek bulgu
+
+1. **Migration geçmişi kırık (B-10, YENİ, Phase 2 öncesinden).** `prisma migrate
+   deploy` boş bir veritabanında **9. migration'da patlıyor**: `relation
+   "workflow_runs" does not exist`. Şema `db push` ile kurulmuş — **22 tablodan
+   13'ü hiçbir migration tarafından yaratılmıyor.** Sonuç: CI'ın `integration`
+   job'ı bugün *hiçbir koşulda* yeşile dönemez, ve bunun Phase 2 ile ilgisi yok.
+   Bu, B-4'ün neden bir türlü doğrulanamadığının da cevabı.
+
+2. **Integration suite'i ~%50 flaky'di (B-11, düzeltildi).** Ölçüm: paralel
+   koşuda 4 denemenin 2'si kırmızı; sıralı koşuda 5/5 yeşil. Kök neden **lease
+   hatası değil** — tam tersine lease *doğru* çalışıyordu: üç suite tek
+   veritabanını paylaşıyor ve `bootstrap()` tasarım gereği **tüm** stream'leri
+   tarıyor, dolayısıyla bir dosyanın restart scan'i diğerinin stream'inin
+   advisory lease'ini alıyor, diğeri doğru şekilde `skippedLocked` dönüyor ve
+   assertion düşüyordu. Suite izole değildi. `--no-file-parallelism` ile
+   düzeltildi ve gerekçe workflow'a yazıldı.
+
+3. **Gerçek reordering bug'ı (önceki turda, test tarafından yakalandı).** Ordered
+   work-queue sorgusu dead-letter'lı ve backoff'taki row'ları filtreliyordu; bu
+   `seq N` bloke olduğunda `seq N+1`'i eligible yapıyordu — kalıcı sıra ihlali,
+   hiçbir yerde hata üretmeden. Test gevşetilmedi, davranış düzeltildi.
 
 ### Fazın en önemli bulgusu: gerçek bir reordering bug'ı test tarafından yakalandı
 
@@ -52,11 +84,11 @@ sırasında **durur**. Dead-letter artık *retry*'ı bitirir, *blocking*'i bitir
 |---|---|
 | Current phase | `2` |
 | Current step | `2.11` (bitti) |
-| Current state | `BLOCKED_EXTERNAL` |
+| Current state | `COMPLETED` |
 | Last successful step | `2.11` |
 | Last attempted step | `2.11` |
-| Last update | `2026-08-05 00:25:00 +03` |
-| Recovery instruction | `Kod tamam, unit suite yeşil (202 passed / 37 skipped). Devam eden agent'ın TEK işi: Docker'lı bir makinede veya CI'da migration deploy + VERDICT_DB_IT=1 integration suite'i koşmak. Yeşilse B-4 CLOSED, bu dosya COMPLETED olur. Kırmızıysa hata Phase 2'nin devamıdır, Phase 3 başlatılmaz.` |
+| Last update | `2026-08-05 06:20:00 +03` |
+| Recovery instruction | `Phase 2 kapandı: unit 202 passed / 38 skipped, integration 37/37 gerçek PostgreSQL 16'da yeşil (5 sıralı koşu kararlı). Phase 3'e geçilebilir. AÇIK İŞ: B-10 — migration geçmişi eksik (22 tablodan 13'ü hiçbir migration'da yok), bu yüzden CI integration job'ı hâlâ yeşile dönemez. B-10 Phase 2'nin ürünü değil, Phase 2'yi de bloke etmiyor; ama release gate'inden önce baseline migration ile kapatılmalı.` |
 
 ## 3. Step execution log
 
@@ -71,7 +103,7 @@ sırasında **durur**. Dead-letter artık *retry*'ı bitirir, *blocking*'i bitir
 | 2.7 Restart/resume bootstrap scanner | `DONE` | §10 |
 | 2.8 Poison/dead-letter/retry/lag/metrics | `DONE` | §11 — `/api/verdict/events/health` |
 | 2.9 Sync-vs-durable comparison mode | `DONE` | §12 — `VERDICT_COMPARE_MODE=1` |
-| 2.10 Integration and regression tests | `PARTIAL / BLOCKED_EXTERNAL` | §13 — unit yeşil, integration yazıldı ama koşulamadı |
+| 2.10 Integration and regression tests | `DONE` | §13 — unit yeşil, integration **37/37 gerçek PostgreSQL 16'da yeşil** |
 | 2.11 Documentation/result/handoff | `DONE` | Bu dosya |
 
 ## 4. Step 2.1 — Preflight
@@ -316,48 +348,129 @@ WS+PostgreSQL eşitlik koşusu yapılamadı** (Docker yok) — §14 blocker'ı.
 |---|---|---|
 | `pnpm verdict:verify-master-plan` | `PASS` | `Master plan digest OK: sha256:5e7deff0…f15fa01` — değişmedi |
 | `pnpm typecheck` | `PASS` | `Tasks: 7 successful, 7 total` |
-| `pnpm test` | `PASS` | api **202 passed / 37 skipped** (23 passed + 3 skipped file), web 129 passed, control-channels 36 passed |
+| `pnpm test` | `PASS` | api **202 passed / 38 skipped**, web 129 passed, control-channels 36 passed |
 | `pnpm --filter @nesy/api typecheck` | `PASS` | `tsc --noEmit`, çıktı yok |
 | `pnpm --filter @nesy/api test` | `PASS` | Yukarıdaki api satırı |
 | `git diff --check` | `PASS` | Çıktı yok |
 | `git diff --cached --check` | `PASS` | Çıktı yok |
 
-Test sayısı deltası: **273 → 331 passed** (+58 yeni unit test), **27 → 37 skipped**
-(+10 yeni integration test, gate kapalı olduğu için skip).
+Test sayısı deltası: **273 → 331 passed** (+58 yeni unit test), **27 → 38 skipped**
+(+11 yeni integration test; DB'siz koşuda gate kapalı olduğu için skip, DB'yle
+37/37 koşuyor).
 
-### Integration suite — BLOCKED_EXTERNAL
+### Integration suite — GREEN, gerçek PostgreSQL 16
+
+**Ortam.** İlk raporda "Docker yok" yazıyordu; doğrusu **Docker Desktop kurulu ama
+kapalıydı** (`/Applications/Docker.app` + `/usr/local/bin/docker`). Başlatıldı ve
+CI'ın `integration` job'ıyla **birebir aynı `postgres:16` image'ı** atılabilir bir
+container'da kaldırıldı:
 
 ```bash
-VERDICT_DB_IT=1 pnpm --filter @nesy/api vitest run \
+docker run -d --name verdict-it-pg -p 55432:5432 \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
+  -e POSTGRES_DB=verdict_test postgres:16
+```
+
+Port **55432** — 5432 değil. Paylaşımlı uzak DB'ye (Phase 1 §9.1) hiçbir aşamada
+bağlanılmadı; `DATABASE_URL` her komutta satır içinde `127.0.0.1:55432` olarak
+verildi. Container koşu sonunda silindi.
+
+Yerel brew postgres denendi ve **kullanılamadı**: `postgresql@14` kırık
+(`libicui18n.74.dylib` yok, yalnız `icu4c@78` kurulu). Düzeltmek paket kurulumu
+gerektirirdi; Docker zaten CI'a daha sadık olduğu için o yol seçilmedi.
+
+**Şema kurulumu — ve neden `migrate deploy` kullanılamadı.** İlk deneme:
+
+```text
+Applying migration `20260720000000_add_run_input`
+Error: P3018 … relation "workflow_runs" does not exist
+```
+
+Bu Phase 2'nin değişikliğinden değil: **hiçbir migration `workflow_runs`'ı
+yaratmıyor** (§16 B-10). Şema `prisma db push` ile kuruldu, ardından verdict
+tabloları düşürülüp **migration SQL'lerinin kendisi** aynen uygulandı — çünkü
+`db push` Prisma'nın ifade edemediği CHECK constraint'lerini ve partial index'leri
+kurmaz, ve suite tam onları doğruluyor. Sonuç `\d verdict_inbox` ile teyit edildi:
+5 yeni kolon, `verdict_inbox_attempt_non_negative`,
+`verdict_inbox_receipt_pending_idx` ve partial `verdict_inbox_dead_lettered_idx`
+yerinde.
+
+**Koşu sonucu:**
+
+```bash
+DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
+VERDICT_DB_IT=1 npx vitest run --no-file-parallelism \
   src/services/verdict-ingest.integration.test.ts \
   src/services/test-event-ws-server.integration.test.ts \
   src/services/verdict-durable-runtime.integration.test.ts
 ```
 
-**Koşulmadı.** Gerekçe:
+```text
+Test Files  3 passed (3)
+     Tests  37 passed (37)
+```
 
-- `docker info` → `DOCKER_UNAVAILABLE`. Disposable PostgreSQL kurulamıyor.
-- Erişilebilir tek `DATABASE_URL` paylaşımlı uzak production-benzeri DB
-  (Phase 1 §9.1). RUN_PLAY §12 ve §15.7: paylaşımlı remote DB'ye destructive
-  integration/migration testi **koşulmaz**. Yeni bir migration deploy etmek ve
-  write-heavy delivery testi koşmak tam olarak bu.
-- `gh not found` → CI koşusu da görülemiyor (`UNVERIFIED_EXTERNAL`).
+**Sıfır skip** — yani `VERDICT_DB_IT`/`DATABASE_URL` gate'i gerçekten açıldı ve
+CI'daki "skipped varsa job fail" guard'ı bu koşuda da tetiklenmezdi. Kararlılık
+için **5 ardışık sıralı koşu: 5/5 yeşil.**
 
-**Hiçbir test skip edilmedi, gevşetilmedi veya silinmedi.** Skip'ler mevcut
-`VERDICT_DB_IT` gate'inin normal davranışı; owner API owner, gate CI
-`integration` job'ı.
+Dosya bazında: `verdict-ingest.integration.test.ts` 16 ✓,
+`test-event-ws-server.integration.test.ts` 11 ✓,
+`verdict-durable-runtime.integration.test.ts` 10 ✓.
 
-Yeni integration suite (10 test) neyi kanıtlayacak: migration kolonları +
-`CHECK (attempt >= 0)`; receipt lane'in watermark üstü teslimi; ordered lane'in
-watermark JOIN'i; `pg_try_advisory_lock`'un gerçek DB objesi olması; attempt/
-last_error kalıcılığı + sonraki seq'in bloke kalması + dead-letter + POISON_BLOCKED;
-`DISTINCT` restart scan'leri; `verdict_run_closure` first-close-wins + late count;
-closed-run hızlı yanıt; health read model'in gerçek lag/age'i; **2^53 üstü seq
-round-trip'i**.
+Gerçek PostgreSQL üzerinde kanıtlananlar: migration kolonları ve
+`CHECK (attempt >= 0)` (negatif attempt DB tarafından reddediliyor); receipt
+lane'in watermark **üstü** teslimi; ordered lane'in watermark JOIN'iyle gap'te
+durması; advisory lease'in gerçek DB objesi olması; attempt/`last_error`
+kalıcılığı + sonraki seq'in bloke kalması + dead-letter + `POISON_BLOCKED`;
+`DISTINCT` restart scan'lerinin commit edilmiş ama teslim edilmemiş row'u
+bulması; `verdict_run_closure` first-close-wins + late event sayımı; closed-run'ın
+timeout yakmadan yanıtlanması; health read model'in gerçek lag/age'i; **2^53 üstü
+seq round-trip'i** (`9007199254740993n` komşusuna çökmüyor).
 
-CI workflow güncellendi: `.github/workflows/cockpit-ci.yml` `integration` job'ı
-artık üç suite'i koşuyor ve mevcut "skipped tests → job fail" guard'ı yeni suite'i
-de kapsıyor.
+### Flakiness: ölçüldü, kök nedeni bulundu, düzeltildi (B-11)
+
+İlk paralel koşularda testler **kararsızdı**:
+
+| Koşu | Paralel | Sıralı |
+|---|---|---|
+| 1 | 3 failed / 34 passed | 37 passed |
+| 2 | 37 passed | 37 passed |
+| 3 | 37 passed | 37 passed |
+| 4 | 3 failed / 34 passed | 37 passed |
+| 5 | — | 37 passed |
+
+Tüm hatalar `tryAcquireOrderedLease` → `false` üzerindeydi. İlk hipotez "Prisma
+connection pool advisory lock'u sızdırıyor"du; **yanlış çıktı** — izole bir probe
+8 ardışık acquire/release'te 0 sızıntı gösterdi (`distinct backend connections: 1`).
+
+Gerçek neden: üç suite tek veritabanını paylaşıyor ve
+`VerdictDurableRuntime.bootstrap()` tasarım gereği **tüm** stream'leri tarıyor
+(production'da doğru: tek process recovery'nin sahibidir). Paralel koşuda bir
+dosyanın restart scan'i diğerinin stream'ini bulup advisory lease'ini alıyor,
+diğerinin drain'i doğru şekilde `skippedLocked` dönüyor ve assertion düşüyordu.
+**Lease tam da yapması gerekeni yapıyordu; kusur suite izolasyonundaydı.**
+
+Düzeltme: `--no-file-parallelism`, gerekçesi ve ölçümüyle birlikte
+`.github/workflows/cockpit-ci.yml` içine yazıldı.
+
+### Sync-vs-durable eşitliği artık uçtan uca kanıtlı (B-9 kapandı)
+
+`VERDICT_COMPARE_MODE` module-load sabitiydi, bu yüzden test edilemiyordu (ESM
+import'ları hoist edilir; test kendi import'undan önce env set edemez). Frame
+başına okunan bir fonksiyona çevrildi ve WS integration suite'ine gerçek gate
+eklendi: **gerçek socket + gerçek PostgreSQL** üzerinden 17 event iki path'ten de
+geçirilip karşılaştırılıyor.
+
+```text
+✓ the synchronous sink and the durable lane produce identical logical evidence
+```
+
+`missingFromDurable: []`, `missingFromSync: []`, `payloadMismatches: []`,
+`equal: true`, `durableCount === syncCount`. Boş recorder'ın da "equal" olacağı
+için **vacuous pass koruması** var: `syncCount >= 17`. 17 çünkü suite seq 1–3 ve
+7–20'yi event olarak gönderiyor; 4–6 gap aralığı ve gap bir test event'i değil —
+ilk eşik hatalı yazılmıştı (20), eşitlik zaten geçiyordu, düzeltilen eşikti.
 
 ## 14. Changed files
 
@@ -376,9 +489,10 @@ de kapsıyor.
 | `apps/api/src/services/verdict-durable-runtime.test.ts` | `new` | ✅ | 58 unit test + in-memory store double |
 | `apps/api/src/services/verdict-durable-runtime.integration.test.ts` | `new` | ✅ | 10 PostgreSQL testi |
 | `apps/api/src/routes/verdict-events.routes.ts` | `new` | ✅ | Read-only health/diagnostic read model |
-| `apps/api/src/services/test-event-ws-server.ts` | `modified` | ✅ | Ordered lane cutover, iki lane nudge, restart scan, comparison mode |
+| `apps/api/src/services/test-event-ws-server.ts` | `modified` | ✅ | Ordered lane cutover, iki lane nudge, restart scan, comparison mode (frame başına okunan flag) |
+| `apps/api/src/services/test-event-ws-server.integration.test.ts` | `modified` | ✅ | Sync-vs-durable eşitlik gate'i (B-9) |
 | `apps/api/src/services/verdict-fanout.ts` | `modified` | ✅ | Yalnız `⚠️ SUPERSEDED` başlık notu; davranış değişmedi |
-| `.github/workflows/cockpit-ci.yml` | `modified` | ✅ | Üçüncü integration suite |
+| `.github/workflows/cockpit-ci.yml` | `modified` | ✅ | Üçüncü integration suite + `--no-file-parallelism` (B-11, ölçümüyle gerekçelendirildi) |
 | **`apps/api/src/app.ts`** | `modified` | ❌ **owned paths dışı** | Aşağıda gerekçe |
 
 ### Owned paths dışına çıkma gerekçesi: `apps/api/src/app.ts`
@@ -403,8 +517,8 @@ değiştirilmedi (RUN_PLAY §11'e uygun). Mobile repo'ya dokunulmadı.
 | Criteria | Status | Evidence |
 |---|---|---|
 | Event DB commit edilmeden ACK yok | `PASS` | `verdict-ingest.ts` değişmedi; ACK `prisma.$transaction` COMMIT sonrası (`acceptDurable`) |
-| Commit edilmiş event restart sonrası bulunuyor | `PASS (unit)` | `finds a committed row the previous process never published` |
-| Commit→receipt publish crash penceresi kapanıyor | `PASS (unit)` | `receipt_dispatched_at IS NULL` + `bootstrap()`; aynı test |
+| Commit edilmiş event restart sonrası bulunuyor | `PASS (unit + PG)` | `finds a committed row the previous process never published` + `the restart scans find committed-but-undelivered rows through DISTINCT predicates` |
+| Commit→receipt publish crash penceresi kapanıyor | `PASS (unit + PG)` | `receipt_dispatched_at IS NULL` + `bootstrap()`; aynı iki test |
 | DurableReceiptBus mevcut ve testli | `PASS` | `verdict-receipt-bus.ts`, 15 test |
 | OrderedEvidenceBus mevcut ve testli | `PASS` | `verdict-ordered-evidence-bus.ts`, 12 test |
 | Receipt-safe lane ordered gap yüzünden bloke olmuyor | `PASS` | `delivers a row sitting ABOVE a hole` |
@@ -416,22 +530,35 @@ değiştirilmedi (RUN_PLAY §11'e uygun). Mobile repo'ya dokunulmadı.
 | Subscriber cancel leak bırakmıyor | `PASS` | `waiterCount() === 0`, `activeSubscribers === 0` (iki lane) |
 | Poison row görünür | `PASS` | `dead_lettered_at` + `POISON_BLOCKED` + health `deadLetteredCount`; cursor **sessizce atlamıyor** |
 | Ordered lag ve receipt latency görülebilir | `PASS` | `orderedLag`, `oldestUnprocessedAgeMs`, `lastReceiptDispatchLatencyMs` + `/api/verdict/events/health` |
-| Sync-vs-durable equality kanıtlandı | `PARTIAL` | Pure fonksiyon 7 test yeşil; uçtan uca WS+PG koşusu **yapılamadı** |
+| Sync-vs-durable equality kanıtlandı | `PASS` | Pure fonksiyon 7 test + **uçtan uca gerçek socket/PG gate'i**: `the synchronous sink and the durable lane produce identical logical evidence` (17 event, sıfır mismatch, vacuous-pass koruması var) |
 | SDK EmitOutcome diagnostic recursion üretmiyor | `PASS` | `answers from persisted state without writing anything` (`writes` sayacı sabit) + `sideEffectFree: true` literal |
 | Typecheck/test green | `PASS` | §13 |
-| PostgreSQL integration green veya external blocker net | **`BLOCKED_EXTERNAL`** | §13 — suite yazıldı, Docker/gh yok, koşulamadı |
+| PostgreSQL integration green veya external blocker net | **`PASS`** | §13 — `postgres:16` üzerinde **37/37 yeşil, 0 skip**, 5 ardışık koşu kararlı |
 
-16/18 `PASS`, 1 `PARTIAL`, 1 `BLOCKED_EXTERNAL`.
+**18/18 `PASS`.** Kriter 18'in birinci şıkkı ("green kanıtlı") sağlandı: durable
+runtime correctness artık yalnız lokal unit testlere dayanmıyor, gerçek PostgreSQL
+kanıtı var. Bu yüzden `resultState: COMPLETED`.
+
+Ayrım önemli: **kanıt** elde edildi, **CI otomasyonu** hâlâ kırık (B-10). Phase 2
+kapanışı kanıta bağlıydı, CI job'ının yeşile dönmesine değil — ve B-10 Phase 2'nin
+ürünü değil, Phase 2 öncesinden gelen bir migration geçmişi kusuru.
 
 ## 16. Blockers
 
 | ID | Severity | Description | Owner | Status |
 |---|---|---|---|---|
-| **B-4** | HIGH | PostgreSQL integration job'ı hâlâ hiç koşmadı. Phase 2 kapsamı onu **büyüttü**: durable delivery'nin SQL katmanı (watermark JOIN, advisory lease, yeni kolonlar/constraint'ler, closure upsert, 2^53 üstü seq) yalnız bu job'da kanıtlanabilir. Bu makinede Docker kapalı, `gh` yok, tek DB paylaşımlı/uzak. | API owner | `IMPLEMENTED_UNVERIFIED` — **Phase 2 kapanış blocker'ı** |
-| **B-9** | MEDIUM | Sync-vs-durable eşitliği yalnız pure fonksiyon düzeyinde kanıtlı. `VERDICT_SYNC_SINK_DISABLED=1` **çevrilmemeli** — gerçek WS+PostgreSQL eşitlik koşusu yapılmadan sync sink primary path olmaktan kaldırılamaz. | API owner | `OPEN` (yeni) |
+| **B-4** | — | Durable delivery'nin SQL katmanı (watermark JOIN, advisory lease, yeni kolonlar/constraint'ler, closure upsert, 2^53 üstü seq) **gerçek `postgres:16` üzerinde kanıtlandı**: 37/37, 0 skip, 5 ardışık koşu kararlı (§13). B-4'ün özü — "integration testleri gerçekten koştu mu" — kapandı. Geriye kalan **CI otomasyonu** kısmı B-10'a devredildi. | API owner | **`CLOSED`** (lokal gerçek-PG kanıtıyla) |
+| **B-10** | **HIGH** | **Migration geçmişi eksik.** `prisma migrate deploy` boş DB'de 9. migration'da patlıyor (`relation "workflow_runs" does not exist`). **22 tablodan 13'ü** hiçbir migration'da yaratılmıyor (`workflow_runs`, `workflows`, `workflow_versions`, `workflow_step_results`, `AutomationRun`, `Note`, `Pickup`, `Shipment`, `courier_wallets`, `field_courier_logins`, `graylog_query_runs`, `mobile_devices`, `mongo_query_runs`) — şema `db push` ile kurulmuş. Sonuç: **CI `integration` job'ı bugün hiçbir koşulda yeşile dönemez**, ve B-4'ün aylardır doğrulanamamasının gerçek sebebi budur. Phase 2 öncesinden gelir, Phase 2'nin ürünü değildir. Önerilen çözüm: `prisma migrate diff --from-empty --to-schema-datamodel` ile baseline migration üretmek + mevcut ortamlarda `prisma migrate resolve --applied`. **Bilinçli olarak yapılmadı**: paylaşımlı production-benzeri DB'nin gerçek durumunu göremiyorum ve baseline'lamak operasyonel bir karar. | Platform/DB owner | `OPEN` (yeni) |
+| **B-11** | — | Integration suite'i paralel koşuda ~%50 flaky'di (4'te 2 kırmızı). Kök neden lease değil, **suite izolasyonu**: `bootstrap()` tüm stream'leri tarıyor ve dosyalar birbirinin lease'ini alıyordu. `--no-file-parallelism` ile düzeltildi; ölçüm ve gerekçe workflow'a yazıldı. Sıralı: 5/5 yeşil. | API owner | **`CLOSED`** (yeni, aynı turda kapandı) |
+| **B-9** | — | Sync-vs-durable eşitliği artık **uçtan uca** kanıtlı (gerçek socket + gerçek PostgreSQL, 17 event, sıfır mismatch, vacuous-pass koruması). `VERDICT_SYNC_SINK_DISABLED=1` cutover'ı için kanıt engeli kalktı. | API owner | **`CLOSED`** |
 | B-8 | MEDIUM | Repo-wide lint ESLint v9 flat-config borcu yüzünden blocking değil. | Platform owner | `OPEN_NON_BLOCKING` |
 | B-6 | LOW | Performans baseline script'i yok; receipt dispatch latency/ordered lag için hedef eşik tanımlı değil (sayı görünür, bütçe yok). | Platform owner | `OPEN` |
 | CP0 external DUT | — | Fiziksel cihaz/SSOT kapıları bu repoda kapanmaz. | Mobile owner | `OPEN/EXTERNAL` |
+
+**Cutover notu.** B-9 kapandığı için `VERDICT_SYNC_SINK_DISABLED=1` artık kanıt
+açısından meşru. Yine de bu turda **çevrilmedi**: eşitlik 17 event'lik bir fixture
+üzerinde gösterildi, gerçek bir cihaz koşusunda değil. Flag'i çevirmek bir operasyon
+kararıdır ve rollback'i de aynı flag'dir.
 
 ## 17. Skipped / deferred work
 
@@ -449,35 +576,67 @@ değiştirilmedi (RUN_PLAY §11'e uygun). Mobile repo'ya dokunulmadı.
 phase3Readiness: READY_WITH_BLOCKERS
 ```
 
-**Hazır olan taraf.** Phase 3'ün üstüne inşa edeceği contract ve runtime yerinde:
-iki lane ayrı, `waitEvent` beş sonuçla ve lane enforcement'la çalışıyor, restart
-recovery kalıcı state üzerinden, poison/lag görünür, sync sink kaldırma tek flag'e
+**Hazır olan taraf.** Phase 3'ün üstüne inşa edeceği contract ve runtime yerinde ve
+**gerçek veritabanı kanıtı var**: iki lane ayrı, `waitEvent` beş sonuçla ve lane
+enforcement'la çalışıyor, restart recovery kalıcı state üzerinden, poison/lag
+görünür, sync-vs-durable eşitliği uçtan uca kanıtlı, sync sink kaldırma tek flag'e
 indi ve rollback aynı flag. Typecheck ve test yeşil, mevcut 273 testin hiçbiri
 kırılmadı, `as any`/`rootDir` gevşetmesi/test skip'i yok.
 
-**Blocker'lı olan taraf.**
+**Blocker'lı olan taraf: tek madde, ve Phase 2'nin ürünü değil.**
 
-1. **B-4** — Phase 2'nin SQL katmanı kanıtsız. Bu, Phase 3'ü *başlatmayı* değil,
-   Phase 2'yi *kapatmayı* engelliyor. Bir sonraki agent'ın ilk işi: Docker'lı
-   makinede veya CI'da `prisma migrate deploy` + `VERDICT_DB_IT=1` üç suite. Yeşilse
-   B-4 `CLOSED`, bu dosya `COMPLETED`, readiness `READY`.
-2. **B-9** — `VERDICT_SYNC_SINK_DISABLED=1` çevrilmemeli. Eşitlik uçtan uca
-   gösterilmeden sync sink primary path olmaktan kaldırılamaz.
+**B-10** — migration geçmişi eksik olduğu için CI `integration` job'ı yeşile
+dönemez. Bu Phase 3'ü *başlatmayı* engellemez (Phase 2 kanıtı elde var, lokal
+tekrarlanabilir), ama **release gate'inden önce kapatılmalı**: kapatılmadığı sürece
+durable runtime'ın her regresyonu ancak elle Docker kaldırıp koşan biri tarafından
+yakalanır. Bu, Phase 1'in "kırmızı baseline sinyal olmaktan çıkar" endişesinin
+integration tarafındaki aynısıdır.
 
 **Değişmeyen gerçek:** master planın yedi ana işinden hiçbiri `DONE` değil. Phase 2
-"durable event consumer cutover" işini **çalışır ve testli** hale getirdi ama
-production cutover'ı flag arkasında ve eşitlik gate'inin ardında bıraktı. CP0 hâlâ
+"durable event consumer cutover" işini **çalışır, testli ve gerçek PostgreSQL'de
+kanıtlı** hale getirdi ama production cutover'ı hâlâ flag arkasında. CP0 hâlâ
 `COMPLETED` değil (cihaz gerektiren Mobile SSOT blocker'ları bu repoda kapanmaz).
 
 **Sıradaki agent şu sırayla devam etmeli:**
 
-1. Bu dosyayı oku — özellikle §1 (reordering bug ve fix), §13 (integration
-   BLOCKED_EXTERNAL), §14 (`app.ts` gerekçesi), §16 (B-4/B-9).
-2. `pnpm verdict:verify-master-plan` — digest
-   `sha256:5e7deff018a61b71eb215d2406615dae3304fb63080005e1130297401f15fa01` olmalı.
-3. `git status --short` — Phase 2 değişiklikleri **commit edilmedi**; commit/PR
-   kararı user'ın. Beklenen: 7 `M` + 8 `??`.
-4. **Integration job'ı koştur.** Bu Phase 2'nin kapanışı, Phase 3'ün girişi değil.
-5. Yeşilse: B-4 `CLOSED`, bu dosya `resultState: COMPLETED`,
-   `phase3Readiness: READY`. Kırmızıysa hatayı düzelt; Phase 3 RUN_PLAY'i açma.
-6. Sonra Phase 3 RUN_PLAY'i oluştur; B-9'u eşitlik gate'i olarak taşı.
+1. Bu dosyayı oku — özellikle §1 (üç bulgu), §13 (integration kanıtı + flakiness
+   ölçümü), §14 (`app.ts` gerekçesi), §16 (B-10).
+2. `pnpm verdict:verify-master-plan` — **digest artık
+   `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`
+   (v1.1.3)**. Phase 2 v1.1.2'ye karşı yürütüldü; diff Phase 2 kapsamına dokunmuyor
+   (baştaki sürüm notu).
+3. `git status --short` — Phase 2 kodu **commit edildi** (user tarafından, bu faz
+   sırasında): `f4bb823 completed phase2 developments` (durable runtime, iki lane,
+   contract, migration, route, testler) ve `d030756 continue to phase2 developments`
+   (CI `--no-file-parallelism`, eşitlik gate'i, `compareModeEnabled`, master plan
+   v1.1.3). Master plan v1.1.3 değişikliği **user'ındır**, bu agent'ın değil.
+   Çalışma ağacında yalnız bu iki playbook dosyası kalır.
+4. **B-10'u kapat** (Platform/DB owner ile): baseline migration + mevcut ortamlarda
+   `migrate resolve --applied`. Sonra CI'da `integration` job'ının ilk yeşilini gör.
+5. Phase 3 RUN_PLAY'ini **v1.1.3 digest'iyle** oluştur.
+6. Cutover kararı: `VERDICT_SYNC_SINK_DISABLED=1` artık kanıt açısından meşru;
+   çevirmek operasyon kararı, rollback aynı flag.
+
+### Integration suite'i lokalde tekrarlamak
+
+```bash
+open -a Docker
+docker run -d --name verdict-it-pg -p 55432:5432 \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
+  -e POSTGRES_DB=verdict_test postgres:16
+# B-10 kapanana kadar migrate deploy yerine:
+DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
+  pnpm --filter @nesy/db exec prisma db push --skip-generate
+docker exec verdict-it-pg psql -U postgres -d verdict_test \
+  -c 'DROP TABLE IF EXISTS verdict_inbox, verdict_gap, verdict_stream, verdict_run_closure CASCADE;'
+for m in 20260727210000_add_verdict_ingest 20260805000000_add_verdict_durable_dispatch; do
+  docker exec -i verdict-it-pg psql -U postgres -d verdict_test -v ON_ERROR_STOP=1 \
+    < packages/db/prisma/migrations/$m/migration.sql
+done
+cd apps/api && DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55432/verdict_test' \
+  VERDICT_DB_IT=1 npx vitest run --no-file-parallelism \
+    src/services/verdict-ingest.integration.test.ts \
+    src/services/test-event-ws-server.integration.test.ts \
+    src/services/verdict-durable-runtime.integration.test.ts
+docker rm -f verdict-it-pg
+```
