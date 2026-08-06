@@ -1,0 +1,56 @@
+# Verdict Mobile Track — Progress Board
+
+```yaml
+trackId: verdict-mobile-run-playbooks
+ssotFor: "Mobile M0–M9 playbook completion (not Cockpit FAZ YAML / not Mobile verdict-status bridge_b2 cutover)"
+lastUpdatedAt: "2026-08-06 18:35:00 +03"
+timezone: "Europe/Istanbul"
+masterPlanPointer: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md § Mobile playbook track"
+```
+
+Bu dosya **Mobile run-playbook** ilerlemesinin tek bakışlık tablosudur.
+Kaynak gerçek: her fazın `RESULT.md` `resultState` alanı. Çelişki halinde RESULT kazanır.
+
+## Önemli ayrım
+
+| Track | Ne ölçer | Bu board ile karıştırma |
+|---|---|---|
+| **Mobile M\*** | `mobile-run-playbooks/phase-*/RESULT.md` | ← bu dosya |
+| **Cockpit FAZ / CP\*** | `run-playbooks/phase-*/RESULT.md` + master plan `todos: faz-*` | ayrı |
+| **Mobile SSOT checkpoints** | `NesyMobile/verdict-status.json` (örn. `bridge_b2` = compiler/courier) | protokol M3 ≠ `bridge_b2=passed` |
+
+Master plan üstündeki `faz-0…faz-9` YAML status alanları **Cockpit program fazlarıdır**.
+Mobile `M0` tamamlandı diye `faz-0: completed` yazılmaz.
+
+## Board
+
+| Faz | Ad | resultState | RESULT | Not |
+|---|---|---|---|---|
+| **M0** | Baseline + envanter + gap | `COMPLETED` | [phase-0/RESULT.md](./phase-0/RESULT.md) | Inventory / gap matrix |
+| **M1** | SDK auth / session fixture | `COMPLETED` | [phase-1/RESULT.md](./phase-1/RESULT.md) | Auth fixtures/tests |
+| **M2** | EmitOutcome + WAL/ACK diagnostic | `COMPLETED` | [phase-2/RESULT.md](./phase-2/RESULT.md) | Diagnostic query surface |
+| **M3** | Bridge B2 protocol | `COMPLETED` | [phase-3/RESULT.md](./phase-3/RESULT.md) | wait_any/cancel/capabilities; SSOT `bridge_b2` hâlâ not_started |
+| **M4A** | Core-contract thin gate | `COMPLETED` | [phase-4a/RESULT.md](./phase-4a/RESULT.md) | Bridge domain leakage 0 |
+| **M4B** | Nesy App Adapter production | `IN_PROGRESS` | [phase-4b/RESULT.md](./phase-4b/RESULT.md) | Aktif |
+| **M4C** | Pack ↔ adapter ↔ Bridge uyumu | `NOT_STARTED` | [phase-4c/RESULT.md](./phase-4c/RESULT.md) | |
+| **M5** | Correlation + recovery | `NOT_STARTED` | [phase-5/RESULT.md](./phase-5/RESULT.md) | |
+| **M6** | Inspector destek | `NOT_STARTED` | [phase-6/RESULT.md](./phase-6/RESULT.md) | |
+| **M7** | Gerçek akış + release isolation | `NOT_STARTED` | [phase-7/RESULT.md](./phase-7/RESULT.md) | DUT |
+| **M8** | DUT fault kabulü | `NOT_STARTED` | [phase-8/RESULT.md](./phase-8/RESULT.md) | lab DUT |
+| **M9** | Legacy temizliği | `NOT_STARTED` | [phase-9/RESULT.md](./phase-9/RESULT.md) | cutover sonrası |
+
+## Summary
+
+```text
+Completed: M0, M1, M2, M3, M4A
+In progress: M4B
+Remaining: M4C → M5 → M6 → M7 → M8 → M9
+```
+
+## Update rule
+
+Bir Mobile faz `COMPLETED` / `FAILED` / `IN_PROGRESS` olduğunda aynı commit/çalışmada:
+
+1. Faz `RESULT.md` + `RUN_PLAY.md` güncellenir
+2. Bu `PROGRESS.md` board satırı güncellenir
+3. İsteğe bağlı: master plan § Mobile playbook track özeti yenilenir (+ digest)

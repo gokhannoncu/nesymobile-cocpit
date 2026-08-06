@@ -213,7 +213,6 @@ model WorkflowRun {
   bridgeflowRunBlocks BridgeFlowEvidenceRunBlock[]
   bridgeflowOracle   BridgeFlowOracleEvaluation[]
   testExecutions     VerdictTestExecution[]
-  resourceLeases     VerdictResourceLease[]
   remoteActions      VerdictRemoteActionAttempt[]
 
   @@index([workflowId, createdAt])
@@ -769,7 +768,9 @@ model VerdictTestExecution {
   @@map("verdict_test_execution")
 }
 
-/// Phase 5 TestDataBroker resource lease foundation.
+/// Phase 5 TestDataBroker + device-command admission lease foundation.
+/// `runId` is an opaque owner id (BridgeFlow or Maestro) — not an FK into
+/// `workflow_runs`, so admission leases can outlive / precede that table.
 model VerdictResourceLease {
   id                   String    @id @default(cuid())
   leaseId              String    @unique @map("lease_id")
@@ -780,12 +781,12 @@ model VerdictResourceLease {
   state                String    @default("DIRTY")
   reconciliationReason String?   @map("reconciliation_reason")
   leasedAt             DateTime  @default(now()) @map("leased_at") @db.Timestamptz(6)
+  expiresAt            DateTime? @map("expires_at") @db.Timestamptz(6)
   releasedAt           DateTime? @map("released_at") @db.Timestamptz(6)
-
-  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([conflictGroup, state], map: "verdict_resource_lease_conflict_idx")
   @@index([runId, state], map: "verdict_resource_lease_run_state_idx")
+  @@index([resourceId, conflictGroup, state], map: "verdict_resource_lease_resource_conflict_idx")
   @@map("verdict_resource_lease")
 }
 

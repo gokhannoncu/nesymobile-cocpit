@@ -28,9 +28,11 @@ import {
 import { getVerdictDurableRuntime } from "./verdict-wait-event.js";
 import { getBridgeFlowEvidenceRuntime } from "./bridgeflow-evidence-runtime.js";
 import { createPrismaEvidenceJourneyWriter } from "./evidence-journey-writer.js";
-import { EvidenceSourceRegistry } from "./evidence-source-resolver.js";
+import { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
 import { DurableBridgeFlowEvidenceIngest } from "./bridgeflow-durable-evidence-ingest.js";
 import { prisma } from "@nesy/db";
+
+export { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
 
 export const TEST_EVENT_WS_PORT = 8765;
 const WS_PATH = "/nesy";
@@ -124,7 +126,6 @@ export async function consumeOrderedDurableEvidenceRow(
  */
 const compareModeEnabled = (): boolean => process.env.VERDICT_COMPARE_MODE === "1";
 const bridgeFlowEvidenceWriter = createPrismaEvidenceJourneyWriter();
-export const BridgeFlowEvidenceSources = new EvidenceSourceRegistry();
 export const BridgeFlowDurableEvidence = new DurableBridgeFlowEvidenceIngest({
   resolver: BridgeFlowEvidenceSources,
   writer: bridgeFlowEvidenceWriter,

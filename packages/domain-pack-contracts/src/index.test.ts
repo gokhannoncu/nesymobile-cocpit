@@ -1035,6 +1035,13 @@ describe("launch profiles", () => {
     expect(codes).toContain("MISSING_CLEANUP_DEADLINE");
   });
 
+  it("returns MISSING_FIELD instead of throwing when releaseIsolation is absent", () => {
+    const partial = { ...realLogin(), releaseIsolation: undefined as never };
+    const violations = validateLaunchProfile(partial, "$");
+    expect(violations.map((v) => v.code)).toContain("MISSING_FIELD");
+    expect(violations.every((v) => typeof v.message === "string")).toBe(true);
+  });
+
   it("refuses an entry screen the pack does not define", () => {
     const mutated = clone(minimalBundle());
     mutated.registries.launchProfiles[0].entry.expectedScreenRef = "nowhere";

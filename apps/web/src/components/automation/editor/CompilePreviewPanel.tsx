@@ -125,6 +125,15 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
                   {result.ok ? 'Compilation Successful' : 'Compilation Failed'}
                 </span>
               </div>
+              {result.compilerKind === 'STUB' ? (
+                <div className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 flex gap-1.5">
+                  <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                  <span>
+                    Stub compiler (`compilerKind: STUB`) — canvas error binding is deferred until the
+                    real BridgeFlowCompiler is wired.
+                  </span>
+                </div>
+              ) : null}
               {result.compiledPlanHash && (
                 <div className="mt-2 text-xs flex items-center gap-2 text-gray-600">
                   Hash: <code className="bg-gray-100 px-1 rounded">{result.compiledPlanHash.substring(0, 8)}...</code>

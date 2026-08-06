@@ -1,16 +1,21 @@
 import type { FastifyInstance } from 'fastify'
+import type { LaunchProfile, TargetResolutionPolicy } from '@nesy/domain-pack-contracts'
 import { prisma } from '@nesy/db'
 import { createAdbFacade } from '../services/bridge-adb-facade.js'
 
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import { DeviceReadinessService } from '../services/device-readiness.service.js'
 import { DomainPackAdminService } from '../services/domain-pack-admin.service.js'
+import { DomainPackReadModelsService } from '../services/domain-pack-read-models.service.js'
 import { DurableInteractionSubscription } from '../services/durable-interaction-subscription.js'
+import { EvidenceSourceQueryService } from '../services/evidence-source-query.service.js'
+import { BridgeFlowEvidenceSources } from '../services/bridgeflow-evidence-source-registry.js'
 import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { createHashPinnedCompileStub } from '../services/workflow-compile.service.js'
 import { WorkflowRunService } from '../services/workflow-run.service.js'
 import {
+  PrismaDeviceMutationLeaseStore,
   PrismaDomainPackAdminStore,
   PrismaDurableInteractionStore,
   PrismaTestCampaignStore,
@@ -22,10 +27,13 @@ const compileService = createHashPinnedCompileStub()
 const runService = new WorkflowRunService(undefined, new PrismaWorkflowRunStartStore(prisma))
 // Database-backed: these catalogs carry release-gate evidence, so they must
 // survive an API restart. The in-memory stores remain the default in unit tests.
-const domainPackAdmin = new DomainPackAdminService(new PrismaDomainPackAdminStore(prisma))
+const domainPackAdminStore = new PrismaDomainPackAdminStore(prisma)
+const domainPackAdmin = new DomainPackAdminService(domainPackAdminStore)
+const domainPackReads = new DomainPackReadModelsService(domainPackAdminStore)
+const evidenceSources = new EvidenceSourceQueryService(BridgeFlowEvidenceSources)
 const testProfiles = new TestProfileCatalogService(new PrismaTestProfileCatalogStore(prisma))
 const testCampaigns = new TestCampaignService(new PrismaTestCampaignStore(prisma))
-const admission = createDeviceCommandAdmission()
+const admission = createDeviceCommandAdmission(new PrismaDeviceMutationLeaseStore(prisma))
 const adbFacade = createAdbFacade()
 
 /**
@@ -95,6 +103,118 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
         return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
       }
       return result
+    },
+  )
+
+  app.get<{
+    Params: { packKey: string; version: string }
+    Querystring: { deviceId?: string }
+  }>('/runtime/domain-packs/:packKey/:version/semantic-actions', async (request, reply) => {
+    try {
+      const result = await domainPackReads.listSemanticActions(
+        request.params.packKey,
+        request.params.version,
+        { deviceId: request.query.deviceId },
+      )
+      if (!result) {
+        return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
+      }
+      return result
+    } catch (error) {
+      return reply.code(500).send({
+        status: 'error',
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
+  })
+
+  app.get<{
+    Params: { packKey: string; version: string }
+  }>('/runtime/domain-packs/:packKey/:version/target-resolution', async (request, reply) => {
+    try {
+      const result = await domainPackReads.listTargetResolution(
+        request.params.packKey,
+        request.params.version,
+      )
+      if (!result) {
+        return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
+      }
+      return result
+    } catch (error) {
+      return reply.code(500).send({
+        status: 'error',
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
+  })
+
+  app.get<{
+    Params: { packKey: string; version: string }
+    Querystring: { releaseBuild?: string }
+  }>('/runtime/domain-packs/:packKey/:version/launch-profiles', async (request, reply) => {
+    try {
+      const result = await domainPackReads.listLaunchProfiles(
+        request.params.packKey,
+        request.params.version,
+        { releaseBuild: request.query.releaseBuild === 'true' },
+      )
+      if (!result) {
+        return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
+      }
+      return result
+    } catch (error) {
+      return reply.code(500).send({
+        status: 'error',
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
+  })
+
+  app.post<{ Body: Record<string, unknown> }>(
+    '/runtime/target-resolution/validate',
+    async (request, reply) => {
+      try {
+        const body = request.body
+        const policy = body.policy as TargetResolutionPolicy | undefined
+        if (policy === undefined || typeof policy !== 'object') {
+          return reply.code(400).send({
+            status: 'bad_request',
+            detail: 'body.policy (TargetResolutionPolicy) is required',
+          })
+        }
+        const result = domainPackReads.validateTargetResolution(policy)
+        return reply.code(result.ok ? 200 : 422).send(result)
+      } catch (error) {
+        return reply.code(400).send({
+          status: 'bad_request',
+          detail: error instanceof Error ? error.message : String(error),
+        })
+      }
+    },
+  )
+
+  app.post<{ Body: Record<string, unknown> }>(
+    '/runtime/launch-profiles/validate',
+    async (request, reply) => {
+      try {
+        const body = request.body
+        const profile = body.profile as LaunchProfile | undefined
+        if (profile === undefined || typeof profile !== 'object') {
+          return reply.code(400).send({
+            status: 'bad_request',
+            detail: 'body.profile (LaunchProfile) is required',
+          })
+        }
+        const result = domainPackReads.validateLaunchProfile(profile, {
+          releaseBuild: body.releaseBuild === true,
+        })
+        return reply.code(result.ok ? 200 : 422).send(result)
+      } catch (error) {
+        return reply.code(400).send({
+          status: 'bad_request',
+          detail: error instanceof Error ? error.message : String(error),
+        })
+      }
     },
   )
 
@@ -250,6 +370,8 @@ export const __phase6ContractSingletons = {
   compileService,
   runService,
   domainPackAdmin,
+  domainPackReads,
+  evidenceSources,
   testProfiles,
   testCampaigns,
   admission,

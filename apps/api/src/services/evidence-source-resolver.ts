@@ -32,6 +32,8 @@ export interface EvidenceSourceDefinition {
 
 export interface EvidenceSourceResolver {
   resolve(sourceEvent: string): EvidenceSourceDefinition | undefined
+  /** Catalog of every registered/static definition — never fabricates rows. */
+  list(): readonly EvidenceSourceDefinition[]
 }
 
 export class StaticEvidenceSourceResolver implements EvidenceSourceResolver {
@@ -58,6 +60,13 @@ export class StaticEvidenceSourceResolver implements EvidenceSourceResolver {
       ? undefined
       : { ...definition, deliveryLanes: [...definition.deliveryLanes] }
   }
+
+  list(): readonly EvidenceSourceDefinition[] {
+    return [...this.bySourceEvent.values()].map((definition) => ({
+      ...definition,
+      deliveryLanes: [...definition.deliveryLanes],
+    }))
+  }
 }
 
 export class EvidenceSourceRegistry implements EvidenceSourceResolver {
@@ -82,6 +91,13 @@ export class EvidenceSourceRegistry implements EvidenceSourceResolver {
     return definition === undefined
       ? undefined
       : { ...definition, deliveryLanes: [...definition.deliveryLanes] }
+  }
+
+  list(): readonly EvidenceSourceDefinition[] {
+    return [...this.definitions.values()].map((definition) => ({
+      ...definition,
+      deliveryLanes: [...definition.deliveryLanes],
+    }))
   }
 }
 

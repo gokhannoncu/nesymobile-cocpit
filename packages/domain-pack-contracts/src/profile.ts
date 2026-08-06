@@ -254,6 +254,7 @@ export interface TestCampaignDefinition {
 
 export interface ProfileViolation {
   code:
+    | "MISSING_FIELD"
     | "SETUP_LAUNCH_PRODUCES_VERDICT"
     | "SETUP_LAUNCH_WITHOUT_ISOLATION"
     | "REAL_LOGIN_WITH_PREPARATION_OPS"
@@ -276,6 +277,31 @@ export interface ProfileViolation {
  */
 export function validateLaunchProfile(profile: LaunchProfile, path: string): ProfileViolation[] {
   const violations: ProfileViolation[] = [];
+
+  // Shape first: builders send partial drafts. Missing required objects must
+  // become structured MISSING_FIELD violations, never thrown TypeErrors.
+  if (profile.releaseIsolation === undefined || profile.releaseIsolation === null) {
+    violations.push({
+      code: "MISSING_FIELD",
+      message: `${path}.releaseIsolation is required`,
+    });
+  }
+  if (profile.cleanup === undefined || profile.cleanup === null) {
+    violations.push({
+      code: "MISSING_FIELD",
+      message: `${path}.cleanup is required`,
+    });
+  }
+  if (profile.entry === undefined || profile.entry === null) {
+    violations.push({
+      code: "MISSING_FIELD",
+      message: `${path}.entry is required`,
+    });
+  }
+  if (violations.some((v) => v.code === "MISSING_FIELD")) {
+    return violations;
+  }
+
   const isSetupShortcut = SETUP_ONLY_SESSION_MODES.includes(profile.sessionPreparation);
 
   if (isSetupShortcut && profile.producesProductVerdict) {
@@ -292,7 +318,10 @@ export function validateLaunchProfile(profile: LaunchProfile, path: string): Pro
     });
   }
 
-  if (profile.sessionPreparation === "REAL_UI_LOGIN" && profile.preparationOperationRefs.length > 0) {
+  if (
+    profile.sessionPreparation === "REAL_UI_LOGIN" &&
+    (profile.preparationOperationRefs?.length ?? 0) > 0
+  ) {
     violations.push({
       code: "REAL_LOGIN_WITH_PREPARATION_OPS",
       message: `${path}: a REAL_UI_LOGIN profile declares ${profile.preparationOperationRefs.length} preparation operation(s); it would then be claiming to test a path it partly shortcut`,

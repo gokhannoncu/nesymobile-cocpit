@@ -24,9 +24,13 @@ export interface WorkflowCompileRequest {
   domainPackDigest: string
 }
 
+export type WorkflowCompilerKind = 'STUB' | 'BRIDGEFLOW'
+
 export interface WorkflowCompileResult {
   apiVersion: typeof WORKFLOW_COMPILE_API_VERSION
   ok: boolean
+  /** Which compiler produced this result — never silent about stubs. */
+  compilerKind: WorkflowCompilerKind
   compiledPlanRef: string
   compiledPlanHash: string
   sourceMap: Readonly<Record<string, string>>
@@ -51,6 +55,7 @@ export class WorkflowCompileService {
       plan?: CompiledPlanSummary
       issues?: WorkflowCompileResult['issues']
     },
+    private readonly compilerKind: WorkflowCompilerKind = 'BRIDGEFLOW',
   ) {}
 
   compileWorkflow(request: WorkflowCompileRequest): WorkflowCompileResult {
@@ -70,6 +75,7 @@ export class WorkflowCompileService {
       return {
         apiVersion: WORKFLOW_COMPILE_API_VERSION,
         ok: false,
+        compilerKind: this.compilerKind,
         compiledPlanRef: '',
         compiledPlanHash: '',
         sourceMap: {},
@@ -92,6 +98,7 @@ export class WorkflowCompileService {
       return {
         apiVersion: WORKFLOW_COMPILE_API_VERSION,
         ok: false,
+        compilerKind: this.compilerKind,
         compiledPlanRef: '',
         compiledPlanHash: '',
         sourceMap: {},
@@ -120,6 +127,7 @@ export class WorkflowCompileService {
     return {
       apiVersion: WORKFLOW_COMPILE_API_VERSION,
       ok: true,
+      compilerKind: this.compilerKind,
       compiledPlanRef: plan.planId,
       compiledPlanHash: plan.hash.digest,
       sourceMap,
@@ -139,7 +147,11 @@ export class WorkflowCompileService {
   }
 }
 
-/** Deterministic stub compile used by local Phase 5/6 contract tests. */
+/**
+ * Deterministic stub compile used by local Phase 5/6 contract tests and the
+ * production route until the real BridgeFlowCompiler adapter is wired.
+ * Responses always carry `compilerKind: "STUB"` so the UI can warn.
+ */
 export function createHashPinnedCompileStub(): WorkflowCompileService {
   return new WorkflowCompileService((request) => {
     const digest = createHash('sha256')
@@ -160,11 +172,18 @@ export function createHashPinnedCompileStub(): WorkflowCompileService {
           packKey: request.domainPackKey,
           packVersion: request.domainPackVersion,
           packDigest: request.domainPackDigest,
-          compilerVersion: 'bridgeflow-compiler',
+          compilerVersion: 'bridgeflow-compiler-stub',
         },
         steps: [{ planStepId: entryStepId, sourceMapRef: `src:${entryStepId}` }],
       },
-      issues: [],
+      issues: [
+        {
+          severity: 'WARNING',
+          code: 'STUB_COMPILER',
+          message:
+            'Compile used the hash-pinned stub; CHECKPOINT 6 canvas error binding requires the real BridgeFlowCompiler',
+        },
+      ],
     }
-  })
+  }, 'STUB')
 }

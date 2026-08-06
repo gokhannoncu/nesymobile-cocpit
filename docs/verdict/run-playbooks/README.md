@@ -114,8 +114,12 @@ Mobile SDK / App Adapter / Bridge APK işleri ayrı playbook sisteminde tutulur:
 
 ```text
 docs/verdict/mobile-run-playbooks/
+docs/verdict/mobile-run-playbooks/PROGRESS.md   ← Mobile M0–M9 canlı board
 ```
 
 Cockpit agent'ları Mobile repo'ya yazmaz; Mobile agent'ları Cockpit `apps/**` /
 `packages/**` kodunu varsayılan olarak değiştirmez. Karşılıklı blocker ve handoff
 notları ilgili RESULT dosyalarında taşınır.
+
+Mobile ilerleme özeti (2026-08-06): **M0–M4A COMPLETED**, **M4B IN_PROGRESS**.
+Bu, master plan `faz-*` YAML status’unu otomatik değiştirmez.

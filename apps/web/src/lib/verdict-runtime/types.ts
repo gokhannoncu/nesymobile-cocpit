@@ -46,11 +46,137 @@ export interface EvidenceJourneyResult {
 export interface WorkflowCompileApi {
   apiVersion: VerdictRuntimeApiVersion
   ok: boolean
+  /** STUB until the real BridgeFlowCompiler adapter is wired (phase-5-debt 5D.4B). */
+  compilerKind: 'STUB' | 'BRIDGEFLOW'
   compiledPlanRef: string
   compiledPlanHash: string
   sourceMap: Record<string, string>
   provenance: Record<string, unknown>
   issues: Record<string, unknown>[]
+}
+
+/** Mirrors `EvidenceSourceQueryService.list()` catalog items. */
+export interface EvidenceSourceApi {
+  sourceEvent: string
+  factKey: string
+  plane: string
+  subtype: string
+  authority: string
+  deliveryLanes: readonly string[]
+  freshnessMaxAgeMs: number
+  valueField: string
+  confidence?: number
+}
+
+export interface EvidenceSourceCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  partial: boolean
+  items: EvidenceSourceApi[]
+  blockedReason?: string
+}
+
+export interface RunEvidenceSourceApi extends EvidenceSourceApi {
+  observed: boolean
+  lastObservedAt?: string
+  deliveryLane?: string
+}
+
+export interface RunEvidenceSourceCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  runId: string
+  partial: boolean
+  items: RunEvidenceSourceApi[]
+  conflicts: readonly { factKey: string; reason: string; authorities: readonly string[] }[]
+  blockedReason?: string
+}
+
+export interface CapabilityStatusApi {
+  satisfied: boolean
+  missing: readonly string[]
+  reason: string | null
+}
+
+/** Mirrors pack-scoped semantic action read model. */
+export interface SemanticActionApi {
+  actionKey: string
+  displayName: string
+  businessMeaning: string
+  notResponsibleFor: readonly string[]
+  applicationRef: string
+  screenRefs: readonly string[]
+  surfaceRefs: readonly string[]
+  entityTypeRefs: readonly string[]
+  targetRefs: readonly string[]
+  requiredCapabilityRefs: readonly string[]
+  capabilityStatus: CapabilityStatusApi
+}
+
+export interface SemanticActionCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  packVersion: string
+  partial: boolean
+  items: SemanticActionApi[]
+  macros: readonly {
+    macroKey: string
+    actionRef: string
+    displayName: string
+    businessMeaning: string
+    notResponsibleFor: readonly string[]
+    requiredCapabilityRefs: readonly string[]
+    capabilityStatus: CapabilityStatusApi
+  }[]
+  blockedReason?: string
+}
+
+export interface TargetResolutionEntityApi {
+  entityKey: string
+  targetKey: string
+  strategies: readonly {
+    order: number
+    kind: string
+    establishesIdentity: boolean
+    ambiguityPolicy: string
+  }[]
+  notFoundPolicy: string
+  ambiguityPolicy: string
+  deadlineMs: number
+  reverifyBeforeAction: boolean
+  violations: readonly { code: string; message: string }[]
+}
+
+export interface TargetResolutionCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  packVersion: string
+  partial: boolean
+  entities: TargetResolutionEntityApi[]
+  blockedReason?: string
+}
+
+export interface LaunchProfileApi {
+  profileKey: string
+  applicationRef: string
+  displayName: string
+  startMode: string
+  sessionPreparation: string
+  preconditionFactKeys: readonly string[]
+  entry: Record<string, unknown>
+  preparationOperationRefs: readonly string[]
+  cleanup: Record<string, unknown>
+  producesProductVerdict: boolean
+  releaseIsolation: Record<string, unknown>
+  requiredCapabilityRefs: readonly string[]
+  blockedReason?: string
+}
+
+export interface LaunchProfileCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  packVersion: string
+  partial: boolean
+  items: LaunchProfileApi[]
+  blockedReason?: string
 }
 
 export interface WorkflowRunStartApi {

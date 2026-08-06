@@ -1,9 +1,18 @@
 /**
- * Durable device command admission facade for Phase 5 Device Lab / executor wiring.
- * Wraps run-scoped mutation ownership with explicit blocked reasons for UI/read models.
+ * Device command admission with injectable mutation-ownership lease store.
+ *
+ * Mutation exclusive ownership is durable across process restarts when a
+ * shared/persisted {@link DeviceMutationLeaseStore} is supplied. Lane active /
+ * queued counts remain process-local operational gauges (not ownership).
+ *
+ * Default store is in-memory; production wiring uses the Prisma-backed store
+ * over `verdict_resource_lease` (conflictGroup = device-mutation).
  */
 
 export type AdmissionLaneKind = 'CONTROL' | 'OBSERVATION' | 'WAIT' | 'MUTATION'
+
+export const DEVICE_MUTATION_LEASE_TTL_MS = 60_000
+export const DEVICE_MUTATION_CONFLICT_GROUP = 'device-mutation' as const
 
 export interface DeviceCommandAdmissionSnapshot {
   deviceId: string
@@ -19,35 +28,97 @@ export interface AcquireMutationResult {
   blockedReason: string | null
 }
 
+export interface DeviceMutationLeaseRecord {
+  leaseId: string
+  runId: string
+  resourceId: string
+  conflictGroup: typeof DEVICE_MUTATION_CONFLICT_GROUP
+  exclusive: true
+  state: 'HELD' | 'RELEASED'
+  leasedAtMs: number
+  expiresAtMs: number
+  releasedAtMs?: number
+}
+
+export interface DeviceMutationLeaseStore {
+  listActive(nowMs: number): Promise<readonly DeviceMutationLeaseRecord[]>
+  upsert(record: DeviceMutationLeaseRecord): Promise<void>
+}
+
+export class InMemoryDeviceMutationLeaseStore implements DeviceMutationLeaseStore {
+  readonly leases = new Map<string, DeviceMutationLeaseRecord>()
+
+  async listActive(nowMs: number): Promise<readonly DeviceMutationLeaseRecord[]> {
+    const active: DeviceMutationLeaseRecord[] = []
+    for (const lease of this.leases.values()) {
+      if (lease.state !== 'HELD' || lease.releasedAtMs !== undefined) continue
+      if (lease.expiresAtMs <= nowMs) continue
+      active.push({ ...lease })
+    }
+    return active
+  }
+
+  async upsert(record: DeviceMutationLeaseRecord): Promise<void> {
+    this.leases.set(record.leaseId, { ...record })
+  }
+}
+
 export class DeviceCommandAdmission {
-  private readonly mutationOwnerByDevice = new Map<string, string>()
   private readonly activeCounts = new Map<string, Record<AdmissionLaneKind, number>>()
   private readonly queuedCounts = new Map<string, Record<AdmissionLaneKind, number>>()
 
-  acquireMutation(deviceId: string, runId: string): AcquireMutationResult {
-    const owner = this.mutationOwnerByDevice.get(deviceId)
-    if (owner !== undefined && owner !== runId) {
+  constructor(
+    private readonly leaseStore: DeviceMutationLeaseStore = new InMemoryDeviceMutationLeaseStore(),
+    private readonly ttlMs: number = DEVICE_MUTATION_LEASE_TTL_MS,
+    private readonly now: () => number = () => Date.now(),
+  ) {}
+
+  async acquireMutation(deviceId: string, runId: string): Promise<AcquireMutationResult> {
+    const nowMs = this.now()
+    const owner = await this.activeOwner(deviceId, nowMs)
+    if (owner !== null && owner !== runId) {
       return {
         acquired: false,
         ownerRunId: owner,
         blockedReason: `mutation lane owned by run ${owner}`,
       }
     }
-    // Re-acquire by the current owner is idempotent: a retrying run must not
-    // inflate the active lane count that a single releaseMutation can undo.
+    // Re-acquire by the current owner renews the lease without inflating the
+    // active lane count that a single releaseMutation can undo.
     if (owner === runId) {
+      await this.writeLease(deviceId, runId, nowMs)
       return { acquired: true, ownerRunId: runId, blockedReason: null }
     }
-    this.mutationOwnerByDevice.set(deviceId, runId)
+    await this.writeLease(deviceId, runId, nowMs)
     this.bump(deviceId, 'MUTATION', 'active', 1)
     return { acquired: true, ownerRunId: runId, blockedReason: null }
   }
 
-  releaseMutation(deviceId: string, runId: string): void {
-    if (this.mutationOwnerByDevice.get(deviceId) === runId) {
-      this.mutationOwnerByDevice.delete(deviceId)
-      this.bump(deviceId, 'MUTATION', 'active', -1)
-    }
+  async releaseMutation(deviceId: string, runId: string): Promise<void> {
+    const nowMs = this.now()
+    const owner = await this.activeOwner(deviceId, nowMs)
+    if (owner !== runId) return
+    const leaseId = leaseIdFor(deviceId, runId)
+    await this.leaseStore.upsert({
+      leaseId,
+      runId,
+      resourceId: deviceId,
+      conflictGroup: DEVICE_MUTATION_CONFLICT_GROUP,
+      exclusive: true,
+      state: 'RELEASED',
+      leasedAtMs: nowMs,
+      expiresAtMs: nowMs,
+      releasedAtMs: nowMs,
+    })
+    this.bump(deviceId, 'MUTATION', 'active', -1)
+  }
+
+  async renewMutation(deviceId: string, runId: string): Promise<boolean> {
+    const nowMs = this.now()
+    const owner = await this.activeOwner(deviceId, nowMs)
+    if (owner !== runId) return false
+    await this.writeLease(deviceId, runId, nowMs)
+    return true
   }
 
   beginLane(deviceId: string, lane: AdmissionLaneKind): void {
@@ -66,8 +137,8 @@ export class DeviceCommandAdmission {
     this.bump(deviceId, lane, 'queued', -1)
   }
 
-  snapshot(deviceId: string): DeviceCommandAdmissionSnapshot {
-    const owner = this.mutationOwnerByDevice.get(deviceId) ?? null
+  async snapshot(deviceId: string): Promise<DeviceCommandAdmissionSnapshot> {
+    const owner = await this.activeOwner(deviceId, this.now())
     return {
       deviceId,
       activeMutationOwnerRunId: owner,
@@ -75,6 +146,28 @@ export class DeviceCommandAdmission {
       queuedCounts: { ...this.counts(deviceId, 'queued') },
       blockedReason: owner === null ? null : `mutation lane owned by run ${owner}`,
     }
+  }
+
+  private async activeOwner(deviceId: string, nowMs: number): Promise<string | null> {
+    const active = await this.leaseStore.listActive(nowMs)
+    const held = active.find(
+      (lease) =>
+        lease.resourceId === deviceId && lease.conflictGroup === DEVICE_MUTATION_CONFLICT_GROUP,
+    )
+    return held?.runId ?? null
+  }
+
+  private async writeLease(deviceId: string, runId: string, nowMs: number): Promise<void> {
+    await this.leaseStore.upsert({
+      leaseId: leaseIdFor(deviceId, runId),
+      runId,
+      resourceId: deviceId,
+      conflictGroup: DEVICE_MUTATION_CONFLICT_GROUP,
+      exclusive: true,
+      state: 'HELD',
+      leasedAtMs: nowMs,
+      expiresAtMs: nowMs + this.ttlMs,
+    })
   }
 
   private counts(
@@ -105,6 +198,12 @@ export class DeviceCommandAdmission {
   }
 }
 
-export function createDeviceCommandAdmission(): DeviceCommandAdmission {
-  return new DeviceCommandAdmission()
+export function createDeviceCommandAdmission(
+  store: DeviceMutationLeaseStore = new InMemoryDeviceMutationLeaseStore(),
+): DeviceCommandAdmission {
+  return new DeviceCommandAdmission(store)
+}
+
+function leaseIdFor(deviceId: string, runId: string): string {
+  return `device-mutation:${deviceId}:${runId}`
 }

@@ -40,14 +40,35 @@ isProject: false
 **Sürüm:** v1.1.3
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771`
+**MasterDigest:** `sha256:8fd5f90f991fa9576c342a946a9a276996324cf6b68f8ba64f47a8ce7c1c6d4f`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`
 **Durum:** Bağlayıcı master plan; uygulama ve kabul kapıları tamamlanmamıştır.  
 **Kapsam:** `/NesyMobileCocpit` içindeki API, Web, workspace paketleri, veritabanı, cihaz işçileri, otomasyon editörü, runtime, oracle, artifact, teşhis, güvenlik ve geçiş kodları.  
 **Mobile SSOT:** `/NesyMobile/verdict-status.json`  
+**Mobile playbook track:** `docs/verdict/mobile-run-playbooks/PROGRESS.md`  
 **Kaynak SDK planı:** `/Users/gokhanoncu/Desktop/Verdict_Dev/plan/verdict_sdk_plan_v3_FULL.md`
+
+### Mobile playbook track (M\* — ayrı iz)
+
+Bu bölüm master plan `todos: faz-*` YAML status’unun yerine geçmez. `faz-0…faz-9`
+Cockpit program fazlarıdır. Mobile agent işi `mobile-run-playbooks/` altında M0–M9
+olarak izlenir; canlı board:
+
+```text
+docs/verdict/mobile-run-playbooks/PROGRESS.md
+```
+
+| Mobile faz | Durum (2026-08-06) | Kanıt |
+|---|---|---|
+| M0 Baseline / gap | `COMPLETED` | `mobile-run-playbooks/phase-0/RESULT.md` |
+| M1 SDK auth fixture | `COMPLETED` | `mobile-run-playbooks/phase-1/RESULT.md` |
+| M2 EmitOutcome diagnostic | `COMPLETED` | `mobile-run-playbooks/phase-2/RESULT.md` |
+| M3 Bridge B2 protocol | `COMPLETED` | `mobile-run-playbooks/phase-3/RESULT.md` (SSOT `bridge_b2` hâlâ not_started) |
+| M4A Core-contract thin gate | `COMPLETED` | `mobile-run-playbooks/phase-4a/RESULT.md` |
+| M4B App Adapter production | `IN_PROGRESS` | `mobile-run-playbooks/phase-4b/RESULT.md` |
+| M4C…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` |
 
 > **Bu doküman kendi kendine yeterlidir.** Cockpit için kapsam, hedef mimari,
 > yapılacaklar, yapılmayacaklar, sıralama, bağımlılıklar, fiziksel cihaz kapıları,

@@ -44,6 +44,9 @@ importers:
       '@nesy/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@nesy/domain-pack-contracts':
+        specifier: workspace:^
+        version: link:../../packages/domain-pack-contracts
       '@nesy/execution-contract':
         specifier: workspace:*
         version: link:../../packages/execution-contract

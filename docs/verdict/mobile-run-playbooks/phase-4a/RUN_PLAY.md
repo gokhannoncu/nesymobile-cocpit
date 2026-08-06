@@ -4,12 +4,12 @@
 runPlayId: verdict-mobile-phase-4a-run-play
 phase: "4a"
 phaseName: "Mobile Core-Contract Alignment (thin)"
-status: NOT_STARTED
-recoveryState: READY_TO_START
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+startedAt: "2026-08-06 18:02:00 +03"
+completedAt: "2026-08-06 18:05:00 +03"
+lastUpdatedAt: "2026-08-06 18:05:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -29,7 +29,7 @@ Phase M4A, Mobile tarafında neredeyse iş üretmez.
 Cockpit CP4A tamamlanmıştır. Bu faz yalnız Mobile/Bridge'in Core contract'a domain
 type sızdırmadığını ve M4B'nin başlayabileceğini doğrulayan ince bir kapıdır.
 
-**Başlama:** Cockpit Phase 4A COMPLETED (şu an açık). M3 soft.
+**Başlama:** Cockpit Phase 4A COMPLETED. M3 soft.
 
 ## 1.1 AI agent'a verilecek başlangıç metni
 
@@ -71,12 +71,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M4a` |
-| Current step | `4a.0` |
-| Current state | `READY_TO_START` |
-| Last successful step | `4a.0` |
-| Last attempted step | `4a.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M4a henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Current step | `4a.3` |
+| Current state | `COMPLETED` |
+| Last successful step | `4a.3` |
+| Last attempted step | `4a.3` |
+| Last update | `2026-08-06 18:05:00 +03` |
+| Recovery instruction | `M4A COMPLETED. Next: Mobile phase-4b RUN_PLAY (App Adapter production).` |
 
 ## 3. Kapsam
 
@@ -111,18 +111,18 @@ readiness yaz.
 
 ### 4a.1 Cockpit CP4A RESULT doğrulama
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md — CP4A COMPLETED + workflow-contract 79/79
 
 ### 4a.2 Mobile/Bridge domain leakage scan
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §6 — Bridge main 0 hits
 
 ### 4a.3 M4B readiness handoff
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md — `phase4bReadiness: READY`
 
 
 ## 8. Verification commands

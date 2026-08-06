@@ -170,7 +170,7 @@ Previously deferred/partial local items closed in this wave:
 | 23 | Final Oracle eventual until occurrence close | `PASS` | oracle-evaluation-worker tests |
 | 37–38 | Raw audit + normalized trace durable | `PASS` | evidence-journey-writer tests |
 | 42–43 | Journey stages; no EmitOutcome guessing | `PASS` | classifier tests |
-| 45 | Phase 6 DTO targets | `PARTIAL` | Compile/Run/DomainPack/Profile/Campaign/Device `PASS`. **Evidence Source, Target Resolution ve Launch Profile için HTTP ucu hiç açılmadı** — runtime var, API yok; Faz 6 bu yüzden maket UI yazdı. Bkz. `phase-5-debt/` |
+| 45 | Phase 6 DTO targets | `PASS` | Compile/Run/DomainPack/Profile/Campaign/Device + **Evidence Source / Semantic Action / Target Resolution / Launch Profile** read APIs `PASS` (`phase-5-debt` 2026-08-06). Compile hâlâ `compilerKind:"STUB"` (bilinçli; canvas error binding deferred). |
 | 49 | Restart-deterministic repetition state | `PASS` | recovery checkpoint continuation/for-each tests |
 | 51 | Queue worker loss/retry/block/orphan | `PASS` | test-execution-queue tests |
 | 53–54 | Dependent BLOCKED / independent continue | `PASS` | queue dependency tests |

@@ -3,9 +3,14 @@ import type {
   DeviceReadinessApi,
   DurableInteractionPageApi,
   EvidenceJourneyResult,
+  EvidenceSourceCatalogApi,
+  LaunchProfileCatalogApi,
   RunDetailResult,
+  RunEvidenceSourceCatalogApi,
   RunHistoryQuery,
   RunHistoryResult,
+  SemanticActionCatalogApi,
+  TargetResolutionCatalogApi,
   TestCampaignCatalogApi,
   TestCampaignResultApi,
   TestProfileCatalogApi,
@@ -36,6 +41,51 @@ export async function fetchVerdictLegacyRunSummary(runId: string): Promise<Workf
 
 export async function fetchVerdictEvidenceJourney(runId: string): Promise<EvidenceJourneyResult> {
   return getJson<EvidenceJourneyResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-journey`)
+}
+
+export async function fetchVerdictEvidenceSources(): Promise<EvidenceSourceCatalogApi> {
+  return getJson<EvidenceSourceCatalogApi>('/verdict/runtime/evidence-sources')
+}
+
+export async function fetchVerdictRunEvidenceSources(runId: string): Promise<RunEvidenceSourceCatalogApi> {
+  return getJson<RunEvidenceSourceCatalogApi>(
+    `/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-sources`,
+  )
+}
+
+export async function fetchVerdictSemanticActions(
+  packKey: string,
+  version: string,
+  deviceId?: string,
+): Promise<SemanticActionCatalogApi> {
+  const params = new URLSearchParams()
+  if (deviceId !== undefined) params.set('deviceId', deviceId)
+  const query = params.size > 0 ? `?${params.toString()}` : ''
+  return getJson<SemanticActionCatalogApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/semantic-actions${query}`,
+  )
+}
+
+export async function fetchVerdictTargetResolution(
+  packKey: string,
+  version: string,
+): Promise<TargetResolutionCatalogApi> {
+  return getJson<TargetResolutionCatalogApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/target-resolution`,
+  )
+}
+
+export async function fetchVerdictLaunchProfiles(
+  packKey: string,
+  version: string,
+  releaseBuild = false,
+): Promise<LaunchProfileCatalogApi> {
+  const params = new URLSearchParams()
+  if (releaseBuild) params.set('releaseBuild', 'true')
+  const query = params.size > 0 ? `?${params.toString()}` : ''
+  return getJson<LaunchProfileCatalogApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/launch-profiles${query}`,
+  )
 }
 
 /**

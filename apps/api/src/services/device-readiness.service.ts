@@ -33,7 +33,7 @@ export class DeviceReadinessService {
   ) {}
 
   async get(deviceId: string): Promise<DeviceReadinessSnapshot> {
-    const admission = this.admission.snapshot(deviceId)
+    const admission = await this.admission.snapshot(deviceId)
     const lanes: DeviceLaneHealth[] = [
       await lane('ADB', deviceId, this.probes.adb),
       await lane('SDK_CONTROL', deviceId, this.probes.sdkControl),

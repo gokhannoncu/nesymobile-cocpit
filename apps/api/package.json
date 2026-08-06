@@ -24,6 +24,7 @@
     "@nesy/control-channels": "workspace:*",
     "@nesy/control-contract": "workspace:*",
     "@nesy/db": "workspace:*",
+    "@nesy/domain-pack-contracts": "workspace:^",
     "@nesy/execution-contract": "workspace:*",
     "@nesy/oracle-engine": "workspace:*",
     "@nesy/platform-paths": "workspace:*",

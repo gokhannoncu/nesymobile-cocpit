@@ -3,14 +3,15 @@
 ```yaml
 runPlayId: verdict-cockpit-phase-6-debt-run-play
 debtOf: "6"
-resultState: BLOCKED_PRECONDITION
+resultState: READY_TO_START
 createdAt: "2026-08-06 09:30:00 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-06 09:30:00 +03"
+lastUpdatedAt: "2026-08-06 18:25:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+verifiedMasterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
 runPlayFile: "docs/verdict/run-playbooks/phase-6-debt/RUN_PLAY.md"
 originalResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 dependsOn: "docs/verdict/run-playbooks/phase-5-debt/RESULT.md"
@@ -20,41 +21,40 @@ priority: P1
 
 ## 1. Executive result
 
-`BLOCKED_PRECONDITION`. Kapsamın büyük kısmı (`6D.1`) `phase-5-debt` tamamlanmadan
-yapılamaz: bağlanacak API uçları henüz yok.
+Önkoşul kapısı açıldı. `phase-5-debt` `COMPLETED` / `phase6DebtReadiness: READY`
+— 6D.1 bağlanacak okuma API'leri mevcut. Uygulama henüz başlamadı.
 
 ```text
-Engelleyen: phase-5-debt (resultState: NOT_STARTED)
-Engellenmeyen: 6D.2 Surface Registry UI iskeleti, 6D.3'ün cihaz gerektirmeyen kısmı
+Engelleyen (eski): phase-5-debt — KALDIRILDI (2026-08-06)
+Başlangıç: 6D.1a Evidence Source panelini runtime'a bağla
+Follow-up (5-debt F2): capabilityStatus negotiation bağlanana kadar
+  requiredCapabilityRefs dolu action'lar palette bloklu görünür — gizleme
 ```
-
-`6D.2` teknik olarak paralel başlatılabilir (domain pack API'si mevcut), ama
-tavsiye edilen sıra önce `phase-5-debt`'i bitirmek — aksi halde editör paneli
-ikinci kez elden geçer.
 
 ## 2. Recovery state
 
 | Alan | Değer |
 |---|---|
 | Current debt | `phase-6-debt` |
-| Current step | `6D.1` |
-| Current state | `BLOCKED_PRECONDITION` |
-| Recovery instruction | `phase-5-debt COMPLETED olduğunda 6D.1a'dan başla. Önce evidence source panelini bağla; deseni kampanya/profil sayfalarından al.` |
+| Current step | `6D.1a` |
+| Current state | `READY_TO_START` |
+| Recovery instruction | `6D.1a'dan başla: EvidenceSourceRegistry panelini GET /runtime/evidence-sources'a bağla. Deseni kampanya/profil sayfalarından al.` |
 
 ## 3. Precondition gate
 
 | Gate | Required | Current |
 |---|---|---|
-| `phase-5-debt` | `COMPLETED` | **`FAIL`** — `NOT_STARTED` |
-| Evidence Source API | available | **`FAIL`** — uç yok |
-| Target Resolution API | available | **`FAIL`** — uç yok |
-| Launch Profile API | available | **`FAIL`** — uç yok |
+| `phase-5-debt` | `COMPLETED` | `PASS` — RESULT `COMPLETED`, `phase6DebtReadiness: READY` |
+| Evidence Source API | available | `PASS` — `GET /runtime/evidence-sources` |
+| Target Resolution API | available | `PASS` — pack-scoped + validate |
+| Launch Profile API | available | `PASS` — pack-scoped + validate (kısmi girdi → `MISSING_FIELD` 422) |
+| Semantic Action API | available | `PASS` — pack-scoped + `capabilityStatus` |
 | `next build` | yeşil | `PASS` |
 | Seed'li runtime | dolu | `PASS` |
 | Domain Pack API | available | `PASS` |
 
 ```text
-implementationStart: BLOCKED_BY_PHASE_5_DEBT
+implementationStart: ALLOWED
 ```
 
 ## 4. Kanıtlanmış boşluk (2026-08-06)
@@ -69,19 +69,18 @@ implementationStart: BLOCKED_BY_PHASE_5_DEBT
 | `workflow-registry.ts` (sol palet) | 0 | 660 satır sabit, `subtitle: "Maestro Command"` |
 | Surface Registry manager | — | **dosya yok** |
 
-`VerdictEditorToolbar` `2026-08-06`'da editöre mount edildi; artık erişilebilir
-ama içerik yukarıdaki gibi.
+`VerdictEditorToolbar` mount edildi; paneller hâlâ maket — 6D.1 kapsamı.
 
 ## 5. Step execution log
 
 | Step | Status | Evidence |
 |---|---|---|
-| 6D.1a Evidence Source binding | `BLOCKED_PRECONDITION` | API yok |
-| 6D.1b Target Resolution binding | `BLOCKED_PRECONDITION` | API yok |
-| 6D.1c Launch Profile binding | `BLOCKED_PRECONDITION` | API yok |
-| 6D.1d Entity Binding | `BLOCKED_PRECONDITION` | API yok |
-| 6D.1e Semantic Action Palette (Verdict paneli) | `BLOCKED_PRECONDITION` | 5D.1b ucu yok |
-| 6D.1f Sol palet cutover (pack'ten besleme) | `BLOCKED_PRECONDITION` | 5D.1b ucu yok |
+| 6D.1a Evidence Source binding | `PENDING` | API hazır |
+| 6D.1b Target Resolution binding | `PENDING` | API hazır |
+| 6D.1c Launch Profile binding | `PENDING` | API hazır; validate kısmi girdi fail-closed |
+| 6D.1d Entity Binding | `PENDING` | — |
+| 6D.1e Semantic Action Palette (Verdict paneli) | `PENDING` | API hazır; capability negotiation henüz yok (F2) |
+| 6D.1f Sol palet cutover (pack'ten besleme) | `PENDING` | API hazır |
 | 6D.2 Surface Registry manager | `PENDING` | domain pack API mevcut |
 | 6D.3 Kalan 30 CHECKPOINT maddesi | `PENDING` | — |
 | 6D.4 6.30 kapanışı | `PENDING` | — |
@@ -95,19 +94,20 @@ ama içerik yukarıdaki gibi.
 | Yürütülmemiş | ~30 | 6D.3 kapsamı |
 
 35 numaralı madde (`editor WorkflowCompileApi kullanıyor`) `2026-08-06`'da
-`PASS`'a döndü — compile preview gerçekten API'ye gidiyor ve yayınlanmış pack'e
-pin'leniyor.
+`PASS`'a döndü — compile preview gerçekten API'ye gidiyor; `compilerKind:"STUB"`
+uyarısı görünür (phase-5-debt 5D.4B).
 
 ## 7. Changed files
 
 | Path | Değişim | Neden |
 |---|---|---|
-| — | — | henüz yok |
+| — | — | bu borçta henüz uygulama yok; kapı tazelendi |
 
 ## 8. Verification results
 
 | Kontrol | Sonuç |
 |---|---|
+| phase-5-debt gate | `PASS` — bağımsız review + F1 fix sonrası |
 | `pnpm typecheck` | `NOT_RUN` (bu borç kapsamında) |
 | Panel network kanıtı | `NOT_RUN` |
 | Surface Registry rotası | `NOT_RUN` |
@@ -115,14 +115,16 @@ pin'leniyor.
 
 ## 9. Acceptance checklist
 
-14 maddenin tamamı `PENDING` — RUN_PLAY §7.
+14 maddenin tamamı `PENDING` — RUN_PLAY §7. Uygulama 6D.1a ile başlar.
 
 ## 10. Blockers
 
 | ID | Sev | Status | Açıklama |
 |---|---|---|---|
-| `PHASE-5-DEBT` | HIGH/LOCAL | `OPEN_LOCAL` | 6D.1'in dört alt adımını engelliyor |
-| `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `OPEN_LOCAL` | phase-6/RESULT §19 |
+| `PHASE-5-DEBT` | HIGH/LOCAL | `RESOLVED` | 2026-08-06 COMPLETED |
+| `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `OPEN_LOCAL` | phase-6/RESULT §19 — 6D.1 kapsamı |
+| `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `OPEN_LOCAL` | phase-5-debt F2: `capabilityStatus` daima bloklu; Bridge B2 bağlanmalı |
+| `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `OPEN_LOCAL` | 23 playbook eski digest pinliyor; verify script playbook pin'lerine bakmıyor |
 | `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | 50, 52, 53, 54 ve Act Mode maddeleri |
 | `B-12` | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` | Device Lab remediation gösterimi |
 
@@ -133,4 +135,4 @@ phase7Readiness: NOT_EVALUATED
 ```
 
 Faz 7 kapısı `resultState: COMPLETED` + `phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS`
-istiyor. Bu borç kapanmadan ikisi de yazılamaz.
+istiyor. Bu borç kapanmadan ikisi de yazılamaz. Uygulama başlangıcı: `ALLOWED`.

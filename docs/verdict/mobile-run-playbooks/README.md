@@ -54,24 +54,33 @@ docs/verdict/mobile-run-playbooks/phase-N/
   hangi kanıt alındı, hangi dosyalar değişti, hangi testler geçti/kaldı, hangi
   işler sonraki faza kaldı bilgisini taşır.
 
+## Canlı ilerleme board
+
+```text
+docs/verdict/mobile-run-playbooks/PROGRESS.md
+```
+
+Faz kapanışında `RESULT.md` ile birlikte `PROGRESS.md` güncellenir.
+Master plan `faz-*` YAML status’u Cockpit FAZ içindir; Mobile M\* ile karıştırılmaz.
+
 ## Faz haritası (Mobile / Bridge)
 
 Cockpit faz numaralarıyla hizalıdır; içerik Mobile/Bridge teslimine göredir.
 
-| Faz | Ad | Odak | Başlama koşulu |
-|---|---|---|---|
-| **M0** | Baseline + envanter + gap | Mevcut seam envanteri, named-query/evidence matrisi, release isolation inventory, SSOT uyumu | Hemen |
-| **M1** | SDK auth / session lifecycle fixture | `hello/auth`, `set_run`/`end_run`, secret rotation uyumu | M0 sonrası veya M0 ile sınırlı paralel |
-| **M2** | EmitOutcome + WAL/ACK diagnostic | Recursive olmayan EmitOutcome diagnostic query, fixture | M1 sonrası veya SDK hattında paralel |
-| **M3** | Bridge B2 protocol | `capabilities`, `wait_any`, `cancel_request`, fingerprint, idempotency | **Hemen** (Cockpit host foundation + fake host ile) |
-| **M4A** | Core contract bekleme / uyum | Mobile'da neredeyse yok; Cockpit CP4A tüketim doğrulaması | Cockpit CP4A `COMPLETED` (şu an açık) |
-| **M4B** | Nesy App Adapter production | Named query, evidence, scanner, launch, adapter manifest | M0 + Cockpit 4B contract (şu an açık) |
-| **M4C** | Compatibility / fixture testleri | Pack ↔ adapter ↔ Bridge capability uyumu | M4B + Cockpit 4C contract |
-| **M5** | Correlation + recovery observation | `monoTs`, correlation metadata, recovery named-query; Bridge lifecycle/unknown-effect | M3 + M4B temeli |
-| **M6** | Inspector destek | Mapping/evidence + Bridge dump/screenshot redaction | M3 + M5 kısmi |
-| **M7** | Gerçek akış + release isolation | Gerçek Nesy akışları, fault/recovery, production sızıntı kapısı | M4B + M5; real DUT |
-| **M8** | DUT fault kabulü | Process kill, reboot, scanner/payment/fiscal; fencing/IME/manual-touch | M3 + M7; lab DUT |
-| **M9** | Legacy temizliği | Maestro/test kalıntısı varsa kaldırma | Cutover sonrası |
+| Faz | Ad | Odak | Başlama koşulu | Board |
+|---|---|---|---|---|
+| **M0** | Baseline + envanter + gap | Seam envanteri, named-query/evidence matrisi, release isolation | Hemen | `COMPLETED` |
+| **M1** | SDK auth / session lifecycle fixture | `hello/auth`, `set_run`/`end_run`, secret rotation | M0 sonrası | `COMPLETED` |
+| **M2** | EmitOutcome + WAL/ACK diagnostic | Recursive olmayan EmitOutcome diagnostic query | M1 sonrası | `COMPLETED` |
+| **M3** | Bridge B2 protocol | `capabilities`, `wait_any`, `cancel_request` | Host foundation + fake host | `COMPLETED` |
+| **M4A** | Core contract thin gate | CP4A tüketim + Bridge leakage tarama | Cockpit CP4A COMPLETED | `COMPLETED` |
+| **M4B** | Nesy App Adapter production | Named query, evidence, scanner, launch, manifest | M0 + CP4B + M4A | `IN_PROGRESS` |
+| **M4C** | Pack ↔ adapter ↔ Bridge uyumu | Compatibility / fixture | M4B + Cockpit 4C | `NOT_STARTED` |
+| **M5** | Correlation + recovery | monoTs, recovery named-query | M3 + M4B | `NOT_STARTED` |
+| **M6** | Inspector destek | dump/screenshot redaction | M3 + M5 | `NOT_STARTED` |
+| **M7** | Gerçek akış + release isolation | Real Nesy flows | M4B + M5; DUT | `NOT_STARTED` |
+| **M8** | DUT fault kabulü | Process kill, fencing, IME | M3 + M7; lab DUT | `NOT_STARTED` |
+| **M9** | Legacy temizliği | Maestro kalıntısı | Cutover sonrası | `NOT_STARTED` |
 
 ## State modeli
 

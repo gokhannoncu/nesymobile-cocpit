@@ -61,6 +61,28 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
     return result
   })
 
+  app.get('/runtime/evidence-sources', async () => __phase6ContractSingletons.evidenceSources.list())
+
+  app.get<{ Params: { runId: string } }>(
+    '/runtime/runs/:runId/evidence-sources',
+    async (request, reply) => {
+      try {
+        return await __phase6ContractSingletons.evidenceSources.listForRun(request.params.runId)
+      } catch (error) {
+        return reply.code(503).send({
+          status: 'unavailable',
+          detail: error instanceof Error ? error.message : String(error),
+        })
+      }
+    },
+  )
+
+  app.get<{ Params: { runId: string } }>(
+    '/runtime/runs/:runId/target-resolutions',
+    async (request) =>
+      __phase6ContractSingletons.domainPackReads.listRunTargetResolutions(request.params.runId),
+  )
+
   app.get<{ Params: { deviceId: string } }>('/runtime/devices/:deviceId/readiness', async (request) =>
     __phase6ContractSingletons.deviceReadiness.get(request.params.deviceId),
   )

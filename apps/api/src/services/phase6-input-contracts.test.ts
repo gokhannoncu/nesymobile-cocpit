@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { createDeviceCommandAdmission } from './device-command-admission.js'
+import {
+  createDeviceCommandAdmission,
+  DeviceCommandAdmission,
+  InMemoryDeviceMutationLeaseStore,
+} from './device-command-admission.js'
 import { DeviceReadinessService } from './device-readiness.service.js'
-import { DomainPackAdminService } from './domain-pack-admin.service.js'
+import { DomainPackAdminService, InMemoryDomainPackAdminStore } from './domain-pack-admin.service.js'
+import { DomainPackReadModelsService } from './domain-pack-read-models.service.js'
 import {
   DurableInteractionSubscription,
   InMemoryDurableInteractionStore,
 } from './durable-interaction-subscription.js'
+import { EvidenceSourceQueryService } from './evidence-source-query.service.js'
+import { StaticEvidenceSourceResolver } from './evidence-source-resolver.js'
 import { TestCampaignService } from './test-campaign.service.js'
 import { TestProfileCatalogService } from './test-profile-catalog.service.js'
 import { createHashPinnedCompileStub } from './workflow-compile.service.js'
@@ -122,7 +129,7 @@ describe('phase 6 input contracts', () => {
 
   it('exposes multi-lane device readiness with admission and external blockers', async () => {
     const admission = createDeviceCommandAdmission()
-    admission.acquireMutation('device-1', 'run-owner')
+    await admission.acquireMutation('device-1', 'run-owner')
     const readiness = await new DeviceReadinessService(admission, {
       adb: () => 'UP',
       receiptBus: () => 'UP',
@@ -134,6 +141,18 @@ describe('phase 6 input contracts', () => {
     expect(readiness.externalBlockers.map((item) => item.id)).toEqual(
       expect.arrayContaining(['B-12', 'CP3-DUT']),
     )
+  })
+
+  it('marks stub compile results with compilerKind STUB', () => {
+    const preview = createHashPinnedCompileStub().compileWorkflow({
+      workflowRef: 'courier.login',
+      workflowIr: { entryStepId: 'open', steps: [{ planStepId: 'open' }] },
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: 'sha256:pack',
+    })
+    expect(preview.compilerKind).toBe('STUB')
+    expect(preview.issues.map((issue) => issue.code)).toContain('STUB_COMPILER')
   })
 
   it('reads interactions by revision cursor and redacts secrets', async () => {
@@ -275,6 +294,251 @@ describe('phase 6 read-model DTO shape', () => {
       ['campaignId', 'campaignKey', 'campaignVersion', 'cellCount', 'releaseGateResult', 'status'].sort(),
     )
   })
+
+  it('pins the evidence source catalog item keys', () => {
+    const service = new EvidenceSourceQueryService(
+      new StaticEvidenceSourceResolver([
+        {
+          sourceEvent: 'SCREEN_READY',
+          factKey: 'ui.screen_ready',
+          plane: 'UI',
+          subtype: 'SCREEN_STATE',
+          authority: 'PRIMARY',
+          deliveryLanes: ['ORDERED_REQUIRED'],
+          freshnessMaxAgeMs: 5000,
+          valueField: 'screenId',
+          confidence: 1,
+        },
+      ]),
+    )
+    const [item] = service.list().items
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'authority',
+        'confidence',
+        'deliveryLanes',
+        'factKey',
+        'freshnessMaxAgeMs',
+        'plane',
+        'sourceEvent',
+        'subtype',
+        'valueField',
+      ].sort(),
+    )
+  })
+
+  it('pins the semantic action catalog item keys', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          semanticActions: [
+            {
+              actionKey: 'nesy.action.open-stop',
+              applicationRef: 'nesy.app.courier',
+              displayName: 'Open Stop',
+              businessMeaning: 'open stop detail',
+              notResponsibleFor: ['complete stop'],
+              screenRefs: ['nesy.screen.stop'],
+              surfaceRefs: [],
+              entityTypeRefs: ['stop'],
+              targetRefs: ['nesy.target.stop-row'],
+              requiredCapabilityRefs: ['verdict.capability.semantic-action'],
+            },
+          ],
+          macros: [],
+        },
+      },
+    })
+    const [item] = (await new DomainPackReadModelsService(store).listSemanticActions(
+      'nesy-courier',
+      '1.0.0',
+    ))!.items
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'actionKey',
+        'applicationRef',
+        'businessMeaning',
+        'capabilityStatus',
+        'displayName',
+        'entityTypeRefs',
+        'notResponsibleFor',
+        'requiredCapabilityRefs',
+        'screenRefs',
+        'surfaceRefs',
+        'targetRefs',
+      ].sort(),
+    )
+    expect(Object.keys(item.capabilityStatus).sort()).toEqual(
+      ['missing', 'reason', 'satisfied'].sort(),
+    )
+    expect(item.capabilityStatus.satisfied).toBe(false)
+  })
+
+  it('pins the target resolution entity keys', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          targets: [
+            {
+              targetKey: 'nesy.target.stop-row',
+              applicationRef: 'nesy.app.courier',
+              screenRef: 'nesy.screen.stop',
+              displayName: 'Stop row',
+              resolution: {
+                chain: [
+                  {
+                    kind: 'ACCESSIBILITY_ID',
+                    selector: { id: 'stop-row' },
+                    establishesIdentity: true,
+                  },
+                ],
+                ambiguityPolicy: 'FAIL',
+                notFoundPolicy: 'FAIL',
+                deadlineMs: 1000,
+                reverifyBeforeAction: true,
+              },
+            },
+          ],
+        },
+      },
+    })
+    const [item] = (await new DomainPackReadModelsService(store).listTargetResolution(
+      'nesy-courier',
+      '1.0.0',
+    ))!.entities
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'ambiguityPolicy',
+        'deadlineMs',
+        'entityKey',
+        'notFoundPolicy',
+        'reverifyBeforeAction',
+        'strategies',
+        'targetKey',
+        'violations',
+      ].sort(),
+    )
+  })
+
+  it('pins the launch profile catalog item keys', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          launchProfiles: [
+            {
+              profileKey: 'nesy.launch.cold-real-login',
+              applicationRef: 'nesy.app.courier',
+              displayName: 'Cold real login',
+              startMode: 'COLD_START',
+              sessionPreparation: 'REAL_UI_LOGIN',
+              preconditionFactKeys: [],
+              entry: {
+                kind: 'WORKFLOW_ENTRY',
+                entryRef: 'login',
+                expectedScreenRef: 'nesy.screen.login',
+                expectedSurfaceRefs: [],
+              },
+              preparationOperationRefs: [],
+              cleanup: { cleanupRefs: [], runOnFailure: true, deadlineMs: 5000 },
+              producesProductVerdict: true,
+              releaseIsolation: {
+                automationOnly: false,
+                releaseGuard: 'none',
+                allowedEnvironments: ['lab'],
+              },
+              requiredCapabilityRefs: [],
+            },
+          ],
+        },
+      },
+    })
+    const [item] = (await new DomainPackReadModelsService(store).listLaunchProfiles(
+      'nesy-courier',
+      '1.0.0',
+    ))!.items
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'applicationRef',
+        'cleanup',
+        'displayName',
+        'entry',
+        'preconditionFactKeys',
+        'preparationOperationRefs',
+        'producesProductVerdict',
+        'profileKey',
+        'releaseIsolation',
+        'requiredCapabilityRefs',
+        'sessionPreparation',
+        'startMode',
+      ].sort(),
+    )
+  })
+
+  it('fail-closes DIRECT_STATE launch profiles in release builds', () => {
+    const service = new DomainPackReadModelsService(new InMemoryDomainPackAdminStore())
+    const result = service.validateLaunchProfile(
+      {
+        profileKey: 'nesy.launch.direct',
+        applicationRef: 'nesy.app.courier',
+        displayName: 'Direct',
+        startMode: 'COLD_START',
+        sessionPreparation: 'DIRECT_STATE',
+        preconditionFactKeys: [],
+        entry: {
+          kind: 'WORKFLOW_ENTRY',
+          entryRef: 'x',
+          expectedScreenRef: 'nesy.screen.home',
+          expectedSurfaceRefs: [],
+        },
+        preparationOperationRefs: ['op.inject'],
+        cleanup: { cleanupRefs: [], runOnFailure: true, deadlineMs: 1000 },
+        producesProductVerdict: false,
+        releaseIsolation: {
+          automationOnly: true,
+          releaseGuard: 'automationRelease=false',
+          allowedEnvironments: ['lab'],
+        },
+        requiredCapabilityRefs: [],
+      },
+      { releaseBuild: true },
+    )
+    expect(result.ok).toBe(false)
+    expect(result.blockedReason).toMatch(/DIRECT_STATE/)
+  })
+
+  it('returns structured MISSING_FIELD violations for partial launch profiles', () => {
+    const service = new DomainPackReadModelsService(new InMemoryDomainPackAdminStore())
+    const result = service.validateLaunchProfile({
+      profileKey: 'nesy.launch.draft',
+      sessionPreparation: 'DIRECT_STATE',
+      // releaseIsolation / cleanup / entry intentionally omitted — builder draft
+    })
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((v) => v.code)).toEqual(
+      expect.arrayContaining(['MISSING_FIELD']),
+    )
+    expect(result.violations.some((v) => v.message.includes('releaseIsolation'))).toBe(true)
+    // Must not throw / invent a success — fail-closed with structured codes only.
+    expect(result.violations.every((v) => typeof v.code === 'string')).toBe(true)
+  })
 })
 
 /**
@@ -311,6 +575,20 @@ describe('device readiness probes', () => {
 })
 
 describe('phase 6 restart continuity', () => {
+  it('keeps device mutation ownership across a new admission instance', async () => {
+    const store = new InMemoryDeviceMutationLeaseStore()
+    const before = new DeviceCommandAdmission(store)
+    expect((await before.acquireMutation('device-1', 'run-owner')).acquired).toBe(true)
+
+    const afterRestart = new DeviceCommandAdmission(store)
+    expect(await afterRestart.acquireMutation('device-1', 'run-other')).toEqual({
+      acquired: false,
+      ownerRunId: 'run-owner',
+      blockedReason: 'mutation lane owned by run run-owner',
+    })
+    expect((await afterRestart.snapshot('device-1')).activeMutationOwnerRunId).toBe('run-owner')
+  })
+
   it('returns the already-started run instead of queueing a second execution', async () => {
     const store = new InMemoryWorkflowRunStartStore()
     const request = {

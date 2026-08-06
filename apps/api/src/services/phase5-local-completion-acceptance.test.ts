@@ -200,8 +200,8 @@ describe('phase 5 local completion acceptance', () => {
     }
 
     const admission = createDeviceCommandAdmission()
-    admission.acquireMutation('device-1', 'run-a')
-    expect(admission.acquireMutation('device-1', 'run-b').blockedReason).toMatch(/run-a/)
+    await admission.acquireMutation('device-1', 'run-a')
+    expect((await admission.acquireMutation('device-1', 'run-b')).blockedReason).toMatch(/run-a/)
   })
 
   it('uses scheduler recovery to skip completed occurrences', () => {

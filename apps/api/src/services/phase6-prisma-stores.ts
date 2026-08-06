@@ -38,6 +38,11 @@ import type {
   DurableInteractionStore,
   InteractionOrigin,
 } from './durable-interaction-subscription.js'
+import {
+  DEVICE_MUTATION_CONFLICT_GROUP,
+  type DeviceMutationLeaseRecord,
+  type DeviceMutationLeaseStore,
+} from './device-command-admission.js'
 
 /* ------------------------------------------------------------------ */
 /* Domain packs                                                        */
@@ -384,5 +389,62 @@ export class PrismaDurableInteractionStore implements DurableInteractionStore {
       },
     })
     return event
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Device mutation admission leases                                    */
+/* ------------------------------------------------------------------ */
+
+export class PrismaDeviceMutationLeaseStore implements DeviceMutationLeaseStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async listActive(nowMs: number): Promise<readonly DeviceMutationLeaseRecord[]> {
+    const rows = await this.prisma.verdictResourceLease.findMany({
+      where: {
+        conflictGroup: DEVICE_MUTATION_CONFLICT_GROUP,
+        state: 'HELD',
+        releasedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date(nowMs) } }],
+      },
+    })
+    return rows.map((row) => ({
+      leaseId: row.leaseId,
+      runId: row.runId,
+      resourceId: row.resourceId,
+      conflictGroup: DEVICE_MUTATION_CONFLICT_GROUP,
+      exclusive: true as const,
+      state: 'HELD' as const,
+      leasedAtMs: row.leasedAt.getTime(),
+      expiresAtMs: row.expiresAt?.getTime() ?? row.leasedAt.getTime(),
+      ...(row.releasedAt === null ? {} : { releasedAtMs: row.releasedAt.getTime() }),
+    }))
+  }
+
+  async upsert(record: DeviceMutationLeaseRecord): Promise<void> {
+    await this.prisma.verdictResourceLease.upsert({
+      where: { leaseId: record.leaseId },
+      create: {
+        leaseId: record.leaseId,
+        runId: record.runId,
+        resourceId: record.resourceId,
+        conflictGroup: record.conflictGroup,
+        exclusive: true,
+        state: record.state,
+        leasedAt: new Date(record.leasedAtMs),
+        expiresAt: new Date(record.expiresAtMs),
+        releasedAt: record.releasedAtMs === undefined ? null : new Date(record.releasedAtMs),
+      },
+      update: {
+        runId: record.runId,
+        resourceId: record.resourceId,
+        conflictGroup: record.conflictGroup,
+        exclusive: true,
+        state: record.state,
+        leasedAt: new Date(record.leasedAtMs),
+        expiresAt: new Date(record.expiresAtMs),
+        releasedAt: record.releasedAtMs === undefined ? null : new Date(record.releasedAtMs),
+      },
+    })
   }
 }
