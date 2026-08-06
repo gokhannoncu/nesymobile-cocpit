@@ -52,14 +52,20 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           wr.id,
           wr.status,
           wr."createdAt" AS "createdAt",
+          wr."startedAt" AS "startedAt",
+          wr."completedAt" AS "completedAt",
+          wr.duration,
           wr."workflowId" AS "workflowId",
           wr."versionId" AS "versionId",
+          w.slug AS "workflowSlug",
+          w.name AS "workflowName",
           bfr.engine_type AS "engineType",
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
           bfr.scheduler_disposition AS "schedulerDisposition",
           bfr.operational_disposition AS "operationalDisposition"
         FROM workflow_runs wr
+        LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
         WHERE COALESCE(bfr.engine_type, 'MAESTRO_LEGACY') = ${query.engineType}
         ORDER BY wr."createdAt" DESC
@@ -71,14 +77,20 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           wr.id,
           wr.status,
           wr."createdAt" AS "createdAt",
+          wr."startedAt" AS "startedAt",
+          wr."completedAt" AS "completedAt",
+          wr.duration,
           wr."workflowId" AS "workflowId",
           wr."versionId" AS "versionId",
+          w.slug AS "workflowSlug",
+          w.name AS "workflowName",
           bfr.engine_type AS "engineType",
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
           bfr.scheduler_disposition AS "schedulerDisposition",
           bfr.operational_disposition AS "operationalDisposition"
         FROM workflow_runs wr
+        LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
         ORDER BY wr."createdAt" DESC
         LIMIT ${limit}
@@ -216,14 +228,75 @@ export async function getDeviceReadiness(deviceId: string): Promise<Record<strin
 
 export async function getWorkflowCatalog(limit = 50): Promise<Record<string, unknown>> {
   const rows = await prisma.$queryRaw<Row[]>`
-    SELECT id, name, status, "updatedAt"
-    FROM workflows
-    ORDER BY "updatedAt" DESC
+    SELECT
+      w.id,
+      w.slug,
+      w.name,
+      w.description,
+      w.status,
+      w.category,
+      w.icon,
+      w."iconClassName" AS "iconClassName",
+      w."currentVersionId" AS "currentVersionId",
+      w."createdAt" AS "createdAt",
+      w."updatedAt" AS "updatedAt",
+      lv.id AS "latestVersionId",
+      lv.version AS "latestVersionNumber",
+      lv."createdAt" AS "latestVersionCreatedAt",
+      lr.id AS "lastRunId",
+      lr.status AS "lastRunStatus",
+      lr."createdAt" AS "lastRunCreatedAt",
+      lr.duration AS "lastRunDuration"
+    FROM workflows w
+    LEFT JOIN LATERAL (
+      SELECT id, version, "createdAt"
+      FROM workflow_versions
+      WHERE "workflowId" = w.id
+      ORDER BY version DESC
+      LIMIT 1
+    ) lv ON true
+    LEFT JOIN LATERAL (
+      SELECT id, status, "createdAt", duration
+      FROM workflow_runs
+      WHERE "workflowId" = w.id
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+    ) lr ON true
+    ORDER BY w."updatedAt" DESC
     LIMIT ${clampLimit(limit)}
   `
   return {
     apiVersion: 'verdict-runtime.v1',
-    items: toJsonSafe(rows),
+    items: rows.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description ?? null,
+      status: row.status,
+      category: row.category ?? null,
+      icon: row.icon ?? 'Workflow',
+      iconClassName: row.iconClassName ?? '',
+      currentVersionId: row.currentVersionId ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      latestVersion:
+        row.latestVersionId !== undefined && row.latestVersionId !== null
+          ? {
+              id: row.latestVersionId,
+              version: row.latestVersionNumber,
+              createdAt: row.latestVersionCreatedAt,
+            }
+          : null,
+      lastRun:
+        row.lastRunId !== undefined && row.lastRunId !== null
+          ? {
+              id: row.lastRunId,
+              status: row.lastRunStatus,
+              createdAt: row.lastRunCreatedAt,
+              duration: row.lastRunDuration ?? null,
+            }
+          : null,
+    })),
   }
 }
 
