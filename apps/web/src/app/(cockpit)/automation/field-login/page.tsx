@@ -423,7 +423,7 @@ function FieldLoginCreateModal({
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      const devices = await listNesyMobileAdbDevices()
+      const { devices } = await listNesyMobileAdbDevices()
       const device = devices.find(isDeviceRunnable)
       if (!device) {
         throw new Error('No runnable ADB device — attach a device before starting Field Login')

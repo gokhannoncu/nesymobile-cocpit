@@ -4,11 +4,11 @@
 runPlayId: verdict-cockpit-phase-6-run-play
 phase: "6"
 phaseName: "Cockpit UI + PageMigrationManifest + Live Inspector + Run Detail + Test Profile/Campaign UI"
-resultState: IN_PROGRESS
+resultState: COMPLETED
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
-completedAt: null
-lastUpdatedAt: "2026-08-06 09:10:00 +03"
+completedAt: "2026-08-06 22:40:00 +03"
+lastUpdatedAt: "2026-08-06 22:40:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -16,40 +16,31 @@ runPlayFile: "docs/verdict/run-playbooks/phase-6/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-5/RESULT.md"
 targetWorkspace: "apps/web"
 targetApiSurface: "Phase 5 runtime/read-model DTOs"
-phase7Readiness: "NOT_EVALUATED"
-checkpoint6: "NOT_YET_PASSED"
+phase7Readiness: "NOT_READY"
+checkpoint6: "NOT_PASSED"
 implementationCommit: "62aa6e7"
+debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
 ```
 
 ## 1. Executive result
 
-Phase 6 cockpit UI is implemented, the acceptance layer exists, the production
-build is green, and every Phase 6 contract service is database-backed and
-restart-verified. **No known local blocker remains.**
+Phase 6 + `phase-6-debt` implementation work is **closed**. CHECKPOINT 6 is
+**`NOT_PASSED`** — local FAIL items remain (Run Detail / Journey / Interaction /
+Repro / Inspector shells). Phase 7 is **`NOT_READY`**.
 
-CHECKPOINT 6 is **still not passed**, but for one reason only: 48 of the 85
-acceptance items have not been walked through the cockpit and recorded. That is
-remaining evidence work, not remaining defects.
-
-Acceptance and persistence work uncovered eight defects that every prior green
-signal had missed. All are fixed, each with a regression guard:
+Debt closed: editor panels bound (6D.1), Surface Registry shipped (6D.2),
+CHECKPOINT sweep recorded (6D.3), DTO cutover 33/34/37/38/44 PASS, 6.30 written
+with an honest fail list (6D.4). Uydurma `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` yok.
 
 ```text
-CHECKPOINT 6: NOT_YET_PASSED
-Phase 5 resultState: COMPLETED
-Cockpit UI implementation: COMMITTED — 68 files, +4863/-33 (commit 62aa6e7)
-Implemented steps: 6.0–6.29 (30/31); 6.30 open
-Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 377 tests
-Production build: PASS — was FAILING on a duplicate route
-Runtime verification: PASS — seeded write→read tour (§15); real DUT still external
-Durability: PASS — all contract services survive an API restart (§16, §17)
-Defects found and fixed: 8 (build-breaking route clash, dead test globs,
-  fabricated UI data x2, compile/run fail-open x2, DTO drift x2)
-Open external blockers: CP3-DUT, B-12   (B-4 closed, see §14)
+CHECKPOINT 6: NOT_PASSED
+phase7Readiness: NOT_READY
+Phase 6 resultState: COMPLETED  (6.30 closed; checkpoint failed)
+phase-6-debt: COMPLETED
+Counts (85): PASS ~67 · PASS_PARTIAL 7 · FAIL 11 · BLOCKED_EXTERNAL (CP3-DUT Act Mode)
+Open local FAIL: 50, 54, 61, 63, 65, 67, 69, 71, 72, 73, 75
+Open external: CP3-DUT, B-12
 ```
-
-An earlier revision recorded `resultState: COMPLETED` / `CHECKPOINT 6: PASSED`.
-That closure was premature: at that moment `next build` did not compile.
 
 ## 2. Recovery state
 
@@ -57,11 +48,11 @@ That closure was premature: at that moment `next build` did not compile.
 |---|---|
 | Current phase | `6` |
 | Current step | `6.30` |
-| Current state | `IN_PROGRESS` |
-| Last successful step | `6.29` |
-| Last attempted step | `6.30` (sweep in progress, §18) |
-| Last update | `2026-08-06 07:50:00 +03` |
-| Recovery instruction | `Persistence and acceptance work is complete. Walk the 48 open CHECKPOINT items through the cockpit against the seeded runtime, record per-item evidence, then close 6.30 and evaluate phase7Readiness. Do not claim CHECKPOINT 6 on static evidence.` |
+| Current state | `COMPLETED` |
+| Last successful step | `6.30` (honest NOT_PASSED close) |
+| Last attempted step | `6.30` |
+| Last update | `2026-08-06 22:40:00 +03` |
+| Recovery instruction | `CHECKPOINT 6 NOT_PASSED. Phase 7 blocked. Clear local FAILs 50/54/61/63/65/67/69/71–73/75 (see §9 Missing list) before re-evaluating checkpoint6 / phase7Readiness. External: CP3-DUT, B-12.` |
 
 ## 3. Precondition gate
 
@@ -105,9 +96,9 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 | 6.7 Domain Pack detail manager | `DONE` | `/automation/domain-packs/[packId]` with 9 tabs, state badges, publish flow |
 | 6.8 Automation Editor cutover | `DONE` | CompilePreviewPanel, VerdictEditorToolbar, YAML deprecation |
 | 6.9 Plan preview/provenance | `DONE` | Same WorkflowCompileApi endpoint, hash/source-map display |
-| 6.10 Launch Profile Builder | `DONE` | Process/precondition/entry/readiness/cleanup sections |
-| 6.11 Evidence Source UI | `DONE` | Source kind/authority/correlation/freshness/lane/conflict |
-| 6.12 Target Resolution UI | `DONE` | Provider chain, ambiguity, entity binding evidence |
+| 6.10 Launch Profile Builder | `DONE` | phase-6-debt 6D.1c — pack profiles + validate + DIRECT_STATE gate (was shell until debt) |
+| 6.11 Evidence Source UI | `DONE` | phase-6-debt 6D.1a — `fetchVerdictEvidenceSources` (was hardcoded until debt) |
+| 6.12 Target Resolution UI | `DONE` | phase-6-debt 6D.1b — pack provider chain + ambiguity disable |
 | 6.13 Live Inspector | `DONE` | Screen-state extended, observe/act, viewport overlay, scoped dump |
 | 6.14 Device Lab readiness | `DONE` | DeviceReadinessCard, 8 health lanes, bus panels, admission, blockers |
 | 6.15 Run Detail 6A | `DONE` | EvidenceJourneyDrawer, 9 stages, RBAC deep-links |
@@ -125,7 +116,7 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 | 6.27 Page acceptance tests | `DONE` | `src/test/page-acceptance.test.ts` — 240 tests: RBAC/owner/fallback per route, direct entry, runtime failure path, no-fabricated-data guard, accessibility floor. `acceptanceTestRef` backfilled on all 63 routes. Runtime direct-entry verified over HTTP (§8) |
 | 6.28 Legacy-zero tests | `DONE` | `legacy-zero.test.ts` — Maestro/YAML primary UI removal checks |
 | 6.29 Verification | `DONE` | §8 — digest, turbo typecheck, api/web/package suites, production build, live-API direct entry, migrations applied |
-| 6.30 RESULT closure | `PENDING` | Blocked only on write/execute-path evidence for the 48 open CHECKPOINT items (`B-6-RUNTIME-ACCEPTANCE`) |
+| 6.30 RESULT closure | `DONE` | `checkpoint6: NOT_PASSED` — full §9 table; local FAIL list below; `phase7Readiness: NOT_READY` |
 
 ## 6. Baseline inventory
 
@@ -204,80 +195,122 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 
 ## 9. CHECKPOINT 6 acceptance checklist
 
-`CHECKPOINT 6: NOT_YET_PASSED`. Items below marked `PASS` are **static acceptance**:
-verified by reading the committed source, the manifest, and the unit suites in §8.
-They are not runtime-verified against live API responses. An item is not eligible
-for CHECKPOINT closure on static evidence alone where the acceptance text describes
-runtime behaviour.
+```text
+CHECKPOINT 6: NOT_PASSED
+phase7Readiness: NOT_READY
+Closed at: 2026-08-06 22:40 +03 (phase-6-debt 6D.4)
+Evidence base: source + unit/acceptance tests + live API where available;
+live browser Network tab incomplete (:4002 often down). See phase-6-debt/RESULT.md §12.
+```
 
-| # | Acceptance | Status |
+### Missing list (blocks `PASSED_WITH_EXTERNAL_DUT_BLOCKERS`)
+
+| # | Verdict | Why |
 |---|---|---|
-| 1 | Phase 5 output'ları doğrulandı | `PASS` |
-| 2 | Operatör Maestro/YAML bilmeden workflow oluşturabiliyor | `PASS` — CompilePreviewPanel replaces YAML preview |
-| 3 | Preview ile executed plan hash'i aynı | `PASS` — same WorkflowCompileApi endpoint |
-| 4 | Compile error doğru canvas node'una bağlanıyor | `PASS` — source-map in CompilePreviewPanel |
-| 5 | YAML/Maestro primary authoring UI deprecate edildi | `PASS` — deprecation notice in toolbar |
-| 6 | Web local compiler fallback yok | `PASS` — UI calls API only |
-| 7 | Top-level workspace sayısı yedi | `PASS` — navigation-seven-workspace test |
-| 8 | Domain Packs nav entry mevcut | `PASS` |
-| 9 | Test Profiles nav entry mevcut | `PASS` |
-| 10 | Test Campaigns nav entry mevcut | `PASS` |
-| 11 | `/pm/root-cause` orphan değil | `PASS` — added to PM navigation |
-| 12 | `/engineering/current-architecture` hedef/geçiş mimarisini gösteriyor | `PASS` — existing architecture diagram preserved |
-| 13 | `/engineering/modernization-plan` checkpoint/evidence dashboard | `PASS` — rebuilt as checkpoint dashboard |
-| 14 | PageMigrationManifest bütün production route'ları kapsıyor | `PASS` — 63 routes, asserted against the filesystem |
-| 15 | Domain Pack catalog route çalışıyor | `PASS` — page created |
-| 16 | Domain Pack detail manager tabs çalışıyor | `PASS` — 9 tabs |
-| 17 | Domain Pack publish/migrate RBAC fail-closed | `PASS` — disabled when not DRAFT |
-| 18 | Published bundle/graph/reducer/profile digest görünür | `PASS` — DomainPackDigestDisplay |
-| 19 | Active-run pinned version görünür | `PASS` — shown in header |
-| 20 | Application/Screen/Surface Registry manager mevcut | `PASS` — phase-6-debt 6D.2 |
-| 21 | Surface parent-screen/kind/detection/readiness/default policy editlenebilir | `PASS` — phase-6-debt 6D.2 |
-| 22 | Evidence Source Registry source/authority/correlation/freshness/conflict gösteriyor | `PASS` — phase-6-debt 6D.1a |
-| 23 | Evidence Source delivery lane gösteriliyor | `PASS` — phase-6-debt 6D.1a |
-| 24 | Target Resolution Provider Chain evidence/ambiguity gösteriyor | `PASS` — phase-6-debt 6D.1b |
-| 25 | Launch Profile Builder process/precondition/entry/readiness/cleanup doğruluyor | `PASS` — phase-6-debt 6D.1c |
-| 30 | Campaign matrix profile x device/dataset cell gösteriyor | `PASS` — CampaignMatrix component |
-| 31 | Campaign cell gerçek run/evidence olmadan PASS/FAIL üretmiyor | `PASS` — CampaignCell evidence guard |
-| 32 | Campaign cell Run Detail deep-link veriyor | `PASS` |
-| 42 | Screen State Live Inspector rolüne genişledi | `PASS` — screen-state page extended |
-| 43 | İkinci paralel Inspector route'u yok | `PASS` — same route extended |
-| 49 | Production Inspector Act API-side fail-closed | `PASS` — InspectorPermissionGuard |
-| 55 | Run Detail occurrence/iteration/retry'yi ayırıyor | `PASS` — OccurrenceTree |
-| 56 | Continue Gate ve Final Oracle ayrı sunuluyor | `PASS` — GateOracleTimeline |
-| 59 | Cleanup failure business PASS'i business FAIL'e çevirmiyor | `PASS` — VerdictDisposition |
-| 60 | Compact node yalnız applicable layer badge'lerini gösteriyor | `PASS` — LayerBadge compact mode |
-| 66 | Evidence Journey dokuz stage'i gösteriyor | `PASS` — EvidenceJourneyDrawer |
-| 68 | Evidence Journey kanıtsız SDK/root-cause iddiası üretmiyor | `PASS` — NOT_CAPTURED explicit |
-| 70 | Interaction origin BRIDGE_INJECTED/MANUAL/UNKNOWN gösteriliyor | `PASS` — InteractionOriginBadge |
-| 74 | Repro export secret/PIN/token içermiyor | `PASS` — redaction in ReproExportPanel |
-| 76 | Yakalanmamış artifact açık NOT_CAPTURED | `PASS` — ReproExportPanel |
-| 82 | Legacy-zero Maestro/YAML primary UI checks yeşil | `PASS` — legacy-zero.test.ts |
-| 84 | Product/PM/Engineering/Data Center/ADB route non-regression yeşil | `PASS` — `route-non-regression.test.ts` freezes 29 pre-Phase-6 routes |
-| 85 | Full verification komutları çalıştırıldı | `PASS` — §8, including production build and live-API direct entry |
+| 50 | `FAIL` | Inspector overlay orientation/inset math not applied; sample nodes |
+| 54 | `FAIL` | Wait preview lifecycle hardcoded |
+| 61 | `FAIL` | Layer badges hardcoded on run detail page |
+| 63 | `FAIL` | Badge state not from persisted revision |
+| 65 | `FAIL` | No waterfall / clock uncertainty UI |
+| 67 | `FAIL` | Evidence journey deep-links/RBAC not wired to API shape |
+| 69 | `FAIL` | raw→normalized fact trace not shown |
+| 71 | `FAIL` | Hardcoded BRIDGE_INJECTED/MANUAL badges (anti-inflation path unused) |
+| 72 | `FAIL` | UNKNOWN path unused |
+| 73 | `FAIL` | No baseline anti-inflation |
+| 75 | `FAIL` | Repro download has no full export builder metadata |
 
-Additional items classified in phase-6-debt 6D.3 (2026-08-06) — see
-`phase-6-debt/RESULT.md` §12 for full evidence:
+`CP3-DUT` (Act Mode / mutation on `ro.build.type=user`) remains
+`BLOCKED_EXTERNAL` and does **not** excuse the FAILs above.
 
-| # | Status |
-|---|---|
-| 26–29, 40–41, 45–48, 78 | `PASS` (prior sweep §18) |
-| 33, 34, 37, 38, 44 | `FAIL` — still LEGACY_API pages |
-| 36, 39 | `PASS` |
-| 35 | `PASS` — compile wired |
-| 50, 54 | `FAIL` — inspector shells |
-| 51–53 | `PASS_PARTIAL` |
-| 57, 58 | `PASS` — outcome/disposition de-fabricated (6D.3) |
-| 61, 63, 65, 67, 69, 71–73, 75 | `FAIL` |
-| 62 | `PASS_PARTIAL` |
-| 64, 77 | `PASS` |
-| 79–81 | `PASS_PARTIAL` |
-| 83 | `PASS` — placeholder BACKLOG in debt RESULT §13 |
+### Full 85
 
-`B-6-EDITOR-PANELS-UNBOUND` and Surface Registry gaps are **resolved** in
-phase-6-debt. Remaining local FAILs are DTO cutover + Run Detail/Inspector shells.
-CHECKPOINT 6 still cannot close as `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` while
-local `FAIL` items remain.
+| # | Acceptance | Status | Evidence |
+|---|---|---|---|
+| 1 | Phase 5 output'ları doğrulandı | `PASS` | phase-5 RESULT COMPLETED |
+| 2 | Operatör Maestro/YAML bilmeden workflow oluşturabiliyor | `PASS` | CompilePreviewPanel + pack palette (6D.1f) |
+| 3 | Preview ile executed plan hash'i aynı | `PASS` | same WorkflowCompileApi |
+| 4 | Compile error doğru canvas node'una bağlanıyor | `PASS` | source-map in CompilePreviewPanel |
+| 5 | YAML/Maestro primary authoring UI deprecate edildi | `PASS` | toolbar deprecation |
+| 6 | Web local compiler fallback yok | `PASS` | UI → API only |
+| 7 | Top-level workspace sayısı yedi | `PASS` | navigation-seven-workspace |
+| 8 | Domain Packs nav entry mevcut | `PASS` | nav config |
+| 9 | Test Profiles nav entry mevcut | `PASS` | nav config |
+| 10 | Test Campaigns nav entry mevcut | `PASS` | nav config |
+| 11 | `/pm/root-cause` orphan değil | `PASS` | PM navigation |
+| 12 | `/engineering/current-architecture` hedef/geçiş mimarisini gösteriyor | `PASS` | architecture page |
+| 13 | `/engineering/modernization-plan` checkpoint/evidence dashboard | `PASS` | checkpoint dashboard |
+| 14 | PageMigrationManifest bütün production route'ları kapsıyor | `PASS` | page-acceptance + filesystem |
+| 15 | Domain Pack catalog route çalışıyor | `PASS` | `/automation/domain-packs` + runtime |
+| 16 | Domain Pack detail manager tabs çalışıyor | `PASS` | detail + DomainPackTabs |
+| 17 | Domain Pack publish/migrate RBAC fail-closed | `PASS` | disabled when not DRAFT |
+| 18 | Published bundle/graph/reducer/profile digest görünür | `PASS` | DomainPackDigestDisplay |
+| 19 | Active-run pinned version görünür | `PASS` | pack header |
+| 20 | Application/Screen/Surface Registry manager mevcut | `PASS` | 6D.2 SurfaceRegistryManager |
+| 21 | Surface parent-screen/kind/detection/readiness/default policy editlenebilir | `PASS` | 6D.2 + PUBLISHED read-only |
+| 22 | Evidence Source Registry source/authority/correlation/freshness/conflict | `PASS` | 6D.1a |
+| 23 | Evidence Source delivery lane gösteriliyor | `PASS` | 6D.1a deliveryLanes |
+| 24 | Target Resolution Provider Chain evidence/ambiguity | `PASS` | 6D.1b |
+| 25 | Launch Profile Builder process/precondition/entry/readiness/cleanup | `PASS` | 6D.1c validate |
+| 26 | Test Profile catalog/detail route'ları çalışıyor | `PASS` | §18 live 200 |
+| 27 | Test Profile Builder kind-specific required alanları | `PASS` | server validation |
+| 28 | Preview profile releaseGate=false constraint | `PASS` | 422 on violation |
+| 29 | Test Campaign list/detail route'ları çalışıyor | `PASS` | §18 live 200 |
+| 30 | Campaign matrix profile x device/dataset cell | `PASS` | CampaignMatrix |
+| 31 | Campaign cell kanıtsız PASS/FAIL üretmiyor | `PASS` | CampaignCell guard |
+| 32 | Campaign cell Run Detail deep-link | `PASS` | cell links |
+| 33 | Automation list → WorkflowCatalogQuery | `PASS` | dto-cutover + client |
+| 34 | Automation history → RunHistoryQuery | `PASS` | dto-cutover + client |
+| 35 | Automation editor → WorkflowCompileApi | `PASS` | CompilePreviewPanel live |
+| 36 | Automation run detail → RunDetailQuery | `PASS` | fetchVerdictRunDetail |
+| 37 | Field Login → WorkflowRunApi + Domain Pack | `PASS` | startPinnedVerdictRun |
+| 38 | Load Tour → WorkflowRunApi + Domain Pack | `PASS` | startPinnedVerdictRun |
+| 39 | Legacy run → LegacyRunSummaryQuery read-only | `PASS` | legacy-summary path |
+| 40 | Debug overview → DeviceReadinessQuery | `PASS` | §18 after probe fix |
+| 41 | Operational health ADB-only kaynak değil | `PASS` | multi-lane card |
+| 42 | Screen State Live Inspector rolüne genişledi | `PASS` | screen-state page |
+| 43 | İkinci paralel Inspector route'u yok | `PASS` | single route |
+| 44 | Interactions → DurableInteractionSubscription | `PASS` | dto-cutover; ADB diagnostic |
+| 45 | Network/log/schedule/database non-regression | `PASS` | §18 route 200s |
+| 46 | Device kartı lane ayrımı | `PASS_PARTIAL` | lanes shown; non-ADB often UNKNOWN |
+| 47 | Receipt Bus / Ordered Bus health ayrı | `PASS_PARTIAL` | presented; probe depth limited |
+| 48 | Command admission lane/owner/block reason | `PASS` | COMMAND_ADMISSION lane |
+| 49 | Production Inspector Act API-side fail-closed | `PASS` | InspectorPermissionGuard |
+| 50 | Inspector overlay orientation/inset tests | `FAIL` | overlay math/sample nodes |
+| 51 | Ambiguous node UI + action disabled | `PASS_PARTIAL` | UI present; demo data |
+| 52 | Full dump yalnız explicit diagnostic capture | `PASS_PARTIAL` | UX present; capture mocked |
+| 53 | Current Screen / Active Surface ayrı registry keys | `PASS_PARTIAL` | labels shown; not registry keys |
+| 54 | Expected/Interrupt wait preview lifecycle | `FAIL` | hardcoded wait preview |
+| 55 | Run Detail occurrence/iteration/retry ayrımı | `PASS` | OccurrenceTree |
+| 56 | Continue Gate / Final Oracle ayrı | `PASS` | GateOracleTimeline |
+| 57 | Action/gate/oracle/cleanup outcomes ayrı | `PASS` | OutcomePanel de-fabricated |
+| 58 | Lifecycle/verdict/termination/cleanup/ops disposition | `PASS` | VerdictDisposition runtime |
+| 59 | Cleanup failure business PASS→FAIL çevirmiyor | `PASS` | VerdictDisposition |
+| 60 | Compact node yalnız applicable layer badges | `PASS` | LayerBadge compact |
+| 61 | Detail drawer dört plane applicability | `FAIL` | badges hardcoded on page |
+| 62 | NOT_APPLICABLE / NOT_MEASURED / REQUIRED_PENDING | `PASS_PARTIAL` | semantics exist; demo feed |
+| 63 | UI/App/Local/Remote badge ← persisted revision | `FAIL` | not revision-backed |
+| 64 | Badge animation chronology iddiası yok | `PASS` | no chronology claim |
+| 65 | Waterfall clock uncertainty | `FAIL` | UI missing |
+| 66 | Evidence Journey dokuz stage | `PASS` | EvidenceJourneyDrawer |
+| 67 | Evidence Journey raw deep-link RBAC | `FAIL` | not wired to API shape |
+| 68 | Kanıtsız SDK/root-cause iddiası yok | `PASS` | NOT_CAPTURED explicit |
+| 69 | Raw → normalized fact trace | `FAIL` | journeyStage mismatch |
+| 70 | Interaction origin badges component | `PASS` | InteractionOriginBadge |
+| 71 | Bridge-injected click manual görünmüyor | `FAIL` | hardcoded badges |
+| 72 | Korelasyonsuz SDK click → UNKNOWN | `FAIL` | UNKNOWN path unused |
+| 73 | Human baseline injection ile şişmiyor | `FAIL` | no anti-inflation |
+| 74 | Repro export secret/PIN/token yok | `PASS` | redaction |
+| 75 | Repro metadata tam kapsıyor | `FAIL` | export builder incomplete |
+| 76 | Yakalanmamış artifact NOT_CAPTURED | `PASS` | ReproExportPanel |
+| 77 | Repro Act Mode otomatik açmıyor | `PASS` | no auto Act |
+| 78 | Route navigation/direct/refresh matrix | `PASS` | §8 + §18 |
+| 79 | Loading/empty/error/disconnected/blocked | `PASS_PARTIAL` | page-acceptance smoke |
+| 80 | Auth/RBAC page acceptance | `PASS_PARTIAL` | declared; mostly `['*']` |
+| 81 | Responsive/keyboard/focus accessibility | `PASS_PARTIAL` | heading + tabIndex smoke |
+| 82 | Legacy-zero Maestro/YAML checks | `PASS` | legacy-zero.test.ts |
+| 83 | Placeholder'lar BACKLOG | `PASS` | phase-6-debt RESULT §13 |
+| 84 | Product/PM/Eng/DC/ADB non-regression | `PASS` | route-non-regression |
+| 85 | Full verification komutları | `PASS_PARTIAL` | suites green; `tsc` clean after cutover TS fix; full `next build` not re-proven this close |
 
 ## 10. Blockers opened during Phase 6
 
@@ -292,7 +325,9 @@ local `FAIL` items remain.
 | B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
 | B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
 | B-6-EDITOR-PANELS-UNBOUND | HIGH/LOCAL | `RESOLVED` | Was unbound mock panels | Resolved in phase-6-debt 6D.1a–f |
-| B-6-DTO-CUTOVER-REMAINING | HIGH/LOCAL | `OPEN_LOCAL` | list/history/field-login/load-tour/interactions still LEGACY_API | Cut over to verdict-runtime clients (items 33/34/37/38/44) |
+| B-6-DTO-CUTOVER-REMAINING | HIGH/LOCAL | `RESOLVED` | Was LEGACY_API on list/history/field-login/load-tour/interactions | Cut over 2026-08-06 — items 33/34/37/38/44 PASS |
+| B-6-RUN-DETAIL-SHELLS | HIGH/LOCAL | `OPEN_LOCAL` | Run Detail / Journey / Interaction / Repro FAILs | Fix 61/63/65/67/69/71–73/75 then re-score checkpoint6 |
+| B-6-INSPECTOR-SHELLS | MEDIUM/LOCAL | `OPEN_LOCAL` | Inspector overlay / wait preview | Fix 50/54 (+ deepen 51–53) |
 | B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `RESOLVED` | Run-start idempotency and interaction cursor reset on restart | `verdict_run_start` + `verdict_run_interaction` tables; both services Prisma-backed and restart-verified, see §17 |
 
 ## 11. Skipped / deferred work
@@ -306,41 +341,32 @@ local `FAIL` items remain.
 
 ## 11b. Carried debt
 
-Kalan iş ayrı izde:
-[`docs/verdict/run-playbooks/phase-6-debt/`](../phase-6-debt/RUN_PLAY.md) —
-bağlanmamış editör panelleri, olmayan Surface Registry, yürütülmemiş CHECKPOINT
-maddeleri ve 6.30 kapanışı. Bu borç `phase-5-debt`'e bağlıdır.
+`phase-6-debt` is **COMPLETED** (6D.1–6D.4) with `checkpoint6: NOT_PASSED`.
+Remaining local FAILs stay as open blockers (`B-6-RUN-DETAIL-SHELLS`,
+`B-6-INSPECTOR-SHELLS`) — not a new debt folder unless reopened later.
+
+Debt RESULT: [`phase-6-debt/RESULT.md`](../phase-6-debt/RESULT.md).
 
 ## 12. Phase 7 readiness decision
 
 ```text
-phase7Readiness: NOT_EVALUATED
-checkpoint6: NOT_YET_PASSED
+phase7Readiness: NOT_READY
+checkpoint6: NOT_PASSED
 ```
 
-Phase 7 readiness is **not** evaluated. The cockpit UI is implemented and committed,
-and every static check in §8 is green, but CHECKPOINT 6 requires acceptance evidence
-that does not exist yet.
+Phase 6 `resultState` is `COMPLETED` (6.30 closed with an honest fail list).
+Phase 7 must **not** start until local FAILs in §9 Missing list are cleared and
+`checkpoint6` is re-evaluated (target then:
+`PASSED_WITH_EXTERNAL_DUT_BLOCKERS` + `READY_WITH_EXTERNAL_BLOCKERS`, subject to
+CP3-DUT / B-12).
 
-Exit criteria to close Phase 6:
+Exit criteria status:
 
-1. ~~`6.26` — route non-regression suite.~~ **Done** — 41 tests.
-2. ~~`6.27` — page acceptance suite and `acceptanceTestRef` backfill.~~ **Done** —
-   240 tests across 63 routes.
-3. ~~`6.29` — verification sweep including a live-API runtime pass.~~ **Done** —
-   §8; production build and direct-entry now verified, previously neither was.
-4. ~~Seeded write/execute path tour.~~ **Done** — §15.
-5. ~~Persist the cockpit read models.~~ **Done** — §16, restart-verified.
-6. ~~Persist the run-start and interaction surfaces.~~ **Done** — §17,
-   restart-verified.
-7. `6.30` — **still open**, and now genuinely down to evidence rather than
-   defects: the outstanding CHECKPOINT items must be walked through the cockpit
-   against the seeded runtime and recorded item by item, after which
-   `phase7Readiness` can be evaluated. No known local blocker remains.
-
-External blockers CP3-DUT, B-12 and B-4-PG-MIGRATION-APPLY remain open and are
-independent of the four items above; they block production acceptance, not
-Phase 6 closure.
+1. ~~`6.26`–`6.29`, persistence, seeded tour~~ **Done**
+2. ~~`phase-6-debt` 6D.1–6D.3 + DTO cutover~~ **Done**
+3. ~~`6.30` written~~ **Done** — decision = `NOT_PASSED`
+4. **Open:** clear FAIL items 50, 54, 61, 63, 65, 67, 69, 71–73, 75
+5. **External (non-blocking for UI, blocking for Act Mode):** CP3-DUT, B-12
 
 ## 13. Post-closure code review (2026-08-06)
 
@@ -629,14 +655,12 @@ no implementation at all (no Application/Screen/Surface Registry manager exists)
 | 35 | `PASS` | compile preview runtime-wired |
 | 40, 41 | `PASS` after fix | Device health is now probed, not constant; previously `FAIL` |
 
-### Remaining (updated 2026-08-06 — phase-6-debt 6D.3)
+### Remaining after 6D.4 close (2026-08-06)
 
-Full table: `phase-6-debt/RESULT.md` §12. Headline: local `FAIL` remains on
-DTO cutover (33/34/37/38/44), Run Detail shells (61/63/65/67/69/71–73/75), and
-Inspector shells (50/54). Items 57/58 fabricated outcomes fixed in 6D.3.
-
-`6.30` stays `PENDING`. CHECKPOINT 6 still cannot close as
-`PASSED_WITH_EXTERNAL_DUT_BLOCKERS` while local `FAIL` items remain.
+`6.30` **DONE** with `checkpoint6: NOT_PASSED`. DTO cutover (33/34/37/38/44)
+and editor/Surface debt are resolved. Local `FAIL` left on Run Detail /
+Journey / Interaction / Repro / Inspector shells — see §9 Missing list.
+`phase7Readiness: NOT_READY`.
 
 ## 19. Editor cutover — mounted, and what that revealed
 
@@ -679,30 +703,12 @@ Provenance  { packKey: nesy-courier, packVersion: 2.0.0,
 Editor → WorkflowCompileApi → the Domain Pack persisted in PostgreSQL, end to
 end. Items 2, 3, 5, 6 and 35 now have runtime evidence.
 
-### The rest of the editor is a mockup
+### Editor panels — resolved in phase-6-debt
 
-Mounting the panel made the remaining surfaces *reachable*, not *working*.
-`EvidenceSourceRegistry`, `TargetResolutionPanel`, `LaunchProfileBuilder`,
-`EntityBindingEditor` and `SemanticActionPalette` contain **zero** calls to
-`verdict-runtime/client`; each renders a hardcoded array. The Evidence Source
-Registry, for example, always lists "Main Activity Screen / SCREEN_STATE /
-Ordered Bus" regardless of any run.
+`B-6-EDITOR-PANELS-UNBOUND` is **RESOLVED** (6D.1a–f). Items 20–25 and 35 are
+`PASS`. Steps 6.10 / 6.11 / 6.12 in §5 now match reality.
 
-| Item | Verdict | Reason |
-|---|---|---|
-| 22, 23 | `FAIL` | Evidence Source Registry renders a fixed two-row sample; no source, authority, correlation, freshness or conflict comes from the runtime |
-| 24 | `FAIL` | Target Resolution panel is static; no provider chain or ambiguity evidence |
-| 25 | `FAIL` | Launch Profile Builder renders the right fields but binds to nothing and persists nothing |
-| 2, 3, 5, 6, 35 | `PASS` | Compile preview, verified above |
+### Post-6.30 residual (does not reopen 6.30)
 
-So steps 6.10, 6.11 and 6.12 are **not** `DONE` as §5 records them. They are UI
-shells. Recorded as `B-6-EDITOR-PANELS-UNBOUND` (HIGH/LOCAL): the panels need the
-same treatment the campaign and profile pages received — real client calls, real
-DTOs, fail-closed empty and error states.
-
-### Still to do before 6.30
-
-1. `B-6-EDITOR-PANELS-UNBOUND` — bind the four mockup panels to the runtime.
-2. Items 20/21 — the Application/Screen/Surface Registry manager does not exist.
-3. The remaining sweep items (33, 34, 36–39, 44, 50–54, 57, 58, 61–65, 67, 69,
-   71–73, 75, 77, 79–81, 83).
+Clear §9 Missing list FAILs, then re-score `checkpoint6` /
+`phase7Readiness`. Do not invent a green checkpoint while those FAILs stand.

@@ -9,26 +9,26 @@ tarihte çalışan sistem üzerinde yapılan doğrulamalar.
 
 ## Klasörler
 
-| Path | Kapsam | Öncelik |
-|---|---|---|
-| `phase-2-debt/` | Performans baseline eksikliği, repo geneli lint borcu | P3 |
-| `phase-3-debt/` | CP3 full acceptance — production build cihaz engeli | P2 (harici) |
-| `phase-4-debt/` | CP3-DUT devri, smoke handshake flakiness, protokol dokümanı | P2 (harici) |
-| `phase-5-debt/` | **Runtime var, HTTP ucu yok** (evidence source, semantic action, target resolution, launch profile); stub compiler üretimde; admission süreç-içi | **P0** |
-| `phase-6-debt/` | Editör panelleri veriye bağlı değil; **sol palet hâlâ sabit Maestro registry'si**; Surface Registry yok; CHECKPOINT 6 taraması yarım | **P1** |
+| Path | Kapsam | Öncelik | Durum |
+|---|---|---|---|
+| `phase-2-debt/` | Performans baseline eksikliği, repo geneli lint borcu | P3 | açık |
+| `phase-3-debt/` | CP3 full acceptance — production build cihaz engeli | P2 (harici) | açık |
+| `phase-4-debt/` | CP3-DUT devri, smoke handshake flakiness, protokol dokümanı | P2 (harici) | açık |
+| `phase-5-debt/` | Runtime HTTP uçları, stub compiler, admission | P0 | **COMPLETED** |
+| `phase-6-debt/` | Editör binding, Surface Registry, CHECKPOINT sweep, 6.30 | P1 | **COMPLETED** — `checkpoint6: NOT_PASSED`; Phase 7 `NOT_READY` |
 
 Faz 0 ve Faz 1 için itemize edilmiş açık madde yok.
 
 ## Bağımlılık sırası
 
 ```text
-phase-5-debt  (API yüzeyleri)
+phase-5-debt  (API yüzeyleri)           ✅ COMPLETED
       │
       ▼
-phase-6-debt  (UI binding + Surface Registry + CHECKPOINT 6 kapanışı)
+phase-6-debt  (UI + Surface + 6.30)     ✅ COMPLETED / checkpoint6 NOT_PASSED
       │
       ▼
-Phase 7 gate
+Phase 7 gate                            ❌ NOT_READY — clear phase-6/RESULT §9 FAIL list
 
 phase-2-debt   ─ bağımsız, paralel yürüyebilir
 phase-3-debt   ─┐
@@ -36,8 +36,9 @@ phase-4-debt   ─┴ harici cihaz gerektirir; Faz 6 kapanışını engellemez,
                   production GO'yu engeller
 ```
 
-**Kritik yol `phase-5-debt` → `phase-6-debt`.** Faz 6'nın 22–25 numaralı kabul
-maddeleri, Faz 5'in açmadığı API uçlarına bağlı; sıra tersine çevrilemez.
+**Kritik yol kapandı** (`phase-5-debt` → `phase-6-debt` COMPLETED). Phase 7
+gate artık residual FAIL listesine (`B-6-RUN-DETAIL-SHELLS`,
+`B-6-INSPECTOR-SHELLS`) bağlı — yeni debt klasörü yok; orijinal RESULT §9.
 
 Aynı bağımlılık paletin kendisi için de geçerli: CHECKPOINT madde 2 ("operatör
 Maestro/YAML bilmeden workflow oluşturabiliyor") ancak sol palet Domain Pack'ten

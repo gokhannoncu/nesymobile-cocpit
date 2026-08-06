@@ -467,7 +467,7 @@ export default function InteractionsPage() {
                   filters={filters}
                   filteredCount={events.length}
                   totalEvents={allEvents.length}
-                  deviceName={selectedDevice.name}
+                  deviceName={selectedDevice?.name ?? (selectedRunId ? `run:${selectedRunId}` : '—')}
                   onClearFilters={clearFilters}
                 />
               ) : (
