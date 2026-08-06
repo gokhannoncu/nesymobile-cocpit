@@ -1,4 +1,10 @@
-import { fetchVerdictRunDetail, fetchVerdictEvidenceJourney, fetchVerdictLegacyRunSummary } from '@/lib/verdict-runtime/client'
+import {
+  fetchVerdictRunDetail,
+  fetchVerdictEvidenceJourney,
+  fetchVerdictLegacyRunSummary,
+} from '@/lib/verdict-runtime/client'
+import type { RunDetailResult } from '@/lib/verdict-runtime/types'
+import { deriveLayerApplicability } from '@/lib/verdict-runtime/layer-applicability'
 import { EvidenceJourneyDrawer } from '@/components/automation/run-detail/EvidenceJourneyDrawer'
 import { OccurrenceTree } from '@/components/automation/run-detail/OccurrenceTree'
 import { LayerBadges } from '@/components/automation/run-detail/LayerBadge'
@@ -6,31 +12,33 @@ import { GateOracleTimeline } from '@/components/automation/run-detail/GateOracl
 import { OutcomePanel } from '@/components/automation/run-detail/OutcomePanel'
 import { VerdictDisposition } from '@/components/automation/run-detail/VerdictDisposition'
 import { ReproExportPanel } from '@/components/automation/run-detail/ReproExportPanel'
-import { InteractionOriginBadge } from '@/components/automation/run-detail/InteractionOriginBadge'
+import { InteractionOriginsPanel } from '@/components/automation/run-detail/InteractionOriginsPanel'
+import { DiagnosticWaterfall } from '@/components/automation/run-detail/DiagnosticWaterfall'
 import { LiveUpdateSubscription } from '@/components/automation/run-detail/LiveUpdateSubscription'
 import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
 import { InfoIcon } from 'lucide-react'
 
-export default async function RunDetailPage(props: { params: Promise<{ id: string, runId: string }> }) {
-  const params = await props.params;
-  const { runId } = params;
+export default async function RunDetailPage(props: {
+  params: Promise<{ id: string; runId: string }>
+}) {
+  const params = await props.params
+  const { runId } = params
 
-  let runDetail = null
+  let runDetail: RunDetailResult | null = null
   let evidenceJourney = null
   let isLegacy = false
 
   try {
     runDetail = await fetchVerdictRunDetail(runId)
-    // Check if it's legacy
     if (runDetail?.correlation?.engineType === 'MAESTRO_LEGACY') {
       isLegacy = true
-      runDetail = await fetchVerdictLegacyRunSummary(runId) as any
+      runDetail = (await fetchVerdictLegacyRunSummary(runId)) as RunDetailResult
     }
-    
+
     evidenceJourney = await fetchVerdictEvidenceJourney(runId)
-  } catch (err) {
+  } catch {
     try {
-      runDetail = await fetchVerdictLegacyRunSummary(runId) as any
+      runDetail = (await fetchVerdictLegacyRunSummary(runId)) as RunDetailResult
       isLegacy = true
     } catch {
       return (
@@ -49,7 +57,20 @@ export default async function RunDetailPage(props: { params: Promise<{ id: strin
       <div className="p-8">
         <Alert variant="destructive">
           <AlertTitle>Blocked State</AlertTitle>
-          <AlertDescription>Run is in a blocked state: {runDetail.blockedReason}</AlertDescription>
+          <AlertDescription>
+            Run is in a blocked state: {runDetail.blockedReason}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (!runDetail) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertTitle>Error loading run</AlertTitle>
+          <AlertDescription>Could not load details for run {runId}.</AlertDescription>
         </Alert>
       </div>
     )
@@ -67,12 +88,19 @@ export default async function RunDetailPage(props: { params: Promise<{ id: strin
         <Alert>
           <InfoIcon className="w-4 h-4" />
           <AlertTitle>Legacy View</AlertTitle>
-          <AlertDescription>This is a legacy Maestro run. Detailed capabilities are limited.</AlertDescription>
+          <AlertDescription>
+            This is a legacy Maestro run. Detailed capabilities are limited.
+          </AlertDescription>
         </Alert>
         <VerdictDisposition run={runDetail} />
       </div>
     )
   }
+
+  const layerStates = deriveLayerApplicability(runDetail)
+  // Cockpit operators currently declare rbac ['*'] on this route — deep-link allowed.
+  // When finer roles land, gate this from session claims (evidence:read).
+  const canViewRawEvidence = true
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -82,9 +110,15 @@ export default async function RunDetailPage(props: { params: Promise<{ id: strin
             <h1 className="text-2xl font-bold tracking-tight">Run {runId.split('-')[0]}</h1>
             <LiveUpdateSubscription runId={runId} />
           </div>
-          <p className="text-muted-foreground text-sm mt-1">Durable execution trace and evidence.</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Durable execution trace and evidence.
+          </p>
         </div>
-        <EvidenceJourneyDrawer runId={runId} journey={evidenceJourney || undefined} />
+        <EvidenceJourneyDrawer
+          runId={runId}
+          journey={evidenceJourney || undefined}
+          canViewRawEvidence={canViewRawEvidence}
+        />
       </div>
 
       <VerdictDisposition run={runDetail} />
@@ -98,19 +132,18 @@ export default async function RunDetailPage(props: { params: Promise<{ id: strin
           </div>
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Layers</h2>
-            <LayerBadges states={[
-              { layer: 'UI', state: 'PASS' },
-              { layer: 'App', state: 'PASS' },
-              { layer: 'Local', state: 'NOT_MEASURED' },
-              { layer: 'Remote', state: 'NOT_APPLICABLE', reason: 'No remote checks defined' }
-            ]} />
+            <LayerBadges states={layerStates} />
+            <p className="text-[11px] text-muted-foreground font-mono">
+              From persisted oracleEvaluations · max revision per plane
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Diagnostic Waterfall</h2>
+            <DiagnosticWaterfall run={runDetail} />
           </div>
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Interactions</h2>
-            <div className="flex gap-2">
-              <InteractionOriginBadge origin="BRIDGE_INJECTED" confidence={100} />
-              <InteractionOriginBadge origin="MANUAL" confidence={98} />
-            </div>
+            <InteractionOriginsPanel runId={runId} />
           </div>
         </div>
 

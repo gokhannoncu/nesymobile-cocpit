@@ -168,6 +168,7 @@ export async function getEvidenceJourney(runId: string): Promise<EvidenceJourney
       occurrence_id AS "occurrenceId",
       iteration_key AS "iterationKey",
       fact_key AS "factKey",
+      revision,
       plane,
       source_subtype AS "sourceSubtype",
       authority,
@@ -176,10 +177,12 @@ export async function getEvidenceJourney(runId: string): Promise<EvidenceJourney
       journey_stage AS "journeyStage",
       journey_state AS "journeyState",
       raw_event_ref AS "rawEventRef",
+      value,
+      reducer_trace AS "reducerTrace",
       observed_at AS "observedAt"
     FROM bridgeflow_evidence_fact
     WHERE run_id = ${runId}
-    ORDER BY observed_at ASC
+    ORDER BY observed_at ASC, revision ASC
   `
   return {
     apiVersion: 'verdict-runtime.v1',

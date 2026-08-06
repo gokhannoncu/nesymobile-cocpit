@@ -327,26 +327,28 @@ export default function ScreenStatePage() {
                   currentScreenKey={snapshot?.current?.who || 'Unknown'}
                   activeSurfaceKey={snapshot?.current?.className || 'Unknown'}
                 >
-                  <InspectorNodeOverlay 
-                    nodes={[
-                      { id: '1', bounds: [20, 40, 320, 50], type: 'TextView', text: 'Welcome', resourceId: 'tv_title' },
-                      { id: '2', bounds: [20, 100, 320, 40], type: 'Button', text: 'Sign In', resourceId: 'btn_sign_in' },
-                      { id: '3', bounds: [20, 160, 320, 40], type: 'Button', text: 'Sign Up', resourceId: 'btn_sign_up', isAmbiguous: true }
-                    ]} 
-                    scale={1} 
-                    onNodeSelect={setSelectedNode} 
+                  {/*
+                    Nodes stay empty until a Bridge dump/find_* snapshot is wired.
+                    Sample nodes removed — overlay math still applies when nodes arrive.
+                  */}
+                  <InspectorNodeOverlay
+                    nodes={[]}
+                    orientation="PORTRAIT"
+                    applyInsets={showInsets}
+                    insets={{ left: 0, top: showInsets ? 24 : 0, right: 0, bottom: showInsets ? 16 : 0 }}
+                    screenshotWidth={360}
+                    screenshotHeight={640}
+                    viewportWidth={360}
+                    viewportHeight={640}
+                    onNodeSelect={setSelectedNode}
                   />
                 </InspectorViewport>
               </div>
               
               {/* Right Column - Panels */}
               <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-                <InspectorWaitPreview 
-                  waits={[
-                    { id: 'w1', type: 'EXPECTED', status: 'PENDING', description: 'Wait for id: tv_title' },
-                    { id: 'w2', type: 'INTERRUPT', status: 'MET', description: 'Dismiss system dialog' }
-                  ]}
-                />
+                {/* Request-scoped only: idle = empty (no persistent registry illusion). */}
+                <InspectorWaitPreview waits={[]} />
                 <InspectorTargetPanel selectedNode={selectedNode} />
                 <InspectorScopedDump />
               </div>

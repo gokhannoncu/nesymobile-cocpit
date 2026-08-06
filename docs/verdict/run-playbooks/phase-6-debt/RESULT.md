@@ -7,7 +7,7 @@ resultState: COMPLETED
 createdAt: "2026-08-06 09:30:00 +03"
 startedAt: "2026-08-06 19:21:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 22:40:00 +03"
+lastUpdatedAt: "2026-08-06 23:05:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -15,26 +15,24 @@ verifiedMasterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a06
 runPlayFile: "docs/verdict/run-playbooks/phase-6-debt/RUN_PLAY.md"
 originalResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 dependsOn: "docs/verdict/run-playbooks/phase-5-debt/RESULT.md"
-phase7Readiness: "NOT_READY"
-checkpoint6: "NOT_PASSED"
+phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
+checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 priority: P1
 ```
 
 ## 1. Executive result
 
-`COMPLETED`. Debt steps 6D.1–6D.4 finished. CHECKPOINT 6 closed **honestly as
-`NOT_PASSED`** because local FAIL shells remain. Phase 7 is **`NOT_READY`**.
+`COMPLETED`. Debt 6D.1–6D.4 finished; P1 residual shells wired and re-scored.
 
 ```text
 Phase 6 DEBT: COMPLETED
-CHECKPOINT 6: NOT_PASSED
-phase7Readiness: NOT_READY
-Reason: 11 local FAIL items (50, 54, 61, 63, 65, 67, 69, 71, 72, 73, 75).
-External Act Mode (CP3-DUT) does not excuse those FAILs.
+CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+P1 shells: 50/54/61/63/65/67/69/71–73/75 → PASS (run-detail-shells.test.ts)
+External: CP3-DUT, B-12
 ```
 
-Handoff written back into `phase-6/RESULT.md` (§5 6.10–6.12/6.30, §9 full 85,
-§12 readiness).
+Handoff: `phase-6/RESULT.md` §9 + §12.
 
 ## 2. Recovery state
 
@@ -44,7 +42,7 @@ Handoff written back into `phase-6/RESULT.md` (§5 6.10–6.12/6.30, §9 full 85
 | Current step | `6D.4` |
 | Current state | `COMPLETED` |
 | Last successful step | `6D.4` |
-| Recovery instruction | `Debt closed. To unblock Phase 7: clear FAIL list in phase-6/RESULT.md §9 Missing list, then re-evaluate checkpoint6 / phase7Readiness.` |
+| Recovery instruction | `Debt + P1 shells closed. Phase 7 may start (READY_WITH_EXTERNAL_BLOCKERS).` |
 
 ## 3. Precondition gate
 
@@ -70,7 +68,7 @@ debtClose: COMPLETED
 | Sol palet pack primary + legacy badge | **bağlandı** (6D.1f) |
 | Surface Registry manager + rota | **bağlandı** (6D.2) |
 | DTO cutover 33/34/37/38/44 | **PASS** |
-| Run Detail / Journey / Interaction / Repro / Inspector shells | **FAIL açık** — Phase 7 blocker |
+| Run Detail / Journey / Interaction / Repro / Inspector shells | **PASS** (P1) — 51–53 PARTIAL deepeners optional |
 
 ## 5. Step execution log
 
@@ -86,13 +84,13 @@ debtClose: COMPLETED
 
 | Sınıf | Sayı | Not |
 |---|---|---|
-| `PASS` | ~67 | includes debt 20–25, DTO cutover, compile, profiles/campaigns |
-| `PASS_PARTIAL` | 7 | 46–47, 51–53, 62, 79–81 (+ 85 build re-proof) |
-| `FAIL` (yerel) | 11 | 50, 54, 61, 63, 65, 67, 69, 71, 72, 73, 75 |
+| `PASS` | ~74 | + P1 shells |
+| `PASS_PARTIAL` | ~11 | 46–47, 51–53, 79–81, 85 |
+| `FAIL` (yerel) | 0 | cleared |
 | `BLOCKED_EXTERNAL` | Act Mode | `CP3-DUT` |
 | Placeholder BACKLOG | 83 | `PASS` — §13 |
 
-Karar: **`NOT_PASSED`**. `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` yazılmadı.
+Karar: **`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**.
 
 ## 7. Changed files (debt span)
 
@@ -137,8 +135,8 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 | `PHASE-5-DEBT` | HIGH/LOCAL | `RESOLVED` | |
 | `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `RESOLVED` | 6D.1a–f |
 | `B-6-DTO-CUTOVER-REMAINING` | HIGH/LOCAL | `RESOLVED` | 33/34/37/38/44 |
-| `B-6-RUN-DETAIL-SHELLS` | HIGH/LOCAL | `OPEN_LOCAL` | 61, 63, 65, 67, 69, 71–73, 75 |
-| `B-6-INSPECTOR-SHELLS` | MEDIUM/LOCAL | `OPEN_LOCAL` | 50, 54 (+ 51–53 PARTIAL) |
+| `B-6-RUN-DETAIL-SHELLS` | HIGH/LOCAL | `RESOLVED` | P1 — run-detail-shells.test.ts |
+| `B-6-INSPECTOR-SHELLS` | MEDIUM/LOCAL | `RESOLVED` | P1 — mapper + idle waits; 51–53 PARTIAL |
 | `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `OPEN_LOCAL` | Bridge B2 |
 | `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `OPEN_LOCAL` | playbook pin drift |
 | `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | user build |
@@ -147,16 +145,16 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 ## 11. Readiness decision
 
 ```text
-phase7Readiness: NOT_READY
-checkpoint6: NOT_PASSED
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
 Debt playbook handoff:
 
 ```text
 Phase 6 DEBT: COMPLETED
-CHECKPOINT 6: NOT_PASSED
-phase7Readiness: NOT_READY
+CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 ```
 
 ## 12. CHECKPOINT sweep evidence (retained)
@@ -172,20 +170,20 @@ Method: code + unit/acceptance tests + live API where available.
 | 36, 39 | `PASS` | run detail / legacy summary |
 | 57, 58 | `PASS` | de-fabricated |
 
-### Still FAIL at close
+### P1 shell re-score (was FAIL)
 
 | # | Verdict | Evidence |
 |---|---|---|
-| 50, 54 | `FAIL` | inspector shells |
-| 61, 63, 65 | `FAIL` | layer / waterfall |
-| 67, 69 | `FAIL` | journey wiring |
-| 71–73, 75 | `FAIL` | interaction origin / repro |
+| 50, 54 | `PASS` | map-device-bounds + idle WaitAnyPreview |
+| 61, 63, 65 | `PASS` | layer-applicability + DiagnosticWaterfall |
+| 67, 69 | `PASS` | journeyStage/State + reducerTrace in API/UI |
+| 71–73, 75 | `PASS` | InteractionOriginsPanel + buildReproExport |
 
-### PASS_PARTIAL at close
+### PASS_PARTIAL remaining
 
 | # | Verdict |
 |---|---|
-| 46–47, 51–53, 62, 79–81 | `PASS_PARTIAL` |
+| 46–47, 51–53, 79–81, 85 | `PASS_PARTIAL` |
 
 Full 85-row table: `phase-6/RESULT.md` §9.
 

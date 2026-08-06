@@ -8,7 +8,7 @@ resultState: COMPLETED
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 22:40:00 +03"
+lastUpdatedAt: "2026-08-06 23:05:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -16,29 +16,25 @@ runPlayFile: "docs/verdict/run-playbooks/phase-6/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-5/RESULT.md"
 targetWorkspace: "apps/web"
 targetApiSurface: "Phase 5 runtime/read-model DTOs"
-phase7Readiness: "NOT_READY"
-checkpoint6: "NOT_PASSED"
+phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
+checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 implementationCommit: "62aa6e7"
 debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
 ```
 
 ## 1. Executive result
 
-Phase 6 + `phase-6-debt` implementation work is **closed**. CHECKPOINT 6 is
-**`NOT_PASSED`** — local FAIL items remain (Run Detail / Journey / Interaction /
-Repro / Inspector shells). Phase 7 is **`NOT_READY`**.
-
-Debt closed: editor panels bound (6D.1), Surface Registry shipped (6D.2),
-CHECKPOINT sweep recorded (6D.3), DTO cutover 33/34/37/38/44 PASS, 6.30 written
-with an honest fail list (6D.4). Uydurma `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` yok.
+Phase 6 + `phase-6-debt` closed. After P1 shell wiring (2026-08-06 evening),
+local FAIL list is **cleared**. CHECKPOINT 6 is
+**`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**. Phase 7 is
+**`READY_WITH_EXTERNAL_BLOCKERS`** (CP3-DUT / B-12 remain external).
 
 ```text
-CHECKPOINT 6: NOT_PASSED
-phase7Readiness: NOT_READY
-Phase 6 resultState: COMPLETED  (6.30 closed; checkpoint failed)
+CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+Phase 6 resultState: COMPLETED
 phase-6-debt: COMPLETED
-Counts (85): PASS ~67 · PASS_PARTIAL 7 · FAIL 11 · BLOCKED_EXTERNAL (CP3-DUT Act Mode)
-Open local FAIL: 50, 54, 61, 63, 65, 67, 69, 71, 72, 73, 75
+Counts (85): PASS ~74 · PASS_PARTIAL ~11 · FAIL 0 · BLOCKED_EXTERNAL (CP3-DUT Act Mode)
 Open external: CP3-DUT, B-12
 ```
 
@@ -49,10 +45,10 @@ Open external: CP3-DUT, B-12
 | Current phase | `6` |
 | Current step | `6.30` |
 | Current state | `COMPLETED` |
-| Last successful step | `6.30` (honest NOT_PASSED close) |
-| Last attempted step | `6.30` |
-| Last update | `2026-08-06 22:40:00 +03` |
-| Recovery instruction | `CHECKPOINT 6 NOT_PASSED. Phase 7 blocked. Clear local FAILs 50/54/61/63/65/67/69/71–73/75 (see §9 Missing list) before re-evaluating checkpoint6 / phase7Readiness. External: CP3-DUT, B-12.` |
+| Last successful step | `P1 shell re-score (50/54/61/63/65/67/69/71–73/75)` |
+| Last attempted step | `P1 shells` |
+| Last update | `2026-08-06 23:05:00 +03` |
+| Recovery instruction | `Phase 6 closed green for local items. Start Phase 7 when ready. External Act Mode / DUT still CP3-DUT + B-12.` |
 
 ## 3. Precondition gate
 
@@ -196,31 +192,17 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 ## 9. CHECKPOINT 6 acceptance checklist
 
 ```text
-CHECKPOINT 6: NOT_PASSED
-phase7Readiness: NOT_READY
-Closed at: 2026-08-06 22:40 +03 (phase-6-debt 6D.4)
-Evidence base: source + unit/acceptance tests + live API where available;
-live browser Network tab incomplete (:4002 often down). See phase-6-debt/RESULT.md §12.
+CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+Closed at: 2026-08-06 22:40 +03 (6D.4)
+Re-scored at: 2026-08-06 23:05 +03 (P1 shells)
+Evidence: run-detail-shells.test.ts + source wiring; live browser Network partial.
 ```
 
-### Missing list (blocks `PASSED_WITH_EXTERNAL_DUT_BLOCKERS`)
+### Missing list (local FAIL)
 
-| # | Verdict | Why |
-|---|---|---|
-| 50 | `FAIL` | Inspector overlay orientation/inset math not applied; sample nodes |
-| 54 | `FAIL` | Wait preview lifecycle hardcoded |
-| 61 | `FAIL` | Layer badges hardcoded on run detail page |
-| 63 | `FAIL` | Badge state not from persisted revision |
-| 65 | `FAIL` | No waterfall / clock uncertainty UI |
-| 67 | `FAIL` | Evidence journey deep-links/RBAC not wired to API shape |
-| 69 | `FAIL` | raw→normalized fact trace not shown |
-| 71 | `FAIL` | Hardcoded BRIDGE_INJECTED/MANUAL badges (anti-inflation path unused) |
-| 72 | `FAIL` | UNKNOWN path unused |
-| 73 | `FAIL` | No baseline anti-inflation |
-| 75 | `FAIL` | Repro download has no full export builder metadata |
-
-`CP3-DUT` (Act Mode / mutation on `ro.build.type=user`) remains
-`BLOCKED_EXTERNAL` and does **not** excuse the FAILs above.
+_None._ Former FAIL items 50/54/61/63/65/67/69/71–73/75 → `PASS` (P1).
+`CP3-DUT` / `B-12` remain external and do not block this checkpoint class.
 
 ### Full 85
 
@@ -275,32 +257,32 @@ live browser Network tab incomplete (:4002 often down). See phase-6-debt/RESULT.
 | 47 | Receipt Bus / Ordered Bus health ayrı | `PASS_PARTIAL` | presented; probe depth limited |
 | 48 | Command admission lane/owner/block reason | `PASS` | COMMAND_ADMISSION lane |
 | 49 | Production Inspector Act API-side fail-closed | `PASS` | InspectorPermissionGuard |
-| 50 | Inspector overlay orientation/inset tests | `FAIL` | overlay math/sample nodes |
+| 50 | Inspector overlay orientation/inset tests | `PASS` | `mapDeviceBoundsToViewport` + tests; sample nodes removed; empty until Bridge dump |
 | 51 | Ambiguous node UI + action disabled | `PASS_PARTIAL` | UI present; demo data |
 | 52 | Full dump yalnız explicit diagnostic capture | `PASS_PARTIAL` | UX present; capture mocked |
 | 53 | Current Screen / Active Surface ayrı registry keys | `PASS_PARTIAL` | labels shown; not registry keys |
-| 54 | Expected/Interrupt wait preview lifecycle | `FAIL` | hardcoded wait preview |
+| 54 | Expected/Interrupt wait preview lifecycle | `PASS` | idle empty; WaitAnyResult statuses; no persistent registry illusion |
 | 55 | Run Detail occurrence/iteration/retry ayrımı | `PASS` | OccurrenceTree |
 | 56 | Continue Gate / Final Oracle ayrı | `PASS` | GateOracleTimeline |
 | 57 | Action/gate/oracle/cleanup outcomes ayrı | `PASS` | OutcomePanel de-fabricated |
 | 58 | Lifecycle/verdict/termination/cleanup/ops disposition | `PASS` | VerdictDisposition runtime |
 | 59 | Cleanup failure business PASS→FAIL çevirmiyor | `PASS` | VerdictDisposition |
 | 60 | Compact node yalnız applicable layer badges | `PASS` | LayerBadge compact |
-| 61 | Detail drawer dört plane applicability | `FAIL` | badges hardcoded on page |
-| 62 | NOT_APPLICABLE / NOT_MEASURED / REQUIRED_PENDING | `PASS_PARTIAL` | semantics exist; demo feed |
-| 63 | UI/App/Local/Remote badge ← persisted revision | `FAIL` | not revision-backed |
+| 61 | Detail drawer dört plane applicability | `PASS` | `deriveLayerApplicability` from oracleEvaluations |
+| 62 | NOT_APPLICABLE / NOT_MEASURED / REQUIRED_PENDING | `PASS` | empty planes → NOT_MEASURED (no invent PASS) |
+| 63 | UI/App/Local/Remote badge ← persisted revision | `PASS` | max revision per plane |
 | 64 | Badge animation chronology iddiası yok | `PASS` | no chronology claim |
-| 65 | Waterfall clock uncertainty | `FAIL` | UI missing |
+| 65 | Waterfall clock uncertainty | `PASS` | DiagnosticWaterfall + UNKNOWN when mono absent |
 | 66 | Evidence Journey dokuz stage | `PASS` | EvidenceJourneyDrawer |
-| 67 | Evidence Journey raw deep-link RBAC | `FAIL` | not wired to API shape |
+| 67 | Evidence Journey raw deep-link RBAC | `PASS` | journeyStage/State map; raw link gated |
 | 68 | Kanıtsız SDK/root-cause iddiası yok | `PASS` | NOT_CAPTURED explicit |
-| 69 | Raw → normalized fact trace | `FAIL` | journeyStage mismatch |
+| 69 | Raw → normalized fact trace | `PASS` | rawEventRef → reducerTrace → fact/value |
 | 70 | Interaction origin badges component | `PASS` | InteractionOriginBadge |
-| 71 | Bridge-injected click manual görünmüyor | `FAIL` | hardcoded badges |
-| 72 | Korelasyonsuz SDK click → UNKNOWN | `FAIL` | UNKNOWN path unused |
-| 73 | Human baseline injection ile şişmiyor | `FAIL` | no anti-inflation |
+| 71 | Bridge-injected click manual görünmüyor | `PASS` | durable origins; bridge excluded from baseline |
+| 72 | Korelasyonsuz SDK click → UNKNOWN | `PASS` | UNKNOWN origin rendered |
+| 73 | Human baseline injection ile şişmiyor | `PASS` | human baseline = MANUAL only |
 | 74 | Repro export secret/PIN/token yok | `PASS` | redaction |
-| 75 | Repro metadata tam kapsıyor | `FAIL` | export builder incomplete |
+| 75 | Repro metadata tam kapsıyor | `PASS` | `buildReproExport` slots + download |
 | 76 | Yakalanmamış artifact NOT_CAPTURED | `PASS` | ReproExportPanel |
 | 77 | Repro Act Mode otomatik açmıyor | `PASS` | no auto Act |
 | 78 | Route navigation/direct/refresh matrix | `PASS` | §8 + §18 |
@@ -326,8 +308,8 @@ live browser Network tab incomplete (:4002 often down). See phase-6-debt/RESULT.
 | B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
 | B-6-EDITOR-PANELS-UNBOUND | HIGH/LOCAL | `RESOLVED` | Was unbound mock panels | Resolved in phase-6-debt 6D.1a–f |
 | B-6-DTO-CUTOVER-REMAINING | HIGH/LOCAL | `RESOLVED` | Was LEGACY_API on list/history/field-login/load-tour/interactions | Cut over 2026-08-06 — items 33/34/37/38/44 PASS |
-| B-6-RUN-DETAIL-SHELLS | HIGH/LOCAL | `OPEN_LOCAL` | Run Detail / Journey / Interaction / Repro FAILs | Fix 61/63/65/67/69/71–73/75 then re-score checkpoint6 |
-| B-6-INSPECTOR-SHELLS | MEDIUM/LOCAL | `OPEN_LOCAL` | Inspector overlay / wait preview | Fix 50/54 (+ deepen 51–53) |
+| B-6-RUN-DETAIL-SHELLS | HIGH/LOCAL | `RESOLVED` | Was fabricate/unbound shells | P1 wiring 2026-08-06 — tests in run-detail-shells.test.ts |
+| B-6-INSPECTOR-SHELLS | MEDIUM/LOCAL | `RESOLVED` | Was sample nodes + hardcoded waits | Mapper + idle wait preview; 51–53 remain PARTIAL deepeners |
 | B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `RESOLVED` | Run-start idempotency and interaction cursor reset on restart | `verdict_run_start` + `verdict_run_interaction` tables; both services Prisma-backed and restart-verified, see §17 |
 
 ## 11. Skipped / deferred work
@@ -350,23 +332,21 @@ Debt RESULT: [`phase-6-debt/RESULT.md`](../phase-6-debt/RESULT.md).
 ## 12. Phase 7 readiness decision
 
 ```text
-phase7Readiness: NOT_READY
-checkpoint6: NOT_PASSED
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
-Phase 6 `resultState` is `COMPLETED` (6.30 closed with an honest fail list).
-Phase 7 must **not** start until local FAILs in §9 Missing list are cleared and
-`checkpoint6` is re-evaluated (target then:
-`PASSED_WITH_EXTERNAL_DUT_BLOCKERS` + `READY_WITH_EXTERNAL_BLOCKERS`, subject to
-CP3-DUT / B-12).
+Phase 6 `resultState` is `COMPLETED`. Local FAIL list cleared in P1 shell pass.
+Phase 7 may start; production Act Mode / DUT acceptance remains external
+(`CP3-DUT`, `B-12`). PASS_PARTIAL deepeners (51–53, 46–47, 79–81, 85) are
+non-blocking inventory.
 
 Exit criteria status:
 
 1. ~~`6.26`–`6.29`, persistence, seeded tour~~ **Done**
-2. ~~`phase-6-debt` 6D.1–6D.3 + DTO cutover~~ **Done**
-3. ~~`6.30` written~~ **Done** — decision = `NOT_PASSED`
-4. **Open:** clear FAIL items 50, 54, 61, 63, 65, 67, 69, 71–73, 75
-5. **External (non-blocking for UI, blocking for Act Mode):** CP3-DUT, B-12
+2. ~~`phase-6-debt` 6D.1–6D.4~~ **Done**
+3. ~~`6.30` + P1 shell re-score~~ **Done** — `PASSED_WITH_EXTERNAL_DUT_BLOCKERS`
+4. **External:** CP3-DUT, B-12
 
 ## 13. Post-closure code review (2026-08-06)
 
@@ -655,12 +635,11 @@ no implementation at all (no Application/Screen/Surface Registry manager exists)
 | 35 | `PASS` | compile preview runtime-wired |
 | 40, 41 | `PASS` after fix | Device health is now probed, not constant; previously `FAIL` |
 
-### Remaining after 6D.4 close (2026-08-06)
+### Remaining after P1 shell re-score (2026-08-06)
 
-`6.30` **DONE** with `checkpoint6: NOT_PASSED`. DTO cutover (33/34/37/38/44)
-and editor/Surface debt are resolved. Local `FAIL` left on Run Detail /
-Journey / Interaction / Repro / Inspector shells — see §9 Missing list.
-`phase7Readiness: NOT_READY`.
+`checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS`. Local FAIL list empty.
+Optional deepeners: Bridge dump→overlay nodes (50 enrichment), live wait_any
+feed (54 enrichment), Inspector 51–53 PARTIAL.
 
 ## 19. Editor cutover — mounted, and what that revealed
 

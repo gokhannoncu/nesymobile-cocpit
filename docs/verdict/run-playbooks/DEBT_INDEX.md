@@ -15,7 +15,7 @@ tarihte çalışan sistem üzerinde yapılan doğrulamalar.
 | `phase-3-debt/` | CP3 full acceptance — production build cihaz engeli | P2 (harici) | açık |
 | `phase-4-debt/` | CP3-DUT devri, smoke handshake flakiness, protokol dokümanı | P2 (harici) | açık |
 | `phase-5-debt/` | Runtime HTTP uçları, stub compiler, admission | P0 | **COMPLETED** |
-| `phase-6-debt/` | Editör binding, Surface Registry, CHECKPOINT sweep, 6.30 | P1 | **COMPLETED** — `checkpoint6: NOT_PASSED`; Phase 7 `NOT_READY` |
+| `phase-6-debt/` | Editör binding, Surface Registry, CHECKPOINT sweep, 6.30 | P1 | **COMPLETED** — `checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS`; Phase 7 `READY_WITH_EXTERNAL_BLOCKERS` |
 
 Faz 0 ve Faz 1 için itemize edilmiş açık madde yok.
 
@@ -25,10 +25,10 @@ Faz 0 ve Faz 1 için itemize edilmiş açık madde yok.
 phase-5-debt  (API yüzeyleri)           ✅ COMPLETED
       │
       ▼
-phase-6-debt  (UI + Surface + 6.30)     ✅ COMPLETED / checkpoint6 NOT_PASSED
+phase-6-debt  (UI + Surface + 6.30)     ✅ COMPLETED / PASSED_WITH_EXTERNAL_DUT_BLOCKERS
       │
       ▼
-Phase 7 gate                            ❌ NOT_READY — clear phase-6/RESULT §9 FAIL list
+Phase 7 gate                            ✅ READY_WITH_EXTERNAL_BLOCKERS (CP3-DUT/B-12)
 
 phase-2-debt   ─ bağımsız, paralel yürüyebilir
 phase-3-debt   ─┐
@@ -36,9 +36,8 @@ phase-4-debt   ─┴ harici cihaz gerektirir; Faz 6 kapanışını engellemez,
                   production GO'yu engeller
 ```
 
-**Kritik yol kapandı** (`phase-5-debt` → `phase-6-debt` COMPLETED). Phase 7
-gate artık residual FAIL listesine (`B-6-RUN-DETAIL-SHELLS`,
-`B-6-INSPECTOR-SHELLS`) bağlı — yeni debt klasörü yok; orijinal RESULT §9.
+**Kritik yol kapandı** (`phase-5-debt` → `phase-6-debt` COMPLETED + P1 shells).
+Phase 7 gate: `READY_WITH_EXTERNAL_BLOCKERS` (`CP3-DUT`, `B-12`).
 
 Aynı bağımlılık paletin kendisi için de geçerli: CHECKPOINT madde 2 ("operatör
 Maestro/YAML bilmeden workflow oluşturabiliyor") ancak sol palet Domain Pack'ten

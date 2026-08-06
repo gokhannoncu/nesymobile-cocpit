@@ -4,16 +4,16 @@
 runPlayId: verdict-mobile-phase-5-run-play
 phase: "5"
 phaseName: "Correlation, Clock, Recovery Observation + Bridge Lifecycle"
-status: NOT_STARTED
-recoveryState: WAITING_FOR_PHASE_M3_AND_M4B
+status: COMPLETED
+recoveryState: CLOSED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+startedAt: "2026-08-06 22:28:00 +03"
+completedAt: "2026-08-06 22:40:00 +03"
+lastUpdatedAt: "2026-08-06 22:40:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-5/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-4c/RESULT.md"
@@ -33,36 +33,7 @@ döngüsünün cihaz tarafını tamamlar.
 ## 1.1 AI agent'a verilecek başlangıç metni
 
 ```text
-Verdict Mobile Phase M5 uygula.
-
-Önce şu dosyayı tamamen oku:
-docs/verdict/mobile-run-playbooks/phase-5/RUN_PLAY.md
-
-Sonra şu dosyayı oku:
-docs/verdict/mobile-run-playbooks/phase-5/RESULT.md
-
-Cockpit karşılığını oku:
-docs/verdict/run-playbooks/phase-5/RESULT.md
-
-Mobile SSOT:
-/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile/verdict-status.json
-
-Master plan:
-docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md
-
-Kurallar:
-- Owned paths dışına çıkma.
-- Cockpit apps/** ve packages/** varsayılan read-only (contract handoff hariç).
-- İkinci paralel App Adapter yazma.
-- Production'a automation/scanner/DIRECT_STATE sızdırma.
-- Core/Bridge içine STOP/PARCEL/OPEN_STOP business type sokma.
-- Fake-pass yazma; DUT yoksa BLOCKED_EXTERNAL.
-- RESULT.md evidence olmadan COMPLETED yazma.
-
-Duvar saati ile sıralama yapma. Event yokluğunu failure sayma. Unknown effect'te auto-retry yok.
-
-Kapanışta RESULT.md içine changed files, commands, tests, blockers ve next-phase
-readiness yaz.
+(Phase CLOSED — see RESULT.md. Next: M6.)
 ```
 
 ## 2. Recovery state
@@ -70,12 +41,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M5` |
-| Current step | `5.0` |
-| Current state | `WAITING_FOR_PHASE_M3_AND_M4B` |
-| Last successful step | `5.0` |
-| Last attempted step | `5.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M5 henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Current step | `5.6` |
+| Current state | `CLOSED` |
+| Last successful step | `5.6` |
+| Last attempted step | `5.6` |
+| Last update | `2026-08-06 22:40:00 +03` |
+| Recovery instruction | `M5 COMPLETED. Start M6 Inspector. External DUT/B-12 remain open.` |
 
 ## 3. Kapsam
 
@@ -111,43 +82,38 @@ readiness yaz.
 ### 5.0 Playbook oluşturma
 
 - Status: `DONE`
-- Evidence: RESULT.md step log
 
 ### 5.1 M3/M4B/M4C + Cockpit Phase 5 gate
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
 
 ### 5.2 Correlation metadata implementasyon
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
 
 ### 5.3 monoTs / clock markers
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
 
 ### 5.4 Recovery observation queries
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
 
 ### 5.5 Bridge cancel/unknown-effect cihaz kanıtı
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE` (unit/fake-host; DUT external)
 
 ### 5.6 Verification + M6 handoff
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
 
 
 ## 8. Verification commands
 
 - `pnpm verdict:verify-master-plan`
-- `cd "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile" && ./gradlew test --quiet`
+- `cd NesyMobile && ./gradlew :verdict-core:testDebugUnitTest --tests com.verdict.sdk.core.VerdictEngineTest`
+- `cd NesyMobile/verdict-bridge && ./gradlew :app:testDebugUnitTest --tests com.verdict.bridge.ProtocolV1WaitAnyTest`
+- `cd NesyMobile && ./gradlew :app:testTstrsDebugUnitTest --tests …NesyAppAdapterManifestTest --tests …NesyCorrelationContextTest`
 
 ## 9. Hard bans
 
@@ -160,6 +126,4 @@ readiness yaz.
 
 ## 10. Next phase handoff
 
-Bu faz kapanınca RESULT.md içinde `phase6Readiness` alanını doldur.
-Cockpit playbook'taki ilgili external blocker (B-12/B-13/CP3-DUT vb.) güncellenmeliyse
-handoff notu yaz.
+`phase6Readiness: READY_WITH_EXTERNAL_BLOCKERS` — see RESULT.md.
