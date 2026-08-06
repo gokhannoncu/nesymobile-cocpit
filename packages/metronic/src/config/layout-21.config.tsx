@@ -60,6 +60,9 @@ export const AUTOMATION_LIST_PATH = '/automation/list' as const
 export const AUTOMATION_HISTORY_PATH = '/automation/history' as const
 export const AUTOMATION_FIELD_LOGIN_PATH = '/automation/field-login' as const
 export const AUTOMATION_LOAD_TOUR_PATH = '/automation/01-load-tour-flow' as const
+export const AUTOMATION_DOMAIN_PACKS_PATH = '/automation/domain-packs' as const
+export const AUTOMATION_TEST_PROFILES_PATH = '/automation/test-profiles' as const
+export const AUTOMATION_TEST_CAMPAIGNS_PATH = '/automation/test-campaigns' as const
 
 // Single source of truth for the cockpit navigation.
 // The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
@@ -226,6 +229,11 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Ticket Board',
                 path: '/pm/tickets',
                 icon: Ticket,
+              },
+              {
+                title: 'Root Cause Intelligence',
+                path: '/pm/root-cause',
+                icon: Bug,
               },
             ],
           },
@@ -539,6 +547,33 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Load & Tour Flow',
                 path: AUTOMATION_LOAD_TOUR_PATH,
                 icon: Truck,
+              },
+            ],
+          },
+          {
+            title: 'Domain Packs',
+            icon: Package,
+            children: [
+              {
+                title: 'Domain Pack Catalog',
+                path: AUTOMATION_DOMAIN_PACKS_PATH,
+                icon: Layers,
+              },
+            ],
+          },
+          {
+            title: 'Quality Assurance',
+            icon: ShieldCheck,
+            children: [
+              {
+                title: 'Test Profiles',
+                path: AUTOMATION_TEST_PROFILES_PATH,
+                icon: FileText,
+              },
+              {
+                title: 'Test Campaigns',
+                path: AUTOMATION_TEST_CAMPAIGNS_PATH,
+                icon: Grid3x3,
               },
             ],
           },

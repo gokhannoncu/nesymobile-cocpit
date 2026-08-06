@@ -31,6 +31,23 @@ describe('device command admission', () => {
     )
   })
 
+  it('keeps re-acquire by the same run idempotent so one release clears the lane', () => {
+    const admission = createDeviceCommandAdmission()
+    admission.acquireMutation('device-1', 'run-a')
+    expect(admission.acquireMutation('device-1', 'run-a')).toEqual({
+      acquired: true,
+      ownerRunId: 'run-a',
+      blockedReason: null,
+    })
+    expect(admission.snapshot('device-1').activeCounts.MUTATION).toBe(1)
+    admission.releaseMutation('device-1', 'run-a')
+    expect(admission.snapshot('device-1')).toMatchObject({
+      activeMutationOwnerRunId: null,
+      blockedReason: null,
+      activeCounts: expect.objectContaining({ MUTATION: 0 }),
+    })
+  })
+
   it('tracks observation/wait/control counts separately from mutation ownership', () => {
     const admission = createDeviceCommandAdmission()
     admission.beginLane('device-1', 'OBSERVATION')

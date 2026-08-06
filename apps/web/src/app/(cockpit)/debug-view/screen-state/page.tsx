@@ -51,6 +51,13 @@ import {
   type ScreenStateChangeKind,
 } from '@/data/debug-view/screen-state-diff'
 import type { FragmentLifecycle, LiveScreenField, LiveScreenState } from '@/data/debug-view/live-types'
+import { InspectorViewport } from '@/components/debug-view/inspector/InspectorViewport'
+import { InspectorNodeOverlay, SemanticNode } from '@/components/debug-view/inspector/InspectorNodeOverlay'
+import { InspectorPermissionGuard } from '@/components/debug-view/inspector/InspectorPermissionGuard'
+import { InspectorTargetPanel } from '@/components/debug-view/inspector/InspectorTargetPanel'
+import { InspectorWaitPreview } from '@/components/debug-view/inspector/InspectorWaitPreview'
+import { InspectorScopedDump } from '@/components/debug-view/inspector/InspectorScopedDump'
+import { InspectorToolbar } from '@/components/debug-view/inspector/InspectorToolbar'
 
 const POLL_MS = 1_000
 const MAX_HISTORY = 12
@@ -243,6 +250,10 @@ function useScreenStatePolling(serial: string | null, paused: boolean) {
 export default function ScreenStatePage() {
   const { selectedDevice } = useDebugView()
   const [paused, setPaused] = useState(false)
+  const [activeTab, setActiveTab] = useState<'state' | 'inspector'>('state')
+  const [showInsets, setShowInsets] = useState(false)
+  const [selectedNode, setSelectedNode] = useState<SemanticNode | null>(null)
+  
   const serial = selectedDevice?.serial ?? null
   const { snapshot, history, changes, loading, error, reload } = useScreenStatePolling(serial, paused)
 
@@ -260,10 +271,26 @@ export default function ScreenStatePage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant={paused ? 'outline' : 'primary'} onClick={() => setPaused((p) => !p)} disabled={!serial}>
-              {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-              {paused ? 'Resume' : 'Pause'}
-            </Button>
+            <div className="flex rounded-md bg-muted p-1 mr-2">
+              <button 
+                onClick={() => setActiveTab('state')} 
+                className={cn('px-3 py-1 text-xs font-medium rounded-sm', activeTab === 'state' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                State Data
+              </button>
+              <button 
+                onClick={() => setActiveTab('inspector')} 
+                className={cn('px-3 py-1 text-xs font-medium rounded-sm', activeTab === 'inspector' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                Live Inspector
+              </button>
+            </div>
+            {activeTab === 'state' && (
+              <Button size="sm" variant={paused ? 'outline' : 'primary'} onClick={() => setPaused((p) => !p)} disabled={!serial}>
+                {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+                {paused ? 'Resume' : 'Pause'}
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={reload} disabled={!serial || loading}>
               {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
               Refresh
@@ -282,8 +309,52 @@ export default function ScreenStatePage() {
         <ErrorState message={error} onRetry={reload} />
       ) : !snapshot ? (
         <NoDeviceState />
+      ) : activeTab === 'inspector' ? (
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <InspectorPermissionGuard mode="OBSERVE_ONLY" isProduction={true}>
+            <InspectorToolbar 
+              permissionMode="OBSERVE_ONLY"
+              onRefresh={reload}
+              showInsets={showInsets}
+              onToggleInsets={() => setShowInsets(!showInsets)}
+              onGenerateFingerprint={() => {}}
+            />
+            <div className="flex gap-4 mt-4 h-[720px]">
+              {/* Left Column - Viewport */}
+              <div className="flex-none bg-slate-50 border rounded-lg p-4 h-full flex flex-col justify-center">
+                <InspectorViewport
+                  orientation="PORTRAIT"
+                  currentScreenKey={snapshot?.current?.who || 'Unknown'}
+                  activeSurfaceKey={snapshot?.current?.className || 'Unknown'}
+                >
+                  <InspectorNodeOverlay 
+                    nodes={[
+                      { id: '1', bounds: [20, 40, 320, 50], type: 'TextView', text: 'Welcome', resourceId: 'tv_title' },
+                      { id: '2', bounds: [20, 100, 320, 40], type: 'Button', text: 'Sign In', resourceId: 'btn_sign_in' },
+                      { id: '3', bounds: [20, 160, 320, 40], type: 'Button', text: 'Sign Up', resourceId: 'btn_sign_up', isAmbiguous: true }
+                    ]} 
+                    scale={1} 
+                    onNodeSelect={setSelectedNode} 
+                  />
+                </InspectorViewport>
+              </div>
+              
+              {/* Right Column - Panels */}
+              <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
+                <InspectorWaitPreview 
+                  waits={[
+                    { id: 'w1', type: 'EXPECTED', status: 'PENDING', description: 'Wait for id: tv_title' },
+                    { id: 'w2', type: 'INTERRUPT', status: 'MET', description: 'Dismiss system dialog' }
+                  ]}
+                />
+                <InspectorTargetPanel selectedNode={selectedNode} />
+                <InspectorScopedDump />
+              </div>
+            </div>
+          </InspectorPermissionGuard>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <ActiveScreenCard snapshot={snapshot} paused={paused} />
 
           {!snapshot.appForeground || !snapshot.current ? (

@@ -1,0 +1,826 @@
+export type FallbackPolicy = 'NONE' | 'READ_ONLY_LEGACY_SUMMARY'
+export type RouteAvailability = 'AVAILABLE' | 'BLOCKED_PRECONDITION' | 'BLOCKED_EXTERNAL' | 'DEPRECATED' | 'PLACEHOLDER'
+export type DataSourceKind = 'VERDICT_RUNTIME' | 'LEGACY_API' | 'LEGACY_WITH_ADAPTER' | 'STATIC' | 'NOT_APPLICABLE'
+
+export interface PageDataSourceContract {
+  routePattern: string
+  routeLabel: string
+  workspace: string
+  owner: string
+  currentSource: DataSourceKind
+  targetSource: DataSourceKind
+  targetDtoVersion: string
+  cutoverCheckpoint: string
+  availability: RouteAvailability
+  rbac: string[]
+  legacyCleanup?: string
+  legacyCleanupExpiry?: string
+  acceptanceTestRef?: string
+  compatibilityAdapter?: string
+  compatibilityExpiry?: string
+  fallbackPolicy: FallbackPolicy
+}
+
+export const MANIFEST_VERSION = '1.0.0'
+
+export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
+  // Home
+  {
+    routePattern: '/',
+    routeLabel: 'Command Center Overview',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/this-week',
+    routeLabel: 'This Week',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/quick-actions',
+    routeLabel: 'Quick Actions',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/strategic-priorities',
+    routeLabel: 'Strategic Priorities',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/upcoming-milestones',
+    routeLabel: 'Upcoming Milestones',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/open-risks-and-blockers',
+    routeLabel: 'Open Risks',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/recent-decisions',
+    routeLabel: 'Recent Decisions',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/recent-activity',
+    routeLabel: 'Recent Activity',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/recent-documents',
+    routeLabel: 'Recent Documents',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/home/upcoming-meetings',
+    routeLabel: 'Upcoming Meetings',
+    workspace: 'home',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Product
+  {
+    routePattern: '/product/domain-glossary',
+    routeLabel: 'Domain Glossary',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/domain-model',
+    routeLabel: 'Domain Model',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/screen-map',
+    routeLabel: 'Screen Map',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/feature-library',
+    routeLabel: 'Feature Library',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/feature-library/[slugName]',
+    routeLabel: 'Feature Detail',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/country-matrix',
+    routeLabel: 'Country Matrix',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product/country-profiles',
+    routeLabel: 'Country Profiles',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // PM
+  {
+    routePattern: '/pm/tickets',
+    routeLabel: 'Ticket Board',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/pm/releases',
+    routeLabel: 'Release History',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/pm/versions',
+    routeLabel: 'Version Tracker',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/pm/calendar',
+    routeLabel: 'Sprint Calendar',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/pm/roadmap',
+    routeLabel: 'Roadmap',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/pm/root-cause',
+    routeLabel: 'Root Cause Intelligence',
+    workspace: 'pm',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Engineering
+  {
+    routePattern: '/engineering/incident-playbook',
+    routeLabel: 'Incident Command',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/edge-case-map',
+    routeLabel: 'Edge Case Map',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/field-tickets',
+    routeLabel: 'Field Ticket Intelligence',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/current-architecture',
+    routeLabel: 'Current Architecture',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/modernization-plan',
+    routeLabel: 'Modernization Plan',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/backend-handbook',
+    routeLabel: 'Backend Handbook',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/mobile-service-atlas',
+    routeLabel: 'Mobile Service Atlas',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Debug View
+  {
+    routePattern: '/debug-view/overview',
+    routeLabel: 'Device Overview',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/operational-health',
+    routeLabel: 'Operational Readiness',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/screen-state',
+    routeLabel: 'Live Inspector',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/interactions',
+    routeLabel: 'User Interactions',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/network-inspector',
+    routeLabel: 'Network Inspector',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/schedule',
+    routeLabel: 'Schedule Explorer',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/database',
+    routeLabel: 'Database Access',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/adb-scenarios',
+    routeLabel: 'ADB Scenarios',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/debug-view/log-explorer',
+    routeLabel: 'Log Explorer',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Data Center
+  {
+    routePattern: '/data-center/connection',
+    routeLabel: 'Connection',
+    workspace: 'data-center',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/data-center/shipment',
+    routeLabel: 'Shipment Operations',
+    workspace: 'data-center',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/data-center/pickup',
+    routeLabel: 'Pickup Operations',
+    workspace: 'data-center',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/data-center/happy-path',
+    routeLabel: 'Happy Path',
+    workspace: 'data-center',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/data-center/users',
+    routeLabel: 'User Operations',
+    workspace: 'data-center',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Automation
+  {
+    routePattern: '/automation/list',
+    routeLabel: 'Workflow Library',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/history',
+    routeLabel: 'Run History',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/field-login',
+    routeLabel: 'Field Courier Login',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/01-load-tour-flow',
+    routeLabel: 'Load & Tour Flow',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/overview',
+    routeLabel: 'Automation Overview',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/[id]',
+    routeLabel: 'Workflow Editor',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/[id]/runs/[runId]',
+    routeLabel: 'Run Detail',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/domain-packs',
+    routeLabel: 'Domain Pack Catalog',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/domain-packs/[packId]',
+    routeLabel: 'Domain Pack Detail',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/test-profiles',
+    routeLabel: 'Test Profile Catalog',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/test-profiles/[profileId]',
+    routeLabel: 'Test Profile Detail',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/test-campaigns',
+    routeLabel: 'Test Campaign List',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/automation/test-campaigns/[campaignId]',
+    routeLabel: 'Test Campaign Detail',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+
+  // Engineering Tools
+  {
+    routePattern: '/engineering/tools/data-locator',
+    routeLabel: 'Data Locator',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/tools/mongodb-query-generator',
+    routeLabel: 'MongoDB Query Generator',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/engineering/tools/graylog-query-generator',
+    routeLabel: 'Graylog Query Generator',
+    workspace: 'debug-view',
+    owner: 'nesy-platform',
+    currentSource: 'LEGACY_API',
+    targetSource: 'LEGACY_API',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    fallbackPolicy: 'NONE'
+  }
+]
+
+export function getManifestEntry(routePattern: string): PageDataSourceContract | undefined {
+  return PAGE_MIGRATION_MANIFEST.find(entry => entry.routePattern === routePattern)
+}

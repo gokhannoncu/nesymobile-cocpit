@@ -33,6 +33,11 @@ export class DeviceCommandAdmission {
         blockedReason: `mutation lane owned by run ${owner}`,
       }
     }
+    // Re-acquire by the current owner is idempotent: a retrying run must not
+    // inflate the active lane count that a single releaseMutation can undo.
+    if (owner === runId) {
+      return { acquired: true, ownerRunId: runId, blockedReason: null }
+    }
     this.mutationOwnerByDevice.set(deviceId, runId)
     this.bump(deviceId, 'MUTATION', 'active', 1)
     return { acquired: true, ownerRunId: runId, blockedReason: null }

@@ -11,6 +11,10 @@ import type {
   WorkflowCompileApi,
   WorkflowRunApi,
   WorkflowRunStartApi,
+  DomainPackCatalogApi,
+  DomainPackDetailApi,
+  DomainPackSaveResult,
+  DomainPackPublishResult,
 } from './types'
 
 export async function fetchVerdictRunHistory(query: RunHistoryQuery = {}): Promise<RunHistoryResult> {
@@ -63,6 +67,22 @@ export async function fetchVerdictInteractions(
   )
 }
 
+export async function fetchVerdictDomainPacks(): Promise<DomainPackCatalogApi> {
+  return getJson<DomainPackCatalogApi>('/verdict/runtime/domain-packs')
+}
+
+export async function fetchVerdictDomainPack(packKey: string, version: string): Promise<DomainPackDetailApi> {
+  return getJson<DomainPackDetailApi>(`/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}`)
+}
+
+export async function saveDomainPackDraft(body: Record<string, unknown>): Promise<DomainPackSaveResult> {
+  return putJson<DomainPackSaveResult>('/verdict/runtime/domain-packs/draft', body)
+}
+
+export async function publishDomainPack(body: Record<string, unknown>): Promise<DomainPackPublishResult> {
+  return postJson<DomainPackPublishResult>('/verdict/runtime/domain-packs/publish', body)
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'GET',
@@ -79,6 +99,21 @@ async function getJson<T>(path: string): Promise<T> {
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    throw new Error(`Verdict runtime request failed: ${response.status} ${response.statusText}`)
+  }
+  return (await response.json()) as T
+}
+
+async function putJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'PUT',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',

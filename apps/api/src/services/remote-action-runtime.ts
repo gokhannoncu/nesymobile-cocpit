@@ -143,6 +143,25 @@ export class RemoteActionRuntime {
     if (existing && existing.status !== 'PENDING') {
       return terminalFromRecord(existing)
     }
+    // A PENDING record under the same idempotency key is an attempt that never
+    // reached a terminal status (in-flight or crashed mid-flight). Replaying it
+    // is only safe when the remote effect is idempotent; otherwise the effect is
+    // unknown and must be reconciled instead of duplicated.
+    if (existing && input.request.effectClass !== 'IDEMPOTENT') {
+      const error = `remote action ${input.request.operationRef} has an unterminated attempt; effect unknown`
+      await this.store.upsert({
+        ...existing,
+        status: 'UNKNOWN_EFFECT',
+        errorMessage: error,
+      })
+      return {
+        ok: false,
+        terminal: { status: 'UNKNOWN_EFFECT', error },
+        operationalDisposition: 'NEEDS_ATTENTION',
+        productVerdictHint: 'NOT_EVALUATED',
+        blockedReason: error,
+      }
+    }
 
     await this.store.upsert({
       runId: input.runId,

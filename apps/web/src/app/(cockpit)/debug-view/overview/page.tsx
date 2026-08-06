@@ -45,6 +45,7 @@ import { DebugHeader, DebugCrossLinks, InfoRow, NoDeviceState, DebugOverviewShim
 import { useDebugView } from '@/components/debug-view/debug-context'
 import { signalLabel } from '@/data/debug-view/mock-runtime'
 import type { LiveDeviceRuntime } from '@/data/debug-view/live-types'
+import { DeviceReadinessCard } from '@/components/debug-view/device-lab/DeviceReadinessCard'
 
 const DASH = '-'
 const PANEL = 'rounded-xl border border-border bg-card p-4'
@@ -228,6 +229,13 @@ function OverviewBody({
               tone={appTone(runtime.app.installed, runtime.app.processId)}
             />
           </StatGrid>
+
+      {/* --- Device Lab Readiness --- */}
+      <div className="mt-8 space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Device Lab Readiness</h2>
+        <DeviceReadinessCard deviceId={serial} />
+      </div>
+
 
           {/* --- Network detail --- */}
           <PageSection

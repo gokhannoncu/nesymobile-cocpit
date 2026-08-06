@@ -94,3 +94,71 @@ export interface DurableInteractionPageApi {
   items: Record<string, unknown>[]
   reconnectCursor: { runId: string; afterRevision: number }
 }
+
+export type DomainPackState = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+
+export interface DomainPackSummary {
+  packKey: string
+  displayName: string
+  state: DomainPackState
+  latestVersion: string
+  publishedBundleHash?: string
+  applicationCount: number
+  screenCount: number
+  targetCount: number
+  evidenceSourceCount: number
+  updatedAt: string
+}
+
+export interface DomainPackCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  partial: boolean
+  items: DomainPackSummary[]
+}
+
+export interface DomainPackDetailApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  displayName: string
+  state: DomainPackState
+  version: string
+  publishedBundleHash?: string
+  derivedGraphDigest?: string
+  derivedReducerDigest?: string
+  derivedTestProfileDigest?: string
+  activePinnedRunVersions: string[]
+  manifest: Record<string, unknown>
+  compatibility: Record<string, unknown>
+  applications: Record<string, unknown>[]
+  screens: Record<string, unknown>[]
+  surfaces: Record<string, unknown>[]
+  entities: Record<string, unknown>[]
+  targets: Record<string, unknown>[]
+  evidenceSources: Record<string, unknown>[]
+  semanticActions: Record<string, unknown>[]
+  macros: Record<string, unknown>[]
+  oracleTemplates: Record<string, unknown>[]
+  launchProfiles: Record<string, unknown>[]
+  testProfiles: Record<string, unknown>[]
+  migrations: Record<string, unknown>[]
+  validation: Record<string, unknown>
+  partial: boolean
+  blockedReason?: string
+  concurrencyToken: string
+}
+
+export interface DomainPackSaveResult {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  version: string
+  ok: boolean
+  concurrencyToken: string
+}
+
+export interface DomainPackPublishResult {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  version: string
+  publishedBundleHash: string
+  ok: boolean
+}

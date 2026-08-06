@@ -56,6 +56,47 @@ describe('remote action runtime', () => {
     }
   })
 
+  it('does not replay a non-idempotent attempt left PENDING by a crash', async () => {
+    const store = new InMemoryRemoteActionAttemptStore()
+    store.upsert({
+      runId: 'run-1',
+      occurrenceId: 'occ-1',
+      operationRef: 'nesy.backoffice.tour.approve',
+      idempotencyKey: 'idem-1',
+      effectClass: 'NON_IDEMPOTENT',
+      status: 'PENDING',
+      resourceLeaseId: 'lease-1',
+    })
+    const adapter = createStubRemoteAdapter({
+      'nesy.backoffice.tour.approve': () => ({ status: 'SUCCEEDED' }),
+    })
+    const execute = vi.spyOn(adapter, 'execute')
+    const runtime = new RemoteActionRuntime(allowlist, adapter, store)
+
+    const result = await runtime.execute({
+      runId: 'run-1',
+      request: {
+        operationRef: 'nesy.backoffice.tour.approve',
+        allowlisted: true,
+        idempotencyKey: 'idem-1',
+        effectClass: 'NON_IDEMPOTENT',
+        timeoutMs: 1_000,
+        occurrenceId: 'occ-1',
+        resourceLeaseId: 'lease-1',
+      },
+      spec: spec(),
+    })
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.terminal.status).toBe('UNKNOWN_EFFECT')
+      expect(result.operationalDisposition).toBe('NEEDS_ATTENTION')
+      expect(result.blockedReason).toMatch(/unterminated attempt/i)
+    }
+    expect(store.records[0]?.status).toBe('UNKNOWN_EFFECT')
+  })
+
   it('requires idempotency key and resource lease before dispatch', async () => {
     const adapter = createStubRemoteAdapter({
       'nesy.backoffice.tour.approve': () => ({ status: 'SUCCEEDED' }),
