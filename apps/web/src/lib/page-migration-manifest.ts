@@ -764,8 +764,10 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
-    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
-    fallbackPolicy: 'NONE'
+    acceptanceTestRef: 'src/test/left-palette-pack-cutover.test.ts',
+    legacyCleanup: 'workflow-registry courier palette; Maestro Command subtitle; hardcoded workflowComponentGroups as primary',
+    legacyCleanupExpiry: '2026-12-31',
+    fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
   },
   {
     routePattern: '/automation/[id]/runs/[runId]',

@@ -179,6 +179,41 @@ export interface LaunchProfileCatalogApi {
   blockedReason?: string
 }
 
+export interface LaunchProfileValidateApi {
+  apiVersion: VerdictRuntimeApiVersion
+  ok: boolean
+  violations: readonly { code: string; message: string }[]
+  blockedReason?: string
+}
+
+export interface EntityCatalogItemApi {
+  entityType: string
+  applicationRef: string
+  displayName: string
+  businessKeyPath: string
+  identityPaths: readonly string[]
+  sourceQueryRefs: readonly string[]
+}
+
+export interface EntityBindingCatalogItemApi {
+  entityTypeRef: string
+  targetRef: string
+  targetDisplayName: string
+  projectedPaths: readonly string[]
+  redactProjection: boolean
+  entityKnown: boolean
+}
+
+export interface EntityBindingCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  packVersion: string
+  partial: boolean
+  entities: EntityCatalogItemApi[]
+  bindings: EntityBindingCatalogItemApi[]
+  blockedReason?: string
+}
+
 export interface WorkflowRunStartApi {
   apiVersion: VerdictRuntimeApiVersion
   runId: string

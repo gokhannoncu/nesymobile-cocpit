@@ -4,16 +4,16 @@
 runPlayId: verdict-mobile-phase-4b-run-play
 phase: "4b"
 phaseName: "Nesy App Adapter Production"
-status: IN_PROGRESS
-recoveryState: IN_PROGRESS
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
 startedAt: "2026-08-06 18:20:00 +03"
-completedAt: null
-lastUpdatedAt: "2026-08-06 18:35:00 +03"
+completedAt: "2026-08-06 19:45:00 +03"
+lastUpdatedAt: "2026-08-06 19:45:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:8fd5f90f991fa9576c342a946a9a276996324cf6b68f8ba64f47a8ce7c1c6d4f"
+masterPlanDigest: "sha256:a2d938dc6463e3fdade428a6c07c0a965d9f0d5e5e29e7613bc9798d6afb96b2"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-4b/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-4a/RESULT.md"
@@ -34,38 +34,19 @@ structured events refactor edilir.
 
 **Başlama:** M0 + M4A + Cockpit Phase 4B COMPLETED.
 
-## 1.1 AI agent'a verilecek başlangıç metni
-
-```text
-Verdict Mobile Phase M4b uygula.
-
-Önce şu dosyayı tamamen oku:
-docs/verdict/mobile-run-playbooks/phase-4b/RUN_PLAY.md
-
-Sonra şu dosyayı oku:
-docs/verdict/mobile-run-playbooks/phase-4b/RESULT.md
-
-Canlı board:
-docs/verdict/mobile-run-playbooks/PROGRESS.md
-
-Cockpit karşılığını oku:
-docs/verdict/run-playbooks/phase-4b/RESULT.md
-
-Recovery: RESULT recovery instruction — continue from 4b.5; first slice already landed.
-```
-
 ## 2. Recovery state
 
 | Alan | Değer |
 |---|---|
 | Current phase | `M4b` |
-| Current step | `4b.5` |
-| Current state | `IN_PROGRESS` |
-| Last successful step | `4b.4` |
-| Last attempted step | `4b.10` |
-| Last update | `2026-08-06 18:35:00 +03` |
-| Recovery instruction | `Slice1 done (manifest+queries+isolation markers). Continue 4b.5 entity binding → scanner/launch → evidence → recovery → full 4b.10/4b.11.` |
+| Current step | `4b.11` |
+| Current state | `COMPLETED` |
+| Last successful step | `4b.11` |
+| Last attempted step | `4b.11` |
+| Last update | `2026-08-06 19:45:00 +03` |
+| Recovery instruction | `M4B COMPLETED. Continue with M4C compatibility matrix. See RESULT §8 for residual gaps.` |
 
 ## 3–10
 
-See original RUN_PLAY scope/owned paths/hard bans. Step checklist status lives in RESULT.md §5.
+See RESULT.md for step checklist, verification, and M4C handoff.
+`phase4cReadiness: READY`.

@@ -249,6 +249,15 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
       helperText: "Time Maestro will wait before proceeding to the next step",
     },
   ],
+  [WorkflowNodeType.SEMANTIC_ACTION]: [
+    {
+      key: "actionKey",
+      label: "Semantic Action Key",
+      type: "text",
+      required: true,
+      helperText: "Domain Pack semantic actionKey (nesy.action.*)",
+    },
+  ],
 };
 
 export function getNodeConfigSchema(type: WorkflowNodeType): NodeConfigField[] {

@@ -21,6 +21,8 @@ import type {
   DomainPackDetailApi,
   DomainPackSaveResult,
   DomainPackPublishResult,
+  LaunchProfileValidateApi,
+  EntityBindingCatalogApi,
 } from './types'
 
 export async function fetchVerdictRunHistory(query: RunHistoryQuery = {}): Promise<RunHistoryResult> {
@@ -75,6 +77,15 @@ export async function fetchVerdictTargetResolution(
   )
 }
 
+export async function fetchVerdictEntityBindings(
+  packKey: string,
+  version: string,
+): Promise<EntityBindingCatalogApi> {
+  return getJson<EntityBindingCatalogApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/entity-bindings`,
+  )
+}
+
 export async function fetchVerdictLaunchProfiles(
   packKey: string,
   version: string,
@@ -86,6 +97,25 @@ export async function fetchVerdictLaunchProfiles(
   return getJson<LaunchProfileCatalogApi>(
     `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/launch-profiles${query}`,
   )
+}
+
+/**
+ * Like compile: 422 is a validation *result* with structured violations, not a
+ * transport failure. Partial drafts must surface MISSING_FIELD, not a thrown Error.
+ */
+export async function validateVerdictLaunchProfile(body: {
+  profile: Record<string, unknown>
+  releaseBuild?: boolean
+}): Promise<LaunchProfileValidateApi> {
+  const response = await fetch(`${API_BASE}/verdict/runtime/launch-profiles/validate`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (response.ok || response.status === 422) {
+    return (await response.json()) as LaunchProfileValidateApi
+  }
+  throw new Error(`Verdict runtime request failed: ${response.status} ${response.statusText}`)
 }
 
 /**

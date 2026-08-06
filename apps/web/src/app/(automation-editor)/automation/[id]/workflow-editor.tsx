@@ -93,7 +93,16 @@ import {
   paletteItemFromType,
   workflowComponentGroups,
   workflowComponentRegistry,
+  type WorkflowPaletteCategory,
 } from "./workflow-registry";
+import {
+  buildEditorScaffoldingGroups,
+  buildPackPaletteGroups,
+} from "./pack-palette";
+import {
+  fetchVerdictDomainPacks,
+  fetchVerdictSemanticActions,
+} from "@/lib/verdict-runtime/client";
 import {
   validateNodeDrop,
   validateWorkflowState,
@@ -1519,6 +1528,11 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
   const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
   const [isSavingAndClosing, setIsSavingAndClosing] = useState(false);
   const [paletteSearch, setPaletteSearch] = useState("");
+  const [paletteSource, setPaletteSource] = useState<
+    | { mode: 'loading' }
+    | { mode: 'pack'; packKey: string; packVersion: string; groups: WorkflowPaletteCategory[] }
+    | { mode: 'legacy'; reason: string }
+  >({ mode: 'loading' })
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateDialogState, setTemplateDialogState] = useState<{
     open: boolean;
@@ -2015,6 +2029,56 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
   // with only the import-mapping changes applied (already done at the top of the file).
   // The key route changes: /workflow/ -> /automation/ are applied inline below.
 
+  useEffect(() => {
+    let cancelled = false
+    setPaletteSource({ mode: 'loading' })
+    ;(async () => {
+      try {
+        const packs = await fetchVerdictDomainPacks()
+        if (cancelled) return
+        const pack = packs.items.find((item) => item.publicationState === 'PUBLISHED')
+        if (!pack) {
+          setPaletteSource({
+            mode: 'legacy',
+            reason: 'no published Domain Pack — showing legacy palette',
+          })
+          return
+        }
+        const catalog = await fetchVerdictSemanticActions(pack.packKey, pack.version)
+        if (cancelled) return
+        if (catalog.items.length === 0) {
+          setPaletteSource({
+            mode: 'legacy',
+            reason:
+              catalog.blockedReason ??
+              'published pack has no semantic actions — showing legacy palette',
+          })
+          return
+        }
+        const packGroups = buildPackPaletteGroups(catalog)
+        const structural = workflowComponentGroups.filter((group) => group.title !== 'Courier Actions')
+        setPaletteSource({
+          mode: 'pack',
+          packKey: pack.packKey,
+          packVersion: pack.version,
+          groups: [...packGroups, ...buildEditorScaffoldingGroups(), ...structural],
+        })
+      } catch (error) {
+        if (cancelled) return
+        setPaletteSource({
+          mode: 'legacy',
+          reason:
+            error instanceof Error
+              ? `pack palette unavailable (${error.message}) — showing legacy palette`
+              : 'pack palette unavailable — showing legacy palette',
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const searchTerm = paletteSearch.trim().toLowerCase();
   const filteredTemplates = useMemo(
     () =>
@@ -2026,32 +2090,45 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       ),
     [searchTerm],
   );
+  const activePaletteGroups =
+    paletteSource.mode === 'pack' ? paletteSource.groups : workflowComponentGroups
   const filteredPaletteGroups = useMemo(
     () =>
-      workflowComponentGroups
+      activePaletteGroups
         .map((group) => {
+          const matchesItem = (item: PaletteItem) =>
+            item.title.toLowerCase().includes(searchTerm) ||
+            item.subtitle.toLowerCase().includes(searchTerm) ||
+            (item.actionKey?.toLowerCase().includes(searchTerm) ?? false) ||
+            (item.businessMeaning?.toLowerCase().includes(searchTerm) ?? false) ||
+            (item.notResponsibleFor?.some((line) => line.toLowerCase().includes(searchTerm)) ??
+              false)
+
           if (group.subsections) {
             return {
               ...group,
               subsections: group.subsections
                 .map((sub) => ({
                   ...sub,
-                  items: sub.items.filter((item) => item.title.toLowerCase().includes(searchTerm)),
+                  items: sub.items.filter(matchesItem),
                 }))
                 .filter((sub) => sub.items.length > 0),
             };
           }
           return {
             ...group,
-            items: (group.items ?? []).filter((item) => item.title.toLowerCase().includes(searchTerm)),
+            items: (group.items ?? []).filter(matchesItem),
           };
         })
         .filter((group) =>
           group.subsections ? group.subsections.length > 0 : (group.items?.length ?? 0) > 0,
         ),
-    [searchTerm],
+    [activePaletteGroups, searchTerm],
   );
-  const hasPaletteResults = filteredTemplates.length > 0 || filteredPaletteGroups.length > 0;
+  const hasPaletteResults =
+    filteredTemplates.length > 0 ||
+    filteredPaletteGroups.length > 0 ||
+    paletteSource.mode === 'loading';
 
   const getViewportCenterWorld = useCallback(() => {
     const el = canvasContainerRef.current;
@@ -2093,6 +2170,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
   const attemptAddNode = useCallback(
     (item: PaletteItem, target?: DropTarget) => {
       if (editorLocked) return;
+      if (item.paletteDisabled) {
+        toast.error(item.paletteDisabledReason ?? 'This action is not available on this device');
+        return;
+      }
       const validation = validateNodeDrop({ state: { nodes, connections }, paletteItem: item, target });
       if (!validation.valid) {
         setRuleDialogState({ open: true, result: validation, pendingItem: item, pendingTarget: target });
@@ -2852,6 +2933,28 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               ) : null}
             </label>
 
+            {paletteSource.mode === 'loading' ? (
+              <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                <Loader2 className="size-3.5 animate-spin" />
+                Loading domain pack palette…
+              </div>
+            ) : null}
+
+            {paletteSource.mode === 'pack' ? (
+              <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-medium text-emerald-900">
+                Domain Pack palette ·{' '}
+                <span className="font-mono">
+                  {paletteSource.packKey}@{paletteSource.packVersion}
+                </span>
+              </div>
+            ) : null}
+
+            {paletteSource.mode === 'legacy' ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-medium text-amber-950">
+                legacy palette — {paletteSource.reason}
+              </div>
+            ) : null}
+
             {filteredTemplates.length > 0 ? (
               <TemplatePaletteSection templates={filteredTemplates} onTemplateSelect={requestTemplateApply} />
             ) : null}
@@ -3530,7 +3633,7 @@ function PaletteSection({
                   <PaletteSubgroupHeading label={sub.title} />
                   <div className="space-y-2">
                     {sub.items.map((item) => (
-                      <PaletteButton key={item.type} item={item} />
+                      <PaletteButton key={item.paletteKey ?? item.type} item={item} />
                     ))}
                   </div>
                 </div>
@@ -3540,7 +3643,7 @@ function PaletteSection({
           {items?.length ? (
             <div className="space-y-2">
               {items.map((item) => (
-                <PaletteButton key={item.type} item={item} />
+                <PaletteButton key={item.paletteKey ?? item.type} item={item} />
               ))}
             </div>
           ) : null}
@@ -3552,24 +3655,47 @@ function PaletteSection({
 
 function PaletteButton({ item }: { item: PaletteItem }) {
   const [showDragHandle, setShowDragHandle] = useState(false);
+  const disabled = item.paletteDisabled === true;
+  const dragId = `palette-${item.paletteKey ?? item.type}`;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `palette-${item.type}`,
+    id: dragId,
     data: { paletteItem: item },
+    disabled,
   });
   const Icon = iconRegistry[item.icon] ?? Box;
+  const notResponsible =
+    item.notResponsibleFor && item.notResponsibleFor.length > 0
+      ? `Not responsible for: ${item.notResponsibleFor.join('; ')}`
+      : undefined;
+  const titleParts = [
+    item.businessMeaning ?? item.subtitle,
+    notResponsible,
+    disabled ? item.paletteDisabledReason : undefined,
+  ].filter(Boolean);
 
   return (
     <button
       ref={setNodeRef}
       type="button"
+      disabled={disabled}
+      title={titleParts.join('\n')}
       className={cn(
-        "group flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-700 shadow-xs transition-all hover:border-nesy-muted hover:bg-nesy-soft",
+        "group flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-left text-sm font-medium text-slate-700 shadow-xs transition-all",
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-nesy-muted hover:bg-nesy-soft",
         isDragging && "opacity-45",
       )}
       {...attributes}
-      {...listeners}
+      {...(disabled ? {} : listeners)}
       onBlur={() => setShowDragHandle(false)}
-      onClick={() => setShowDragHandle(true)}
+      onClick={() => {
+        if (disabled) {
+          toast.error(item.paletteDisabledReason ?? 'This action is not available on this device')
+          return
+        }
+        setShowDragHandle(true)
+      }}
       onFocus={() => setShowDragHandle(true)}
       onMouseEnter={() => setShowDragHandle(true)}
       onMouseLeave={() => setShowDragHandle(false)}
@@ -3581,14 +3707,25 @@ function PaletteButton({ item }: { item: PaletteItem }) {
       <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-sm border", item.tone)}>
         <Icon className="size-3.5" />
       </span>
-      <span className="min-w-0 flex-1 truncate">{item.title}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{item.title}</span>
+        {disabled && item.paletteDisabledReason ? (
+          <span className="mt-0.5 block truncate text-[10px] font-normal text-amber-800">
+            {item.paletteDisabledReason}
+          </span>
+        ) : null}
+      </span>
       <span
         className={cn(
           "flex size-5 shrink-0 items-center justify-center rounded-sm transition-all duration-150 group-focus:text-nesy-ink group-focus:opacity-100 group-hover:text-nesy-ink group-hover:opacity-100",
-          showDragHandle ? "text-nesy-ink opacity-100" : "text-slate-300 opacity-0",
+          disabled
+            ? "text-amber-600 opacity-100"
+            : showDragHandle
+              ? "text-nesy-ink opacity-100"
+              : "text-slate-300 opacity-0",
         )}
       >
-        <GripVertical className="size-4" />
+        {disabled ? <CircleX className="size-4" /> : <GripVertical className="size-4" />}
       </span>
     </button>
   );

@@ -3,11 +3,11 @@
 ```yaml
 runPlayId: verdict-cockpit-phase-6-debt-run-play
 debtOf: "6"
-resultState: READY_TO_START
+resultState: IN_PROGRESS
 createdAt: "2026-08-06 09:30:00 +03"
-startedAt: null
+startedAt: "2026-08-06 19:21:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 18:25:00 +03"
+lastUpdatedAt: "2026-08-06 21:15:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -21,14 +21,11 @@ priority: P1
 
 ## 1. Executive result
 
-Önkoşul kapısı açıldı. `phase-5-debt` `COMPLETED` / `phase6DebtReadiness: READY`
-— 6D.1 bağlanacak okuma API'leri mevcut. Uygulama henüz başlamadı.
+`IN_PROGRESS`. 6D.1a–f bağlandı. Sıradaki: 6D.2 Surface Registry manager.
 
 ```text
-Engelleyen (eski): phase-5-debt — KALDIRILDI (2026-08-06)
-Başlangıç: 6D.1a Evidence Source panelini runtime'a bağla
-Follow-up (5-debt F2): capabilityStatus negotiation bağlanana kadar
-  requiredCapabilityRefs dolu action'lar palette bloklu görünür — gizleme
+6D.1a–f: DONE
+Sıradaki: 6D.2 Surface Registry manager (yeni sayfa)
 ```
 
 ## 2. Recovery state
@@ -36,9 +33,10 @@ Follow-up (5-debt F2): capabilityStatus negotiation bağlanana kadar
 | Alan | Değer |
 |---|---|
 | Current debt | `phase-6-debt` |
-| Current step | `6D.1a` |
-| Current state | `READY_TO_START` |
-| Recovery instruction | `6D.1a'dan başla: EvidenceSourceRegistry panelini GET /runtime/evidence-sources'a bağla. Deseni kampanya/profil sayfalarından al.` |
+| Current step | `6D.2` |
+| Current state | `IN_PROGRESS` |
+| Last successful step | `6D.1f` |
+| Recovery instruction | `6D.2'den devam: Application/Screen/Surface Registry manager sayfasını ekle.` |
 
 ## 3. Precondition gate
 
@@ -48,6 +46,7 @@ Follow-up (5-debt F2): capabilityStatus negotiation bağlanana kadar
 | Evidence Source API | available | `PASS` — `GET /runtime/evidence-sources` |
 | Target Resolution API | available | `PASS` — pack-scoped + validate |
 | Launch Profile API | available | `PASS` — pack-scoped + validate (kısmi girdi → `MISSING_FIELD` 422) |
+| Entity Binding API | available | `PASS` — `GET …/entity-bindings` (6D.1d) |
 | Semantic Action API | available | `PASS` — pack-scoped + `capabilityStatus` |
 | `next build` | yeşil | `PASS` |
 | Seed'li runtime | dolu | `PASS` |
@@ -61,12 +60,12 @@ implementationStart: ALLOWED
 
 | Komponent | API çağrısı | İçerik |
 |---|---|---|
-| `EvidenceSourceRegistry.tsx` | 0 | sabit 2 satır |
-| `TargetResolutionPanel.tsx` | 0 | statik |
-| `LaunchProfileBuilder.tsx` | 0 | bağlanmamış form |
-| `EntityBindingEditor.tsx` | 0 | statik |
-| `SemanticActionPalette.tsx` | 0 | statik |
-| `workflow-registry.ts` (sol palet) | 0 | 660 satır sabit, `subtitle: "Maestro Command"` |
+| `EvidenceSourceRegistry.tsx` | `fetchVerdictEvidenceSources` | **bağlandı** (6D.1a) |
+| `TargetResolutionPanel.tsx` | `fetchVerdictTargetResolution` | **bağlandı** (6D.1b) |
+| `LaunchProfileBuilder.tsx` | launch-profiles + validate | **bağlandı** (6D.1c) |
+| `EntityBindingEditor.tsx` | `fetchVerdictEntityBindings` | **bağlandı** (6D.1d) |
+| `SemanticActionPalette.tsx` | `fetchVerdictSemanticActions` | **bağlandı** (6D.1e) |
+| `workflow-registry.ts` (sol palet) | pack primary + legacy badge | **bağlandı** (6D.1f); Maestro subtitle temiz |
 | Surface Registry manager | — | **dosya yok** |
 
 `VerdictEditorToolbar` mount edildi; paneller hâlâ maket — 6D.1 kapsamı.
@@ -75,12 +74,12 @@ implementationStart: ALLOWED
 
 | Step | Status | Evidence |
 |---|---|---|
-| 6D.1a Evidence Source binding | `PENDING` | API hazır |
-| 6D.1b Target Resolution binding | `PENDING` | API hazır |
-| 6D.1c Launch Profile binding | `PENDING` | API hazır; validate kısmi girdi fail-closed |
-| 6D.1d Entity Binding | `PENDING` | — |
-| 6D.1e Semantic Action Palette (Verdict paneli) | `PENDING` | API hazır; capability negotiation henüz yok (F2) |
-| 6D.1f Sol palet cutover (pack'ten besleme) | `PENDING` | API hazır |
+| 6D.1a Evidence Source binding | `DONE` | `EvidenceSourceRegistry.tsx` → client; test `src/test/evidence-source-registry.test.ts` |
+| 6D.1b Target Resolution binding | `DONE` | pack chain + violations; `target-resolution-panel.test.ts` |
+| 6D.1c Launch Profile binding | `DONE` | validate + DIRECT_STATE gate; `launch-profile-builder.test.ts` |
+| 6D.1d Entity Binding | `DONE` | pack entities + bindings; `entity-binding-editor.test.ts` |
+| 6D.1e Semantic Action Palette (Verdict paneli) | `DONE` | pack items + capabilityStatus; `semantic-action-palette.test.ts` |
+| 6D.1f Sol palet cutover (pack'ten besleme) | `DONE` | pack primary + legacy badge; `left-palette-pack-cutover.test.ts` |
 | 6D.2 Surface Registry manager | `PENDING` | domain pack API mevcut |
 | 6D.3 Kalan 30 CHECKPOINT maddesi | `PENDING` | — |
 | 6D.4 6.30 kapanışı | `PENDING` | — |
@@ -101,28 +100,67 @@ uyarısı görünür (phase-5-debt 5D.4B).
 
 | Path | Değişim | Neden |
 |---|---|---|
-| — | — | bu borçta henüz uygulama yok; kapı tazelendi |
+| `apps/web/src/components/automation/evidence/EvidenceSourceRegistry.tsx` | MODIFIED | 6D.1a runtime binding |
+| `apps/web/src/test/evidence-source-registry.test.ts` | ADDED | no-mock / state / field guards |
+| `apps/web/src/components/automation/editor/VerdictEditorToolbar.tsx` | MODIFIED | optional `runId` → registry |
+| `apps/web/src/components/automation/evidence/TargetResolutionPanel.tsx` | MODIFIED | 6D.1b pack chain binding |
+| `apps/web/src/test/target-resolution-panel.test.ts` | ADDED | no-mock / ambiguity disable |
+| `apps/web/src/components/automation/editor/LaunchProfileBuilder.tsx` | MODIFIED | 6D.1c pack + validate |
+| `apps/web/src/lib/verdict-runtime/client.ts` | MODIFIED | `validateVerdictLaunchProfile` |
+| `apps/web/src/lib/verdict-runtime/types.ts` | MODIFIED | `LaunchProfileValidateApi` |
+| `apps/web/src/test/launch-profile-builder.test.ts` | ADDED | DIRECT_STATE + field errors |
+| `apps/api/src/services/domain-pack-read-models.service.ts` | MODIFIED | `listEntityBindings` |
+| `apps/api/src/routes/verdict-phase6-contracts.routes.ts` | MODIFIED | `GET …/entity-bindings` |
+| `apps/api/src/services/phase6-input-contracts.test.ts` | MODIFIED | entity binding DTO pin |
+| `apps/web/src/components/automation/editor/EntityBindingEditor.tsx` | MODIFIED | 6D.1d pack binding |
+| `apps/web/src/lib/verdict-runtime/client.ts` | MODIFIED | `fetchVerdictEntityBindings` |
+| `apps/web/src/lib/verdict-runtime/types.ts` | MODIFIED | entity binding catalog types |
+| `apps/web/src/test/entity-binding-editor.test.ts` | ADDED | no-mock / evidence fields |
+| `apps/web/src/components/automation/editor/SemanticActionPalette.tsx` | MODIFIED | 6D.1e pack binding |
+| `apps/web/src/test/semantic-action-palette.test.ts` | ADDED | no-mock / empty-pack / capability |
+| `apps/web/src/app/(automation-editor)/automation/[id]/pack-palette.ts` | ADDED | pack → PaletteItem mapper |
+| `apps/web/src/app/(automation-editor)/automation/[id]/workflow-editor.tsx` | MODIFIED | sol palet pack primary + legacy badge |
+| `apps/web/src/app/(automation-editor)/automation/[id]/workflow-registry.ts` | MODIFIED | Maestro subtitle strip; SEMANTIC_ACTION |
+| `apps/web/src/app/(automation-editor)/automation/[id]/workflow-types.ts` | MODIFIED | SEMANTIC_ACTION + palette metadata |
+| `apps/web/src/app/(automation-editor)/automation/[id]/workflow-node-config.ts` | MODIFIED | SEMANTIC_ACTION actionKey schema |
+| `apps/web/src/lib/page-migration-manifest.ts` | MODIFIED | editor legacyCleanup + fallback |
+| `apps/web/src/test/left-palette-pack-cutover.test.ts` | ADDED | 6D.1f cutover guards |
+| `docs/verdict/run-playbooks/phase-6-debt/RESULT.md` | MODIFIED | bu dosya |
 
 ## 8. Verification results
 
 | Kontrol | Sonuç |
 |---|---|
-| phase-5-debt gate | `PASS` — bağımsız review + F1 fix sonrası |
-| `pnpm typecheck` | `NOT_RUN` (bu borç kapsamında) |
-| Panel network kanıtı | `NOT_RUN` |
+| phase-5-debt gate | `PASS` |
+| `pnpm --filter @nesy/web typecheck` | `PASS` (6D.1a sonrası) |
+| `src/test/evidence-source-registry.test.ts` | `PASS` — 4 tests |
+| `src/test/entity-binding-editor.test.ts` | `PASS` — 4 tests (6D.1d) |
+| `src/test/semantic-action-palette.test.ts` | `PASS` — 3 tests (6D.1e) |
+| `src/test/left-palette-pack-cutover.test.ts` | `PASS` — 4 tests (6D.1f) |
+| Panel network kanıtı | `PARTIAL` — client wired; live Network tab henüz kaydedilmedi |
 | Surface Registry rotası | `NOT_RUN` |
 | Kalan CHECKPOINT taraması | `NOT_RUN` |
 
 ## 9. Acceptance checklist
 
-14 maddenin tamamı `PENDING` — RUN_PLAY §7. Uygulama 6D.1a ile başlar.
+| # | Madde | Status | Kanıt |
+|---|---|---|---|
+| 1 | Evidence Source paneli runtime'dan besleniyor | `PASS` | `evidence-source-registry.test.ts` |
+| 2 | Target Resolution provider chain gerçek | `PASS` | `target-resolution-panel.test.ts` |
+| 3 | Ambiguity'de aksiyon disabled | `PASS` | `ambiguityBlocksAction` + disabled button |
+| 4 | Launch Profile doğrulama ihlali alan bazında | `PASS` | `groupViolationsByField` |
+| 5 | `DIRECT_STATE` release'de seçilemiyor | `PASS` | option disabled + validate gated |
+| 6 | Entity binding pack EntityDefinition / Binding kanıtı | `PASS` | `entity-binding-editor.test.ts` |
+| 7 | Semantic Action Palette pack'ten; pack yoksa boş + gerekçe | `PASS` | `semantic-action-palette.test.ts` |
+| 8 | Sol palet pack primary; capability disabled+gerekçe; legacy badge | `PASS` | `left-palette-pack-cutover.test.ts` |
+| 9–14 | kalan | `PENDING` | RUN_PLAY §7 |
 
 ## 10. Blockers
 
 | ID | Sev | Status | Açıklama |
 |---|---|---|---|
 | `PHASE-5-DEBT` | HIGH/LOCAL | `RESOLVED` | 2026-08-06 COMPLETED |
-| `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `OPEN_LOCAL` | phase-6/RESULT §19 — 6D.1 kapsamı |
+| `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `RESOLVED` | 6D.1a–f pack binding + sol palet cutover |
 | `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `OPEN_LOCAL` | phase-5-debt F2: `capabilityStatus` daima bloklu; Bridge B2 bağlanmalı |
 | `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `OPEN_LOCAL` | 23 playbook eski digest pinliyor; verify script playbook pin'lerine bakmıyor |
 | `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | 50, 52, 53, 54 ve Act Mode maddeleri |

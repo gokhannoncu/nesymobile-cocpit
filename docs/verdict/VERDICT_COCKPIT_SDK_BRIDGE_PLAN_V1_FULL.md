@@ -40,7 +40,7 @@ isProject: false
 **Sürüm:** v1.1.3
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:8fd5f90f991fa9576c342a946a9a276996324cf6b68f8ba64f47a8ce7c1c6d4f`
+**MasterDigest:** `sha256:a2d938dc6463e3fdade428a6c07c0a965d9f0d5e5e29e7613bc9798d6afb96b2`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`
@@ -67,8 +67,8 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 | M2 EmitOutcome diagnostic | `COMPLETED` | `mobile-run-playbooks/phase-2/RESULT.md` |
 | M3 Bridge B2 protocol | `COMPLETED` | `mobile-run-playbooks/phase-3/RESULT.md` (SSOT `bridge_b2` hâlâ not_started) |
 | M4A Core-contract thin gate | `COMPLETED` | `mobile-run-playbooks/phase-4a/RESULT.md` |
-| M4B App Adapter production | `IN_PROGRESS` | `mobile-run-playbooks/phase-4b/RESULT.md` |
-| M4C…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` |
+| M4B App Adapter production | `COMPLETED` | `mobile-run-playbooks/phase-4b/RESULT.md` |
+| M4C…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M4C) |
 
 > **Bu doküman kendi kendine yeterlidir.** Cockpit için kapsam, hedef mimari,
 > yapılacaklar, yapılmayacaklar, sıralama, bağımlılıklar, fiziksel cihaz kapıları,

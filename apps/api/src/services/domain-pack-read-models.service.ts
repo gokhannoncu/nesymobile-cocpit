@@ -1,6 +1,7 @@
 import {
   validateLaunchProfile,
   validateTargetResolutionPolicy,
+  type EntityDefinition,
   type LaunchProfile,
   type MacroDefinition,
   type SemanticActionDefinition,
@@ -101,6 +102,35 @@ export interface LaunchProfileCatalogResult {
   packVersion: string
   partial: boolean
   items: LaunchProfileApiItem[]
+  blockedReason?: string
+}
+
+export interface EntityCatalogItem {
+  entityType: string
+  applicationRef: string
+  displayName: string
+  businessKeyPath: string
+  identityPaths: readonly string[]
+  sourceQueryRefs: readonly string[]
+}
+
+export interface EntityBindingCatalogItem {
+  entityTypeRef: string
+  targetRef: string
+  targetDisplayName: string
+  projectedPaths: readonly string[]
+  redactProjection: boolean
+  /** True when entityTypeRef resolves to a registries.entities entry. */
+  entityKnown: boolean
+}
+
+export interface EntityBindingCatalogResult {
+  apiVersion: typeof DOMAIN_PACK_READ_API_VERSION
+  packKey: string
+  packVersion: string
+  partial: boolean
+  entities: EntityCatalogItem[]
+  bindings: EntityBindingCatalogItem[]
   blockedReason?: string
 }
 
@@ -216,6 +246,64 @@ export class DomainPackReadModelsService {
       apiVersion: DOMAIN_PACK_READ_API_VERSION,
       ok: violations.length === 0,
       violations,
+    }
+  }
+
+  async listEntityBindings(
+    packKey: string,
+    version: string,
+  ): Promise<EntityBindingCatalogResult | null> {
+    const loaded = await this.loadBundle(packKey, version)
+    if (!loaded) return null
+
+    const entityDefs = asArray<EntityDefinition>(loaded.registries?.entities)
+    const targets = asArray<TargetDefinition>(loaded.registries?.targets)
+    const knownTypes = new Set(entityDefs.map((e) => e.entityType))
+
+    const entities: EntityCatalogItem[] = entityDefs.map((entity) => ({
+      entityType: entity.entityType,
+      applicationRef: entity.applicationRef,
+      displayName: entity.displayName,
+      businessKeyPath: entity.businessKeyPath,
+      identityPaths: [...(entity.identityPaths ?? [])],
+      sourceQueryRefs: [...(entity.sourceQueryRefs ?? [])],
+    }))
+
+    const bindings: EntityBindingCatalogItem[] = targets
+      .filter((target) => target.entityBinding !== undefined)
+      .map((target) => {
+        const binding = target.entityBinding!
+        return {
+          entityTypeRef: binding.entityTypeRef,
+          targetRef: binding.targetRef || target.targetKey,
+          targetDisplayName: target.displayName,
+          projectedPaths: [...(binding.projectedPaths ?? [])],
+          redactProjection: binding.redactProjection === true,
+          entityKnown: knownTypes.has(binding.entityTypeRef),
+        }
+      })
+
+    const unboundTargets = targets.filter((t) => t.entityBinding === undefined).length
+    const unknownEntityRefs = bindings.filter((b) => !b.entityKnown).length
+
+    return {
+      apiVersion: DOMAIN_PACK_READ_API_VERSION,
+      packKey,
+      packVersion: version,
+      partial:
+        entities.length === 0 ||
+        bindings.length === 0 ||
+        unknownEntityRefs > 0 ||
+        unboundTargets > 0,
+      entities,
+      bindings,
+      ...(entities.length === 0 && bindings.length === 0
+        ? { blockedReason: 'pack bundle has no entities or entity bindings' }
+        : unknownEntityRefs > 0
+          ? {
+              blockedReason: `${unknownEntityRefs} binding(s) reference unknown entityTypeRef`,
+            }
+          : {}),
     }
   }
 

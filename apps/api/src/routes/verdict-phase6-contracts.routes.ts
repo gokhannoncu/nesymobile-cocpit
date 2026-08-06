@@ -150,6 +150,26 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
 
   app.get<{
     Params: { packKey: string; version: string }
+  }>('/runtime/domain-packs/:packKey/:version/entity-bindings', async (request, reply) => {
+    try {
+      const result = await domainPackReads.listEntityBindings(
+        request.params.packKey,
+        request.params.version,
+      )
+      if (!result) {
+        return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
+      }
+      return result
+    } catch (error) {
+      return reply.code(500).send({
+        status: 'error',
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
+  })
+
+  app.get<{
+    Params: { packKey: string; version: string }
     Querystring: { releaseBuild?: string }
   }>('/runtime/domain-packs/:packKey/:version/launch-profiles', async (request, reply) => {
     try {

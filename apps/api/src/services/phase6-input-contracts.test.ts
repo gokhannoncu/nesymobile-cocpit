@@ -432,6 +432,86 @@ describe('phase 6 read-model DTO shape', () => {
     )
   })
 
+  it('pins the entity binding catalog item keys', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          entities: [
+            {
+              entityType: 'STOP',
+              applicationRef: 'nesy.app.courier',
+              displayName: 'Stop',
+              businessKeyPath: '$.stopId',
+              identityPaths: ['$.backendId'],
+              correlation: { correlationPaths: ['$.stopId'], crossPlane: true },
+              freshness: { maxAgeMs: 30_000, onStale: 'FAIL' },
+              redaction: { redactPaths: [] },
+              sourceQueryRefs: ['query.stops'],
+            },
+          ],
+          targets: [
+            {
+              targetKey: 'nesy.target.stop-row',
+              applicationRef: 'nesy.app.courier',
+              screenRef: 'nesy.screen.home',
+              displayName: 'Stop row',
+              resolution: {
+                chain: [
+                  {
+                    kind: 'ENTITY_BINDING',
+                    selector: { keyPath: '$.stopId' },
+                    establishesIdentity: true,
+                  },
+                ],
+                ambiguityPolicy: 'FAIL',
+                notFoundPolicy: 'FAIL',
+                deadlineMs: 1000,
+                reverifyBeforeAction: true,
+              },
+              entityBinding: {
+                entityTypeRef: 'STOP',
+                targetRef: 'nesy.target.stop-row',
+                projectedPaths: ['$.stopId'],
+                redactProjection: true,
+              },
+            },
+          ],
+        },
+      },
+    })
+    const catalog = (await new DomainPackReadModelsService(store).listEntityBindings(
+      'nesy-courier',
+      '1.0.0',
+    ))!
+    expect(Object.keys(catalog.entities[0]!).sort()).toEqual(
+      [
+        'applicationRef',
+        'businessKeyPath',
+        'displayName',
+        'entityType',
+        'identityPaths',
+        'sourceQueryRefs',
+      ].sort(),
+    )
+    expect(Object.keys(catalog.bindings[0]!).sort()).toEqual(
+      [
+        'entityKnown',
+        'entityTypeRef',
+        'projectedPaths',
+        'redactProjection',
+        'targetDisplayName',
+        'targetRef',
+      ].sort(),
+    )
+    expect(catalog.bindings[0]!.entityKnown).toBe(true)
+  })
+
   it('pins the launch profile catalog item keys', async () => {
     const store = new InMemoryDomainPackAdminStore()
     await store.upsert({

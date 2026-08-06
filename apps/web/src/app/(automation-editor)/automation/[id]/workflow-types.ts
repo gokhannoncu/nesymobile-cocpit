@@ -43,6 +43,8 @@ export enum WorkflowNodeType {
   VERIFY_BACKEND_STATE = "VERIFY_BACKEND_STATE",
   HTTP_REQUEST = "HTTP_REQUEST",
   DATABASE_QUERY = "DATABASE_QUERY",
+  /** Pack-authored semantic action (primary left-palette source after 6D.1f). */
+  SEMANTIC_ACTION = "SEMANTIC_ACTION",
   DEPRECATED_LEGACY = "DEPRECATED_LEGACY",
 }
 
@@ -134,4 +136,12 @@ export type PaletteItem = {
   tone: string;
   kind: NodeKind;
   defaultConfig?: Record<string, unknown>;
+  /** Stable key for pack-sourced items (multiple SEMANTIC_ACTION rows). */
+  paletteKey?: string;
+  actionKey?: string;
+  businessMeaning?: string;
+  notResponsibleFor?: readonly string[];
+  /** When true, item stays visible but cannot be dragged onto the canvas. */
+  paletteDisabled?: boolean;
+  paletteDisabledReason?: string;
 };

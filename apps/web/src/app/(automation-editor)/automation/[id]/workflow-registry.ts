@@ -21,6 +21,7 @@ import {
   UserRound,
   Truck,
   ScanBarcode,
+  Zap,
 } from "lucide-react";
 import {
   WorkflowNodeType,
@@ -78,7 +79,7 @@ export const workflowComponentRegistry: Partial<Record<WorkflowNodeType, Workflo
     type: WorkflowNodeType.LAUNCH_APP,
     label: "Launch App",
     title: "Launch App",
-    subtitle: "Maestro Command",
+    subtitle: "App session start",
     phase: "bootstrap",
     category: "Courier Actions",
     courierPaletteSubgroup: "App & session",
@@ -88,6 +89,21 @@ export const workflowComponentRegistry: Partial<Record<WorkflowNodeType, Workflo
     color: "orange",
     tone: nodeToneByType.action,
     defaultConfig: { country: "HR", environment: "stage", clearState: false },
+  },
+  [WorkflowNodeType.SEMANTIC_ACTION]: {
+    type: WorkflowNodeType.SEMANTIC_ACTION,
+    label: "Semantic Action",
+    title: "Semantic Action",
+    subtitle: "Domain Pack action",
+    phase: "operation",
+    category: "Courier Actions",
+    // No courierPaletteSubgroup — pack palette is the source; keep out of legacy subgroups.
+    kind: "action",
+    icon: Zap,
+    iconName: "Zap",
+    color: "orange",
+    tone: nodeToneByType.action,
+    defaultConfig: { actionKey: "" },
   },
   [WorkflowNodeType.IF_LOGIN]: {
     type: WorkflowNodeType.IF_LOGIN,

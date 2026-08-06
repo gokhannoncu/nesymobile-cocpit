@@ -87,7 +87,11 @@ export function VerdictEditorToolbar({ workflowState }: { workflowState?: any })
         {activeTab === 'launch' && (
           <>
             <LaunchProfileBuilder />
-            <EvidenceSourceRegistry />
+            <EvidenceSourceRegistry
+              runId={
+                typeof workflowState?.runId === 'string' ? workflowState.runId : undefined
+              }
+            />
           </>
         )}
       </div>
