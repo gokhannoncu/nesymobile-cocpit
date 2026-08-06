@@ -7,7 +7,7 @@ resultState: IN_PROGRESS
 createdAt: "2026-08-06 09:30:00 +03"
 startedAt: "2026-08-06 19:21:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 22:20:00 +03"
+lastUpdatedAt: "2026-08-06 22:30:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -21,13 +21,13 @@ priority: P1
 
 ## 1. Executive result
 
-`IN_PROGRESS`. 6D.1–6D.3 tamam. Sıradaki: 6D.4 (6.30 kapanışı).
+`IN_PROGRESS`. 6D.1–6D.3 + DTO cutover (33/34/37/38/44) tamam. Sıradaki: 6D.4 (6.30 kapanışı).
 
 ```text
-6D.1–6D.3: DONE
+6D.1–6D.3 + DTO cutover: DONE
 Sıradaki: 6D.4 RESULT kapanışı + checkpoint6 kararı
 ```
-Yerel FAIL'ler hâlâ var → 6D.4'te `NOT_PASSED` veya ek fix turu gerekir.
+Kalan yerel FAIL'ler (Run Detail / Journey / Interaction shells / Inspector) → 6D.4'te `NOT_PASSED` veya ek fix turu.
 
 ## 2. Recovery state
 
@@ -36,7 +36,7 @@ Yerel FAIL'ler hâlâ var → 6D.4'te `NOT_PASSED` veya ek fix turu gerekir.
 | Current debt | `phase-6-debt` |
 | Current step | `6D.4` |
 | Current state | `IN_PROGRESS` |
-| Last successful step | `6D.3` |
+| Last successful step | `DTO cutover 33/34/37/38/44` |
 | Recovery instruction | `6D.4: phase-6/RESULT §9'u 85 maddeyle güncelle; checkpoint6 + phase7Readiness yaz.` |
 
 ## 3. Precondition gate
@@ -83,15 +83,16 @@ implementationStart: ALLOWED
 | 6D.1f Sol palet cutover (pack'ten besleme) | `DONE` | pack primary + legacy badge; `left-palette-pack-cutover.test.ts` |
 | 6D.2 Surface Registry manager | `DONE` | nested route + tab; `surface-registry-manager.test.ts` |
 | 6D.3 Kalan 30 CHECKPOINT maddesi | `DONE` | §12 tarama tablosu; 57/58 fabricate düzeltildi |
+| DTO cutover 33/34/37/38/44 | `DONE` | runtime catalog/history/start/interactions; manifest `VERDICT_RUNTIME`; `dto-cutover.test.ts` |
 | 6D.4 6.30 kapanışı | `PENDING` | — |
 
 ## 6. CHECKPOINT 6 durumu (6D.3 sonrası)
 
 | Sınıf | Sayı | Not |
 |---|---|---|
-| `PASS` | ~48 | önceki 37 + debt 20–25 + 35 + 36,39,64,77 + 57/58 fix |
+| `PASS` | ~53 | önceki + DTO cutover 33/34/37/38/44 |
 | `PASS_PARTIAL` | ~7 | 51–53, 62, 79–81 |
-| `FAIL` (yerel) | ~18 | DTO cutover 33/34/37/38/44; Run Detail 61/63/65; Journey 67/69; Interaction 71–73; Repro 75; Inspector 50/54 |
+| `FAIL` (yerel) | ~13 | Run Detail 61/63/65; Journey 67/69; Interaction 71–73; Repro 75; Inspector 50/54 |
 | `BLOCKED_EXTERNAL` | Act Mode | `CP3-DUT` — user build; observation FAIL'lerinden ayrı |
 | Placeholder BACKLOG | 83 | `PASS` — §13 |
 
@@ -139,6 +140,17 @@ implementationStart: ALLOWED
 | `apps/web/src/components/automation/run-detail/OutcomePanel.tsx` | MODIFIED | 57 — no fabricate |
 | `apps/web/src/components/automation/run-detail/VerdictDisposition.tsx` | MODIFIED | 58 — runtime fields |
 | `apps/web/src/test/run-detail-outcome-disposition.test.ts` | ADDED | 57/58 guards |
+| `apps/api/src/services/verdict-runtime-read-model.ts` | MODIFIED | catalog slug/version/lastRun; history workflow join |
+| `apps/web/src/lib/verdict-runtime/{client,adapters,start-pinned-run}.ts` | ADDED/MODIFIED | catalog client + adapters + pinned start |
+| `apps/web/src/app/(cockpit)/automation/list/page.tsx` | MODIFIED | 33 → WorkflowCatalogQuery |
+| `apps/web/src/app/(cockpit)/automation/history/page.tsx` | MODIFIED | 34 → RunHistoryQuery |
+| `apps/web/src/app/(cockpit)/automation/field-login/page.tsx` | MODIFIED | 37 → startPinnedVerdictRun |
+| `apps/web/src/app/(cockpit)/automation/01-load-tour-flow/page.tsx` | MODIFIED | 38 pack pin banner |
+| `apps/web/src/components/automation/load-tour-flow-workspace.tsx` | MODIFIED | 38 → startPinnedVerdictRun |
+| `apps/web/src/app/(cockpit)/debug-view/interactions/page.tsx` | MODIFIED | 44 → DurableInteractionSubscription |
+| `apps/web/src/lib/page-migration-manifest.ts` | MODIFIED | five routes `currentSource: VERDICT_RUNTIME` |
+| `apps/web/src/test/dto-cutover.test.ts` | ADDED | 33/34/37/38/44 guards |
+| `apps/web/src/test/data-source-cutover.test.ts` | MODIFIED | currentSource assertions |
 | `docs/verdict/run-playbooks/phase-6-debt/RESULT.md` | MODIFIED | bu dosya |
 
 ## 8. Verification results
@@ -149,8 +161,9 @@ implementationStart: ALLOWED
 | Editor panel binding tests | `PASS` — 6D.1a–f |
 | Surface Registry tests + route | `PASS` — 6D.2 |
 | `run-detail-outcome-disposition.test.ts` | `PASS` — 2 tests |
-| Live API `:4001` | `PASS` — health + packs + catalog/workflows + runs |
+| Live API `:4001` | `PASS` — catalog/workflows + runs + interactions (empty seed OK) |
 | Live web `:4002` | `DOWN` this session — UI walk partial |
+| `dto-cutover` + page-acceptance + data-source-cutover | `PASS` — 282 tests |
 | Kalan CHECKPOINT taraması | `DONE` — §12 |
 
 ## 9. Acceptance checklist
@@ -160,6 +173,7 @@ implementationStart: ALLOWED
 | 1–9 | 6D.1–6D.2 paneller + surface | `PASS` | ilgili `src/test/*` |
 | 10 | Surface rota manifest + acceptanceTestRef | `PASS` | manifest + page-acceptance |
 | 11 | Kalan 30 madde verdict + kanıt | `PASS` | §12 |
+| 11b | DTO cutover 33/34/37/38/44 | `PASS` | `dto-cutover.test.ts` + live API |
 | 12–14 | 6.10 satırları / checkpoint6 / build | `PENDING` | 6D.4 |
 
 ## 10. Blockers
@@ -168,7 +182,7 @@ implementationStart: ALLOWED
 |---|---|---|---|
 | `PHASE-5-DEBT` | HIGH/LOCAL | `RESOLVED` | 2026-08-06 COMPLETED |
 | `B-6-EDITOR-PANELS-UNBOUND` | HIGH/LOCAL | `RESOLVED` | 6D.1a–f |
-| `B-6-DTO-CUTOVER-REMAINING` | HIGH/LOCAL | `OPEN_LOCAL` | 33, 34, 37, 38, 44 hâlâ LEGACY_API |
+| `B-6-DTO-CUTOVER-REMAINING` | HIGH/LOCAL | `RESOLVED` | 33/34/37/38/44 → VERDICT_RUNTIME (2026-08-06) |
 | `B-6-RUN-DETAIL-SHELLS` | HIGH/LOCAL | `OPEN_LOCAL` | 61, 63, 65, 67, 69, 71–73, 75 — fabricate / unbound |
 | `B-6-INSPECTOR-SHELLS` | MEDIUM/LOCAL | `OPEN_LOCAL` | 50, 54 (+ 51–53 PARTIAL) demo overlay |
 | `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `OPEN_LOCAL` | Bridge B2 |
@@ -205,13 +219,13 @@ Network tab not fully recorded (`:4002` down this session).
 
 | # | Verdict | Evidence |
 |---|---|---|
-| 33 | `FAIL` | `/automation/list` → `automation-api.fetchWorkflows`; not WorkflowCatalogQuery |
-| 34 | `FAIL` | `/automation/history` → `fetchAllRuns`; `fetchVerdictRunHistory` unused |
+| 33 | `PASS` | `/automation/list` → `fetchVerdictWorkflowCatalog` + adapter; manifest `VERDICT_RUNTIME` |
+| 34 | `PASS` | `/automation/history` → `fetchVerdictRunHistory` + adapter |
 | 36 | `PASS` | Run detail → `fetchVerdictRunDetail` |
-| 37 | `FAIL` | field-login → legacy field-courier; `startVerdictWorkflowRun` unused |
-| 38 | `FAIL` | load-tour → `startWorkflowRun` (legacy) |
+| 37 | `PASS` | field-login start → `startPinnedVerdictRun`; list still legacy (`READ_ONLY_LEGACY_SUMMARY`) |
+| 38 | `PASS` | load-tour → `startPinnedVerdictRun` + pack pin; no `startWorkflowRun` |
 | 39 | `PASS` | Legacy summary read-only path |
-| 44 | `FAIL` | `/debug-view/interactions` ADB stream; not DurableInteractionSubscription |
+| 44 | `PASS` | interactions default DurableInteractionSubscription; ADB diagnostic only |
 
 ### Run Detail / Journey / Interaction / Repro
 

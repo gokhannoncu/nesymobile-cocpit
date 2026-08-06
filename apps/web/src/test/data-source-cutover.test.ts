@@ -33,6 +33,22 @@ describe('Data-Source Cutover Verification', () => {
     })
   }
 
+  const CUTOVER_CURRENT_SOURCE: string[] = [
+    '/automation/list',
+    '/automation/history',
+    '/automation/field-login',
+    '/automation/01-load-tour-flow',
+    '/debug-view/interactions',
+  ]
+
+  for (const route of CUTOVER_CURRENT_SOURCE) {
+    it(`${route} currentSource is VERDICT_RUNTIME after DTO cutover`, () => {
+      const entry = PAGE_MIGRATION_MANIFEST.find((e) => e.routePattern === route)
+      expect(entry, `Missing manifest entry for ${route}`).toBeDefined()
+      expect(entry!.currentSource).toBe('VERDICT_RUNTIME')
+    })
+  }
+
   it('NON_REGRESSION routes are not migrated to VERDICT_RUNTIME', () => {
     const nrEntries = PAGE_MIGRATION_MANIFEST.filter(
       (e) => e.cutoverCheckpoint === 'NON_REGRESSION',

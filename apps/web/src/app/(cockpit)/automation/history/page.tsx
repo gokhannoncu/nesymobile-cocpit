@@ -35,7 +35,9 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { AUTOMATION_LIST_PATH } from '@nesy/metronic/config/layout-21.config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ComponentType, ReactNode, SVGProps } from 'react'
-import { deleteRun, deleteRuns, fetchAllRuns, type WorkflowRun } from '@/services/automation-api'
+import { deleteRun, deleteRuns, type WorkflowRun } from '@/services/automation-api'
+import { fetchVerdictRunHistory } from '@/lib/verdict-runtime/client'
+import { workflowRunApiToHistoryRow } from '@/lib/verdict-runtime/adapters'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -113,11 +115,12 @@ export default function AutomationHistoryPage() {
   const loadRuns = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetchAllRuns({ limit: 200 })
-      setRuns(response.data)
+      const response = await fetchVerdictRunHistory({ limit: 200, offset: 0 })
+      setRuns(response.items.map(workflowRunApiToHistoryRow))
     } catch (err) {
       console.error('Failed to load run history:', err)
       toast.error('Run history could not be loaded.')
+      setRuns([])
     } finally {
       setLoading(false)
     }

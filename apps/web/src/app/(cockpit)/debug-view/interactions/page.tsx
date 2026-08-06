@@ -4,7 +4,7 @@
 // User interaction history on the device: app open -> login -> click -> screen
 // open -> scan -> network request, chronological flow.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Activity,
@@ -40,6 +40,40 @@ import {
   interactionExportFilename,
   type InteractionFilterState,
 } from '@/lib/debug-view/filter-interactions'
+import {
+  fetchVerdictInteractions,
+  fetchVerdictRunHistory,
+} from '@/lib/verdict-runtime/client'
+import type { WorkflowRunApi } from '@/lib/verdict-runtime/types'
+
+function durableItemToInteractionEvent(
+  item: Record<string, unknown>,
+  index: number,
+  baseMs: number,
+): InteractionEvent {
+  const occurredAtMs =
+    typeof item.occurredAtMs === 'number' ? item.occurredAtMs : baseMs + index * 10
+  const origin = typeof item.origin === 'string' ? item.origin : 'UNKNOWN'
+  const summary = typeof item.summary === 'string' ? item.summary : origin
+  const confidence =
+    typeof item.confidence === 'number' ? item.confidence : undefined
+  return {
+    id: String(item.eventId ?? item.id ?? `durable-${index}`),
+    timestamp: new Date(occurredAtMs).toISOString(),
+    offsetMs: Math.max(0, occurredAtMs - baseMs),
+    kind: origin === 'BRIDGE_INJECTED' ? 'click' : origin === 'MANUAL' ? 'click' : 'system',
+    screen: 'durable-subscription',
+    label: summary,
+    detail: [
+      `origin=${origin}`,
+      confidence !== undefined ? `confidence=${confidence}` : null,
+      typeof item.revision === 'number' ? `rev=${item.revision}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    analyticsEvent: null,
+  }
+}
 
 /** Nesy Mobile / Debug View brand accent — matches overview, network, schedule pages. */
 const PAGE_TONE = 'orange' as const satisfies Tone
@@ -85,16 +119,86 @@ function downloadInteractionJson(payload: ReturnType<typeof buildInteractionExpo
 
 export default function InteractionsPage() {
   const { selectedDevice } = useDebugView()
-  const { events: realEvents, streamState, clear: clearInteractions } = useInteractionCapture()
+  const { events: adbEvents, streamState, clear: clearInteractions } = useInteractionCapture()
   const [filters, setFilters] = useState<InteractionFilterState>(EMPTY_FILTERS)
+  const [runOptions, setRunOptions] = useState<WorkflowRunApi[]>([])
+  const [selectedRunId, setSelectedRunId] = useState<string>('')
+  const [durableEvents, setDurableEvents] = useState<InteractionEvent[]>([])
+  const [durableError, setDurableError] = useState<string | null>(null)
+  const [durableRevision, setDurableRevision] = useState(0)
+  const [sourceMode, setSourceMode] = useState<'durable' | 'adb-diagnostic'>('durable')
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchVerdictRunHistory({ limit: 40, offset: 0 })
+      .then((history) => {
+        if (cancelled) return
+        setRunOptions(history.items)
+        if (!selectedRunId && history.items[0]) {
+          setSelectedRunId(history.items[0].correlation.runId)
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDurableError(
+            error instanceof Error ? error.message : 'Run history unavailable for durable feed',
+          )
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+    // Intentionally once on mount; selectedRunId seeded from first item.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (sourceMode !== 'durable' || !selectedRunId) return
+    let cancelled = false
+    const pull = async () => {
+      try {
+        const page = await fetchVerdictInteractions(selectedRunId, 0)
+        if (cancelled) return
+        setDurableRevision(page.latestRevision)
+        setDurableError(null)
+        const origin = page.items[0] as Record<string, unknown> | undefined
+        const originMs =
+          origin && typeof origin.occurredAtMs === 'number'
+            ? Number(origin.occurredAtMs)
+            : Date.now()
+        setDurableEvents(
+          page.items.map((item, index) =>
+            durableItemToInteractionEvent(item as Record<string, unknown>, index, originMs),
+          ),
+        )
+      } catch (error) {
+        if (!cancelled) {
+          setDurableError(
+            error instanceof Error ? error.message : 'DurableInteractionSubscription failed',
+          )
+        }
+      }
+    }
+    void pull()
+    const timer = setInterval(() => void pull(), 4000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [selectedRunId, sourceMode])
 
   const handleClearHistory = () => {
+    if (sourceMode === 'durable') {
+      setDurableEvents([])
+      setDurableRevision(0)
+      return
+    }
     clearInteractions()
   }
 
   const clearFilters = () => setFilters(EMPTY_FILTERS)
 
-  const allEvents = realEvents
+  const allEvents = sourceMode === 'durable' ? durableEvents : adbEvents
 
   const countBase = useMemo(
     () => filterInteractionsForCounts(allEvents, filters),
@@ -130,13 +234,23 @@ export default function InteractionsPage() {
   }, [events])
 
   const handleExport = () => {
-    if (!selectedDevice || events.length === 0) return
+    if (events.length === 0) return
+    const serial =
+      sourceMode === 'durable'
+        ? selectedRunId || 'durable-run'
+        : selectedDevice?.serial || 'unknown-device'
     const payload = buildInteractionExport({
       events,
       filters,
-      device: { serial: selectedDevice.serial, name: selectedDevice.name },
+      device: {
+        serial,
+        name:
+          sourceMode === 'durable'
+            ? `run:${selectedRunId}`
+            : selectedDevice?.name || serial,
+      },
     })
-    downloadInteractionJson(payload, selectedDevice.serial)
+    downloadInteractionJson(payload, serial)
   }
 
   return (
@@ -144,18 +258,80 @@ export default function InteractionsPage() {
       <DebugHeader
         icon={MousePointerClick}
         title="User Interaction Timeline"
-        lead="Device-wide interaction history: capture continues while you browse other Debug View pages, and device log history is recovered when you return."
+        lead="Primary feed is DurableInteractionSubscription (run-scoped). ADB stream remains a diagnostic secondary source."
         tone={PAGE_TONE}
         badges={[
-          { label: 'Always-on capture', tone: PAGE_TONE },
-          { label: 'Device backfill', tone: PAGE_TONE },
-          { label: 'Persistent history', tone: PAGE_TONE },
+          { label: 'DurableInteractionSubscription', tone: PAGE_TONE },
+          { label: 'Run-scoped', tone: PAGE_TONE },
+          { label: 'ADB diagnostic', tone: 'gray' },
         ]}
         actions={<DebugCrossLinks currentPath="/debug-view/interactions" />}
       />
 
-      {!selectedDevice ? (
+      <div className="mb-4 space-y-2 rounded-xl border border-border/80 bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-medium border',
+              sourceMode === 'durable'
+                ? 'bg-orange-100 border-orange-300 text-orange-900'
+                : 'bg-muted border-transparent text-muted-foreground',
+            )}
+            onClick={() => setSourceMode('durable')}
+          >
+            Durable (Verdict)
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-medium border',
+              sourceMode === 'adb-diagnostic'
+                ? 'bg-orange-100 border-orange-300 text-orange-900'
+                : 'bg-muted border-transparent text-muted-foreground',
+            )}
+            onClick={() => setSourceMode('adb-diagnostic')}
+          >
+            ADB diagnostic
+          </button>
+          {sourceMode === 'durable' ? (
+            <select
+              className="ml-auto min-w-[16rem] rounded-md border bg-background px-2 py-1 text-xs font-mono"
+              value={selectedRunId}
+              onChange={(e) => setSelectedRunId(e.target.value)}
+            >
+              <option value="">Select run…</option>
+              {runOptions.map((run) => (
+                <option key={run.correlation.runId} value={run.correlation.runId}>
+                  {run.correlation.runId} · {String(run.run?.status ?? '—')} ·{' '}
+                  {run.correlation.engineType}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+        {sourceMode === 'durable' ? (
+          <p className="text-[11px] text-muted-foreground font-mono">
+            {selectedRunId
+              ? `GET /verdict/runtime/runs/${selectedRunId}/interactions · rev ${durableRevision}`
+              : 'Pick a run to subscribe'}
+          </p>
+        ) : (
+          <p className="text-[11px] text-amber-800">
+            ADB EventSource is diagnostic only — not the DurableInteractionSubscription target.
+          </p>
+        )}
+        {durableError ? (
+          <p className="text-[11px] text-red-700">{durableError}</p>
+        ) : null}
+      </div>
+
+      {sourceMode === 'adb-diagnostic' && !selectedDevice ? (
         <NoDeviceState />
+      ) : sourceMode === 'durable' && !selectedRunId ? (
+        <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+          Select a run to load DurableInteractionSubscription events.
+        </div>
       ) : (
         <>
           {/* Filters */}
@@ -188,28 +364,34 @@ export default function InteractionsPage() {
                   size="sm"
                   className={cn(
                     'gap-1.5',
-                    streamState === 'live'
+                    sourceMode === 'durable'
                       ? toneText.green
-                      : streamState === 'reconnecting'
-                        ? toneText.amber
-                        : toneText.gray,
+                      : streamState === 'live'
+                        ? toneText.green
+                        : streamState === 'reconnecting'
+                          ? toneText.amber
+                          : toneText.gray,
                   )}
                 >
                   <span
                     className={cn(
                       'size-1.5 rounded-full',
-                      streamState === 'live'
+                      sourceMode === 'durable'
                         ? 'bg-green-500'
-                        : streamState === 'reconnecting'
-                          ? 'bg-amber-500'
-                          : 'bg-muted-foreground/50',
+                        : streamState === 'live'
+                          ? 'bg-green-500'
+                          : streamState === 'reconnecting'
+                            ? 'bg-amber-500'
+                            : 'bg-muted-foreground/50',
                     )}
                   />
-                  {streamState === 'live'
-                    ? 'ADB live'
-                    : streamState === 'reconnecting'
-                      ? 'Reconnecting'
-                      : 'Connecting'}
+                  {sourceMode === 'durable'
+                    ? 'Durable live'
+                    : streamState === 'live'
+                      ? 'ADB live'
+                      : streamState === 'reconnecting'
+                        ? 'Reconnecting'
+                        : 'Connecting'}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground">
                   {events.length}/{allEvents.length} shown · {allEvents.length}/{MAX_STORED_INTERACTIONS} retained

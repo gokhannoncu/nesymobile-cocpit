@@ -4,11 +4,12 @@ import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
-  fetchWorkflows,
   createWorkflow,
   deleteWorkflow,
   type WorkflowListItem,
 } from '@/services/automation-api'
+import { fetchVerdictWorkflowCatalog } from '@/lib/verdict-runtime/client'
+import { catalogItemToWorkflowListItem } from '@/lib/verdict-runtime/adapters'
 import {
   Archive,
   Bell,
@@ -282,10 +283,22 @@ export default function AutomationListPage() {
   const loadWorkflows = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await fetchWorkflows(search ? { search } : undefined)
-      setWorkflows(data)
+      const catalog = await fetchVerdictWorkflowCatalog(200)
+      const mapped = catalog.items.map(catalogItemToWorkflowListItem)
+      const q = search.trim().toLowerCase()
+      setWorkflows(
+        q
+          ? mapped.filter(
+              (item) =>
+                item.name.toLowerCase().includes(q) ||
+                item.slug.toLowerCase().includes(q) ||
+                (item.description?.toLowerCase().includes(q) ?? false),
+            )
+          : mapped,
+      )
     } catch (err) {
       console.error('Failed to load workflows:', err)
+      setWorkflows([])
     } finally {
       setLoading(false)
     }

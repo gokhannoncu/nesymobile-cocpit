@@ -27,6 +27,36 @@ export interface RunHistoryResult {
   items: WorkflowRunApi[]
 }
 
+export interface WorkflowCatalogItemApi {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  status: string
+  category: string | null
+  icon: string
+  iconClassName: string
+  currentVersionId: string | null
+  createdAt: string | number | Date
+  updatedAt: string | number | Date
+  latestVersion: {
+    id: string
+    version: number
+    createdAt: string | number | Date
+  } | null
+  lastRun: {
+    id: string
+    status: string
+    createdAt: string | number | Date
+    duration: number | null
+  } | null
+}
+
+export interface WorkflowCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  items: WorkflowCatalogItemApi[]
+}
+
 export interface RunDetailResult extends WorkflowRunApi {
   steps: Record<string, unknown>[]
   waits: Record<string, unknown>[]

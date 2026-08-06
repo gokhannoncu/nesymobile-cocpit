@@ -84,8 +84,8 @@ import { extractZimmetBarcodes } from '@/lib/automation/load-tour-barcodes'
 import {
   fetchWorkflow,
   previewWorkflowYaml,
-  startWorkflowRun,
 } from '@/services/automation-api'
+import { startPinnedVerdictRun } from '@/lib/verdict-runtime/start-pinned-run'
 import {
   NESY_DASHBOARD_COUNTRY_ENVIRONMENTS,
   NESY_DASHBOARD_TOOLBAR_COUNTRIES,
@@ -432,14 +432,17 @@ export function LoadTourFlowWorkspace() {
     if (!canRun || !selectedDeviceId || !country || !environment) return
     setRunning(true)
     try {
-      const result = await startWorkflowRun(WORKFLOW_SLUG, {
-        selectedDeviceId,
-        mode: 'full',
-        country,
-        environment,
-        runInput,
+      const result = await startPinnedVerdictRun({
+        workflowRef: WORKFLOW_SLUG,
+        deviceId: selectedDeviceId,
+        workflowIr: {
+          nodes: workflowNodes,
+          edges: workflowEdges,
+        },
       })
-      toast.success('Load & Tour run started')
+      toast.success(
+        `Load & Tour queued on Domain Pack (plan ${result.compiledPlanHash.slice(0, 12)}…)`,
+      )
       router.push(`/automation/${WORKFLOW_SLUG}/runs/${result.runId}`)
     } catch (err) {
       toast.error(

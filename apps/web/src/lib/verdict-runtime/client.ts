@@ -9,6 +9,7 @@ import type {
   RunEvidenceSourceCatalogApi,
   RunHistoryQuery,
   RunHistoryResult,
+  WorkflowCatalogApi,
   SemanticActionCatalogApi,
   TargetResolutionCatalogApi,
   TestCampaignCatalogApi,
@@ -33,6 +34,11 @@ export async function fetchVerdictRunHistory(query: RunHistoryQuery = {}): Promi
   if (query.offset !== undefined) params.set('offset', String(query.offset))
   if (query.engineType !== undefined) params.set('engineType', query.engineType)
   return getJson<RunHistoryResult>(`/verdict/runtime/runs?${params.toString()}`)
+}
+
+export async function fetchVerdictWorkflowCatalog(limit = 100): Promise<WorkflowCatalogApi> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  return getJson<WorkflowCatalogApi>(`/verdict/runtime/catalog/workflows?${params.toString()}`)
 }
 
 export async function fetchVerdictRunDetail(runId: string): Promise<RunDetailResult> {

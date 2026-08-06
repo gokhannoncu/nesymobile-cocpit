@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Check,
   Circle,
@@ -40,12 +41,23 @@ import { useNesyAuth } from '@/contexts/nesy-auth-context'
 import {
   deleteFieldCourierLogin,
   fetchFieldCourierLogins,
-  startFieldCourierLoginSession,
-  subscribeFieldCourierLoginSession,
   type FieldCourierLoginRecord,
   type FieldLoginSession,
   type FieldLoginStep,
 } from '@/services/field-courier-login'
+import { fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client'
+import { startPinnedVerdictRun } from '@/lib/verdict-runtime/start-pinned-run'
+import {
+  listNesyMobileAdbDevices,
+  type NesyMobileAdbDevice,
+} from '@/services/nesy-mobile-auth'
+
+const FIELD_LOGIN_WORKFLOW_REF = 'field-courier-login'
+
+function isDeviceRunnable(device: NesyMobileAdbDevice) {
+  const status = (device.status || '').toLowerCase()
+  return status === 'device' || status === 'online'
+}
 
 type StatusFilter = 'all' | 'success' | 'failed'
 
@@ -71,6 +83,26 @@ export default function FieldCourierLoginPage() {
   const { country, environment } = useNesyAuth()
   const [rows, setRows] = useState<FieldCourierLoginRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [packPin, setPackPin] = useState<string | null>(null)
+  const [packError, setPackError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void fetchVerdictDomainPacks()
+      .then((catalog) => {
+        const published = catalog.items.find((item) => item.publicationState === 'PUBLISHED')
+        if (!published) {
+          setPackError('No published Domain Pack — Field Login cannot pin a Verdict run.')
+          setPackPin(null)
+          return
+        }
+        setPackError(null)
+        setPackPin(`${published.packKey}@${published.version}`)
+      })
+      .catch((error) => {
+        setPackError(error instanceof Error ? error.message : 'Domain Pack catalog unavailable')
+        setPackPin(null)
+      })
+  }, [])
   const [modalOpen, setModalOpen] = useState(false)
   const [replayTarget, setReplayTarget] = useState<FieldCourierLoginRecord | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -139,6 +171,15 @@ export default function FieldCourierLoginPage() {
 
   return (
     <ProductPage path="/automation/field-login">
+      {packError ? (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {packError}
+        </div>
+      ) : packPin ? (
+        <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 font-mono">
+          Verdict runtime pin: {packPin} · start uses WorkflowRunApi
+        </div>
+      ) : null}
       {loading ? (
         <FieldCourierLoginTableShimmer />
       ) : (
@@ -356,6 +397,7 @@ function FieldLoginCreateModal({
   onClose: () => void
   onFinished: () => void
 }) {
+  const router = useRouter()
   const isReplay = Boolean(replayFrom?.courierUserId)
   const [phase, setPhase] = useState<'form' | 'progress'>('form')
   const [trackingNumber, setTrackingNumber] = useState('')
@@ -365,31 +407,6 @@ function FieldLoginCreateModal({
   const [courierUsername, setCourierUsername] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [session, setSession] = useState<FieldLoginSession | null>(null)
-
-  useEffect(() => {
-    if (!session?.id) return
-    let finishedNotified = false
-    return subscribeFieldCourierLoginSession(
-      session.id,
-      (next) => {
-        setSession(next)
-        if (next.status !== 'running' && !finishedNotified) {
-          finishedNotified = true
-          onFinished()
-          if (next.status === 'success') toast.success('Courier login completed.')
-          else if (next.status === 'failed') {
-            toast.error(next.errorMessage || 'Field courier login failed.')
-          }
-        }
-      },
-      (err) => {
-        // Transient API restarts: keep polling; only warn once in console.
-        console.warn('[field-courier-login] poll error', err)
-      },
-    )
-    // Subscribe once per session id; updates arrive via polling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id])
 
   const canSubmitCreate =
     Boolean(
@@ -406,33 +423,44 @@ function FieldLoginCreateModal({
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      const started = isReplay
-        ? await startFieldCourierLoginSession({
-            mode: 'replay',
-            country: replayFrom!.country || country,
-            environment: replayFrom!.environment || environment,
-            courierUserId: replayFrom!.courierUserId!,
-            courierName: replayFrom!.courierFullName || undefined,
-            courierUsername: replayFrom!.courierUsername || undefined,
-            hubId: replayFrom!.hubId || undefined,
-            hubName: replayFrom!.hubName || undefined,
-            trackingNumber: replayFrom!.waybillNumber || undefined,
-            barcode: replayFrom!.barcode || undefined,
-            legacyBarcode: replayFrom!.legacyBarcode || undefined,
-          })
-        : await startFieldCourierLoginSession({
-            country,
-            environment,
-            trackingNumber: trackingNumber.trim() || undefined,
-            barcode: barcode.trim() || undefined,
-            legacyBarcode: legacyBarcode.trim() || undefined,
-            courierName: courierName.trim() || undefined,
-            courierUsername: courierUsername.trim() || undefined,
-          })
-      setSession(started)
+      const devices = await listNesyMobileAdbDevices()
+      const device = devices.find(isDeviceRunnable)
+      if (!device) {
+        throw new Error('No runnable ADB device — attach a device before starting Field Login')
+      }
+      // Form fields remain operator context (country/env/courier). Execution is
+      // pinned to the published Nesy Courier Domain Pack via Verdict runtime.
+      const started = await startPinnedVerdictRun({
+        workflowRef: FIELD_LOGIN_WORKFLOW_REF,
+        deviceId: device.id,
+      })
       setPhase('progress')
+      setSession({
+        id: started.runId,
+        status: 'running',
+        errorMessage: null,
+        steps: [
+          {
+            key: 'compile',
+            label: 'Compile + pin Domain Pack',
+            status: 'done',
+            detail: `${country}/${environment}`,
+          },
+          {
+            key: 'queue',
+            label: 'Queue BridgeFlow run',
+            status: 'done',
+            detail: started.runId,
+          },
+        ],
+      } as unknown as FieldLoginSession)
+      onFinished()
+      toast.success(
+        `Field Login queued (${isReplay ? 'replay' : 'create'}) — opening Run Detail`,
+      )
+      router.push(`/automation/${FIELD_LOGIN_WORKFLOW_REF}/runs/${started.runId}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not start session.')
+      toast.error(err instanceof Error ? err.message : 'Could not start Field Login run.')
     } finally {
       setSubmitting(false)
     }
