@@ -53,10 +53,11 @@ Harici bağımlılık: yalnız madde 60 (CP3-DUT)
 | Yüzey | Runtime | HTTP ucu | UI |
 |---|---|---|---|
 | Evidence Source Registry | `evidence-source-resolver.ts` var | **YOK** | sabit 2 satır maket |
+| Semantic Actions | `semantic-action.ts` sözleşme + validator + bundle alanı var | **YOK** | palet 660 satırlık sabit `workflow-registry.ts` |
 | Target Resolution Provider Chain | `entity-target.ts` sözleşme + validator var | **YOK** | statik maket |
 | Launch Profile | `profile.ts` sözleşme + `validate.ts` var | **YOK** | bağlanmamış form |
 
-Phase 5 RESULT §9 madde 45 “Phase 6 DTO targets — `PASS`” bu üç yüzey için
+Phase 5 RESULT §9 madde 45 “Phase 6 DTO targets — `PASS`” bu dört yüzey için
 geçersiz; kapanışta düzeltilecek.
 
 ## 5. Step execution log
@@ -64,6 +65,7 @@ geçersiz; kapanışta düzeltilecek.
 | Step | Status | Evidence |
 |---|---|---|
 | 5D.1 EvidenceSourceQuery API | `PENDING` | — |
+| 5D.1b SemanticActionQuery API | `PENDING` | — |
 | 5D.2 TargetResolutionQuery API | `PENDING` | — |
 | 5D.3 LaunchProfile API | `PENDING` | — |
 | 5D.4 Stub compiler kararı | `PENDING` | — |

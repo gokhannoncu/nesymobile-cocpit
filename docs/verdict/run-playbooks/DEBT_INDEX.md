@@ -14,8 +14,8 @@ tarihte çalışan sistem üzerinde yapılan doğrulamalar.
 | `phase-2-debt/` | Performans baseline eksikliği, repo geneli lint borcu | P3 |
 | `phase-3-debt/` | CP3 full acceptance — production build cihaz engeli | P2 (harici) |
 | `phase-4-debt/` | CP3-DUT devri, smoke handshake flakiness, protokol dokümanı | P2 (harici) |
-| `phase-5-debt/` | **Runtime var, HTTP ucu yok**; stub compiler üretimde; admission süreç-içi | **P0** |
-| `phase-6-debt/` | Editör panelleri veriye bağlı değil; Surface Registry yok; CHECKPOINT 6 taraması yarım | **P1** |
+| `phase-5-debt/` | **Runtime var, HTTP ucu yok** (evidence source, semantic action, target resolution, launch profile); stub compiler üretimde; admission süreç-içi | **P0** |
+| `phase-6-debt/` | Editör panelleri veriye bağlı değil; **sol palet hâlâ sabit Maestro registry'si**; Surface Registry yok; CHECKPOINT 6 taraması yarım | **P1** |
 
 Faz 0 ve Faz 1 için itemize edilmiş açık madde yok.
 
@@ -38,6 +38,19 @@ phase-4-debt   ─┴ harici cihaz gerektirir; Faz 6 kapanışını engellemez,
 
 **Kritik yol `phase-5-debt` → `phase-6-debt`.** Faz 6'nın 22–25 numaralı kabul
 maddeleri, Faz 5'in açmadığı API uçlarına bağlı; sıra tersine çevrilemez.
+
+Aynı bağımlılık paletin kendisi için de geçerli: CHECKPOINT madde 2 ("operatör
+Maestro/YAML bilmeden workflow oluşturabiliyor") ancak sol palet Domain Pack'ten
+beslendiğinde gerçekten sağlanır — `5D.1b` (SemanticActionQuery API) → `6D.1f`
+(palet cutover).
+
+## Mobil bağımlılığı olan tek şey
+
+Semantic action **tanımlama, listeleme, palete düşme ve plana derlenme** mobil
+beklemez. Yalnız cihazda `performAction` ile **çalıştırma** yetenek gerektirir
+(mobil Faz 3 Bridge B2 capabilities, mobil Faz 4b App Adapter). Bu ayrım API'de
+`capabilityStatus` alanıyla görünür kılınır; yeteneksiz action gizlenmez,
+bloklu gösterilir.
 
 ## Harici engeller — kimse kodla çözemez
 

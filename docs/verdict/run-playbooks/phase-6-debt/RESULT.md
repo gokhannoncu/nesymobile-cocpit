@@ -66,6 +66,7 @@ implementationStart: BLOCKED_BY_PHASE_5_DEBT
 | `LaunchProfileBuilder.tsx` | 0 | bağlanmamış form |
 | `EntityBindingEditor.tsx` | 0 | statik |
 | `SemanticActionPalette.tsx` | 0 | statik |
+| `workflow-registry.ts` (sol palet) | 0 | 660 satır sabit, `subtitle: "Maestro Command"` |
 | Surface Registry manager | — | **dosya yok** |
 
 `VerdictEditorToolbar` `2026-08-06`'da editöre mount edildi; artık erişilebilir
@@ -79,7 +80,8 @@ ama içerik yukarıdaki gibi.
 | 6D.1b Target Resolution binding | `BLOCKED_PRECONDITION` | API yok |
 | 6D.1c Launch Profile binding | `BLOCKED_PRECONDITION` | API yok |
 | 6D.1d Entity Binding | `BLOCKED_PRECONDITION` | API yok |
-| 6D.1e Semantic Action Palette | `PENDING` | pack bundle mevcut, başlatılabilir |
+| 6D.1e Semantic Action Palette (Verdict paneli) | `BLOCKED_PRECONDITION` | 5D.1b ucu yok |
+| 6D.1f Sol palet cutover (pack'ten besleme) | `BLOCKED_PRECONDITION` | 5D.1b ucu yok |
 | 6D.2 Surface Registry manager | `PENDING` | domain pack API mevcut |
 | 6D.3 Kalan 30 CHECKPOINT maddesi | `PENDING` | — |
 | 6D.4 6.30 kapanışı | `PENDING` | — |

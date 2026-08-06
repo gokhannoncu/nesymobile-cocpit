@@ -63,6 +63,9 @@ Kesin kurallar:
 - Yeni rota eklersen page-migration-manifest.ts'e ekle ve acceptanceTestRef ver.
 - Gerçek cihaz bağlı olabilir (SM-A346E). Ama ro.build.type=user olduğu için
   CP3 mutation acceptance YAPILAMAZ; o maddeleri BLOCKED_EXTERNAL yaz.
+- Sol palet cutover'ı (6D.1f) mobil beklemez. Action tanımlama/listeleme/derleme
+  mobilden bağımsız; yalnız cihazda çalıştırma yetenek ister. Yeteneksiz
+  action'ı gizleme, bloklu göster.
 
 Bitince phase-6/RESULT.md §5'teki 6.10/6.11/6.12 satırlarını gerçeğe göre düzelt.
 ```
@@ -87,6 +90,8 @@ Bu koşullar yoksa `BLOCKED_PRECONDITION` yaz ve dur.
 - Fetch hatasını boş listeye çevirmek.
 - Route çakışması yaratmak.
 - Manifest'e `acceptanceTestRef` olmadan rota eklemek.
+- Sol paleti sessizce legacy registry'ye düşürmek — fallback görünür olacak.
+- Yeteneği karşılanmayan semantic action'ı paletten gizlemek; disabled göster.
 
 ## 5. Görevler
 
@@ -126,6 +131,68 @@ Beşinin de bugünkü hali: `useState` içinde sabit dizi, sıfır API çağrıs
 - **Olması gereken:** semantik aksiyonlar yayınlanmış domain pack bundle'ından
   gelmeli; pack yoksa palet boş + açık gerekçe.
 - **CHECKPOINT:** 2.
+
+### 6D.1f — Editörün SOL paletini pack'e taşı (cutover)
+
+`6D.1e` Verdict panelindeki paleti düzeltir. **Asıl palet sol tarafta** ve ayrı
+bir kaynaktan besleniyor — bu adım onun cutover'ı.
+
+**Şu an ne var:**
+`apps/web/src/app/(automation-editor)/automation/[id]/workflow-registry.ts`
+— 660 satır, elle yazılmış `workflowComponentRegistry`. Örnek girdi:
+
+```ts
+[WorkflowNodeType.LAUNCH_APP]: {
+  label: "Launch App",
+  subtitle: "Maestro Command",        // <-- Maestro dönemi
+  category: "Courier Actions",
+  courierPaletteSubgroup: "App & session",
+  defaultConfig: { country: "HR", environment: "stage", clearState: false },
+}
+```
+
+Node tipleri `WorkflowNodeType` enum'ına, davranış `workflow-node-config.ts` ve
+`backend-validation-lane.ts`'e sabitlenmiş. Yani palet **kod deploy'u olmadan
+genişletilemiyor** — yeni bir kurye aksiyonu eklemek için TypeScript değişikliği
+ve sürüm gerekiyor. Master plan'ın istediği ise pack yayınlayarak eklemek.
+
+**Yapılacak:**
+1. `fetchVerdictSemanticActions(packKey, version)` ile pack'ten oku (5D.1b ucu).
+2. Palet gruplaması `applicationRef` / `screenRefs` üzerinden türetilsin;
+   `courierPaletteSubgroup` gibi sabit alanlar kaldırılsın.
+3. Her palet öğesinde göster:
+   - `displayName`, `businessMeaning`
+   - **`notResponsibleFor`** — operatörün yanlış node seçmesini engelleyen
+     kapsam sınırı; tooltip veya detay panelinde görünür olmalı
+   - `requiredCapabilityRefs` ve `capabilityStatus`
+4. **Yeteneği karşılanmayan action gizlenmez**, disabled + gerekçe ile görünür:
+   *"Bridge B2 capability negotiation not available on this device"*. Operatör
+   neyin neden kullanılamadığını görmeli.
+5. **Geçiş stratejisi (kırmadan):** legacy `workflowComponentRegistry` bir süre
+   fallback olarak kalabilir, ama:
+   - `subtitle: "Maestro Command"` metinleri temizlenir,
+   - fallback kullanıldığında UI'da açık bir "legacy palette" işareti çıkar,
+   - `page-migration-manifest.ts`'te editör rotasına `legacyCleanup` ve
+     `legacyCleanupExpiry` yazılır.
+   Sessiz fallback yasak — legacy-zero guard'ının yakalaması gereken tam da bu.
+6. Legacy registry'nin silinmesi Faz 9'a (Maestro cleanup) bırakılır; bu adımda
+   yalnız **birincil kaynak** pack olur.
+
+**Mobil bağımlılığı — net olsun:**
+
+| İş | Mobil gerekir mi |
+|---|---|
+| Action'ı pack'e tanımlamak | Hayır |
+| Palete düşmesi, seçilebilmesi, plana derlenmesi | Hayır |
+| Cihazda `performAction` ile çalıştırmak | **Evet** — mobil Faz 3 (Bridge B2 capabilities) + Faz 4b (App Adapter) |
+
+Yani bu cutover mobil beklemez. Beklenen tek şey, yeteneği olmayan action'ların
+dürüstçe bloklu görünmesi.
+
+**CHECKPOINT:** 2 (asıl karşılığı), ayrıca 5 ve 6'yı güçlendirir.
+
+**Kabul:** yayınlanmış pack'e yeni bir semantic action eklendiğinde, **kod
+değişikliği olmadan** palette görünür.
 
 ### 6D.2 — Application / Screen / Surface Registry manager (yeni sayfa)
 
@@ -202,7 +269,11 @@ Runtime:
 | 4 | Launch Profile doğrulama ihlali alan bazında gösteriliyor | ekran |
 | 5 | `DIRECT_STATE` release'de seçilemiyor | ekran |
 | 6 | Entity binding gerçek entity listesi | network |
-| 7 | Semantic palette pack'ten geliyor | network |
+| 7 | Verdict paneli semantic palette pack'ten geliyor | network |
+| 7b | **Sol palet** pack'ten geliyor; pack'e action eklenince kod değişmeden görünüyor | network + ekran |
+| 7c | Yeteneği olmayan action gizlenmiyor, disabled + gerekçe | ekran |
+| 7d | `notResponsibleFor` operatöre görünüyor | ekran |
+| 7e | Legacy palette fallback'i sessiz değil, işaretli ve expiry'li | manifest + ekran |
 | 8 | Surface Registry rotası açılıyor | HTTP 200 + ekran |
 | 9 | Published pack'te surface alanları salt-okunur | ekran |
 | 10 | Yeni rota manifest + nav + acceptanceTestRef | test |
