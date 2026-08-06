@@ -8,7 +8,7 @@ resultState: IN_PROGRESS
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 04:20:00 +03"
+lastUpdatedAt: "2026-08-06 05:15:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -265,7 +265,8 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | B-6-RUNTIME-ACCEPTANCE | MEDIUM/LOCAL | `RESOLVED` | Write/execute paths unexercised | Seeded write→read tour executed; see §15 |
 | B-6-COMPILE-RUN-FAIL-OPEN | HIGH/LOCAL | `RESOLVED` | `/runtime/compile` and `/runtime/runs` accepted unpinned requests | Pinning guards + tests |
 | B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
-| B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `OPEN_LOCAL` | Phase 6 contract services are module-scope in-memory singletons; cockpit state does not survive an API restart despite Phase 5 Prisma persistence | Wire domain pack / profile / campaign / run services to the Prisma repositories |
+| B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
+| B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `OPEN_LOCAL` | Run-start idempotency map and interaction revision cursor still reset on restart; neither has adequate schema | Add `workflow_ref`/`device_id` to `bridgeflow_run_runtime` and introduce a durable interaction table |
 
 ## 11. Skipped / deferred work
 
@@ -295,11 +296,11 @@ Exit criteria to close Phase 6:
 3. ~~`6.29` — verification sweep including a live-API runtime pass.~~ **Done** —
    §8; production build and direct-entry now verified, previously neither was.
 4. ~~Seeded write/execute path tour.~~ **Done** — §15.
-5. `6.30` — **still open**, now blocked on one substantive item rather than on
-   missing tests: `B-6-INMEMORY-READ-MODELS`. The Phase 6 read models live in
-   process memory, so no CHECKPOINT evidence they carry survives a restart.
-   Persist them, re-run the §15 tour, then evidence the remaining CHECKPOINT
-   items and evaluate `phase7Readiness`.
+5. ~~Persist the cockpit read models.~~ **Done** — §16, restart-verified.
+6. `6.30` — **still open**. Remaining: `B-6-INMEMORY-RUN-SURFACES` (run-start
+   idempotency and the interaction cursor still reset, both needing named schema
+   additions), then evidence the outstanding CHECKPOINT items and evaluate
+   `phase7Readiness`.
 
 External blockers CP3-DUT, B-12 and B-4-PG-MIGRATION-APPLY remain open and are
 independent of the four items above; they block production acceptance, not
@@ -344,10 +345,17 @@ Two follow-ups:
 
 - `_prisma_migrations` was subsequently dropped when a drift check was run with
   the production URL passed as `--shadow-database-url`; Prisma resets the shadow
-  database. The schema is correct and the database was empty, so no data was
-  lost, but migration history is gone and the next `migrate deploy` will fail
-  until the history is rebuilt (`prisma migrate reset --force` on this empty DB).
-- Never pass a real datasource URL as `--shadow-database-url`.
+  database. The schema was rebuilt by replaying the migrations and the database
+  was empty (0 rows across all tables), so no data was lost, but the migration
+  history was gone and the next `migrate deploy` would have failed.
+  **Repaired**: history rebuilt with `prisma migrate resolve --applied` for each
+  of the 16 migrations — no DDL executed, no table dropped. `migrate reset` was
+  deliberately avoided as needlessly destructive. Verified: 16/16 rows finished,
+  0 rolled back, 38 tables, `migrate status` up to date, and a read-only
+  `migrate diff --from-schema-datasource` reports no drift.
+- Never pass a real datasource URL as `--shadow-database-url`. Use
+  `migrate diff --from-schema-datasource` for drift checks; it is read-only and
+  needs no shadow database.
 
 `B-4-PG-MIGRATION-APPLY` is closed. `CP3-DUT` and `B-12` remain open external
 blockers and are unaffected.
@@ -406,3 +414,67 @@ but these Phase 6 surfaces are not wired to it.
 Recorded as `B-6-INMEMORY-READ-MODELS` (HIGH/LOCAL). This blocks CHECKPOINT 6
 closure on its own: a read model that empties on restart cannot carry release-gate
 evidence.
+
+## 16. B-6-INMEMORY-READ-MODELS — resolved for the catalog read models
+
+The three read models the cockpit renders are now database-backed and survive an
+API restart. Verified by seeding over HTTP, stopping the API process entirely,
+starting it again and reading the data back.
+
+### What changed
+
+| Service | Store | Tables |
+|---|---|---|
+| `DomainPackAdminService` | `PrismaDomainPackAdminStore` | `verdict_domain_pack`, `verdict_domain_pack_version` |
+| `TestProfileCatalogService` | `PrismaTestProfileCatalogStore` | `verdict_test_profile_version` |
+| `TestCampaignService` | `PrismaTestCampaignStore` | `verdict_test_campaign`, `verdict_campaign_cell` |
+
+Each service now takes a store through its constructor; the in-memory
+implementations remain and stay the default, so unit tests run without a
+database. Store methods are async, so the service read/write methods became
+async and the routes await them. DTO shapes are unchanged — the key sets pinned
+in `phase6-input-contracts.test.ts` still pass untouched.
+
+Profile records are stored whole inside the existing `definition` JSON column, so
+no schema change was needed for them. One additive migration was required:
+`20260806050000_add_domain_pack_revision` adds
+`verdict_domain_pack_version.revision`, the optimistic-concurrency counter that
+previously existed only in memory (`ADD COLUMN ... DEFAULT 1`, no data rewrite).
+
+### Restart evidence
+
+Seeded, then `preview_stop` + `preview_start` on the API process:
+
+```text
+domain-packs   1 record  nesy-courier 2.0.0 PUBLISHED revision 2
+test-profiles  1 record  persist-profile v3 CORE qa-persist NOT_RUN
+test-campaigns 1 record  persist-nightly v7 RUNNING 1 cell
+```
+
+Fail-closed behaviour re-verified against the database-backed path: re-publishing
+a published version → `409`, draft-save over a published version → `409`
+(rejected by the service and, as defence in depth, by the
+`verdict_domain_pack_version_immutable_trigger`), invalid preview profile →
+`422`. Detail endpoints for pack and profile → `200`. The cockpit renders the
+persisted profile.
+
+### Regression caught during this work
+
+Making the services async initially broke the route error mapping: the handlers
+did `return service.publish(...)` inside a `try`, so the rejection escaped the
+`catch` and Fastify answered `500` instead of `409`. Fixed by awaiting inside the
+try blocks. Worth remembering — an unawaited promise silently disables a
+surrounding try/catch, and no unit test covers it because the mapping lives in
+the route.
+
+### Still in memory (narrowed, not closed)
+
+| Service | Why it was not persisted |
+|---|---|
+| `WorkflowRunService` | Holds a run-start idempotency map keyed by `(workflowRef, deviceId, compiledPlanHash, profileKey, profileVersion)`. `bridgeflow_run_runtime` has no `workflow_ref` or `device_id` column, so the lookup cannot be expressed against the current schema. Needs a named schema addition, not a store swap. |
+| `DurableInteractionSubscription` | There is no interaction table in the schema at all. Persisting the revision-cursor stream means introducing a new durable contract table, which is a schema-design decision for the master plan rather than a wiring change. |
+
+Consequence: published packs, profiles and campaigns now carry evidence across
+restarts, but run-start idempotency and the interaction cursor still reset. The
+blocker is therefore reduced to `B-6-INMEMORY-RUN-SURFACES` (MEDIUM/LOCAL) and no
+longer blocks the catalog read models.

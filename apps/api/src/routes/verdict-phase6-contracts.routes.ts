@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { prisma } from '@nesy/db'
 
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import { DeviceReadinessService } from '../services/device-readiness.service.js'
@@ -8,12 +9,19 @@ import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { createHashPinnedCompileStub } from '../services/workflow-compile.service.js'
 import { WorkflowRunService } from '../services/workflow-run.service.js'
+import {
+  PrismaDomainPackAdminStore,
+  PrismaTestCampaignStore,
+  PrismaTestProfileCatalogStore,
+} from '../services/phase6-prisma-stores.js'
 
 const compileService = createHashPinnedCompileStub()
 const runService = new WorkflowRunService()
-const domainPackAdmin = new DomainPackAdminService()
-const testProfiles = new TestProfileCatalogService()
-const testCampaigns = new TestCampaignService()
+// Database-backed: these catalogs carry release-gate evidence, so they must
+// survive an API restart. The in-memory stores remain the default in unit tests.
+const domainPackAdmin = new DomainPackAdminService(new PrismaDomainPackAdminStore(prisma))
+const testProfiles = new TestProfileCatalogService(new PrismaTestProfileCatalogStore(prisma))
+const testCampaigns = new TestCampaignService(new PrismaTestCampaignStore(prisma))
 const admission = createDeviceCommandAdmission()
 const deviceReadiness = new DeviceReadinessService(admission, {
   adb: () => 'UP',
@@ -65,7 +73,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.get<{ Params: { packKey: string; version: string } }>(
     '/runtime/domain-packs/:packKey/:version',
     async (request, reply) => {
-      const result = domainPackAdmin.get(request.params.packKey, request.params.version)
+      const result = await domainPackAdmin.get(request.params.packKey, request.params.version)
       if (!result) {
         return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
       }
@@ -76,7 +84,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.put<{ Body: Record<string, unknown> }>('/runtime/domain-packs/draft', async (request, reply) => {
     try {
       const body = request.body
-      return domainPackAdmin.saveDraft({
+      return await domainPackAdmin.saveDraft({
         packKey: String(body.packKey ?? ''),
         version: String(body.version ?? ''),
         bundleDigest: String(body.bundleDigest ?? ''),
@@ -95,7 +103,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/domain-packs/publish', async (request, reply) => {
     try {
       const body = request.body
-      return domainPackAdmin.publish({
+      return await domainPackAdmin.publish({
         packKey: String(body.packKey ?? ''),
         version: String(body.version ?? ''),
         publishedBy: String(body.publishedBy ?? 'system'),
@@ -112,7 +120,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.get<{ Params: { profileKey: string; version: string } }>(
     '/runtime/test-profiles/:profileKey/:version',
     async (request, reply) => {
-      const result = testProfiles.get(
+      const result = await testProfiles.get(
         request.params.profileKey,
         Number.parseInt(request.params.version, 10),
       )
@@ -126,7 +134,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.put<{ Body: Record<string, unknown> }>('/runtime/test-profiles', async (request, reply) => {
     try {
       const body = request.body
-      return testProfiles.save({
+      return await testProfiles.save({
         profileKey: String(body.profileKey ?? ''),
         version: Number(body.version ?? 1),
         kind: (body.kind as 'CORE' | 'PREVIEW' | 'SOAK' | 'FAULT') ?? 'CORE',
@@ -178,7 +186,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/test-campaigns', async (request) => {
     const body = request.body
     const cells = Array.isArray(body.cells) ? body.cells : []
-    const campaign = testCampaigns.start({
+    const campaign = await testCampaigns.start({
       campaignKey: String(body.campaignKey ?? ''),
       campaignVersion: Number(body.campaignVersion ?? 1),
       cells: cells.map((cell) => {

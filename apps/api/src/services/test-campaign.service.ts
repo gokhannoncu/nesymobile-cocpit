@@ -24,13 +24,37 @@ export interface CampaignRecord {
   evidenceSummaryRef?: string
 }
 
-export class TestCampaignService {
+/** Async so the same contract covers the in-memory and database-backed stores. */
+export interface TestCampaignStore {
+  list(): Promise<CampaignRecord[]>
+  get(campaignId: string): Promise<CampaignRecord | undefined>
+  upsert(campaign: CampaignRecord): Promise<void>
+}
+
+export class InMemoryTestCampaignStore implements TestCampaignStore {
   private readonly campaigns = new Map<string, CampaignRecord>()
 
-  list() {
+  async list(): Promise<CampaignRecord[]> {
+    return [...this.campaigns.values()]
+  }
+
+  async get(campaignId: string): Promise<CampaignRecord | undefined> {
+    return this.campaigns.get(campaignId)
+  }
+
+  async upsert(campaign: CampaignRecord): Promise<void> {
+    this.campaigns.set(campaign.campaignId, campaign)
+  }
+}
+
+export class TestCampaignService {
+  constructor(private readonly store: TestCampaignStore = new InMemoryTestCampaignStore()) {}
+
+  async list() {
+    const campaigns = await this.store.list()
     return {
       apiVersion: TEST_CAMPAIGN_API_VERSION,
-      items: [...this.campaigns.values()].map((campaign) => ({
+      items: campaigns.map((campaign) => ({
         campaignId: campaign.campaignId,
         campaignKey: campaign.campaignKey,
         campaignVersion: campaign.campaignVersion,
@@ -41,8 +65,8 @@ export class TestCampaignService {
     }
   }
 
-  get(campaignId: string) {
-    const campaign = this.campaigns.get(campaignId)
+  async get(campaignId: string) {
+    const campaign = await this.store.get(campaignId)
     if (!campaign) return null
     return {
       apiVersion: TEST_CAMPAIGN_API_VERSION,
@@ -60,11 +84,11 @@ export class TestCampaignService {
     }
   }
 
-  start(input: {
+  async start(input: {
     campaignKey: string
     campaignVersion: number
     cells: readonly Omit<CampaignCellRecord, 'runIds' | 'result'>[]
-  }): CampaignRecord {
+  }): Promise<CampaignRecord> {
     const campaignId = `campaign_${randomUUID()}`
     const campaign: CampaignRecord = {
       campaignId,
@@ -78,7 +102,7 @@ export class TestCampaignService {
       })),
       releaseGateResult: 'NOT_EVALUATED',
     }
-    this.campaigns.set(campaignId, campaign)
+    await this.store.upsert(campaign)
     return campaign
   }
 
@@ -86,14 +110,14 @@ export class TestCampaignService {
    * Attach a real run/evidence summary. Without evidence, cells stay PENDING/PARTIAL
    * and never invent PASS/FAIL.
    */
-  attachCellEvidence(input: {
+  async attachCellEvidence(input: {
     campaignId: string
     cellKey: string
     runId: string
     evidenceSummaryRef?: string
     result?: 'PASS' | 'FAIL' | 'BLOCKED'
   }) {
-    const campaign = this.campaigns.get(input.campaignId)
+    const campaign = await this.store.get(input.campaignId)
     if (!campaign) throw new Error('campaign not found')
     const cell = campaign.cells.find((item) => item.cellKey === input.cellKey)
     if (!cell) throw new Error('campaign cell not found')
@@ -101,12 +125,14 @@ export class TestCampaignService {
       cell.result = 'PARTIAL'
       cell.runIds = [...cell.runIds, input.runId]
       cell.blockedReason = 'evidence summary missing; verdict withheld'
+      await this.store.upsert(campaign)
       return this.get(input.campaignId)
     }
     cell.runIds = [...cell.runIds, input.runId]
     cell.evidenceSummaryRef = input.evidenceSummaryRef
     cell.result = input.result ?? 'PASS'
     cell.blockedReason = undefined
+    await this.store.upsert(campaign)
     return this.get(input.campaignId)
   }
 

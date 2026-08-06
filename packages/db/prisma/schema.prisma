@@ -835,6 +835,8 @@ model VerdictDomainPackVersion {
   bundleDigest     String    @map("bundle_digest")
   publicationState String    @default("DRAFT") @map("publication_state")
   bundle           Json
+  /// Optimistic-concurrency counter for draft-save and publish.
+  revision         Int       @default(1)
   immutableAt      DateTime? @map("immutable_at") @db.Timestamptz(6)
   publishedAt      DateTime? @map("published_at") @db.Timestamptz(6)
   publishedBy      String?   @map("published_by")

@@ -32,37 +32,37 @@ describe('phase 6 input contracts', () => {
     expect(started.engineType).toBe('BRIDGEFLOW')
   })
 
-  it('enforces domain pack publish immutability and optimistic concurrency', () => {
+  it('enforces domain pack publish immutability and optimistic concurrency', async () => {
     const admin = new DomainPackAdminService()
-    const draft = admin.saveDraft({
+    const draft = await admin.saveDraft({
       packKey: 'nesy-courier',
       version: '1.0.0',
       bundleDigest: 'sha256:a',
       bundle: { ok: true },
     })
-    const published = admin.publish({
+    const published = await admin.publish({
       packKey: 'nesy-courier',
       version: '1.0.0',
       publishedBy: 'owner',
       expectedRevision: draft.pack.revision,
     })
     expect(published.pack.publicationState).toBe('PUBLISHED')
-    expect(() =>
+    await expect(
       admin.saveDraft({
         packKey: 'nesy-courier',
         version: '1.0.0',
         bundleDigest: 'sha256:b',
         bundle: { ok: false },
       }),
-    ).toThrow(/immutable/i)
-    expect(() =>
+    ).rejects.toThrow(/immutable/i)
+    await expect(
       admin.publish({
         packKey: 'nesy-courier',
         version: '1.0.0',
         publishedBy: 'owner',
         expectedRevision: published.pack.revision,
       }),
-    ).toThrow(/immutable/i)
+    ).rejects.toThrow(/immutable/i)
   })
 
   it('rejects preview profiles with releaseGate=true', () => {
@@ -81,9 +81,9 @@ describe('phase 6 input contracts', () => {
     ).toBe(false)
   })
 
-  it('does not invent PASS/FAIL for campaign cells without evidence', () => {
+  it('does not invent PASS/FAIL for campaign cells without evidence', async () => {
     const campaigns = new TestCampaignService()
-    const started = campaigns.start({
+    const started = await campaigns.start({
       campaignKey: 'nightly',
       campaignVersion: 1,
       cells: [
@@ -95,7 +95,7 @@ describe('phase 6 input contracts', () => {
         },
       ],
     })
-    const withoutEvidence = campaigns.attachCellEvidence({
+    const withoutEvidence = await campaigns.attachCellEvidence({
       campaignId: started.campaignId,
       cellKey: 'loginxpixel',
       runId: 'run-1',
@@ -103,7 +103,7 @@ describe('phase 6 input contracts', () => {
     expect(withoutEvidence?.cells[0]?.result).toBe('PENDING')
     expect(withoutEvidence?.cells[0]?.blockedReason).toMatch(/evidence/i)
 
-    const withEvidence = campaigns.attachCellEvidence({
+    const withEvidence = await campaigns.attachCellEvidence({
       campaignId: started.campaignId,
       cellKey: 'loginxpixel',
       runId: 'run-1',
@@ -215,23 +215,23 @@ describe('workflow run start pinning', () => {
  * deliberate: update the web mirror in the same commit.
  */
 describe('phase 6 read-model DTO shape', () => {
-  it('pins the domain pack catalog item keys', () => {
+  it('pins the domain pack catalog item keys', async () => {
     const service = new DomainPackAdminService()
-    service.saveDraft({
+    await service.saveDraft({
       packKey: 'nesy-courier',
       version: '1.0.0',
       bundleDigest: 'sha256:seed',
       bundle: {},
     })
-    const [item] = service.list().items
+    const [item] = (await service.list()).items
     expect(Object.keys(item).sort()).toEqual(
       ['bundleDigest', 'packKey', 'publicationState', 'publishedAt', 'revision', 'version'].sort(),
     )
   })
 
-  it('pins the test profile catalog item keys', () => {
+  it('pins the test profile catalog item keys', async () => {
     const service = new TestProfileCatalogService()
-    service.save({
+    await service.save({
       profileKey: 'nesy-core-regression',
       version: 1,
       kind: 'CORE',
@@ -241,7 +241,7 @@ describe('phase 6 read-model DTO shape', () => {
       definition: { includedWorkflowRefs: ['wf.a'] },
       owner: 'qa-platform',
     })
-    const [item] = service.list().items
+    const [item] = (await service.list()).items
     expect(Object.keys(item).sort()).toEqual(
       [
         'blockedReason',
@@ -257,14 +257,14 @@ describe('phase 6 read-model DTO shape', () => {
     )
   })
 
-  it('pins the test campaign catalog item keys', () => {
+  it('pins the test campaign catalog item keys', async () => {
     const service = new TestCampaignService()
-    service.start({
+    await service.start({
       campaignKey: 'nightly',
       campaignVersion: 1,
       cells: [{ cellKey: 'c1', profileKey: 'nesy-core-regression', profileVersion: 1 }],
     })
-    const [item] = service.list().items
+    const [item] = (await service.list()).items
     expect(Object.keys(item).sort()).toEqual(
       ['campaignId', 'campaignKey', 'campaignVersion', 'cellCount', 'releaseGateResult', 'status'].sort(),
     )

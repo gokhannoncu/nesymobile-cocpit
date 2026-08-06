@@ -80,7 +80,7 @@ describe('phase 5 local completion acceptance', () => {
     expect(result.evaluationFailureClass === 'AUTOMATION_FAILURE' || result.lifecycle === 'CLOSED').toBe(true)
   })
 
-  it('keeps compile hash, run start pin, and campaign no-evidence policy aligned', () => {
+  it('keeps compile hash, run start pin, and campaign no-evidence policy aligned', async () => {
     const compile = createHashPinnedCompileStub()
     const runs = new WorkflowRunService()
     const campaigns = new TestCampaignService()
@@ -100,12 +100,12 @@ describe('phase 5 local completion acceptance', () => {
     })
     expect(started.compiledPlanHash).toBe(preview.compiledPlanHash)
 
-    const campaign = campaigns.start({
+    const campaign = await campaigns.start({
       campaignKey: 'pr',
       campaignVersion: 1,
       cells: [{ cellKey: 'c1', profileKey: 'p', profileVersion: 1 }],
     })
-    const pending = campaigns.attachCellEvidence({
+    const pending = await campaigns.attachCellEvidence({
       campaignId: campaign.campaignId,
       cellKey: 'c1',
       runId: started.runId,
@@ -113,7 +113,7 @@ describe('phase 5 local completion acceptance', () => {
     expect(pending?.cells[0]?.result).toBe('PENDING')
   })
 
-  it('keeps preview releaseGate false and published packs immutable', () => {
+  it('keeps preview releaseGate false and published packs immutable', async () => {
     const profiles = new TestProfileCatalogService()
     expect(
       profiles.validate({
@@ -129,26 +129,26 @@ describe('phase 5 local completion acceptance', () => {
     ).toMatch(/releaseGate/i)
 
     const packs = new DomainPackAdminService()
-    const draft = packs.saveDraft({
+    const draft = await packs.saveDraft({
       packKey: 'nesy-courier',
       version: '1.0.0',
       bundleDigest: 'sha256:a',
       bundle: {},
     })
-    packs.publish({
+    await packs.publish({
       packKey: 'nesy-courier',
       version: '1.0.0',
       publishedBy: 'owner',
       expectedRevision: draft.pack.revision,
     })
-    expect(() =>
+    await expect(
       packs.saveDraft({
         packKey: 'nesy-courier',
         version: '1.0.0',
         bundleDigest: 'sha256:b',
         bundle: {},
       }),
-    ).toThrow(/immutable/i)
+    ).rejects.toThrow(/immutable/i)
   })
 
   it('never auto-retries unknown remote effects and surfaces admission blocked reasons', async () => {

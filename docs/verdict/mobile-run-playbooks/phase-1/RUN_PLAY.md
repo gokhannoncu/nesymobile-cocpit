@@ -4,12 +4,12 @@
 runPlayId: verdict-mobile-phase-1-run-play
 phase: "1"
 phaseName: "SDK Auth + Session Lifecycle Fixture Alignment"
-status: NOT_STARTED
-recoveryState: READY_TO_START
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 04:35:00 +03"
+startedAt: "2026-08-06 04:38:00 +03"
+completedAt: "2026-08-06 04:52:00 +03"
+lastUpdatedAt: "2026-08-06 04:52:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -74,12 +74,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M1` |
-| Current step | `1.0` |
-| Current state | `READY_TO_START` |
-| Last successful step | `1.0` |
-| Last attempted step | `1.0` |
-| Last update | `2026-08-06 04:35:00 +03` |
-| Recovery instruction | `M0 COMPLETED + audit-corrected. phase1Readiness READY_WITH_EXTERNAL_BLOCKERS. M1 başlayabilir.` |
+| Current step | `1.6` (bitti) |
+| Current state | `COMPLETED` |
+| Last successful step | `1.6` |
+| Last attempted step | `1.6` |
+| Last update | `2026-08-06 04:52:00 +03` |
+| Recovery instruction | `Phase M1 COMPLETED. Auth/session fixture alignment doğrulanmış. M2 READY_WITH_EXTERNAL_BLOCKERS.` |
 
 ## 3. Kapsam
 
@@ -124,33 +124,33 @@ readiness yaz.
 
 ### 1.1 M0 gate + Cockpit Phase 1 RESULT okuma
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.1
 
 ### 1.2 Mevcut auth/session fixture envanteri
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.2 — 22 auth tests + 12 fixtures catalogued
 
 ### 1.3 hello/auth mutual-HMAC fixture alignment
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.3 — hello_auth_handshake.json + 3 new tests
 
 ### 1.4 set_run/end_run/secret rotation fixture
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.4 — end_run.json + set_run_with_secret.json + 1 new test
 
 ### 1.5 Negatif auth/fencing testleri
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.5 — 2 new negative tests, full coverage matrix
 
 ### 1.6 Verification + M2 readiness
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §5 step 1.6 — verdict-core:test + verdict-sdk:test GREEN
 
 
 ## 8. Verification commands

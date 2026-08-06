@@ -20,18 +20,44 @@ export interface TestProfileRecord {
   blockedReason?: string
 }
 
-export class TestProfileCatalogService {
+/** Async so the same contract covers the in-memory and database-backed stores. */
+export interface TestProfileCatalogStore {
+  list(): Promise<TestProfileRecord[]>
+  get(profileKey: string, version: number): Promise<TestProfileRecord | undefined>
+  upsert(profile: TestProfileRecord): Promise<void>
+}
+
+export class InMemoryTestProfileCatalogStore implements TestProfileCatalogStore {
   private readonly profiles = new Map<string, TestProfileRecord>()
 
   private id(profileKey: string, version: number): string {
     return `${profileKey}@${version}`
   }
 
-  list() {
+  async list(): Promise<TestProfileRecord[]> {
+    return [...this.profiles.values()]
+  }
+
+  async get(profileKey: string, version: number): Promise<TestProfileRecord | undefined> {
+    return this.profiles.get(this.id(profileKey, version))
+  }
+
+  async upsert(profile: TestProfileRecord): Promise<void> {
+    this.profiles.set(this.id(profile.profileKey, profile.version), { ...profile })
+  }
+}
+
+export class TestProfileCatalogService {
+  constructor(
+    private readonly store: TestProfileCatalogStore = new InMemoryTestProfileCatalogStore(),
+  ) {}
+
+  async list() {
+    const profiles = await this.store.list()
     return {
       apiVersion: TEST_PROFILE_API_VERSION,
       partial: false,
-      items: [...this.profiles.values()].map((profile) => ({
+      items: profiles.map((profile) => ({
         profileKey: profile.profileKey,
         version: profile.version,
         kind: profile.kind,
@@ -45,8 +71,8 @@ export class TestProfileCatalogService {
     }
   }
 
-  get(profileKey: string, version: number) {
-    const profile = this.profiles.get(this.id(profileKey, version))
+  async get(profileKey: string, version: number) {
+    const profile = await this.store.get(profileKey, version)
     if (!profile) return null
     return { apiVersion: TEST_PROFILE_API_VERSION, profile }
   }
@@ -65,12 +91,12 @@ export class TestProfileCatalogService {
     return { ok: errors.length === 0, errors }
   }
 
-  save(profile: TestProfileRecord) {
+  async save(profile: TestProfileRecord) {
     const validation = this.validate(profile)
     if (!validation.ok) {
       throw new Error(validation.errors.join('; '))
     }
-    this.profiles.set(this.id(profile.profileKey, profile.version), { ...profile })
+    await this.store.upsert(profile)
     return { apiVersion: TEST_PROFILE_API_VERSION, profile }
   }
 }

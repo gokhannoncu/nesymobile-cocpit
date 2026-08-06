@@ -4,12 +4,12 @@
 runPlayId: verdict-mobile-phase-2-run-play
 phase: "2"
 phaseName: "EmitOutcome Diagnostic + WAL/ACK Fixture"
-status: NOT_STARTED
-recoveryState: WAITING_FOR_PHASE_M1
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+startedAt: "2026-08-06 05:03:00 +03"
+completedAt: "2026-08-06 05:16:00 +03"
+lastUpdatedAt: "2026-08-06 05:16:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -72,12 +72,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M2` |
-| Current step | `2.0` |
-| Current state | `WAITING_FOR_PHASE_M1` |
-| Last successful step | `2.0` |
-| Last attempted step | `2.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M2 henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Current step | `2.6` (bitti) |
+| Current state | `COMPLETED` |
+| Last successful step | `2.6` |
+| Last attempted step | `2.6` |
+| Last update | `2026-08-06 05:16:00 +03` |
+| Recovery instruction | `Phase M2 kapandı. verdict-core:test + verdict-sdk:test BUILD SUCCESSFUL. M3'e geçilebilir.` |
 
 ## 3. Kapsam
 
@@ -117,33 +117,33 @@ readiness yaz.
 
 ### 2.1 M1 gate + Cockpit Phase 2 EmitOutcome port okuma
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §3 — all gates PASS
 
 ### 2.2 Mevcut EmitOutcome API envanteri
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §6 — 6 sealed, 4 wire state, per-stream ACK
 
 ### 2.3 Bounded diagnostic query tasarım + implementasyon
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §7 — EmitOutcomeDiagnostic.kt + handler + engine
 
 ### 2.4 WAL/ACK / no_space / write_failed fixture
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §8 — 3 VerdictEngineTest tests
 
 ### 2.5 Recursion/side-effect negatif test
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §9 — 10 calls, bytes+seq stable, 2 handler tests
 
 ### 2.6 Verification + M3/M5 handoff
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md §10 — BUILD SUCCESSFUL, digest unchanged
 
 
 ## 8. Verification commands
@@ -162,6 +162,6 @@ readiness yaz.
 
 ## 10. Next phase handoff
 
-Bu faz kapanınca RESULT.md içinde `phase3Readiness` alanını doldur.
-Cockpit playbook'taki ilgili external blocker (B-12/B-13/CP3-DUT vb.) güncellenmeliyse
-handoff notu yaz.
+Bu faz kapandı. RESULT.md içinde `phase3Readiness: READY_WITH_EXTERNAL_BLOCKERS`
+alanı dolduruldu. Cockpit playbook'taki external blocker (B-12/B-13/CP3-DUT)
+carry-over olarak taşındı.

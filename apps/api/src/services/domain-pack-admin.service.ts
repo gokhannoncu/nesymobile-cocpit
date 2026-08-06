@@ -13,10 +13,14 @@ export interface DomainPackVersionRecord {
   publishedBy?: string
 }
 
+/**
+ * Store methods are async so a database-backed implementation can satisfy the
+ * same contract as the in-memory one used by unit tests.
+ */
 export interface DomainPackAdminStore {
-  list(): DomainPackVersionRecord[]
-  get(packKey: string, version: string): DomainPackVersionRecord | undefined
-  upsert(record: DomainPackVersionRecord): void
+  list(): Promise<DomainPackVersionRecord[]>
+  get(packKey: string, version: string): Promise<DomainPackVersionRecord | undefined>
+  upsert(record: DomainPackVersionRecord): Promise<void>
 }
 
 export class InMemoryDomainPackAdminStore implements DomainPackAdminStore {
@@ -26,15 +30,15 @@ export class InMemoryDomainPackAdminStore implements DomainPackAdminStore {
     return `${packKey}@${version}`
   }
 
-  list(): DomainPackVersionRecord[] {
+  async list(): Promise<DomainPackVersionRecord[]> {
     return [...this.records.values()]
   }
 
-  get(packKey: string, version: string): DomainPackVersionRecord | undefined {
+  async get(packKey: string, version: string): Promise<DomainPackVersionRecord | undefined> {
     return this.records.get(this.key(packKey, version))
   }
 
-  upsert(record: DomainPackVersionRecord): void {
+  async upsert(record: DomainPackVersionRecord): Promise<void> {
     this.records.set(this.key(record.packKey, record.version), { ...record })
   }
 }
@@ -42,10 +46,11 @@ export class InMemoryDomainPackAdminStore implements DomainPackAdminStore {
 export class DomainPackAdminService {
   constructor(private readonly store: DomainPackAdminStore = new InMemoryDomainPackAdminStore()) {}
 
-  list() {
+  async list() {
+    const records = await this.store.list()
     return {
       apiVersion: DOMAIN_PACK_ADMIN_API_VERSION,
-      items: this.store.list().map((item) => ({
+      items: records.map((item) => ({
         packKey: item.packKey,
         version: item.version,
         bundleDigest: item.bundleDigest,
@@ -56,20 +61,20 @@ export class DomainPackAdminService {
     }
   }
 
-  get(packKey: string, version: string) {
-    const record = this.store.get(packKey, version)
+  async get(packKey: string, version: string) {
+    const record = await this.store.get(packKey, version)
     if (!record) return null
     return { apiVersion: DOMAIN_PACK_ADMIN_API_VERSION, pack: record }
   }
 
-  saveDraft(input: {
+  async saveDraft(input: {
     packKey: string
     version: string
     bundleDigest: string
     bundle: unknown
     expectedRevision?: number
   }) {
-    const existing = this.store.get(input.packKey, input.version)
+    const existing = await this.store.get(input.packKey, input.version)
     if (existing?.publicationState === 'PUBLISHED') {
       throw new Error('published domain pack versions are immutable')
     }
@@ -88,12 +93,17 @@ export class DomainPackAdminService {
       bundle: input.bundle,
       revision: (existing?.revision ?? 0) + 1,
     }
-    this.store.upsert(next)
+    await this.store.upsert(next)
     return { apiVersion: DOMAIN_PACK_ADMIN_API_VERSION, pack: next }
   }
 
-  publish(input: { packKey: string; version: string; publishedBy: string; expectedRevision: number }) {
-    const existing = this.store.get(input.packKey, input.version)
+  async publish(input: {
+    packKey: string
+    version: string
+    publishedBy: string
+    expectedRevision: number
+  }) {
+    const existing = await this.store.get(input.packKey, input.version)
     if (!existing) throw new Error('domain pack version not found')
     if (existing.publicationState === 'PUBLISHED') {
       throw new Error('published domain pack versions are immutable')
@@ -108,7 +118,7 @@ export class DomainPackAdminService {
       publishedBy: input.publishedBy,
       revision: existing.revision + 1,
     }
-    this.store.upsert(next)
+    await this.store.upsert(next)
     return { apiVersion: DOMAIN_PACK_ADMIN_API_VERSION, pack: next }
   }
 }
