@@ -31,10 +31,13 @@ export default function DomainPacksCatalogPage() {
     loadData()
   }, [])
 
-  const filteredItems = data?.items.filter(item => 
-    item.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.packKey.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || []
+  const query = searchQuery.toLowerCase()
+  const filteredItems =
+    data?.items.filter(
+      (item) =>
+        item.packKey.toLowerCase().includes(query) ||
+        item.version.toLowerCase().includes(query),
+    ) ?? []
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -85,8 +88,8 @@ export default function DomainPacksCatalogPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredItems.map(pack => (
             <Link 
-              key={`${pack.packKey}-${pack.latestVersion}`}
-              href={`/automation/domain-packs/${pack.packKey}?version=${pack.latestVersion}`}
+              key={`${pack.packKey}-${pack.version}`}
+              href={`/automation/domain-packs/${encodeURIComponent(pack.packKey)}?version=${encodeURIComponent(pack.version)}`}
               className="group block"
             >
               <div className="border rounded-xl p-6 h-full bg-white dark:bg-gray-950 hover:shadow-md hover:border-primary/30 transition-all duration-200 flex flex-col relative overflow-hidden">
@@ -95,32 +98,28 @@ export default function DomainPacksCatalogPage() {
                 </div>
                 
                 <div className="flex justify-between items-start mb-4 pr-6">
-                  <h3 className="text-lg font-semibold truncate" title={pack.displayName}>
-                    {pack.displayName}
+                  <h3 className="text-lg font-semibold truncate" title={pack.packKey}>
+                    {pack.packKey}
                   </h3>
-                  <DomainPackStateBadge state={pack.state} />
+                  <DomainPackStateBadge state={pack.publicationState} />
                 </div>
                 
-                <div className="text-sm text-gray-500 font-mono mb-6">
-                  {pack.packKey}
+                <div className="text-sm text-gray-500 font-mono mb-6 truncate" title={pack.bundleDigest}>
+                  {pack.bundleDigest}
                 </div>
                 
                 <div className="mt-auto grid grid-cols-2 gap-y-4 gap-x-2 text-sm text-gray-600 dark:text-gray-400">
                   <div>
                     <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Version</span>
-                    {pack.latestVersion}
+                    {pack.version}
                   </div>
                   <div>
-                    <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Updated</span>
-                    {new Date(pack.updatedAt).toLocaleDateString()}
+                    <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Revision</span>
+                    {pack.revision}
                   </div>
-                  <div>
-                    <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Apps / Screens</span>
-                    {pack.applicationCount} / {pack.screenCount}
-                  </div>
-                  <div>
-                    <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Targets</span>
-                    {pack.targetCount}
+                  <div className="col-span-2">
+                    <span className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Published</span>
+                    {pack.publishedAt ? new Date(pack.publishedAt).toLocaleString() : 'not published'}
                   </div>
                 </div>
               </div>

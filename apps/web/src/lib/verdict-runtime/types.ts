@@ -72,10 +72,23 @@ export interface DeviceReadinessApi {
   partial: boolean
 }
 
+/** Mirrors `TestProfileCatalogService.list()`. */
+export interface TestProfileCatalogItemApi {
+  profileKey: string
+  version: number
+  kind: 'CORE' | 'PREVIEW' | 'SOAK' | 'FAULT'
+  releaseGate: boolean
+  packKey: string
+  packVersion: string
+  owner: string
+  lastResult: string
+  blockedReason?: string | null
+}
+
 export interface TestProfileCatalogApi {
   apiVersion: VerdictRuntimeApiVersion
   partial: boolean
-  items: Record<string, unknown>[]
+  items: TestProfileCatalogItemApi[]
 }
 
 export interface TestCampaignCatalogItemApi {
@@ -111,22 +124,23 @@ export interface DurableInteractionPageApi {
 
 export type DomainPackState = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 
+/**
+ * Mirrors `DomainPackAdminService.list()` exactly. An earlier revision declared
+ * a richer shape (displayName / latestVersion / applicationCount / …) that the
+ * runtime never produced, which crashed the catalog page as soon as the list
+ * was non-empty.
+ */
 export interface DomainPackSummary {
   packKey: string
-  displayName: string
-  state: DomainPackState
-  latestVersion: string
-  publishedBundleHash?: string
-  applicationCount: number
-  screenCount: number
-  targetCount: number
-  evidenceSourceCount: number
-  updatedAt: string
+  version: string
+  bundleDigest: string
+  publicationState: DomainPackState
+  revision: number
+  publishedAt?: string
 }
 
 export interface DomainPackCatalogApi {
   apiVersion: VerdictRuntimeApiVersion
-  partial: boolean
   items: DomainPackSummary[]
 }
 

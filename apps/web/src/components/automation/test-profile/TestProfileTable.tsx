@@ -3,8 +3,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { TestProfileKindBadge } from './TestProfileKindBadge'
 import Link from 'next/link'
+import type { TestProfileCatalogItemApi } from '@/lib/verdict-runtime/types'
 
-export function TestProfileTable({ items }: { items: any[] }) {
+/**
+ * Renders the profile catalog DTO as-is. Earlier this component read `key` and
+ * `displayName`, which the runtime never sends, so rows fell back to
+ * "Profile <index>" and every link pointed at a literal `demo` id.
+ */
+export function TestProfileTable({ items }: { items: TestProfileCatalogItemApi[] }) {
   return (
     <div className="border rounded-md">
       <Table>
@@ -12,30 +18,36 @@ export function TestProfileTable({ items }: { items: any[] }) {
           <TableRow>
             <TableHead>Profile</TableHead>
             <TableHead>Kind</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Last Result</TableHead>
             <TableHead>Release Gate</TableHead>
             <TableHead>Owner</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item, i) => (
-            <TableRow key={i}>
+          {items.map((item) => (
+            <TableRow key={`${item.profileKey}@${item.version}`}>
               <TableCell className="font-medium">
-                <Link href={`/automation/test-profiles/${item.key || 'demo'}`} className="hover:underline">
-                  {item.displayName || item.key || `Profile ${i}`}
+                <Link
+                  href={`/automation/test-profiles/${encodeURIComponent(item.profileKey)}`}
+                  className="hover:underline"
+                >
+                  {item.profileKey}
                 </Link>
-                {item.preview && <Badge variant="secondary" className="ml-2 text-[10px]">PREVIEW</Badge>}
+                <span className="text-muted-foreground ml-2 text-xs">v{item.version}</span>
+                {item.kind === 'PREVIEW' && (
+                  <Badge variant="secondary" className="ml-2 text-[10px]">PREVIEW</Badge>
+                )}
               </TableCell>
-              <TableCell><TestProfileKindBadge kind={item.kind || 'SMOKE'} /></TableCell>
+              <TableCell><TestProfileKindBadge kind={item.kind} /></TableCell>
               <TableCell>
                 {item.blockedReason ? (
-                  <Badge variant="destructive">BLOCKED</Badge>
+                  <Badge variant="destructive" title={item.blockedReason}>BLOCKED</Badge>
                 ) : (
-                  <Badge variant="outline" className="text-green-600 border-green-200">READY</Badge>
+                  <Badge variant="outline">{item.lastResult}</Badge>
                 )}
               </TableCell>
               <TableCell>{item.releaseGate ? 'Yes' : 'No'}</TableCell>
-              <TableCell className="text-muted-foreground">{item.owner || 'Unowned'}</TableCell>
+              <TableCell className="text-muted-foreground">{item.owner}</TableCell>
             </TableRow>
           ))}
           {items.length === 0 && (

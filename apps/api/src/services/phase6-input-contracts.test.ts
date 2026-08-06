@@ -206,3 +206,67 @@ describe('workflow run start pinning', () => {
     expect(first.compiledPlanHash).toBe('sha256:abc')
   })
 })
+
+/**
+ * The cockpit mirrors these DTOs by hand in
+ * `apps/web/src/lib/verdict-runtime/types.ts`. Drift is invisible to `tsc`
+ * because the web side declares its own interface, and it stayed invisible at
+ * runtime while the lists were empty. Pinning the key sets makes any change
+ * deliberate: update the web mirror in the same commit.
+ */
+describe('phase 6 read-model DTO shape', () => {
+  it('pins the domain pack catalog item keys', () => {
+    const service = new DomainPackAdminService()
+    service.saveDraft({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      bundle: {},
+    })
+    const [item] = service.list().items
+    expect(Object.keys(item).sort()).toEqual(
+      ['bundleDigest', 'packKey', 'publicationState', 'publishedAt', 'revision', 'version'].sort(),
+    )
+  })
+
+  it('pins the test profile catalog item keys', () => {
+    const service = new TestProfileCatalogService()
+    service.save({
+      profileKey: 'nesy-core-regression',
+      version: 1,
+      kind: 'CORE',
+      releaseGate: true,
+      packKey: 'nesy-courier',
+      packVersion: '1.0.0',
+      definition: { includedWorkflowRefs: ['wf.a'] },
+      owner: 'qa-platform',
+    })
+    const [item] = service.list().items
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'blockedReason',
+        'kind',
+        'lastResult',
+        'owner',
+        'packKey',
+        'packVersion',
+        'profileKey',
+        'releaseGate',
+        'version',
+      ].sort(),
+    )
+  })
+
+  it('pins the test campaign catalog item keys', () => {
+    const service = new TestCampaignService()
+    service.start({
+      campaignKey: 'nightly',
+      campaignVersion: 1,
+      cells: [{ cellKey: 'c1', profileKey: 'nesy-core-regression', profileVersion: 1 }],
+    })
+    const [item] = service.list().items
+    expect(Object.keys(item).sort()).toEqual(
+      ['campaignId', 'campaignKey', 'campaignVersion', 'cellCount', 'releaseGateResult', 'status'].sort(),
+    )
+  })
+})

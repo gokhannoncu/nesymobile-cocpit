@@ -1,12 +1,16 @@
 import { fetchVerdictTestProfiles } from '@/lib/verdict-runtime/client'
 import { TestProfileTable } from '@/components/automation/test-profile/TestProfileTable'
+import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
+import type { TestProfileCatalogItemApi } from '@/lib/verdict-runtime/types'
 
 export default async function TestProfilesPage() {
-  let catalog = null
+  let items: TestProfileCatalogItemApi[] | null = null
   try {
-    catalog = await fetchVerdictTestProfiles()
-  } catch (err) {
-    catalog = { items: [] }
+    items = (await fetchVerdictTestProfiles()).items
+  } catch {
+    // Swallowing this into an empty table would render "no profiles" for a
+    // runtime that is simply unreachable.
+    items = null
   }
 
   return (
@@ -16,7 +20,17 @@ export default async function TestProfilesPage() {
         <p className="text-muted-foreground">Manage SMOKE, REGRESSION, and other verification profiles.</p>
       </div>
 
-      <TestProfileTable items={catalog.items} />
+      {items === null ? (
+        <Alert variant="destructive">
+          <AlertTitle>Profile catalog unavailable</AlertTitle>
+          <AlertDescription>
+            The Verdict runtime did not return the profile catalog. An empty list is
+            not shown, because that would be indistinguishable from having no profiles.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <TestProfileTable items={items} />
+      )}
     </div>
   )
 }

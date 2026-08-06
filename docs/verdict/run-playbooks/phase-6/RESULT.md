@@ -36,11 +36,11 @@ CHECKPOINT 6: NOT_YET_PASSED
 Phase 5 resultState: COMPLETED
 Cockpit UI implementation: COMMITTED — 68 files, +4863/-33 (commit 62aa6e7)
 Implemented steps: 6.0–6.29 (30/31); 6.30 open
-Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 365 tests
+Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 373 tests
 Production build: PASS — was FAILING on a duplicate route
-Runtime verification: PASS_PARTIAL — read paths and fail-closed states only
-Defects found and fixed: duplicate route broke `next build`; three guard suites
-  never ran; two routes shipped fabricated data; dead nav target undeclared
+Runtime verification: PASS — seeded write→read tour (§15); real DUT still external
+Defects found and fixed: 8 (build-breaking route clash, dead test globs,
+  fabricated UI data x2, compile/run fail-open x2, DTO drift x2)
 Open external blockers: CP3-DUT, B-12   (B-4 closed, see §14)
 ```
 
@@ -183,7 +183,7 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 | Direct entry over HTTP (14 routes) | `PASS` — all HTTP 200, incl. `/product`, `/pm/root-cause`, `/debug-view/overview`, `/automation/*` |
 | Runtime fail-closed behaviour | `PASS` — campaigns render `No campaigns found` against an empty catalog; unknown profile renders `Profile not found`; unknown run renders `Error loading run` |
 | Browser console errors | `PASS` — none on the campaigns route |
-| `@nesy/api` test suite | `PASS` — 365 passed, 38 skipped (DB-backed integration) |
+| `@nesy/api` test suite | `PASS` — 373 passed, 38 skipped (DB-backed integration) |
 | `@nesy/execution-contract` test | `PASS` — 20 tests |
 | `@nesy/oracle-engine` test | `PASS` — 12 tests |
 | `@nesy/bridgeflow-executor` test | `PASS` — 29 tests |
@@ -195,7 +195,7 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 | Legacy-zero checks | `PASS` — `legacy-zero.test.ts` |
 | Non-regression route suite | `PASS` — 41 tests |
 | Page acceptance suite | `PASS` — 240 tests |
-| Runtime acceptance vs live API | `PASS_PARTIAL` — API on :4001 and cockpit on :4002; read paths and fail-closed states verified. Write/execute paths and real-DUT flows not exercised |
+| Runtime acceptance vs live API | `PASS` for seeded read+write paths — see §15. Real-DUT execution still external (`CP3-DUT`) |
 | `prisma migrate status` | `PASS` — all 16 migrations applied to `aras_db`. See §14 |
 
 ## 9. CHECKPOINT 6 acceptance checklist
@@ -262,7 +262,10 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | B-6-BUILD-ROUTE-CONFLICT | HIGH/LOCAL | `RESOLVED` | `next build` failed: `(automation-editor)` and `(cockpit)` both served `/automation/[id]/runs/[runId]` | Legacy `(automation-editor)` run-detail route removed per manifest cutover; duplicate-route guard added |
 | B-6-DEAD-TEST-GLOB | MEDIUM/LOCAL | `RESOLVED` | `src/test/**` excluded from vitest `include`; three Phase 6 guard suites never executed | Glob added to `vitest.config.mts` |
 | B-6-FABRICATED-UI-DATA | HIGH/LOCAL | `RESOLVED` | `/automation/test-campaigns` and `/automation/test-profiles/[profileId]` rendered hardcoded sample records while declaring `currentSource: VERDICT_RUNTIME` | Both wired to the runtime client; guard test added |
-| B-6-RUNTIME-ACCEPTANCE | MEDIUM/LOCAL | `OPEN_LOCAL` | Write/execute paths and per-item CHECKPOINT evidence still unexercised | Drive campaign start / domain pack publish against a seeded runtime |
+| B-6-RUNTIME-ACCEPTANCE | MEDIUM/LOCAL | `RESOLVED` | Write/execute paths unexercised | Seeded write→read tour executed; see §15 |
+| B-6-COMPILE-RUN-FAIL-OPEN | HIGH/LOCAL | `RESOLVED` | `/runtime/compile` and `/runtime/runs` accepted unpinned requests | Pinning guards + tests |
+| B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
+| B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `OPEN_LOCAL` | Phase 6 contract services are module-scope in-memory singletons; cockpit state does not survive an API restart despite Phase 5 Prisma persistence | Wire domain pack / profile / campaign / run services to the Prisma repositories |
 
 ## 11. Skipped / deferred work
 
@@ -291,11 +294,12 @@ Exit criteria to close Phase 6:
    240 tests across 63 routes.
 3. ~~`6.29` — verification sweep including a live-API runtime pass.~~ **Done** —
    §8; production build and direct-entry now verified, previously neither was.
-4. `6.30` — record CHECKPOINT 6 with per-item evidence, then evaluate
-   `phase7Readiness`. **Still open**: 48 of the 85 CHECKPOINT items have no
-   evidence, and the write/execute paths (`B-6-RUNTIME-ACCEPTANCE`) are
-   unexercised. Static and read-path acceptance is now genuine; closure needs a
-   seeded runtime pass, not more static tests.
+4. ~~Seeded write/execute path tour.~~ **Done** — §15.
+5. `6.30` — **still open**, now blocked on one substantive item rather than on
+   missing tests: `B-6-INMEMORY-READ-MODELS`. The Phase 6 read models live in
+   process memory, so no CHECKPOINT evidence they carry survives a restart.
+   Persist them, re-run the §15 tour, then evidence the remaining CHECKPOINT
+   items and evaluate `phase7Readiness`.
 
 External blockers CP3-DUT, B-12 and B-4-PG-MIGRATION-APPLY remain open and are
 independent of the four items above; they block production acceptance, not
@@ -347,3 +351,58 @@ Two follow-ups:
 
 `B-4-PG-MIGRATION-APPLY` is closed. `CP3-DUT` and `B-12` remain open external
 blockers and are unaffected.
+
+## 15. Runtime seed and write-path tour
+
+Driven against the running stack (API `:4001`, cockpit `:4002`) on
+2026-08-06 04:30–04:50 +03. Every step below was executed, not inferred.
+
+### Write path
+
+| Step | Call | Result |
+|---|---|---|
+| Domain pack draft | `PUT /runtime/domain-packs/draft` | `200` — revision 1, `DRAFT` |
+| Domain pack publish | `POST /runtime/domain-packs/publish` (expectedRevision 1) | `200` — revision 2, `PUBLISHED` |
+| Publish replay with stale revision | same call again | `409` — optimistic concurrency fail-closed |
+| Profile save (CORE, releaseGate) | `PUT /runtime/test-profiles` | `200` |
+| Profile save (PREVIEW + releaseGate=true) | `PUT /runtime/test-profiles` | `422` — "preview profiles must set releaseGate=false" |
+| Campaign start (2 cells) | `POST /runtime/test-campaigns` | `200` — `RUNNING`, cells `PENDING`, gate `NOT_EVALUATED` |
+| Compile | `POST /runtime/compile` | `200` — plan hash pinned to pack digest |
+| Run start | `POST /runtime/runs` | `202` — `compiledPlanHash` **identical** to the compile response (CHECKPOINT item 3 evidenced at runtime) |
+| Interaction append + cursor read | `POST`/`GET /runtime/runs/:runId/interactions` | revisions 1..2, `secretRedacted: true`, `latestRevision` cursor correct |
+
+### Read path in the cockpit
+
+Domain Pack catalog renders the published pack (`nesy-courier`, `PUBLISHED`,
+`sha256:seed0001`, v1.0.0, revision 2, publish timestamp). Test Profiles renders
+`nesy-core-regression v1 / CORE / NOT_RUN / releaseGate Yes / qa-platform`, and
+its detail page resolves the real profile. Test Campaigns renders `nightly`
+(`RUNNING`, `NOT_EVALUATED`). Screenshots captured during the tour.
+
+### Defects found by the tour (all fixed, all guarded)
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | `POST /runtime/compile` accepted an entirely unpinned request (empty workflowRef and pack key/version/digest) and returned `ok: true` with `plan:` and empty provenance. The wired compiler is `createHashPinnedCompileStub`, which never fails | `WorkflowCompileService.compileWorkflow` now rejects unpinned requests with `UNPINNED_COMPILE_REQUEST` before invoking the compile function → `422` |
+| 2 | `POST /runtime/runs` started a run with an empty `compiledPlanHash`. The guard existed only in `startFromCompile`, which the HTTP route bypasses | Pinning guard moved into `start()` → `400` with the offending field named |
+| 3 | Domain Pack catalog crashed once the list was non-empty: the web `DomainPackSummary` type declared `displayName` / `latestVersion` / `applicationCount` / … which the runtime never sends | Type aligned to the real DTO; page renders digest/version/revision/publishedAt |
+| 4 | Test Profile table read `item.key` / `item.displayName`, so rows displayed `Profile 0` and every link pointed at a literal `demo` id; Status was hardcoded `READY`, ignoring `lastResult` | Table typed to the catalog DTO; shows real key, version and `lastResult` |
+| 5 | Test Profiles list swallowed a fetch failure into an empty table, indistinguishable from "no profiles" | Explicit "catalog unavailable" state |
+
+Guards added: `phase6-input-contracts.test.ts` now pins the compile/run pinning
+rules and the exact key set of all three read-model DTOs, so web-side mirrors
+cannot drift silently again (api suite 365 → 373).
+
+### Limitation found, not fixed
+
+`DomainPackAdminService`, `TestProfileCatalogService`, `TestCampaignService`,
+`WorkflowRunService` and `DurableInteractionSubscription` are instantiated as
+module-scope singletons over in-memory `Map`s in
+`verdict-phase6-contracts.routes.ts`. Nothing the cockpit writes survives an API
+restart — the entire seed above was lost when `tsx watch` reloaded, and had to be
+replayed. Phase 5 shipped Prisma persistence and the migrations are now applied,
+but these Phase 6 surfaces are not wired to it.
+
+Recorded as `B-6-INMEMORY-READ-MODELS` (HIGH/LOCAL). This blocks CHECKPOINT 6
+closure on its own: a read model that empties on restart cannot carry release-gate
+evidence.
