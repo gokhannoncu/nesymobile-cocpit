@@ -43,6 +43,7 @@ import {
   BRIDGE_MAX_FRAME_BYTES,
   BRIDGE_PROTOCOL_VERSION,
   decodeResult,
+  capabilityManifestFromDeviceResponse,
   deriveCapabilityManifest,
   encodeCommand,
   isMutationCommand,
@@ -419,8 +420,8 @@ export class BridgeClient {
   /**
    * Bağlantıyı açar, handshake yapar ve yetenek manifestini türetir.
    *
-   * Cihazda `capabilities` komutu olmadığı için manifest protocol
-   * versiyonundan çıkarılır; `ping` yalnız canlılık kanıtıdır.
+   * Tercih: cihaz `capabilities` yanıtı. Eski cihaz `unsupported_command`
+   * dönerse protocol-version baseline'ına düşülür.
    */
   async connect(): Promise<BridgeCapabilityManifest> {
     const connection = await this.acquire(true);
@@ -433,7 +434,18 @@ export class BridgeClient {
       if (!pong.envelope.ok) {
         throw new BridgeHostError("BRIDGE_UNAVAILABLE", `ping failed: ${String(pong.envelope.error)}`);
       }
-      this.capabilities = deriveCapabilityManifest(pong.envelope.protocolVersion);
+      const caps = await this.dispatch(connection, {
+        command: "capabilities",
+        requestId: `capabilities-${String(this.now())}`,
+        control: true,
+      });
+      if (caps.envelope.ok) {
+        this.capabilities = capabilityManifestFromDeviceResponse(
+          caps.envelope as unknown as Record<string, unknown>,
+        );
+      } else {
+        this.capabilities = deriveCapabilityManifest(pong.envelope.protocolVersion);
+      }
       return this.capabilities;
     } finally {
       connection.busy = false;

@@ -95,6 +95,7 @@ describe('PageMigrationManifest', () => {
     '/automation/[id]/runs/[runId]',
     '/automation/domain-packs',
     '/automation/domain-packs/[packId]',
+    '/automation/domain-packs/[packId]/surfaces',
     '/automation/test-profiles',
     '/automation/test-profiles/[profileId]',
     '/automation/test-campaigns',

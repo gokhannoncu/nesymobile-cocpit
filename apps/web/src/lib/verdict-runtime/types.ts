@@ -214,6 +214,73 @@ export interface EntityBindingCatalogApi {
   blockedReason?: string
 }
 
+export interface ReadinessContractApi {
+  requiredFactKeys: readonly string[]
+  anyOfFactKeys: readonly string[]
+  noneOfFactKeys: readonly string[]
+  deadlineMs: number
+  stableForMs: number | null
+}
+
+export interface ApplicationRegistryItemApi {
+  applicationKey: string
+  displayName: string
+  platform: string
+}
+
+export interface ScreenRegistryItemApi {
+  screenKey: string
+  applicationRef: string
+  displayName: string
+  readiness: ReadinessContractApi
+  supportedSurfaceRefs: readonly string[]
+}
+
+export interface SurfaceRegistryItemApi {
+  surfaceKey: string
+  applicationRef: string
+  kind: string
+  displayName: string
+  parentScreenRefs: readonly string[]
+  detection: ReadinessContractApi
+  defaultPolicy: string
+  priority: number
+  handlerMacroRef: string | null
+  blocksProductVerdict: boolean
+}
+
+export interface ScreenSurfaceCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  packKey: string
+  packVersion: string
+  publicationState: DomainPackState
+  revision: number
+  bundleDigest: string
+  partial: boolean
+  applications: ApplicationRegistryItemApi[]
+  screens: ScreenRegistryItemApi[]
+  surfaces: SurfaceRegistryItemApi[]
+  blockedReason?: string
+  immutableReason?: string
+}
+
+/** Raw admin get payload — `{ apiVersion, pack }` with opaque bundle. */
+export interface DomainPackVersionRecordApi {
+  packKey: string
+  version: string
+  bundleDigest: string
+  publicationState: DomainPackState
+  bundle: unknown
+  revision: number
+  publishedAt?: string
+  publishedBy?: string
+}
+
+export interface DomainPackAdminGetApi {
+  apiVersion: VerdictRuntimeApiVersion
+  pack: DomainPackVersionRecordApi
+}
+
 export interface WorkflowRunStartApi {
   apiVersion: VerdictRuntimeApiVersion
   runId: string

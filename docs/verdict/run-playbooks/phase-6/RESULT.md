@@ -231,6 +231,12 @@ runtime behaviour.
 | 17 | Domain Pack publish/migrate RBAC fail-closed | `PASS` — disabled when not DRAFT |
 | 18 | Published bundle/graph/reducer/profile digest görünür | `PASS` — DomainPackDigestDisplay |
 | 19 | Active-run pinned version görünür | `PASS` — shown in header |
+| 20 | Application/Screen/Surface Registry manager mevcut | `PASS` — phase-6-debt 6D.2 |
+| 21 | Surface parent-screen/kind/detection/readiness/default policy editlenebilir | `PASS` — phase-6-debt 6D.2 |
+| 22 | Evidence Source Registry source/authority/correlation/freshness/conflict gösteriyor | `PASS` — phase-6-debt 6D.1a |
+| 23 | Evidence Source delivery lane gösteriliyor | `PASS` — phase-6-debt 6D.1a |
+| 24 | Target Resolution Provider Chain evidence/ambiguity gösteriyor | `PASS` — phase-6-debt 6D.1b |
+| 25 | Launch Profile Builder process/precondition/entry/readiness/cleanup doğruluyor | `PASS` — phase-6-debt 6D.1c |
 | 30 | Campaign matrix profile x device/dataset cell gösteriyor | `PASS` — CampaignMatrix component |
 | 31 | Campaign cell gerçek run/evidence olmadan PASS/FAIL üretmiyor | `PASS` — CampaignCell evidence guard |
 | 32 | Campaign cell Run Detail deep-link veriyor | `PASS` |
@@ -250,13 +256,28 @@ runtime behaviour.
 | 84 | Product/PM/Engineering/Data Center/ADB route non-regression yeşil | `PASS` — `route-non-regression.test.ts` freezes 29 pre-Phase-6 routes |
 | 85 | Full verification komutları çalıştırıldı | `PASS` — §8, including production build and live-API direct entry |
 
-Remaining items (20-29, 33-41, 44-48, 50-54, 57-58, 61-65, 67, 69, 71-73, 75,
-77-81, 83): require runtime verification against real API responses; `PENDING`
-until integration testing.
+Additional items classified in phase-6-debt 6D.3 (2026-08-06) — see
+`phase-6-debt/RESULT.md` §12 for full evidence:
 
-Counted in this table: 37 `PASS`; the remaining 48 of 85 acceptance items are not
-itemised above and stay `PENDING` — all of them describe write/execute or
-real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
+| # | Status |
+|---|---|
+| 26–29, 40–41, 45–48, 78 | `PASS` (prior sweep §18) |
+| 33, 34, 37, 38, 44 | `FAIL` — still LEGACY_API pages |
+| 36, 39 | `PASS` |
+| 35 | `PASS` — compile wired |
+| 50, 54 | `FAIL` — inspector shells |
+| 51–53 | `PASS_PARTIAL` |
+| 57, 58 | `PASS` — outcome/disposition de-fabricated (6D.3) |
+| 61, 63, 65, 67, 69, 71–73, 75 | `FAIL` |
+| 62 | `PASS_PARTIAL` |
+| 64, 77 | `PASS` |
+| 79–81 | `PASS_PARTIAL` |
+| 83 | `PASS` — placeholder BACKLOG in debt RESULT §13 |
+
+`B-6-EDITOR-PANELS-UNBOUND` and Surface Registry gaps are **resolved** in
+phase-6-debt. Remaining local FAILs are DTO cutover + Run Detail/Inspector shells.
+CHECKPOINT 6 still cannot close as `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` while
+local `FAIL` items remain.
 
 ## 10. Blockers opened during Phase 6
 
@@ -270,7 +291,8 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | B-6-COMPILE-RUN-FAIL-OPEN | HIGH/LOCAL | `RESOLVED` | `/runtime/compile` and `/runtime/runs` accepted unpinned requests | Pinning guards + tests |
 | B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
 | B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
-| B-6-EDITOR-PANELS-UNBOUND | HIGH/LOCAL | `OPEN_LOCAL` | Evidence Source / Target Resolution / Launch Profile / Entity Binding / Semantic Action panels render hardcoded arrays and call no API | Bind each to `verdict-runtime/client` with real DTOs and fail-closed states |
+| B-6-EDITOR-PANELS-UNBOUND | HIGH/LOCAL | `RESOLVED` | Was unbound mock panels | Resolved in phase-6-debt 6D.1a–f |
+| B-6-DTO-CUTOVER-REMAINING | HIGH/LOCAL | `OPEN_LOCAL` | list/history/field-login/load-tour/interactions still LEGACY_API | Cut over to verdict-runtime clients (items 33/34/37/38/44) |
 | B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `RESOLVED` | Run-start idempotency and interaction cursor reset on restart | `verdict_run_start` + `verdict_run_interaction` tables; both services Prisma-backed and restart-verified, see §17 |
 
 ## 11. Skipped / deferred work
@@ -602,19 +624,19 @@ no implementation at all (no Application/Screen/Surface Registry manager exists)
 | 46, 47 | `PASS_PARTIAL` | Lanes are presented separately and honestly; only ADB is probed, the rest report `UNKNOWN` |
 | 48 | `PASS` | `COMMAND_ADMISSION` lane carries owner run id and block reason |
 | 78 | `PASS` | 18-route direct-entry matrix, all 200 (§8 plus the sweep above) |
-| 20, 21 | `FAIL` | No Surface/Screen Registry manager exists |
-| 22, 23, 24, 25, 35 | `FAIL` | Implemented as components but not mounted on any route |
+| 20, 21 | `PASS` | phase-6-debt 6D.2 Surface Registry |
+| 22, 23, 24, 25 | `PASS` | phase-6-debt 6D.1 panel binding |
+| 35 | `PASS` | compile preview runtime-wired |
 | 40, 41 | `PASS` after fix | Device health is now probed, not constant; previously `FAIL` |
 
-### Remaining
+### Remaining (updated 2026-08-06 — phase-6-debt 6D.3)
 
-Items 33, 34, 36–39, 44, 50–54, 57, 58, 61–65, 67, 69, 71–73, 75, 77, 79–81, 83
-are not yet walked. The method is established and the environment is up; this is
-remaining evidence work.
+Full table: `phase-6-debt/RESULT.md` §12. Headline: local `FAIL` remains on
+DTO cutover (33/34/37/38/44), Run Detail shells (61/63/65/67/69/71–73/75), and
+Inspector shells (50/54). Items 57/58 fabricated outcomes fixed in 6D.3.
 
-`6.30` stays `PENDING`. On current evidence CHECKPOINT 6 cannot close as
-`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`: seven items are `FAIL` for missing or
-unmounted UI, which is not an external-device blocker.
+`6.30` stays `PENDING`. CHECKPOINT 6 still cannot close as
+`PASSED_WITH_EXTERNAL_DUT_BLOCKERS` while local `FAIL` items remain.
 
 ## 19. Editor cutover — mounted, and what that revealed
 

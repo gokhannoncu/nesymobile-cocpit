@@ -114,7 +114,7 @@ describe("readiness", () => {
     const snapshot = await m.ensureReady();
     expect(snapshot.deviceId).toBe(DEVICE);
     expect(snapshot.protocolVersion).toBe(1);
-    expect(m.getCapabilities()?.supportsWaitAny).toBe(false);
+    expect(m.getCapabilities()?.supportsWaitAny).toBe(true);
     expect(m.getScheduler().getState().deviceReady).toBe(true);
   });
 

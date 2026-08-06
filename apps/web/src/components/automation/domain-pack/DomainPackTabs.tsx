@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { DomainPackDetailApi } from '@/lib/verdict-runtime/types'
 import { cn } from '@nesy/metronic/lib/utils'
+import { SurfaceRegistryManager } from './SurfaceRegistryManager'
 
 interface DomainPackTabsProps {
   pack: DomainPackDetailApi
@@ -51,12 +53,36 @@ export function DomainPackTabs({ pack }: DomainPackTabsProps) {
           </div>
         )
       case 'applications':
-        return <CountView title="Applications" items={pack.applications} />
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Application list is shown in the Screen &amp; Surface hierarchy.{' '}
+              <Link
+                href={`/automation/domain-packs/${encodeURIComponent(pack.packKey)}/surfaces?version=${encodeURIComponent(pack.version)}`}
+                className="text-indigo-600 hover:underline"
+              >
+                Open Surface Registry
+              </Link>
+            </p>
+            <CountView title="Applications" items={pack.applications} />
+          </div>
+        )
       case 'screens':
         return (
-          <div className="space-y-6">
-            <CountView title="Surfaces" items={pack.surfaces} />
-            <CountView title="Screens" items={pack.screens} />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">
+                Pack-scoped Application → Screen → Surface manager (DRAFT editable,
+                PUBLISHED read-only).
+              </p>
+              <Link
+                href={`/automation/domain-packs/${encodeURIComponent(pack.packKey)}/surfaces?version=${encodeURIComponent(pack.version)}`}
+                className="text-xs text-indigo-600 hover:underline whitespace-nowrap"
+              >
+                Open dedicated route
+              </Link>
+            </div>
+            <SurfaceRegistryManager packKey={pack.packKey} version={pack.version} />
           </div>
         )
       case 'entities':

@@ -23,7 +23,12 @@
 import { createServer, type Server, type Socket } from "node:net";
 import { StringDecoder } from "node:string_decoder";
 
-import { BRIDGE_PROTOCOL_VERSION, isBridgeCommand } from "@nesy/bridge-contract";
+import {
+  BRIDGE_COMMANDS,
+  BRIDGE_LIMITS,
+  BRIDGE_PROTOCOL_VERSION,
+  isBridgeCommand,
+} from "@nesy/bridge-contract";
 
 /** Bir isteğe verilecek programlanmış davranış. */
 export interface FakeBehaviour {
@@ -213,6 +218,16 @@ export class FakeBridgeServer {
     this.seen.set(`${scope.runId}|${requestId}`, fingerprint);
 
     const behaviour = this.options.behaviours?.[command] ?? {};
+    const defaultCapabilityFields =
+      command === "capabilities" && behaviour.fields === undefined
+        ? {
+            commands: [...BRIDGE_COMMANDS],
+            supportsWaitAny: true,
+            supportsCancelRequest: true,
+            supportsUnsolicitedPush: false,
+            limits: { ...BRIDGE_LIMITS },
+          }
+        : undefined;
 
     if (behaviour.delayMs !== undefined && behaviour.delayMs > 0) {
       await new Promise((resolve) => {
@@ -242,6 +257,7 @@ export class FakeBridgeServer {
       ok: behaviour.ok ?? true,
       requestId: behaviour.respondWithRequestId ?? requestId,
       ...(behaviour.error === undefined ? {} : { error: behaviour.error }),
+      ...(defaultCapabilityFields ?? {}),
       ...(behaviour.fields ?? {}),
     };
 

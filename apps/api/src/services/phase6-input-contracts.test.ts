@@ -432,6 +432,109 @@ describe('phase 6 read-model DTO shape', () => {
     )
   })
 
+  it('pins the screen-surface catalog item keys', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          applications: [
+            {
+              applicationKey: 'nesy.app.courier',
+              displayName: 'Courier',
+              platform: 'ANDROID',
+              packageIdentity: 'com.example.courier',
+              versionCompatibility: { minVersionCode: 1, maxVersionCode: null },
+              adapterCompatibility: {
+                adapterRef: 'nesy.courier.app-adapter',
+                minAdapterVersion: 1,
+                maxAdapterVersion: null,
+                requiredCapabilities: [],
+              },
+              adapterCapabilities: [],
+              capabilityRefs: [],
+            },
+          ],
+          screens: [
+            {
+              screenKey: 'nesy.screen.home',
+              applicationRef: 'nesy.app.courier',
+              displayName: 'Home',
+              runtimeImplementation: { kind: 'ACTIVITY', componentName: 'Home' },
+              entryStrategies: [
+                {
+                  kind: 'WORKFLOW_ENTRY',
+                  entryRef: 'home',
+                  provesUserPath: true,
+                  requiredCapabilityRefs: [],
+                },
+              ],
+              readiness: {
+                requiredFactKeys: ['fact.home'],
+                deadlineMs: 5000,
+              },
+              supportedSurfaceRefs: ['nesy.surface.session'],
+              supportedActionRefs: [],
+            },
+          ],
+          surfaces: [
+            {
+              surfaceKey: 'nesy.surface.session',
+              applicationRef: 'nesy.app.courier',
+              kind: 'DIALOG',
+              displayName: 'Session expired',
+              parentScreenRefs: ['*'],
+              detection: {
+                requiredFactKeys: ['fact.session-expired'],
+                deadlineMs: 2000,
+              },
+              defaultPolicy: 'HANDLE',
+              priority: 100,
+              handlerMacroRef: 'macro.dismiss-session',
+              blocksProductVerdict: true,
+            },
+          ],
+        },
+      },
+    })
+    const catalog = (await new DomainPackReadModelsService(store).listScreenSurfaces(
+      'nesy-courier',
+      '1.0.0',
+    ))!
+    expect(catalog.publicationState).toBe('PUBLISHED')
+    expect(catalog.immutableReason).toMatch(/PUBLISHED/)
+    expect(Object.keys(catalog.applications[0]!).sort()).toEqual(
+      ['applicationKey', 'displayName', 'platform'].sort(),
+    )
+    expect(Object.keys(catalog.screens[0]!).sort()).toEqual(
+      [
+        'applicationRef',
+        'displayName',
+        'readiness',
+        'screenKey',
+        'supportedSurfaceRefs',
+      ].sort(),
+    )
+    expect(Object.keys(catalog.surfaces[0]!).sort()).toEqual(
+      [
+        'applicationRef',
+        'blocksProductVerdict',
+        'defaultPolicy',
+        'detection',
+        'displayName',
+        'handlerMacroRef',
+        'kind',
+        'parentScreenRefs',
+        'priority',
+        'surfaceKey',
+      ].sort(),
+    )
+  })
+
   it('pins the entity binding catalog item keys', async () => {
     const store = new InMemoryDomainPackAdminStore()
     await store.upsert({

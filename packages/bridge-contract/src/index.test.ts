@@ -37,6 +37,7 @@ import {
   clampTapTimeoutMs,
   clampWaitTimeoutMs,
   decodeResult,
+  capabilityManifestFromDeviceResponse,
   deriveCapabilityManifest,
   deviceReleaseByMs,
   dumpScopeToParams,
@@ -95,6 +96,8 @@ describe("device protocol parity", () => {
       [
         "activate_id",
         "back",
+        "cancel_request",
+        "capabilities",
         "collection_info",
         "dump",
         "find_id",
@@ -107,21 +110,21 @@ describe("device protocol parity", () => {
         "swipe",
         "tap_id",
         "tap_text",
+        "wait_any",
         "wait_node",
       ].sort(),
     );
   });
 
-  it("does NOT claim wait_any, cancel_request, capabilities or push exist", () => {
-    // Protocol v1'in gerçeği. `false` olmaları bir eksiklik raporu, bir hata
-    // değil — ve host'un bunlara güvenmesini imkânsız kılıyorlar.
-    expect(BRIDGE_V1_DEVICE_GAPS.waitAny).toBe(false);
-    expect(BRIDGE_V1_DEVICE_GAPS.cancelRequest).toBe(false);
-    expect(BRIDGE_V1_DEVICE_GAPS.capabilitiesCommand).toBe(false);
-    // Bu sonuncusu İSTENEN durumdur: ilk B2 request-response kalır.
+  it("claims wait_any/cancel/capabilities after Mobile M3; still rejects push/register_watch", () => {
+    expect(BRIDGE_V1_DEVICE_GAPS.waitAny).toBe(true);
+    expect(BRIDGE_V1_DEVICE_GAPS.cancelRequest).toBe(true);
+    expect(BRIDGE_V1_DEVICE_GAPS.capabilitiesCommand).toBe(true);
+    // Bu sonuncusu İSTENEN durumdur: B2 request-response kalır.
     expect(BRIDGE_V1_DEVICE_GAPS.unsolicitedPush).toBe(false);
-    expect(isBridgeCommand("wait_any")).toBe(false);
-    expect(isBridgeCommand("cancel_request")).toBe(false);
+    expect(isBridgeCommand("wait_any")).toBe(true);
+    expect(isBridgeCommand("cancel_request")).toBe(true);
+    expect(isBridgeCommand("capabilities")).toBe(true);
     expect(isBridgeCommand("register_watch")).toBe(false);
   });
 
@@ -585,7 +588,7 @@ describe("wait plan", () => {
     expect(result.plan.timeoutMs).toBe(BRIDGE_LIMITS.maxWaitTimeoutMs);
   });
 
-  it("races wait_node legs because the device has no wait_any", () => {
+  it("races wait_node legs when the device lacks wait_any (legacy fallback)", () => {
     const strategy = planWaitExecution(plan, { supportsWaitAny: false });
     expect(strategy.kind).toBe("RACED_WAIT_NODE");
     if (strategy.kind !== "RACED_WAIT_NODE") return;
@@ -595,10 +598,12 @@ describe("wait plan", () => {
     expect(strategy.legs[1]).toMatchObject({ key: "route", isInterrupt: false });
   });
 
-  it("collapses to a single wait_any the moment the device supports it", () => {
+  it("collapses to a single wait_any when the device advertises it (Mobile M3+)", () => {
     // Çağıran arayüzü değişmeden tek komuta inebilmeli.
     const strategy = planWaitExecution(plan, { supportsWaitAny: true });
     expect(strategy.kind).toBe("SINGLE_WAIT_ANY");
+    // Default modern baseline also collapses.
+    expect(planWaitExecution(plan, deriveCapabilityManifest(1)).kind).toBe("SINGLE_WAIT_ANY");
   });
 
   it("emits wait_node params the device parses, carrying no dump request", () => {
@@ -647,9 +652,12 @@ describe("command admission", () => {
   it("routes each command to its lane", () => {
     expect(laneForCommand("ping")).toBe("CONTROL");
     expect(laneForCommand("handshake")).toBe("CONTROL");
+    expect(laneForCommand("capabilities")).toBe("CONTROL");
+    expect(laneForCommand("cancel_request")).toBe("CONTROL");
     expect(laneForCommand("tap_id")).toBe("MUTATION");
     expect(laneForCommand("input_text")).toBe("MUTATION");
     expect(laneForCommand("wait_node")).toBe("WAIT");
+    expect(laneForCommand("wait_any")).toBe("WAIT");
     expect(laneForCommand("find_id")).toBe("OBSERVATION");
     // screenshot her zaman ağır: base64 PNG'yi yanıtın içinde taşır.
     expect(laneForCommand("screenshot")).toBe("HEAVY_OBS");
@@ -744,13 +752,37 @@ describe("command admission", () => {
 // ===========================================================================
 
 describe("capability manifest", () => {
-  it("derives the manifest from the protocol version, since the device has no capabilities command", () => {
+  it("derives the modern Mobile M3 baseline from the protocol version", () => {
     const manifest = deriveCapabilityManifest(1);
     expect(manifest.protocolVersion).toBe(1);
     expect(manifest.commands).toEqual(BRIDGE_COMMANDS);
-    expect(manifest.supportsWaitAny).toBe(false);
-    expect(manifest.supportsCancelRequest).toBe(false);
+    expect(manifest.supportsWaitAny).toBe(true);
+    expect(manifest.supportsCancelRequest).toBe(true);
     expect(manifest.supportsUnsolicitedPush).toBe(false);
     expect(manifest.limits.maxWaitTimeoutMs).toBe(120_000);
+  });
+
+  it("parses a device capabilities response and drops unknown commands", () => {
+    const manifest = capabilityManifestFromDeviceResponse({
+      protocolVersion: 1,
+      commands: ["wait_any", "cancel_request", "capabilities", "register_watch", "ping"],
+      supportsWaitAny: true,
+      supportsCancelRequest: true,
+      supportsUnsolicitedPush: false,
+      limits: { maxWaitTimeoutMs: 120_000 },
+    });
+    expect(manifest.supportsWaitAny).toBe(true);
+    expect(manifest.supportsCancelRequest).toBe(true);
+    expect(manifest.supportsUnsolicitedPush).toBe(false);
+    expect(manifest.commands).toContain("wait_any");
+    expect(manifest.commands).not.toContain("register_watch" as never);
+  });
+
+  it("fail-closed keeps push unsupported even if a buggy device claims it", () => {
+    const claimed = capabilityManifestFromDeviceResponse({
+      supportsUnsolicitedPush: true,
+      commands: ["ping"],
+    });
+    expect(claimed.supportsUnsolicitedPush).toBe(false);
   });
 });

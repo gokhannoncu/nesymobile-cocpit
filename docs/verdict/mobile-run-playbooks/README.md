@@ -75,7 +75,7 @@ Cockpit faz numaralarıyla hizalıdır; içerik Mobile/Bridge teslimine göredir
 | **M3** | Bridge B2 protocol | `capabilities`, `wait_any`, `cancel_request` | Host foundation + fake host | `COMPLETED` |
 | **M4A** | Core contract thin gate | CP4A tüketim + Bridge leakage tarama | Cockpit CP4A COMPLETED | `COMPLETED` |
 | **M4B** | Nesy App Adapter production | Named query, evidence, scanner, launch, manifest | M0 + CP4B + M4A | `COMPLETED` |
-| **M4C** | Pack ↔ adapter ↔ Bridge uyumu | Compatibility / fixture | M4B + Cockpit 4C | `NOT_STARTED` |
+| **M4C** | Pack ↔ adapter ↔ Bridge uyumu | Compatibility / fixture | M4B + Cockpit 4C | `COMPLETED` |
 | **M5** | Correlation + recovery | monoTs, recovery named-query | M3 + M4B | `NOT_STARTED` |
 | **M6** | Inspector destek | dump/screenshot redaction | M3 + M5 | `NOT_STARTED` |
 | **M7** | Gerçek akış + release isolation | Real Nesy flows | M4B + M5; DUT | `NOT_STARTED` |

@@ -812,6 +812,20 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     fallbackPolicy: 'NONE'
   },
   {
+    routePattern: '/automation/domain-packs/[packId]/surfaces',
+    routeLabel: 'Surface Registry Manager',
+    workspace: 'automation',
+    owner: 'nesy-platform',
+    currentSource: 'VERDICT_RUNTIME',
+    targetSource: 'VERDICT_RUNTIME',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'CHECKPOINT_6',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    acceptanceTestRef: 'src/test/surface-registry-manager.test.ts',
+    fallbackPolicy: 'NONE'
+  },
+  {
     routePattern: '/automation/test-profiles',
     routeLabel: 'Test Profile Catalog',
     workspace: 'automation',

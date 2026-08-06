@@ -39,13 +39,12 @@ afterEach(async () => {
 });
 
 describe("handshake and capabilities", () => {
-  it("handshakes, pings and derives a manifest with the v1 gaps stated", async () => {
+  it("handshakes, pings and reads capabilities from the device (Mobile M3+)", async () => {
     const { client: c } = await start();
     const manifest = await c.connect();
     expect(manifest.protocolVersion).toBe(1);
-    // Cihazda bu üçü YOK; manifest bunu gizlemez.
-    expect(manifest.supportsWaitAny).toBe(false);
-    expect(manifest.supportsCancelRequest).toBe(false);
+    expect(manifest.supportsWaitAny).toBe(true);
+    expect(manifest.supportsCancelRequest).toBe(true);
     expect(manifest.supportsUnsolicitedPush).toBe(false);
   });
 
@@ -132,8 +131,10 @@ describe("incremental framing over a real socket", () => {
     // yapılandırılabilir olması ayrıca üretimde de doğru: yalnız `wait_node`
     // koşan bir bağlantı için megabaytlık bir tavan gereksiz bir savunma
     // boşluğudur.
+    // Ceiling must admit the capabilities handshake (~0.6–1 KB) while still
+    // rejecting a deliberately oversized dump frame.
     const { client: c } = await start({ behaviours: { dump: { oversizedBytes: 4_096 } } }, {
-      maxFrameBytes: 512,
+      maxFrameBytes: 1_024,
     });
     await c.connect();
     await expect(

@@ -1,15 +1,21 @@
 import {
   validateLaunchProfile,
   validateTargetResolutionPolicy,
+  type ApplicationDefinition,
   type EntityDefinition,
   type LaunchProfile,
   type MacroDefinition,
+  type ScreenDefinition,
   type SemanticActionDefinition,
+  type SurfaceDefinition,
   type TargetDefinition,
   type TargetResolutionPolicy,
 } from '@nesy/domain-pack-contracts'
 
-import type { DomainPackAdminStore } from './domain-pack-admin.service.js'
+import type {
+  DomainPackAdminStore,
+  DomainPackPublicationState,
+} from './domain-pack-admin.service.js'
 
 export const DOMAIN_PACK_READ_API_VERSION = 'verdict-runtime.v1' as const
 
@@ -134,6 +140,57 @@ export interface EntityBindingCatalogResult {
   blockedReason?: string
 }
 
+export interface ReadinessContractApi {
+  requiredFactKeys: readonly string[]
+  anyOfFactKeys: readonly string[]
+  noneOfFactKeys: readonly string[]
+  deadlineMs: number
+  stableForMs: number | null
+}
+
+export interface ApplicationRegistryItem {
+  applicationKey: string
+  displayName: string
+  platform: string
+}
+
+export interface ScreenRegistryItem {
+  screenKey: string
+  applicationRef: string
+  displayName: string
+  readiness: ReadinessContractApi
+  supportedSurfaceRefs: readonly string[]
+}
+
+export interface SurfaceRegistryItem {
+  surfaceKey: string
+  applicationRef: string
+  kind: string
+  displayName: string
+  parentScreenRefs: readonly string[]
+  detection: ReadinessContractApi
+  defaultPolicy: string
+  priority: number
+  handlerMacroRef: string | null
+  blocksProductVerdict: boolean
+}
+
+export interface ScreenSurfaceCatalogResult {
+  apiVersion: typeof DOMAIN_PACK_READ_API_VERSION
+  packKey: string
+  packVersion: string
+  publicationState: DomainPackPublicationState
+  revision: number
+  bundleDigest: string
+  partial: boolean
+  applications: ApplicationRegistryItem[]
+  screens: ScreenRegistryItem[]
+  surfaces: SurfaceRegistryItem[]
+  blockedReason?: string
+  /** Present when publicationState is not DRAFT — edits must be refused. */
+  immutableReason?: string
+}
+
 /**
  * Pack-scoped read models for Phase 6 UI binding. Loads published (or draft)
  * bundles from the admin store and projects registry slices — never invents rows.
@@ -246,6 +303,72 @@ export class DomainPackReadModelsService {
       apiVersion: DOMAIN_PACK_READ_API_VERSION,
       ok: violations.length === 0,
       violations,
+    }
+  }
+
+  async listScreenSurfaces(
+    packKey: string,
+    version: string,
+  ): Promise<ScreenSurfaceCatalogResult | null> {
+    const record = await this.store.get(packKey, version)
+    if (!record) return null
+
+    const registries =
+      isRecord(record.bundle) && isRecord(record.bundle.registries)
+        ? record.bundle.registries
+        : undefined
+
+    const applications = asArray<ApplicationDefinition>(registries?.applications).map(
+      (app) => ({
+        applicationKey: app.applicationKey,
+        displayName: app.displayName,
+        platform: String(app.platform ?? ''),
+      }),
+    )
+
+    const screens = asArray<ScreenDefinition>(registries?.screens).map((screen) => ({
+      screenKey: screen.screenKey,
+      applicationRef: screen.applicationRef,
+      displayName: screen.displayName,
+      readiness: projectReadiness(screen.readiness),
+      supportedSurfaceRefs: [...(screen.supportedSurfaceRefs ?? [])],
+    }))
+
+    const surfaces = asArray<SurfaceDefinition>(registries?.surfaces).map((surface) => ({
+      surfaceKey: surface.surfaceKey,
+      applicationRef: surface.applicationRef,
+      kind: surface.kind,
+      displayName: surface.displayName,
+      parentScreenRefs: [...(surface.parentScreenRefs ?? [])],
+      detection: projectReadiness(surface.detection),
+      defaultPolicy: surface.defaultPolicy,
+      priority: surface.priority,
+      handlerMacroRef: surface.handlerMacroRef ?? null,
+      blocksProductVerdict: surface.blocksProductVerdict === true,
+    }))
+
+    const immutable =
+      record.publicationState === 'PUBLISHED' || record.publicationState === 'ARCHIVED'
+
+    return {
+      apiVersion: DOMAIN_PACK_READ_API_VERSION,
+      packKey,
+      packVersion: version,
+      publicationState: record.publicationState,
+      revision: record.revision,
+      bundleDigest: record.bundleDigest,
+      partial: applications.length === 0 && screens.length === 0 && surfaces.length === 0,
+      applications,
+      screens,
+      surfaces,
+      ...(applications.length === 0 && screens.length === 0 && surfaces.length === 0
+        ? { blockedReason: 'pack bundle has no applications, screens, or surfaces' }
+        : {}),
+      ...(immutable
+        ? {
+            immutableReason: `pack is ${record.publicationState} — surface registry is read-only`,
+          }
+        : {}),
     }
   }
 
@@ -483,4 +606,23 @@ function asArray<T>(value: unknown): T[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function projectReadiness(value: unknown): ReadinessContractApi {
+  if (!isRecord(value)) {
+    return {
+      requiredFactKeys: [],
+      anyOfFactKeys: [],
+      noneOfFactKeys: [],
+      deadlineMs: 0,
+      stableForMs: null,
+    }
+  }
+  return {
+    requiredFactKeys: asArray<string>(value.requiredFactKeys),
+    anyOfFactKeys: asArray<string>(value.anyOfFactKeys),
+    noneOfFactKeys: asArray<string>(value.noneOfFactKeys),
+    deadlineMs: typeof value.deadlineMs === 'number' ? value.deadlineMs : 0,
+    stableForMs: typeof value.stableForMs === 'number' ? value.stableForMs : null,
+  }
 }

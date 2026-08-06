@@ -2,14 +2,14 @@
  * ===========================================================================
  *  UiWaitPlan / wait_any TEMELİ  (Plan D.3 · D.6D)
  *
- *  ## Neden burada bir "temel" var, tam bir `wait_any` yok
+ *  ## Neden burada bir "temel" var
  *
- *  Protocol v1'de cihazın `wait_any` komutu YOKTUR — yalnız tek hedefli
- *  `wait_node` var (`ProtocolV1.dispatchCommand`). RUN_PLAY expected/interrupt
- *  yarışı istiyor. İki dürüst seçenek vardı:
+ *  Eski Bridge v1'de cihazın `wait_any` komutu YOKTU — yalnız tek hedefli
+ *  `wait_node` vardı. Mobile M3 sonrası modern cihazlar `wait_any` sunar.
+ *  RUN_PLAY expected/interrupt yarışı istiyor. İki dürüst seçenek vardı:
  *
  *    (a) Host tarafında `wait_any` diye bir komut varmış gibi modellemek.
- *        Testler yeşil olurdu; gerçek cihaz ilk çağrıda `unsupported_command`
+ *        Testler yeşil olurdu; eski cihaz ilk çağrıda `unsupported_command`
  *        dönerdi. Bu, kanıt üretmek değil kanıt taklidi yapmaktır.
  *
  *    (b) Yarışı HOST'ta, birden çok `wait_node` üzerinden kurmak; ve cihazın
@@ -270,24 +270,22 @@ export function waitNodeParams(predicate: UiPredicate, timeoutMs: number): Recor
  * ---------------------------------------------------------------------------
  *  İptal
  *
- *  Cihazda `cancel_request` YOK. Host'un iptali bu yüzden iki katmanlıdır ve
- *  ikisi arasındaki farkı gizlememek önemli:
+ *  Eski cihazlarda `cancel_request` YOKTU; modern Mobile Bridge sunar.
+ *  Host iptali yine iki katmanlıdır ve farkı gizlememek önemli:
  *
  *    1. HOST tarafı: bekleyen istek çözülür, çağıran `CANCELLED` alır, bacağın
  *       bağlantısı kapatılır. Bu ANINDA olur.
- *    2. CİHAZ tarafı: `wait_node` kendi zaman aşımına kadar çalışmaya DEVAM
- *       eder. Host onu durduramaz.
+ *    2. CİHAZ tarafı (`supportsCancelRequest`): `cancel_request` +
+ *       `targetRequestId` ile wait serbest bırakılır; yoksa wait kendi
+ *       timeout'una kadar sürer.
  *
- *  Sonuç: iptal edilen bir bekleme cihazda bir süre daha kaynak tutar. Bunu
- *  "iptal edildi" diye raporlayıp geçmek yanlış olurdu, çünkü aynı hedefe
- *  hemen yeni bir bekleme açan çağıran, cihazda hâlâ koşan eskisiyle birlikte
- *  iki bekleme yaratır. `cancelScope` bu gerçeği taşır.
+ *  `cancelScope` bu gerçeği taşır (`HOST_ONLY` vs `HOST_AND_DEVICE`).
  * ---------------------------------------------------------------------------
  */
 export type CancelScope =
   /** Host isteği bıraktı; cihaz kendi zaman aşımına kadar sürdürür. */
   | "HOST_ONLY"
-  /** Cihaz da iptal etti — protocol v1'de ULAŞILAMAZ. */
+  /** Cihaz da iptal etti — Mobile M3+ `cancel_request` ile ulaşılır. */
   | "HOST_AND_DEVICE";
 
 export interface CancelRequest {

@@ -39,8 +39,8 @@ export const BRIDGE_DEVICE_PORT = 9876 as const;
  * Burada olmayan bir komut cihazdan `unsupported_command` alır; bu yüzden
  * liste "şimdilik bunlar" değil, "protocol v1 budur" demektir.
  *
- * Dikkat: `wait_any`, `cancel_request`, `capabilities` ve `register_watch`
- * BU LİSTEDE YOKTUR. Neden ve sonucu için `BRIDGE_V1_DEVICE_GAPS`.
+ * Mobile M3 sonrası: `wait_any`, `cancel_request`, `capabilities` listede.
+ * `register_watch` / unsolicited push hâlâ YOKTUR (bilinçli gap).
  */
 export const BRIDGE_COMMANDS = [
   "handshake",
@@ -58,6 +58,9 @@ export const BRIDGE_COMMANDS = [
   "collection_info",
   "scroll_to_item",
   "wait_node",
+  "wait_any",
+  "cancel_request",
+  "capabilities",
 ] as const;
 
 export type BridgeCommand = (typeof BRIDGE_COMMANDS)[number];
@@ -89,7 +92,10 @@ export const isMutationCommand = (command: BridgeCommand): boolean =>
   BRIDGE_MUTATION_COMMANDS.has(command);
 
 /** Uzun sürebilen, iptal edilebilir bekleme komutları. */
-export const BRIDGE_WAIT_COMMANDS: ReadonlySet<BridgeCommand> = new Set(["wait_node"]);
+export const BRIDGE_WAIT_COMMANDS: ReadonlySet<BridgeCommand> = new Set([
+  "wait_node",
+  "wait_any",
+]);
 
 export const isWaitCommand = (command: BridgeCommand): boolean =>
   BRIDGE_WAIT_COMMANDS.has(command);
@@ -481,55 +487,41 @@ export interface BridgeResultEnvelope {
 
 /**
  * ---------------------------------------------------------------------------
- *  Cihaz eksikleri — Phase 3'ün en önemli çıktısı
+ *  Cihaz yetenekleri — Mobile M3 / M4C contract handoff
  *
- *  RUN_PLAY `wait_any`, `cancel_request` ve capability handshake istiyor.
- *  Cihazda ÜÇÜ DE YOK. Bunu sessizce host tarafında "varmış gibi" modellemek,
- *  gerçek DUT'ta ilk çağrıda `unsupported_command` almak demekti. Bu yüzden
- *  eksikler tip düzeyinde İSİMLENDİRİLDİ: host bunları capability olarak
- *  sorar, kapalıysa devre dışı kalır ve kimse "foundation var" diye yanlış
- *  varsayım yapamaz.
+ *  Eski Phase 3 baseline'ında `wait_any` / `cancel_request` / `capabilities`
+ *  cihazda YOKTU. Mobile Bridge M3 bu üçlüyü ekledi. Bu sabitler artık
+ *  "cihazın mevcut protocol v1 yüzeyi"ni yansıtır.
+ *
+ *  Hâlâ gap olan tek bilinçli madde: unsolicited push / `register_watch`
+ *  (request-response kalır). Host eski cihazlarla konuşurken cihazın
+ *  `capabilities` yanıtını [capabilityManifestFromDeviceResponse] ile
+ *  okumalı; kör `false` varsayımı yasaktır.
  * ---------------------------------------------------------------------------
  */
 export const BRIDGE_V1_DEVICE_GAPS = {
+  /** Mobile M3+: cihaz `wait_any` sunar. Eski host fallback hâlâ `planWaitExecution(false)`. */
+  waitAny: true,
   /**
-   * `wait_any` cihazda yok; yalnız tek hedefli `wait_node` var.
-   *
-   * Sonuç: expected/interrupt yarışı v1'de TEK bir cihaz çağrısında
-   * yapılamaz. Host foundation'ı bunu ayrı bekleyişlerin host tarafında
-   * yarıştırılmasıyla modeller ve cihaz `wait_any`i öğrendiğinde tek çağrıya
-   * indirilir.
+   * Mobile M3+: `cancel_request` + `targetRequestId` var.
+   * Host iptali hâlâ AYRI CONTROL bağlantısından göndermelidir — uzun wait
+   * aynı soketin reader'ını tutar (`BridgeTcpServer` async wait dispatch).
    */
-  waitAny: false,
-  /**
-   * `cancel_request` cihazda yok.
-   *
-   * Daha da önemlisi: VARSA BİLE aynı soket üzerinde çalışamaz.
-   * `BridgeTcpServer.serve()` bir bağlantıda `readLine → handle → write`
-   * döngüsüdür; uzun bir `wait_node` o bağlantının reader'ını bloke eder ve
-   * ikinci bir satır okunmaz. Cihaz çoklu bağlantıyı destekler
-   * (`clientExecutor` cached pool, `clientSockets` set) ve `ProtocolV1`
-   * durumu process genelinde paylaşılır — bu yüzden host iptali AYRI bir
-   * CONTROL bağlantısından göndermek zorundadır.
-   */
-  cancelRequest: false,
-  /** `capabilities` komutu yok; yetenek yoklaması `ping` + versiyon ile yapılır. */
-  capabilitiesCommand: false,
+  cancelRequest: true,
+  /** Mobile M3+: `capabilities` komutu var. */
+  capabilitiesCommand: true,
   /**
    * `register_watch`/unsolicited push yok — ve bu İSTENEN durumdur
-   * (RUN_PLAY §14.7, ilk B2 request-response kalır). Host parser'ı
+   * (RUN_PLAY §14.7, B2 request-response kalır). Host parser'ı
    * istenmemiş frame'i fail-closed reddeder.
    */
   unsolicitedPush: false,
 } as const;
 
 /**
- * Handshake'ten türetilen yetenek manifestosu.
+ * Handshake / capabilities'ten türetilen yetenek manifestosu.
  *
- * Cihaz `capabilities` komutu sunmadığı için manifest ŞU AN protocol
- * versiyonundan ve komut listesinden çıkarılır. Yapı yine de bir manifest
- * olarak duruyor ki cihaz gerçek bir capability yanıtı öğrendiğinde çağıranlar
- * değişmesin.
+ * Tercih sırası: cihaz `capabilities` yanıtı → [deriveCapabilityManifest].
  */
 export interface BridgeCapabilityManifest {
   protocolVersion: number;
@@ -548,5 +540,74 @@ export function deriveCapabilityManifest(protocolVersion: number): BridgeCapabil
     supportsCancelRequest: BRIDGE_V1_DEVICE_GAPS.cancelRequest,
     supportsUnsolicitedPush: BRIDGE_V1_DEVICE_GAPS.unsolicitedPush,
     limits: BRIDGE_LIMITS,
+  };
+}
+
+/**
+ * Cihaz `capabilities` yanıtını tip-güvenli manifeste çevirir.
+ *
+ * Bilinmeyen komut adları düşürülür (`register_watch` asla geçmez). Boolean
+ * alan yoksa [BRIDGE_V1_DEVICE_GAPS] baseline'ına düşülür — sessiz `false`
+ * uydurulmaz.
+ */
+export function capabilityManifestFromDeviceResponse(
+  response: Record<string, unknown>,
+): BridgeCapabilityManifest {
+  const protocolVersion =
+    typeof response.protocolVersion === "number"
+      ? response.protocolVersion
+      : BRIDGE_PROTOCOL_VERSION;
+  const rawCommands = Array.isArray(response.commands) ? response.commands : null;
+  const commands =
+    rawCommands === null
+      ? BRIDGE_COMMANDS
+      : (rawCommands.filter((c): c is BridgeCommand => isBridgeCommand(c)) as BridgeCommand[]);
+  const limitsRaw =
+    response.limits !== null && typeof response.limits === "object"
+      ? (response.limits as Record<string, unknown>)
+      : {};
+  return {
+    protocolVersion,
+    commands: commands.length > 0 ? commands : BRIDGE_COMMANDS,
+    supportsWaitAny:
+      typeof response.supportsWaitAny === "boolean"
+        ? response.supportsWaitAny
+        : BRIDGE_V1_DEVICE_GAPS.waitAny,
+    supportsCancelRequest:
+      typeof response.supportsCancelRequest === "boolean"
+        ? response.supportsCancelRequest
+        : BRIDGE_V1_DEVICE_GAPS.cancelRequest,
+    // Protocol v1 policy: never honor a device claim for unsolicited push.
+    supportsUnsolicitedPush: false,
+    limits: {
+      maxWaitTimeoutMs:
+        typeof limitsRaw.maxWaitTimeoutMs === "number"
+          ? limitsRaw.maxWaitTimeoutMs
+          : BRIDGE_LIMITS.maxWaitTimeoutMs,
+      deviceWaitPollIntervalMs:
+        typeof limitsRaw.deviceWaitPollIntervalMs === "number"
+          ? limitsRaw.deviceWaitPollIntervalMs
+          : BRIDGE_LIMITS.deviceWaitPollIntervalMs,
+      defaultTapTimeoutMs:
+        typeof limitsRaw.defaultTapTimeoutMs === "number"
+          ? limitsRaw.defaultTapTimeoutMs
+          : BRIDGE_LIMITS.defaultTapTimeoutMs,
+      maxTapTimeoutMs:
+        typeof limitsRaw.maxTapTimeoutMs === "number"
+          ? limitsRaw.maxTapTimeoutMs
+          : BRIDGE_LIMITS.maxTapTimeoutMs,
+      defaultSwipeDurationMs:
+        typeof limitsRaw.defaultSwipeDurationMs === "number"
+          ? limitsRaw.defaultSwipeDurationMs
+          : BRIDGE_LIMITS.defaultSwipeDurationMs,
+      maxSwipeDurationMs:
+        typeof limitsRaw.maxSwipeDurationMs === "number"
+          ? limitsRaw.maxSwipeDurationMs
+          : BRIDGE_LIMITS.maxSwipeDurationMs,
+      requestIdCacheTtlMs:
+        typeof limitsRaw.requestIdCacheTtlMs === "number"
+          ? limitsRaw.requestIdCacheTtlMs
+          : BRIDGE_LIMITS.requestIdCacheTtlMs,
+    } as typeof BRIDGE_LIMITS,
   };
 }

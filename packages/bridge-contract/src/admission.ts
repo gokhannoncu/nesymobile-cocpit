@@ -76,7 +76,14 @@ export const LANE_CONCURRENCY: Readonly<Record<AdmissionLane, number>> = {
  * olduğu için karar çağırana bırakıldı; ama `screenshot` her zaman ağırdır.
  */
 export function laneForCommand(command: BridgeCommand, heavy = false): AdmissionLane {
-  if (command === "ping" || command === "handshake") return "CONTROL";
+  if (
+    command === "ping" ||
+    command === "handshake" ||
+    command === "capabilities" ||
+    command === "cancel_request"
+  ) {
+    return "CONTROL";
+  }
   if (isMutationCommand(command)) return "MUTATION";
   if (isWaitCommand(command)) return "WAIT";
   if (command === "screenshot") return "HEAVY_OBS";

@@ -23,6 +23,8 @@ import type {
   DomainPackPublishResult,
   LaunchProfileValidateApi,
   EntityBindingCatalogApi,
+  ScreenSurfaceCatalogApi,
+  DomainPackAdminGetApi,
 } from './types'
 
 export async function fetchVerdictRunHistory(query: RunHistoryQuery = {}): Promise<RunHistoryResult> {
@@ -83,6 +85,24 @@ export async function fetchVerdictEntityBindings(
 ): Promise<EntityBindingCatalogApi> {
   return getJson<EntityBindingCatalogApi>(
     `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/entity-bindings`,
+  )
+}
+
+export async function fetchVerdictScreenSurfaces(
+  packKey: string,
+  version: string,
+): Promise<ScreenSurfaceCatalogApi> {
+  return getJson<ScreenSurfaceCatalogApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}/screen-surfaces`,
+  )
+}
+
+export async function fetchVerdictDomainPackAdmin(
+  packKey: string,
+  version: string,
+): Promise<DomainPackAdminGetApi> {
+  return getJson<DomainPackAdminGetApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}`,
   )
 }
 
