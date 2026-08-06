@@ -91,3 +91,14 @@ phase-N/RESULT.md
 - blockers
 - next phase handoff
 
+## Mobile karşılığı
+
+Mobile SDK / App Adapter / Bridge APK işleri ayrı playbook sisteminde tutulur:
+
+```text
+docs/verdict/mobile-run-playbooks/
+```
+
+Cockpit agent'ları Mobile repo'ya yazmaz; Mobile agent'ları Cockpit `apps/**` /
+`packages/**` kodunu varsayılan olarak değiştirmez. Karşılıklı blocker ve handoff
+notları ilgili RESULT dosyalarında taşınır.
