@@ -78,6 +78,20 @@ export interface TestProfileCatalogApi {
   items: Record<string, unknown>[]
 }
 
+export interface TestCampaignCatalogItemApi {
+  campaignId: string
+  campaignKey: string
+  campaignVersion: string
+  status: string
+  cellCount: number
+  releaseGateResult: string
+}
+
+export interface TestCampaignCatalogApi {
+  apiVersion: VerdictRuntimeApiVersion
+  items: TestCampaignCatalogItemApi[]
+}
+
 export interface TestCampaignResultApi {
   apiVersion: VerdictRuntimeApiVersion
   campaignId: string

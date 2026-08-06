@@ -26,6 +26,16 @@
       "autoPort": true
     },
     {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nesy/api",
+        "dev"
+      ],
+      "port": 4001
+    },
+    {
       "name": "web-3102",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [

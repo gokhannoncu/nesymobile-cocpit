@@ -4,7 +4,7 @@ overview: NesyMobileCocpit'i mevcut Maestro merkezli otomasyon koşucusundan; Ve
 todos:
   - id: faz-0
     content: "FAZ 0 — Doğrulanabilir baseline ve SSOT: repo-level typecheck yeşil; checkpoint script'leri ayrı harness; gerçek PostgreSQL ingest testleri CI'da; Mobile verdict-status.json ile Cockpit durum tablosu eşlenir; eski Cockpit dokümanlarındaki VerdictChannel/detectChannel/legacy drift'i düzeltilir; golden workflow ve ölçüm fixture'ları SHA-pinned hale gelir. CHECKPOINT 0 geçmeden güvenlik veya runtime cutover yapılmaz."
-    status: pending
+    status: in_progress
   - id: faz-1
     content: "FAZ 1 — Güvenli SDK run session ve mutual-HMAC WS host: RunSecretRegistry, run/device/app bağlama, set_run ile aynı typed secret, app->host doğrulama, host->app karşı imza, 5 saniye auth timeout, pre-auth event/ACK yasağı, nonce replay/time-skew/rotation/end_run testleri ve çoklu cihaz izolasyonu. CHECKPOINT 1: kimliksiz peer 0 metadata/event görür; gerçek cihaz authenticated WS üzerinden event üretir."
     status: pending

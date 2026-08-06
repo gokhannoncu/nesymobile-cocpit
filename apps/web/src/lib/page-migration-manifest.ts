@@ -36,6 +36,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -49,6 +50,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -62,6 +64,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -75,6 +78,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -88,6 +92,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -101,6 +106,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -114,6 +120,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -127,6 +134,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -140,6 +148,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -153,6 +162,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -168,6 +178,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -181,6 +192,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -194,6 +206,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -207,6 +220,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -220,6 +234,21 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
+    fallbackPolicy: 'NONE'
+  },
+  {
+    routePattern: '/product',
+    routeLabel: 'Product Overview',
+    workspace: 'product',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'AVAILABLE',
+    rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -233,6 +262,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -246,6 +276,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -261,6 +292,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -274,6 +306,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -287,6 +320,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -300,6 +334,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -313,6 +348,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'PLACEHOLDER',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -326,6 +362,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -341,6 +378,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -354,6 +392,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -367,6 +406,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -380,6 +420,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -393,6 +434,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -406,6 +448,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -419,6 +462,23 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
+    fallbackPolicy: 'NONE'
+  },
+  {
+    // Navigation links here ("Screen Manual") but no page exists yet, so the
+    // route is declared PLACEHOLDER rather than left as a silent 404.
+    routePattern: '/engineering/screen-manual',
+    routeLabel: 'Screen Manual',
+    workspace: 'engineering',
+    owner: 'nesy-platform',
+    currentSource: 'STATIC',
+    targetSource: 'STATIC',
+    targetDtoVersion: '1.0',
+    cutoverCheckpoint: 'NON_REGRESSION',
+    availability: 'PLACEHOLDER',
+    rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -434,6 +494,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -447,6 +508,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -460,6 +522,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -473,6 +536,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -486,6 +550,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -499,6 +564,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -512,6 +578,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -525,6 +592,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -538,6 +606,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -553,6 +622,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -566,6 +636,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -579,6 +650,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -592,6 +664,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -605,6 +678,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -620,6 +694,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -633,6 +708,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -646,6 +722,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -659,6 +736,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -672,6 +750,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -685,6 +764,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -698,6 +778,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -711,6 +792,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -724,6 +806,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -737,6 +820,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -750,6 +834,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -763,6 +848,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -776,6 +862,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
 
@@ -791,6 +878,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -804,6 +892,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
   {
@@ -817,6 +906,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     cutoverCheckpoint: 'NON_REGRESSION',
     availability: 'AVAILABLE',
     rbac: ['*'],
+    acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   }
 ]

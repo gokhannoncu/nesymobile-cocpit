@@ -3,8 +3,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { CampaignTypeBadge } from './CampaignTypeBadge'
 import Link from 'next/link'
+import type { TestCampaignCatalogItemApi } from '@/lib/verdict-runtime/types'
 
-export function CampaignTable({ items }: { items: any[] }) {
+/**
+ * Renders exactly the fields the campaign catalog DTO carries. Cell-level
+ * failures are not part of the catalog response and are shown on the campaign
+ * detail page instead of being guessed here.
+ */
+export function CampaignTable({ items }: { items: TestCampaignCatalogItemApi[] }) {
   return (
     <div className="border rounded-md">
       <Table>
@@ -13,32 +19,35 @@ export function CampaignTable({ items }: { items: any[] }) {
             <TableHead>Campaign</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Failed Cells</TableHead>
+            <TableHead>Cells</TableHead>
+            <TableHead>Release Gate</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item, i) => (
-            <TableRow key={i}>
+          {items.map((item) => (
+            <TableRow key={item.campaignId}>
               <TableCell className="font-medium">
-                <Link href={`/automation/test-campaigns/${item.campaignId || 'demo'}`} className="hover:underline">
+                <Link
+                  href={`/automation/test-campaigns/${encodeURIComponent(item.campaignId)}`}
+                  className="hover:underline"
+                >
                   {item.campaignId}
                 </Link>
               </TableCell>
-              <TableCell><CampaignTypeBadge type={item.type || 'NIGHTLY'} /></TableCell>
+              <TableCell><CampaignTypeBadge type={item.campaignKey} /></TableCell>
+              <TableCell><Badge variant="outline">{item.status}</Badge></TableCell>
+              <TableCell>{item.cellCount}</TableCell>
               <TableCell>
-                {item.partial ? <Badge variant="secondary">IN PROGRESS</Badge> : <Badge variant="outline">COMPLETED</Badge>}
-              </TableCell>
-              <TableCell>
-                {item.failedCells?.length > 0 ? (
-                  <span className="text-destructive font-medium">{item.failedCells.length}</span>
+                {item.releaseGateResult === 'NOT_EVALUATED' ? (
+                  <span className="text-muted-foreground">NOT_EVALUATED</span>
                 ) : (
-                  <span className="text-muted-foreground">0</span>
+                  <Badge variant="secondary">{item.releaseGateResult}</Badge>
                 )}
               </TableCell>
             </TableRow>
           ))}
           {items.length === 0 && (
-            <TableRow><TableCell colSpan={4} className="text-center py-4">No campaigns found.</TableCell></TableRow>
+            <TableRow><TableCell colSpan={5} className="text-center py-4">No campaigns found.</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

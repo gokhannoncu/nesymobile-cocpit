@@ -4,12 +4,12 @@
 runPlayId: verdict-mobile-phase-0-run-play
 phase: "0"
 phaseName: "Mobile Baseline + Inventory + Gap Matrix"
-status: NOT_STARTED
-recoveryState: READY_TO_START
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+startedAt: "2026-08-06 04:10:00 +03"
+completedAt: "2026-08-06 04:17:00 +03"
+lastUpdatedAt: "2026-08-06 04:17:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -72,12 +72,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M0` |
-| Current step | `0.0` |
-| Current state | `READY_TO_START` |
-| Last successful step | `0.0` |
-| Last attempted step | `0.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M0 henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Current step | `0.10` (bitti) |
+| Current state | `COMPLETED` |
+| Last successful step | `0.10` |
+| Last attempted step | `0.10` |
+| Last update | `2026-08-06 04:17:00 +03` |
+| Recovery instruction | `Phase M0 tamamlandı. M1 readiness READY_WITH_EXTERNAL_BLOCKERS. Sıradaki iş M1 playbook oluşturma.` |
 
 ## 3. Kapsam
 
@@ -131,53 +131,53 @@ readiness yaz.
 
 ### 0.1 Master plan + Cockpit phase-0/3/4b RESULT okuma
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — Master plan v1.1.3 digest doğrulandı, Cockpit Phase 0 COMPLETED, Phase 3 IMPL_COMPLETE
 
 ### 0.2 Mobile git/worktree + verdict-status.json özeti
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — Branch feature/verdict-sdk, HEAD da4bc3f1, verdict-status.json doğrulandı
 
 ### 0.3 Automation seam envanteri (commands/state/query/event)
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — 13 kaynak dosya, 5 command, 4+3 provider, 5+8 query, 9 event
 
 ### 0.4 Named-query ihtiyaç vs Cockpit pack gap tablosu
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — 8 eksik query (stop_list KRİTİK), entities.ts cross-ref
 
 ### 0.5 Evidence matrisi (explicit event adayları)
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — 4 eksik event, 2 partial, sources.ts cross-ref
 
 ### 0.6 Scanner + Launch Profile tasarım notu
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — REAL/INJECTED/MANUAL modes, 4 launch profile, release isolation
 
 ### 0.7 App Adapter compatibility manifest taslağı
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — Tam gap tablosu: 5/8 cmd, 3+1/7 provider, 5/13 query, 3+2/9 event
 
 ### 0.8 Release isolation inventory
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — Source set ayrık, mevcut risk LOW, gelecek risk alanları belgelendi
 
 ### 0.9 Bridge B1/B2 + B-12/B-13 baseline notları
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — B1 conditional v1.1.0, B2 not_started, CP3-DUT blocker
 
 ### 0.10 Verification + M1 readiness handoff
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: RESULT.md step log — READY_WITH_EXTERNAL_BLOCKERS, M1/M3/M4B handoff listesi
 
 
 ## 8. Verification commands

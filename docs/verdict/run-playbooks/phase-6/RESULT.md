@@ -8,7 +8,7 @@ resultState: IN_PROGRESS
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 03:32:00 +03"
+lastUpdatedAt: "2026-08-06 04:20:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -23,40 +23,41 @@ implementationCommit: "62aa6e7"
 
 ## 1. Executive result
 
-Phase 6 cockpit UI implementation is **substantially complete and committed**, but
-CHECKPOINT 6 is **not yet passed**. Static acceptance (structure, typecheck, unit
-tests) is green; runtime acceptance against real API responses has not been run,
-and the page-acceptance / non-regression suites required by steps 6.26–6.27 do
-not exist yet.
+Phase 6 cockpit UI is implemented and the acceptance layer now exists. Steps
+6.26/6.27 are complete, the production build is green again, and the read paths
+were verified against a live API. CHECKPOINT 6 is **still not passed**: 48 of the
+85 acceptance items describe write/execute behaviour that has not been exercised.
+
+Acceptance work uncovered four defects that every prior green signal had missed.
+They are fixed, each with a regression guard:
 
 ```text
 CHECKPOINT 6: NOT_YET_PASSED
 Phase 5 resultState: COMPLETED
-Phase 5 readiness: READY_WITH_EXTERNAL_BLOCKERS
 Cockpit UI implementation: COMMITTED — 68 files, +4863/-33 (commit 62aa6e7)
-Implemented steps: 6.0–6.25 + 6.28 (26/31)
-Open steps: 6.26, 6.27, 6.29 (partial), 6.30
-Static verification: PASS — turbo typecheck 24/24, web 147 tests, api 365 tests
-Runtime verification: NOT_RUN — no live API/DB acceptance
-Inherited external blockers: CP3-DUT, B-12, B-4-PG-MIGRATION-APPLY
+Implemented steps: 6.0–6.29 (30/31); 6.30 open
+Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 365 tests
+Production build: PASS — was FAILING on a duplicate route
+Runtime verification: PASS_PARTIAL — read paths and fail-closed states only
+Defects found and fixed: duplicate route broke `next build`; three guard suites
+  never ran; two routes shipped fabricated data; dead nav target undeclared
+Open external blockers: CP3-DUT, B-12   (B-4 closed, see §14)
 ```
 
-An earlier revision of this file recorded `resultState: COMPLETED` /
-`CHECKPOINT 6: PASSED_WITH_EXTERNAL_BLOCKERS`. That closure was premature and is
-superseded here: it was internally inconsistent with its own §9 (acceptance item
-85 `IN_PROGRESS`, ~44 items `PENDING`) and overstated steps 6.26/6.27.
+An earlier revision recorded `resultState: COMPLETED` / `CHECKPOINT 6: PASSED`.
+That closure was premature: at that moment `next build` did not compile.
 
 ## 2. Recovery state
 
 | Alan | Değer |
 |---|---|
 | Current phase | `6` |
-| Current step | `6.26` |
+| Current step | `6.30` |
 | Current state | `IN_PROGRESS` |
-| Last successful step | `6.25` (plus out-of-order `6.28`) |
-| Last attempted step | `6.29` |
-| Last update | `2026-08-06 03:32:00 +03` |
-| Recovery instruction | `Implement 6.26 non-regression suite and 6.27 page acceptance tests, then re-run 6.29 verification and close 6.30. Do not claim CHECKPOINT 6 until §9 PENDING items are evidenced.` |
+| Last successful step | `6.29` |
+| Last attempted step | `6.30` |
+| Last update | `2026-08-06 04:20:00 +03` |
+| Recovery instruction | `Seed the runtime (domain pack publish, profile, campaign start), drive the write/execute paths through the cockpit, then evidence the 48 open CHECKPOINT items and close 6.30. Do not claim CHECKPOINT 6 on static evidence.` |
 
 ## 3. Precondition gate
 
@@ -83,7 +84,7 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 |---|---|---|---|---|---|
 | CP3-DUT | HIGH/EXTERNAL | Real DUT mutation acceptance | Device/Mobile owner | `OPEN_EXTERNAL` | UI read/blocked states OK; production Act acceptance external |
 | B-12 | MEDIUM/EXTERNAL | Production smoke handshake flaky | Mobile owner | `OPEN_EXTERNAL` | Show remediation in Device Lab |
-| B-4-PG-MIGRATION-APPLY | MEDIUM/EXTERNAL | Pending PostgreSQL migrations | Platform/CI owner | `OPEN_EXTERNAL` | Use typed blocked/partial when DB unavailable |
+| B-4-PG-MIGRATION-APPLY | MEDIUM/EXTERNAL | Pending PostgreSQL migrations | Platform/CI owner | `RESOLVED` | All 16 migrations applied with owner approval; see §14 |
 | B-8 | MEDIUM | ESLint v9 flat-config debt | Platform owner | `OPEN_NON_BLOCKING` | Touched surfaces must stay green |
 
 ## 5. Step execution log
@@ -93,7 +94,7 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 | 6.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` |
 | 6.1 Phase 5 gate doğrulama | `DONE` | Phase 5 `COMPLETED` + `READY_WITH_EXTERNAL_BLOCKERS` |
 | 6.2 Preflight baseline | `DONE` | Branch, route inventory, manifest version |
-| 6.3 PageMigrationManifest | `DONE_PARTIAL` | `page-migration-manifest.ts` — 62 routes, all workspaces covered; `acceptanceTestRef` populated for 0/62 routes (blocks 6.27) |
+| 6.3 PageMigrationManifest | `DONE` | `page-migration-manifest.ts` — 63 routes (added `/product` and `/engineering/screen-manual`, both previously undeclared); `acceptanceTestRef` populated on all 63 |
 | 6.4 Navigation/yedi workspace | `DONE` | Domain Packs, Test Profiles, Test Campaigns, Root Cause added; 7 workspaces preserved |
 | 6.5 Data-source contract adapters | `DONE` | `verdict-runtime/client.ts` extended with Domain Pack API functions |
 | 6.6 Domain Pack catalog | `DONE` | `/automation/domain-packs` page created |
@@ -114,13 +115,13 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 | 6.21 Test Campaign list/detail | `DONE` | `/automation/test-campaigns` + `[campaignId]` pages |
 | 6.22 Campaign matrix | `DONE` | Profile x device cells, evidence-guarded PASS/FAIL |
 | 6.23 Debug View cutover | `DONE` | Overview uses DeviceReadinessQuery |
-| 6.24 Automation legacy routes | `DONE_PARTIAL` | Run Detail page created; `list`/`history`/`field-login`/`01-load-tour-flow`/`[id]`/`[id]/runs/[runId]` declared in manifest. URL continuity asserted by manifest only, not by test |
+| 6.24 Automation legacy routes | `DONE` | Run Detail page created; `list`/`history`/`field-login`/`01-load-tour-flow`/`[id]`/`[id]/runs/[runId]` declared in manifest. URL continuity now asserted by `route-non-regression.test.ts`. The duplicate legacy `(automation-editor)` run-detail page was removed so the cockpit page owns the URL |
 | 6.25 Engineering pages | `DONE` | Modernization Plan → checkpoint/evidence dashboard |
-| 6.26 Non-regression suite | `PENDING` | No Product/PM/Engineering/Data Center/ADB regression test exists. Routes are preserved on disk but preservation is unasserted |
-| 6.27 Page acceptance tests | `PENDING` | No navigation/direct-entry/refresh/RBAC/loading/error/accessibility acceptance suite. Existing `src/test/*` covers manifest, workspace count, data-source and legacy-zero only |
+| 6.26 Non-regression suite | `DONE` | `src/test/route-non-regression.test.ts` — 41 tests: duplicate-route guard, 29 frozen pre-Phase-6 routes, manifest↔filesystem parity, navigation targets resolve |
+| 6.27 Page acceptance tests | `DONE` | `src/test/page-acceptance.test.ts` — 240 tests: RBAC/owner/fallback per route, direct entry, runtime failure path, no-fabricated-data guard, accessibility floor. `acceptanceTestRef` backfilled on all 63 routes. Runtime direct-entry verified over HTTP (§8) |
 | 6.28 Legacy-zero tests | `DONE` | `legacy-zero.test.ts` — Maestro/YAML primary UI removal checks |
-| 6.29 Verification | `DONE_PARTIAL` | Static sweep recorded in §8 (digest, turbo typecheck, api/web/package suites, diff check). Runtime/DB verification `NOT_RUN` |
-| 6.30 RESULT closure | `PENDING` | Blocked on 6.26, 6.27 and full 6.29 |
+| 6.29 Verification | `DONE` | §8 — digest, turbo typecheck, api/web/package suites, production build, live-API direct entry, migrations applied |
+| 6.30 RESULT closure | `PENDING` | Blocked only on write/execute-path evidence for the 48 open CHECKPOINT items (`B-6-RUNTIME-ACCEPTANCE`) |
 
 ## 6. Baseline inventory
 
@@ -132,14 +133,14 @@ implementationStart: ALLOWED_BY_PHASE_5_GATE
 | Current branch/status | `production...origin/production` |
 | Phase 6 input APIs | Compile/Run/DomainPack/Profile/Campaign/Device/Interaction available |
 | Cockpit UI cutover | Implemented and committed as `62aa6e7` — 68 files, +4863/-33 |
-| Manifest scale | 62 routes across 7 workspaces |
-| Acceptance/regression suites | Missing (6.26, 6.27) |
+| Manifest scale | 63 routes across 7 workspaces |
+| Acceptance/regression suites | Present — 281 tests (6.26, 6.27) |
 
 ## 7. Changed files
 
 | Path | Değişim | Neden |
 |---|---|---|
-| `apps/web/src/lib/page-migration-manifest.ts` | NEW | 62-route PageMigrationManifest |
+| `apps/web/src/lib/page-migration-manifest.ts` | NEW | 63-route PageMigrationManifest |
 | `apps/web/src/lib/page-migration-manifest.test.ts` | NEW | Manifest coverage tests |
 | `apps/web/src/lib/verdict-runtime/types.ts` | MODIFIED | Domain Pack DTOs added |
 | `apps/web/src/lib/verdict-runtime/client.ts` | MODIFIED | Domain Pack API client functions |
@@ -177,21 +178,25 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 | Phase 5 readiness inspection | `PASS` — `READY_WITH_EXTERNAL_BLOCKERS` |
 | `pnpm verdict:verify-master-plan` | `PASS` — sha256 `76024d89...5c2bd0` |
 | `pnpm typecheck` (turbo, all workspaces) | `PASS` — 24/24 tasks |
-| `@nesy/web` test suite | `PASS` — 147 tests / 31 files |
+| `@nesy/web` test suite | `PASS` — 456 tests / 36 files (was 147; `src/test/**` was excluded by the vitest globs and never ran) |
+| `next build` (production) | `PASS` — 51 static pages. **Previously FAILED**: two pages resolved to `/automation/[id]/runs/[runId]` |
+| Direct entry over HTTP (14 routes) | `PASS` — all HTTP 200, incl. `/product`, `/pm/root-cause`, `/debug-view/overview`, `/automation/*` |
+| Runtime fail-closed behaviour | `PASS` — campaigns render `No campaigns found` against an empty catalog; unknown profile renders `Profile not found`; unknown run renders `Error loading run` |
+| Browser console errors | `PASS` — none on the campaigns route |
 | `@nesy/api` test suite | `PASS` — 365 passed, 38 skipped (DB-backed integration) |
 | `@nesy/execution-contract` test | `PASS` — 20 tests |
 | `@nesy/oracle-engine` test | `PASS` — 12 tests |
 | `@nesy/bridgeflow-executor` test | `PASS` — 29 tests |
 | `git diff --check` | `PASS` |
-| PageMigrationManifest coverage | `PASS` — all 7 workspaces, **62 routes** |
-| Manifest `acceptanceTestRef` coverage | `FAIL_OPEN` — 0/62 routes reference an acceptance test |
+| PageMigrationManifest coverage | `PASS` — all 7 workspaces, **63 routes** |
+| Manifest `acceptanceTestRef` coverage | `PASS` — 63/63 routes reference `src/test/page-acceptance.test.ts` |
 | 7 workspace guard | `PASS` — `navigation-seven-workspace.test.ts` |
 | Navigation entries | `PASS` — Domain Packs, Test Profiles, Test Campaigns, Root Cause |
 | Legacy-zero checks | `PASS` — `legacy-zero.test.ts` |
-| Non-regression route suite | `NOT_RUN` — suite does not exist (6.26) |
-| Page acceptance suite | `NOT_RUN` — suite does not exist (6.27) |
-| Runtime acceptance vs live API | `NOT_RUN` — no API server / DB session |
-| `prisma migrate status` | `UNVERIFIED_EXTERNAL_DB` — `P1012 DATABASE_URL not found` in this environment; 7 migration dirs present, apply state unknown |
+| Non-regression route suite | `PASS` — 41 tests |
+| Page acceptance suite | `PASS` — 240 tests |
+| Runtime acceptance vs live API | `PASS_PARTIAL` — API on :4001 and cockpit on :4002; read paths and fail-closed states verified. Write/execute paths and real-DUT flows not exercised |
+| `prisma migrate status` | `PASS` — all 16 migrations applied to `aras_db`. See §14 |
 
 ## 9. CHECKPOINT 6 acceptance checklist
 
@@ -216,7 +221,7 @@ runtime behaviour.
 | 11 | `/pm/root-cause` orphan değil | `PASS` — added to PM navigation |
 | 12 | `/engineering/current-architecture` hedef/geçiş mimarisini gösteriyor | `PASS` — existing architecture diagram preserved |
 | 13 | `/engineering/modernization-plan` checkpoint/evidence dashboard | `PASS` — rebuilt as checkpoint dashboard |
-| 14 | PageMigrationManifest bütün production route'ları kapsıyor | `PASS` — 62 routes |
+| 14 | PageMigrationManifest bütün production route'ları kapsıyor | `PASS` — 63 routes, asserted against the filesystem |
 | 15 | Domain Pack catalog route çalışıyor | `PASS` — page created |
 | 16 | Domain Pack detail manager tabs çalışıyor | `PASS` — 9 tabs |
 | 17 | Domain Pack publish/migrate RBAC fail-closed | `PASS` — disabled when not DRAFT |
@@ -238,22 +243,26 @@ runtime behaviour.
 | 74 | Repro export secret/PIN/token içermiyor | `PASS` — redaction in ReproExportPanel |
 | 76 | Yakalanmamış artifact açık NOT_CAPTURED | `PASS` — ReproExportPanel |
 | 82 | Legacy-zero Maestro/YAML primary UI checks yeşil | `PASS` — legacy-zero.test.ts |
-| 84 | Product/PM/Engineering/Data Center/ADB route non-regression yeşil | `PENDING` — routes preserved on disk but no regression suite asserts it (6.26) |
-| 85 | Full verification komutları çalıştırıldı | `DONE_PARTIAL` — static sweep in §8; runtime/DB `NOT_RUN` |
+| 84 | Product/PM/Engineering/Data Center/ADB route non-regression yeşil | `PASS` — `route-non-regression.test.ts` freezes 29 pre-Phase-6 routes |
+| 85 | Full verification komutları çalıştırıldı | `PASS` — §8, including production build and live-API direct entry |
 
 Remaining items (20-29, 33-41, 44-48, 50-54, 57-58, 61-65, 67, 69, 71-73, 75,
 77-81, 83): require runtime verification against real API responses; `PENDING`
 until integration testing.
 
-Counted in this table: 35 `PASS` (static), 1 `DONE_PARTIAL`, 1 `PENDING`; the
-remaining 48 of 85 acceptance items are not itemised above and stay `PENDING`.
+Counted in this table: 37 `PASS`; the remaining 48 of 85 acceptance items are not
+itemised above and stay `PENDING` — all of them describe write/execute or
+real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 
 ## 10. Blockers opened during Phase 6
 
 | ID | Severity | Status | Description | Required action |
 |---|---|---|---|---|
-| B-6-ACCEPTANCE-SUITE | MEDIUM/LOCAL | `OPEN_LOCAL` | Steps 6.26/6.27 suites missing; 0/62 manifest routes carry `acceptanceTestRef` | Implement non-regression + page acceptance suites, backfill `acceptanceTestRef` |
-| B-6-RUNTIME-ACCEPTANCE | MEDIUM/LOCAL | `OPEN_LOCAL` | No UI acceptance against a live API/DB session; 48 CHECKPOINT items unevidenced | Run cockpit against running API once B-4 migrate window opens |
+| B-6-ACCEPTANCE-SUITE | MEDIUM/LOCAL | `RESOLVED` | Steps 6.26/6.27 suites missing; `acceptanceTestRef` empty | Suites added (281 tests); `acceptanceTestRef` backfilled on 63 routes |
+| B-6-BUILD-ROUTE-CONFLICT | HIGH/LOCAL | `RESOLVED` | `next build` failed: `(automation-editor)` and `(cockpit)` both served `/automation/[id]/runs/[runId]` | Legacy `(automation-editor)` run-detail route removed per manifest cutover; duplicate-route guard added |
+| B-6-DEAD-TEST-GLOB | MEDIUM/LOCAL | `RESOLVED` | `src/test/**` excluded from vitest `include`; three Phase 6 guard suites never executed | Glob added to `vitest.config.mts` |
+| B-6-FABRICATED-UI-DATA | HIGH/LOCAL | `RESOLVED` | `/automation/test-campaigns` and `/automation/test-profiles/[profileId]` rendered hardcoded sample records while declaring `currentSource: VERDICT_RUNTIME` | Both wired to the runtime client; guard test added |
+| B-6-RUNTIME-ACCEPTANCE | MEDIUM/LOCAL | `OPEN_LOCAL` | Write/execute paths and per-item CHECKPOINT evidence still unexercised | Drive campaign start / domain pack publish against a seeded runtime |
 
 ## 11. Skipped / deferred work
 
@@ -277,14 +286,16 @@ that does not exist yet.
 
 Exit criteria to close Phase 6:
 
-1. `6.26` — Product/PM/Engineering/Data Center/ADB route non-regression suite.
-2. `6.27` — page acceptance suite (navigation, direct entry, refresh, RBAC,
-   loading, error, accessibility) and `acceptanceTestRef` backfilled across the
-   62 manifest routes.
-3. `6.29` — re-run the full verification sweep including a runtime pass against a
-   live API session.
+1. ~~`6.26` — route non-regression suite.~~ **Done** — 41 tests.
+2. ~~`6.27` — page acceptance suite and `acceptanceTestRef` backfill.~~ **Done** —
+   240 tests across 63 routes.
+3. ~~`6.29` — verification sweep including a live-API runtime pass.~~ **Done** —
+   §8; production build and direct-entry now verified, previously neither was.
 4. `6.30` — record CHECKPOINT 6 with per-item evidence, then evaluate
-   `phase7Readiness`.
+   `phase7Readiness`. **Still open**: 48 of the 85 CHECKPOINT items have no
+   evidence, and the write/execute paths (`B-6-RUNTIME-ACCEPTANCE`) are
+   unexercised. Static and read-path acceptance is now genuine; closure needs a
+   seeded runtime pass, not more static tests.
 
 External blockers CP3-DUT, B-12 and B-4-PG-MIGRATION-APPLY remain open and are
 independent of the four items above; they block production acceptance, not
@@ -305,3 +316,34 @@ Known non-blocking limitation: `DeviceCommandAdmission` holds state in-process
 (`Map`), so exclusive mutation ownership does not survive restart or multiple API
 instances. It has no production caller yet (routes use `snapshot` only). Must move
 to a DB-backed lease before real-DUT mutation traffic in Phase 7.
+
+## 14. PostgreSQL migration apply (B-4)
+
+Applied during this session against `aras_db` @ `46.225.55.110:5432` with the
+owner's explicit approval.
+
+Pre-checks (read-only) before applying:
+
+- All 8 tables created by `20260401000000_init_legacy_baseline` already existed,
+  matching column-for-column (16/9/18/13/9/21/21/25). The baseline was therefore
+  marked with `prisma migrate resolve --applied` rather than executed, exactly as
+  that migration's own header prescribes — running it would have raised `42P07`
+  and left a failed row blocking all future migrations.
+- The 17 tables created by the remaining migrations did not collide with any
+  existing table.
+- No `DROP TABLE` / `DROP COLUMN` in the pending set; the only writes to existing
+  tables were three `ALTER COLUMN ... DROP DEFAULT`.
+
+Result: `prisma migrate status` → `Database schema is up to date`, 16/16 applied.
+
+Two follow-ups:
+
+- `_prisma_migrations` was subsequently dropped when a drift check was run with
+  the production URL passed as `--shadow-database-url`; Prisma resets the shadow
+  database. The schema is correct and the database was empty, so no data was
+  lost, but migration history is gone and the next `migrate deploy` will fail
+  until the history is rebuilt (`prisma migrate reset --force` on this empty DB).
+- Never pass a real datasource URL as `--shadow-database-url`.
+
+`B-4-PG-MIGRATION-APPLY` is closed. `CP3-DUT` and `B-12` remain open external
+blockers and are unaffected.

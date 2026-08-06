@@ -6,6 +6,7 @@ import type {
   RunDetailResult,
   RunHistoryQuery,
   RunHistoryResult,
+  TestCampaignCatalogApi,
   TestCampaignResultApi,
   TestProfileCatalogApi,
   WorkflowCompileApi,
@@ -51,6 +52,10 @@ export async function fetchVerdictDeviceReadiness(deviceId: string): Promise<Dev
 
 export async function fetchVerdictTestProfiles(): Promise<TestProfileCatalogApi> {
   return getJson<TestProfileCatalogApi>('/verdict/runtime/test-profiles')
+}
+
+export async function fetchVerdictTestCampaigns(): Promise<TestCampaignCatalogApi> {
+  return getJson<TestCampaignCatalogApi>('/verdict/runtime/test-campaigns')
 }
 
 export async function fetchVerdictTestCampaign(campaignId: string): Promise<TestCampaignResultApi> {
