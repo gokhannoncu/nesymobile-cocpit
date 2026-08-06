@@ -47,6 +47,7 @@ import {
   Smartphone,
   Trash2,
   Truck,
+  ShieldCheck,
   UserCheck,
   UserRound,
   X,
@@ -113,6 +114,7 @@ import {
 import { BackendLaneNodeView } from "./BackendLaneNodeView";
 import { WorkflowYamlPreviewModal } from "./WorkflowYamlPreviewModal";
 import { YamlPreviewPanel } from "./YamlPreviewPanel";
+import { VerdictEditorToolbar } from "@/components/automation/editor/VerdictEditorToolbar";
 import {
   WorkflowNodeType,
   type BranchType,
@@ -1499,6 +1501,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
   const router = useRouter();
 
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  // Phase 6 Verdict authoring surfaces (compile preview, semantic actions,
+  // entity bindings, oracle rules, launch profile). They shipped as components
+  // but were never mounted on a route, so the operator could not reach them.
+  const [verdictPanelOpen, setVerdictPanelOpen] = useState(false);
   const [canvasTool, setCanvasTool] = useState<CanvasPointerTool>("hand");
   const [workflowMeta, setWorkflowMeta] = useState<{ id: string; slug: string; name: string } | null>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
@@ -2953,6 +2959,28 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             </button>
           ) : null}
         </div>
+
+        {verdictPanelOpen ? (
+          <aside
+            aria-label="Verdict authoring panel"
+            className="fixed right-0 top-14 bottom-0 z-30 flex"
+          >
+            <VerdictEditorToolbar workflowState={{ workflowId, nodes, connections }} />
+          </aside>
+        ) : null}
+
+        <button
+          type="button"
+          aria-label={verdictPanelOpen ? 'Close Verdict panel' : 'Open Verdict panel'}
+          aria-expanded={verdictPanelOpen}
+          onClick={() => setVerdictPanelOpen((open) => !open)}
+          className={`fixed top-20 z-40 flex h-9 items-center gap-2 rounded-l-md border border-r-0 border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs hover:bg-slate-50 ${
+            verdictPanelOpen ? 'right-[350px]' : 'right-0'
+          }`}
+        >
+          <ShieldCheck className="size-4 shrink-0" aria-hidden />
+          Verdict
+        </button>
       </div>
 
       <DragOverlay dropAnimation={null}>

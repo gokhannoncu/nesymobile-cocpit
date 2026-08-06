@@ -29,33 +29,22 @@ export interface DeviceReadinessSnapshot {
 export class DeviceReadinessService {
   constructor(
     private readonly admission: DeviceCommandAdmission,
-    private readonly probes: {
-      adb?: () => ReadinessStatus
-      sdkControl?: () => ReadinessStatus
-      sdkEventAuth?: () => ReadinessStatus
-      durableIngest?: () => ReadinessStatus
-      bridge?: () => ReadinessStatus
-      backendCredentials?: () => ReadinessStatus
-      localDb?: () => ReadinessStatus
-      activeRun?: () => ReadinessStatus
-      receiptBus?: () => ReadinessStatus
-      orderedBus?: () => ReadinessStatus
-    } = {},
+    private readonly probes: DeviceReadinessProbes = {},
   ) {}
 
-  get(deviceId: string): DeviceReadinessSnapshot {
+  async get(deviceId: string): Promise<DeviceReadinessSnapshot> {
     const admission = this.admission.snapshot(deviceId)
     const lanes: DeviceLaneHealth[] = [
-      lane('ADB', this.probes.adb),
-      lane('SDK_CONTROL', this.probes.sdkControl),
-      lane('SDK_EVENT_AUTH', this.probes.sdkEventAuth),
-      lane('DURABLE_INGEST', this.probes.durableIngest),
-      lane('BRIDGE', this.probes.bridge),
-      lane('BACKEND_CREDENTIALS', this.probes.backendCredentials),
-      lane('LOCAL_DB', this.probes.localDb),
-      lane('ACTIVE_RUN', this.probes.activeRun),
-      lane('RECEIPT_BUS', this.probes.receiptBus),
-      lane('ORDERED_BUS', this.probes.orderedBus),
+      await lane('ADB', deviceId, this.probes.adb),
+      await lane('SDK_CONTROL', deviceId, this.probes.sdkControl),
+      await lane('SDK_EVENT_AUTH', deviceId, this.probes.sdkEventAuth),
+      await lane('DURABLE_INGEST', deviceId, this.probes.durableIngest),
+      await lane('BRIDGE', deviceId, this.probes.bridge),
+      await lane('BACKEND_CREDENTIALS', deviceId, this.probes.backendCredentials),
+      await lane('LOCAL_DB', deviceId, this.probes.localDb),
+      await lane('ACTIVE_RUN', deviceId, this.probes.activeRun),
+      await lane('RECEIPT_BUS', deviceId, this.probes.receiptBus),
+      await lane('ORDERED_BUS', deviceId, this.probes.orderedBus),
     ]
     if (admission.blockedReason) {
       lanes.push({
@@ -106,7 +95,33 @@ export class DeviceReadinessService {
   }
 }
 
-function lane(name: string, probe?: () => ReadinessStatus): DeviceLaneHealth {
+/**
+ * Probes receive the device id. Without it a probe cannot answer "is *this*
+ * device healthy" and can only return a constant, which is how the ADB and
+ * Bridge lanes previously reported UP for device ids that did not exist.
+ */
+export type DeviceReadinessProbe = (
+  deviceId: string,
+) => ReadinessStatus | Promise<ReadinessStatus>
+
+export interface DeviceReadinessProbes {
+  adb?: DeviceReadinessProbe
+  sdkControl?: DeviceReadinessProbe
+  sdkEventAuth?: DeviceReadinessProbe
+  durableIngest?: DeviceReadinessProbe
+  bridge?: DeviceReadinessProbe
+  backendCredentials?: DeviceReadinessProbe
+  localDb?: DeviceReadinessProbe
+  activeRun?: DeviceReadinessProbe
+  receiptBus?: DeviceReadinessProbe
+  orderedBus?: DeviceReadinessProbe
+}
+
+async function lane(
+  name: string,
+  deviceId: string,
+  probe?: DeviceReadinessProbe,
+): Promise<DeviceLaneHealth> {
   if (probe === undefined) {
     return {
       lane: name,
@@ -115,5 +130,15 @@ function lane(name: string, probe?: () => ReadinessStatus): DeviceLaneHealth {
       remediation: 'wire readiness probe or accept partial state',
     }
   }
-  return { lane: name, status: probe() }
+  try {
+    return { lane: name, status: await probe(deviceId) }
+  } catch (error) {
+    // A probe that throws is not evidence of health.
+    return {
+      lane: name,
+      status: 'UNKNOWN',
+      detail: error instanceof Error ? error.message : String(error),
+      remediation: 'probe failed; treat lane state as unknown',
+    }
+  }
 }

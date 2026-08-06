@@ -4,12 +4,12 @@
 runPlayId: verdict-mobile-phase-3-run-play
 phase: "3"
 phaseName: "Bridge B2 Protocol (wait_any / cancel / capabilities)"
-status: NOT_STARTED
-recoveryState: READY_TO_START
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-06 03:58:00 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-06 07:42:00 +03"
+startedAt: "2026-08-06 07:56:00 +03"
+completedAt: "2026-08-06 08:20:00 +03"
+lastUpdatedAt: "2026-08-06 08:20:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -27,7 +27,7 @@ mobileSsot: "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile/
 Phase M3, Bridge APK üzerindeki ana B2 işidir.
 
 Cockpit Phase 3 host foundation kurulmuştur; cihazda wait_any / cancel_request /
-capabilities yoktur (B-13). Bu faz Bridge APK + contract fixture + fake host client
+capabilities yoktu (B-13). Bu faz Bridge APK + contract fixture + fake host client
 ile paralel ilerler.
 
 **Başlama:** Hemen. Cockpit Phase 3 host foundation mevcut. M0/M1/M2 soft bağımlılık.
@@ -72,12 +72,12 @@ readiness yaz.
 | Alan | Değer |
 |---|---|
 | Current phase | `M3` |
-| Current step | `3.0` |
-| Current state | `READY_TO_START` |
-| Last successful step | `3.0` |
-| Last attempted step | `3.0` |
-| Last update | `2026-08-06 07:42:00 +03` |
-| Recovery instruction | `M2 COMPLETED. M3 READY_TO_START — Bridge B2 (wait_any/cancel/capabilities) fake host ile başlayabilir.` |
+| Current step | `3.12` |
+| Current state | `COMPLETED` |
+| Last successful step | `3.12` |
+| Last attempted step | `3.12` |
+| Last update | `2026-08-06 08:20:00 +03` |
+| Recovery instruction | `M3 COMPLETED. Protocol B2 unit/fake-host proven. SSOT bridge_b2 stays not_started. Optional DUT reconfirm for B-12.` |
 
 ## 3. Kapsam
 
@@ -99,6 +99,7 @@ readiness yaz.
 - Persistent register_watch / unsolicited push
 - App Adapter entity queries (M4B)
 - Maestro cutover (M8/M9)
+- SSOT `bridge_b2` compiler/courier cutover
 
 ## 5. Owned paths
 
@@ -125,69 +126,69 @@ readiness yaz.
 
 ### 3.1 Cockpit Phase 3 RESULT + B-12/B-13 okuma
 
-- Status: `PENDING`
+- Status: `DONE`
 - Evidence: RESULT.md step log
 
 ### 3.2 Mevcut Bridge command set envanteri
 
-- Status: `PENDING`
+- Status: `DONE`
 - Evidence: RESULT.md step log
 
 ### 3.3 capabilities/preflight
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: `ProtocolV1WaitAnyTest` capabilities case
 
 ### 3.4 wait_any expected/interrupt
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: interrupt-wins / EXPECTED_MATCH / AMBIGUOUS / TIMEOUT tests
 
 ### 3.5 cancel_request + request registry
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: targetRequestId + HOST_AND_DEVICE + ALREADY_TERMINAL tests
 
 ### 3.6 Event-driven reevaluation + bounded rescan
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: TreeGeneration wake + SAFETY_RESCAN backoff with waitWake
 
 ### 3.7 TargetFingerprint ambiguity fail-closed
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: AMBIGUOUS multi-match + existing B1 fencing/action tests
 
 ### 3.8 Idempotency + request_id_conflict
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: wait_any idempotent replay + ProtocolV1FencingTest
 
 ### 3.9 Action lifecycle + process-death UNKNOWN_EFFECT
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: no auto-retry after cancel; host lifecycle UNKNOWN_EFFECT no-retry retained
 
 ### 3.10 B-12 handshake flake fix/kanıt
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: daemon accept/client/wait threads; DUT consecutive-smoke still BLOCKED_EXTERNAL
 
 ### 3.11 Fake host suite + optional lab DUT smoke
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: ProtocolV1WaitAnyTest + CHECKPOINT_B2_PROTOCOL_RESULT.md; DUT BLOCKED_EXTERNAL
 
 ### 3.12 Verification + M4/M5 handoff
 
-- Status: `PENDING`
-- Evidence: RESULT.md step log
+- Status: `DONE`
+- Evidence: `./gradlew :app:testDebugUnitTest` PASS (38); phase4aReadiness READY
 
 
 ## 8. Verification commands
 
 - `pnpm verdict:verify-master-plan`
-- `cd "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile" && ./gradlew :verdict-bridge:test --quiet`
+- `cd "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile/verdict-bridge" && ./gradlew :app:testDebugUnitTest`
 - `node "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile/scripts/check-verdict-status.mjs" --summary || true`
 
 ## 9. Hard bans
@@ -198,6 +199,7 @@ readiness yaz.
 - wait_any full-dump polling
 - Auto-retry after UNKNOWN_EFFECT
 - Silent Cockpit code edits from Mobile playbook
+- Marking SSOT `bridge_b2` passed for protocol-only work
 
 ## 10. Next phase handoff
 

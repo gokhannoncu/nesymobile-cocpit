@@ -1,22 +1,64 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { compileVerdictWorkflow } from '@/lib/verdict-runtime/client';
+import { compileVerdictWorkflow, fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client';
+import type { DomainPackSummary } from '@/lib/verdict-runtime/types';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Copy, Terminal } from 'lucide-react';
 
 export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
   const [compiling, setCompiling] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [autoCompile, setAutoCompile] = useState(false);
+  const [pack, setPack] = useState<DomainPackSummary | null>(null);
+  const [packError, setPackError] = useState<string | null>(null);
+
+  // A plan can only be attributed to a published Domain Pack, so the pack is
+  // resolved before compiling rather than sending an unpinned request that the
+  // runtime would (correctly) reject.
+  useEffect(() => {
+    let cancelled = false;
+    fetchVerdictDomainPacks()
+      .then((catalog) => {
+        if (cancelled) return;
+        const published = catalog.items.find((item) => item.publicationState === 'PUBLISHED');
+        setPack(published ?? null);
+        setPackError(published ? null : 'No published Domain Pack to pin a compiled plan to.');
+      })
+      .catch(() => {
+        if (!cancelled) setPackError('Domain Pack catalog unavailable.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCompile = async () => {
+    if (!pack) return;
     setCompiling(true);
     try {
-      const data = await compileVerdictWorkflow({ workflow: workflowState });
+      const data = await compileVerdictWorkflow({
+        workflowRef: workflowState?.workflowId ?? '',
+        workflowIr: {
+          nodes: workflowState?.nodes ?? [],
+          connections: workflowState?.connections ?? [],
+        },
+        domainPackKey: pack.packKey,
+        domainPackVersion: pack.version,
+        domainPackDigest: pack.bundleDigest,
+      });
       setResult(data);
     } catch (e) {
       console.error(e);
-      setResult({ ok: false, issues: [{ severity: 'ERROR', message: 'Network or API error' }] });
+      setResult({
+        ok: false,
+        issues: [
+          {
+            severity: 'ERROR',
+            code: 'COMPILE_REQUEST_FAILED',
+            message: e instanceof Error ? e.message : 'compile request failed',
+          },
+        ],
+      });
     }
     setCompiling(false);
   };
@@ -43,7 +85,8 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
           </label>
           <button 
             onClick={handleCompile} 
-            disabled={compiling}
+            disabled={compiling || pack === null}
+            title={packError ?? undefined}
             className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
           >
             {compiling && <Loader2 size={12} className="animate-spin" />}
@@ -56,6 +99,17 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
         <AlertTriangle size={14} className="shrink-0 mt-0.5" />
         <p><strong>Notice:</strong> YAML and Maestro preview panels are deprecated and will be removed in a future update. Please use the WorkflowCompileApi standard preview.</p>
       </div>
+
+      {packError ? (
+        <div className="p-3 border-b border-red-200 bg-red-50 text-red-800 text-xs flex gap-2">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <p>{packError} Publish a Domain Pack before compiling — an unpinned plan cannot be attributed to a pack.</p>
+        </div>
+      ) : pack ? (
+        <div className="px-4 py-2 border-b border-gray-200 bg-white text-[11px] text-gray-600 font-mono">
+          pinned: {pack.packKey}@{pack.version}
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-auto p-4">
         {!result && !compiling && (
@@ -85,7 +139,10 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
                 <div className="space-y-2">
                   {result.issues.map((issue: any, i: number) => (
                     <div key={i} className={`p-2 text-xs rounded border ${issue.severity === 'ERROR' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800'}`}>
-                      <div className="font-medium">{issue.severity}</div>
+                      <div className="font-medium">
+                        {issue.severity}
+                        {issue.code ? <span className="ml-1 font-mono opacity-75">{issue.code}</span> : null}
+                      </div>
                       <div>{issue.message}</div>
                       {issue.sourceLocation && (
                         <div className="mt-1 opacity-75 font-mono text-[10px]">Node: {issue.sourceLocation}</div>

@@ -170,7 +170,7 @@ Previously deferred/partial local items closed in this wave:
 | 23 | Final Oracle eventual until occurrence close | `PASS` | oracle-evaluation-worker tests |
 | 37–38 | Raw audit + normalized trace durable | `PASS` | evidence-journey-writer tests |
 | 42–43 | Journey stages; no EmitOutcome guessing | `PASS` | classifier tests |
-| 45 | Phase 6 DTO targets | `PASS` | phase6-input-contracts + web clients |
+| 45 | Phase 6 DTO targets | `PARTIAL` | Compile/Run/DomainPack/Profile/Campaign/Device `PASS`. **Evidence Source, Target Resolution ve Launch Profile için HTTP ucu hiç açılmadı** — runtime var, API yok; Faz 6 bu yüzden maket UI yazdı. Bkz. `phase-5-debt/` |
 | 49 | Restart-deterministic repetition state | `PASS` | recovery checkpoint continuation/for-each tests |
 | 51 | Queue worker loss/retry/block/orphan | `PASS` | test-execution-queue tests |
 | 53–54 | Dependent BLOCKED / independent continue | `PASS` | queue dependency tests |
@@ -199,6 +199,13 @@ Remaining open externals only: CP3-DUT, B-12, B-4-PG-MIGRATION-APPLY.
 | Maestro removal/cutover | Phase 9 | Explicitly forbidden |
 | Real DUT release gate | External | CP3-DUT / B-12 |
 | Production DB migration apply | External/CI | Shared DB pending migrations |
+
+## 11b. Carried debt
+
+Bu fazdan devreden ve ayrı izde yürütülen iş:
+[`docs/verdict/run-playbooks/phase-5-debt/`](../phase-5-debt/RUN_PLAY.md) —
+eksik okuma API'leri (Evidence Source / Target Resolution / Launch Profile),
+üretim rotasına bağlı stub compiler, süreç-içi device command admission.
 
 ## 12. Phase 6 readiness decision
 

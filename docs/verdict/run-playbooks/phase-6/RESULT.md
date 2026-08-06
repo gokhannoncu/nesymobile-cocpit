@@ -8,7 +8,7 @@ resultState: IN_PROGRESS
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 07:50:00 +03"
+lastUpdatedAt: "2026-08-06 09:10:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -39,7 +39,7 @@ CHECKPOINT 6: NOT_YET_PASSED
 Phase 5 resultState: COMPLETED
 Cockpit UI implementation: COMMITTED — 68 files, +4863/-33 (commit 62aa6e7)
 Implemented steps: 6.0–6.29 (30/31); 6.30 open
-Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 375 tests
+Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 377 tests
 Production build: PASS — was FAILING on a duplicate route
 Runtime verification: PASS — seeded write→read tour (§15); real DUT still external
 Durability: PASS — all contract services survive an API restart (§16, §17)
@@ -59,7 +59,7 @@ That closure was premature: at that moment `next build` did not compile.
 | Current step | `6.30` |
 | Current state | `IN_PROGRESS` |
 | Last successful step | `6.29` |
-| Last attempted step | `6.30` |
+| Last attempted step | `6.30` (sweep in progress, §18) |
 | Last update | `2026-08-06 07:50:00 +03` |
 | Recovery instruction | `Persistence and acceptance work is complete. Walk the 48 open CHECKPOINT items through the cockpit against the seeded runtime, record per-item evidence, then close 6.30 and evaluate phase7Readiness. Do not claim CHECKPOINT 6 on static evidence.` |
 
@@ -187,7 +187,7 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 | Direct entry over HTTP (14 routes) | `PASS` — all HTTP 200, incl. `/product`, `/pm/root-cause`, `/debug-view/overview`, `/automation/*` |
 | Runtime fail-closed behaviour | `PASS` — campaigns render `No campaigns found` against an empty catalog; unknown profile renders `Profile not found`; unknown run renders `Error loading run` |
 | Browser console errors | `PASS` — none on the campaigns route |
-| `@nesy/api` test suite | `PASS` — 375 passed, 38 skipped (DB-backed integration) |
+| `@nesy/api` test suite | `PASS` — 377 passed, 38 skipped (DB-backed integration) |
 | `@nesy/execution-contract` test | `PASS` — 20 tests |
 | `@nesy/oracle-engine` test | `PASS` — 12 tests |
 | `@nesy/bridgeflow-executor` test | `PASS` — 29 tests |
@@ -270,6 +270,7 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | B-6-COMPILE-RUN-FAIL-OPEN | HIGH/LOCAL | `RESOLVED` | `/runtime/compile` and `/runtime/runs` accepted unpinned requests | Pinning guards + tests |
 | B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
 | B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
+| B-6-EDITOR-PANELS-UNBOUND | HIGH/LOCAL | `OPEN_LOCAL` | Evidence Source / Target Resolution / Launch Profile / Entity Binding / Semantic Action panels render hardcoded arrays and call no API | Bind each to `verdict-runtime/client` with real DTOs and fail-closed states |
 | B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `RESOLVED` | Run-start idempotency and interaction cursor reset on restart | `verdict_run_start` + `verdict_run_interaction` tables; both services Prisma-backed and restart-verified, see §17 |
 
 ## 11. Skipped / deferred work
@@ -280,6 +281,13 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | Nesy real DUT full workflow acceptance | Phase 7 | After Phase 6 UI acceptance |
 | Intelligence / Failure Genome | Future | Needs mature evidence data |
 | Runtime integration testing (real API) | Phase 6 final | Requires running API server |
+
+## 11b. Carried debt
+
+Kalan iş ayrı izde:
+[`docs/verdict/run-playbooks/phase-6-debt/`](../phase-6-debt/RUN_PLAY.md) —
+bağlanmamış editör panelleri, olmayan Surface Registry, yürütülmemiş CHECKPOINT
+maddeleri ve 6.30 kapanışı. Bu borç `phase-5-debt`'e bağlıdır.
 
 ## 12. Phase 7 readiness decision
 
@@ -531,3 +539,148 @@ guarantee is enforced without a database (api suite 373 → 375).
 
 `B-6-INMEMORY-RUN-SURFACES` is `RESOLVED`. No Phase 6 contract service holds
 durable state in process memory any more.
+
+## 18. CHECKPOINT 6 sweep — in progress
+
+Driven against the live stack with a **real device attached**: Samsung Galaxy A34
+(`SM-A346E`, Android 16, serial `R6CW400BC8N`) over USB, API `:4001`, cockpit
+`:4002`, seeded runtime persisted in PostgreSQL.
+
+### Defect found and fixed: fabricated device health
+
+`DeviceReadinessService` probes took no arguments, so they could not answer "is
+*this* device healthy" and the route wired them to constants:
+
+```ts
+adb: () => 'UP', bridge: () => 'UP', receiptBus: () => 'UP', orderedBus: () => 'DEGRADED'
+```
+
+Proof it was fabricated — asking for a device id that does not exist:
+
+```text
+GET /runtime/devices/BU-CIHAZ-YOK-12345/readiness  ->  ADB=UP  BRIDGE=UP  RECEIPT_BUS=UP
+adb -s BU-CIHAZ-YOK-12345 get-state                ->  error: device not found
+```
+
+Fixed: probes now receive `deviceId` and may be async; the ADB lane is wired to
+the real `AdbFacade.listDevices()` (only `device`-state entries count); a probe
+that throws yields `UNKNOWN`, never a health claim. The remaining lanes are left
+deliberately unwired and surface as `UNKNOWN` with remediation text rather than a
+fabricated `UP`.
+
+Verified against the attached device:
+
+```text
+R6CW400BC8N          ->  ADB=UP    BRIDGE=UNKNOWN  overall=DEGRADED
+BU-CIHAZ-YOK-12345   ->  ADB=DOWN  BRIDGE=UNKNOWN  overall=DOWN
+```
+
+Two regression tests added (probe receives the device id; a throwing probe
+degrades to `UNKNOWN`). API suite 375 → 377.
+
+### Blocking finding: the Phase 6 editor surfaces are not mounted
+
+`VerdictEditorToolbar` — which hosts `SemanticActionPalette`, `EntityBindingEditor`,
+`EvidenceSourceRegistry`, `TargetResolutionPanel` and `LaunchProfileBuilder` — is
+imported by no page. The components compile, typecheck and are unit-tested, but
+they are unreachable in the running application.
+
+Steps 6.8, 6.10, 6.11 and 6.12 are recorded as `DONE` in §5. That is wrong: the
+work exists as components but was never wired into a route. Same class as the
+duplicate-route and fabricated-data defects — every static signal was green.
+
+Consequently CHECKPOINT items 22, 23, 24, 25 and 35 cannot pass, and 20/21 have
+no implementation at all (no Application/Screen/Surface Registry manager exists).
+
+### Evidence recorded so far
+
+| Item | Verdict | Evidence |
+|---|---|---|
+| 26, 29 | `PASS` | Profile and campaign catalog/detail routes return 200 and render persisted records |
+| 27, 28 | `PASS` | Kind-specific validation enforced server-side; `PREVIEW` + `releaseGate=true` → `422` |
+| 45 | `PASS` | `network-inspector`, `log-explorer`, `schedule`, `database` all 200 |
+| 46, 47 | `PASS_PARTIAL` | Lanes are presented separately and honestly; only ADB is probed, the rest report `UNKNOWN` |
+| 48 | `PASS` | `COMMAND_ADMISSION` lane carries owner run id and block reason |
+| 78 | `PASS` | 18-route direct-entry matrix, all 200 (§8 plus the sweep above) |
+| 20, 21 | `FAIL` | No Surface/Screen Registry manager exists |
+| 22, 23, 24, 25, 35 | `FAIL` | Implemented as components but not mounted on any route |
+| 40, 41 | `PASS` after fix | Device health is now probed, not constant; previously `FAIL` |
+
+### Remaining
+
+Items 33, 34, 36–39, 44, 50–54, 57, 58, 61–65, 67, 69, 71–73, 75, 77, 79–81, 83
+are not yet walked. The method is established and the environment is up; this is
+remaining evidence work.
+
+`6.30` stays `PENDING`. On current evidence CHECKPOINT 6 cannot close as
+`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`: seven items are `FAIL` for missing or
+unmounted UI, which is not an external-device blocker.
+
+## 19. Editor cutover — mounted, and what that revealed
+
+### Mounted
+
+`VerdictEditorToolbar` is now reachable from the workflow editor
+(`/automation/[id]`): a toggleable right-hand panel with a "Verdict" button in
+the canvas header, five tabs (Preview / Actions / Data / Rules / Config). It is
+the panel that hosts every Phase 6 authoring surface, and until now no route
+rendered it.
+
+### Compile preview is genuinely wired — after two fixes
+
+Clicking Compile initially produced `422` and the panel showed only
+"Network or API error". Two defects:
+
+1. `CompilePreviewPanel` sent `{ workflow: workflowState }`. The API expects
+   `workflowRef`, `workflowIr`, `domainPackKey`, `domainPackVersion`,
+   `domainPackDigest` — so every compile was an unpinned request, correctly
+   rejected by the pinning guard from §15. The panel now resolves the published
+   Domain Pack from the catalog, pins the request to it, shows `pinned:
+   <packKey>@<version>`, and disables Compile with an explicit reason when no
+   published pack exists.
+2. `compileVerdictWorkflow` threw on any non-2xx, discarding the 422 body — which
+   is exactly where the structured `issues` live. A rejected compile is a result,
+   not a transport failure; the client now returns the 422 payload and the panel
+   renders each issue with its code.
+
+Verified in the browser against the live stack:
+
+```text
+POST /api/verdict/runtime/compile -> 200
+pinned: nesy-courier@2.0.0
+Compilation Successful   Hash sha256:5...
+Source Map  { "step-1": "src:step-1" }
+Provenance  { packKey: nesy-courier, packVersion: 2.0.0,
+              packDigest: sha256:persist01, compilerVersion: bridgeflow-compiler }
+```
+
+Editor → WorkflowCompileApi → the Domain Pack persisted in PostgreSQL, end to
+end. Items 2, 3, 5, 6 and 35 now have runtime evidence.
+
+### The rest of the editor is a mockup
+
+Mounting the panel made the remaining surfaces *reachable*, not *working*.
+`EvidenceSourceRegistry`, `TargetResolutionPanel`, `LaunchProfileBuilder`,
+`EntityBindingEditor` and `SemanticActionPalette` contain **zero** calls to
+`verdict-runtime/client`; each renders a hardcoded array. The Evidence Source
+Registry, for example, always lists "Main Activity Screen / SCREEN_STATE /
+Ordered Bus" regardless of any run.
+
+| Item | Verdict | Reason |
+|---|---|---|
+| 22, 23 | `FAIL` | Evidence Source Registry renders a fixed two-row sample; no source, authority, correlation, freshness or conflict comes from the runtime |
+| 24 | `FAIL` | Target Resolution panel is static; no provider chain or ambiguity evidence |
+| 25 | `FAIL` | Launch Profile Builder renders the right fields but binds to nothing and persists nothing |
+| 2, 3, 5, 6, 35 | `PASS` | Compile preview, verified above |
+
+So steps 6.10, 6.11 and 6.12 are **not** `DONE` as §5 records them. They are UI
+shells. Recorded as `B-6-EDITOR-PANELS-UNBOUND` (HIGH/LOCAL): the panels need the
+same treatment the campaign and profile pages received — real client calls, real
+DTOs, fail-closed empty and error states.
+
+### Still to do before 6.30
+
+1. `B-6-EDITOR-PANELS-UNBOUND` — bind the four mockup panels to the runtime.
+2. Items 20/21 — the Application/Screen/Surface Registry manager does not exist.
+3. The remaining sweep items (33, 34, 36–39, 44, 50–54, 57, 58, 61–65, 67, 69,
+   71–73, 75, 77, 79–81, 83).

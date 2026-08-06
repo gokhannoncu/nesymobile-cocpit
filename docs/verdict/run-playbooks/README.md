@@ -14,6 +14,23 @@ docs/verdict/run-playbooks/phase-N/
 └── RESULT.md
 ```
 
+## Borç (debt) playbook'ları
+
+Bir faz kapandığı halde teslim edilmemiş işi kalmışsa, bu iş orijinal faz
+dosyaları değiştirilmeden ayrı bir izde yürütülür:
+
+```text
+docs/verdict/run-playbooks/phase-N-debt/
+├── RUN_PLAY.md
+└── RESULT.md
+```
+
+Giriş noktası: [`DEBT_INDEX.md`](DEBT_INDEX.md) — hangi fazda ne eksik, bağımlılık
+sırası ve harici engeller. Kritik yol `phase-5-debt` → `phase-6-debt`.
+
+Bir borç maddesi ancak çalışan sistem üzerinde kanıt + regresyon testi + orijinal
+RESULT satırının düzeltilmesi ile `RESOLVED` yazılır.
+
 - `RUN_PLAY.md`: Faz başlamadan önce yazılır. Scope, recovery state, owned paths,
   yapılacak işler, yasaklar, verification komutları ve agent prompt'unu içerir.
 - `RESULT.md`: Faz tamamlanırken veya ara kapanışlarda doldurulur. Ne yapıldı, hangi

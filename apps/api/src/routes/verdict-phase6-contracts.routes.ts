@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@nesy/db'
+import { createAdbFacade } from '../services/bridge-adb-facade.js'
 
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import { DeviceReadinessService } from '../services/device-readiness.service.js'
@@ -25,11 +26,25 @@ const domainPackAdmin = new DomainPackAdminService(new PrismaDomainPackAdminStor
 const testProfiles = new TestProfileCatalogService(new PrismaTestProfileCatalogStore(prisma))
 const testCampaigns = new TestCampaignService(new PrismaTestCampaignStore(prisma))
 const admission = createDeviceCommandAdmission()
+const adbFacade = createAdbFacade()
+
+/**
+ * Real ADB probe. The previous `() => 'UP'` constant reported a healthy ADB lane
+ * for device ids that were not attached at all, which is fabricated health data
+ * on a surface whose whole purpose is to say whether a device can be driven.
+ *
+ * Only devices `adb` reports in `device` state count: `unauthorized`/`offline`
+ * devices are listed but accept no commands.
+ */
+async function probeAdbLane(deviceId: string): Promise<'UP' | 'DOWN'> {
+  const attached = await adbFacade.listDevices()
+  return attached.some((line) => line.startsWith(deviceId)) ? 'UP' : 'DOWN'
+}
+
 const deviceReadiness = new DeviceReadinessService(admission, {
-  adb: () => 'UP',
-  bridge: () => 'UP',
-  receiptBus: () => 'UP',
-  orderedBus: () => 'DEGRADED',
+  adb: probeAdbLane,
+  // The remaining lanes stay unwired on purpose: reporting UP without a probe is
+  // what this change removes. They surface as UNKNOWN with a remediation hint.
 })
 const interactions = new DurableInteractionSubscription(new PrismaDurableInteractionStore(prisma))
 

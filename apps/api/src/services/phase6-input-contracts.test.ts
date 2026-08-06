@@ -120,10 +120,10 @@ describe('phase 6 input contracts', () => {
     expect(withEvidence?.cells[0]?.runDetailPath).toBe('/automation/runs/run-1')
   })
 
-  it('exposes multi-lane device readiness with admission and external blockers', () => {
+  it('exposes multi-lane device readiness with admission and external blockers', async () => {
     const admission = createDeviceCommandAdmission()
     admission.acquireMutation('device-1', 'run-owner')
-    const readiness = new DeviceReadinessService(admission, {
+    const readiness = await new DeviceReadinessService(admission, {
       adb: () => 'UP',
       receiptBus: () => 'UP',
       orderedBus: () => 'DEGRADED',
@@ -285,6 +285,31 @@ describe('phase 6 read-model DTO shape', () => {
  * shape a process restart produces — and assert it continues instead of
  * restarting.
  */
+describe('device readiness probes', () => {
+  it('passes the requested device id to each probe', async () => {
+    const seen: string[] = []
+    const readiness = await new DeviceReadinessService(createDeviceCommandAdmission(), {
+      adb: (deviceId) => {
+        seen.push(deviceId)
+        return deviceId === 'attached-device' ? 'UP' : 'DOWN'
+      },
+    }).get('missing-device')
+    expect(seen).toEqual(['missing-device'])
+    expect(readiness.lanes.find((lane) => lane.lane === 'ADB')?.status).toBe('DOWN')
+  })
+
+  it('reports a lane as UNKNOWN when its probe throws instead of claiming health', async () => {
+    const readiness = await new DeviceReadinessService(createDeviceCommandAdmission(), {
+      adb: () => {
+        throw new Error('adb unreachable')
+      },
+    }).get('device-1')
+    const adbLane = readiness.lanes.find((lane) => lane.lane === 'ADB')
+    expect(adbLane?.status).toBe('UNKNOWN')
+    expect(adbLane?.detail).toMatch(/adb unreachable/)
+  })
+})
+
 describe('phase 6 restart continuity', () => {
   it('returns the already-started run instead of queueing a second execution', async () => {
     const store = new InMemoryWorkflowRunStartStore()

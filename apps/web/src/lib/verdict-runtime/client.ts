@@ -38,8 +38,23 @@ export async function fetchVerdictEvidenceJourney(runId: string): Promise<Eviden
   return getJson<EvidenceJourneyResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-journey`)
 }
 
-export async function compileVerdictWorkflow(body: Record<string, unknown>): Promise<WorkflowCompileApi> {
-  return postJson<WorkflowCompileApi>('/verdict/runtime/compile', body)
+/**
+ * A rejected compile is a *result*, not a transport failure: the 422 body
+ * carries the same DTO with `ok: false` and the issue list the editor needs to
+ * show. Throwing it away would leave the panel with nothing but "API error".
+ */
+export async function compileVerdictWorkflow(
+  body: Record<string, unknown>,
+): Promise<WorkflowCompileApi> {
+  const response = await fetch(`${API_BASE}/verdict/runtime/compile`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (response.ok || response.status === 422) {
+    return (await response.json()) as WorkflowCompileApi
+  }
+  throw new Error(`Verdict runtime request failed: ${response.status} ${response.statusText}`)
 }
 
 export async function startVerdictWorkflowRun(body: Record<string, unknown>): Promise<WorkflowRunStartApi> {
