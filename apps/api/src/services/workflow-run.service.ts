@@ -46,6 +46,24 @@ export class WorkflowRunService {
   }
 
   start(request: WorkflowRunStartRequest): WorkflowRunStartResult {
+    // The run surface is reachable directly (HTTP route), not only through
+    // startFromCompile, so the pinning guard has to live here: a run that is
+    // not bound to a compiled plan and a domain pack cannot be attributed to
+    // any previewed plan, and its verdict would be unattributable.
+    for (const [field, value] of [
+      ['workflowRef', request.workflowRef],
+      ['deviceId', request.deviceId],
+      ['compiledPlanRef', request.compiledPlanRef],
+      ['compiledPlanHash', request.compiledPlanHash],
+      ['domainPackKey', request.domainPackKey],
+      ['domainPackVersion', request.domainPackVersion],
+      ['domainPackDigest', request.domainPackDigest],
+    ] as const) {
+      if (value.trim() === '') {
+        throw new Error(`cannot start run: ${field} is required to pin the executed plan`)
+      }
+    }
+
     const idempotencyKey = [
       request.workflowRef,
       request.deviceId,

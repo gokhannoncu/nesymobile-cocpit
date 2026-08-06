@@ -54,6 +54,39 @@ export class WorkflowCompileService {
   ) {}
 
   compileWorkflow(request: WorkflowCompileRequest): WorkflowCompileResult {
+    // Provenance pinning is validated before the compile function runs: a plan
+    // whose domain pack is not pinned cannot be attributed to a published pack,
+    // so it must never reach the UI as a successful compile.
+    const unpinned = (
+      [
+        ['workflowRef', request.workflowRef],
+        ['domainPackKey', request.domainPackKey],
+        ['domainPackVersion', request.domainPackVersion],
+        ['domainPackDigest', request.domainPackDigest],
+      ] as const
+    ).filter(([, value]) => value.trim() === '')
+
+    if (unpinned.length > 0) {
+      return {
+        apiVersion: WORKFLOW_COMPILE_API_VERSION,
+        ok: false,
+        compiledPlanRef: '',
+        compiledPlanHash: '',
+        sourceMap: {},
+        provenance: {
+          packKey: request.domainPackKey,
+          packVersion: request.domainPackVersion,
+          packDigest: request.domainPackDigest,
+          compilerVersion: 'bridgeflow-compiler',
+        },
+        issues: unpinned.map(([field]) => ({
+          severity: 'ERROR' as const,
+          code: 'UNPINNED_COMPILE_REQUEST',
+          message: `${field} is required to pin a compiled plan to a domain pack`,
+        })),
+      }
+    }
+
     const compiled = this.compile(request)
     if (!compiled.ok || compiled.plan === undefined) {
       return {

@@ -13,7 +13,7 @@ lastUpdatedAt: "2026-08-06 04:17:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-0/RESULT.md"
 resultFile: "docs/verdict/mobile-run-playbooks/phase-0/RESULT.md"
@@ -77,7 +77,7 @@ readiness yaz.
 | Last successful step | `0.10` |
 | Last attempted step | `0.10` |
 | Last update | `2026-08-06 04:17:00 +03` |
-| Recovery instruction | `Phase M0 tamamlandı. M1 readiness READY_WITH_EXTERNAL_BLOCKERS. Sıradaki iş M1 playbook oluşturma.` |
+| Recovery instruction | `Phase M0 COMPLETED (audit-corrected). Sıradaki: phase-1. phase-3 paralel açılabilir.` |
 
 ## 3. Kapsam
 

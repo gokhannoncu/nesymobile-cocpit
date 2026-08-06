@@ -5,15 +5,15 @@ runPlayId: verdict-mobile-phase-1-run-play
 phase: "1"
 phaseName: "SDK Auth + Session Lifecycle Fixture Alignment"
 status: NOT_STARTED
-recoveryState: WAITING_FOR_PHASE_M0
+recoveryState: READY_TO_START
 createdAt: "2026-08-06 03:58:00 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+lastUpdatedAt: "2026-08-06 04:35:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-0/RESULT.md"
@@ -75,11 +75,11 @@ readiness yaz.
 |---|---|
 | Current phase | `M1` |
 | Current step | `1.0` |
-| Current state | `WAITING_FOR_PHASE_M0` |
+| Current state | `READY_TO_START` |
 | Last successful step | `1.0` |
 | Last attempted step | `1.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M1 henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Last update | `2026-08-06 04:35:00 +03` |
+| Recovery instruction | `M0 COMPLETED + audit-corrected. phase1Readiness READY_WITH_EXTERNAL_BLOCKERS. M1 başlayabilir.` |
 
 ## 3. Kapsam
 

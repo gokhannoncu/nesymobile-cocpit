@@ -40,7 +40,7 @@ isProject: false
 **Sürüm:** v1.1.3
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`
+**MasterDigest:** `sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`

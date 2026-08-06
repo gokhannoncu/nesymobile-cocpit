@@ -147,3 +147,62 @@ describe('phase 6 input contracts', () => {
     expect(page.reconnectCursor.afterRevision).toBe(1)
   })
 })
+
+describe('workflow compile provenance pinning', () => {
+  it('fails closed when the compile request is not pinned to a domain pack', () => {
+    const service = createHashPinnedCompileStub()
+    const result = service.compileWorkflow({
+      workflowRef: 'wf.field-login',
+      workflowIr: {},
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: '',
+    })
+    expect(result.ok).toBe(false)
+    expect(result.compiledPlanHash).toBe('')
+    expect(result.issues.map((issue) => issue.code)).toContain('UNPINNED_COMPILE_REQUEST')
+  })
+
+  it('still compiles a fully pinned request', () => {
+    const service = createHashPinnedCompileStub()
+    const result = service.compileWorkflow({
+      workflowRef: 'wf.field-login',
+      workflowIr: { steps: [] },
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: 'sha256:seed0001',
+    })
+    expect(result.ok).toBe(true)
+    expect(result.provenance.packDigest).toBe('sha256:seed0001')
+  })
+})
+
+describe('workflow run start pinning', () => {
+  const pinned = {
+    workflowRef: 'wf.field-login',
+    deviceId: 'pixel-7',
+    compiledPlanRef: 'plan:wf.field-login',
+    compiledPlanHash: 'sha256:abc',
+    domainPackKey: 'nesy-courier',
+    domainPackVersion: '1.0.0',
+    domainPackDigest: 'sha256:seed0001',
+  }
+
+  it('refuses a run that is not pinned to a compiled plan', () => {
+    const service = new WorkflowRunService()
+    expect(() => service.start({ ...pinned, compiledPlanHash: '' })).toThrow(/compiledPlanHash/)
+  })
+
+  it('refuses a run that is not pinned to a domain pack', () => {
+    const service = new WorkflowRunService()
+    expect(() => service.start({ ...pinned, domainPackDigest: '' })).toThrow(/domainPackDigest/)
+  })
+
+  it('starts and stays idempotent for a fully pinned request', () => {
+    const service = new WorkflowRunService()
+    const first = service.start(pinned)
+    const second = service.start(pinned)
+    expect(first.runId).toBe(second.runId)
+    expect(first.compiledPlanHash).toBe('sha256:abc')
+  })
+})

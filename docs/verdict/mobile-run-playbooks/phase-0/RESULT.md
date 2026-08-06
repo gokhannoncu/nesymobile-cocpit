@@ -11,7 +11,9 @@ completedAt: "2026-08-06 04:17:00 +03"
 lastUpdatedAt: "2026-08-06 04:17:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
+auditStatus: "CORRECTED_AFTER_REVIEW"
+auditAt: "2026-08-06 04:35:00 +03"
 runPlayFile: "docs/verdict/mobile-run-playbooks/phase-0/RUN_PLAY.md"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-0/RESULT.md"
 previousPhaseResult: null
@@ -21,26 +23,33 @@ mobileRepoRoot: "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMob
 
 ## 1. Executive result
 
-Phase M0 tamamlanmıştır. Mevcut seam envanteri çıkarılmış, Cockpit Domain Pack
-ile gap matrisi oluşturulmuş, scanner mode ve launch profile tasarım notları
-yazılmış, App Adapter compatibility manifest taslağı hazırlanmış, release
-isolation envanteri yapılmış, Bridge B1/B2 baseline notları belgelenmiş ve M1
-readiness kararı verilmiştir.
+Phase M0 tamamlanmıştır (inventory-only). Post-completion review'da bazı
+evidence satırları kaynak kodla çeliştiği için **düzeltilmiştir** (`auditStatus:
+CORRECTED_AFTER_REVIEW`). Aşağıdaki özet düzeltilmiş gerçeği yansıtır.
 
-**Ana bulgular:**
+**Ana bulgular (düzeltilmiş):**
 
 - verdict-status.json ile Cockpit planı arasında **çelişki yoktur**.
-- Cockpit Phase 0 `COMPLETED`, Phase 3 `IMPLEMENTATION_COMPLETE_CP3_BLOCKED_PRODUCTION_DUT`.
-- App Adapter: 8 command'dan 5'i, 13 named query'den 5'i, 9 event tipinden 3'ü
-  hazır. Overall readiness: **PARTIAL**.
-- 8 eksik named query, 4 eksik event, 3 eksik command, 3 eksik state provider
-  M4B App Adapter refactoru için handoff listesine yazılmıştır.
-- Scanner injection contract'ı **yoktur** (not_implemented).
-- Bridge B2 (wait_any/cancel_request) **not_started**.
-- M1 readiness: **READY_WITH_EXTERNAL_BLOCKERS** — CP3-DUT lab cihaz gerekli.
+- Cockpit Phase 0 `COMPLETED`; Phase 3 `IMPLEMENTATION_COMPLETE_CP3_BLOCKED_PRODUCTION_DUT`;
+  Phase **4A/4B/4C `COMPLETED`** (ilk draft yanlışlıkla “Phase 4 yok” demişti).
+- Commands: **5/5 mevcut seam AVAILABLE** (`login`, `select_route`, `open_delivery`,
+  `open_task_list`, `open_vehicle_loading`). Pack’in setup/scanner command’ları
+  (`inject_barcode` / `prepare_session` / `direct_state_entry`) **MISSING**.
+- Named Room queries: kaynakta yalnız **`pending_request_count`** kayıtlı
+  (ilk draft’taki 5 AVAILABLE query iddiası **YANLIŞTI**). Pack’in 7 adapter
+  query ref’i (`nesy.availableStops` …) henüz Mobile’da yok.
+- State provider: `is_logged_in`, `route_selected`, `route_name`, `schedule_loaded`,
+  `schedule_id`, `current_screen`, `run_id`, `session_id`, `pending_request_count`,
+  `active_task_count` **AVAILABLE**. İlk draft’ın `logged_in MISSING` iddiası
+  **YANLIŞTI**.
+- Events: `PARCEL_SCANNED`, `PAYMENT_COMPLETED`, `FISCAL_COMPLETED`,
+  `ROUTE_SELECTED`, delivery zinciri vb. **mevcut**. İlk draft’ın
+  barcode/payment/fiscal “MISSING” iddiası **YANLIŞTI** (isim farkı vardı).
+- Scanner injection contract’ı **yoktur** (`scanner_mode: not_implemented`).
+- Bridge B2 **not_started** (B-13). B-12 / CP3-DUT açık.
+- M1 readiness: **READY_WITH_EXTERNAL_BLOCKERS**.
 
-Bu fazda **sıfır kod/refactor** yazılmıştır. Çıktılar tamamen envanter, gap
-matrisi, tasarım notu ve RESULT evidence'ıdır.
+Bu fazda **sıfır kod/refactor** yazılmıştır.
 
 ## 2. Recovery state
 
@@ -52,7 +61,7 @@ matrisi, tasarım notu ve RESULT evidence'ıdır.
 | Last successful step | `0.10` |
 | Last attempted step | `0.10` |
 | Last update | `2026-08-06 04:17:00 +03` |
-| Recovery instruction | `Phase M0 tamamlandı. M1 readiness READY_WITH_EXTERNAL_BLOCKERS. Sıradaki iş: M1 playbook oluşturma veya CP3-DUT blocker çözümünü bekleme.` |
+| Recovery instruction | `Phase M0 COMPLETED + audit-corrected. M1 READY_WITH_EXTERNAL_BLOCKERS — phase-1 RUN_PLAY/RESULT gate'ini açıp başla. M3 Bridge B2 paralel açılabilir (fake host).` |
 
 ## 3. Precondition gate
 
@@ -87,7 +96,7 @@ matrisi, tasarım notu ve RESULT evidence'ıdır.
 - **Status:** `DONE`
 - **Evidence:**
 
-Master plan v1.1.3 okundu. Digest doğrulandı: `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`.
+Master plan v1.1.3 okundu. Digest doğrulandı: `sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771`.
 
 **Cockpit Phase 0 RESULT:**
 - `resultState: COMPLETED`
@@ -105,7 +114,10 @@ Master plan v1.1.3 okundu. Digest doğrulandı: `sha256:76024d898cb152fe4d885fb1
 - **CP3 Blocker:** `ro.build.type=user` — mutation (tap/input/swipe) reddedildi. LAB userdebug/eng cihaz gerekli.
 - Önemli contract bulguları: `runEpoch` = preemption token (ms), `wait_node` parametre isimleri `by` ve `settleMs`.
 
-**Phase 4 RESULT:** Henüz yok (beklenen — Phase 4A/4B/4C başlamadı).
+**Cockpit Phase 4A/4B/4C RESULT:**
+- Hepsi `resultState: COMPLETED` (`READY_WITH_EXTERNAL_BLOCKERS`).
+- Domain Pack contracts + nesy-courier reference pack + BridgeFlowCompiler mevcut.
+- İlk M0 draft’ındaki “Phase 4 yok” ifadesi **yanlıştı**; audit ile düzeltildi.
 
 ---
 
@@ -187,62 +199,65 @@ Master plan v1.1.3 okundu. Digest doğrulandı: `sha256:76024d898cb152fe4d885fb1
 | `AutomationAction.kt` | 527 B | Action tanımları |
 | `AutomationStatus.kt` | 277 B | Status enum |
 
-#### Commands (NesyCommands.kt)
+#### Commands (NesyCommands.kt) — audit-corrected
 
-| Command | Params | Status |
-|---|---|---|
-| `login` | username, password | `AVAILABLE` |
-| `selectRoute` | routeId | `AVAILABLE` |
-| `openDelivery` | deliveryId | `AVAILABLE` |
-| `openTaskList` | — | `AVAILABLE` |
-| `openVehicleLoading` | — | `AVAILABLE` |
-| `inject_barcode` | barcode, scannerMode | `MISSING` — scanner contract yok |
-| `prepare_session` | profile, fixture | `MISSING` — PREPARED_SESSION launch profile |
-| `direct_state_entry` | targetScreen, stateSnapshot | `MISSING` — DIRECT_STATE launch profile |
+Wire names kaynakta snake_case:
 
-#### State Providers (NesyStateProvider.kt)
+| Command | Status |
+|---|---|
+| `login` | `AVAILABLE` |
+| `select_route` | `AVAILABLE` |
+| `open_delivery` | `AVAILABLE` |
+| `open_task_list` | `AVAILABLE` |
+| `open_vehicle_loading` | `AVAILABLE` |
+| `inject_barcode` / pack `nesy.setup.scanner-inject` | `MISSING` |
+| `prepare_session` / pack `nesy.setup.prepared-session` | `MISSING` |
+| `direct_state_entry` / pack `nesy.setup.direct-state` | `MISSING` |
 
-| Provider | Return | Status |
-|---|---|---|
-| `pendingRequestCount` | Int | `AVAILABLE` |
-| `currentScreen` | String? | `PARTIAL` — basit classifier, Screen Registry ile alignment gerekli |
-| `routeLoaded` | Boolean | `AVAILABLE` |
-| `deliveryStatus` | String? | `AVAILABLE` |
-| `logged_in` | Boolean | `MISSING` |
-| `scanner_ready` | Boolean | `MISSING` |
-| `queue_flush_in_progress` | Boolean | `MISSING` |
+#### State Providers (NesyStateProvider.snapshot) — audit-corrected
 
-#### Named Queries (roomQueries via VerdictBootstrap.kt)
+| Field | Status |
+|---|---|
+| `is_logged_in` | `AVAILABLE` |
+| `route_selected` | `AVAILABLE` |
+| `route_name` | `AVAILABLE` |
+| `schedule_loaded` | `AVAILABLE` |
+| `schedule_id` | `AVAILABLE` |
+| `current_screen` | `AVAILABLE` (Screen Registry alignment hâlâ gerekli → PARTIAL semantic) |
+| `run_id` / `session_id` | `AVAILABLE` |
+| `pending_request_count` | `AVAILABLE` (state + Room query) |
+| `active_task_count` | `AVAILABLE` (schedule JSON derive) |
+| `scanner_ready` | `MISSING` |
+| `queue_flush_in_progress` | `MISSING` |
+| `delivery_status` (tek alan) | `MISSING` as dedicated field (delivery events ayrı) |
 
-| Query | Entity | Status |
-|---|---|---|
-| `pending_operation_count` | queue_operation | `AVAILABLE` |
-| `current_route_id` | route | `AVAILABLE` |
-| `active_delivery_id` | shipment | `AVAILABLE` |
-| `current_user_id` | — | `AVAILABLE` |
-| `app_version` | — | `AVAILABLE` |
-| `active_route` | route | `MISSING` — entity query contract |
-| `stop_list` | stop | `MISSING` — FOR_EACH iteration, KRİTİK |
-| `shipment_details` | shipment | `MISSING` — delivery/barcode workflows |
-| `queue_state` | queue_operation | `MISSING` — offline/recovery evidence |
-| `delivery_evidence` | shipment | `MISSING` — Oracle verification |
-| `route_schedule` | route | `MISSING` — timing bilgisi |
-| `task_status` | task | `MISSING` — opsiyonel v1 |
-| `parcel_details` | parcel | `MISSING` — opsiyonel multicolli |
+#### Named Queries (roomQueries) — audit-corrected
 
-#### Structured Events (TestEvent.kt)
+Kaynakta **yalnız bir** Room named query kayıtlı:
 
-| Event | Payload | Status |
-|---|---|---|
-| `login_success` | userId, sessionId | `AVAILABLE` |
-| `login_failure` | errorCode, errorMessage | `AVAILABLE` |
-| `route_selected` | routeId, routeName, stopCount | `AVAILABLE` |
-| `delivery_completed` | deliveryId, shipmentId, status | `PARTIAL` — eksik payload alanları |
-| `screen_changed` | screenId, previousScreenId | `PARTIAL` — Screen Registry alignment gerekli |
-| `barcode_scanned` | barcode, scannerMode, result | `MISSING` |
-| `payment_completed` | amount, currency, paymentMethod, transactionId | `MISSING` |
-| `queue_flushed` | flushedCount, failedCount, duration | `MISSING` |
-| `fiscal_created` | fiscalId, type, amount | `MISSING` |
+| Query | Status |
+|---|---|
+| `pending_request_count` | `AVAILABLE` |
+| Pack refs: `nesy.availableStops`, `nesy.stopState`, `nesy.taskState`, `nesy.parcelState`, `nesy.pendingOperation`, `nesy.sessionState`, `nesy.routeState` | `MISSING` as named queries |
+
+> Not: İlk draft `current_route_id` / `active_delivery_id` / `app_version` vb.yi
+> named query sanmıştı; bunlar Room query değil (bir kısmı state/event alanıdır).
+
+#### Structured Events (TestEvent.kt) — audit-corrected
+
+| Event (wireName) | Status |
+|---|---|
+| `STATE_LOGIN` / `STATE_ROUTE` | `AVAILABLE` |
+| `SCREEN_READY` | `AVAILABLE` |
+| `ROUTE_SELECTED` | `AVAILABLE` |
+| `PARCEL_SCANNED` | `AVAILABLE` |
+| `PAYMENT_COMPLETED` | `AVAILABLE` |
+| `FISCAL_COMPLETED` | `AVAILABLE` |
+| `DELIVERY_STARTED` / `DELIVERY_UI_COMPLETED` / `DELIVERY_PERSISTED` / `DELIVERY_REQUEST_SENT` / `DELIVERY_RESPONSE_RECEIVED` | `AVAILABLE` |
+| `VEHICLE_LOADING_*` | `AVAILABLE` |
+| `DIALOG_SHOWN` / `DIALOG_DISMISSED` | `AVAILABLE` |
+| Pack-aligned `queue_flushed` / tour-approval push events | `MISSING` veya mapping belirsiz |
+| Scanner mode metadata on `PARCEL_SCANNED` (REAL/INJECTED/MANUAL) | `PARTIAL` — injection contract yok |
 
 #### Verdict modülleri
 
@@ -264,33 +279,25 @@ Master plan v1.1.3 okundu. Digest doğrulandı: `sha256:76024d898cb152fe4d885fb1
 - **Status:** `DONE`
 - **Evidence:**
 
-Cockpit Domain Pack (`domain-packs/nesy-courier/src/registries/entities.ts`) ile
-Mobile App Adapter karşılaştırması:
+Cockpit Domain Pack gerçek adapter query ref’leri
+(`domain-packs/nesy-courier/src/registries/application.ts`):
 
-| Entity | Domain Pack Query | Expected Fields | Mobile Status | Gap |
-|---|---|---|---|---|
-| Route | `nesy.query.active_route` (REQUIRED) | routeCode, routeId, routeName, stopCount, status | `MISSING` | ✗ Entity query yok; yalnız `current_route_id` scalar mevcut |
-| Stop | `nesy.query.stop_list` (REQUIRED) | stopId/stopCode, address, shipmentCount, status, order | `MISSING` | ✗ **KRİTİK** — FOR_EACH iteration için zorunlu |
-| Shipment | `nesy.query.shipment_details` (REQUIRED) | shipmentId, barcode, stopId, status, type, requiresSignature, codAmount | `MISSING` | ✗ Delivery/barcode workflows |
-| Parcel | `nesy.query.parcel_details` (optional) | parcelId, barcode, shipmentId, status, weight | `MISSING` | △ Multicolli opsiyonel |
-| Task | `nesy.query.task_status` (optional) | taskId, stopId, type, status, priority | `MISSING` | △ Task-based stop opsiyonel |
-| Queue Operation | `nesy.query.queue_state` (REQUIRED) | pendingCount, failedCount, oldestAge, operations | `MISSING` | ✗ Offline/recovery evidence |
-| Tour Approval | (via routeState ref) | approvalRequestCode, correlationId, routeCode, status | `MISSING` | ✗ Tour approval lifecycle |
+| Pack ref | Mobile named-query status | Gap |
+|---|---|---|
+| `nesy.availableStops` | `MISSING` | **KRİTİK** — FOR_EACH / OPEN_STOP öncesi varlık |
+| `nesy.stopState` | `MISSING` | aktif stop eşleşmesi |
+| `nesy.taskState` | `MISSING` | task projection |
+| `nesy.parcelState` | `MISSING` | parcel projection |
+| `nesy.pendingOperation` | `PARTIAL` | yalnız `pending_request_count` scalar |
+| `nesy.sessionState` | `PARTIAL` | `is_logged_in` / session_id state’te var; pack query yok |
+| `nesy.routeState` | `PARTIAL` | `route_selected` / `route_name` state’te var; pack query yok |
 
-**Domain Pack adapter query refs (application.ts):**
+> İlk draft’taki `nesy.query.stop_list` / `nesy.query.active_route` adları pack’te
+> **yok**. Canonical isimler yukarıdaki `nesy.*` ref’leridir.
 
-Domain Pack ayrıca şu adapter query referanslarını beklemektedir:
-- `sessionState` — session durumu (MISSING)
-- `availableStops` — mevcut stop listesi (MISSING)
-- `stopState` — aktif stop durumu (MISSING)
-- `routeState` — route durumu (MISSING)
-- `taskState` — task durumu (MISSING)
-- `parcelState` — parcel durumu (MISSING)
-- `pendingOperation` — queue durumu (mevcut ama sınırlı)
-
-**Sonuç:** 13 named query'den 5'i mevcut, 8'i eksik. REQUIRED seviyedeki 3
-query (active_route, stop_list, queue_state) M4B'de mutlaka tamamlanmalıdır.
-`stop_list` FOR_EACH iteration için kritik önceliktedir.
+**Sonuç (düzeltilmiş):** Pack’in 7 adapter query ref’inden **0 tam named-query
+implementasyonu** var; 1 Room query (`pending_request_count`) + birkaç state alanı
+kısmi karşılık veriyor. M4B önceliği: `nesy.availableStops` + `nesy.stopState`.
 
 ---
 
@@ -317,16 +324,16 @@ Cockpit Domain Pack Evidence Source Registry
 
 | Source | Fact | Method | Mobile Status | Gap |
 |---|---|---|---|---|
-| `nesy.app.session-state` | APP.USER_SESSION_AVAILABLE | SDK_STATE | `MISSING` — logged_in provider gerekli |
-| `nesy.app.available-stops` | APP.AVAILABLE_STOPS_LOADED | NAMED_QUERY | `MISSING` — stop_list query gerekli |
-| `nesy.app.active-stop` | APP.ACTIVE_STOP_OBSERVED | SDK_STATE | `MISSING` — stop state provider gerekli |
-| `nesy.app.selected-route` | APP.SELECTED_ROUTE_OBSERVED | SDK_STATE | `PARTIAL` — routeLoaded var ama detaylı değil |
-| `nesy.app.scan-accepted` | APP.PARCEL_SCANNED | SDK_EVENT | `MISSING` — barcode_scanned event gerekli |
-| `nesy.app.parcel-state` | APP.PARCEL_STATE_PROCESSED | NAMED_QUERY | `MISSING` — parcel state query gerekli |
-| `nesy.app.delivery-submitted` | APP.DELIVERY_SUBMITTED | SDK_EVENT | `PARTIAL` — delivery_completed var ama eksik payload |
-| `nesy.app.approval-requested` | APP.TOUR_APPROVAL_REQUESTED | SDK_EVENT | `MISSING` — tour approval event gerekli |
-| `nesy.app.approval-push` | APP.TOUR_APPROVAL_PUSH_RECEIVED | SDK_EVENT | `MISSING` — push event gerekli |
-| `nesy.app.release-isolation` | APP.SESSION_ISOLATION_ASSERTED | SDK_STATE | `MISSING` — release isolation assertion gerekli |
+| `nesy.app.session-state` | APP.USER_SESSION_AVAILABLE | SDK_STATE | `PARTIAL` — `is_logged_in` var; pack query yok |
+| `nesy.app.available-stops` | APP.AVAILABLE_STOPS_LOADED | NAMED_QUERY | `MISSING` — `nesy.availableStops` |
+| `nesy.app.active-stop` | APP.ACTIVE_STOP_OBSERVED | SDK_STATE | `MISSING` — `nesy.stopState` |
+| `nesy.app.selected-route` | APP.SELECTED_ROUTE_OBSERVED | SDK_STATE | `PARTIAL` — `route_selected`/`route_name` |
+| `nesy.app.scan-accepted` | APP.PARCEL_SCANNED | SDK_EVENT | `PARTIAL` — `PARCEL_SCANNED` var; scannerMode/inject yok |
+| `nesy.app.parcel-state` | APP.PARCEL_STATE_PROCESSED | NAMED_QUERY | `MISSING` — `nesy.parcelState` |
+| `nesy.app.delivery-submitted` | APP.DELIVERY_SUBMITTED | SDK_EVENT | `PARTIAL` — `DELIVERY_*` zinciri var; pack mapping |
+| `nesy.app.approval-requested` | APP.TOUR_APPROVAL_REQUESTED | SDK_EVENT | `MISSING` |
+| `nesy.app.approval-push` | APP.TOUR_APPROVAL_PUSH_RECEIVED | SDK_EVENT | `MISSING` |
+| `nesy.app.release-isolation` | APP.SESSION_ISOLATION_ASSERTED | SDK_STATE | `MISSING` |
 
 #### LOCAL Plane Sources
 
@@ -342,14 +349,13 @@ Cockpit Domain Pack Evidence Source Registry
 Remote sources Cockpit backoffice adapter tarafından sağlanır. Mobile'ın bu
 source'lar için doğrudan müdahalesi gerekmez.
 
-**Explicit event adayları (M4B'de implement edilecek):**
+**Explicit event / mapping işi (M4B):**
 
-1. `barcode_scanned` — scanner injection contract ile birlikte
-2. `payment_completed` — payment flow completion
-3. `queue_flushed` — offline queue drain completion
-4. `fiscal_created` — fiscal document creation
-5. `tour_approval_requested` — tour approval lifecycle
-6. `delivery_completed` payload genişletme — eksik alanlar
+1. `PARCEL_SCANNED` ↔ pack + `scannerMode` (REAL/INJECTED/MANUAL) — injection contract
+2. `PAYMENT_COMPLETED` / `FISCAL_COMPLETED` ↔ pack evidence mapping (event zaten var)
+3. `queue_flushed` (veya eşdeğeri) — offline queue drain
+4. Tour approval request/push events
+5. Delivery zinciri pack fact isimlerine normalize mapping
 
 ---
 
@@ -422,87 +428,66 @@ Cockpit Domain Pack dört launch profile tanımlar:
 - **Status:** `DONE`
 - **Evidence:**
 
-Cockpit Domain Pack `domain-packs/nesy-courier/src/adapters/backoffice.ts`
-App Adapter sözleşmesinden türetilen tam compatibility manifest:
+Kaynak: `application.ts` adapter refs + Mobile `NesyCommands` /
+`NesyStateProvider` / `VerdictBootstrap.roomQueries` / `TestEvent`.
 
 #### Commands
 
-| Command | Domain Pack Status | Mobile Status | Gap | M4B Priority |
-|---|---|---|---|---|
-| `login` | REQUIRED | `AVAILABLE` | — | — |
-| `select_route` | REQUIRED | `AVAILABLE` | — | — |
-| `open_delivery` | REQUIRED | `AVAILABLE` | — | — |
-| `open_task_list` | REQUIRED | `AVAILABLE` | — | — |
-| `open_vehicle_loading` | REQUIRED | `AVAILABLE` | — | — |
-| `inject_barcode` | REQUIRED | `MISSING` | Scanner contract | HIGH |
-| `prepare_session` | REQUIRED | `MISSING` | Launch profile | HIGH |
-| `direct_state_entry` | REQUIRED | `MISSING` | Launch profile (automation only) | MEDIUM |
+| Surface | Mobile Status | M4B Priority |
+|---|---|---|
+| 5 existing commands (`login`…`open_vehicle_loading`) | `AVAILABLE` | — |
+| `nesy.setup.scanner-inject` | `MISSING` | HIGH |
+| `nesy.setup.prepared-session` (+ clear) | `MISSING` | HIGH |
+| `nesy.setup.direct-state` (+ clear) | `MISSING` | MEDIUM |
 
-#### State Providers
+#### State / projection
 
-| Provider | Domain Pack Status | Mobile Status | Gap | M4B Priority |
-|---|---|---|---|---|
-| `pending_request_count` | REQUIRED | `AVAILABLE` | — | — |
-| `current_screen` | REQUIRED | `PARTIAL` | Screen Registry alignment | HIGH |
-| `route_loaded` | REQUIRED | `AVAILABLE` | — | — |
-| `delivery_status` | REQUIRED | `AVAILABLE` | — | — |
-| `logged_in` | REQUIRED | `MISSING` | Session state | HIGH |
-| `scanner_ready` | REQUIRED | `MISSING` | Scanner capability | MEDIUM |
-| `queue_flush_in_progress` | REQUIRED | `MISSING` | Queue monitoring | MEDIUM |
+| Field / need | Mobile Status | M4B Priority |
+|---|---|---|
+| `is_logged_in` | `AVAILABLE` | — |
+| `route_selected` / `route_name` / `schedule_*` | `AVAILABLE` | — |
+| `current_screen` | `PARTIAL` (Screen Registry) | HIGH |
+| `pending_request_count` / `active_task_count` | `AVAILABLE` | — |
+| `scanner_ready` / `queue_flush_in_progress` | `MISSING` | MEDIUM |
 
-#### Named Queries
+#### Named Queries (pack canonical refs)
 
-| Query | Domain Pack Status | Mobile Status | Gap | M4B Priority |
-|---|---|---|---|---|
-| `pending_operation_count` | REQUIRED | `AVAILABLE` | — | — |
-| `current_route_id` | REQUIRED | `AVAILABLE` | — | — |
-| `active_delivery_id` | REQUIRED | `AVAILABLE` | — | — |
-| `current_user_id` | REQUIRED | `AVAILABLE` | — | — |
-| `app_version` | REQUIRED | `AVAILABLE` | — | — |
-| `active_route` | REQUIRED | `MISSING` | Entity query | HIGH |
-| `stop_list` | REQUIRED | `MISSING` | FOR_EACH KRİTİK | **CRITICAL** |
-| `shipment_details` | REQUIRED | `MISSING` | Delivery workflows | HIGH |
-| `queue_state` | REQUIRED | `MISSING` | Offline/recovery | HIGH |
-| `delivery_evidence` | REQUIRED | `MISSING` | Oracle verification | HIGH |
-| `route_schedule` | REQUIRED | `MISSING` | Timing bilgisi | MEDIUM |
-| `task_status` | OPTIONAL | `MISSING` | Task workflow | LOW |
-| `parcel_details` | OPTIONAL | `MISSING` | Multicolli | LOW |
+| Pack ref | Mobile Status | M4B Priority |
+|---|---|---|
+| `nesy.availableStops` | `MISSING` | **CRITICAL** |
+| `nesy.stopState` | `MISSING` | **CRITICAL** |
+| `nesy.taskState` / `nesy.parcelState` | `MISSING` | HIGH |
+| `nesy.pendingOperation` | `PARTIAL` (`pending_request_count`) | HIGH |
+| `nesy.sessionState` / `nesy.routeState` | `PARTIAL` (state fields) | HIGH |
 
 #### Structured Events
 
-| Event | Domain Pack Status | Mobile Status | Gap | M4B Priority |
-|---|---|---|---|---|
-| `login_success` | REQUIRED | `AVAILABLE` | — | — |
-| `login_failure` | REQUIRED | `AVAILABLE` | — | — |
-| `route_selected` | REQUIRED | `AVAILABLE` | — | — |
-| `delivery_completed` | REQUIRED | `PARTIAL` | Eksik payload | HIGH |
-| `screen_changed` | REQUIRED | `PARTIAL` | Registry alignment | MEDIUM |
-| `barcode_scanned` | REQUIRED | `MISSING` | Scanner contract | HIGH |
-| `payment_completed` | REQUIRED | `MISSING` | Payment flow | HIGH |
-| `queue_flushed` | REQUIRED | `MISSING` | Queue evidence | HIGH |
-| `fiscal_created` | REQUIRED | `MISSING` | Fiscal document | HIGH |
+| Need | Mobile Status | M4B Priority |
+|---|---|---|
+| Login/route/screen signals | `AVAILABLE` (`STATE_*`, `SCREEN_READY`, `ROUTE_SELECTED`) | mapping |
+| Parcel / payment / fiscal | `AVAILABLE` (`PARCEL_SCANNED`, `PAYMENT_COMPLETED`, `FISCAL_COMPLETED`) | mapping + scannerMode |
+| Delivery persistence/backend chain | `AVAILABLE` (`DELIVERY_*`) | mapping |
+| Queue flushed / tour-approval push | `MISSING` or unmapped | HIGH |
+| Injected vs real scanner origin | `PARTIAL` | HIGH |
 
-#### Özet
+#### Özet (audit-corrected)
 
 ```
-Commands:        8 total — 5 AVAILABLE / 0 PARTIAL / 3 MISSING
-State Providers: 7 total — 3 AVAILABLE / 1 PARTIAL / 3 MISSING
-Named Queries:  13 total — 5 AVAILABLE / 0 PARTIAL / 8 MISSING
-Events:          9 total — 3 AVAILABLE / 2 PARTIAL / 4 MISSING
-Overall:         PARTIAL
+Commands (seam):     5 AVAILABLE; pack setup/scanner 3 MISSING
+State fields:        is_logged_in/route_*/schedule_*/screen/session AVAILABLE
+Room named queries:  1 AVAILABLE (pending_request_count); pack 7 refs mostly MISSING
+Events:              PARCEL_SCANNED/PAYMENT_COMPLETED/FISCAL_COMPLETED/ROUTE_SELECTED/DELIVERY_* AVAILABLE
+Overall:             PARTIAL (adapter↔pack contract incomplete; richer than first draft claimed)
 ```
 
-#### Domain Pack Capability Refs (Mobile'ın sağlaması gerekenler)
+#### Domain Pack Capability Refs
 
 | Capability | Status |
 |---|---|
-| `domain.nesy.adapter.state-projection` | PARTIAL |
-| `domain.nesy.adapter.named-query` | PARTIAL (5/13) |
-| `domain.nesy.adapter.event-stream` | PARTIAL (3/9) |
-| `domain.nesy.adapter.session-prepared` | MISSING |
-| `domain.nesy.adapter.direct-state` | MISSING |
-| `domain.nesy.adapter.release-isolation` | MISSING |
-| `domain.nesy.scanner.inject` | MISSING |
+| state-projection | `PARTIAL` |
+| named-query | `PARTIAL` (1 Room query; 0/7 pack refs complete) |
+| event-stream | `PARTIAL` (rich events; pack mapping incomplete) |
+| session-prepared / direct-state / scanner.inject / release-isolation | `MISSING` |
 
 ---
 
@@ -653,7 +638,7 @@ ve DIRECT_STATE henüz implement edilmediği için şu an risk yoktur. M4B'de bu
 | verdict-status.json okunabilir | `PASS` | Tüm alanlar parse edildi |
 | Cockpit cross-ref tutarlı | `PASS` | Phase 0 COMPLETED, Phase 3 IMPL_COMPLETE |
 | Seam envanteri gerçek dosyalarla eşleşiyor | `PASS` | 13 kaynak dosya, 5 command, 4+3 provider doğrulandı |
-| Gap matrisi Domain Pack ile tutarlı | `PASS` | entities.ts, actions.ts, sources.ts cross-ref |
+| Gap matrisi Domain Pack ile tutarlı | `PASS_AFTER_AUDIT` | canonical `nesy.*` refs; first-draft fake names rejected |
 | Scanner mode: sıfır mevcut referans | `PASS` | grep sonucu boş |
 | Release isolation: source set ayrık | `PASS` | app/src/automation/ |
 | Bridge baseline: verdict-status.json ile tutarlı | `PASS` | B1 conditional, B2 not_started |
@@ -681,33 +666,31 @@ readyNow:
 #### M1/M3/M4B Handoff Listesi
 
 **M1 (şimdi yapılabilir):**
-- SDK Core üzerinde güvenli event session (mutual-HMAC) Mobile tarafı
-- verdict-status.json güncellemesi
+- SDK auth/session lifecycle fixture alignment (mutual-HMAC Mobile tarafı)
+- Cockpit Phase 1 RESULT ile çapraz doğrulama
 
-**M3 (CP3-DUT sonrası):**
-- wait_any implementasyonu
-- cancel_request implementasyonu
-- capabilities_query implementasyonu
-- B-12 handshake fix
+**M3 (şimdi yapılabilir — fake host ile; mutation CP3-DUT’a bağlı):**
+- `capabilities` / `wait_any` / `cancel_request` (B-13)
+- B-12 handshake flake izolasyonu
+- Process-death UNKNOWN_EFFECT davranışı
 
 **M4B (App Adapter refactor — en büyük iş paketi):**
-- 8 eksik named query implementasyonu (stop_list KRİTİK)
-- 4 eksik structured event implementasyonu
-- 3 eksik command implementasyonu (inject_barcode, prepare_session, direct_state_entry)
-- 3 eksik state provider implementasyonu
-- 2 partial event payload genişletmesi
-- 1 partial state provider (currentScreen) Screen Registry alignment
-- Scanner injection contract
-- Launch profile command'ları
-- Release isolation guard'ları
+- Pack named queries: `nesy.availableStops` (**KRİTİK**), `nesy.stopState`, diğer 5 ref
+- Setup commands: scanner inject / prepared session / direct state (+ cleanup)
+- Screen Registry alignment (`current_screen`)
+- Event↔pack evidence mapping (isim/payload; çoğu event zaten var)
+- Release isolation guard’ları (injection/DIRECT_STATE gelince)
 - Compatibility manifest finalizasyonu
 
 ## 6. Changed files
 
 | File | Change | Reason |
 |---|---|---|
-| `docs/verdict/mobile-run-playbooks/phase-0/RESULT.md` | update | Phase M0 tamamlanma evidence'ı |
-| `docs/verdict/mobile-run-playbooks/phase-0/RUN_PLAY.md` | update | Status COMPLETED, recovery state güncelleme |
+| `docs/verdict/mobile-run-playbooks/phase-0/RESULT.md` | update | M0 evidence + post-review corrections |
+| `docs/verdict/mobile-run-playbooks/phase-0/RUN_PLAY.md` | update | Status COMPLETED + digest refresh |
+| `docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md` | update | faz-0 todo → in_progress + MasterDigest refresh |
+| `docs/verdict/mobile-run-playbooks/phase-1/RUN_PLAY.md` | update | M0 gate → READY_TO_START |
+| `docs/verdict/mobile-run-playbooks/phase-1/RESULT.md` | update | precondition gate PASS |
 
 ## 7. Verification results
 
@@ -735,12 +718,13 @@ readyNow:
 
 ```text
 phase1Readiness: READY_WITH_EXTERNAL_BLOCKERS
-decision: M1 başlayabilir. CP3-DUT çözülmeden M3 mutation acceptance tamamlanamaz.
+decision: M1 başlayabilir. M3 Bridge B2 fake-host ile paralel başlayabilir;
+          mutation acceptance CP3-DUT olmadan FULL PASS olmaz.
 handoff:
-  - M1: SDK mutual-HMAC event session Mobile tarafı
-  - M3: Bridge B2 (wait_any, cancel_request, capabilities) — CP3-DUT sonrası
-  - M4B: App Adapter refactor — 8 query, 4 event, 3 command, 3 provider
-  - Cockpit B-12: Handshake flaky fix önerisi: socket/thread cleanup araştırması
-  - Cockpit CP3-DUT: Lab userdebug/eng cihaz temin edilmeli
-Next: see docs/verdict/mobile-run-playbooks/README.md phase map
+  - phase-1: SDK auth/session fixture alignment
+  - phase-3: Bridge B2 (wait_any/cancel/capabilities) + B-12
+  - phase-4b: App Adapter — pack query refs + setup/scanner/launch
+  - CP3-DUT / B-12 / B-13 taşınır
+auditNote: İlk draft inventory sayıları kaynakla çelişiyordu; CORRECTED_AFTER_REVIEW.
+Next: docs/verdict/mobile-run-playbooks/phase-1/
 ```

@@ -11,7 +11,7 @@ completedAt: null
 lastUpdatedAt: "2026-08-06 03:58:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
 runPlayFile: "docs/verdict/mobile-run-playbooks/phase-4c/RUN_PLAY.md"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-4c/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-4b/RESULT.md"
@@ -44,7 +44,7 @@ Bu dosya agent çalışmaya başladığında `IN_PROGRESS`, kapanışta ise `COM
 | Gate | Required | Current evidence |
 |---|---|---|
 | RUN_PLAY exists | yes | `PASS` |
-| Master plan digest | `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0` | `PENDING` at start |
+| Master plan digest | `sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771` | `PENDING` at start |
 | Cockpit cross-ref readable | `docs/verdict/run-playbooks/phase-4c/RESULT.md` | `PENDING` |
 | Mobile repo available | `/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile` | `PENDING` |
 | Can start now? | see RUN_PLAY | `WAITING_FOR_PHASE_M4B` |

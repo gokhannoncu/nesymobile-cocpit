@@ -8,10 +8,10 @@ resultState: NOT_STARTED
 createdAt: "2026-08-06 03:58:00 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+lastUpdatedAt: "2026-08-06 04:35:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
 runPlayFile: "docs/verdict/mobile-run-playbooks/phase-1/RUN_PLAY.md"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-0/RESULT.md"
@@ -33,21 +33,23 @@ Bu dosya agent çalışmaya başladığında `IN_PROGRESS`, kapanışta ise `COM
 |---|---|
 | Current phase | `M1` |
 | Current step | `1.0` |
-| Current state | `WAITING_FOR_PHASE_M0` |
+| Current state | `READY_TO_START` |
 | Last successful step | `1.0` |
 | Last attempted step | `1.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Başlamadı. Önce RUN_PLAY precondition/gate'lerini doğrula; sonra step checklist'i işlet.` |
+| Last update | `2026-08-06 04:35:00 +03` |
+| Recovery instruction | `M0 gate açık. Implementation henüz başlamadı — §1.1 prompt ile başla.` |
 
 ## 3. Precondition gate
 
 | Gate | Required | Current evidence |
 |---|---|---|
 | RUN_PLAY exists | yes | `PASS` |
-| Master plan digest | `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0` | `PENDING` at start |
-| Cockpit cross-ref readable | `docs/verdict/run-playbooks/phase-1/RESULT.md` | `PENDING` |
-| Mobile repo available | `/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobile` | `PENDING` |
-| Can start now? | see RUN_PLAY | `WAITING_FOR_PHASE_M0` |
+| Master plan digest | current | `PASS` — `pnpm verdict:verify-master-plan` |
+| M0 resultState | `COMPLETED` | `PASS` — audit-corrected |
+| M0 phase1Readiness | `READY_WITH_EXTERNAL_BLOCKERS` | `PASS` |
+| Cockpit Phase 1 RESULT | readable | `PASS` — Cockpit Phase 1 `COMPLETED` |
+| Mobile repo available | path exists | `PASS` |
+| Can start now? | yes | `READY_TO_START` |
 
 ## 4. Inherited / known blockers
 
