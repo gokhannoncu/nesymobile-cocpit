@@ -91,7 +91,7 @@ describe('phase 5 local completion acceptance', () => {
       domainPackVersion: '1.0.0',
       domainPackDigest: 'sha256:pack',
     })
-    const started = runs.startFromCompile(preview, {
+    const started = await runs.startFromCompile(preview, {
       workflowRef: 'wf',
       deviceId: 'device-1',
       domainPackKey: 'nesy-courier',

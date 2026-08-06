@@ -26,15 +26,55 @@ export interface WorkflowRunStartResult {
   engineType: 'BRIDGEFLOW'
 }
 
-export class WorkflowRunService {
+/**
+ * Persists accepted run starts so a retry after an API restart returns the
+ * original run instead of queueing a second execution.
+ */
+export interface WorkflowRunStartStore {
+  findByIdempotencyKey(idempotencyKey: string): Promise<WorkflowRunStartResult | undefined>
+  insert(input: {
+    idempotencyKey: string
+    request: WorkflowRunStartRequest
+    result: WorkflowRunStartResult
+  }): Promise<void>
+}
+
+export class InMemoryWorkflowRunStartStore implements WorkflowRunStartStore {
   private readonly started = new Map<string, WorkflowRunStartResult>()
 
-  constructor(private readonly queue?: TestExecutionQueue) {}
+  async findByIdempotencyKey(idempotencyKey: string): Promise<WorkflowRunStartResult | undefined> {
+    return this.started.get(idempotencyKey)
+  }
 
-  startFromCompile(
+  async insert(input: {
+    idempotencyKey: string
+    request: WorkflowRunStartRequest
+    result: WorkflowRunStartResult
+  }): Promise<void> {
+    this.started.set(input.idempotencyKey, input.result)
+  }
+}
+
+export function runStartIdempotencyKey(request: WorkflowRunStartRequest): string {
+  return [
+    request.workflowRef,
+    request.deviceId,
+    request.compiledPlanHash,
+    request.profileKey ?? 'default',
+    request.profileVersion ?? 'unversioned',
+  ].join('|')
+}
+
+export class WorkflowRunService {
+  constructor(
+    private readonly queue?: TestExecutionQueue,
+    private readonly store: WorkflowRunStartStore = new InMemoryWorkflowRunStartStore(),
+  ) {}
+
+  async startFromCompile(
     compile: WorkflowCompileResult,
     request: Omit<WorkflowRunStartRequest, 'compiledPlanRef' | 'compiledPlanHash'>,
-  ): WorkflowRunStartResult {
+  ): Promise<WorkflowRunStartResult> {
     if (!compile.ok || compile.compiledPlanHash === '') {
       throw new Error('cannot start run from failed compile')
     }
@@ -45,7 +85,7 @@ export class WorkflowRunService {
     })
   }
 
-  start(request: WorkflowRunStartRequest): WorkflowRunStartResult {
+  async start(request: WorkflowRunStartRequest): Promise<WorkflowRunStartResult> {
     // The run surface is reachable directly (HTTP route), not only through
     // startFromCompile, so the pinning guard has to live here: a run that is
     // not bound to a compiled plan and a domain pack cannot be attributed to
@@ -64,14 +104,8 @@ export class WorkflowRunService {
       }
     }
 
-    const idempotencyKey = [
-      request.workflowRef,
-      request.deviceId,
-      request.compiledPlanHash,
-      request.profileKey ?? 'default',
-      request.profileVersion ?? 'unversioned',
-    ].join('|')
-    const existing = this.started.get(idempotencyKey)
+    const idempotencyKey = runStartIdempotencyKey(request)
+    const existing = await this.store.findByIdempotencyKey(idempotencyKey)
     if (existing) return existing
 
     const runId = `run_${randomUUID()}`
@@ -84,7 +118,7 @@ export class WorkflowRunService {
       status: 'QUEUED',
       engineType: 'BRIDGEFLOW',
     }
-    this.started.set(idempotencyKey, result)
+    await this.store.insert({ idempotencyKey, request, result })
     void this.queue?.enqueue({
       executionId,
       runId,

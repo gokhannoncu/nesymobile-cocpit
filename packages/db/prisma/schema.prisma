@@ -815,6 +815,56 @@ model VerdictRemoteActionAttempt {
 }
 
 /// Stable Domain Pack identity. Version snapshots are append-only children.
+/// Durable record of an accepted workflow run start.
+///
+/// This is deliberately not `bridgeflow_run_runtime`: that table is keyed to an
+/// existing `workflow_runs` row by foreign key, while a run start is accepted
+/// before any such row exists. `idempotencyKey` is the composed
+/// workflowRef|deviceId|planHash|profileKey|profileVersion tuple, so a retried
+/// start returns the original run instead of queueing a second execution.
+model VerdictRunStart {
+  id                String   @id @default(cuid())
+  idempotencyKey    String   @unique @map("idempotency_key")
+  runId             String   @unique @map("run_id")
+  executionId       String   @map("execution_id")
+  workflowRef       String   @map("workflow_ref")
+  deviceId          String   @map("device_id")
+  compiledPlanRef   String   @map("compiled_plan_ref")
+  compiledPlanHash  String   @map("compiled_plan_hash")
+  domainPackKey     String   @map("domain_pack_key")
+  domainPackVersion String   @map("domain_pack_version")
+  domainPackDigest  String   @map("domain_pack_digest")
+  releaseGate       Boolean  @default(false) @map("release_gate")
+  profileKey        String?  @map("profile_key")
+  profileVersion    String?  @map("profile_version")
+  status            String   @default("QUEUED")
+  engineType        String   @default("BRIDGEFLOW") @map("engine_type")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([workflowRef, deviceId], map: "verdict_run_start_workflow_device_idx")
+  @@map("verdict_run_start")
+}
+
+/// Append-only interaction stream consumed by the Run Detail live view through a
+/// monotonic per-run revision cursor. Summaries are redacted before insert.
+model VerdictRunInteraction {
+  id             String   @id @default(cuid())
+  runId          String   @map("run_id")
+  eventId        String   @map("event_id")
+  revision       Int
+  origin         String
+  confidence     Int
+  occurredAtMs   BigInt   @map("occurred_at_ms")
+  summary        String
+  secretRedacted Boolean  @default(true) @map("secret_redacted")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([runId, revision], map: "verdict_run_interaction_revision_key")
+  @@unique([runId, eventId], map: "verdict_run_interaction_event_key")
+  @@index([runId, revision], map: "verdict_run_interaction_cursor_idx")
+  @@map("verdict_run_interaction")
+}
+
 model VerdictDomainPack {
   id        String   @id @default(cuid())
   packKey   String   @unique @map("pack_key")

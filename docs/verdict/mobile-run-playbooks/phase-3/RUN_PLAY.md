@@ -9,7 +9,7 @@ recoveryState: READY_TO_START
 createdAt: "2026-08-06 03:58:00 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-06 03:58:00 +03"
+lastUpdatedAt: "2026-08-06 07:42:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -76,8 +76,8 @@ readiness yaz.
 | Current state | `READY_TO_START` |
 | Last successful step | `3.0` |
 | Last attempted step | `3.0` |
-| Last update | `2026-08-06 03:58:00 +03` |
-| Recovery instruction | `Phase M3 henüz başlamadı. RUN_PLAY §1.1 prompt ile başla. Önkoşulları RESULT precondition gate'inde doğrula.` |
+| Last update | `2026-08-06 07:42:00 +03` |
+| Recovery instruction | `M2 COMPLETED. M3 READY_TO_START — Bridge B2 (wait_any/cancel/capabilities) fake host ile başlayabilir.` |
 
 ## 3. Kapsam
 

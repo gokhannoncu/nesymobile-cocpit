@@ -2,14 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { createDeviceCommandAdmission } from './device-command-admission.js'
 import { DeviceReadinessService } from './device-readiness.service.js'
 import { DomainPackAdminService } from './domain-pack-admin.service.js'
-import { DurableInteractionSubscription } from './durable-interaction-subscription.js'
+import {
+  DurableInteractionSubscription,
+  InMemoryDurableInteractionStore,
+} from './durable-interaction-subscription.js'
 import { TestCampaignService } from './test-campaign.service.js'
 import { TestProfileCatalogService } from './test-profile-catalog.service.js'
 import { createHashPinnedCompileStub } from './workflow-compile.service.js'
-import { WorkflowRunService } from './workflow-run.service.js'
+import {
+  InMemoryWorkflowRunStartStore,
+  WorkflowRunService,
+} from './workflow-run.service.js'
 
 describe('phase 6 input contracts', () => {
-  it('keeps compile preview hash identical to the hash pinned on run start', () => {
+  it('keeps compile preview hash identical to the hash pinned on run start', async () => {
     const compile = createHashPinnedCompileStub()
     const runs = new WorkflowRunService()
     const request = {
@@ -20,7 +26,7 @@ describe('phase 6 input contracts', () => {
       domainPackDigest: 'sha256:pack',
     }
     const preview = compile.compileWorkflow(request)
-    const started = runs.startFromCompile(preview, {
+    const started = await runs.startFromCompile(preview, {
       workflowRef: request.workflowRef,
       deviceId: 'device-1',
       domainPackKey: request.domainPackKey,
@@ -130,9 +136,9 @@ describe('phase 6 input contracts', () => {
     )
   })
 
-  it('reads interactions by revision cursor and redacts secrets', () => {
+  it('reads interactions by revision cursor and redacts secrets', async () => {
     const subscription = new DurableInteractionSubscription()
-    subscription.append({
+    await subscription.append({
       eventId: 'e1',
       runId: 'run-1',
       origin: 'BRIDGE_INJECTED',
@@ -140,7 +146,7 @@ describe('phase 6 input contracts', () => {
       occurredAtMs: 1,
       summary: 'tap password=super-secret token:abc123',
     })
-    const page = subscription.read({ runId: 'run-1', afterRevision: 0 })
+    const page = await subscription.read({ runId: 'run-1', afterRevision: 0 })
     expect(page.items).toHaveLength(1)
     expect(page.items[0]?.summary).toMatch(/REDACTED/)
     expect(page.items[0]?.summary).not.toMatch(/super-secret|abc123/)
@@ -188,20 +194,20 @@ describe('workflow run start pinning', () => {
     domainPackDigest: 'sha256:seed0001',
   }
 
-  it('refuses a run that is not pinned to a compiled plan', () => {
+  it('refuses a run that is not pinned to a compiled plan', async () => {
     const service = new WorkflowRunService()
-    expect(() => service.start({ ...pinned, compiledPlanHash: '' })).toThrow(/compiledPlanHash/)
+    await expect(service.start({ ...pinned, compiledPlanHash: '' })).rejects.toThrow(/compiledPlanHash/)
   })
 
-  it('refuses a run that is not pinned to a domain pack', () => {
+  it('refuses a run that is not pinned to a domain pack', async () => {
     const service = new WorkflowRunService()
-    expect(() => service.start({ ...pinned, domainPackDigest: '' })).toThrow(/domainPackDigest/)
+    await expect(service.start({ ...pinned, domainPackDigest: '' })).rejects.toThrow(/domainPackDigest/)
   })
 
-  it('starts and stays idempotent for a fully pinned request', () => {
+  it('starts and stays idempotent for a fully pinned request', async () => {
     const service = new WorkflowRunService()
-    const first = service.start(pinned)
-    const second = service.start(pinned)
+    const first = await service.start(pinned)
+    const second = await service.start(pinned)
     expect(first.runId).toBe(second.runId)
     expect(first.compiledPlanHash).toBe('sha256:abc')
   })
@@ -268,5 +274,64 @@ describe('phase 6 read-model DTO shape', () => {
     expect(Object.keys(item).sort()).toEqual(
       ['campaignId', 'campaignKey', 'campaignVersion', 'cellCount', 'releaseGateResult', 'status'].sort(),
     )
+  })
+})
+
+/**
+ * Restart continuity. Both services used to hold their state in a field, so a
+ * fresh instance forgot everything: a retried run start queued a second
+ * execution and the interaction cursor rewound to revision 1. These tests
+ * construct a *new* service over a store that already holds prior state — the
+ * shape a process restart produces — and assert it continues instead of
+ * restarting.
+ */
+describe('phase 6 restart continuity', () => {
+  it('returns the already-started run instead of queueing a second execution', async () => {
+    const store = new InMemoryWorkflowRunStartStore()
+    const request = {
+      workflowRef: 'wf.field-login',
+      deviceId: 'pixel-7',
+      compiledPlanRef: 'plan:wf.field-login',
+      compiledPlanHash: 'sha256:abc',
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: 'sha256:seed',
+    }
+    const first = await new WorkflowRunService(undefined, store).start(request)
+
+    // A new service instance over the same store == the process restarted.
+    const afterRestart = await new WorkflowRunService(undefined, store).start(request)
+
+    expect(afterRestart.runId).toBe(first.runId)
+    expect(afterRestart.executionId).toBe(first.executionId)
+  })
+
+  it('continues the interaction revision sequence across a restart', async () => {
+    const store = new InMemoryDurableInteractionStore()
+    const before = new DurableInteractionSubscription(store)
+    await before.append({
+      eventId: 'e1',
+      runId: 'run-1',
+      origin: 'BRIDGE_INJECTED',
+      confidence: 100,
+      occurredAtMs: 1,
+      summary: 'first',
+    })
+
+    const afterRestart = new DurableInteractionSubscription(store)
+    const next = await afterRestart.append({
+      eventId: 'e2',
+      runId: 'run-1',
+      origin: 'MANUAL',
+      confidence: 50,
+      occurredAtMs: 2,
+      summary: 'second',
+    })
+
+    expect(next.revision).toBe(2)
+    const page = await afterRestart.read({ runId: 'run-1', afterRevision: 1 })
+    expect(page.latestRevision).toBe(2)
+    expect(page.items.map((item) => item.eventId)).toEqual(['e2'])
+    expect(page.reconnectCursor.afterRevision).toBe(2)
   })
 })

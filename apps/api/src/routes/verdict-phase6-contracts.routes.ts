@@ -11,12 +11,14 @@ import { createHashPinnedCompileStub } from '../services/workflow-compile.servic
 import { WorkflowRunService } from '../services/workflow-run.service.js'
 import {
   PrismaDomainPackAdminStore,
+  PrismaDurableInteractionStore,
   PrismaTestCampaignStore,
   PrismaTestProfileCatalogStore,
+  PrismaWorkflowRunStartStore,
 } from '../services/phase6-prisma-stores.js'
 
 const compileService = createHashPinnedCompileStub()
-const runService = new WorkflowRunService()
+const runService = new WorkflowRunService(undefined, new PrismaWorkflowRunStartStore(prisma))
 // Database-backed: these catalogs carry release-gate evidence, so they must
 // survive an API restart. The in-memory stores remain the default in unit tests.
 const domainPackAdmin = new DomainPackAdminService(new PrismaDomainPackAdminStore(prisma))
@@ -29,7 +31,7 @@ const deviceReadiness = new DeviceReadinessService(admission, {
   receiptBus: () => 'UP',
   orderedBus: () => 'DEGRADED',
 })
-const interactions = new DurableInteractionSubscription()
+const interactions = new DurableInteractionSubscription(new PrismaDurableInteractionStore(prisma))
 
 export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/compile', async (request, reply) => {
@@ -47,7 +49,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/runs', async (request, reply) => {
     try {
       const body = request.body
-      const result = runService.start({
+      const result = await runService.start({
         workflowRef: String(body.workflowRef ?? ''),
         deviceId: String(body.deviceId ?? ''),
         compiledPlanRef: String(body.compiledPlanRef ?? ''),

@@ -8,7 +8,7 @@ resultState: IN_PROGRESS
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-06 05:15:00 +03"
+lastUpdatedAt: "2026-08-06 07:50:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
@@ -23,22 +23,26 @@ implementationCommit: "62aa6e7"
 
 ## 1. Executive result
 
-Phase 6 cockpit UI is implemented and the acceptance layer now exists. Steps
-6.26/6.27 are complete, the production build is green again, and the read paths
-were verified against a live API. CHECKPOINT 6 is **still not passed**: 48 of the
-85 acceptance items describe write/execute behaviour that has not been exercised.
+Phase 6 cockpit UI is implemented, the acceptance layer exists, the production
+build is green, and every Phase 6 contract service is database-backed and
+restart-verified. **No known local blocker remains.**
 
-Acceptance work uncovered four defects that every prior green signal had missed.
-They are fixed, each with a regression guard:
+CHECKPOINT 6 is **still not passed**, but for one reason only: 48 of the 85
+acceptance items have not been walked through the cockpit and recorded. That is
+remaining evidence work, not remaining defects.
+
+Acceptance and persistence work uncovered eight defects that every prior green
+signal had missed. All are fixed, each with a regression guard:
 
 ```text
 CHECKPOINT 6: NOT_YET_PASSED
 Phase 5 resultState: COMPLETED
 Cockpit UI implementation: COMMITTED — 68 files, +4863/-33 (commit 62aa6e7)
 Implemented steps: 6.0–6.29 (30/31); 6.30 open
-Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 373 tests
+Static verification: PASS — turbo typecheck 24/24, web 456 tests, api 375 tests
 Production build: PASS — was FAILING on a duplicate route
 Runtime verification: PASS — seeded write→read tour (§15); real DUT still external
+Durability: PASS — all contract services survive an API restart (§16, §17)
 Defects found and fixed: 8 (build-breaking route clash, dead test globs,
   fabricated UI data x2, compile/run fail-open x2, DTO drift x2)
 Open external blockers: CP3-DUT, B-12   (B-4 closed, see §14)
@@ -56,8 +60,8 @@ That closure was premature: at that moment `next build` did not compile.
 | Current state | `IN_PROGRESS` |
 | Last successful step | `6.29` |
 | Last attempted step | `6.30` |
-| Last update | `2026-08-06 04:20:00 +03` |
-| Recovery instruction | `Seed the runtime (domain pack publish, profile, campaign start), drive the write/execute paths through the cockpit, then evidence the 48 open CHECKPOINT items and close 6.30. Do not claim CHECKPOINT 6 on static evidence.` |
+| Last update | `2026-08-06 07:50:00 +03` |
+| Recovery instruction | `Persistence and acceptance work is complete. Walk the 48 open CHECKPOINT items through the cockpit against the seeded runtime, record per-item evidence, then close 6.30 and evaluate phase7Readiness. Do not claim CHECKPOINT 6 on static evidence.` |
 
 ## 3. Precondition gate
 
@@ -183,7 +187,7 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 | Direct entry over HTTP (14 routes) | `PASS` — all HTTP 200, incl. `/product`, `/pm/root-cause`, `/debug-view/overview`, `/automation/*` |
 | Runtime fail-closed behaviour | `PASS` — campaigns render `No campaigns found` against an empty catalog; unknown profile renders `Profile not found`; unknown run renders `Error loading run` |
 | Browser console errors | `PASS` — none on the campaigns route |
-| `@nesy/api` test suite | `PASS` — 373 passed, 38 skipped (DB-backed integration) |
+| `@nesy/api` test suite | `PASS` — 375 passed, 38 skipped (DB-backed integration) |
 | `@nesy/execution-contract` test | `PASS` — 20 tests |
 | `@nesy/oracle-engine` test | `PASS` — 12 tests |
 | `@nesy/bridgeflow-executor` test | `PASS` — 29 tests |
@@ -266,7 +270,7 @@ real-device behaviour (`B-6-RUNTIME-ACCEPTANCE`, `CP3-DUT`).
 | B-6-COMPILE-RUN-FAIL-OPEN | HIGH/LOCAL | `RESOLVED` | `/runtime/compile` and `/runtime/runs` accepted unpinned requests | Pinning guards + tests |
 | B-6-DTO-DRIFT | HIGH/LOCAL | `RESOLVED` | Web mirrors of three read-model DTOs did not match the runtime; catalog crashed on non-empty data | Types aligned; DTO key sets pinned in api tests |
 | B-6-INMEMORY-READ-MODELS | HIGH/LOCAL | `RESOLVED` | Cockpit read models did not survive an API restart | Domain pack / profile / campaign services are Prisma-backed; restart-verified, see §16 |
-| B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `OPEN_LOCAL` | Run-start idempotency map and interaction revision cursor still reset on restart; neither has adequate schema | Add `workflow_ref`/`device_id` to `bridgeflow_run_runtime` and introduce a durable interaction table |
+| B-6-INMEMORY-RUN-SURFACES | MEDIUM/LOCAL | `RESOLVED` | Run-start idempotency and interaction cursor reset on restart | `verdict_run_start` + `verdict_run_interaction` tables; both services Prisma-backed and restart-verified, see §17 |
 
 ## 11. Skipped / deferred work
 
@@ -297,10 +301,12 @@ Exit criteria to close Phase 6:
    §8; production build and direct-entry now verified, previously neither was.
 4. ~~Seeded write/execute path tour.~~ **Done** — §15.
 5. ~~Persist the cockpit read models.~~ **Done** — §16, restart-verified.
-6. `6.30` — **still open**. Remaining: `B-6-INMEMORY-RUN-SURFACES` (run-start
-   idempotency and the interaction cursor still reset, both needing named schema
-   additions), then evidence the outstanding CHECKPOINT items and evaluate
-   `phase7Readiness`.
+6. ~~Persist the run-start and interaction surfaces.~~ **Done** — §17,
+   restart-verified.
+7. `6.30` — **still open**, and now genuinely down to evidence rather than
+   defects: the outstanding CHECKPOINT items must be walked through the cockpit
+   against the seeded runtime and recorded item by item, after which
+   `phase7Readiness` can be evaluated. No known local blocker remains.
 
 External blockers CP3-DUT, B-12 and B-4-PG-MIGRATION-APPLY remain open and are
 independent of the four items above; they block production acceptance, not
@@ -478,3 +484,50 @@ Consequence: published packs, profiles and campaigns now carry evidence across
 restarts, but run-start idempotency and the interaction cursor still reset. The
 blocker is therefore reduced to `B-6-INMEMORY-RUN-SURFACES` (MEDIUM/LOCAL) and no
 longer blocks the catalog read models.
+
+## 17. B-6-INMEMORY-RUN-SURFACES — resolved
+
+The two remaining in-memory surfaces are now durable. Both were verified by
+seeding over HTTP, stopping the API process, starting it again and reading back.
+
+### Schema
+
+`bridgeflow_run_runtime` could not host the run-start record: its `run_id` is a
+foreign key to `workflow_runs`, but a run start is accepted before any such row
+exists. Two new tables were added instead
+(`20260806060000_add_run_start_and_interaction`, both `CREATE TABLE` only —
+nothing existing was altered):
+
+| Table | Purpose |
+|---|---|
+| `verdict_run_start` | One row per accepted run start, keyed by the composed `workflowRef\|deviceId\|planHash\|profileKey\|profileVersion` idempotency tuple (unique index) |
+| `verdict_run_interaction` | Append-only interaction stream; `UNIQUE(run_id, revision)` is what makes the cursor safe — two concurrent appends cannot claim one revision |
+
+### Wiring
+
+`WorkflowRunService` and `DurableInteractionSubscription` now take a store
+through the constructor, exactly like the catalog services. `PrismaWorkflowRunStartStore`
+and `PrismaDurableInteractionStore` back the routes; the in-memory stores remain
+the default so unit tests still run without a database. Both services became
+async, as did `startFromCompile`.
+
+### Restart evidence
+
+```text
+before restart  run_b8746d64-f9f6-45f4-b30f-cd3f09d539c9
+after restart   run_b8746d64-f9f6-45f4-b30f-cd3f09d539c9   -> same run, no second execution queued
+interaction     latestRevision 1, summary "login pin=[REDACTED] token=[REDACTED]"
+append after restart -> revision 2 (continues, does not rewind to 1)
+cursor afterRevision=1 -> 1 item, reconnectCursor 2
+```
+
+Redaction is applied before insert, so the database never holds the raw secret.
+
+Two restart-continuity tests were added that construct a *new* service instance
+over a store holding prior state — the shape a process restart produces — so the
+guarantee is enforced without a database (api suite 373 → 375).
+
+### Status
+
+`B-6-INMEMORY-RUN-SURFACES` is `RESOLVED`. No Phase 6 contract service holds
+durable state in process memory any more.

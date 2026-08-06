@@ -12,6 +12,8 @@ lastUpdatedAt: "2026-08-06 05:16:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
+auditStatus: "REVIEWED_WITH_NOTES"
+auditAt: "2026-08-06 07:42:00 +03"
 runPlayFile: "docs/verdict/mobile-run-playbooks/phase-2/RUN_PLAY.md"
 cockpitPhaseResult: "docs/verdict/run-playbooks/phase-2/RESULT.md"
 previousPhaseResult: "docs/verdict/mobile-run-playbooks/phase-1/RESULT.md"
@@ -37,9 +39,19 @@ query is implemented and tested in the Mobile SDK.
 - **Yeni `emit_outcome_diagnostic` query handler** eklendi — read-only, DUMP
   origins, `sideEffectFree: true` literal.
 - **5 yeni test** (3 VerdictEngineTest + 2 BuiltinHandlersTest) eklendi.
-- **Sıfır production code** değiştirildi (sadece yeni API + handler eklendi).
+- Production’a **yalnız diagnostic yüzeyi eklendi** (`EmitOutcomeDiagnostic` +
+  `emit_outcome_diagnostic` query + engine read). Unrelated feature değişmedi.
 - Diagnostic query **hiçbir WAL yazması üretmez** — nextSeq, activeSegmentBytes
   diagnostic çağrısı öncesi ve sonrası aynı (10 ardışık çağrıda kanıtlandı).
+
+### Post-completion review notes
+
+| Not | Severity | Anlam |
+|---|---|---|
+| `EmitOutcomeDiagnostic` data class runtime path’te kullanılmıyor | LOW | Engine `Map<String, Any?>` döndürüyor; DTO doküman/public API. Wire path Map. |
+| Cockpit `throughSeq: string` vs Mobile `Long` | LOW | Host JSON boundary’de string; device Long. Mapping notu yeterli; bit-identity test yok. |
+| `sideEffectFree` data class’ta default `true` (literal tip değil) | LOW | Map path hardcoded `true`. Cockpit’teki `readonly true` kadar sert değil; pratikte setter yok. |
+| “Sıfır production code” ifadesi | FIXED | Production eklendi (doğru); unrelated rewrite yok. |
 
 ## 2. Recovery state
 

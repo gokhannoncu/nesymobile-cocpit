@@ -27,6 +27,17 @@ import type {
   CampaignRecord,
   TestCampaignStore,
 } from './test-campaign.service.js'
+import {
+  WORKFLOW_RUN_API_VERSION,
+  type WorkflowRunStartRequest,
+  type WorkflowRunStartResult,
+  type WorkflowRunStartStore,
+} from './workflow-run.service.js'
+import type {
+  DurableInteractionEvent,
+  DurableInteractionStore,
+  InteractionOrigin,
+} from './durable-interaction-subscription.js'
 
 /* ------------------------------------------------------------------ */
 /* Domain packs                                                        */
@@ -284,5 +295,94 @@ function toCampaignRecord(row: CampaignRow): CampaignRecord {
           : { evidenceSummaryRef: cell.evidenceSummaryRef }),
       }),
     ),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Run starts                                                          */
+/* ------------------------------------------------------------------ */
+
+export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async findByIdempotencyKey(idempotencyKey: string): Promise<WorkflowRunStartResult | undefined> {
+    const row = await this.prisma.verdictRunStart.findUnique({ where: { idempotencyKey } })
+    if (!row) return undefined
+    return {
+      apiVersion: WORKFLOW_RUN_API_VERSION,
+      runId: row.runId,
+      executionId: row.executionId,
+      compiledPlanHash: row.compiledPlanHash,
+      status: row.status as 'QUEUED',
+      engineType: row.engineType as 'BRIDGEFLOW',
+    }
+  }
+
+  async insert(input: {
+    idempotencyKey: string
+    request: WorkflowRunStartRequest
+    result: WorkflowRunStartResult
+  }): Promise<void> {
+    const { request, result } = input
+    await this.prisma.verdictRunStart.create({
+      data: {
+        idempotencyKey: input.idempotencyKey,
+        runId: result.runId,
+        executionId: result.executionId,
+        workflowRef: request.workflowRef,
+        deviceId: request.deviceId,
+        compiledPlanRef: request.compiledPlanRef,
+        compiledPlanHash: request.compiledPlanHash,
+        domainPackKey: request.domainPackKey,
+        domainPackVersion: request.domainPackVersion,
+        domainPackDigest: request.domainPackDigest,
+        releaseGate: request.releaseGate === true,
+        profileKey: request.profileKey ?? null,
+        profileVersion: request.profileVersion ?? null,
+        status: result.status,
+        engineType: result.engineType,
+      },
+    })
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Durable interactions                                                */
+/* ------------------------------------------------------------------ */
+
+export class PrismaDurableInteractionStore implements DurableInteractionStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async listByRun(runId: string): Promise<DurableInteractionEvent[]> {
+    const rows = await this.prisma.verdictRunInteraction.findMany({
+      where: { runId },
+      orderBy: { revision: 'asc' },
+    })
+    return rows.map((row) => ({
+      eventId: row.eventId,
+      runId: row.runId,
+      revision: row.revision,
+      origin: row.origin as InteractionOrigin,
+      confidence: row.confidence,
+      occurredAtMs: Number(row.occurredAtMs),
+      summary: row.summary,
+      secretRedacted: true,
+    }))
+  }
+
+  async append(event: DurableInteractionEvent): Promise<DurableInteractionEvent> {
+    await this.prisma.verdictRunInteraction.create({
+      data: {
+        runId: event.runId,
+        eventId: event.eventId,
+        revision: event.revision,
+        origin: event.origin,
+        confidence: event.confidence,
+        occurredAtMs: BigInt(event.occurredAtMs),
+        summary: event.summary,
+        secretRedacted: true,
+      },
+    })
+    return event
   }
 }
