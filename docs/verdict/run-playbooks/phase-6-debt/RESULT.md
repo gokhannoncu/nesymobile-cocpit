@@ -7,15 +7,15 @@ resultState: COMPLETED
 createdAt: "2026-08-06 09:30:00 +03"
 startedAt: "2026-08-06 19:21:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 23:05:00 +03"
+lastUpdatedAt: "2026-08-06 23:10:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
-verifiedMasterPlanDigest: "sha256:5c7e2f6c7da582b5bc6064a6c866476a7adb8e1d4a8a065e0be5067248644771"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
+verifiedMasterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 runPlayFile: "docs/verdict/run-playbooks/phase-6-debt/RUN_PLAY.md"
 originalResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 dependsOn: "docs/verdict/run-playbooks/phase-5-debt/RESULT.md"
-phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
+phase7Readiness: "HELD_UNTIL_RESIDUALS"
 checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 priority: P1
 ```
@@ -27,9 +27,10 @@ priority: P1
 ```text
 Phase 6 DEBT: COMPLETED
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
-P1 shells: 50/54/61/63/65/67/69/71–73/75 → PASS (run-detail-shells.test.ts)
-External: CP3-DUT, B-12
+phase7Readiness: HELD_UNTIL_RESIDUALS
+P1 shells: 50/54/61/63/65/67/69/71–73/75 → PASS
+Local deepeners: 85/digest/capability/46–47/79–81 → PASS; 51–53 PARTIAL
+External blocking Phase 7: CP3-DUT, B-12
 ```
 
 Handoff: `phase-6/RESULT.md` §9 + §12.
@@ -42,7 +43,7 @@ Handoff: `phase-6/RESULT.md` §9 + §12.
 | Current step | `6D.4` |
 | Current state | `COMPLETED` |
 | Last successful step | `6D.4` |
-| Recovery instruction | `Debt + P1 shells closed. Phase 7 may start (READY_WITH_EXTERNAL_BLOCKERS).` |
+| Recovery instruction | `Debt closed. Phase 7 HELD_UNTIL_RESIDUALS until CP3-DUT + B-12 clear.` |
 
 ## 3. Precondition gate
 
@@ -137,24 +138,25 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 | `B-6-DTO-CUTOVER-REMAINING` | HIGH/LOCAL | `RESOLVED` | 33/34/37/38/44 |
 | `B-6-RUN-DETAIL-SHELLS` | HIGH/LOCAL | `RESOLVED` | P1 — run-detail-shells.test.ts |
 | `B-6-INSPECTOR-SHELLS` | MEDIUM/LOCAL | `RESOLVED` | P1 — mapper + idle waits; 51–53 PARTIAL |
-| `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `OPEN_LOCAL` | Bridge B2 |
-| `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `OPEN_LOCAL` | playbook pin drift |
-| `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | user build |
-| `B-12` | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` | Device Lab |
+| `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `RESOLVED` | deviceId → Bridge B2 host baseline (`deriveCapabilityManifest`) |
+| `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `RESOLVED` | playbooks repinned to `sha256:b8163139…` |
+| `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | **proven blocked** — `R6CW400BC8N` `ro.build.type=user` `ro.debuggable=0` |
+| `B-12` | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` | needs 30× smoke on approved lab device — not run this session |
 
 ## 11. Readiness decision
 
 ```text
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+phase7Readiness: HELD_UNTIL_RESIDUALS
 checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
-Debt playbook handoff:
+Debt playbook handoff (operator hold):
 
 ```text
 Phase 6 DEBT: COMPLETED
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+phase7Readiness: HELD_UNTIL_RESIDUALS
+Reason: CP3-DUT + B-12 not cleared; user asked not to enter Phase 7 until residuals finish.
 ```
 
 ## 12. CHECKPOINT sweep evidence (retained)
@@ -183,7 +185,9 @@ Method: code + unit/acceptance tests + live API where available.
 
 | # | Verdict |
 |---|---|
-| 46–47, 51–53, 79–81, 85 | `PASS_PARTIAL` |
+| 51–53 | `PASS_PARTIAL` — real dump + prefixed keys; Bridge overlay / pack registry TBD |
+
+Closed deepeners: 46–47, 79–81, 85 → `PASS`. Digest + capability → `RESOLVED`.
 
 Full 85-row table: `phase-6/RESULT.md` §9.
 

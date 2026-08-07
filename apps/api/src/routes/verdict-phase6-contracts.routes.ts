@@ -49,10 +49,103 @@ async function probeAdbLane(deviceId: string): Promise<'UP' | 'DOWN'> {
   return attached.some((line) => line.startsWith(deviceId)) ? 'UP' : 'DOWN'
 }
 
+async function probeLocalDb(_deviceId: string): Promise<'UP' | 'DOWN'> {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    return 'UP'
+  } catch {
+    return 'DOWN'
+  }
+}
+
+async function probeActiveRun(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(*)::bigint AS n
+    FROM workflow_runs
+    WHERE "deviceId" = ${deviceId}
+      AND status IN ('running', 'queued', 'pending', 'QUEUED', 'RUNNING')
+  `
+  const n = Number(rows[0]?.n ?? 0)
+  if (n === 0) return 'UP'
+  if (n === 1) return 'DEGRADED'
+  return 'DOWN'
+}
+
+async function probeBridge(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+  const adb = await probeAdbLane(deviceId)
+  if (adb === 'DOWN') return 'DOWN'
+  // Attached device is necessary but not sufficient for Bridge B2; surface DEGRADED
+  // until a live capabilities handshake succeeds (CAPABILITY-NEGOTIATION).
+  return 'DEGRADED'
+}
+
+async function probeReceiptBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+  try {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n FROM bridgeflow_evidence_fact
+      WHERE delivery_lane ILIKE '%receipt%'
+        AND observed_at > NOW() - INTERVAL '24 hours'
+    `
+    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+  } catch {
+    return 'DOWN'
+  }
+}
+
+async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+  try {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n FROM bridgeflow_evidence_fact
+      WHERE delivery_lane ILIKE '%ordered%'
+        AND observed_at > NOW() - INTERVAL '24 hours'
+    `
+    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+  } catch {
+    return 'DOWN'
+  }
+}
+
+async function probeSdkControl(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
+  // No host-side SDK control channel probe yet — do not invent UP.
+  const adb = await probeAdbLane(deviceId)
+  return adb === 'UP' ? 'UNKNOWN' : 'DOWN'
+}
+
+async function probeSdkEventAuth(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
+  const adb = await probeAdbLane(deviceId)
+  return adb === 'UP' ? 'UNKNOWN' : 'DOWN'
+}
+
+async function probeDurableIngest(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+  try {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n FROM verdict_run_interaction
+      WHERE run_id IN (
+        SELECT id FROM workflow_runs WHERE "deviceId" = ${deviceId}
+      )
+    `
+    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+  } catch {
+    return 'DOWN'
+  }
+}
+
+async function probeBackendCredentials(_deviceId: string): Promise<'UP' | 'UNKNOWN'> {
+  // Backend credential vault is outside this readiness surface; remain honest.
+  return 'UNKNOWN'
+}
+
 const deviceReadiness = new DeviceReadinessService(admission, {
   adb: probeAdbLane,
-  // The remaining lanes stay unwired on purpose: reporting UP without a probe is
-  // what this change removes. They surface as UNKNOWN with a remediation hint.
+  localDb: probeLocalDb,
+  activeRun: probeActiveRun,
+  bridge: probeBridge,
+  receiptBus: probeReceiptBus,
+  orderedBus: probeOrderedBus,
+  sdkControl: probeSdkControl,
+  sdkEventAuth: probeSdkEventAuth,
+  durableIngest: probeDurableIngest,
+  backendCredentials: probeBackendCredentials,
 })
 const interactions = new DurableInteractionSubscription(new PrismaDurableInteractionStore(prisma))
 

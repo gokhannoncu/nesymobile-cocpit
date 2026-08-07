@@ -10,7 +10,7 @@ completedAt: "2026-08-05 10:05:00 +03"
 lastUpdatedAt: "2026-08-05 10:25:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 runPlayFile: "docs/verdict/run-playbooks/phase-3/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-2b/RESULT.md"
 phase4AReadiness: "READY_WITH_EXTERNAL_DUT_BLOCKER"
@@ -521,7 +521,7 @@ test yeşil, `as any`/test skip yok.
    §15 (DUT durumu ve flakiness ölçümü), §17 (`pnpm-lock.yaml` gerekçesi),
    §19 (CP3-DUT, B-12, B-13, B-14).
 2. `pnpm verdict:verify-master-plan` — digest
-   `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`.
+   `sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2`.
 3. `git status --short` — Phase 3 değişiklikleri **commit edilmedi**; commit/PR
    kararı user'ın. Beklenen: 3 `M` + 11 `??`.
 4. **Lab cihaz temin edildiğinde** CP3'ü kapat:

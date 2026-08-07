@@ -13,7 +13,7 @@ lastUpdatedAt: "2026-08-05 14:04:53 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-4a/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-4b/RESULT.md"
@@ -622,7 +622,7 @@ pnpm test
 Kontroller:
 
 - Phase 4A RESULT `COMPLETED`.
-- Master digest `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`.
+- Master digest `sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2`.
 - `packages/workflow-contract` mevcut ve testleri yeşil.
 - Existing staged/unstaged değişiklikler not edilir, kullanıcı değişikliği ezilmez.
 

@@ -8,15 +8,15 @@ resultState: COMPLETED
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 23:05:00 +03"
+lastUpdatedAt: "2026-08-06 23:10:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 runPlayFile: "docs/verdict/run-playbooks/phase-6/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-5/RESULT.md"
 targetWorkspace: "apps/web"
 targetApiSurface: "Phase 5 runtime/read-model DTOs"
-phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
+phase7Readiness: "HELD_UNTIL_RESIDUALS"
 checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 implementationCommit: "62aa6e7"
 debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
@@ -24,18 +24,17 @@ debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
 
 ## 1. Executive result
 
-Phase 6 + `phase-6-debt` closed. After P1 shell wiring (2026-08-06 evening),
-local FAIL list is **cleared**. CHECKPOINT 6 is
-**`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**. Phase 7 is
-**`READY_WITH_EXTERNAL_BLOCKERS`** (CP3-DUT / B-12 remain external).
+Phase 6 + `phase-6-debt` closed. Local FAIL list cleared; deepeners mostly closed.
+CHECKPOINT 6 is **`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**. Phase 7 stays
+**`HELD_UNTIL_RESIDUALS`** until **CP3-DUT** and **B-12** clear (operator hold).
 
 ```text
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+phase7Readiness: HELD_UNTIL_RESIDUALS
 Phase 6 resultState: COMPLETED
 phase-6-debt: COMPLETED
-Counts (85): PASS ~74 · PASS_PARTIAL ~11 · FAIL 0 · BLOCKED_EXTERNAL (CP3-DUT Act Mode)
-Open external: CP3-DUT, B-12
+Counts (85): PASS ~81 · PASS_PARTIAL ~3 (51–53) · FAIL 0 · BLOCKED_EXTERNAL (CP3-DUT)
+Open external blocking Phase 7: CP3-DUT, B-12
 ```
 
 ## 2. Recovery state
@@ -47,8 +46,8 @@ Open external: CP3-DUT, B-12
 | Current state | `COMPLETED` |
 | Last successful step | `P1 shell re-score (50/54/61/63/65/67/69/71–73/75)` |
 | Last attempted step | `P1 shells` |
-| Last update | `2026-08-06 23:05:00 +03` |
-| Recovery instruction | `Phase 6 closed green for local items. Start Phase 7 when ready. External Act Mode / DUT still CP3-DUT + B-12.` |
+| Last update | `2026-08-06 23:10:00 +03` |
+| Recovery instruction | `Phase 7 HELD_UNTIL_RESIDUALS. Local deepeners closed (85/digest/capability/46–47/79–81 PASS; 51–53 PARTIAL). Clear OPEN_EXTERNAL CP3-DUT + B-12 before Phase 7.` |
 
 ## 3. Precondition gate
 
@@ -193,16 +192,17 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 
 ```text
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+phase7Readiness: HELD_UNTIL_RESIDUALS
 Closed at: 2026-08-06 22:40 +03 (6D.4)
 Re-scored at: 2026-08-06 23:05 +03 (P1 shells)
-Evidence: run-detail-shells.test.ts + source wiring; live browser Network partial.
+Residuals re-scored: 2026-08-06 23:10 +03
+Evidence: run-detail-shells + page-acceptance + next build under lock + ADB DUT props.
 ```
 
 ### Missing list (local FAIL)
 
 _None._ Former FAIL items 50/54/61/63/65/67/69/71–73/75 → `PASS` (P1).
-`CP3-DUT` / `B-12` remain external and do not block this checkpoint class.
+Phase 7 gate still held on **CP3-DUT** / **B-12** (operator: residuals must finish).
 
 ### Full 85
 
@@ -253,14 +253,14 @@ _None._ Former FAIL items 50/54/61/63/65/67/69/71–73/75 → `PASS` (P1).
 | 43 | İkinci paralel Inspector route'u yok | `PASS` | single route |
 | 44 | Interactions → DurableInteractionSubscription | `PASS` | dto-cutover; ADB diagnostic |
 | 45 | Network/log/schedule/database non-regression | `PASS` | §18 route 200s |
-| 46 | Device kartı lane ayrımı | `PASS_PARTIAL` | lanes shown; non-ADB often UNKNOWN |
-| 47 | Receipt Bus / Ordered Bus health ayrı | `PASS_PARTIAL` | presented; probe depth limited |
+| 46 | Device kartı lane ayrımı | `PASS` | readiness probes wired; no HEALTHY fabricate |
+| 47 | Receipt Bus / Ordered Bus health ayrı | `PASS` | buses from lane status probes |
 | 48 | Command admission lane/owner/block reason | `PASS` | COMMAND_ADMISSION lane |
 | 49 | Production Inspector Act API-side fail-closed | `PASS` | InspectorPermissionGuard |
 | 50 | Inspector overlay orientation/inset tests | `PASS` | `mapDeviceBoundsToViewport` + tests; sample nodes removed; empty until Bridge dump |
-| 51 | Ambiguous node UI + action disabled | `PASS_PARTIAL` | UI present; demo data |
-| 52 | Full dump yalnız explicit diagnostic capture | `PASS_PARTIAL` | UX present; capture mocked |
-| 53 | Current Screen / Active Surface ayrı registry keys | `PASS_PARTIAL` | labels shown; not registry keys |
+| 51 | Ambiguous node UI + action disabled | `PASS_PARTIAL` | dump real via `/api/adb/screen`; Bridge overlay nodes still empty |
+| 52 | Full dump yalnız explicit diagnostic capture | `PASS_PARTIAL` | explicit click → real capture; Bridge dump nodes TBD |
+| 53 | Current Screen / Active Surface ayrı registry keys | `PASS_PARTIAL` | `screen:` / `surface:` prefixes; pack Surface Registry TBD |
 | 54 | Expected/Interrupt wait preview lifecycle | `PASS` | idle empty; WaitAnyResult statuses; no persistent registry illusion |
 | 55 | Run Detail occurrence/iteration/retry ayrımı | `PASS` | OccurrenceTree |
 | 56 | Continue Gate / Final Oracle ayrı | `PASS` | GateOracleTimeline |
@@ -286,13 +286,13 @@ _None._ Former FAIL items 50/54/61/63/65/67/69/71–73/75 → `PASS` (P1).
 | 76 | Yakalanmamış artifact NOT_CAPTURED | `PASS` | ReproExportPanel |
 | 77 | Repro Act Mode otomatik açmıyor | `PASS` | no auto Act |
 | 78 | Route navigation/direct/refresh matrix | `PASS` | §8 + §18 |
-| 79 | Loading/empty/error/disconnected/blocked | `PASS_PARTIAL` | page-acceptance smoke |
-| 80 | Auth/RBAC page acceptance | `PASS_PARTIAL` | declared; mostly `['*']` |
-| 81 | Responsive/keyboard/focus accessibility | `PASS_PARTIAL` | heading + tabIndex smoke |
+| 79 | Loading/empty/error/disconnected/blocked | `PASS` | deeper state matrix in page-acceptance |
+| 80 | Auth/RBAC page acceptance | `PASS` | 12 VERDICT_RUNTIME routes → `rbac: ['verdict:operator']` |
+| 81 | Responsive/keyboard/focus accessibility | `PASS` | heading + keyboard/focus smoke |
 | 82 | Legacy-zero Maestro/YAML checks | `PASS` | legacy-zero.test.ts |
 | 83 | Placeholder'lar BACKLOG | `PASS` | phase-6-debt RESULT §13 |
 | 84 | Product/PM/Eng/DC/ADB non-regression | `PASS` | route-non-regression |
-| 85 | Full verification komutları | `PASS_PARTIAL` | suites green; `tsc` clean after cutover TS fix; full `next build` not re-proven this close |
+| 85 | Full verification komutları | `PASS` | `next build` under prod-build lock exit 0 (~38s) |
 
 ## 10. Blockers opened during Phase 6
 
@@ -332,21 +332,30 @@ Debt RESULT: [`phase-6-debt/RESULT.md`](../phase-6-debt/RESULT.md).
 ## 12. Phase 7 readiness decision
 
 ```text
-phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+phase7Readiness: HELD_UNTIL_RESIDUALS
 checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
-Phase 6 `resultState` is `COMPLETED`. Local FAIL list cleared in P1 shell pass.
-Phase 7 may start; production Act Mode / DUT acceptance remains external
-(`CP3-DUT`, `B-12`). PASS_PARTIAL deepeners (51–53, 46–47, 79–81, 85) are
-non-blocking inventory.
+Operator hold (2026-08-06): Phase 7 **must not start** until residual list clears —
+including OPEN_EXTERNAL. Local deepeners largely closed; **CP3-DUT** and **B-12**
+remain hard blockers.
+
+| Residual | Status |
+|---|---|
+| 85 next build | `PASS` — lock build exit 0 |
+| MASTER-DIGEST-DRIFT | `RESOLVED` — pins → `b8163139…` |
+| CAPABILITY-NEGOTIATION | `RESOLVED` — deviceId → B2 baseline |
+| 46–47 device/bus lanes | `PASS` — probes wired; no HEALTHY fabricate |
+| 79–81 acceptance | `PASS` — state matrix + verdict:operator RBAC + a11y smoke |
+| 51–53 inspector | `PASS_PARTIAL`→improved: dump real, registry-prefixed keys; Bridge nodes still empty |
+| CP3-DUT | `OPEN_EXTERNAL` — `R6CW400BC8N` type=`user` debuggable=`0` |
+| B-12 | `OPEN_EXTERNAL` — 30× smoke not executed |
 
 Exit criteria status:
 
-1. ~~`6.26`–`6.29`, persistence, seeded tour~~ **Done**
-2. ~~`phase-6-debt` 6D.1–6D.4~~ **Done**
-3. ~~`6.30` + P1 shell re-score~~ **Done** — `PASSED_WITH_EXTERNAL_DUT_BLOCKERS`
-4. **External:** CP3-DUT, B-12
+1. ~~Local deepeners / digest / capability / build~~ **Done / largely done**
+2. **Blocked:** CP3-DUT (need userdebug/eng DUT)
+3. **Blocked:** B-12 (need Device Lab 30× handshake proof)
 
 ## 13. Post-closure code review (2026-08-06)
 

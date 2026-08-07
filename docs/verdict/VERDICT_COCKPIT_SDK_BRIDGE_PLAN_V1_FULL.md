@@ -40,7 +40,7 @@ isProject: false
 **Sürüm:** v1.1.3
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2`
+**MasterDigest:** `sha256:d003f7a5868622d9afa13472b176b63eb078b6906f880340a23ef125af903ce7`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`
@@ -69,8 +69,9 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 | M4A Core-contract thin gate | `COMPLETED` | `mobile-run-playbooks/phase-4a/RESULT.md` |
 | M4B App Adapter production | `COMPLETED` | `mobile-run-playbooks/phase-4b/RESULT.md` |
 | M4C Compatibility fixtures | `COMPLETED` | `mobile-run-playbooks/phase-4c/RESULT.md` |
-| M5 Correlation + recovery | `COMPLETED` | `mobile-run-playbooks/phase-5/RESULT.md` (M6 READY_WITH_EXTERNAL) |
-| M6…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M6) |
+| M5 Correlation + recovery | `COMPLETED` | `mobile-run-playbooks/phase-5/RESULT.md` |
+| M6 Inspector / Bridge diagnostics | `COMPLETED` | `mobile-run-playbooks/phase-6/RESULT.md` (M7 READY_WITH_EXTERNAL) |
+| M7…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M7) |
 
 > **Bu doküman kendi kendine yeterlidir.** Cockpit için kapsam, hedef mimari,
 > yapılacaklar, yapılmayacaklar, sıralama, bağımlılıklar, fiziksel cihaz kapıları,

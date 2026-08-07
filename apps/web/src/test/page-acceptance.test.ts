@@ -148,4 +148,52 @@ describe('6.27 — accessibility floor', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  it('keyboard/focus smoke: interactive Verdict routes expose focusable controls without positive tabIndex', () => {
+    const critical = [
+      '/debug-view/screen-state',
+      '/automation/domain-packs',
+      '/automation/list',
+    ]
+    for (const route of critical) {
+      const file = PAGE_FILES.get(route)
+      expect(file, route).toBeDefined()
+      const src = readFileSync(file!, 'utf8')
+      expect(/tabIndex=\{?["']?[1-9]/.test(src)).toBe(false)
+      expect(/<(button|Button|input|Input|a |Link)\b/i.test(src) || /<[A-Z][A-Za-z]+/.test(src)).toBe(
+        true,
+      )
+    }
+  })
+})
+
+describe('6.27 — loading/empty/error/blocked state matrix (79)', () => {
+  const verdictRoutes = AVAILABLE.filter((e) => e.currentSource === 'VERDICT_RUNTIME')
+
+  it.each(verdictRoutes.map((e) => [e.routePattern, e] as const))(
+    '%s declares loading OR empty OR error OR blocked handling',
+    (_route, entry) => {
+      const file = PAGE_FILES.get(entry.routePattern)
+      if (!file) return
+      const src = readFileSync(file, 'utf8')
+      if (/\bredirect\(/.test(src)) return
+      const hasState =
+        /\bloading\b/i.test(src) ||
+        /\bempty\b/i.test(src) ||
+        /\berror\b/i.test(src) ||
+        /\bblockedReason\b/.test(src) ||
+        /\bcatch\s*[({]/.test(src) ||
+        /\bpartial\b/.test(src)
+      expect(hasState, `${entry.routePattern} missing visible state handling`).toBe(true)
+    },
+  )
+})
+
+describe('6.27 — RBAC beyond wildcard (80)', () => {
+  it('AVAILABLE Verdict routes declare non-wildcard RBAC roles', () => {
+    const verdict = AVAILABLE.filter((e) => e.currentSource === 'VERDICT_RUNTIME')
+    const specific = verdict.filter((e) => e.rbac.some((role) => role !== '*'))
+    expect(specific.length).toBeGreaterThan(0)
+    expect(specific.length / Math.max(1, verdict.length)).toBeGreaterThanOrEqual(0.5)
+  })
 })

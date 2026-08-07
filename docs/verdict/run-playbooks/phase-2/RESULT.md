@@ -12,7 +12,7 @@ timezone: "Europe/Istanbul"
 executedAgainstMasterPlanVersion: "v1.1.2"
 executedAgainstMasterPlanDigest: "sha256:5e7deff018a61b71eb215d2406615dae3304fb63080005e1130297401f15fa01"
 masterPlanVersionAtClose: "v1.1.3"
-masterPlanDigestAtClose: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigestAtClose: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 runPlayFile: "docs/verdict/run-playbooks/phase-2/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-1/RESULT.md"
 phase3Readiness: "READY_WITH_NON_BLOCKING_DEBT"
@@ -600,7 +600,7 @@ kanıtlı** hale getirdi ama production cutover'ı hâlâ flag arkasında. CP0 h
 1. Bu dosyayı oku — özellikle §1 (üç bulgu), §13 (integration kanıtı + flakiness
    ölçümü), §14 (`app.ts` gerekçesi), §16 (B-10).
 2. `pnpm verdict:verify-master-plan` — **digest artık
-   `sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0`
+   `sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2`
    (v1.1.3)**. Phase 2 v1.1.2'ye karşı yürütüldü; diff Phase 2 kapsamına dokunmuyor
    (baştaki sürüm notu).
 3. `git status --short` — Phase 2 kodu **commit edildi** (user tarafından, bu faz

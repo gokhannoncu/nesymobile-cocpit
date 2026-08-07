@@ -11,6 +11,7 @@ import {
   type TargetDefinition,
   type TargetResolutionPolicy,
 } from '@nesy/domain-pack-contracts'
+import { deriveCapabilityManifest } from '@nesy/bridge-contract'
 
 import type {
   DomainPackAdminStore,
@@ -208,7 +209,9 @@ export class DomainPackReadModelsService {
 
     const actions = asArray<SemanticActionDefinition>(loaded.registries?.semanticActions)
     const macros = asArray<MacroDefinition>(loaded.registries?.macros)
-    const negotiationAvailable = false
+    // deviceId present → host evaluates against Bridge B2 contract baseline.
+    // Live BridgeDeviceManager handshake can refine this later; deviceId now matters.
+    const negotiationAvailable = Boolean(options.deviceId?.trim())
 
     return {
       apiVersion: DOMAIN_PACK_READ_API_VERSION,
@@ -545,24 +548,74 @@ export class DomainPackReadModelsService {
 }
 
 /**
- * Capability gating for palette listing. Bridge B2 negotiation is not wired
- * yet, so any non-empty requiredCapabilityRefs set is reported unsatisfied —
- * `deviceId` is accepted for forward compatibility but does not change the
- * outcome until negotiation is connected (phase-6-debt follow-up).
+ * Capability gating for palette listing.
+ * - No deviceId → negotiation unavailable (fail-closed for non-empty refs).
+ * - deviceId present → evaluate against Bridge B2 host contract baseline
+ *   (`deriveCapabilityManifest`). Unsatisfied refs stay visible+disabled.
  */
 function capabilityStatusFor(
   required: readonly string[],
-  _deviceId: string | undefined,
-  _negotiationAvailable: boolean,
+  deviceId: string | undefined,
+  negotiationAvailable: boolean,
 ): CapabilityStatus {
   if (required.length === 0) {
     return { satisfied: true, missing: [], reason: null }
   }
+  if (!negotiationAvailable || !deviceId?.trim()) {
+    return {
+      satisfied: false,
+      missing: [...required],
+      reason: 'Bridge B2 capability negotiation requires a deviceId',
+    }
+  }
+
+  const available = negotiatedCapabilitySet()
+  const missing = required.filter((ref) => !available.has(normalizeCapabilityRef(ref)))
+  if (missing.length === 0) {
+    return { satisfied: true, missing: [], reason: null }
+  }
   return {
     satisfied: false,
-    missing: [...required],
-    reason: 'Bridge B2 capability negotiation not available on this device',
+    missing,
+    reason: `Device ${deviceId} missing capabilities: ${missing.join(', ')}`,
   }
+}
+
+function negotiatedCapabilitySet(): Set<string> {
+  // Host-side B2 baseline from bridge-contract (Mobile M3+). Live session
+  // handshake can replace this set when BridgeDeviceManager is bound.
+  const manifest = deriveCapabilityManifest(1)
+  const set = new Set<string>()
+  for (const command of manifest.commands) {
+    set.add(normalizeCapabilityRef(command))
+  }
+  if (manifest.supportsWaitAny) {
+    set.add('wait-any')
+    set.add('supportswaitany')
+  }
+  if (manifest.supportsCancelRequest) {
+    set.add('cancel-request')
+    set.add('supportscancelrequest')
+  }
+  if (manifest.supportsUnsolicitedPush) {
+    set.add('unsolicited-push')
+    set.add('register-watch')
+  }
+  // Domain-pack capability keys that map to Bridge B2 surface.
+  set.add('verdict.core.bridge.tap')
+  set.add('verdict.core.bridge.set-text')
+  set.add('verdict.core.bridge.resolve-target')
+  set.add('verdict.core.bridge.watch-fact')
+  set.add('bridge-b2')
+  set.add('bridge')
+  return set
+}
+
+function normalizeCapabilityRef(ref: string): string {
+  const trimmed = ref.trim().toLowerCase()
+  // Keep dotted pack keys intact; normalize underscore variants for commands.
+  if (trimmed.includes('.')) return trimmed
+  return trimmed.replace(/_/g, '-')
 }
 
 function launchProfileShapeViolations(

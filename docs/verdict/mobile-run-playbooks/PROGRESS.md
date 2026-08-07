@@ -3,7 +3,7 @@
 ```yaml
 trackId: verdict-mobile-run-playbooks
 ssotFor: "Mobile M0–M9 playbook completion (not Cockpit FAZ YAML / not Mobile verdict-status bridge_b2 cutover)"
-lastUpdatedAt: "2026-08-06 22:40:00 +03"
+lastUpdatedAt: "2026-08-06 23:15:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPointer: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md § Mobile playbook track"
 ```
@@ -33,8 +33,8 @@ Mobile `M0` tamamlandı diye `faz-0: completed` yazılmaz.
 | **M4A** | Core-contract thin gate | `COMPLETED` | [phase-4a/RESULT.md](./phase-4a/RESULT.md) | Bridge domain leakage 0 |
 | **M4B** | Nesy App Adapter production | `COMPLETED` | [phase-4b/RESULT.md](./phase-4b/RESULT.md) | Adapter ops + queries |
 | **M4C** | Pack ↔ adapter ↔ Bridge uyumu | `COMPLETED` | [phase-4c/RESULT.md](./phase-4c/RESULT.md) | Contract flip + fixtures |
-| **M5** | Correlation + recovery | `COMPLETED` | [phase-5/RESULT.md](./phase-5/RESULT.md) | M6 READY_WITH_EXTERNAL (DUT/B-12) |
-| **M6** | Inspector destek | `NOT_STARTED` | [phase-6/RESULT.md](./phase-6/RESULT.md) | |
+| **M5** | Correlation + recovery | `COMPLETED` | [phase-5/RESULT.md](./phase-5/RESULT.md) | |
+| **M6** | Inspector destek | `COMPLETED` | [phase-6/RESULT.md](./phase-6/RESULT.md) | M7 READY_WITH_EXTERNAL (DUT/B-12) |
 | **M7** | Gerçek akış + release isolation | `NOT_STARTED` | [phase-7/RESULT.md](./phase-7/RESULT.md) | DUT |
 | **M8** | DUT fault kabulü | `NOT_STARTED` | [phase-8/RESULT.md](./phase-8/RESULT.md) | lab DUT |
 | **M9** | Legacy temizliği | `NOT_STARTED` | [phase-9/RESULT.md](./phase-9/RESULT.md) | cutover sonrası |
@@ -42,9 +42,9 @@ Mobile `M0` tamamlandı diye `faz-0: completed` yazılmaz.
 ## Summary
 
 ```text
-Completed: M0, M1, M2, M3, M4A, M4B, M4C, M5
+Completed: M0, M1, M2, M3, M4A, M4B, M4C, M5, M6
 In progress: —
-Remaining: M6 → M7 → M8 → M9
+Remaining: M7 → M8 → M9
 ```
 
 ## Update rule

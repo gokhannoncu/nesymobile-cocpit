@@ -535,7 +535,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
   },
@@ -693,7 +693,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -707,7 +707,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -721,7 +721,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
   },
@@ -735,7 +735,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -793,7 +793,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -807,7 +807,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -821,7 +821,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/surface-registry-manager.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -835,7 +835,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -849,7 +849,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -863,7 +863,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },
@@ -877,7 +877,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     targetDtoVersion: '1.0',
     cutoverCheckpoint: 'CHECKPOINT_6',
     availability: 'AVAILABLE',
-    rbac: ['*'],
+    rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
     fallbackPolicy: 'NONE'
   },

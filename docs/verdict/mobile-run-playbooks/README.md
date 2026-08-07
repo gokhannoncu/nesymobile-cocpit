@@ -77,7 +77,7 @@ Cockpit faz numaralarıyla hizalıdır; içerik Mobile/Bridge teslimine göredir
 | **M4B** | Nesy App Adapter production | Named query, evidence, scanner, launch, manifest | M0 + CP4B + M4A | `COMPLETED` |
 | **M4C** | Pack ↔ adapter ↔ Bridge uyumu | Compatibility / fixture | M4B + Cockpit 4C | `COMPLETED` |
 | **M5** | Correlation + recovery | monoTs, recovery named-query | M3 + M4B | `COMPLETED` |
-| **M6** | Inspector destek | dump/screenshot redaction | M3 + M5 | `NOT_STARTED` |
+| **M6** | Inspector destek | dump/screenshot redaction | M3 + M5 | `COMPLETED` |
 | **M7** | Gerçek akış + release isolation | Real Nesy flows | M4B + M5; DUT | `NOT_STARTED` |
 | **M8** | DUT fault kabulü | Process kill, fencing, IME | M3 + M7; lab DUT | `NOT_STARTED` |
 | **M9** | Legacy temizliği | Maestro kalıntısı | Cutover sonrası | `NOT_STARTED` |

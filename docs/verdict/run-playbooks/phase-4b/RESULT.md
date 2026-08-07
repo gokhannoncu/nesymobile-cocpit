@@ -11,7 +11,7 @@ completedAt: "2026-08-05 13:45:26 +03"
 lastUpdatedAt: "2026-08-05 14:13:49 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0"
+masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
 runPlayFile: "docs/verdict/run-playbooks/phase-4b/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-4a/RESULT.md"
 targetPackage: "@nesy/domain-pack-contracts"
@@ -109,7 +109,7 @@ Preflight `2026-08-05 12:45–12:49 +03` arasında alındı.
 | Soru | Bulgu |
 |---|---|
 | Phase 4A RESULT durumu | `COMPLETED` — `resultState: COMPLETED`, `phase4BReadiness: READY_WITH_EXTERNAL_BLOCKERS`, CP4A 22/22 |
-| Master digest | `pnpm verdict:verify-master-plan` → `Master plan digest OK: sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0` (RUN_PLAY frontmatter ile aynı) |
+| Master digest | `pnpm verdict:verify-master-plan` → `Master plan digest OK: sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2` (RUN_PLAY frontmatter ile aynı) |
 | Current branch/status | `## production...origin/production`; staged: yalnız `docs/verdict/run-playbooks/phase-4b/RESULT.md` + `RUN_PLAY.md` (`A`). Başka kullanıcı değişikliği yok, hiçbir şey ezilmedi. |
 | Existing package count | `packages/` altında 12 paket: `bridge-client`, `bridge-contract`, `control-channels`, `control-contract`, `db`, `eslint-config`, `metronic`, `platform-paths`, `types`, `typescript-config`, `ui`, `workflow-contract`. `pnpm-workspace.yaml` = `apps/*` + `packages/*`. |
 | Existing Domain Pack package | **Yok.** Ne `packages/domain-pack-contracts` ne `domain-packs/` var. `domain-packs/*` workspace glob'u da yok → Phase 4B eklemeli. |
@@ -214,7 +214,7 @@ Tüm komutlar `2026-08-05 13:38–13:45 +03` arasında çalıştırıldı.
 
 ```bash
 pnpm verdict:verify-master-plan
-# Master plan digest OK: sha256:76024d898cb152fe4d885fb18e798cb24b6c3df31715eac546c64383ed5c2bd0
+# Master plan digest OK: sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2
 
 pnpm typecheck
 # Tasks: 16 successful, 16 total   (exit 0)

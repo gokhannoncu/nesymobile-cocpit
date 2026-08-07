@@ -324,12 +324,21 @@ export default function ScreenStatePage() {
               <div className="flex-none bg-slate-50 border rounded-lg p-4 h-full flex flex-col justify-center">
                 <InspectorViewport
                   orientation="PORTRAIT"
-                  currentScreenKey={snapshot?.current?.who || 'Unknown'}
-                  activeSurfaceKey={snapshot?.current?.className || 'Unknown'}
+                  currentScreenKey={
+                    snapshot?.current?.who
+                      ? `screen:${snapshot.current.who}`
+                      : 'screen:UNKNOWN'
+                  }
+                  activeSurfaceKey={
+                    snapshot?.current?.className
+                      ? `surface:${snapshot.current.className}`
+                      : 'surface:UNKNOWN'
+                  }
                 >
                   {/*
                     Nodes stay empty until a Bridge dump/find_* snapshot is wired.
                     Sample nodes removed — overlay math still applies when nodes arrive.
+                    Ambiguous nodes (isAmbiguous) disable selection in the overlay.
                   */}
                   <InspectorNodeOverlay
                     nodes={[]}
@@ -350,7 +359,7 @@ export default function ScreenStatePage() {
                 {/* Request-scoped only: idle = empty (no persistent registry illusion). */}
                 <InspectorWaitPreview waits={[]} />
                 <InspectorTargetPanel selectedNode={selectedNode} />
-                <InspectorScopedDump />
+                <InspectorScopedDump serial={serial} />
               </div>
             </div>
           </InspectorPermissionGuard>

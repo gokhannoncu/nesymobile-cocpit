@@ -1,16 +1,44 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchVerdictDeviceReadiness } from '@/lib/verdict-runtime/client'
-import { DeviceReadinessApi } from '@/lib/verdict-runtime/types'
-import { DeviceHealthLane, HealthLaneData } from './DeviceHealthLane'
-import { BusHealthPanel } from './BusHealthPanel'
+import type { DeviceReadinessApi } from '@/lib/verdict-runtime/types'
+import { DeviceHealthLane, type HealthLaneData } from './DeviceHealthLane'
+import { BusHealthPanel, type BusStats } from './BusHealthPanel'
 import { CommandAdmissionPanel } from './CommandAdmissionPanel'
-import { ExternalBlockerCard, ExternalBlocker } from './ExternalBlockerCard'
+import { ExternalBlockerCard, type ExternalBlocker } from './ExternalBlockerCard'
 import { Loader2, ServerCrash, Smartphone, CheckCircle, AlertTriangle } from 'lucide-react'
 
 interface DeviceReadinessCardProps {
   deviceId: string
+}
+
+function mapLaneStatus(
+  status: string,
+): HealthLaneData['status'] {
+  const key = status.toUpperCase()
+  if (key === 'UP' || key === 'READY' || key === 'HEALTHY') return 'HEALTHY'
+  if (key === 'DEGRADED') return 'DEGRADED'
+  if (key === 'DOWN' || key === 'UNHEALTHY' || key === 'BLOCKED') return 'UNHEALTHY'
+  return 'UNKNOWN'
+}
+
+function busFromLane(
+  lanes: readonly { lane?: string; status?: string; detail?: string }[],
+  name: string,
+): BusStats {
+  const hit = lanes.find((l) => String(l.lane).toUpperCase() === name)
+  if (!hit) {
+    return { lag: -1, cursorPosition: 0, deadLetterCount: 0, status: 'UNKNOWN' }
+  }
+  const status = mapLaneStatus(String(hit.status ?? 'UNKNOWN'))
+  return {
+    lag: status === 'HEALTHY' ? 0 : status === 'DEGRADED' ? 250 : -1,
+    cursorPosition: 0,
+    deadLetterCount: status === 'UNHEALTHY' ? 1 : 0,
+    status,
+    detail: typeof hit.detail === 'string' ? hit.detail : undefined,
+  }
 }
 
 export function DeviceReadinessCard({ deviceId }: DeviceReadinessCardProps) {
@@ -24,16 +52,45 @@ export function DeviceReadinessCard({ deviceId }: DeviceReadinessCardProps) {
       try {
         setLoading(true)
         const result = await fetchVerdictDeviceReadiness(deviceId)
-        if (mounted) setData(result)
+        if (mounted) {
+          setData(result)
+          setError(null)
+        }
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
         if (mounted) setLoading(false)
       }
     }
-    load()
-    return () => { mounted = false }
+    void load()
+    return () => {
+      mounted = false
+    }
   }, [deviceId])
+
+  const lanes: HealthLaneData[] = useMemo(() => {
+    const raw = (data?.lanes ?? []) as {
+      lane?: string
+      status?: string
+      detail?: string
+    }[]
+    return raw.map((lane, i) => ({
+      id: String(lane.lane ?? i),
+      name: String(lane.lane ?? `lane-${i}`),
+      status: mapLaneStatus(String(lane.status ?? 'UNKNOWN')),
+      lastCheck: 'runtime',
+      details: typeof lane.detail === 'string' ? lane.detail : undefined,
+    }))
+  }, [data])
+
+  const receiptBus = useMemo(
+    () => busFromLane((data?.lanes ?? []) as { lane?: string; status?: string; detail?: string }[], 'RECEIPT_BUS'),
+    [data],
+  )
+  const orderedBus = useMemo(
+    () => busFromLane((data?.lanes ?? []) as { lane?: string; status?: string; detail?: string }[], 'ORDERED_BUS'),
+    [data],
+  )
 
   if (loading) {
     return (
@@ -52,19 +109,34 @@ export function DeviceReadinessCard({ deviceId }: DeviceReadinessCardProps) {
     )
   }
 
-  // Map backend unknown fields to UI types (mock logic since exact shapes are Record<string, unknown>)
-  const lanes = (data.lanes as unknown as HealthLaneData[]) || []
-  const externalBlockers = (data.externalBlockers as unknown as ExternalBlocker[]) || []
-  const admission = data.commandAdmission as any
-
-  // Mock bus health since not strictly in the Api type but required by the UI
-  const mockBusStats = { lag: 12, cursorPosition: 10423, deadLetterCount: 0 }
-  const mockAdmissionData = {
-    counts: { control: 5, observation: 12, wait: 2, mutation: 0 },
-    queueLength: 0,
-    currentMutationOwner: null,
-    blockedReason: null,
-    ...admission
+  const externalBlockers: ExternalBlocker[] = (data.externalBlockers ?? []).map((raw, i) => {
+    const b = raw as Record<string, unknown>
+    return {
+      id: String(b.id ?? `blocker-${i}`),
+      severity: 'HIGH',
+      description: String(b.remediation ?? b.status ?? b.id ?? 'External blocker'),
+      remediationSteps: [String(b.remediation ?? 'See Device Lab remediation')],
+      owner: typeof b.owner === 'string' ? b.owner : null,
+      status: String(b.status).includes('RESOLVED') ? 'RESOLVED' : 'OPEN',
+    }
+  })
+  const admission = (data.commandAdmission ?? {}) as Record<string, unknown>
+  const activeCounts = (admission.activeCounts ?? {}) as Record<string, unknown>
+  const queuedCounts = (admission.queuedCounts ?? {}) as Record<string, unknown>
+  const admissionData = {
+    counts: {
+      control: Number(activeCounts.control ?? 0),
+      observation: Number(activeCounts.observation ?? 0),
+      wait: Number(activeCounts.wait ?? 0),
+      mutation: Number(activeCounts.mutation ?? 0),
+    },
+    queueLength: Object.values(queuedCounts).reduce((sum: number, value) => sum + Number(value), 0),
+    currentMutationOwner:
+      typeof admission.activeMutationOwnerRunId === 'string'
+        ? admission.activeMutationOwnerRunId
+        : null,
+    blockedReason:
+      typeof admission.blockedReason === 'string' ? admission.blockedReason : null,
   }
 
   return (
@@ -75,10 +147,15 @@ export function DeviceReadinessCard({ deviceId }: DeviceReadinessCardProps) {
           <div>
             <h2 className="text-lg font-semibold">{deviceId}</h2>
             <div className="text-sm text-slate-500 flex items-center gap-1">
-              {data.overall === 'READY' ? (
-                <><CheckCircle className="w-4 h-4 text-green-500" /> System Ready</>
+              {data.overall === 'UP' || data.overall === 'READY' ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-500" /> System Ready
+                </>
               ) : (
-                <><AlertTriangle className="w-4 h-4 text-amber-500" /> {data.overall}</>
+                <>
+                  <AlertTriangle className="w-4 h-4 text-amber-500" /> {data.overall}
+                  {data.partial ? ' · partial' : ''}
+                </>
               )}
             </div>
           </div>
@@ -89,26 +166,21 @@ export function DeviceReadinessCard({ deviceId }: DeviceReadinessCardProps) {
         <div className="flex flex-col gap-4">
           <h3 className="font-semibold text-slate-700">Health Lanes</h3>
           {lanes.length > 0 ? (
-            lanes.map((lane, i) => <DeviceHealthLane key={lane.id || i} lane={lane} />)
+            lanes.map((lane) => <DeviceHealthLane key={lane.id} lane={lane} />)
           ) : (
-            // Fallback lanes for visual completeness if backend returns empty
-            <>
-              <DeviceHealthLane lane={{ id: '1', name: 'ADB Connection', status: 'HEALTHY', lastCheck: 'Just now' }} />
-              <DeviceHealthLane lane={{ id: '2', name: 'SDK Control Channel', status: 'HEALTHY', lastCheck: 'Just now' }} />
-              <DeviceHealthLane lane={{ id: '3', name: 'SDK Event/Auth', status: 'HEALTHY', lastCheck: 'Just now' }} />
-            </>
+            <p className="text-sm text-muted-foreground">No readiness lanes returned.</p>
           )}
         </div>
-        
+
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <h3 className="font-semibold text-slate-700">Admission Control</h3>
-            <CommandAdmissionPanel admission={mockAdmissionData} />
+            <CommandAdmissionPanel admission={admissionData} />
           </div>
 
           <div className="flex flex-col gap-2">
             <h3 className="font-semibold text-slate-700">Event Buses</h3>
-            <BusHealthPanel receiptBus={mockBusStats} orderedBus={mockBusStats} />
+            <BusHealthPanel receiptBus={receiptBus} orderedBus={orderedBus} />
           </div>
         </div>
       </div>
