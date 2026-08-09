@@ -27,6 +27,15 @@ import { createIssue } from "./compile-issues.js";
 import { digestPlanDocument } from "./canonical.js";
 
 /**
+ * Freshness for a fact synthesized from a remote adapter operation.
+ *
+ * The operation declares no freshness of its own, and the requirement's own
+ * deadline governs how long the executor waits — this bound only says how long
+ * an already-observed remote fact stays usable.
+ */
+const REMOTE_FACT_MAX_AGE_MS = 30_000;
+
+/**
  * Compile evidence requirements from the workflow and pack.
  */
 export function compileEvidence(
@@ -42,6 +51,46 @@ export function compileEvidence(
   for (const fact of registries.derivedFacts.facts) {
     derivedByKey.set(fact.factKey, fact);
   }
+  // A back-office VALIDATION operation is an evidence source: it exists to
+  // answer "did the record really reach this status?". Reading only
+  // evidenceSources/derivedFacts made every remotely-sourced fact compile as
+  // MISSING_EVIDENCE_SOURCE, which forced packs to either duplicate the
+  // declaration or drop the backend check.
+  const remoteByKey = new Map<string, EvidenceSourceDefinition>();
+  for (const adapter of registries.remoteAdapters) {
+    for (const operation of adapter.operations) {
+      for (const output of operation.outputs) {
+        if (remoteByKey.has(output.factKey) || sourceByKey.has(output.factKey)) continue;
+        remoteByKey.set(output.factKey, {
+          sourceKey: `${adapter.adapterRef}:${operation.operationRef}`,
+          plane: "REMOTE",
+          kind: "REMOTE_VALIDATOR",
+          // Transport-success-only operations stay non-PRIMARY, so the HTTP-2xx
+          // rule below still fires for them.
+          authority: operation.transportSuccessOnly === true ? "FALLBACK" : "PRIMARY",
+          displayName: operation.displayName,
+          factKey: output.factKey,
+          observationRef: operation.operationRef,
+          freshness: { maxAgeMs: REMOTE_FACT_MAX_AGE_MS, onStale: "REOBSERVE" },
+          correlation: {
+            // A remote fact with no correlation path cannot say WHICH record it
+            // is about, so it must not be treated as entity-matched.
+            requireEntityMatch: output.correlationPath !== undefined,
+            requireOccurrenceMatch: true,
+            correlationPaths: output.correlationPath === undefined ? [] : [output.correlationPath],
+            crossPlane: true,
+          },
+          redaction: { redactPaths: operation.audit.redactFields },
+          preservesRawEvidence: operation.audit.recordResponse,
+          requiredCapabilityRefs: adapter.requiredCapabilityRefs,
+          ...(operation.transportSuccessOnly === undefined
+            ? {}
+            : { transportSuccessOnly: operation.transportSuccessOnly }),
+        });
+      }
+    }
+  }
+  for (const [factKey, source] of remoteByKey) sourceByKey.set(factKey, source);
 
   const continueGateReqs: CompiledEvidenceRequirement[] = [];
   const finalOracleReqs: CompiledEvidenceRequirement[] = [];

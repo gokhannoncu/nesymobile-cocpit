@@ -124,7 +124,8 @@ phase8Readiness: HELD_UNTIL_DUT_AND_COCKPIT_P7
 
 ```text
 phase8Readiness: HELD_UNTIL_DUT_AND_COCKPIT_P7
-Next Mobile: M8 only after M7 external blockers clear enough for fault DUT
+Carry decision (2026-08-09): residuals noted; M8 started as BLOCKED_EXTERNAL
+  → see mobile-run-playbooks/phase-8/evidence/CARRIED_BLOCKERS.md
 Do not flip Cockpit faz-* YAML from this Mobile close.
 Do not mark Mobile SSOT bridge_b2=passed from this pack.
 ```

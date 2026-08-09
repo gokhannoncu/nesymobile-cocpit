@@ -40,7 +40,7 @@ isProject: false
 **Sürüm:** v1.1.4
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:b2af8c455dc9a74495bd937112756a6f4c5aaf3f0a5ee292d95294e564c687ef`
+**MasterDigest:** `sha256:22c26fd21b1616b196de0136c2d1c66b24d99e4736869bf108afe3c2d5b64a4e`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`
@@ -71,8 +71,9 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 | M4C Compatibility fixtures | `COMPLETED` | `mobile-run-playbooks/phase-4c/RESULT.md` |
 | M5 Correlation + recovery | `COMPLETED` | `mobile-run-playbooks/phase-5/RESULT.md` |
 | M6 Inspector / Bridge diagnostics | `COMPLETED` | `mobile-run-playbooks/phase-6/RESULT.md` |
-| M7 Real flows + release isolation | `READY_WITH_EXTERNAL_BLOCKERS` | `mobile-run-playbooks/phase-7/RESULT.md` (DUT/storeFile/Cockpit P7 held) |
-| M8…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M8 after M7 externals) |
+| M7 Real flows + release isolation | `READY_WITH_EXTERNAL_BLOCKERS` | `mobile-run-playbooks/phase-7/RESULT.md` (carry → M8) |
+| M8 DUT fault + Bridge hardening | `BLOCKED_EXTERNAL` | `mobile-run-playbooks/phase-8/RESULT.md` (offline matrix PASS; CP3-DUT) |
+| M9 | `NOT_STARTED` | `mobile-run-playbooks/phase-9/RESULT.md` (held until CP3-DUT) |
 
 > **Bu doküman kendi kendine yeterlidir.** Cockpit için kapsam, hedef mimari,
 > yapılacaklar, yapılmayacaklar, sıralama, bağımlılıklar, fiziksel cihaz kapıları,

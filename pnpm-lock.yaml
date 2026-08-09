@@ -32,6 +32,9 @@ importers:
       '@nesy/bridge-contract':
         specifier: workspace:*
         version: link:../../packages/bridge-contract
+      '@nesy/bridgeflow-compiler':
+        specifier: workspace:^
+        version: link:../../packages/bridgeflow-compiler
       '@nesy/bridgeflow-executor':
         specifier: workspace:^
         version: link:../../packages/bridgeflow-executor
@@ -50,6 +53,9 @@ importers:
       '@nesy/execution-contract':
         specifier: workspace:*
         version: link:../../packages/execution-contract
+      '@nesy/nesy-courier-domain-pack':
+        specifier: workspace:*
+        version: link:../../domain-packs/nesy-courier
       '@nesy/oracle-engine':
         specifier: workspace:*
         version: link:../../packages/oracle-engine

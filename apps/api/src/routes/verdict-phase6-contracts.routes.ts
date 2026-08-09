@@ -13,10 +13,8 @@ import { BridgeFlowEvidenceSources } from '../services/bridgeflow-evidence-sourc
 import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { BridgeFlowExecutionQueue } from '../services/bridgeflow-execution-queue.js'
-import {
-  createHashPinnedCompileStub,
-  defaultCompiledPlanStore,
-} from '../services/workflow-compile.service.js'
+import { createBridgeFlowCompileService } from '../services/bridgeflow-compile-adapter.js'
+import { defaultCompiledPlanStore } from '../services/workflow-compile.service.js'
 import { WorkflowRunService } from '../services/workflow-run.service.js'
 import {
   PrismaDeviceMutationLeaseStore,
@@ -27,7 +25,7 @@ import {
   PrismaWorkflowRunStartStore,
 } from '../services/phase6-prisma-stores.js'
 
-const compileService = createHashPinnedCompileStub(defaultCompiledPlanStore)
+const compileService = createBridgeFlowCompileService(defaultCompiledPlanStore)
 const runService = new WorkflowRunService(
   new BridgeFlowExecutionQueue({
     prisma,

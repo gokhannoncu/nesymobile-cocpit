@@ -1,24 +1,80 @@
+/**
+ * BridgeFlow execution queue — the only path from an accepted Verdict run start
+ * to a real execution.
+ *
+ * The queue used to build an executor with a stubbed bridge (`act` returning a
+ * constant FAILED), no condition context, no variables, no oracle and no
+ * generic-step runtime. That executes in the sense that it terminates: every
+ * BRIDGE_ACTION failed, every wait timed out, and every CONDITION stopped the
+ * run because `evaluateConditionStep` refuses to branch without a context.
+ * This file now assembles the real ports.
+ *
+ * Failure modes stay distinguishable. A device whose Bridge preflight fails is
+ * `BLOCKED` with the preflight remediation, not `FAILED`: the workflow was never
+ * exercised, and recording it as a product failure would put a device problem
+ * into the run's verdict.
+ */
+
 import { BridgeFlowExecutor, createInMemoryMutationAdmission } from '@nesy/bridgeflow-executor'
 import type { PrismaClient } from '@nesy/db'
 
 import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
 import { PrismaExecutionPersistence } from './bridgeflow-prisma-persistence.js'
+import { BridgeUnavailableError, type BridgeDeviceManager } from './bridge-device-manager.js'
+import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
+import {
+  createBridgeRuntimePort,
+  createGenericStepRuntime,
+  createRemoteStepRuntime,
+} from './bridgeflow-device-ports.js'
+import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
+import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
+import { DeviceWorkerRegistry } from './device-worker.js'
 
 type QueueItem = Parameters<WorkflowRunExecutionQueue['enqueue']>[0]
+type RemoteStepRuntime = NonNullable<Parameters<typeof createRemoteStepRuntime>[0]['runtime']>
+
+export interface BridgeFlowExecutionQueueOptions {
+  prisma: PrismaClient
+  planStore: CompiledPlanStore
+  logger?: (message: string, detail?: unknown) => void
+  clock?: () => number
+  /** Test seam: acquire the device Bridge for a run. */
+  acquireBridge?: (input: {
+    deviceId: string
+    runId: string
+    executionId: string
+  }) => Promise<BridgeDeviceManager>
+  /**
+   * Back-office / external action runtime. Absent until a real
+   * `RemoteActionAdapter` is configured — REMOTE_ACTION steps then fail closed
+   * with a logged operation ref rather than silently.
+   */
+  remoteRuntime?: RemoteStepRuntime
+  /** Test seam: resolve the pinned domain pack. */
+  resolvePack?: (input: {
+    packKey: string
+    packVersion: string
+    packDigest?: string
+  }) => DomainPackResolution
+}
+
+async function acquireBridgeFromRegistry(input: {
+  deviceId: string
+  runId: string
+  executionId: string
+}): Promise<BridgeDeviceManager> {
+  const worker = DeviceWorkerRegistry.getOrCreate(input.deviceId)
+  return worker.acquireBridge(input.runId, input.executionId, Date.now())
+}
 
 export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
   private readonly pending: QueueItem[] = []
   private processing = false
 
-  constructor(
-    private readonly options: {
-      prisma: PrismaClient
-      planStore: CompiledPlanStore
-      logger?: (message: string, detail?: unknown) => void
-      clock?: () => number
-    },
-  ) {}
+  constructor(private readonly options: BridgeFlowExecutionQueueOptions) {}
 
   enqueue(input: QueueItem): void {
     this.pending.push(input)
@@ -50,27 +106,89 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
 
+    const resolvePack = this.options.resolvePack ?? resolveDomainPack
+    const resolution = resolvePack({
+      packKey: item.domainPackKey,
+      packVersion: item.domainPackVersion,
+      packDigest: item.domainPackDigest,
+    })
+    if (!resolution.ok) {
+      await this.blockRun(item, resolution.message)
+      return
+    }
+
+    let manager: BridgeDeviceManager
+    try {
+      manager = await (this.options.acquireBridge ?? acquireBridgeFromRegistry)({
+        deviceId: item.deviceId,
+        runId: item.runId,
+        executionId: item.executionId,
+      })
+    } catch (error) {
+      const reason =
+        error instanceof BridgeUnavailableError
+          ? `${error.message} — ${error.failure.remediation}`
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      await this.blockRun(item, reason)
+      return
+    }
+
     await this.options.prisma.verdictRunStart.updateMany({
       where: { runId: item.runId },
       data: { status: 'RUNNING' },
     })
 
+    const clock = this.options.clock ?? Date.now
+    const persistence = new PrismaExecutionPersistence(this.options.prisma)
+    const evidenceRuntime = getBridgeFlowEvidenceRuntime()
+    const runContext = new BridgeFlowRunContext({
+      capabilities: manager.getCapabilities(),
+      clock,
+    })
+    const oracle = new OracleEvaluationWorker({
+      runtime: evidenceRuntime,
+      persistence,
+      clock,
+    })
+
     try {
       const executor = new BridgeFlowExecutor({
-        persistence: new PrismaExecutionPersistence(this.options.prisma),
+        persistence,
         mutationAdmission: createInMemoryMutationAdmission(),
-        bridge: {
-          act: async () => ({
-            terminalState: 'FAILED',
-            effectVerified: false,
-            evidenceRef: 'bridgeflow:missing-real-bridge-port',
-          }),
-          waitAny: async () => ({ status: 'TIMEOUT', elapsedMs: 0 }),
-          cancelWait: async () => ({ status: 'CANCELLED' }),
-          cancelAction: async () => ({ status: 'CANCELLED' }),
+        bridge: createBridgeRuntimePort({ manager, variables: runContext, runId: item.runId }),
+        evidence: {
+          factsForOccurrence: (occurrenceId) => {
+            // Facts are also handed to the condition resolver: a branch that
+            // reads `sdk.state.*` must see what the oracle lane saw, not a
+            // second, differently-filtered view of the same run.
+            const facts = evidenceRuntime.currentFacts(
+              { runId: item.runId, occurrenceId, iterationKey: '' },
+              clock(),
+            )
+            runContext.observeFacts(facts)
+            return facts
+          },
         },
-        evidence: { factsForOccurrence: () => [] },
-        clock: this.options.clock ?? Date.now,
+        conditionContext: runContext.conditionContext(),
+        variables: runContext,
+        remoteRuntime: createRemoteStepRuntime({
+          ...(this.options.remoteRuntime === undefined ? {} : { runtime: this.options.remoteRuntime }),
+          ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+        }),
+        genericSteps: createGenericStepRuntime({
+          manager,
+          variables: runContext,
+          bundle: resolution.pack.bundle,
+          runId: item.runId,
+          ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+        }),
+        oracle: {
+          runContinueGate: (work) => oracle.runContinueGate(work),
+          runFinalOracle: (work) => oracle.runFinalOracle(work),
+        },
+        clock,
       })
 
       const result = await executor.execute({

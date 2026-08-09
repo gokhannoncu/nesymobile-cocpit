@@ -37,6 +37,13 @@ export function buildKnownRegistryKeys(registries: DomainPackRegistries): KnownR
     factKeys: new Set([
       ...registries.evidenceSources.filter((s) => s.factKey).map((s) => s.factKey!),
       ...registries.derivedFacts.facts.map((f) => f.factKey),
+      // Remote adapter operations declare facts too — a back-office VALIDATION
+      // operation exists precisely to produce one. Omitting this lane made every
+      // macro that references a remotely-produced fact fail to compile with
+      // UNKNOWN_REGISTRY_REF, even though the pack declares the fact properly.
+      ...registries.remoteAdapters.flatMap((adapter) =>
+        adapter.operations.flatMap((operation) => operation.outputs.map((output) => output.factKey)),
+      ),
     ]),
   };
 }
