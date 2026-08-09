@@ -12,6 +12,7 @@ import { GateOracleTimeline } from '@/components/automation/run-detail/GateOracl
 import { OutcomePanel } from '@/components/automation/run-detail/OutcomePanel'
 import { VerdictDisposition } from '@/components/automation/run-detail/VerdictDisposition'
 import { ReproExportPanel } from '@/components/automation/run-detail/ReproExportPanel'
+import { ProvenancePanel } from '@/components/automation/run-detail/ProvenancePanel'
 import { InteractionOriginsPanel } from '@/components/automation/run-detail/InteractionOriginsPanel'
 import { DiagnosticWaterfall } from '@/components/automation/run-detail/DiagnosticWaterfall'
 import { LiveUpdateSubscription } from '@/components/automation/run-detail/LiveUpdateSubscription'
@@ -149,6 +150,7 @@ export default async function RunDetailPage(props: {
 
         <div className="space-y-8">
           <OccurrenceTree run={runDetail} />
+          <ProvenancePanel run={runDetail} />
           <ReproExportPanel run={runDetail} />
         </div>
       </div>

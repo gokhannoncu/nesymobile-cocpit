@@ -17,7 +17,10 @@ import {
   type DiagnosticOsExecutor,
   type MemoryPressureDetected,
 } from './CapturePolicyEngine.js'
-import { selectSensitiveCapturesForPurge } from './sensitive-capture-purge.js'
+import {
+  DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS,
+  selectSensitiveCapturesForPurge,
+} from './sensitive-capture-purge.js'
 
 function policy(overrides?: { d3Enabled?: boolean }) {
   return {
@@ -162,13 +165,22 @@ describe('Phase 7.19 security / retention / fail-fast', () => {
 
   it('selects only sensitive captures older than retention SLA', () => {
     const now = Date.parse('2026-08-09T12:00:00.000Z')
+    expect(DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS).toBe(24 * 60 * 60_000)
     const ids = selectSensitiveCapturesForPurge(
       [
         { captureId: 'keep-fresh', sensitive: true, createdAt: now - 60_000 },
-        { captureId: 'purge-old', sensitive: true, createdAt: now - 3_600_000 },
-        { captureId: 'keep-nonsensitive', sensitive: false, createdAt: now - 3_600_000 },
+        {
+          captureId: 'purge-old',
+          sensitive: true,
+          createdAt: now - DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS - 1,
+        },
+        {
+          captureId: 'keep-nonsensitive',
+          sensitive: false,
+          createdAt: now - DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS - 1,
+        },
       ],
-      30 * 60_000,
+      DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS,
       now,
     )
     expect(ids).toEqual(['purge-old'])

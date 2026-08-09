@@ -1,7 +1,10 @@
 /**
- * Phase 7.19 — select sensitive diagnostic captures past retention SLA.
+ * Phase 7.19 / residual — select sensitive diagnostic captures past retention SLA.
  * Wiring to a cron/job is separate; this is the pure selection contract.
  */
+
+/** Default sensitive-capture retention window (24h). */
+export const DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS = 24 * 60 * 60_000
 
 export interface PurgeCandidate {
   captureId: string
@@ -11,7 +14,7 @@ export interface PurgeCandidate {
 
 export function selectSensitiveCapturesForPurge(
   audits: readonly PurgeCandidate[],
-  olderThanMs: number,
+  olderThanMs: number = DEFAULT_SENSITIVE_CAPTURE_RETENTION_MS,
   nowMs: number = Date.now(),
 ): readonly string[] {
   if (!Number.isFinite(olderThanMs) || olderThanMs < 0) {

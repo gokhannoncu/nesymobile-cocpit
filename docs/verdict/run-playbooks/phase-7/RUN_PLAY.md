@@ -4,12 +4,12 @@
 runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
-status: IN_PROGRESS
-recoveryState: IN_PROGRESS_AT_7_25
+status: COMPLETED
+recoveryState: COMPLETED
 createdAt: "2026-08-05 14:44:28 +03"
 startedAt: "2026-08-09 17:10:00 +03"
-completedAt: null
-lastUpdatedAt: "2026-08-09 17:42:14 +03"
+completedAt: "2026-08-09 18:00:32 +03"
+lastUpdatedAt: "2026-08-09 18:04:30 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -50,9 +50,15 @@ Phase 4B: Domain Pack Contracts + Nesy Courier Reference Pack COMPLETE
 Phase 4C: BridgeFlowCompiler COMPLETE_REQUIRED
 Phase 5: BridgeFlowExecutor + Oracle v2 + Persistence COMPLETE_REQUIRED
 Phase 6: Cockpit UI + Route Cutover COMPLETE_REQUIRED
-Phase 7: Nesy real workflows + diagnostics/security acceptance READY_TO_PREPARE
+Phase 7: Nesy real workflows + diagnostics/security acceptance COMPLETED
 Next after 7: Phase 8 Bridge physical acceptance and Maestro cutover gate
 ```
+
+```text
+CHECKPOINT 7: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
+phase8Readiness: READY_WITH_EXTERNAL_BLOCKERS
+```
+
 
 Bu fazda hedef, “runtime teorik olarak çalışıyor” demek değildir. Hedef, gerçek
 Nesy Mobile / Cockpit / SDK / Bridge / Backend entegrasyonunda:
@@ -370,12 +376,12 @@ Gerçek DUT yoksa:
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.25` |
-| Current state | `IN_PROGRESS` |
-| Last successful step | `7.24` |
-| Last attempted step | `7.24` |
-| Last update | `2026-08-09 17:42:14 +03` |
-| Recovery instruction | `Resume at 7.25 Verification. 7.0–7.24 DONE. CP3-DUT+B-12 DEFERRED. Real DUT yoksa full CP7 PASS verme.` |
+| Current step | `7.26` |
+| Current state | `COMPLETED` |
+| Last successful step | `7.26` |
+| Last attempted step | `7.26` |
+| Last update | `2026-08-09 18:04:30 +03` |
+| Recovery instruction | `Phase 7 COMPLETED (residuals closed). Resume at Phase 8. CP3-DUT+B-12 DEFERRED. Real DUT yoksa full Act Mode PASS verme.` |
 
 ## 5. Owned paths
 
@@ -451,8 +457,8 @@ handoff yazılmalıdır.
 | 7.22 Campaign schedules | `DONE` | PR/nightly/weekly/release fixtures + cell gate. | Campaign acceptance |
 | 7.23 Provenance/deep-links | `DONE` | list→editor→run→detail→history + pins. | UI/API chain |
 | 7.24 Negative safety tests | `DONE` | core leak / barcode / HTTP2xx / preview GO. | Safety suite |
-| 7.25 Verification | `PENDING` | digest/typecheck/test/DUT evidence/diff checks. | Verification |
-| 7.26 RESULT closure | `PENDING` | CHECKPOINT 7 checklist + Phase 8 readiness. | Handoff |
+| 7.25 Verification | `DONE` | digest/typecheck/test/diff checks green; DUT blocked external. | Verification |
+| 7.26 RESULT closure | `DONE` | CHECKPOINT 7 PASSED_WITH_EXTERNAL_DUT_BLOCKERS; Phase 8 READY_WITH_EXTERNAL_BLOCKERS. | Handoff |
 
 ## 7. Nesy reference workflows
 
