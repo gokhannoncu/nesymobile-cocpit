@@ -4,11 +4,11 @@
 runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
-resultState: NOT_STARTED
+resultState: READY_TO_START
 createdAt: "2026-08-05 14:44:28 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-05 14:44:28 +03"
+lastUpdatedAt: "2026-08-09 16:42:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
@@ -22,18 +22,20 @@ phase8Readiness: "NOT_EVALUATED"
 
 ## 1. Executive result
 
-Phase 7 henüz başlamadı.
+Phase 6 gate **açıldı** (`READY_WITH_EXTERNAL_BLOCKERS`). Phase 7 implementation
+başlayabilir (`READY_TO_START`).
 
-Bu dosya Phase 7 agent'ı tarafından çalışma başladığında `IN_PROGRESS`, kapanışta
-ise `COMPLETED`, `READY_WITH_BLOCKERS`, `BLOCKED_PRECONDITION`,
-`BLOCKED_EXTERNAL` veya `FAILED` olarak güncellenecektir.
+**Operator note (2026-08-09):** **CP3-DUT** ve **B-12** lab/DUT test işidir;
+kod işi değil. Sonraya bırakıldı. Full CP7 / Act Mode acceptance için sonra
+koşulacak — Phase 7 start’ı bloke etmez. Real-DUT adımları koşulana kadar
+ilgili acceptance maddeleri `BLOCKED_EXTERNAL` kalabilir.
 
 Beklenen hedef:
 
 ```text
 CHECKPOINT 7: Nesy reference workflows + diagnostics/security acceptance
 Runtime/API/UI source: Phase 4C/5/6 output'ları tüketilecek
-Real DUT: FULL PASS için gerekli
+Real DUT: FULL PASS için gerekli (CP3-DUT / B-12 deferred — lab later)
 Maestro cutover/removal: YAPILMAYACAK
 Bridge physical B1 cutover gate: Phase 8'e bırakılacak
 ```
@@ -43,12 +45,12 @@ Bridge physical B1 cutover gate: Phase 8'e bırakılacak
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.0` |
-| Current state | `WAITING_FOR_PHASE_6_RESIDUALS` |
-| Last successful step | `6.0` |
-| Last attempted step | `7.0` |
-| Last update | `2026-08-06 23:10:00 +03` |
-| Recovery instruction | `Phase 7 başlamadı. Operatör kararı: PASS_PARTIAL + OPEN_LOCAL + OPEN_EXTERNAL (CP3-DUT/B-12) bitmeden geçilmeyecek. phase-6/RESULT phase7Readiness=HELD_UNTIL_RESIDUALS.` |
+| Current step | `7.1` |
+| Current state | `READY_TO_START` |
+| Last successful step | `7.0` |
+| Last attempted step | `7.1` |
+| Last update | `2026-08-09 16:42:00 +03` |
+| Recovery instruction | `Phase 6 COMPLETED + phase7Readiness=READY_WITH_EXTERNAL_BLOCKERS. Start 7.1. CP3-DUT+B-12 DEFERRED (lab later).` |
 
 ## 3. Precondition gate
 
@@ -56,30 +58,32 @@ Phase 7 implementation başlamadan önce:
 
 | Gate | Required | Current evidence |
 |---|---|---|
-| Phase 6 result state | `COMPLETED` | `PENDING` |
-| Phase 6 readiness | `READY_WITH_EXTERNAL_BLOCKERS` | `PENDING` |
-| Field Login generic UI/API route | available | `PENDING` |
-| Load Tour generic UI/API route | available | `PENDING` |
-| Run Detail/Evidence Journey UI | available | `PENDING` |
-| Test Profile/Campaign UI | available | `PENDING` |
-| Nesy Courier Domain Pack published/testable | available | `PENDING` |
-| Real DUT availability | required for full PASS | `PENDING` |
-| Nesy backend/backoffice adapter capability | available | `PENDING` |
+| Phase 6 result state | `COMPLETED` | `PASS` — `phase-6/RESULT.md` |
+| Phase 6 readiness | `READY_WITH_EXTERNAL_BLOCKERS` | `PASS` — operator release 2026-08-09 |
+| Field Login generic UI/API route | available | `PASS` — Phase 6 cutover |
+| Load Tour generic UI/API route | available | `PASS` — Phase 6 cutover |
+| Run Detail/Evidence Journey UI | available | `PASS` — Phase 6 shells |
+| Test Profile/Campaign UI | available | `PASS` — Phase 6 |
+| Nesy Courier Domain Pack published/testable | available | `PASS` — pack in workspace |
+| Real DUT availability | required for full PASS | `DEFERRED` — CP3-DUT / B-12 lab later |
+| Nesy backend/backoffice adapter capability | available | `PASS_PARTIAL` — adapters exist; live confirm later |
 
 Başlangıç kararı:
 
 ```text
-implementationStart: BLOCKED_UNTIL_PHASE_6_COMPLETES
+implementationStart: ALLOWED
+phase6Gate: READY_WITH_EXTERNAL_BLOCKERS
+deferredLab: CP3-DUT, B-12
 ```
 
 ## 4. Inherited blockers / constraints
 
 | ID | Severity | Description | Owner | Status | Phase 7 etkisi |
 |---|---|---|---|---|---|
-| PHASE_6_NOT_COMPLETE | HIGH | Phase 7, Phase 6 UI/route/read-model acceptance çıktısına bağlıdır. | UI owner | `BLOCKING` | Phase 6 tamamlanmadan başlamaz. |
-| REAL_DUT_REQUIRED | HIGH/EXTERNAL | Full CP7 PASS için gerçek Nesy DUT gerekir. | Device/Mobile owner | `OPEN_EXTERNAL` | Yoksa real workflow acceptance `BLOCKED_EXTERNAL` kalır. |
-| CP3-DUT | HIGH/EXTERNAL | Real DUT mutation acceptance için userdebug/eng lab cihaz gerekiyor. | Device/Mobile owner | `OPEN_EXTERNAL` | CP7 real DUT maddelerini bloke edebilir. |
-| B-12 | MEDIUM | Production cihazda arka arkaya smoke handshake flaky. | Mobile owner | `OPEN` | Field Login/Load Tour/Full Courier DUT smoke etkilenir. |
+| PHASE_6_NOT_COMPLETE | HIGH | Phase 7, Phase 6 UI/route/read-model acceptance çıktısına bağlıdır. | UI owner | `RESOLVED` | Gate açık — Phase 6 COMPLETED. |
+| REAL_DUT_REQUIRED | HIGH/EXTERNAL | Full CP7 PASS için gerçek Nesy DUT gerekir. | Device/Mobile owner | `OPEN_EXTERNAL` / **DEFERRED** | Full PASS bloke; start OK. Lab later. |
+| CP3-DUT | HIGH/EXTERNAL | Real DUT mutation acceptance için userdebug/eng lab cihaz gerekiyor. | Device/Mobile owner | `OPEN_EXTERNAL` / **DEFERRED** | Op 2026-08-09: sonra yapılır (lab/test, not code). |
+| B-12 | MEDIUM | Production cihazda arka arkaya smoke handshake flaky. | Mobile owner | `OPEN_EXTERNAL` / **DEFERRED** | Op 2026-08-09: 30× smoke sonra (lab). |
 | B-8 | MEDIUM | Repo-wide lint ESLint v9 flat-config borcu. | Platform owner | `OPEN_NON_BLOCKING` | Touched packages targeted gates yeşil olmalı. |
 
 ## 5. Step execution log
@@ -87,7 +91,7 @@ implementationStart: BLOCKED_UNTIL_PHASE_6_COMPLETES
 | Step | Status | Evidence |
 |---|---|---|
 | 7.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` |
-| 7.1 Phase 6 gate doğrulama | `PENDING` | — |
+| 7.1 Phase 6 gate doğrulama | `READY` | phase-6 COMPLETED + READY_WITH_EXTERNAL_BLOCKERS; CP3-DUT/B-12 deferred |
 | 7.2 Preflight/device baseline | `PENDING` | — |
 | 7.3 Nesy workflow inventory | `PENDING` | — |
 | 7.4 Field Login cutover | `PENDING` | — |

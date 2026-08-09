@@ -70,8 +70,9 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 | M4B App Adapter production | `COMPLETED` | `mobile-run-playbooks/phase-4b/RESULT.md` |
 | M4C Compatibility fixtures | `COMPLETED` | `mobile-run-playbooks/phase-4c/RESULT.md` |
 | M5 Correlation + recovery | `COMPLETED` | `mobile-run-playbooks/phase-5/RESULT.md` |
-| M6 Inspector / Bridge diagnostics | `COMPLETED` | `mobile-run-playbooks/phase-6/RESULT.md` (M7 READY_WITH_EXTERNAL) |
-| M7…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M7) |
+| M6 Inspector / Bridge diagnostics | `COMPLETED` | `mobile-run-playbooks/phase-6/RESULT.md` |
+| M7 Real flows + release isolation | `READY_WITH_EXTERNAL_BLOCKERS` | `mobile-run-playbooks/phase-7/RESULT.md` (DUT/storeFile/Cockpit P7 held) |
+| M8…M9 | `NOT_STARTED` | ilgili `phase-*/RESULT.md` (sonraki: M8 after M7 externals) |
 
 > **Bu doküman kendi kendine yeterlidir.** Cockpit için kapsam, hedef mimari,
 > yapılacaklar, yapılmayacaklar, sıralama, bağımlılıklar, fiziksel cihaz kapıları,

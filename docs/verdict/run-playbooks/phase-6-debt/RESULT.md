@@ -7,7 +7,7 @@ resultState: COMPLETED
 createdAt: "2026-08-06 09:30:00 +03"
 startedAt: "2026-08-06 19:21:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 23:10:00 +03"
+lastUpdatedAt: "2026-08-09 16:42:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
@@ -15,7 +15,7 @@ verifiedMasterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2
 runPlayFile: "docs/verdict/run-playbooks/phase-6-debt/RUN_PLAY.md"
 originalResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 dependsOn: "docs/verdict/run-playbooks/phase-5-debt/RESULT.md"
-phase7Readiness: "HELD_UNTIL_RESIDUALS"
+phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
 checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 priority: P1
 ```
@@ -24,13 +24,16 @@ priority: P1
 
 `COMPLETED`. Debt 6D.1–6D.4 finished; P1 residual shells wired and re-scored.
 
+**Operator (2026-08-09):** Phase 7 gate opened. **CP3-DUT** / **B-12** deferred
+(lab/DUT later — not coding). See `phase-6/RESULT.md` §12.
+
 ```text
 Phase 6 DEBT: COMPLETED
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: HELD_UNTIL_RESIDUALS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 P1 shells: 50/54/61/63/65/67/69/71–73/75 → PASS
 Local deepeners: 85/digest/capability/46–47/79–81 → PASS; 51–53 PARTIAL
-External blocking Phase 7: CP3-DUT, B-12
+Deferred external (lab later): CP3-DUT, B-12
 ```
 
 Handoff: `phase-6/RESULT.md` §9 + §12.
@@ -43,7 +46,7 @@ Handoff: `phase-6/RESULT.md` §9 + §12.
 | Current step | `6D.4` |
 | Current state | `COMPLETED` |
 | Last successful step | `6D.4` |
-| Recovery instruction | `Debt closed. Phase 7 HELD_UNTIL_RESIDUALS until CP3-DUT + B-12 clear.` |
+| Recovery instruction | `Debt closed. Phase 7 READY_WITH_EXTERNAL_BLOCKERS. CP3-DUT+B-12 deferred 2026-08-09.` |
 
 ## 3. Precondition gate
 
@@ -54,7 +57,7 @@ Handoff: `phase-6/RESULT.md` §9 + §12.
 | Entity Binding / Semantic / Surfaces | available | `PASS` |
 | Seed'li runtime | dolu | `PASS` |
 | `tsc` (web cutover paths) | clean | `PASS` — field-login + interactions TS fixed at 6D.4 close |
-| Full `next build` this close | yeşil | `PASS_PARTIAL` — not re-run under lock after final TS fix; prior auto-build failed on cutover TS |
+| Full `next build` this close | yeşil | `PASS` — 2026-08-09 bağımsız review'da koşturuldu: `Compiled successfully`, 51/51 static page |
 
 ```text
 implementationStart: ALLOWED (historical)
@@ -79,7 +82,7 @@ debtClose: COMPLETED
 | 6D.2 Surface Registry manager | `DONE` | surface-registry-manager.test.ts |
 | 6D.3 Kalan CHECKPOINT sweep | `DONE` | §12; 57/58 de-fabricated |
 | DTO cutover 33/34/37/38/44 | `DONE` | dto-cutover.test.ts + manifest |
-| 6D.4 6.30 kapanışı | `DONE` | phase-6/RESULT §9 full 85; `checkpoint6: NOT_PASSED` |
+| 6D.4 6.30 kapanışı | `DONE` | phase-6/RESULT §9 full 85; `checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS` (6D.4 ilk yazımı `NOT_PASSED`'dı; P1 shell re-score sonrası güncellendi) |
 
 ## 6. CHECKPOINT 6 durumu (6D.4 kapanışı)
 
@@ -99,7 +102,7 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 
 | Path | Değişim | Neden |
 |---|---|---|
-| `docs/verdict/run-playbooks/phase-6/RESULT.md` | MODIFIED | §5 6.10–6.12/6.30; §9 full 85; checkpoint6 NOT_PASSED; phase7 NOT_READY |
+| `docs/verdict/run-playbooks/phase-6/RESULT.md` | MODIFIED | §5 6.10–6.12/6.30; §9 full 85; checkpoint6 + phase7Readiness (son değerler §11) |
 | `docs/verdict/run-playbooks/phase-6-debt/RESULT.md` | MODIFIED | bu dosya — COMPLETED |
 | `docs/verdict/run-playbooks/DEBT_INDEX.md` | MODIFIED | phase-6-debt closed |
 | `apps/web/.../field-login/page.tsx` | MODIFIED | cutover TS: `devices.devices.find` |
@@ -114,8 +117,8 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 | dto-cutover + page-acceptance + data-source-cutover | `PASS` — 282 tests (pre-close) |
 | Live API `:4001` | `PASS` — catalog/runs/interactions |
 | `tsc --noEmit` (web) | `PASS` after cutover TS fix |
-| Full `next build` under lock at close | `NOT_RE_RUN` — record `PASS_PARTIAL` on item 85 |
-| 6.30 / checkpoint6 written | `DONE` — `NOT_PASSED` |
+| Full `next build` under lock at close | `PASS` — bağımsız review 2026-08-09; 51/51 sayfa |
+| 6.30 / checkpoint6 written | `DONE` — `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` |
 
 ## 9. Acceptance checklist
 
@@ -126,8 +129,8 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 | 11 | Kalan madde verdict + kanıt | `PASS` | phase-6/RESULT §9 |
 | 11b | DTO cutover 33/34/37/38/44 | `PASS` | dto-cutover.test.ts |
 | 12 | 6.10/6.11/6.12 satırları düzeltildi | `PASS` | phase-6/RESULT §5 |
-| 13 | `checkpoint6` kanıta göre | `PASS` | `NOT_PASSED` |
-| 14 | Route çakışması yok; build | `PASS_PARTIAL` | tsc clean; full next build not re-proven |
+| 13 | `checkpoint6` kanıta göre | `PASS` | `PASSED_WITH_EXTERNAL_DUT_BLOCKERS` — ~74 PASS / ~11 PASS_PARTIAL / 0 yerel FAIL |
+| 14 | Route çakışması yok; build | `PASS` | tsc 24/24 + `next build` 51/51 (2026-08-09 review) |
 
 ## 10. Blockers
 
@@ -140,23 +143,24 @@ See prior step logs for 6D.1–DTO cutover file lists. 6D.4 additions:
 | `B-6-INSPECTOR-SHELLS` | MEDIUM/LOCAL | `RESOLVED` | P1 — mapper + idle waits; 51–53 PARTIAL |
 | `CAPABILITY-NEGOTIATION` | MEDIUM/LOCAL | `RESOLVED` | deviceId → Bridge B2 host baseline (`deriveCapabilityManifest`) |
 | `MASTER-DIGEST-DRIFT` | MEDIUM/INVENTORY | `RESOLVED` | playbooks repinned to `sha256:b8163139…` |
-| `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` | **proven blocked** — `R6CW400BC8N` `ro.build.type=user` `ro.debuggable=0` |
-| `B-12` | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` | needs 30× smoke on approved lab device — not run this session |
+| `CP3-DUT` | HIGH/EXTERNAL | `OPEN_EXTERNAL` / **DEFERRED** | Lab later — `R6CW400BC8N` type=`user` debuggable=`0`; not a Phase 7 start blocker (op 2026-08-09) |
+| `B-12` | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` / **DEFERRED** | Lab later — 30× smoke not run; not a Phase 7 start blocker (op 2026-08-09) |
 
 ## 11. Readiness decision
 
 ```text
-phase7Readiness: HELD_UNTIL_RESIDUALS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
-Debt playbook handoff (operator hold):
+Debt playbook handoff (operator 2026-08-09):
 
 ```text
 Phase 6 DEBT: COMPLETED
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: HELD_UNTIL_RESIDUALS
-Reason: CP3-DUT + B-12 not cleared; user asked not to enter Phase 7 until residuals finish.
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
+Deferred (lab/DUT later, not coding): CP3-DUT, B-12
+Phase 7 may start.
 ```
 
 ## 12. CHECKPOINT sweep evidence (retained)
@@ -215,3 +219,53 @@ Conscious placeholders from `page-migration-manifest.ts`
 | `/engineering/screen-manual` | Screen Manual | engineering |
 
 Target phase: post–CHECKPOINT 6 product/PM backlog. Not Phase 6 scope.
+
+## 13. Bağımsız review kapanış notu (2026-08-09)
+
+Üçüncü taraf doğrulama, kapanış iddialarını çalışan sistem üzerinde ölçtü.
+
+| Kontrol | İddia | Ölçüm |
+|---|---|---|
+| `next build` | `PASS_PARTIAL` / `NOT_RE_RUN` | **`PASS`** — `Compiled successfully`, 51/51 static page. Çekince kapatıldı |
+| `pnpm typecheck` | — | `PASS` — 24/24 |
+| `@nesy/web` test | — | `PASS` — 537 test / 46 dosya |
+| `@nesy/api` test | `PASS` | **1 FAIL bulundu ve düzeltildi** — aşağıda |
+| Panellerin runtime'a bağlanması | `PASS` | `PASS` — beş panelin her birinde gerçek client çağrısı; sabit dizi kalmadı |
+| Sol palet cutover | `PASS` | `PASS` — pack primary, düşüşte **görünür gerekçeli** legacy rozeti (`no published Domain Pack` / `pack palette unavailable (...)`) |
+| Surface Registry | `PASS` | `PASS` — rota + manifest kaydı + `acceptanceTestRef` |
+| Faz 7 kapı değerleri | `READY_WITH_EXTERNAL_BLOCKERS` | `PASS` — `phase-6/RESULT` başlığında iki koşul da yerinde |
+
+### Düzeltilen: cross-repo fixture sürüklenmesi
+
+```text
+FAIL contract-fixtures.test.ts > control-plane fixtures cover every Verdict control op
+     TypeError: Cannot read properties of undefined (reading 'op')
+```
+
+Kök neden phase-6-debt değil: `verdict-contract-fixtures` bir **git submodule** ve
+mobil taraf Bridge B2 fixture'ları eklemiş. Corpus artık iki şekil taşıyor:
+
+- legacy `am` kanalı → `{ op: { op } }`
+- Bridge B2 protokolü → `{ request: { command } }`
+
+Cockpit testi yalnız birinci şekli okuyordu; her B2 fixture'ı testi çökertiyordu.
+Fixture'lara dokunulmadı (başka reponun sahipliği); test iki şekli de okuyacak
+biçimde düzeltildi.
+
+Ayrıca eksik güvence eklendi: B2 komutları artık **iddia ediliyor**
+(`wait_any`, `cancel_request`, `capabilities`, `register_watch`). Böylece upstream'de
+bir komut kaybolursa cockpit build'i sessizce daralmak yerine kırılır — Faz 7
+mobil entegrasyon fazı olduğu için bu dikiş yerinin korunması gerekiyordu.
+
+API suite: 387 passed + 1 failed → **389 passed / 0 failed**.
+
+### Taşınan kısmi durum
+
+CHECKPOINT 6 dağılımı: ~74 `PASS`, ~11 `PASS_PARTIAL` (46–47, 51–53, 79–81, 85),
+0 yerel `FAIL`. Kapanış "tam geçti" değil, **kısmilerle geçti**; bu kalemler
+Faz 7'ye taşınan borç olarak görünür kalmalı.
+
+`CP3-DUT` ve `B-12` operatör kararıyla ertelendi (2026-08-09). Not: Faz 7 kendi
+playbook'unda *"Real DUT: FULL PASS için gerekli"* diyor ve bağlı cihaz
+`SM-A346E` hâlâ `ro.build.type=user` / `debuggable=0`. Faz 7 kodlama tarafı
+ilerler, acceptance maddelerinin bir kısmı ilk günden `BLOCKED_EXTERNAL` yazacak.

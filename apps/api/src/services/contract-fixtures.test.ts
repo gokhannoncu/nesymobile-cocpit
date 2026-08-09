@@ -264,10 +264,21 @@ describe("golden contract fixtures", () => {
 
   it("control-plane fixtures cover every Verdict control op", () => {
     const dir = join(FIXTURES, "control-plane");
+    // The corpus carries two shapes. Legacy control ops travel the `am` channel
+    // as `{ op: { op } }`; Bridge B2 protocol requests are `{ request: { command } }`.
+    // Reading only the first shape made every B2 fixture crash this test with
+    // `Cannot read properties of undefined (reading 'op')`.
     const ops = readdirSync(dir)
       .filter((f) => f.endsWith(".json"))
-      .map((f) => JSON.parse(readFileSync(join(dir, f), "utf8")) as { op: { op: string } })
-      .map((c) => c.op.op);
+      .map(
+        (f) =>
+          JSON.parse(readFileSync(join(dir, f), "utf8")) as {
+            op?: { op?: string };
+            request?: { command?: string };
+          },
+      )
+      .map((fixture) => fixture.op?.op ?? fixture.request?.command)
+      .filter((op): op is string => typeof op === "string");
     for (const required of [
       "get_state",
       "get_device_id",
@@ -280,6 +291,22 @@ describe("golden contract fixtures", () => {
       "end_run",
     ]) {
       expect(ops, `control-plane fixture missing for ${required}`).toContain(required);
+    }
+  });
+
+  it("control-plane fixtures cover the Bridge B2 protocol commands", () => {
+    // Guards the cross-repo seam: these fixtures come from the
+    // `verdict-contract-fixtures` submodule owned by the mobile side. Asserting
+    // them here means a B2 command disappearing upstream fails the cockpit
+    // build instead of silently narrowing the corpus.
+    const dir = join(FIXTURES, "control-plane");
+    const commands = readdirSync(dir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => JSON.parse(readFileSync(join(dir, f), "utf8")) as { request?: { command?: string } })
+      .map((fixture) => fixture.request?.command)
+      .filter((command): command is string => typeof command === "string");
+    for (const required of ["wait_any", "cancel_request", "capabilities", "register_watch"]) {
+      expect(commands, `B2 control-plane fixture missing for ${required}`).toContain(required);
     }
   });
 });

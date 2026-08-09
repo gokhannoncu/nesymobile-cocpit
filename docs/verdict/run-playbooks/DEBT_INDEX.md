@@ -28,7 +28,7 @@ phase-5-debt  (API yüzeyleri)           ✅ COMPLETED
 phase-6-debt  (UI + Surface + 6.30)     ✅ COMPLETED / PASSED_WITH_EXTERNAL_DUT_BLOCKERS
       │
       ▼
-Phase 7 gate                            ✅ READY_WITH_EXTERNAL_BLOCKERS (CP3-DUT/B-12)
+Phase 7 gate                            ✅ READY_WITH_EXTERNAL_BLOCKERS (CP3-DUT/B-12 DEFERRED lab later — op 2026-08-09)
 
 phase-2-debt   ─ bağımsız, paralel yürüyebilir
 phase-3-debt   ─┐
@@ -37,7 +37,8 @@ phase-4-debt   ─┴ harici cihaz gerektirir; Faz 6 kapanışını engellemez,
 ```
 
 **Kritik yol kapandı** (`phase-5-debt` → `phase-6-debt` COMPLETED + P1 shells).
-Phase 7 gate: `READY_WITH_EXTERNAL_BLOCKERS` (`CP3-DUT`, `B-12`).
+Phase 7 gate: `READY_WITH_EXTERNAL_BLOCKERS`.
+**Deferred lab (op 2026-08-09, not coding):** `CP3-DUT`, `B-12` — sonra yapılır; Phase 7 start OK.
 
 Aynı bağımlılık paletin kendisi için de geçerli: CHECKPOINT madde 2 ("operatör
 Maestro/YAML bilmeden workflow oluşturabiliyor") ancak sol palet Domain Pack'ten

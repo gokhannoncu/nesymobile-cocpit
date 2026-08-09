@@ -4,12 +4,12 @@
 runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
-status: NOT_STARTED
-recoveryState: WAITING_FOR_PHASE_6_COMPLETION
+status: READY_TO_START
+recoveryState: READY_TO_START
 createdAt: "2026-08-05 14:44:28 +03"
 startedAt: null
 completedAt: null
-lastUpdatedAt: "2026-08-05 14:44:28 +03"
+lastUpdatedAt: "2026-08-09 16:42:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -21,19 +21,20 @@ phase6StatusRequired: "COMPLETED"
 phase6ReadinessRequired: "READY_WITH_EXTERNAL_BLOCKERS"
 phase7Target: "CHECKPOINT_7"
 phase8ReadinessTarget: "READY_WITH_EXTERNAL_BLOCKERS"
+operatorNote: "2026-08-09: CP3-DUT + B-12 deferred (lab/DUT test, not coding). Phase 7 may start; full Act Mode/DUT PASS later."
 blockingPreflight:
   - id: "PHASE_6_NOT_COMPLETE"
-    status: "BLOCKING"
-    meaning: "Phase 7, Phase 6 Cockpit UI/read-model/route acceptance çıktılarına bağlıdır."
+    status: "RESOLVED"
+    meaning: "Phase 6 COMPLETED + READY_WITH_EXTERNAL_BLOCKERS (2026-08-09)."
   - id: "REAL_DUT_REQUIRED"
     status: "BLOCKING_EXTERNAL_FOR_FULL_PASS"
     meaning: "Phase 7 gerçek Nesy workflow ve Test Profile kabulü için en az bir gerçek DUT gerekir. Yoksa code/test-double çalışması yapılabilir ama CHECKPOINT 7 full PASS verilemez."
   - id: "CP3-DUT"
-    status: "OPEN_EXTERNAL"
-    meaning: "Real DUT mutation acceptance hâlâ external ise Phase 7 gerçek cihaz acceptance BLOCKED_EXTERNAL kalır."
+    status: "OPEN_EXTERNAL_DEFERRED"
+    meaning: "Operator 2026-08-09: lab later (userdebug/eng DUT). Not a Phase 7 start blocker; real mutation acceptance stays BLOCKED_EXTERNAL until cleared."
   - id: "B-12"
-    status: "OPEN_EXTERNAL"
-    meaning: "Production cihaz smoke handshake flaky ise Field Login/Load Tour/Full Courier DUT acceptance etkilenir."
+    status: "OPEN_EXTERNAL_DEFERRED"
+    meaning: "Operator 2026-08-09: 30× Device Lab smoke later. Not a Phase 7 start blocker; DUT smoke acceptance may stay blocked until cleared."
   - id: "B-8"
     status: "OPEN_NON_BLOCKING"
     meaning: "Repo-wide lint ESLint v9 flat-config borcu; touched packages/routes targeted lint/typecheck/test gate'lerinden geçmelidir."
@@ -369,12 +370,12 @@ Gerçek DUT yoksa:
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.0` |
-| Current state | `WAITING_FOR_PHASE_6_COMPLETION` |
-| Last successful step | `6.0` |
-| Last attempted step | `7.0` |
-| Last update | `2026-08-05 14:44:28 +03` |
-| Recovery instruction | `Phase 7 playbook hazır. Phase 6 RESULT COMPLETED + phase7Readiness READY_WITH_EXTERNAL_BLOCKERS olmadan implementation başlatma. Real DUT yoksa full CP7 PASS verme.` |
+| Current step | `7.1` |
+| Current state | `READY_TO_START` |
+| Last successful step | `7.0` |
+| Last attempted step | `7.1` |
+| Last update | `2026-08-09 16:42:00 +03` |
+| Recovery instruction | `Gate open. Start Phase 7 from 7.1. CP3-DUT+B-12 DEFERRED (lab later). Real DUT yoksa full CP7 PASS verme.` |
 
 ## 5. Owned paths
 

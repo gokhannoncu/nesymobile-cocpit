@@ -8,7 +8,7 @@ resultState: COMPLETED
 createdAt: "2026-08-05 14:39:38 +03"
 startedAt: "2026-08-05 21:30:00 +03"
 completedAt: "2026-08-06 22:40:00 +03"
-lastUpdatedAt: "2026-08-06 23:10:00 +03"
+lastUpdatedAt: "2026-08-09 16:42:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
 masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
@@ -16,7 +16,7 @@ runPlayFile: "docs/verdict/run-playbooks/phase-6/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-5/RESULT.md"
 targetWorkspace: "apps/web"
 targetApiSurface: "Phase 5 runtime/read-model DTOs"
-phase7Readiness: "HELD_UNTIL_RESIDUALS"
+phase7Readiness: "READY_WITH_EXTERNAL_BLOCKERS"
 checkpoint6: "PASSED_WITH_EXTERNAL_DUT_BLOCKERS"
 implementationCommit: "62aa6e7"
 debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
@@ -25,16 +25,20 @@ debtResult: "docs/verdict/run-playbooks/phase-6-debt/RESULT.md"
 ## 1. Executive result
 
 Phase 6 + `phase-6-debt` closed. Local FAIL list cleared; deepeners mostly closed.
-CHECKPOINT 6 is **`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**. Phase 7 stays
-**`HELD_UNTIL_RESIDUALS`** until **CP3-DUT** and **B-12** clear (operator hold).
+CHECKPOINT 6 is **`PASSED_WITH_EXTERNAL_DUT_BLOCKERS`**.
+
+**Operator decision (2026-08-09):** Phase 7 gate released. **CP3-DUT** and **B-12**
+remain `OPEN_EXTERNAL` and are **deferred** (lab/DUT test work — not code). They
+must be completed later before claiming full production Act Mode / DUT acceptance;
+they do **not** block starting Phase 7 implementation.
 
 ```text
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: HELD_UNTIL_RESIDUALS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 Phase 6 resultState: COMPLETED
 phase-6-debt: COMPLETED
 Counts (85): PASS ~81 · PASS_PARTIAL ~3 (51–53) · FAIL 0 · BLOCKED_EXTERNAL (CP3-DUT)
-Open external blocking Phase 7: CP3-DUT, B-12
+Deferred external (do later): CP3-DUT, B-12
 ```
 
 ## 2. Recovery state
@@ -46,8 +50,8 @@ Open external blocking Phase 7: CP3-DUT, B-12
 | Current state | `COMPLETED` |
 | Last successful step | `P1 shell re-score (50/54/61/63/65/67/69/71–73/75)` |
 | Last attempted step | `P1 shells` |
-| Last update | `2026-08-06 23:10:00 +03` |
-| Recovery instruction | `Phase 7 HELD_UNTIL_RESIDUALS. Local deepeners closed (85/digest/capability/46–47/79–81 PASS; 51–53 PARTIAL). Clear OPEN_EXTERNAL CP3-DUT + B-12 before Phase 7.` |
+| Last update | `2026-08-09 16:42:00 +03` |
+| Recovery instruction | `Phase 7 gate OPEN (READY_WITH_EXTERNAL_BLOCKERS). CP3-DUT + B-12 deferred by operator 2026-08-09 — lab/DUT later; start Phase 7.` |
 
 ## 3. Precondition gate
 
@@ -192,17 +196,18 @@ Measured on commit `62aa6e7`, clean working tree, `production...origin/productio
 
 ```text
 CHECKPOINT 6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
-phase7Readiness: HELD_UNTIL_RESIDUALS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 Closed at: 2026-08-06 22:40 +03 (6D.4)
 Re-scored at: 2026-08-06 23:05 +03 (P1 shells)
 Residuals re-scored: 2026-08-06 23:10 +03
+Gate released: 2026-08-09 16:42 +03 (operator: defer CP3-DUT + B-12)
 Evidence: run-detail-shells + page-acceptance + next build under lock + ADB DUT props.
 ```
 
 ### Missing list (local FAIL)
 
 _None._ Former FAIL items 50/54/61/63/65/67/69/71–73/75 → `PASS` (P1).
-Phase 7 gate still held on **CP3-DUT** / **B-12** (operator: residuals must finish).
+**Deferred (lab later, not Phase 7 start blockers):** CP3-DUT, B-12.
 
 ### Full 85
 
@@ -332,13 +337,14 @@ Debt RESULT: [`phase-6-debt/RESULT.md`](../phase-6-debt/RESULT.md).
 ## 12. Phase 7 readiness decision
 
 ```text
-phase7Readiness: HELD_UNTIL_RESIDUALS
+phase7Readiness: READY_WITH_EXTERNAL_BLOCKERS
 checkpoint6: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 ```
 
-Operator hold (2026-08-06): Phase 7 **must not start** until residual list clears —
-including OPEN_EXTERNAL. Local deepeners largely closed; **CP3-DUT** and **B-12**
-remain hard blockers.
+**Operator decision (2026-08-09):** Hold lifted. Start Phase 7 now.
+**CP3-DUT** and **B-12** stay open as **deferred lab/DUT work** (not coding).
+Do later before full production Act Mode / mutation acceptance claims.
+Do **not** treat them as Phase 7 start blockers.
 
 | Residual | Status |
 |---|---|
@@ -347,15 +353,15 @@ remain hard blockers.
 | CAPABILITY-NEGOTIATION | `RESOLVED` — deviceId → B2 baseline |
 | 46–47 device/bus lanes | `PASS` — probes wired; no HEALTHY fabricate |
 | 79–81 acceptance | `PASS` — state matrix + verdict:operator RBAC + a11y smoke |
-| 51–53 inspector | `PASS_PARTIAL`→improved: dump real, registry-prefixed keys; Bridge nodes still empty |
-| CP3-DUT | `OPEN_EXTERNAL` — `R6CW400BC8N` type=`user` debuggable=`0` |
-| B-12 | `OPEN_EXTERNAL` — 30× smoke not executed |
+| 51–53 inspector | `PASS_PARTIAL` — Bridge overlay / pack registry deepen later |
+| CP3-DUT | `OPEN_EXTERNAL` / **DEFERRED** — need userdebug/eng DUT (lab later) |
+| B-12 | `OPEN_EXTERNAL` / **DEFERRED** — 30× Device Lab smoke (lab later) |
 
 Exit criteria status:
 
 1. ~~Local deepeners / digest / capability / build~~ **Done / largely done**
-2. **Blocked:** CP3-DUT (need userdebug/eng DUT)
-3. **Blocked:** B-12 (need Device Lab 30× handshake proof)
+2. ~~Phase 7 start gate~~ **OPEN** (`READY_WITH_EXTERNAL_BLOCKERS`)
+3. **Deferred later:** CP3-DUT, B-12 (lab/test; not Phase 7 coding)
 
 ## 13. Post-closure code review (2026-08-06)
 
