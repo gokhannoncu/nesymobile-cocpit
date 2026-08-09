@@ -131,9 +131,9 @@ describe('PageMigrationManifest', () => {
   })
 
   // Fallback policy checks
-  it('no entry uses fallbackPolicy other than NONE or READ_ONLY_LEGACY_SUMMARY', () => {
+  it('no entry uses fallbackPolicy other than NONE or BRIDGEFLOW_ONLY', () => {
     for (const entry of PAGE_MIGRATION_MANIFEST) {
-      expect(['NONE', 'READ_ONLY_LEGACY_SUMMARY']).toContain(entry.fallbackPolicy)
+      expect(['NONE', 'BRIDGEFLOW_ONLY']).toContain(entry.fallbackPolicy)
     }
   })
 })

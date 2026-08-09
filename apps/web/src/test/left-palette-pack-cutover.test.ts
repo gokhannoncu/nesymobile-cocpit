@@ -6,10 +6,6 @@ const EDITOR = readFileSync(
   resolve(__dirname, '../app/(automation-editor)/automation/[id]/workflow-editor.tsx'),
   'utf8',
 )
-const REGISTRY = readFileSync(
-  resolve(__dirname, '../app/(automation-editor)/automation/[id]/workflow-registry.ts'),
-  'utf8',
-)
 const PACK_PALETTE = readFileSync(
   resolve(__dirname, '../app/(automation-editor)/automation/[id]/pack-palette.ts'),
   'utf8',
@@ -34,11 +30,10 @@ describe('Left palette pack cutover (6D.1f)', () => {
     expect(EDITOR).toMatch(/paletteDisabledReason/)
   })
 
-  it('marks legacy fallback explicitly and strips Maestro Command subtitle', () => {
+  it('marks legacy fallback explicitly and keeps structural tools separate', () => {
     expect(EDITOR).toMatch(/legacy palette/)
     expect(EDITOR).toMatch(/mode: 'legacy'/)
-    expect(REGISTRY).not.toMatch(/Maestro Command/)
-    expect(REGISTRY).toMatch(/App session start/)
+    expect(PACK_PALETTE).toMatch(/Structural editor tools/)
   })
 
   it('records legacyCleanup on the editor migration manifest entry', () => {
@@ -46,6 +41,6 @@ describe('Left palette pack cutover (6D.1f)', () => {
     expect(MANIFEST).toMatch(/legacyCleanup:/)
     expect(MANIFEST).toMatch(/legacyCleanupExpiry:/)
     expect(MANIFEST).toMatch(/left-palette-pack-cutover\.test\.ts/)
-    expect(MANIFEST).toMatch(/READ_ONLY_LEGACY_SUMMARY/)
+    expect(MANIFEST).toMatch(/BRIDGEFLOW_ONLY/)
   })
 })

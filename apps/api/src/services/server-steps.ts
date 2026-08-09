@@ -1,6 +1,6 @@
 /**
  * Server Steps — dispatcher / backend actions that have no (or incomplete)
- * mobile UI equivalent and are executed AFTER the Maestro run completes.
+ * mobile UI equivalent and are executed after the BridgeFlow UI phase completes.
  *
  * Node types handled:
  * - VALIDATE_STOPLIST : device JWT + GET_KEY → Task/GetMyScheduleByZoneCode
@@ -12,7 +12,7 @@
  * Hub / branch / zone are resolved from the logged-in device — never hardcoded.
  *
  * TOUR/EOD are terminal in their workflows. VALIDATE_STOPLIST may appear mid-graph;
- * its backend oracle is still resolved in this post-Maestro phase so the run cannot
+ * its backend oracle is still resolved in this post-BridgeFlow phase so the run cannot
  * go green until the schedule call succeeds.
  */
 

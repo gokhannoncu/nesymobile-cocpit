@@ -2,7 +2,7 @@
  * Run Span Recorder — lightweight per-run timing telemetry.
  *
  * Answers "where does run time actually go?" with named spans
- * (yaml_generation, maestro_startup, app_launch, per-node ui_action,
+ * (plan_compile, bridgeflow_startup, app_launch, per-node ui_action,
  * bridge_wait, process_spawn_per_node, video_pull, ...).
  *
  * Spans are collected in memory during the run and persisted once at the

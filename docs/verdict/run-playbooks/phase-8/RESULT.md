@@ -1,300 +1,171 @@
-# Phase 8 RESULT — Bridge B1 Physical Acceptance and Maestro Cutover Gate
+# Phase 8 RESULT — Cockpit Maestro Direct Removal
 
 ```yaml
 runPlayId: verdict-cockpit-phase-8-run-play
 phase: "8"
-phaseName: "Bridge B1 Physical Acceptance + Golden Dual-Run + Cutover Decision Gate"
-resultState: NOT_STARTED
+phaseName: "BridgeFlow-Only Cockpit + Maestro Complete Removal"
+resultState: COMPLETED
 createdAt: "2026-08-05 14:49:14 +03"
-startedAt: null
-completedAt: null
-lastUpdatedAt: "2026-08-05 14:49:14 +03"
+startedAt: "2026-08-09 18:14:00 +03"
+completedAt: "2026-08-09 18:41:00 +03"
+lastUpdatedAt: "2026-08-09 18:41:00 +03"
 timezone: "Europe/Istanbul"
-masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
+masterPlanVersion: "v1.1.4"
+masterPlanDigest: "sha256:b2af8c455dc9a74495bd937112756a6f4c5aaf3f0a5ee292d95294e564c687ef"
 runPlayFile: "docs/verdict/run-playbooks/phase-8/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-7/RESULT.md"
-targetAcceptance: "Bridge B1 physical acceptance"
-targetComparison: "Golden dual-run / Maestro parity"
-targetDecision: "Signed cutover decision"
-cutoverDecision: "NOT_EVALUATED"
-phase9Readiness: "NOT_EVALUATED"
+targetAcceptance: "BridgeFlow-only Cockpit execution"
+targetRemoval: "Maestro complete removal from active Cockpit"
+bridgePhysicalAcceptance: "PASSED_WITH_EXTERNAL_BLOCKERS"
+bridgeflowExecutionStatus: "BRIDGEFLOW_ONLY"
+maestroRemovalStatus: "COMPLETED"
+residualMaestroScan: "PASS"
+phase9Readiness: "READY_FOR_PRODUCTION_OPS"
+noDualRun: true
+noBenchmark: true
 ```
 
 ## 1. Executive result
 
-Phase 8 henüz başlamadı.
+Phase 8 **COMPLETED** as a direct Maestro removal phase.
 
-Bu dosya Phase 8 agent'ı tarafından çalışma başladığında `IN_PROGRESS`, kapanışta
-ise `COMPLETED`, `READY_WITH_BLOCKERS`, `BLOCKED_PRECONDITION`,
-`BLOCKED_EXTERNAL` veya `FAILED` olarak güncellenecektir.
-
-Beklenen hedef:
+This result file no longer tracks `cutoverDecision`, Maestro/golden runner parity,
+benchmark output, or a signed GO/NO_GO cutover gate. The target is stricter and
+simpler: active Cockpit must run through BridgeFlow/Verdict runtime only, with no
+runnable Maestro/YAML fallback.
 
 ```text
-CHECKPOINT 8: Bridge B1 physical acceptance + measured Maestro cutover gate
-Real DUT: FULL PASS için gerekli
-Golden dual-run: cutover kararı için gerekli
-PerformanceBudget v1: cutover kararı için gerekli
-Maestro deletion: YAPILMAYACAK
-Production fallback: YAPILMAYACAK
+Phase 7 resultState: COMPLETED
+Phase 7 readiness: READY_WITH_EXTERNAL_BLOCKERS
+Phase 8 mode: DIRECT_REMOVE_NO_DUAL_RUN_NO_BENCHMARK
+BridgeFlow execution: BRIDGEFLOW_ONLY
+Maestro removal: COMPLETED
+Residual scan: PASS
 ```
 
-## 2. Recovery state
-
-| Alan | Değer |
-|---|---|
-| Current phase | `8` |
-| Current step | `8.0` |
-| Current state | `WAITING_FOR_PHASE_7_COMPLETION` |
-| Last successful step | `7.0` |
-| Last attempted step | `8.0` |
-| Last update | `2026-08-05 14:49:14 +03` |
-| Recovery instruction | `Phase 8 başlamadı. Önce Phase 7 RESULT içinde resultState COMPLETED ve phase8Readiness READY_WITH_EXTERNAL_BLOCKERS doğrulanmalı. Gerçek DUT, golden dual-run ve PerformanceBudget v1 olmadan cutover GO verme.` |
-
-## 3. Precondition gate
-
-Phase 8 implementation/acceptance başlamadan önce:
+## 2. Precondition gate
 
 | Gate | Required | Current evidence |
 |---|---|---|
-| Phase 7 result state | `COMPLETED` | `PENDING` |
-| Phase 7 readiness | `READY_WITH_EXTERNAL_BLOCKERS` | `PENDING` |
-| Real DUT/lab device | available for full PASS | `PENDING` |
-| Golden runner/Maestro comparison harness | available | `PENDING` |
-| PerformanceBudget v1 baseline | available | `PENDING` |
-| Nesy full workflow Phase 7 evidence | available | `PENDING` |
-| Test Profile/Campaign Phase 7 evidence | available | `PENDING` |
+| Phase 7 result state | `COMPLETED` | `PASS` — `docs/verdict/run-playbooks/phase-7/RESULT.md` |
+| Phase 7 readiness | `READY_WITH_EXTERNAL_BLOCKERS` | `PASS` — `docs/verdict/run-playbooks/phase-7/RESULT.md` |
+| BridgeFlow execution worker | available before Maestro deletion | `PASS` — `BridgeFlowExecutionQueue` + plan store |
+| Real DUT/lab device | required for full physical PASS | `OPEN_EXTERNAL` — CP3-DUT/B-12 inherited |
+| Dual-run/benchmark | not required | `REMOVED_FROM_SCOPE` |
 
-Başlangıç kararı:
-
-```text
-implementationStart: BLOCKED_UNTIL_PHASE_7_COMPLETES
-cutoverDecision: NOT_EVALUATED
-```
-
-## 4. Inherited blockers / constraints
-
-| ID | Severity | Description | Owner | Status | Phase 8 etkisi |
-|---|---|---|---|---|---|
-| PHASE_7_NOT_COMPLETE | HIGH | Phase 8, Phase 7 real workflow/test profile evidence çıktısına bağlıdır. | Runtime/UI/Nesy owner | `BLOCKING` | Phase 7 tamamlanmadan başlamaz. |
-| REAL_DUT_REQUIRED | HIGH/EXTERNAL | Bridge physical acceptance için gerçek DUT gerekir. | Device/Mobile owner | `OPEN_EXTERNAL` | Yoksa CP8 full PASS ve cutover GO verilemez. |
-| GOLDEN_RUNNER_REQUIRED | HIGH | Golden dual-run/parity olmadan cutover kararı üretilemez. | Platform owner | `OPEN` | Yoksa cutoverDecision `BLOCKED_EXTERNAL` veya `NO_GO`. |
-| PERFORMANCE_BUDGET_V1_REQUIRED | HIGH | Pinli budget olmadan performans kabulü yapılamaz. | Platform/Perf owner | `OPEN` | Yoksa cutover GO yok. |
-| CP3-DUT | HIGH/EXTERNAL | Real DUT mutation acceptance için userdebug/eng lab cihaz gerekiyor. | Device/Mobile owner | `OPEN_EXTERNAL` | Physical fixture'ları bloke edebilir. |
-| B-12 | MEDIUM | Production cihazda smoke handshake flaky. | Mobile owner | `OPEN` | Device smoke/parity koşularını etkiler. |
-
-## 5. Step execution log
+## 3. Step execution log
 
 | Step | Status | Evidence |
 |---|---|---|
-| 8.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` |
-| 8.1 Phase 7 gate doğrulama | `PENDING` | — |
-| 8.2 Preflight/device matrix | `PENDING` | — |
-| 8.3 Command fencing acceptance | `PENDING` | — |
-| 8.4 Process-death duplicate action | `PENDING` | — |
-| 8.5 Bridge reconnect unknown-effect | `PENDING` | — |
-| 8.6 IME obstruction | `PENDING` | — |
-| 8.7 Foreign window / obscured tap | `PENDING` | — |
-| 8.8 Manual touch contamination | `PENDING` | — |
-| 8.9 Tree freshness/invalidation | `PENDING` | — |
-| 8.10 WakeLock/thermal/power | `PENDING` | — |
-| 8.11 PerformanceBudget v1 | `PENDING` | — |
-| 8.12 Golden dual-run harness | `PENDING` | — |
-| 8.13 Correctness comparison | `PENDING` | — |
-| 8.14 False-pass/fail comparison | `PENDING` | — |
-| 8.15 Artifact/evidence completeness | `PENDING` | — |
-| 8.16 Hot path full-dump gate | `PENDING` | — |
-| 8.17 Cutover report | `PENDING` | — |
-| 8.18 Verification | `PENDING` | — |
-| 8.19 RESULT closure | `PENDING` | — |
+| 8.1 Phase 7 gate doğrulama | `DONE` | Phase 7 `COMPLETED` + `phase8Readiness` |
+| 8.2 Master plan realignment | `DONE` | v1.1.4 digest `b2af8c…` |
+| 8.3 BridgeFlow execution wiring | `DONE` | `BridgeFlowExecutionQueue`, plan store, `WorkflowRunService` enqueue metadata |
+| 8.4 API Maestro runner removal | `DONE` | executor/generator/runner removed; legacy run routes 410 |
+| 8.5 DB/read-model migration | `DONE` | `workflow_run_archive` migration + schema/read-model cleanup |
+| 8.6 Web YAML/Maestro UI removal | `DONE` | editor/run detail/load-tour/list/client cleanup |
+| 8.7 Residual guard tests | `DONE` | API/web Phase 8 residual tests |
+| 8.8 Verification + RESULT closure | `DONE` | full verification gates green |
 
-## 6. Baseline inventory
+## 4. Changed files
 
-Bu bölüm çalışma başladığında doldurulacaktır.
-
-| Soru | Bulgu |
-|---|---|
-| Phase 7 RESULT durumu | `PENDING` |
-| Phase 7 readiness | `PENDING` |
-| Master digest | `PENDING` |
-| Current branch/status | `PENDING` |
-| Real DUT/device matrix | `PENDING` |
-| App/SDK/Bridge versions | `PENDING` |
-| Golden runner availability | `PENDING` |
-| PerformanceBudget v1 availability | `PENDING` |
-| Existing dual-run harness | `PENDING` |
-| Existing physical fixture tests | `PENDING` |
-| Existing cutover report path | `PENDING` |
-| Typecheck baseline | `PENDING` |
-| Test baseline | `PENDING` |
-
-## 7. Changed files
-
-Bu bölüm kapanışta doldurulacaktır.
-
-| Path | Değişim | Neden |
+| Path | Change | Reason |
 |---|---|---|
-| `docs/verdict/run-playbooks/phase-8/RUN_PLAY.md` | NEW | Phase 8 playbook |
-| `docs/verdict/run-playbooks/phase-8/RESULT.md` | NEW | Phase 8 result tracker |
+| `docs/verdict/run-playbooks/phase-8/RUN_PLAY.md` | UPDATE | Reframe Phase 8 as direct Maestro removal |
+| `docs/verdict/run-playbooks/phase-8/RESULT.md` | UPDATE | Track BridgeFlow-only removal evidence |
+| `docs/verdict/run-playbooks/phase-9/RUN_PLAY.md` | NEW | Post-removal ops phase |
+| `docs/verdict/run-playbooks/phase-9/RESULT.md` | NEW | Post-removal ops tracker |
+| `apps/api/src/services/bridgeflow-execution-queue.ts` | NEW | Verdict runtime start now reaches BridgeFlowExecutor |
+| `apps/api/src/services/{maestro-executor,workflow-runner,yaml-generator}.ts` | DELETE | Remove runnable legacy engine |
+| `apps/api/src/legacy/workflows.router.ts` | UPDATE | Legacy run/YAML endpoints hard-closed |
+| `apps/api/src/services/device-worker.ts` | UPDATE | Bridge device context only; driver prep removed |
+| `packages/db/prisma/schema.prisma` + migration | UPDATE | Neutral archive + old engine fields removed |
+| `apps/web/src/app/(automation-editor)/automation/[id]/**` | UPDATE | YAML preview removed, schema-only config registry |
+| `apps/web/src/components/automation/load-tour-flow-workspace.tsx` | UPDATE | Debug source preview removed |
+| `apps/web/src/app/(cockpit)/automation/[id]/runs/[runId]/page.tsx` | UPDATE | Legacy run detail fallback removed |
+| `apps/**/phase-8-maestro-removal.test.ts` | NEW | Residual removal guards |
 
-## 8. Verification results
-
-Bu bölüm kapanışta gerçek komut çıktılarıyla doldurulacaktır.
-
-Beklenen minimum komut seti:
-
-```bash
-pnpm verdict:verify-master-plan
-pnpm typecheck
-pnpm test
-pnpm --filter @nesy/api typecheck
-pnpm --filter @nesy/api test
-pnpm --filter @nesy/web typecheck
-pnpm --filter @nesy/web test
-git diff --check
-git diff --cached --check
-```
-
-Gerçek DUT, golden dual-run ve performance budget komutları agent tarafından ayrıca
-yazılacaktır.
-
-## 9. CHECKPOINT 8 acceptance checklist
+## 5. CHECKPOINT 8 acceptance checklist
 
 | # | Acceptance | Status | Evidence |
 |---|---|---|---|
-| 1 | Phase 7 output'ları doğrulandı. | `PENDING` | — |
-| 2 | Real DUT/device matrix alındı. | `PENDING` | — |
-| 3 | App/SDK/Bridge/protocol versions pinlendi. | `PENDING` | — |
-| 4 | Device/build/thermal profile pinlendi. | `PENDING` | — |
-| 5 | Her command run/session/epoch fenced. | `PENDING` | — |
-| 6 | Eski/cross-run command action uygulamadan reddediliyor. | `PENDING` | — |
-| 7 | Reboot/session/epoch değişiminde stale command fail-closed. | `PENDING` | — |
-| 8 | Process death duplicate physical action üretmiyor. | `PENDING` | — |
-| 9 | Process death explicit UNKNOWN_EFFECT ile duruyor veya güvenli reconciliation üretiyor. | `PENDING` | — |
-| 10 | Bridge reconnect response-loss unknown-effect policy üretiyor. | `PENDING` | — |
-| 11 | Host crash after dispatch fixture güvenli. | `PENDING` | — |
-| 12 | IME obstruction beklendiği gibi fail/recover. | `PENDING` | — |
-| 13 | Foreign window tap'i engelliyor. | `PENDING` | — |
-| 14 | `obscuredBy` evidence mevcut. | `PENDING` | — |
-| 15 | Same-app z-order stale target action'ı engelliyor. | `PENDING` | — |
-| 16 | Manual touch contamination işaretleniyor. | `PENDING` | — |
-| 17 | Manual contamination Run Detail/Evidence Journey'de görünüyor. | `PENDING` | — |
-| 18 | treeGen stale tap reject ediliyor. | `PENDING` | — |
-| 19 | SCREEN_READY invalidation çalışıyor. | `PENDING` | — |
-| 20 | Mutation sonrası active wait scoped reevaluation çalışıyor. | `PENDING` | — |
-| 21 | WakeLock bounded. | `PENDING` | — |
-| 22 | Thermal/power ölçümleri alındı. | `PENDING` | — |
-| 23 | Command latency budget içinde. | `PENDING` | — |
-| 24 | Wait latency budget içinde. | `PENDING` | — |
-| 25 | Receipt bus latency/lag budget içinde. | `PENDING` | — |
-| 26 | Ordered bus latency/lag budget içinde. | `PENDING` | — |
-| 27 | Bridge CPU/power budget içinde. | `PENDING` | — |
-| 28 | CP0 baseline'ından PerformanceBudget v1 üretildi. | `PENDING` | — |
-| 29 | PerformanceBudget v1 percentile/sample tanımı pinli. | `PENDING` | — |
-| 30 | PerformanceBudget v1 cihaz/build/thermal profili pinli. | `PENDING` | — |
-| 31 | Golden dual-run harness kuruldu. | `PENDING` | — |
-| 32 | Dual-run production fallback değil, measurement harness. | `PENDING` | — |
-| 33 | Failed Bridge run sessiz Maestro ile tamamlanmıyor. | `PENDING` | — |
-| 34 | Field Login dual-run karşılaştırıldı. | `PENDING` | — |
-| 35 | Load Tour dual-run karşılaştırıldı. | `PENDING` | — |
-| 36 | Full Courier dual-run karşılaştırıldı. | `PENDING` | — |
-| 37 | 20 Barcode dual-run karşılaştırıldı. | `PENDING` | — |
-| 38 | Offline Queue dual-run karşılaştırıldı. | `PENDING` | — |
-| 39 | Backend Confirmation dual-run karşılaştırıldı. | `PENDING` | — |
-| 40 | Tour Approval Lifecycle dual-run karşılaştırıldı. | `PENDING` | — |
-| 41 | Tam kurye BridgeFlow correctness golden runner'dan düşük değil. | `PENDING` | — |
-| 42 | Business verdict consistency kabul edildi. | `PENDING` | — |
-| 43 | False-pass artışı yok. | `PENDING` | — |
-| 44 | False-fail kabul eşiği içinde. | `PENDING` | — |
-| 45 | UI-only pass false positive yakalanıyor. | `PENDING` | — |
-| 46 | HTTP 2xx false positive yakalanıyor. | `PENDING` | — |
-| 47 | Backend approved/mobile missing false positive yakalanıyor. | `PENDING` | — |
-| 48 | Unknown dialog false green üretmiyor. | `PENDING` | — |
-| 49 | Offline queued false failure üretmiyor. | `PENDING` | — |
-| 50 | Manual contamination false pass üretmiyor. | `PENDING` | — |
-| 51 | Evidence stale/correlation miss false pass üretmiyor. | `PENDING` | — |
-| 52 | Artifact completeness kabul kriterini geçiyor. | `PENDING` | — |
-| 53 | Evidence completeness kabul kriterini geçiyor. | `PENDING` | — |
-| 54 | Run Detail completeness kabul kriterini geçiyor. | `PENDING` | — |
-| 55 | Evidence Journey completeness kabul kriterini geçiyor. | `PENDING` | — |
-| 56 | Repro package completeness kabul kriterini geçiyor. | `PENDING` | — |
-| 57 | Action lifecycle evidence complete. | `PENDING` | — |
-| 58 | wait_any expected/interrupt/cancel/timeout evidence complete. | `PENDING` | — |
-| 59 | Origin/confidence evidence complete. | `PENDING` | — |
-| 60 | Clock uncertainty evidence complete. | `PENDING` | — |
-| 61 | Hot path full-tree dump count zero. | `PENDING` | — |
-| 62 | Explicit diagnostic scoped capture hot path dump sayılmıyor. | `PENDING` | — |
-| 63 | Ölçülmemiş/profile dışı örnek cutover gerekçesi yapılmadı. | `PENDING` | — |
-| 64 | Cutover report üretildi. | `PENDING` | — |
-| 65 | Cutover report input/device/build/environment matrix taşıyor. | `PENDING` | — |
-| 66 | Cutover report correctness comparison taşıyor. | `PENDING` | — |
-| 67 | Cutover report false-pass/fail comparison taşıyor. | `PENDING` | — |
-| 68 | Cutover report PerformanceBudget v1 sonucu taşıyor. | `PENDING` | — |
-| 69 | Cutover report artifact/evidence completeness sonucu taşıyor. | `PENDING` | — |
-| 70 | Cutover report known blockers taşıyor. | `PENDING` | — |
-| 71 | Cutover decision GO/NO_GO/BLOCKED_EXTERNAL olarak açık. | `PENDING` | — |
-| 72 | Cutover decision owner/signature alanları mevcut. | `PENDING` | — |
-| 73 | CHECKPOINT 8 geçmeden Maestro DELETE yapılmadı. | `PENDING` | — |
-| 74 | Maestro dependency/config/UI/DB cleanup yapılmadı. | `PENDING` | — |
-| 75 | Full verification komutları çalıştırıldı ve RESULT.md'ye yazıldı. | `PENDING` | — |
+| 1 | Phase 7 output'ları doğrulandı. | `PASS` | Phase 7 RESULT |
+| 2 | Master plan Phase 8/9 ayrımı yeni karara göre hizalandı. | `PASS` | v1.1.4 digest verified |
+| 3 | Cockpit Phase 9 playbook'u post-removal ops olarak oluşturuldu. | `PASS` | phase-9 RUN_PLAY/RESULT |
+| 4 | Verdict runtime starts gerçek BridgeFlow execution yoluna bağlı. | `PASS` | `BridgeFlowExecutionQueue` |
+| 5 | `BridgeFlowExecutor` production queue/worker tarafından çağrılıyor. | `PASS` | compile store + queue tests |
+| 6 | Legacy `/api/workflows/*` run path Maestro çalıştırmıyor. | `PASS` | 410 routes + residual test |
+| 7 | Maestro executor aktif source'dan kaldırıldı. | `PASS` | file removed + residual test |
+| 8 | YAML generator aktif source'dan kaldırıldı. | `PASS` | API/web files removed |
+| 9 | DeviceWorker Maestro driver/JAR/APK hazırlığı yapmıyor. | `PASS` | DeviceWorker Bridge-only |
+| 10 | RunStore Maestro process type veya kill path taşımıyor. | `PASS` | generic runner/logcat store |
+| 11 | Field Courier Login hidden Maestro orchestrator path'i kaldırıldı. | `PASS` | legacy sessions 410, orchestrator deleted |
+| 12 | YAML preview/download/import endpoint'leri kaldırıldı veya hard-closed. | `PASS` | API 410 + web UI removed |
+| 13 | Web editor Run test Verdict compile/start yolunu kullanıyor. | `PASS` | `startPinnedVerdictRun` |
+| 14 | YAML preview modal/card/panel isimleri ve emitters kaldırıldı. | `PASS` | modal/generator/registry removed |
+| 15 | Live node properties schema YAML registry'den ayrıldı. | `PASS` | `node-config-registry.ts` |
+| 16 | Run Detail legacy Maestro branch'i kaldırıldı. | `PASS` | no legacy-summary fallback |
+| 17 | `MAESTRO_LEGACY` aktif DTO behavior'ı yok. | `PASS` | API/web types/read-model |
+| 18 | Prisma Maestro/YAML field'ları neutral archive/migration sonrası kaldırıldı. | `PASS` | `workflow_run_archive` migration |
+| 19 | Eski run verisi Maestro-specific renderer gerektirmiyor. | `PASS` | generic archive table + no legacy detail branch |
+| 20 | Active source residual scan runnable Maestro/YAML yüzeyi bulmuyor. | `PASS` | API/web residual tests |
+| 21 | Test suite Maestro CLI kurulu olmadan çalışabiliyor. | `PASS` | `pnpm test` green |
+| 22 | Gerçek DUT fiziksel kabul maddeleri kanıtlandı veya external blocker yazıldı. | `BLOCKED_EXTERNAL` | CP3-DUT/B-12 inherited |
 
-## 10. Cutover decision
-
-Başlangıç kararı:
+## 6. Verification results
 
 ```text
-cutoverDecision: NOT_EVALUATED
+pnpm verdict:verify-master-plan
+→ Master plan digest OK: sha256:b2af8c455dc9a74495bd937112756a6f4c5aaf3f0a5ee292d95294e564c687ef
+
+pnpm --filter @nesy/db generate
+→ Prisma Client generated OK
+
+pnpm --filter @nesy/api exec vitest run src/services/phase-8-maestro-removal.test.ts src/services/phase6-input-contracts.test.ts
+→ 2 files / 33 tests PASS
+
+pnpm --filter @nesy/web exec vitest run src/test/phase-8-maestro-removal.test.ts src/test/phase-7-load-tour-cutover.test.ts src/test/phase-7-field-login-cutover.test.ts src/app/(automation-editor)/automation/[id]/backend-validation-lane.test.ts src/test/left-palette-pack-cutover.test.ts src/test/legacy-zero.test.ts
+→ 6 files / 20 tests PASS
+
+pnpm --filter @nesy/api typecheck
+→ PASS
+
+pnpm --filter @nesy/web typecheck
+→ PASS
+
+pnpm typecheck
+→ Tasks: 24 successful, 24 total
+
+pnpm --filter @nesy/web test
+→ 54 files / 557 tests PASS
+
+pnpm test
+→ Tasks: 25 successful, 25 total
+
+git diff --check && git diff --cached --check
+→ clean
 ```
 
-Kapanışta bu değerlerden biri yazılmalıdır:
-
-```text
-GO
-NO_GO
-BLOCKED_EXTERNAL
-```
-
-GO için minimum koşul:
-
-```text
-real DUT evidence complete
-golden dual-run parity acceptable
-PerformanceBudget v1 pass
-artifact/evidence completeness pass
-signed decision present
-```
-
-## 11. Blockers opened during Phase 8
-
-Bu bölüm çalışma sırasında doldurulacaktır.
+## 7. Blockers
 
 | ID | Severity | Status | Description | Required action |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| CP3-DUT | HIGH/EXTERNAL | `OPEN_EXTERNAL` | Full physical DUT acceptance requires lab/userdebug device. | Run physical acceptance when lab is available. |
+| B-12 | MEDIUM/EXTERNAL | `OPEN_EXTERNAL` | Production device smoke handshake flakiness may affect device acceptance. | Complete repeated device smoke later. |
 
-## 12. Skipped / deferred work
+## 8. Phase 9 readiness
 
-| Item | Target phase | Reason |
-|---|---|---|
-| Maestro complete removal | Phase 9 | Phase 8 yalnız measured cutover decision üretir. |
-| Engine-specific DB/DTO/UI deletion | Phase 9 | Signed GO olmadan silinmez. |
-| Long production observation window | Phase 9 | Cutover sonrası operasyon fazı. |
-| Multi-device soak hardening | Phase 9 | Cutover gate sonrası uzun operasyon kabulü. |
-
-## 13. Phase 9 readiness decision
-
-Başlangıç kararı:
+Closure state:
 
 ```text
-phase9Readiness: NOT_EVALUATED
+phase9Readiness: READY_FOR_PRODUCTION_OPS
 ```
 
-Beklenen başarılı kapanış:
+Successful closure target:
 
 ```text
-phase9Readiness: READY_WITH_SIGNED_CUTOVER_DECISION
+phase9Readiness: READY_FOR_PRODUCTION_OPS
 ```
 
-Bu karar ancak CHECKPOINT 8 acceptance maddeleri kanıtla geçerse ve
-`cutoverDecision: GO` ise verilebilir.
+Phase 9 is not a Maestro removal phase. It is reserved for post-removal soak,
+production operations, durability, security hardening, v1 compatibility sunset
+and release runbooks.

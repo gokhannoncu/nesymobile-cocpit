@@ -22,16 +22,14 @@ describe('Phase 7.5 Load Tour cutover', () => {
     expect(src).toMatch(/Verdict runtime pin/)
   })
 
-  it('workspace starts via startPinnedVerdictRun without Maestro orchestrator', () => {
+  it('workspace starts via startPinnedVerdictRun without legacy execution UI', () => {
     const src = readFileSync(WORKSPACE, 'utf8')
     expect(src).toMatch(/startPinnedVerdictRun/)
     expect(src).not.toMatch(/startWorkflowRun\b/)
     expect(src).not.toMatch(/maestro-executor/)
     expect(src).not.toMatch(/from ['"]@\/services\/maestro/)
     expect(src).toMatch(/Verdict WorkflowRunApi/)
-    expect(src).toMatch(/Debug-only legacy YAML/)
-    expect(src).not.toMatch(/preview Maestro YAML/)
-    expect(src).not.toMatch(/Generated Maestro flow/)
-    expect(src).not.toMatch(/run Maestro flows/)
+    expect(src).not.toMatch(/legacy YAML/i)
+    expect(src).not.toMatch(/preview .*YAML/i)
   })
 })

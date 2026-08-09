@@ -81,7 +81,7 @@ export function buildPackPaletteGroups(
   return groups
 }
 
-/** Structural editor tools kept beside pack actions (not the Maestro courier list). */
+/** Structural editor tools kept beside pack actions. */
 export function buildEditorScaffoldingGroups(): WorkflowPaletteCategory[] {
   return [
     {

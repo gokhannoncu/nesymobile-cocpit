@@ -95,11 +95,6 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
         </div>
       </div>
 
-      <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-xs flex gap-2">
-        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-        <p><strong>Notice:</strong> YAML and Maestro preview panels are deprecated and will be removed in a future update. Please use the WorkflowCompileApi standard preview.</p>
-      </div>
-
       {packError ? (
         <div className="p-3 border-b border-red-200 bg-red-50 text-red-800 text-xs flex gap-2">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />

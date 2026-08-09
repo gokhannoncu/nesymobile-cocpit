@@ -60,7 +60,7 @@ describe('6.27 — manifest contract', () => {
     (_route, entry) => {
       expect(entry.rbac.length).toBeGreaterThan(0)
       expect(entry.owner.length).toBeGreaterThan(0)
-      expect(['NONE', 'READ_ONLY_LEGACY_SUMMARY']).toContain(entry.fallbackPolicy)
+      expect(['NONE', 'BRIDGEFLOW_ONLY']).toContain(entry.fallbackPolicy)
     },
   )
 
@@ -117,13 +117,13 @@ describe('6.27 — error and blocked states', () => {
   )
 
   it('no AVAILABLE route silently falls back to legacy data', () => {
-    // READ_ONLY_LEGACY_SUMMARY is allowed, but it must be declared, never implicit.
+    // BRIDGEFLOW_ONLY is allowed, but it must be declared, never implicit.
     const implicit = AVAILABLE.filter(
       (e) =>
         e.currentSource === 'LEGACY_API' &&
         e.targetSource === 'VERDICT_RUNTIME' &&
         e.fallbackPolicy !== 'NONE' &&
-        e.fallbackPolicy !== 'READ_ONLY_LEGACY_SUMMARY',
+        e.fallbackPolicy !== 'BRIDGEFLOW_ONLY',
     )
     expect(implicit.map((e) => e.routePattern)).toEqual([])
   })

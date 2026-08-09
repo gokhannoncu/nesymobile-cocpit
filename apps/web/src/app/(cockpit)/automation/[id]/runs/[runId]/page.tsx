@@ -1,7 +1,6 @@
 import {
   fetchVerdictRunDetail,
   fetchVerdictEvidenceJourney,
-  fetchVerdictLegacyRunSummary,
 } from '@/lib/verdict-runtime/client'
 import type { RunDetailResult } from '@/lib/verdict-runtime/types'
 import { deriveLayerApplicability } from '@/lib/verdict-runtime/layer-applicability'
@@ -17,7 +16,6 @@ import { InteractionOriginsPanel } from '@/components/automation/run-detail/Inte
 import { DiagnosticWaterfall } from '@/components/automation/run-detail/DiagnosticWaterfall'
 import { LiveUpdateSubscription } from '@/components/automation/run-detail/LiveUpdateSubscription'
 import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
-import { InfoIcon } from 'lucide-react'
 
 export default async function RunDetailPage(props: {
   params: Promise<{ id: string; runId: string }>
@@ -27,30 +25,19 @@ export default async function RunDetailPage(props: {
 
   let runDetail: RunDetailResult | null = null
   let evidenceJourney = null
-  let isLegacy = false
 
   try {
     runDetail = await fetchVerdictRunDetail(runId)
-    if (runDetail?.correlation?.engineType === 'MAESTRO_LEGACY') {
-      isLegacy = true
-      runDetail = (await fetchVerdictLegacyRunSummary(runId)) as RunDetailResult
-    }
-
     evidenceJourney = await fetchVerdictEvidenceJourney(runId)
   } catch {
-    try {
-      runDetail = (await fetchVerdictLegacyRunSummary(runId)) as RunDetailResult
-      isLegacy = true
-    } catch {
-      return (
-        <div className="p-8">
-          <Alert variant="destructive">
-            <AlertTitle>Error loading run</AlertTitle>
-            <AlertDescription>Could not load details for run {runId}.</AlertDescription>
-          </Alert>
-        </div>
-      )
-    }
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertTitle>Error loading run</AlertTitle>
+          <AlertDescription>Could not load details for run {runId}.</AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   if (runDetail?.partial || runDetail?.blockedReason) {
@@ -73,27 +60,6 @@ export default async function RunDetailPage(props: {
           <AlertTitle>Error loading run</AlertTitle>
           <AlertDescription>Could not load details for run {runId}.</AlertDescription>
         </Alert>
-      </div>
-    )
-  }
-
-  if (isLegacy) {
-    return (
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Run {runId.split('-')[0]}</h1>
-            <p className="text-muted-foreground">Legacy YAML Run (Read Only)</p>
-          </div>
-        </div>
-        <Alert>
-          <InfoIcon className="w-4 h-4" />
-          <AlertTitle>Legacy View</AlertTitle>
-          <AlertDescription>
-            This is a legacy Maestro run. Detailed capabilities are limited.
-          </AlertDescription>
-        </Alert>
-        <VerdictDisposition run={runDetail} />
       </div>
     )
   }

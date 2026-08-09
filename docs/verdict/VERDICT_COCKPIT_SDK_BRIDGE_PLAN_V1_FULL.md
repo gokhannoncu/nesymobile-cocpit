@@ -1,5 +1,5 @@
 ---
-name: Verdict Cockpit SDK + Bridge plan v1.1.3
+name: Verdict Cockpit SDK + Bridge plan v1.1.4
 overview: NesyMobileCocpit'i mevcut Maestro merkezli otomasyon koşucusundan; Verdict SDK kontrol ve canonical evidence düzlemi, Verdict Accessibility Bridge fiziksel UI eylem düzlemi, kalıcı event fan-out'u, WorkflowIR v2 sonrasında kurulan versioned Domain Pack/App Adapter ve Application/Screen/Surface/Launch/Evidence Source/Test Profile registry'leri, event-driven Continue Gate, request-response UiWaitPlan/wait_any, BridgeFlowCompiler/Executor, Evidence Journey teşhisi, dört katmanlı Final Oracle ve Nesy Cockpit v1 için Smoke/Regression/Recovery/Bad Day/Load/Compatibility/Security test profilleri bulunan app-agnostic bir test ve operasyon platformuna dönüştüren bağlayıcı master plan. Planın ürün tezi “yalnız test sonucu değil, uygulanabilir kanıtlarla ispat” ilkesidir; beachhead pazar Android saha/offline operasyon uygulamalarıdır fakat Core mimari bu pazara daraltılmaz. Geçiş sonunda Maestro yalnız devre dışı bırakılmaz; runtime, driver, CLI, dependency, YAML üretimi, feature flag, API/DB alanı, UI, script, test, fixture ve aktif doküman yapısıyla birlikte Cockpit projesinden tamamen sökülür. Plan; mevcut doğru parçaları korur, production WebSocket mutual-HMAC boşluğunu, durable consumer/recovery boşluğunu, Bridge host client ve device gate eksikliğini, Workflow IR/Condition Engine/Domain Pack/BridgeFlow runtime ihtiyacını, Test Profile Catalog ve Test Campaign ürün katmanını, yedi-workspace route/PageDataSource cutover ve ekran kabul matrisini, veri modelini, fiziksel DUT kapılarını, güvenlik/retention kurallarını, Cockpit ürün kabuğu borçlarını ve teknik checkpoint'lerden ayrı izlenecek Business Validation Gate'lerini tek yerde toplar.
 todos:
   - id: faz-0
@@ -27,20 +27,20 @@ todos:
     content: "FAZ 7 — Gerçek iş akışları, Nesy v1 Test Profile kataloğu ve teşhis: Field Login ve Load Tour tek executor'a taşınır; tam kurye turu, 20 barkod FOR_EACH, PASS_QUEUED_OFFLINE, backend business confirmation ve dialog policy; Smoke, Critical Regression, Differential Regression, Recovery, State-Aware Bad Day, Business Contract/Consistency, Load, Compatibility Certification, Short Soak ve Security/Release Isolation profilleri Nesy Courier Domain Pack üstünde tanımlanır; gerçek DUT Evidence Journey/origin matrisi; failure-triggered scoped D1/D2/D3 CapturePolicy, redaction, retention, RBAC/audit, heartbeat/stuck-run ve transport/Bridge metrikleri. AI Design Audit, basic accessibility audit, Smart Explorer Preview ve post-run LLM açıklaması ayrı opsiyonel/preview izlerdir, runtime hükmünü değiştirmez ve checkpoint'i bloklamaz. CHECKPOINT 7: referans kurye akışı ve v1 core Test Profile kataloğu yalnız ilgili evidence katmanlarıyla gerçek DUT'ta yeşil."
     status: pending
   - id: faz-8
-    content: "FAZ 8 — Fiziksel kabul ve ölçümlü Maestro cutover: Bridge B1 runId/sessionId/epoch fencing, process-death duplicate action, IME obstruction, foreign window ve manual touch contamination; golden runner dual-run; correctness, false-pass, süre ve artifact karşılaştırması. CHECKPOINT 8 geçmeden Maestro kapatılmaz."
+    content: "FAZ 8 — Fiziksel kabul ve Maestro doğrudan söküm: Bridge B1 runId/sessionId/epoch fencing, process-death duplicate action, IME obstruction, foreign window ve manual touch contamination; Verdict runtime gerçek BridgeFlow executor/queue yoluna bağlanır; Maestro executor/driver/YAML compiler/UI/CLI/fallback, DTO, Prisma alanı, script, test, fixture, route ve aktif doküman referansı kaldırılır. Dual-run, benchmark ve Maestro fallback yoktur. CHECKPOINT 8: aktif Cockpit projesinde Maestro yapısı ve çalıştırılabilir referansı sıfır."
     status: pending
   - id: faz-9
-    content: "FAZ 9 — Ürünleştirme ve TAM SÖKÜM: Maestro executor/driver/YAML compiler/UI/CLI/fallback yanında dependency, env/config, feature flag, API DTO, Prisma alanı, migration baseline, script, test, fixture, route, çeviri ve aktif doküman yapısı da projeden kaldırılır; eski run verisi önceden engine-neutral arşive taşınır, özel historical renderer bırakılmaz. CHECKPOINT 9: aktif Cockpit projesinde Maestro yapısı ve çalıştırılabilir referansı sıfır, güvenlik/durability/release kapıları yeşil."
+    content: "FAZ 9 — Maestro sonrası production operasyonları: Phase 8'de Maestro/YAML aktif yüzeyi kaldırıldıktan sonra multi-device soak, USB/power/process-loss recovery, low disk, security/retention/audit, v1 compatibility sunset, runbook, operator guide ve release operasyon kapıları tamamlanır. CHECKPOINT 9: BridgeFlow-only Cockpit güvenlik/durability/release ve operasyon kapılarında yeşil."
     status: pending
 isProject: false
 ---
 
 # Verdict Cockpit — SDK + Bridge Tam İmplementasyon Planı
 
-**Sürüm:** v1.1.3
+**Sürüm:** v1.1.4
 **Tarih:** 2026-08-05
 **FrozenAt:** 2026-08-05
-**MasterDigest:** `sha256:38800dbbf65ef935159108e76fca506474205e4f1168a950089436ae5138d51b`
+**MasterDigest:** `sha256:b2af8c455dc9a74495bd937112756a6f4c5aaf3f0a5ee292d95294e564c687ef`
 **Digest Policy:** UTF-8 oku; CRLF/CR line ending'leri LF yap; dosya final newline ile biter; `**MasterDigest:**` ile başlayan satırı tamamen çıkar; başka whitespace normalization uygulama; kalan metnin SHA-256 değerini hesapla.
 **Verify Command:** `pnpm verdict:verify-master-plan`
 **DecisionIndexVersion:** `decision-index-v1.1.3`
@@ -1088,7 +1088,7 @@ doğrudan master plana eklenmez; yalnız P0 güvenlik/correctness açığı, con
 
 | Decision ID | Başlık | Bağlayıcı karar | Kaynak bölüm | Effective | Applies | Supersedes |
 |---|---|---|---|---|---|---|
-| DEC-001 | Maestro tam söküm | Maestro runtime, YAML, CLI, driver, dependency, flag, DTO, DB alanı, UI ve aktif doküman referansı sıfırlanır. | Son bağlayıcı karar · Faz 9 · H.8 | v1.0.0 | CP8, CP9 | Yok |
+| DEC-001 | Maestro tam söküm | Maestro runtime, YAML, CLI, driver, dependency, flag, DTO, DB alanı, UI ve aktif doküman referansı Phase 8 içinde sıfırlanır; Phase 9 yalnız Maestro sonrası operasyon kabulüdür. | Son bağlayıcı karar · Faz 8 · H.8 | v1.1.4 | CP8, CP9 | Yok |
 | DEC-010 | Core business type bilmez | `STOP`, `PARCEL`, `MATCH`, `BETTING`, `OPEN_STOP` gibi domain semantic type/command Core ve Bridge contract'larına sızamaz. | B.10A · C.56 · CP4A/CP4B | v1.0.0 | CP4A, CP4B, CP4C | Yok |
 | DEC-020 | WorkflowIR v2 önce gelir | Domain Pack production implementation CP4A tamamlanmadan merge edilemez. | Faz 4A | v1.0.0 | CP4A, CP4B | Yok |
 | DEC-030 | Four-plane Oracle | Evidence plane sayısı UI/App/Local/Remote olarak kalır; queue Local subtype, app state App source'tur. | B.11 · C.57 · H.8 | v1.0.0 | CP5, CP6, CP7 | Yok |
@@ -1311,7 +1311,7 @@ kriterleri geçmeden “tamamlandı” sayılmaz.
 | SDK evidence-core integration | ✅ GO | Control/event/WAL temeli uygulanmış ve yerel kanıt var |
 | Controlled Cockpit functional E2E | 🟡 GO | Disposable PostgreSQL ve run-scoped WS authentication şartlı |
 | Bridge B1 pilot | 🟡 CONDITIONAL | Fencing, process-death ve üç DUT vakası açık |
-| Verdict platform release | ⛔ NO_GO | BridgeFlowCompiler/runtime ve measured cutover yok |
+| Verdict platform release | ⛔ NO_GO | BridgeFlowCompiler/runtime ve Phase 8 zero-structure removal yok |
 | Production rollout | ⛔ NO_GO | Security, durability, device acceptance borcu var |
 | Public SDK release | ⛔ NO_GO | Mobile publication/external consumer/security kapıları açık |
 
@@ -3723,7 +3723,7 @@ aşağıdaki state'lerden birini türetir:
   compatibility eksik; açık reason/action gösterilir.
 - `MIGRATION_REQUIRED`: workflow/pack/run eski schema'da; migrate/legacy-summary yolu
   gösterilir.
-- `MEASUREMENT_ONLY`: yalnız CP8 izole dual-run karşılaştırmasında kullanılabilir.
+- `MEASUREMENT_ONLY`: Maestro için kullanılmaz; yalnız non-execution diagnostic/telemetry izlerinde, release hükmünü değiştirmeyen geçici gözlem state'i olabilir.
 - `REMOVED`: legacy Maestro/YAML işlevi artık sunulmaz; fallback yoktur.
 
 Kalıcı environment feature flag'i page doğruluğunun kaynağı olamaz. Geçici cutover
@@ -4779,9 +4779,9 @@ device üzerinde Act Mode fail-closed olur.
 ## C.5 Maestro fallback veya devre dışı kalıntı olmayacak
 
 Bridge preflight, compiler veya executor hatasında run Maestro'ya düşmez. Açık
-hata kodu üretir. Maestro yalnız ölçümlü geçiş boyunca, silme kararını üretmek
-için izole dual-run harness'ında geçici olarak yaşar. Checkpoint 8 sonrasında bu
-harness da dahil bütün yapı Checkpoint 9'da projeden sökülür. Disabled kod,
+hata kodu üretir. Maestro izole dual-run harness'ı olarak da tutulmaz; Phase 8
+içinde aktif Cockpit'ten runtime, driver, CLI, YAML, API/DB, UI, script, test,
+fixture ve aktif doküman referanslarıyla birlikte kaldırılır. Disabled kod,
 feature flag, “ileride lazım olur” dependency'si veya gizli CLI yolu bırakılmaz.
 
 ## C.6 Kalıcı YAML execution artifact'i olmayacak
@@ -6343,42 +6343,34 @@ implementation/acceptance paketidir.
 12. Mutation sırasında active wait generation invalidation/re-evaluation DUT testi.
 13. Accessibility event suppression + scoped safety-rescan liveness/CPU DUT testi.
 
-## D.19 Maestro Ölçümü ve Projeden Tam Söküm
+## D.19 Maestro Projeden Tam Söküm
 
-1. Golden workflow listesi.
-2. Aynı input/device/build ile Maestro ve BridgeFlow run.
-3. Correctness karşılaştırması.
-4. False-pass/false-fail.
-5. Run duration ve step latency.
-6. Ambiguity/obstruction davranışı.
-7. Event correlation ve artifact completeness.
-8. Recovery/cancel.
-9. Cutover kararı ve kayıt.
-10. `maestro-executor` silme.
-11. DeviceWorker driver preinstall silme.
-12. YAML execution/preview/download silme.
-13. Maestro CLI/dependency/script silme.
-14. UI metinleri silme.
-15. Field flow özel Maestro yolları silme.
-16. Runtime feature flag, fallback branch ve environment variable'ları silme.
-17. Package manifest, lockfile ve container/image kurulumlarından dependency'yi silme.
-18. API route, DTO, type, enum, serializer ve response alanlarını silme.
-19. `yamlContent` ve `maestroOutput` dahil Prisma alanlarını drop etme.
-20. Korunacak eski run verisini engine-neutral artifact/archive modeline taşıma.
-21. Engine-specific historical renderer'ı silme; generic legacy summary kullanma.
-22. Test, mock, snapshot, fixture ve test helper'larını silme veya BridgeFlow'a dönüştürme.
-23. Script, CI job, shell command, env örneği ve runbook talimatlarını silme.
-24. Translation, label, icon, route ve kullanıcı metinlerini silme.
-25. Aktif Cockpit dokümanlarındaki eski mimari/yürütme talimatlarını kaldırma;
+1. Verdict runtime start gerçek BridgeFlow executor/queue yoluna bağlanır.
+2. `maestro-executor` silme.
+3. DeviceWorker driver preinstall silme.
+4. YAML execution/preview/download silme.
+5. Maestro CLI/dependency/script silme.
+6. UI metinleri silme.
+7. Field flow özel Maestro yolları silme.
+8. Runtime feature flag, fallback branch ve environment variable'ları silme.
+9. Package manifest, lockfile ve container/image kurulumlarından dependency'yi silme.
+10. API route, DTO, type, enum, serializer ve response alanlarını silme.
+11. `yamlContent` ve `maestroOutput` dahil Prisma alanlarını drop etme.
+12. Korunacak eski run verisini engine-neutral artifact/archive modeline taşıma.
+13. Engine-specific historical renderer'ı silme; generic legacy summary kullanma.
+14. Test, mock, snapshot, fixture ve test helper'larını silme veya BridgeFlow'a dönüştürme.
+15. Script, CI job, shell command, env örneği ve runbook talimatlarını silme.
+16. Translation, label, icon, route ve kullanıcı metinlerini silme.
+17. Aktif Cockpit dokümanlarındaki eski mimari/yürütme talimatlarını kaldırma;
     bu master plan yalnız karar geçmişini ve söküm kanıtını taşır.
-26. Prisma migration geçmişi için güvenli baseline/squash planı:
+18. Prisma migration geçmişi için güvenli baseline/squash planı:
     - tüm ortamlar drop migration'ını uygulamış olmalı,
     - DB backup ve row/checksum kanıtı alınmalı,
     - DB owner onayı olmadan migration geçmişi yeniden baselane edilmemeli,
     - tamamlandığında aktif migration zinciri engine-specific kolon yaratmamalı.
-27. `rg`, dependency graph, lockfile, generated Prisma client, build output ve container
+19. `rg`, dependency graph, lockfile, generated Prisma client, build output ve container
     taramasıyla repo-wide zero-structure gate.
-28. Binary/process testi: Cockpit host'ta eski CLI bulunmasa dahi tüm suite yeşil.
+20. Binary/process testi: Cockpit host'ta eski CLI bulunmasa dahi tüm suite yeşil.
 
 ### “Tamamen kaldırıldı” tanımı
 
@@ -7826,29 +7818,30 @@ ve post-run explanation kapalıyken checkpoint davranışı aynı kalır.
   üretiyor.
 - Preview accessibility/explorer profilleri release gate sonucunu değiştirmiyor.
 
-## FAZ 8 — Bridge B1 Fiziksel Kabul ve Maestro Cutover Gate
+## FAZ 8 — Bridge B1 Fiziksel Kabul ve Maestro Doğrudan Söküm
 
 ### Amaç
 
-Bridge'in OS seviyesindeki arıza modlarını ve BridgeFlow'un Maestro'ya göre
-correctness/performansını ölçerek silme izni üretmek.
+Bridge'in OS seviyesindeki arıza modlarını BridgeFlow-only yürütme üzerinde
+kapatmak ve Cockpit içindeki Maestro/YAML aktif yüzeyini aynı fazda sökmek.
 
 ### Neden bu sırada
 
-Maestro silme geri dönüşü pahalıdır. Fiziksel guard ve measured parity olmadan
-yalnız happy-path demo yeterli değildir.
+Maestro fallback veya karşılaştırma harness'ı tutulduğunda iki runtime drift'i
+devam eder. Phase 7 referans workflow kanıtından sonra Phase 8, BridgeFlow yolunu
+tek production execution path yapar ve eski engine'i doğrudan kaldırır.
 
 ### Yapılacaklar
 
-1. D.18 ve D.19'un ölçüm kısmı.
+1. D.18 fiziksel kabul maddeleri.
 2. Mobile ile command fencing contract update.
 3. Process death duplicate action fixture.
 4. IME/foreign-window/manual-touch DUT.
 5. Same-app z-order ve SCREEN_READY invalidation.
 6. WakeLock/thermal ölçümü.
-7. Golden runner dual-run.
-8. False-pass/fail ve artifact karşılaştırması.
-9. Cutover raporu ve imzalı karar.
+7. Verdict runtime start yolunu gerçek BridgeFlow executor/queue worker'a bağla.
+8. D.19 Maestro tam söküm listesini uygula.
+9. Active source residual-zero gate'i çalıştır.
 10. CP0 baseline'ından üretilmiş, cihaz/build/thermal profili ve percentile/sample
     tanımı pinli `PerformanceBudget v1` regression/release gate'i.
 
@@ -7862,70 +7855,52 @@ yalnız happy-path demo yeterli değildir.
 - Manual touch contamination işaretleniyor.
 - WakeLock bounded; thermal/power ve command/wait/receipt/ordered latency bütçeleri
   pinli `PerformanceBudget v1` içinde kabulde.
-- Tam kurye BridgeFlow correctness'i golden runner'dan düşük değil.
-- False-pass artışı yok.
+- BridgeFlow-only referans workflow ve Test Profile yolları Maestro fallback olmadan çalışıyor.
+- False-pass/false-green guard'ları BridgeFlow evidence/oracle üzerinden korunuyor.
 - Hot path full-tree dump sayısı sıfır; profil dışı ölçülmemiş örnek eşik cutover
   gerekçesi yapılmıyor.
 - Artifact/evidence completeness kabul kriterini geçiyor.
-- Cutover kararı kayıt altına alınmış.
+- Maestro executor/driver/YAML compiler/UI/CLI/fallback, API/DB alanı, script, test,
+  fixture, route ve aktif doküman referansı sıfır.
 
-**Checkpoint 8 geçmeden Maestro DELETE yoktur.** Ancak başarısız Bridge run'ın
-sessiz Maestro fallback'i yine yoktur; dual-run yalnız ölçüm harness'ıdır.
+**Checkpoint 8 Maestro DELETE fazıdır.** Başarısız BridgeFlow run'ın sessiz
+Maestro fallback'i yoktur; dual-run/benchmark harness'ı kurulmaz.
 
-## FAZ 9 — Ürünleştirme, Maestro'nun Projeden Tam Sökümü ve Operasyon
+## FAZ 9 — Maestro Sonrası Ürünleştirme ve Operasyon
 
 ### Amaç
 
-Geçiş kodunu ve eski engine'e ait bütün proje yapısını kaldırmak, yeni runtime'ı
-tek production Cockpit yolu yapmak ve uzun süreli operasyon kapılarını tamamlamak.
+Phase 8'de Maestro/YAML aktif yüzeyi kaldırıldıktan sonra BridgeFlow-only
+Cockpit'in uzun süreli operasyon kapılarını tamamlamak.
 
 ### Neden en sonda
 
-Compatibility, historical run ve rollback ihtiyaçları ancak measured cutover
-sonrası güvenle daraltılabilir.
+Maestro silme işi Phase 8'de biter. Phase 9, silme sonrasında production
+operasyon, soak ve hardening kanıtını genişletir.
 
 ### Yapılacaklar
 
-1. D.19 tam söküm listesinin tamamı.
-2. Repo-wide kod/package/config/schema/UI/test/doc/migration envanteri.
-3. Eski run verisinin engine-neutral export/migration sayım ve checksum doğrulaması.
-4. Engine-specific DB kolon, DTO ve renderer drop migration'ı.
-5. Legacy UI metin, route, translation ve asset temizliği.
-6. DeviceWorker driver/preinstall kodunu sil.
-7. API executor/compiler/script/feature-flag/env temizliği.
-8. Package manifest, lockfile, image ve CI dependency temizliği.
-9. Test/mock/fixture/snapshot temizliği veya BridgeFlow dönüşümü.
-10. Aktif doküman/runbook talimatlarını yeni mimariye geçir.
-11. Güvenli DB baseline koşulları sağlanırsa eski migration zincirini yeniden baseline et.
-12. V1 event telemetry observation window.
-13. V1 parser sunset veya bilinçli device sunset.
-14. Multi-device concurrency.
-15. Low disk.
-16. USB disconnect.
-17. Power/process loss.
-18. 8 saat soak ve uzun retention/purge.
-19. Dependency/security scan.
-20. Runbook, operator guide ve incident playbook.
-21. Eski dar dokümanları yeni mimariye göre güncelle; geçersiz olanları repo dışı
+1. Phase 8 residual-zero gate'ini doğrula.
+2. V1 event telemetry observation window.
+3. V1 parser sunset veya bilinçli device sunset.
+4. Multi-device concurrency.
+5. Low disk.
+6. USB disconnect.
+7. Power/process loss.
+8. 8 saat soak ve uzun retention/purge.
+9. Dependency/security scan.
+10. Runbook, operator guide ve incident playbook.
+11. Eski dar dokümanları yeni mimariye göre güncelle; geçersiz olanları repo dışı
     tarihsel arşive taşı veya sil.
-22. Product-shell borcunu ayrı backlog'a taşı.
-23. `PageMigrationManifest` legacy-zero pattern'larının tamamını repo/build çıktısında
+12. Product-shell borcunu ayrı backlog'a taşı.
+13. `PageMigrationManifest` legacy-zero pattern'larının tamamını repo/build çıktısında
     doğrula; expiry'si dolmuş compatibility adapter ve transition flag'lerini sil.
-24. H.5 hedef route'larında final navigation/direct-link/non-regression suite'ini
+14. H.5 hedef route'larında final navigation/direct-link/non-regression suite'ini
     eski CLI ve Maestro package'i kurulu değilken çalıştır.
 
 ### CHECKPOINT 9
 
-- Maestro CLI/executor/driver/YAML compiler/preview/download yok.
-- Package, lockfile, container, CI, env ve config dependency'si yok.
-- Runtime fallback, feature flag, adapter veya disabled dead-code yok.
-- API route/DTO/type/enum ve Prisma alanı yok.
-- Engine-specific test, fixture, mock, snapshot ve script yok.
-- Engine-specific UI, label, translation, icon ve özel renderer yok.
-- Korunması gereken eski run verisi engine-neutral arşiv/summary olarak açılıyor.
-- Aktif migration baseline engine-specific kolon oluşturmuyor; drop/export kanıtı var.
-- Eski CLI sistemde kurulu değilken build, test ve gerçek run yeşil.
-- Aktif uygulama/build/config/schema/test/UI ağacında repo-wide Maestro yapısı sıfır.
+- Phase 8 Maestro removal gate'i `COMPLETED`.
 - Aktif v1 event/device oranı sıfır veya kalan cihazlar bilinçli sunset edilmiş.
 - Çoklu cihaz port/session izolasyonu yeşil.
 - Low disk/USB/process loss recovery beklendiği gibi.
@@ -7961,8 +7936,8 @@ sonrası güvenle daraltılabilir.
 | R16 | UI preview execution'dan farklı | Operatör yanılır | Tek API compiler + plan hash | CP6 |
 | R17 | Screenshot/dump PII sızdırır | Veri ihlali | Redaction, RBAC, retention | CP6/CP7 |
 | R18 | Unknown dialog kör kapatılır | Bug gizlenir | STOP + artifact policy | CP7 |
-| R19 | Maestro erken silinir | Workflow kaybı | Measured dual-run gate | CP8 |
-| R20 | Maestro'nun disabled kodu, dependency'si, DB alanı veya historical renderer'ı kalır | İki runtime drift/borç ve tamamlanmamış söküm | CP9 zero-structure gate | CP9 |
+| R19 | Maestro BridgeFlow worker bağlanmadan silinir | Workflow kaybı | Phase 8 önce gerçek BridgeFlow executor/queue wiring, sonra delete | CP8 |
+| R20 | Maestro'nun disabled kodu, dependency'si, DB alanı veya historical renderer'ı kalır | İki runtime drift/borç ve tamamlanmamış söküm | CP8 zero-structure gate | CP8 |
 | R21 | Accessibility service enable başka servisleri ezer | Cihaz bozulur | Read/merge/verify enabled-service list | CP3 |
 | R22 | Full dump hot path performansı bozar | Yavaşlık/ANR/power | Scope policy + metrics | CP3/CP8 |
 | R23 | Heartbeat var ama alarm yok | Stuck run fark edilmez | Liveness policy + executor watchdog | CP5/CP7 |
@@ -9230,7 +9205,7 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 14. Editor/Inspector/Run Detail yeni runtime'ı eksiksiz sunuyor.
 15. Field Login/Load Tour/tam kurye tek omurgada.
 16. Security/RBAC/audit/retention kapıları yeşil.
-17. Golden cutover BridgeFlow lehine kabul edilmiş.
+17. BridgeFlow-only execution path referans workflow ve Test Profile yüzeylerinde kabul edilmiş.
 18. Maestro runtime, driver, CLI, dependency, YAML yolu, feature flag, API/DB alanı,
     UI, script, test, fixture ve aktif doküman yapısıyla projeden tamamen sökülmüş.
 19. Korunması gereken eski run verisi yalnız engine-neutral arşiv/summary üzerinden açılıyor;
@@ -9409,8 +9384,8 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
     diagnostics/security/campaign matrix.
 14. Maçkolik Domain Pack'e başlamadan `MACKOLIK_DOMAIN_PACK_REFERENCE_V1` blueprint
     set'i ve seçili onboarding workbook tabanlı authoring Excel'i dondurulur.
-15. Physical B1 matrix + golden comparison.
-16. Maestro DELETE + route/UI/API legacy-zero + productization.
+15. Physical B1 matrix + Maestro direct removal + route/UI/API legacy-zero.
+16. BridgeFlow-only productization and production operations.
 17. Opsiyonel İz C: AI Design Audit ve post-run evidence explanation.
 
 ---
@@ -9420,7 +9395,7 @@ Platform ancak aşağıdakilerin tamamında “DONE” sayılır:
 Bu programın başarı ölçütü “Cockpit bir Bridge komutu gönderebiliyor” değildir.
 Başarı; güvenli session, kalıcı event, deterministik plan, idempotent action,
 restart recovery, occurrence bazlı dört katmanlı evidence, operatör açıklanabilirliği
-ve measured cutover'ın birlikte sağlanmasıdır.
+ve Maestro'suz BridgeFlow-only operasyonun birlikte sağlanmasıdır.
 
 Bu nedenle:
 

@@ -3,7 +3,7 @@
  * instead of a single source of truth.
  *
  * Three oracle kinds:
- * - "ui"          Maestro executed the node's commands (NESY_STEP::DONE marker)
+ * - "ui"          BridgeFlow completed the node's UI action
  * - "mobileEvent" the app reported the business action via the test bridge
  *                 (logcat NESY_AUTO_BRIDGE / structured NESY_TEST_EVENT)
  * - "backend"     the app confirmed the backend accepted the operation
@@ -38,17 +38,16 @@ export interface OracleEvidence {
 }
 
 /**
- * Default policies — mirrors the pre-refactor behavior of the per-node-type
- * logcat handlers that used to live inline in workflow-runner.ts.
+ * Default policies for fusing UI, mobile event, and backend evidence.
  */
 export const DEFAULT_COMPLETION_POLICIES: Record<string, NodeCompletionPolicy> = {
   DELIVERY_OPERATION: { required: ["ui", "mobileEvent", "backend"] },
   // Multi-barcode loads: per-parcel GENERIC_ERROR is non-fatal; UI completion
-  // of the Maestro loop is the gate. mobileEvent still recorded when a parcel
+  // of the BridgeFlow loop is the gate. mobileEvent still recorded when a parcel
   // pipeline succeeds, but is no longer required for the node to pass.
   LOAD_TO_VEHICLE: { required: ["ui"] },
   SCAN_BARCODE: { required: ["ui", "mobileEvent"] },
-  // UI soft-assert + post-Maestro server step (device JWT + GET_KEY →
+  // UI soft-assert + post-BridgeFlow server step (device JWT + GET_KEY →
   // GetMyScheduleByZoneCode). Run stays open until backend oracle resolves.
   VALIDATE_STOPLIST: { required: ["ui", "backend"] },
   // Tour-start notification / logcat can race; UI tap of btn_out is enough —
@@ -241,7 +240,7 @@ export class OracleEngine {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // UI oracle — fed by Maestro NESY_STEP markers (via workflow-runner)
+  // UI oracle — fed by BridgeFlow UI action completion
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
@@ -250,7 +249,7 @@ export class OracleEngine {
    * the step then stays "running" until the event oracle resolves it.
    */
   async onUiStepDone(nodeId: string, warnings: number): Promise<boolean> {
-    this.record(nodeId, "ui", "passed", warnings > 0 ? `Maestro step done (${warnings} warnings)` : "Maestro step done");
+    this.record(nodeId, "ui", "passed", warnings > 0 ? `BridgeFlow step done (${warnings} warnings)` : "BridgeFlow step done");
     const policy = this.policyFor(nodeId);
     const uiOnly = policy.required.every((k) => k === "ui");
     if (!uiOnly) {
@@ -274,7 +273,7 @@ export class OracleEngine {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Event oracles — logcat bridge handlers (moved from workflow-runner)
+  // Event oracles — logcat bridge handlers
   // ───────────────────────────────────────────────────────────────────────────
 
   attach(onSniffer: SnifferRegistrar): void {
@@ -576,11 +575,11 @@ export class OracleEngine {
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Resolves steps that are still "running" after Maestro exited: their UI
+   * Resolves steps that are still "running" after BridgeFlow completed: their UI
    * commands ran, but a required business/backend oracle never arrived.
    * Returns true when any step ended up failed (the run must not be green).
    */
-  async finalizeRun(maestroSucceeded: boolean): Promise<{ oracleFailures: number }> {
+  async finalizeRun(uiRuntimeSucceeded: boolean): Promise<{ oracleFailures: number }> {
     const openSteps = await prisma.workflowStepResult.findMany({
       where: { runId: this.runId, status: "running" },
       select: { id: true, nodeId: true, nodeType: true },
@@ -603,8 +602,8 @@ export class OracleEngine {
         continue;
       }
 
-      if (!maestroSucceeded) {
-        // Maestro itself failed — the generic runner handling marks these.
+      if (!uiRuntimeSucceeded) {
+        // UI runtime itself failed — the generic runner handling marks these.
         continue;
       }
 

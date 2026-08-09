@@ -18,7 +18,7 @@ import {
   coerceOpenParcelParams,
   coerceOpenShipmentParams,
   coerceSelectRouteParams,
-} from "./yaml-registry";
+} from "./node-config-registry";
 
 export type NodeConfigValidationError = {
   key?: string;
@@ -64,7 +64,7 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
       type: "select",
       required: true,
       options: launchAppCountryOptions,
-      helperText: "Used to resolve the Maestro appId.",
+      helperText: "Used to resolve the application id.",
     },
     {
       key: "environment",
@@ -246,7 +246,7 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
         { label: "2 minutes", value: "120000" },
         { label: "5 minutes", value: "300000" },
       ],
-      helperText: "Time Maestro will wait before proceeding to the next step",
+      helperText: "Maximum wait duration before the executor proceeds or fails",
     },
   ],
   [WorkflowNodeType.SEMANTIC_ACTION]: [
@@ -339,30 +339,4 @@ export function validateNodeConfig(node: WorkflowNode): NodeConfigValidationErro
   }
 
   return errors;
-}
-
-function cleanConfig(config: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(config).filter(([, value]) => !isEmptyValue(value)));
-}
-
-function formatScalar(value: unknown) {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
-}
-
-export function createNodeYamlPreview(node: WorkflowNode): string[] {
-  const config = cleanConfig((node.data.config ?? {}) as Record<string, unknown>);
-  const lines = [`type: ${node.type}`, `title: ${node.data.title}`];
-  if (Object.keys(config).length === 0) return lines;
-  lines.push("config:");
-  for (const [key, value] of Object.entries(config)) {
-    if (Array.isArray(value)) {
-      lines.push(`  ${key}:`);
-      for (const item of value) lines.push(`    - ${formatScalar(item)}`);
-      continue;
-    }
-    lines.push(`  ${key}: ${formatScalar(value)}`);
-  }
-  return lines;
 }

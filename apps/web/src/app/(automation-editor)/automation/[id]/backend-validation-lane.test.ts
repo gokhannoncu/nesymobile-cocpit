@@ -35,9 +35,9 @@ describe("LOAD & TOUR backend lane", () => {
     expect(derived[1]?.description).toContain("AssignPickupToCourier");
   });
 
-  it("layouts Post-Maestro checks header with both cards", () => {
+  it("layouts Post-BridgeFlow checks header with both cards", () => {
     const lane = layoutBackendValidationLane(loadTourNodes);
-    expect(lane.header?.data.title).toBe("Post-Maestro checks");
+    expect(lane.header?.data.title).toBe("Post-BridgeFlow checks");
     expect(lane.nodes).toHaveLength(2);
     expect(lane.nodes.map((n) => n.data.title)).toEqual([
       "Tour Approve",

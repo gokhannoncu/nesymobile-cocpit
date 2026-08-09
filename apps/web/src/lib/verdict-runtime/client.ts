@@ -45,10 +45,6 @@ export async function fetchVerdictRunDetail(runId: string): Promise<RunDetailRes
   return getJson<RunDetailResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}`)
 }
 
-export async function fetchVerdictLegacyRunSummary(runId: string): Promise<WorkflowRunApi> {
-  return getJson<WorkflowRunApi>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/legacy-summary`)
-}
-
 export async function fetchVerdictEvidenceJourney(runId: string): Promise<EvidenceJourneyResult> {
   return getJson<EvidenceJourneyResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-journey`)
 }

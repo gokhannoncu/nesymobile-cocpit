@@ -67,7 +67,7 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
-        WHERE COALESCE(bfr.engine_type, 'MAESTRO_LEGACY') = ${query.engineType}
+        WHERE bfr.engine_type = ${query.engineType}
         ORDER BY wr."createdAt" DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -113,8 +113,6 @@ export async function getRunDetail(runId: string): Promise<RunDetailResult | nul
       wr."createdAt" AS "createdAt",
       wr."workflowId" AS "workflowId",
       wr."versionId" AS "versionId",
-      wr."yamlContent" AS "yamlContent",
-      wr."maestroOutput" AS "maestroOutput",
       bfr.engine_type AS "engineType",
       bfr.*
     FROM workflow_runs wr
@@ -189,25 +187,6 @@ export async function getEvidenceJourney(runId: string): Promise<EvidenceJourney
     runId,
     items: toJsonSafe(rows),
   }
-}
-
-export async function getLegacyRunSummary(runId: string): Promise<WorkflowRunApi | null> {
-  const rows = await prisma.$queryRaw<Row[]>`
-    SELECT
-      wr.id,
-      wr.status,
-      wr."createdAt" AS "createdAt",
-      wr."workflowId" AS "workflowId",
-      wr."versionId" AS "versionId",
-      wr."yamlContent" AS "yamlContent",
-      wr."maestroOutput" AS "maestroOutput",
-      NULL::text AS "engineType"
-    FROM workflow_runs wr
-    WHERE wr.id = ${runId}
-    LIMIT 1
-  `
-  const first = rows[0]
-  return first ? toWorkflowRunApi(first) : null
 }
 
 export async function getDeviceReadiness(deviceId: string): Promise<Record<string, unknown>> {
@@ -325,7 +304,7 @@ export function getTestCampaignResult(campaignId: string): Record<string, unknow
 export function toWorkflowRunApi(row: Row): WorkflowRunApi {
   const runId = String(row.id)
   const rawEngineType = row.engineType ?? row.engine_type
-  const engineType = typeof rawEngineType === 'string' ? rawEngineType : 'MAESTRO_LEGACY'
+  const engineType = typeof rawEngineType === 'string' ? rawEngineType : 'BRIDGEFLOW'
   const runtimeFieldAliases: Readonly<Record<string, readonly string[]>> = {
     engineType: ['engineType', 'engine_type'],
     compiledPlanRef: ['compiledPlanRef', 'compiled_plan_ref'],
@@ -359,10 +338,7 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
     apiVersion: 'verdict-runtime.v1',
     run: toJsonSafe(row),
     runtime: Object.keys(runtime).length > 0 ? runtime : null,
-    partial: engineType === 'MAESTRO_LEGACY',
-    ...(engineType === 'MAESTRO_LEGACY'
-      ? { blockedReason: 'Legacy Maestro run: BridgeFlow occurrence/oracle tables do not apply.' }
-      : {}),
+    partial: false,
     correlation: {
       runId,
       engineType,

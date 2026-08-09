@@ -15,7 +15,10 @@ import { EvidenceSourceQueryService } from './evidence-source-query.service.js'
 import { StaticEvidenceSourceResolver } from './evidence-source-resolver.js'
 import { TestCampaignService } from './test-campaign.service.js'
 import { TestProfileCatalogService } from './test-profile-catalog.service.js'
-import { createHashPinnedCompileStub } from './workflow-compile.service.js'
+import {
+  InMemoryCompiledPlanStore,
+  createHashPinnedCompileStub,
+} from './workflow-compile.service.js'
 import {
   InMemoryWorkflowRunStartStore,
   WorkflowRunService,
@@ -155,6 +158,23 @@ describe('phase 6 input contracts', () => {
     expect(preview.issues.map((issue) => issue.code)).toContain('STUB_COMPILER')
   })
 
+  it('stores an executable BridgeFlowPlan for accepted compile results', async () => {
+    const planStore = new InMemoryCompiledPlanStore()
+    const preview = createHashPinnedCompileStub(planStore).compileWorkflow({
+      workflowRef: 'courier.login',
+      workflowIr: { entryStepId: 'open', steps: [{ planStepId: 'open' }] },
+      domainPackKey: 'nesy-courier',
+      domainPackVersion: '1.0.0',
+      domainPackDigest: 'sha256:pack',
+    })
+    const plan = await planStore.get({
+      planRef: preview.compiledPlanRef,
+      planHash: preview.compiledPlanHash,
+    })
+    expect(plan?.steps[0]?.kind).toBe('NOOP')
+    expect(plan?.hash.digest).toBe(preview.compiledPlanHash)
+  })
+
   it('reads interactions by revision cursor and redacts secrets', async () => {
     const subscription = new DurableInteractionSubscription()
     await subscription.append({
@@ -229,6 +249,25 @@ describe('workflow run start pinning', () => {
     const second = await service.start(pinned)
     expect(first.runId).toBe(second.runId)
     expect(first.compiledPlanHash).toBe('sha256:abc')
+  })
+
+  it('passes pinned execution metadata to the BridgeFlow queue', async () => {
+    const enqueued: unknown[] = []
+    const service = new WorkflowRunService({
+      enqueue(input) {
+        enqueued.push(input)
+      },
+    })
+    const started = await service.start(pinned)
+    expect(started.engineType).toBe('BRIDGEFLOW')
+    expect(enqueued).toEqual([
+      expect.objectContaining({
+        runId: started.runId,
+        deviceId: pinned.deviceId,
+        compiledPlanHash: pinned.compiledPlanHash,
+        domainPackDigest: pinned.domainPackDigest,
+      }),
+    ])
   })
 })
 

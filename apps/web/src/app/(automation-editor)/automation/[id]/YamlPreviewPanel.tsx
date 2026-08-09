@@ -32,7 +32,7 @@ import {
   parseScanBarcodeParams,
   parseWaitParams,
   ScanBarcodeSchema,
-} from "./yaml-registry";
+} from "./node-config-registry";
 
 type YamlPreviewPanelProps = {
   selectedNode: WorkflowNode | null;
@@ -450,7 +450,7 @@ function SelectedNodeForm({
         <FormField
           label="Wait Duration"
           required
-          helperText="Time Maestro will wait before proceeding to the next step"
+          helperText="Maximum wait duration before the executor proceeds or fails"
           error={errors.timeout}
         >
           <div className="relative">

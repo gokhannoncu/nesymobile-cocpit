@@ -3,25 +3,9 @@ import path from "node:path";
 import fs from "node:fs";
 import { prisma, Prisma } from "@nesy/db";
 import { RunStore } from "../services/run-store.js";
-import { dispatchRun, removeRunFromQueues, DeviceWorkerRegistry } from "../services/device-worker.js";
-import { generateWorkflowWorkspace } from "../services/yaml-generator.js";
+import { DeviceWorkerRegistry } from "../services/device-worker.js";
 
 const router: ReturnType<typeof Router> = Router();
-
-/**
- * Coerces a request body `runInput` into a flat string map. Run-time inputs
- * (barcode, shipmentId, ...) are substituted into node config as {{key}} tokens
- * and exposed as Maestro env vars, so only string-valued scalars are kept.
- */
-function sanitizeRunInput(value: unknown): Record<string, string> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const out: Record<string, string> = {};
-  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof raw === "string") out[key] = raw;
-    else if (typeof raw === "number" || typeof raw === "boolean") out[key] = String(raw);
-  }
-  return Object.keys(out).length > 0 ? out : null;
-}
 
 function slugify(text: string): string {
   return text
@@ -213,51 +197,13 @@ router.get("/device-workers", (_req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/workflows/yaml-preview - Compile the editor graph with the SAME
-// compiler the runner uses (single source of truth for YAML generation).
-// (must be registered before /:id routes)
+// POST /api/workflows/yaml-preview - removed in Phase 8.
 // ─────────────────────────────────────────────────────────────────────────────
-router.post("/yaml-preview", (req, res) => {
-  try {
-    const { nodes, edges, config, country, environment, runInput } = req.body as {
-      nodes?: unknown;
-      edges?: unknown;
-      config?: Record<string, unknown>;
-      country?: string;
-      environment?: string;
-      runInput?: unknown;
-    };
-
-    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
-      res.status(400).json({ message: "nodes and edges arrays are required" });
-      return;
-    }
-
-    const workspace = generateWorkflowWorkspace({
-      workflowId: "preview",
-      runId: "preview",
-      nodes: nodes as never,
-      edges: edges as never,
-      config,
-      country,
-      environment,
-      runInput: sanitizeRunInput(runInput) ?? undefined,
-    });
-
-    res.json({
-      data: {
-        yaml: workspace.combinedYaml,
-        files: workspace.files,
-        mainFile: workspace.mainFile,
-        conditionDecisions: workspace.conditionDecisions,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to generate YAML preview",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
+router.post("/yaml-preview", (_req, res) => {
+  res.status(410).json({
+    message: "YAML preview has been removed. Use /api/verdict/runtime/compile.",
+    replacement: "/api/verdict/runtime/compile",
+  });
 });
 
 router.get("/:id", async (req, res) => {
@@ -581,233 +527,22 @@ router.get("/:id/versions/:versionId", async (req, res) => {
 // POST /api/workflows/:id/run - Start workflow execution
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/:id/run", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { selectedDeviceId, mode, targetStepId, country, environment, runInput } = req.body;
-
-    console.log(`[POST /:id/run] Starting run for workflow: ${id}`, { selectedDeviceId, mode, targetStepId });
-
-    const workflow = await prisma.workflow.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
-      include: {
-        versions: { orderBy: { version: "desc" }, take: 1 },
-      },
-    });
-
-    if (!workflow) {
-      console.log(`[POST /:id/run] Workflow not found: ${id}`);
-      res.status(404).json({ message: "Workflow not found" });
-      return;
-    }
-
-    const currentVersion = workflow.versions[0];
-    if (!currentVersion) {
-      console.log(`[POST /:id/run] No saved version for workflow: ${id}`);
-      res.status(400).json({ message: "Workflow has no saved version. Please save first." });
-      return;
-    }
-
-    console.log(`[POST /:id/run] Found version ${currentVersion.version}, creating run...`);
-
-    let finalCountry = country;
-    let finalEnvironment = environment;
-    if (!finalCountry || !finalEnvironment) {
-      const launchAppNode = (currentVersion.nodes as any[])?.find((n) => n.type === "LAUNCH_APP");
-      if (launchAppNode?.data?.config) {
-        if (!finalCountry) finalCountry = launchAppNode.data.config.country;
-        if (!finalEnvironment) finalEnvironment = launchAppNode.data.config.environment || launchAppNode.data.config.stage;
-      }
-    }
-
-    const run = await prisma.workflowRun.create({
-      data: {
-        workflowId: workflow.id,
-        versionId: currentVersion.id,
-        status: "pending",
-        mode: mode ?? "full",
-        targetStepId: targetStepId ?? null,
-        deviceId: selectedDeviceId ?? null,
-        country: finalCountry ?? null,
-        environment: finalEnvironment ?? null,
-        runInput: sanitizeRunInput(runInput) ?? Prisma.DbNull,
-      },
-    });
-
-    console.log(`[POST /:id/run] Run created: ${run.id}`);
-
-    const nodes = currentVersion.nodes as Array<{
-      id: string;
-      type: string;
-      data: { title: string };
-    }>;
-
-    if (Array.isArray(nodes)) {
-      // Build topological order from connections so UI shows steps in execution order
-      const edges = currentVersion.edges as Array<{
-        sourceNodeId: string;
-        targetNodeId: string | null;
-        sourceHandle: string;
-        isPlaceholder?: boolean;
-      }>;
-
-      const orderedNodeIds: string[] = [];
-      const visitedIds = new Set<string>();
-
-      function walkNodes(nodeId: string) {
-        if (visitedIds.has(nodeId)) return;
-        visitedIds.add(nodeId);
-        orderedNodeIds.push(nodeId);
-
-        const outgoing = (edges ?? [])
-          .filter((e) => e.sourceNodeId === nodeId && e.targetNodeId && !e.isPlaceholder)
-          .sort((a, b) => {
-            // default first, then true, then false
-            const order: Record<string, number> = { default: 0, true: 1, false: 2 };
-            return (order[a.sourceHandle] ?? 0) - (order[b.sourceHandle] ?? 0);
-          });
-
-        for (const edge of outgoing) {
-          if (edge.targetNodeId) walkNodes(edge.targetNodeId);
-        }
-      }
-
-      // Start from LAUNCH_APP or first node
-      const startNode = nodes.find((n) => n.type === "LAUNCH_APP") ?? nodes[0];
-      if (startNode) walkNodes(startNode.id);
-
-      // Add any remaining nodes not reachable from start (orphans)
-      for (const node of nodes) {
-        if (!visitedIds.has(node.id)) {
-          orderedNodeIds.push(node.id);
-        }
-      }
-
-      const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-      const stepData = orderedNodeIds
-        .map((nodeId, index) => {
-          const node = nodeMap.get(nodeId);
-          // filter out nested nodes
-          if (!node || (node as any).parentNode) return null;
-          return {
-            runId: run.id,
-            nodeId: node.id,
-            nodeType: node.type,
-            nodeTitle: node.data?.title ?? node.type,
-            order: index,
-            status: "pending",
-          };
-        })
-        .filter(Boolean) as Array<{
-          runId: string;
-          nodeId: string;
-          nodeType: string;
-          nodeTitle: string;
-          order: number;
-          status: string;
-        }>;
-
-      // Derived post-Maestro backend validation lane steps (EventTower / server-steps).
-      const { deriveBackendValidations } = await import("../services/backend-validation-lane.js");
-      const backendValidations = deriveBackendValidations(
-        nodes.map((n) => ({
-          id: n.id,
-          type: n.type,
-          data: n.data,
-        })),
-      );
-      let nextOrder = stepData.length;
-      for (const bv of backendValidations) {
-        stepData.push({
-          runId: run.id,
-          nodeId: bv.stepNodeId,
-          nodeType: `BACKEND_VALIDATION:${bv.sourceNodeType}`,
-          nodeTitle: bv.title,
-          order: nextOrder++,
-          status: "pending",
-        });
-      }
-
-      await prisma.workflowStepResult.createMany({ data: stepData });
-      console.log(
-        `[POST /:id/run] Created ${stepData.length} step results (topological + ${backendValidations.length} backend validations)`,
-      );
-    }
-
-    const { queuePosition } = dispatchRun(run.id, selectedDeviceId ?? null);
-
-    console.log(`[POST /:id/run] Run ${run.id} dispatched (queue position: ${queuePosition})`);
-    res.status(202).json({
-      data: { runId: run.id, status: queuePosition > 0 ? "queued" : "pending", queuePosition },
-    });
-  } catch (error) {
-    console.error(`[POST /:id/run] ERROR:`, error);
-    res.status(500).json({
-      message: "Failed to start workflow run",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
+  res.status(410).json({
+    message: "Legacy workflow execution has been removed. Use /api/verdict/runtime/compile and /api/verdict/runtime/runs.",
+    workflowId: req.params.id,
+    replacement: "/api/verdict/runtime/runs",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/workflows/:id/run-step - Run a single step or up_to a step
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/:id/run-step", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nodeId, mode, selectedDeviceId, runInput, country, environment } = req.body;
-
-    if (!nodeId) {
-      res.status(400).json({ message: "nodeId is required" });
-      return;
-    }
-
-    const workflow = await prisma.workflow.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
-      include: { versions: { orderBy: { version: "desc" }, take: 1 } },
-    });
-
-    if (!workflow || !workflow.versions[0]) {
-      res.status(404).json({ message: "Workflow or version not found" });
-      return;
-    }
-
-    const currentVersion = workflow.versions[0];
-    const launchAppNode = (currentVersion.nodes as Array<{ type?: string; data?: { config?: Record<string, unknown> } }>)?.find(
-      (n) => n.type === "LAUNCH_APP",
-    );
-    const finalCountry =
-      country || (launchAppNode?.data?.config?.country as string | undefined) || null;
-    const finalEnvironment =
-      environment ||
-      (launchAppNode?.data?.config?.environment as string | undefined) ||
-      (launchAppNode?.data?.config?.stage as string | undefined) ||
-      null;
-
-    const run = await prisma.workflowRun.create({
-      data: {
-        workflowId: workflow.id,
-        versionId: currentVersion.id,
-        status: "pending",
-        mode: mode ?? "single_step",
-        targetStepId: nodeId,
-        deviceId: selectedDeviceId ?? null,
-        country: finalCountry,
-        environment: finalEnvironment,
-        runInput: sanitizeRunInput(runInput) ?? Prisma.DbNull,
-      },
-    });
-
-    const { queuePosition } = dispatchRun(run.id, selectedDeviceId ?? null);
-
-    res.status(202).json({
-      data: { runId: run.id, status: queuePosition > 0 ? "queued" : "pending", queuePosition },
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to start step run",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
+  res.status(410).json({
+    message: "Legacy step execution has been removed. Use Verdict runtime compile/start.",
+    workflowId: req.params.id,
+    replacement: "/api/verdict/runtime/runs",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -948,11 +683,9 @@ router.post("/:id/runs/:runId/cancel", async (req, res) => {
       return;
     }
 
-    // Queued runs have no process yet — just drop them from the device queue.
-    const dequeued = removeRunFromQueues(runId);
-    const killed = dequeued ? false : RunStore.kill(runId);
+    const killed = RunStore.kill(runId);
     console.log(
-      `[Cancel] run ${runId}: ${dequeued ? "removed from device queue" : killed ? "process killed" : "no process found"}`,
+      `[Cancel] run ${runId}: ${killed ? "process killed" : "no process found"}`,
     );
 
     await prisma.workflowRun.update({
@@ -1000,7 +733,6 @@ router.delete("/:id/runs/:runId", async (req, res) => {
     }
 
     if (run.status === "running" || run.status === "pending" || run.status === "queued") {
-      removeRunFromQueues(runId);
       RunStore.kill(runId);
     }
 
@@ -1072,34 +804,13 @@ router.get("/runs/:runId/status", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/workflows/:id/runs/:runId/yaml - Get YAML content for a run
+// GET /api/workflows/:id/runs/:runId/yaml - removed in Phase 8.
 // ─────────────────────────────────────────────────────────────────────────────
-router.get("/:id/runs/:runId/yaml", async (req, res) => {
-  try {
-    const { runId } = req.params;
-
-    const run = await prisma.workflowRun.findUnique({
-      where: { id: runId },
-      select: { id: true, yamlContent: true },
-    });
-
-    if (!run) {
-      res.status(404).json({ message: "Run not found" });
-      return;
-    }
-
-    if (!run.yamlContent) {
-      res.status(404).json({ message: "No YAML content available for this run" });
-      return;
-    }
-
-    res.type("text/yaml").send(run.yamlContent);
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to fetch YAML content",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
+router.get("/:id/runs/:runId/yaml", (_req, res) => {
+  res.status(410).json({
+    message: "Run YAML download has been removed. Use BridgeFlow provenance and evidence APIs.",
+    replacement: "/api/verdict/runtime/runs/:runId",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

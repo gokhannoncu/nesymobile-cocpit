@@ -1,9 +1,9 @@
 /**
- * Backend Validation Lane — shared helpers for derived post-Maestro checks.
+ * Backend Validation Lane — shared helpers for derived post-BridgeFlow checks.
  *
  * Lane nodes are ephemeral on the canvas (not persisted). Matching
  * WorkflowStepResult rows use nodeId prefix `__bv__` so the UI can show
- * progress after Maestro and the Run Result Backend tab can list them.
+ * progress after BridgeFlow and the Run Result Backend tab can list them.
  */
 
 export const BACKEND_VALIDATION_STEP_PREFIX = "__bv__";
@@ -120,7 +120,7 @@ function descriptionForValidation(sourceNodeType: string, kind: BackendValidatio
     case "EOD_APPROVE":
       return "End-of-day approval confirmed on server";
     default:
-      if (kind === "server_step") return "Server-side API validation after Maestro";
+      if (kind === "server_step") return "Server-side API validation after BridgeFlow";
       if (kind === "logcat_backend") return "Backend state verified via app logcat";
       return "EventTower GetEvents confirms operation on backend";
   }

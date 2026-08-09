@@ -1,14 +1,12 @@
 /**
  * In-memory store for active run processes.
- * Tracks Maestro and Logcat child processes for cancel/cleanup.
+ * Tracks auxiliary child processes for cancel/cleanup.
  */
 
 import type { ChildProcess } from "node:child_process";
-import type { MaestroExecutor } from "./maestro-executor.js";
 
 interface RunProcesses {
-  maestro: ChildProcess | null;
-  executor: MaestroExecutor | null;
+  runner: { kill(): void } | null;
   logcat: ChildProcess | null;
   startedAt: number;
 }
@@ -19,15 +17,13 @@ export const RunStore = {
   register(
     runId: string,
     options: {
-      maestro?: ChildProcess | null;
-      executor?: MaestroExecutor | null;
+      runner?: { kill(): void } | null;
       logcat?: ChildProcess | null;
     },
   ): void {
     const existing = store.get(runId);
     store.set(runId, {
-      maestro: options.maestro ?? existing?.maestro ?? null,
-      executor: options.executor ?? existing?.executor ?? null,
+      runner: options.runner ?? existing?.runner ?? null,
       logcat: options.logcat ?? existing?.logcat ?? null,
       startedAt: existing?.startedAt ?? Date.now(),
     });
@@ -43,11 +39,8 @@ export const RunStore = {
 
     let killed = false;
 
-    if (processes.executor) {
-      processes.executor.kill();
-      killed = true;
-    } else if (processes.maestro && !processes.maestro.killed) {
-      processes.maestro.kill("SIGTERM");
+    if (processes.runner) {
+      processes.runner.kill();
       killed = true;
     }
 

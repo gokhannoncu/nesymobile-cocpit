@@ -12,7 +12,7 @@ import type {
   WorkflowCleanupResult,
 } from "@nesy/workflow-contract";
 
-export type RuntimeEngineType = "MAESTRO_LEGACY" | "BRIDGEFLOW";
+export type RuntimeEngineType = "BRIDGEFLOW";
 export type RunEpochUnit = "MONOTONIC_MS";
 
 export interface TestProfileRunPin {

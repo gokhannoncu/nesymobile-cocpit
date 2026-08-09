@@ -1,7 +1,7 @@
 # Koşul Motoru + IR + BridgeFlow — Cockpit beyin planı
 
 **Tarih:** 2026-07-29  
-**Durum:** Bağlayıcı mimari notu (uygulama henüz yok; Maestro hâlâ tek derleyici).  
+**Durum:** Bağlayıcı mimari notu (Phase 8'de Maestro doğrudan kaldırılır; dual-run gate yoktur).
 **Üst plan:** [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) §9 (Maestro DELETE) · Mobile `Consultants/NesyMobile/VERDICT_START.md` İz B #9–#14  
 **Dar Faz 4 özeti:** [`FAZ4_COCKPIT_LIVE_INSPECTOR_PLAN.md`](./FAZ4_COCKPIT_LIVE_INSPECTOR_PLAN.md)  
 **Operatör anlatımı + diyagramlar:** [`SISTEM_NASIL_CALISIR.md`](./SISTEM_NASIL_CALISIR.md) (login→tur senaryosu, az teknik)
@@ -482,7 +482,7 @@ Veri zaten var (6 durumlu `EmitOutcome`, WAL, host watermark) — yeni wire adı
 
 ## 9. Uygulama sırası (koşul motoru + derleyici)
 
-Faz 4 VerdictChannel ile **paralel** başlar; M5 Maestro DELETE önkoşulu.
+Faz 4 VerdictChannel ile **paralel** başlar; Phase 8 Maestro direct removal önkoşulu.
 
 | Adım | İş | Gate |
 |---|---|---|
@@ -493,8 +493,8 @@ Faz 4 VerdictChannel ile **paralel** başlar; M5 Maestro DELETE önkoşulu.
 | **CE-4** | Runtime evaluate + Bridge `wait_node` | IF_LOGIN / CHECK_ROUTE runtime path |
 | **CE-5** | `ui-condition` + **global dialog policy** (sekme: workflow ayarı, canvas kirletmez) | CONDITION + bilinmeyen dialog → DUR |
 | **CE-5b** | Editör: `workflow-registry` **layers[]** bildirimi + `FOR_EACH` node (IR `loop` additive) | Rozet gri dekorasyon olmasın; 20 barkod = 1 döngü |
-| **CE-6** | Dual-run ölçüm (#14) | BridgeFlow ≥ Maestro doğrulama |
-| **CE-7** | Cutover + Maestro DELETE (üst plan M4–M5) | `rg maestro` ≈ 0 |
+| **CE-6** | BridgeFlow execution wiring | Verdict runtime gerçek executor/queue yoluna bağlı |
+| **CE-7** | Cutover + Maestro DELETE (üst plan Phase 8) | aktif source residual scan temiz |
 | **RP-1** *(Reporting, paralel)* | Çekmece şelale + 3’lü “event gelmedi” + repro kopyala | Rozet animasyonundan **önce** |
 | **RP-2** *(Reporting)* | Node rozetleri (registry layers) | RP-1 sonrası |
 | **RP-3** *(opsiyonel)* | Post-run LLM özeti | Runtime AI **yok** |
@@ -548,7 +548,7 @@ Faz 4 VerdictChannel ile **paralel** başlar; M5 Maestro DELETE önkoşulu.
 | Device kuyruk | `apps/api/src/services/device-worker.ts` |
 | SDK komut | `packages/control-contract`, `packages/control-channels`, `test-event-bridge.ts` |
 | Editör | `apps/web/.../workflow-editor.tsx`, `workflow-registry.ts` |
-| Üst Maestro DELETE | `docs/verdict/COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md` §9 |
+| Üst Maestro DELETE | `docs/verdict/COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md` §9 ve Phase 8 direct removal |
 
 ---
 
@@ -656,7 +656,7 @@ Kaynaklar: `Development_Flow.pdf` (C/D/B + sıra) · `18._ai_architecture.pdf` (
 ```
 Faz 3 ✅ (koşullu) → Faz 4 (SDK komut) ∥ İz B (Bridge eylem)
                  → CE / BridgeFlow (IR 2. derleyici)
-                 → ölçüm → Maestro DELETE
+                 → BridgeFlow execution wiring → Maestro DELETE
                  → RP çekmece/rozet (C18: çekmece önce)
                  → İz C AI Design Audit (opsiyonel, paralel)
 ```

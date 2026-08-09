@@ -36,7 +36,7 @@ phase8Readiness: READY_WITH_EXTERNAL_BLOCKERS
 Phase 7 resultState: COMPLETED
 Steps done: 7.0 … 7.26
 Real DUT full PASS: deferred (CP3-DUT / B-12)
-Maestro removal: Phase 8/9
+Maestro removal: Phase 8 direct removal
 realDutAcceptance: BLOCKED_EXTERNAL_REAL_DUT
 ```
 
@@ -281,8 +281,8 @@ realDutAcceptance: BLOCKED_EXTERNAL_REAL_DUT
 |---|---|---|
 | CP3-DUT mutation acceptance | Lab later | Op 2026-08-09 — userdebug/eng DUT required |
 | B-12 30× smoke | Lab later | Op 2026-08-09 — Device Lab |
-| Bridge B1 physical cutover parity | Phase 8 | CP7 real workflows sonrası ölçülür |
-| Maestro removal | Phase 9 | Phase 8 physical acceptance sonrası |
+| Bridge B1 physical acceptance | Phase 8 | CP7 real workflows sonrası BridgeFlow-only yolda kanıtlanır |
+| Maestro removal | Phase 8 | Direct removal; dual-run/benchmark yok |
 | Capture purge cron wiring | Follow-up | 24h selector SLA done; job not scheduled |
 | Tour Approval live mobile/UI chain (#32) | Lab later | Pack/oracle coded; CP3-DUT deferred |
 | Advanced intelligence / Failure Genome | Future | CP7 evidence data biriktikten sonra |
@@ -295,6 +295,6 @@ phase8Readiness: READY_WITH_EXTERNAL_BLOCKERS
 CHECKPOINT 7: PASSED_WITH_EXTERNAL_DUT_BLOCKERS
 Reason: Nesy reference workflows, diagnostics/security acceptance, and v1 Test Profile
 catalog run on generic BridgeFlowExecutor/Oracle path with green verification.
-Physical Bridge B1 acceptance, real DUT mutation/Act Mode, and Maestro cutover
-measurement remain Phase 8 (+ deferred CP3-DUT / B-12 lab work).
+Physical Bridge B1 acceptance, real DUT mutation/Act Mode, and Cockpit Maestro
+direct removal remain Phase 8 (+ deferred CP3-DUT / B-12 lab work).
 ```

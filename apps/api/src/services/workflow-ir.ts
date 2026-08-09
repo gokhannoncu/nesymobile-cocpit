@@ -4,10 +4,8 @@
  *
  * The drag-and-drop graph is first linearized into semantic steps (macros,
  * resolved conditions, runtime-conditional blocks); compilers then turn the
- * IR into concrete artifacts. Today the only compiler is the Maestro
- * workspace compiler (yaml-generator.generateWorkflowWorkspace); the IR keeps
- * graph-walking logic in exactly one place so future targets (documentation
- * flows, coverage graphs, manual test scripts) don't re-implement traversal.
+ * IR into concrete artifacts. BridgeFlow compilation keeps graph-walking logic
+ * in exactly one place so future targets don't re-implement traversal.
  */
 
 export interface IRNode {

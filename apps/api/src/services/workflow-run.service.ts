@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import type { WorkflowCompileResult } from './workflow-compile.service.js'
-import type { TestExecutionQueue } from './test-execution-queue.js'
 
 export const WORKFLOW_RUN_API_VERSION = 'verdict-runtime.v1' as const
 
@@ -24,6 +23,24 @@ export interface WorkflowRunStartResult {
   compiledPlanHash: string
   status: 'QUEUED'
   engineType: 'BRIDGEFLOW'
+}
+
+export interface WorkflowRunExecutionQueue {
+  enqueue(input: {
+    executionId: string
+    runId: string
+    workflowRef: string
+    deviceId: string
+    compiledPlanRef: string
+    compiledPlanHash: string
+    domainPackKey: string
+    domainPackVersion: string
+    domainPackDigest: string
+    profileKey?: string
+    profileVersion?: string
+    releaseGate?: boolean
+    dependencyKind: 'SETUP' | 'DEPENDENT' | 'INDEPENDENT'
+  }): Promise<unknown> | unknown
 }
 
 /**
@@ -67,7 +84,7 @@ export function runStartIdempotencyKey(request: WorkflowRunStartRequest): string
 
 export class WorkflowRunService {
   constructor(
-    private readonly queue?: TestExecutionQueue,
+    private readonly queue?: WorkflowRunExecutionQueue,
     private readonly store: WorkflowRunStartStore = new InMemoryWorkflowRunStartStore(),
   ) {}
 
@@ -123,6 +140,15 @@ export class WorkflowRunService {
       executionId,
       runId,
       workflowRef: request.workflowRef,
+      deviceId: request.deviceId,
+      compiledPlanRef: request.compiledPlanRef,
+      compiledPlanHash: request.compiledPlanHash,
+      domainPackKey: request.domainPackKey,
+      domainPackVersion: request.domainPackVersion,
+      domainPackDigest: request.domainPackDigest,
+      ...(request.profileKey === undefined ? {} : { profileKey: request.profileKey }),
+      ...(request.profileVersion === undefined ? {} : { profileVersion: request.profileVersion }),
+      ...(request.releaseGate === undefined ? {} : { releaseGate: request.releaseGate }),
       dependencyKind: 'INDEPENDENT',
     })
     return result

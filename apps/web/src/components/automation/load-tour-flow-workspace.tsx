@@ -21,10 +21,8 @@ import {
 import {
   ArrowRight,
   Barcode,
-  Check,
   CheckCircle2,
   Circle,
-  Copy,
   Globe2,
   Loader2,
   Package,
@@ -81,10 +79,7 @@ import {
 } from '@nesy/metronic/config/layout-21.config'
 import { useNesyAuth } from '@/contexts/nesy-auth-context'
 import { extractZimmetBarcodes } from '@/lib/automation/load-tour-barcodes'
-import {
-  fetchWorkflow,
-  previewWorkflowYaml,
-} from '@/services/automation-api'
+import { fetchWorkflow } from '@/services/automation-api'
 import { startPinnedVerdictRun } from '@/lib/verdict-runtime/start-pinned-run'
 import {
   NESY_DASHBOARD_COUNTRY_ENVIRONMENTS,
@@ -241,15 +236,8 @@ export function LoadTourFlowWorkspace() {
 
   const [workflowNodes, setWorkflowNodes] = useState<unknown[]>([])
   const [workflowEdges, setWorkflowEdges] = useState<unknown[]>([])
-  const [workflowConfig, setWorkflowConfig] = useState<Record<string, unknown> | null>(
-    null,
-  )
 
-  const [yamlPreview, setYamlPreview] = useState('')
-  const [previewLoading, setPreviewLoading] = useState(false)
   const [running, setRunning] = useState(false)
-
-  const [yamlCopied, setYamlCopied] = useState(false)
 
   const countryReady = Boolean(country && environment)
 
@@ -358,7 +346,6 @@ export function LoadTourFlowWorkspace() {
       const version = workflow.currentVersion
       setWorkflowNodes(version?.nodes ?? [])
       setWorkflowEdges(version?.edges ?? [])
-      setWorkflowConfig(version?.config ?? null)
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -376,48 +363,6 @@ export function LoadTourFlowWorkspace() {
     void loadDevices()
     void loadWorkflow()
   }, [loadDevices, loadWorkflow])
-
-  useEffect(() => {
-    if (!hasSelection || workflowNodes.length === 0) {
-      setYamlPreview('')
-      return
-    }
-    let cancelled = false
-    setPreviewLoading(true)
-    void previewWorkflowYaml({
-      nodes: workflowNodes,
-      edges: workflowEdges,
-      config: workflowConfig,
-      country: country || undefined,
-      environment: environment || undefined,
-      runInput,
-    })
-      .then((yaml) => {
-        if (!cancelled) setYamlPreview(yaml)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setYamlPreview('')
-          toast.error(
-            err instanceof Error ? err.message : 'YAML preview failed',
-          )
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    hasSelection,
-    workflowNodes,
-    workflowEdges,
-    workflowConfig,
-    country,
-    environment,
-    runInput,
-  ])
 
   const handleCountryChange = (value: string) => {
     const next = value as NesyDashboardToolbarCountry
@@ -638,18 +583,6 @@ export function LoadTourFlowWorkspace() {
     getRowId: (row) => row.id,
   })
 
-  const copyYamlPreview = useCallback(async () => {
-    if (!yamlPreview) return
-    try {
-      await navigator.clipboard.writeText(yamlPreview)
-      setYamlCopied(true)
-      toast.success('YAML copied to clipboard')
-      window.setTimeout(() => setYamlCopied(false), 2000)
-    } catch {
-      toast.error('Could not copy YAML')
-    }
-  }, [yamlPreview])
-
   const selectedDevice = devices.find((d) => d.id === selectedDeviceId)
 
   return (
@@ -868,53 +801,6 @@ export function LoadTourFlowWorkspace() {
               deviceStepDone={deviceStepDone}
             />
 
-            <Card className="overflow-hidden">
-              <CardHeader className="min-h-12 border-b py-3">
-                <CardHeading>
-                  <CardTitle className="text-sm">Legacy YAML preview</CardTitle>
-                  <CardDescription className="text-xs">
-                    Debug-only legacy YAML — run uses Verdict BridgeFlow, not Maestro
-                  </CardDescription>
-                </CardHeading>
-                <CardToolbar>
-                  {previewLoading ? (
-                    <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-                  ) : yamlPreview ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2"
-                      onClick={() => void copyYamlPreview()}
-                    >
-                      {yamlCopied ? (
-                        <Check className="size-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="size-3.5" />
-                      )}
-                      {yamlCopied ? 'Copied' : 'Copy'}
-                    </Button>
-                  ) : null}
-                </CardToolbar>
-              </CardHeader>
-              <CardContent className="overflow-hidden bg-slate-950 p-0">
-                <ScrollArea className="h-[280px] w-full">
-                  <pre className="p-4 font-mono text-[11px] leading-relaxed text-slate-100">
-                    <code className="block whitespace-pre-wrap break-all">
-                      {yamlPreview ||
-                        (hasSelection
-                          ? '# Generating preview…'
-                          : '# Select shipments and/or pickups to preview LOAD YAML')}
-                    </code>
-                  </pre>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-                <div className="border-t border-slate-800 px-4 py-2 text-[11px] text-slate-400">
-                  {hasSelection
-                    ? `${zimmetBarcodes.length} barcode(s) · ${selectedPickups.length} pickup(s) in payload`
-                    : 'Preview updates automatically when your selection changes.'}
-                </div>
-              </CardContent>
-            </Card>
           </aside>
         </div>
       )}

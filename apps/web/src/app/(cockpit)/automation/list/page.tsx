@@ -20,7 +20,6 @@ import {
   CircleDot,
   Cloud,
   Database,
-  FileUp,
   FileX2,
   IdCard,
   Layers,
@@ -144,12 +143,6 @@ const modalOptions: ModalOption[] = [
     icon: ListChecks,
     enabled: false,
   },
-  {
-    title: 'Import YAML',
-    description: 'Upload an existing Maestro YAML flow.',
-    icon: FileUp,
-    enabled: false,
-  },
 ]
 
 const summaryCards: Array<{
@@ -209,7 +202,6 @@ const iconMap: Record<string, LucideIcon> = {
   IdCard,
   Layers,
   ListChecks,
-  FileUp,
   CircleDot,
   Check,
   CheckCircle2,

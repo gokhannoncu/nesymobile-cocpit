@@ -35,9 +35,9 @@ describe('Legacy-Zero Guard — Maestro/YAML Primary UI Removal', () => {
 
   it('no fallback policy allows silent legacy fallback', () => {
     for (const entry of PAGE_MIGRATION_MANIFEST) {
-      // NONE = no fallback, READ_ONLY_LEGACY_SUMMARY = explicit read-only legacy
+      // NONE = no fallback, BRIDGEFLOW_ONLY = active execution path only.
       // Silent/hidden fallback is never allowed
-      expect(['NONE', 'READ_ONLY_LEGACY_SUMMARY']).toContain(entry.fallbackPolicy)
+      expect(['NONE', 'BRIDGEFLOW_ONLY']).toContain(entry.fallbackPolicy)
     }
   })
 

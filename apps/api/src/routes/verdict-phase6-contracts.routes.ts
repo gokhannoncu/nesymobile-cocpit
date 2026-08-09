@@ -12,7 +12,11 @@ import { EvidenceSourceQueryService } from '../services/evidence-source-query.se
 import { BridgeFlowEvidenceSources } from '../services/bridgeflow-evidence-source-registry.js'
 import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
-import { createHashPinnedCompileStub } from '../services/workflow-compile.service.js'
+import { BridgeFlowExecutionQueue } from '../services/bridgeflow-execution-queue.js'
+import {
+  createHashPinnedCompileStub,
+  defaultCompiledPlanStore,
+} from '../services/workflow-compile.service.js'
 import { WorkflowRunService } from '../services/workflow-run.service.js'
 import {
   PrismaDeviceMutationLeaseStore,
@@ -23,8 +27,15 @@ import {
   PrismaWorkflowRunStartStore,
 } from '../services/phase6-prisma-stores.js'
 
-const compileService = createHashPinnedCompileStub()
-const runService = new WorkflowRunService(undefined, new PrismaWorkflowRunStartStore(prisma))
+const compileService = createHashPinnedCompileStub(defaultCompiledPlanStore)
+const runService = new WorkflowRunService(
+  new BridgeFlowExecutionQueue({
+    prisma,
+    planStore: defaultCompiledPlanStore,
+    logger: (message, detail) => console.warn(message, detail),
+  }),
+  new PrismaWorkflowRunStartStore(prisma),
+)
 // Database-backed: these catalogs carry release-gate evidence, so they must
 // survive an API restart. The in-memory stores remain the default in unit tests.
 const domainPackAdminStore = new PrismaDomainPackAdminStore(prisma)

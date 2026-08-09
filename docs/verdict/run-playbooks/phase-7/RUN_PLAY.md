@@ -51,7 +51,7 @@ Phase 4C: BridgeFlowCompiler COMPLETE_REQUIRED
 Phase 5: BridgeFlowExecutor + Oracle v2 + Persistence COMPLETE_REQUIRED
 Phase 6: Cockpit UI + Route Cutover COMPLETE_REQUIRED
 Phase 7: Nesy real workflows + diagnostics/security acceptance COMPLETED
-Next after 7: Phase 8 Bridge physical acceptance and Maestro cutover gate
+Next after 7: Phase 8 Bridge physical acceptance and Maestro direct removal
 ```
 
 ```text
@@ -710,5 +710,5 @@ Phase 7 kapanmadan aşağıdaki maddeler `PASS`, `FAIL`, `BLOCKED_EXTERNAL` veya
 Phase 7: COMPLETED
 CHECKPOINT 7: PASSED_WITH_EXTERNAL_DUT_BLOCKERS if lab coverage incomplete, otherwise PASSED
 Phase 8 readiness: READY_WITH_EXTERNAL_BLOCKERS
-Reason: Nesy reference workflows and v1 Test Profile catalog run on generic BridgeFlowExecutor/Oracle path; physical Bridge B1 acceptance and Maestro cutover measurement remain Phase 8.
+Reason: Nesy reference workflows and v1 Test Profile catalog run on generic BridgeFlowExecutor/Oracle path; physical Bridge B1 acceptance and direct Cockpit Maestro removal remain Phase 8.
 ```

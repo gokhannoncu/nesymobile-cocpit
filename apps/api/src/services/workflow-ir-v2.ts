@@ -13,7 +13,7 @@
  *         into a valid, source-mapped IR v2 skeleton so no workflow is lost and
  *         every migrated step can be traced back to the node it came from.
  *
- *   NOT — an executable compiler. The per-node Maestro command sequence is
+ *   NOT — an executable compiler. Per-node legacy command sequences are
  *         deliberately not translated; that is Phase 4C's BridgeFlowCompiler.
  *         Hence `…IrV2Skeleton` in the name: a caller that mistook this for a
  *         runnable plan would silently execute nothing and report success.
@@ -42,7 +42,7 @@ const LEGACY_ORACLE_FACT_KEYS: Record<string, string> = {
  *
  * Action nodes become `ASSERT_FACT` rather than `BRIDGE_ACTION`: what the legacy
  * model actually recorded per node was its completion oracle, and the UI command
- * list belongs to Maestro until 4C. Mapping them to a bridge action would
+ * list belongs to the legacy authoring model. Mapping them to a bridge action would
  * fabricate a plan that looks executable and is not.
  */
 const LEGACY_NODE_MAPPINGS: Record<string, LegacyNodeMapping> = {

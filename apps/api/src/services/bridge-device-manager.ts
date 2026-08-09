@@ -7,8 +7,8 @@
  *
  *  ## Sessiz fallback YOK
  *
- *  Bridge kullanılamıyorsa bu sınıf HATA verir. Maestro'ya, `adb shell input
- *  tap`e veya koordinat tabanlı bir dokunuşa düşmez (RUN_PLAY §13). O fallback
+ *  Bridge kullanılamıyorsa bu sınıf HATA verir. Legacy runner'a, `adb shell input
+ *  tap`e veya koordinat tabanlı bir dokunuşa düşmez. O fallback
  *  cazip görünür — "en azından bir şey yapmış oluruz" — ama yaptığı şey testin
  *  fiziksel aksiyon kanıtını sessizce koordinat tabanlı bir tap'e indirmek ve
  *  raporu "başarılı" bırakmaktır. Kanıt üretmeyen bir başarı, en pahalı arıza

@@ -5,7 +5,7 @@
  * The mobile "backend" oracle (logcat BACKEND_CONFIRMED) only proves the app
  * *thinks* it synced. This verifier independently polls the real backend
  * (EventTower/GetEvents) for the expected event code(s) — the ground truth a
- * green screen can't fake. Triggered by the NESY_BACKEND_CHECK Maestro marker.
+ * green screen can't fake. Triggered by BridgeFlow backend-check evidence.
  *
  * Auth: a dashboard admin token (Auth/LoginDashboard), cached per country/env.
  * Barcode → shipmentId resolution goes through Shipment/GetShipmentsByFilter.

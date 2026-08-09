@@ -12,7 +12,7 @@
  *
  *  Preflight bu yüzden ÖNCE koşar ve her başarısızlık için EXACT sebep +
  *  yapılacak eylem üretir (`BridgePreflightFailure.remediation`). Sessiz
- *  fallback yok: Bridge yoksa Maestro'ya veya `adb shell input tap`'e
+ *  fallback yok: Bridge yoksa legacy runner'a veya `adb shell input tap`'e
  *  düşmüyoruz (RUN_PLAY §13). O fallback, testin fiziksel aksiyon kanıtını
  *  sessizce koordinat tabanlı bir tap'e indirir.
  *

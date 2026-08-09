@@ -242,12 +242,12 @@ export async function broadcastSetRun(
 
 /**
  * SEED_STATE `select_route` — programmatically picks a route in the live "Please
- * Select Route" dialog via the Verdict `seed` built-in, replacing the ~20s Maestro
+ * Select Route" dialog via the Verdict `seed` built-in, replacing a fragile
  * scroll+tap. Returns the mobile result string (e.g. `OK:36`,
  * `ERROR:ROUTE_DIALOG_NOT_SHOWN`, `ERROR:ROUTE_NOT_FOUND:36`, `ERROR:NOT_ON_STOPLIST`)
  * or null when the broadcast itself failed. The caller decides how to surface a
  * non-OK result; the run then fails naturally because the route dialog stays up
- * and the Maestro `notVisible` wait times out.
+ * and BridgeFlow wait evidence times out.
  */
 export async function broadcastSelectRoute(
   deviceId: string,
@@ -273,9 +273,8 @@ export async function broadcastSelectRoute(
 }
 
 /**
- * Verdict `seed/login` — programmatically logs in with a PIN via the control SDK,
- * replacing the Maestro tap(pinView) → inputText → tap(btn_login) sequence (~10s of
- * hierarchyBasedTap + fragile PIN auto-focus). Mirrors broadcastSelectRoute.
+ * Verdict `seed/login` — programmatically logs in with a PIN via the control SDK.
+ * Mirrors broadcastSelectRoute.
  *
  * MOBILE CONTRACT:
  *   Verdict built-in seed verb `login`, sensitive PIN sidecar

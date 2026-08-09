@@ -185,17 +185,14 @@ model WorkflowRun {
   country      String?
   environment  String?
 
-  /// Run-time inputs (barcode, shipmentId, ...) merged into the Maestro env and
-  /// used to resolve {{placeholder}} tokens in node config. Lets one workflow run
-  /// against different shipments without editing the saved version.
+  /// Run-time inputs (barcode, shipmentId, ...) used to resolve parameter tokens.
+  /// Lets one workflow run against different shipments without editing the saved version.
   runInput Json?
 
-  yamlContent   String?
   startedAt     DateTime?
   completedAt   DateTime?
   duration      Int?
   screenshotDir String?
-  maestroOutput String?
   /// Span telemetry: array of { name, startMs, durationMs, attrs? } relative to run start
   spans         Json?
 
@@ -214,10 +211,25 @@ model WorkflowRun {
   bridgeflowOracle   BridgeFlowOracleEvaluation[]
   testExecutions     VerdictTestExecution[]
   remoteActions      VerdictRemoteActionAttempt[]
+  archives           WorkflowRunArchive[]
 
   @@index([workflowId, createdAt])
   @@index([status])
   @@map("workflow_runs")
+}
+
+model WorkflowRunArchive {
+  id           String   @id @default(cuid())
+  runId        String   @map("run_id")
+  artifactKind String   @map("artifact_kind")
+  payload      String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, artifactKind], map: "workflow_run_archive_run_kind_key")
+  @@index([runId], map: "workflow_run_archive_run_id_idx")
+  @@map("workflow_run_archive")
 }
 
 model WorkflowStepResult {
@@ -422,7 +434,7 @@ model FieldCourierLogin {
   status          String
   errorMessage    String?
   failedStep      String?
-  maestroRunId    String?
+  runId           String?  @map("run_id")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -551,9 +563,8 @@ model VerdictStream {
 
 /// Phase 5 BridgeFlow durable runtime manifest and orthogonal run axes.
 ///
-/// This is intentionally additive to the legacy `WorkflowRun` shape: Maestro
-/// artifacts (`yamlContent`, `maestroOutput`) remain optional legacy artifacts,
-/// while BridgeFlow runs pin compiler/domain/profile/runtime metadata here.
+/// BridgeFlow runs pin compiler/domain/profile/runtime metadata here.
+/// Older runner payloads are preserved through `WorkflowRunArchive`.
 model BridgeFlowRunRuntime {
   id                     String   @id @default(cuid())
   runId                  String   @unique @map("run_id")

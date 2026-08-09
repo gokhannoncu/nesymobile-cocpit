@@ -16,6 +16,29 @@ export interface CompiledPlanSummary {
   steps: readonly { planStepId: string; sourceMapRef: string }[]
 }
 
+export type StoredBridgeFlowPlan = CompiledPlanSummary & Record<string, unknown>
+
+export interface CompiledPlanStore {
+  put(plan: StoredBridgeFlowPlan): void | Promise<void>
+  get(input: { planRef: string; planHash: string }): StoredBridgeFlowPlan | undefined | Promise<StoredBridgeFlowPlan | undefined>
+}
+
+export class InMemoryCompiledPlanStore implements CompiledPlanStore {
+  private readonly byRef = new Map<string, StoredBridgeFlowPlan>()
+  private readonly byHash = new Map<string, StoredBridgeFlowPlan>()
+
+  put(plan: StoredBridgeFlowPlan): void {
+    this.byRef.set(plan.planId, plan)
+    this.byHash.set(plan.hash.digest, plan)
+  }
+
+  get(input: { planRef: string; planHash: string }): StoredBridgeFlowPlan | undefined {
+    return this.byHash.get(input.planHash) ?? this.byRef.get(input.planRef)
+  }
+}
+
+export const defaultCompiledPlanStore = new InMemoryCompiledPlanStore()
+
 export interface WorkflowCompileRequest {
   workflowRef: string
   workflowIr: unknown
@@ -52,10 +75,11 @@ export class WorkflowCompileService {
   constructor(
     private readonly compile: (request: WorkflowCompileRequest) => {
       ok: boolean
-      plan?: CompiledPlanSummary
+      plan?: StoredBridgeFlowPlan
       issues?: WorkflowCompileResult['issues']
     },
     private readonly compilerKind: WorkflowCompilerKind = 'BRIDGEFLOW',
+    private readonly planStore?: CompiledPlanStore,
   ) {}
 
   compileWorkflow(request: WorkflowCompileRequest): WorkflowCompileResult {
@@ -119,6 +143,7 @@ export class WorkflowCompileService {
     }
 
     const plan = compiled.plan
+    void this.planStore?.put(plan)
     const sourceMap: Record<string, string> = {}
     for (const step of plan.steps) {
       sourceMap[step.planStepId] = step.sourceMapRef
@@ -152,29 +177,71 @@ export class WorkflowCompileService {
  * production route until the real BridgeFlowCompiler adapter is wired.
  * Responses always carry `compilerKind: "STUB"` so the UI can warn.
  */
-export function createHashPinnedCompileStub(): WorkflowCompileService {
+export function createHashPinnedCompileStub(
+  planStore: CompiledPlanStore = defaultCompiledPlanStore,
+): WorkflowCompileService {
   return new WorkflowCompileService((request) => {
     const digest = createHash('sha256')
       .update(JSON.stringify(request.workflowIr))
       .update(request.domainPackDigest)
       .digest('hex')
     const planId = `plan:${request.workflowRef}`
-    const ir = request.workflowIr as { entryStepId?: string; steps?: { planStepId: string }[] }
-    const entryStepId = ir.entryStepId ?? 'step-1'
+    const ir = request.workflowIr as { entryStepId?: string; steps?: { planStepId: string; sourceMapRef?: string }[] }
+    const rawSteps =
+      Array.isArray(ir.steps) && ir.steps.length > 0
+        ? ir.steps
+        : [{ planStepId: ir.entryStepId ?? 'step-1' }]
+    const entryStepId = ir.entryStepId ?? rawSteps[0]?.planStepId ?? 'step-1'
+    const sourceMap = rawSteps.map((step) => ({
+      planStepId: step.planStepId,
+      irStepId: step.planStepId,
+      note: 'hash-pinned compile stub',
+    }))
     return {
       ok: true,
       plan: {
+        schemaVersion: 1,
         planId,
+        workflowRef: request.workflowRef,
+        workflowVersion: 1,
         entryStepId,
         packDigest: request.domainPackDigest,
         hash: { algorithm: 'sha256', digest: `sha256:${digest}` },
         provenance: {
+          compiledAt: new Date(0).toISOString(),
           packKey: request.domainPackKey,
           packVersion: request.domainPackVersion,
           packDigest: request.domainPackDigest,
           compilerVersion: 'bridgeflow-compiler-stub',
+          workflowRef: request.workflowRef,
+          workflowVersion: 1,
+          irHash: `sha256:${digest}`,
+          derivedGraphDigest: `sha256:${digest}`,
         },
-        steps: [{ planStepId: entryStepId, sourceMapRef: `src:${entryStepId}` }],
+        packVersion: request.domainPackVersion as never,
+        appCompatibilityRefs: [],
+        adapterCompatibilityRefs: [],
+        steps: rawSteps.map((step, index) => ({
+          planStepId: step.planStepId,
+          kind: 'NOOP' as const,
+          sourceMapRef: step.sourceMapRef ?? `src:${step.planStepId}`,
+          timeoutMs: 1_000,
+          next: rawSteps[index + 1]?.planStepId ?? null,
+          capabilityRequirements: [],
+          evidenceRequirements: [],
+          params: { reason: 'hash-pinned compile stub' },
+        })),
+        waitPlans: [],
+        capabilityManifest: { required: [], optional: [], gaps: [] },
+        evidenceManifest: {
+          continueGateRequirements: [],
+          finalOracleRequirements: [],
+          derivedGraphDigest: `sha256:${digest}`,
+          factDeliveryLanes: [],
+        },
+        resourceRequirements: [],
+        domainDependencies: [],
+        sourceMap,
       },
       issues: [
         {
@@ -185,5 +252,5 @@ export function createHashPinnedCompileStub(): WorkflowCompileService {
         },
       ],
     }
-  }, 'STUB')
+  }, 'STUB', planStore)
 }

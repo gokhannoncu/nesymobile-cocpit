@@ -2,7 +2,7 @@ export type VerdictRuntimeApiVersion = 'verdict-runtime.v1'
 
 export interface VerdictRuntimeCorrelation {
   runId: string
-  engineType: 'BRIDGEFLOW' | 'MAESTRO_LEGACY' | string
+  engineType: 'BRIDGEFLOW' | string
 }
 
 export interface WorkflowRunApi {
@@ -17,7 +17,7 @@ export interface WorkflowRunApi {
 export interface RunHistoryQuery {
   limit?: number
   offset?: number
-  engineType?: 'BRIDGEFLOW' | 'MAESTRO_LEGACY'
+  engineType?: 'BRIDGEFLOW'
 }
 
 export interface RunHistoryResult {

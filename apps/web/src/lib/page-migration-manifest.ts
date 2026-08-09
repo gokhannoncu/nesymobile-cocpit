@@ -1,4 +1,4 @@
-export type FallbackPolicy = 'NONE' | 'READ_ONLY_LEGACY_SUMMARY'
+export type FallbackPolicy = 'NONE' | 'BRIDGEFLOW_ONLY'
 export type RouteAvailability = 'AVAILABLE' | 'BLOCKED_PRECONDITION' | 'BLOCKED_EXTERNAL' | 'DEPRECATED' | 'PLACEHOLDER'
 export type DataSourceKind = 'VERDICT_RUNTIME' | 'LEGACY_API' | 'LEGACY_WITH_ADAPTER' | 'STATIC' | 'NOT_APPLICABLE'
 
@@ -537,7 +537,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     availability: 'AVAILABLE',
     rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
-    fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
+    fallbackPolicy: 'BRIDGEFLOW_ONLY'
   },
   {
     routePattern: '/debug-view/network-inspector',
@@ -723,7 +723,7 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     availability: 'AVAILABLE',
     rbac: ['verdict:operator'],
     acceptanceTestRef: 'src/test/page-acceptance.test.ts',
-    fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
+    fallbackPolicy: 'BRIDGEFLOW_ONLY'
   },
   {
     routePattern: '/automation/01-load-tour-flow',
@@ -765,9 +765,9 @@ export const PAGE_MIGRATION_MANIFEST: PageDataSourceContract[] = [
     availability: 'AVAILABLE',
     rbac: ['*'],
     acceptanceTestRef: 'src/test/left-palette-pack-cutover.test.ts',
-    legacyCleanup: 'workflow-registry courier palette; Maestro Command subtitle; hardcoded workflowComponentGroups as primary',
+    legacyCleanup: 'workflow-registry courier palette and hardcoded workflowComponentGroups as primary',
     legacyCleanupExpiry: '2026-12-31',
-    fallbackPolicy: 'READ_ONLY_LEGACY_SUMMARY'
+    fallbackPolicy: 'BRIDGEFLOW_ONLY'
   },
   {
     routePattern: '/automation/[id]/runs/[runId]',

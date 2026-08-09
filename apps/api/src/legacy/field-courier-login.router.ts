@@ -1,11 +1,5 @@
 import { Router, type Router as RouterType } from "express";
 import { prisma } from "@nesy/db";
-import {
-  getFieldLoginSession,
-  startFieldLoginSession,
-  subscribeFieldLoginSession,
-  type FieldLoginSessionInput,
-} from "../lib/field-courier-login-orchestrator.js";
 
 const router: RouterType = Router();
 
@@ -76,94 +70,25 @@ router.delete("/:id", async (req, res) => {
 });
 
 router.post("/sessions", async (req, res) => {
-  try {
-    const body = (req.body ?? {}) as FieldLoginSessionInput;
-    const session = startFieldLoginSession(body);
-    res.status(202).json({ data: session });
-  } catch (error) {
-    res.status(400).json({
-      message: error instanceof Error ? error.message : "Could not start session.",
-    });
-  }
+  res.status(410).json({
+    message: "Legacy field courier login sessions have been removed. Use Verdict WorkflowRunApi.",
+    replacement: "/api/verdict/runtime/runs",
+  });
 });
 
 router.get("/sessions/:id", (req, res) => {
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const session = getFieldLoginSession(id);
-  if (!session) {
-    res.status(404).json({ message: "Session not found." });
-    return;
-  }
-  res.json({ data: session });
+  res.status(410).json({
+    message: "Legacy field courier login sessions have been removed. Use Verdict run detail.",
+    sessionId: req.params.id,
+    replacement: "/api/verdict/runtime/runs/:runId",
+  });
 });
 
 router.get("/sessions/:id/events", (req, res) => {
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const session = getFieldLoginSession(id);
-  if (!session) {
-    res.status(404).json({ message: "Session not found." });
-    return;
-  }
-
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  // EventSource is cross-origin from the web app; Express under Fastify may omit CORS.
-  res.setHeader("Access-Control-Allow-Origin", req.headers.origin ?? "*");
-  res.flushHeaders?.();
-
-  let closed = false;
-  const send = (payload: unknown) => {
-    if (closed) return;
-    try {
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch {
-      closed = true;
-    }
-  };
-
-  send(session);
-
-  if (session.status !== "running") {
-    try {
-      res.write("event: end\ndata: {}\n\n");
-      res.end();
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-
-  const unsubscribe = subscribeFieldLoginSession(id, (next) => {
-    send(next);
-    if (next.status !== "running") {
-      try {
-        res.write("event: end\ndata: {}\n\n");
-        res.end();
-      } catch {
-        /* ignore */
-      }
-      unsubscribe();
-      closed = true;
-    }
-  });
-
-  const heartbeat = setInterval(() => {
-    if (closed) return;
-    try {
-      res.write(": ping\n\n");
-    } catch {
-      closed = true;
-      clearInterval(heartbeat);
-      unsubscribe();
-    }
-  }, 15_000);
-
-  req.on("close", () => {
-    closed = true;
-    clearInterval(heartbeat);
-    unsubscribe();
+  res.status(410).json({
+    message: "Legacy field courier login event stream has been removed. Use Verdict interactions.",
+    sessionId: req.params.id,
+    replacement: "/api/verdict/runtime/runs/:runId/interactions",
   });
 });
 

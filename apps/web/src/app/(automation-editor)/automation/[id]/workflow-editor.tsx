@@ -24,7 +24,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Code2,
   Copy,
   ExternalLink,
   GitBranch,
@@ -121,7 +120,6 @@ import {
   getBackendLaneNodeDimensions,
 } from "./backend-validation-lane";
 import { BackendLaneNodeView } from "./BackendLaneNodeView";
-import { WorkflowYamlPreviewModal } from "./WorkflowYamlPreviewModal";
 import { YamlPreviewPanel } from "./YamlPreviewPanel";
 import { VerdictEditorToolbar } from "@/components/automation/editor/VerdictEditorToolbar";
 import {
@@ -1546,7 +1544,6 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     pendingTarget?: DropTarget;
   }>({ open: false, result: null, pendingItem: null });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [yamlPreviewOpen, setYamlPreviewOpen] = useState(false);
   const [showValidationWarning, setShowValidationWarning] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
@@ -2428,16 +2425,14 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     setPropertiesPanelOpen(false);
 
     try {
-      const { startWorkflowRun } = await import("@/services/automation-api");
-      const launchAppNode = nodes.find((n) => n.type === "LAUNCH_APP");
-      const config = launchAppNode?.data?.config as Record<string, unknown> | undefined;
-      const country = config?.country as string | undefined;
-      const environment = (config?.environment as string | undefined) || (config?.stage as string | undefined);
-      const result = await startWorkflowRun(workflowId, {
-        selectedDeviceId: selectedDevice.id,
-        mode: "full",
-        country,
-        environment,
+      const { startPinnedVerdictRun } = await import("@/lib/verdict-runtime/start-pinned-run");
+      const result = await startPinnedVerdictRun({
+        workflowRef: workflowId,
+        deviceId: selectedDevice.id,
+        workflowIr: {
+          nodes,
+          connections,
+        },
       });
       setActiveRunId(result.runId);
       toast.success(`Workflow run started. Progress is shown on the canvas.`);
@@ -2694,11 +2689,6 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuItem onSelect={() => setYamlPreviewOpen(true)}>
-                  <Code2 className="size-4" />
-                  Preview YAML
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-red-600 focus:text-red-600"
                   onSelect={(event) => {
@@ -2718,14 +2708,6 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             </DropdownMenu>
           </div>
         </header>
-
-        <WorkflowYamlPreviewModal
-          open={yamlPreviewOpen}
-          workflowName={displayTitle}
-          nodes={nodes}
-          connections={connections}
-          onClose={() => setYamlPreviewOpen(false)}
-        />
 
         <UnsavedChangesDialog
           open={unsavedCloseDialogOpen && hasUnsavedChanges}

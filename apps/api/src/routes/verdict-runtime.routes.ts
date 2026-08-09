@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 
 import {
   getEvidenceJourney,
-  getLegacyRunSummary,
   getRunDetail,
   getWorkflowCatalog,
   queryRunHistory,
@@ -39,15 +38,6 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { runId: string } }>('/runtime/runs/:runId', async (request, reply) => {
     const result = await withRuntimeRead(reply, () => getRunDetail(request.params.runId))
-    if (result === undefined) return
-    if (result === null) {
-      return reply.code(404).send({ status: 'not_found', detail: `run ${request.params.runId} was not found` })
-    }
-    return result
-  })
-
-  app.get<{ Params: { runId: string } }>('/runtime/runs/:runId/legacy-summary', async (request, reply) => {
-    const result = await withRuntimeRead(reply, () => getLegacyRunSummary(request.params.runId))
     if (result === undefined) return
     if (result === null) {
       return reply.code(404).send({ status: 'not_found', detail: `run ${request.params.runId} was not found` })

@@ -441,7 +441,7 @@ function FieldLoginCreateModal({
       }
 
       // Form fields remain operator context. Execution is pinned to the published
-      // Domain Pack via Verdict WorkflowRunApi — no Maestro orchestrator.
+      // Domain Pack via Verdict WorkflowRunApi.
       const started = await startPinnedVerdictRun({
         workflowRef: FIELD_LOGIN_WORKFLOW_REF,
         deviceId: device.id,
@@ -562,7 +562,7 @@ function FieldLoginCreateModal({
             {' · '}
             Requires exactly one ADB device
             {' · '}
-            Verdict WorkflowRunApi (no Maestro orchestrator)
+            Verdict WorkflowRunApi (BridgeFlow-only)
           </div>
 
           {phase === 'form' ? (
@@ -749,13 +749,6 @@ const LONG_STEP_AFTER_MS = 2500
 
 const LONG_STEP_HINTS: Record<string, string[]> = {
   bridge_login: [
-    'Launching app on device…',
-    'Entering credentials via Bridge…',
-    'Waiting for BridgeFlow run…',
-    'Almost there…',
-  ],
-  // Legacy history rows may still carry this key — map to Bridge copy.
-  maestro_login: [
     'Launching app on device…',
     'Entering credentials via Bridge…',
     'Waiting for BridgeFlow run…',

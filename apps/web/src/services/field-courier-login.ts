@@ -19,7 +19,7 @@ export type FieldCourierLoginRecord = {
   status: string
   errorMessage: string | null
   failedStep: string | null
-  maestroRunId: string | null
+  runId: string | null
   createdAt: string
   updatedAt?: string
 }
@@ -31,7 +31,7 @@ export type FieldLoginStepId =
   | 'fetch_pin'
   | 'read_device_code'
   | 'register_device'
-  | 'maestro_login'
+  | 'bridge_login'
   | 'restore_hub'
   | 'persist'
 

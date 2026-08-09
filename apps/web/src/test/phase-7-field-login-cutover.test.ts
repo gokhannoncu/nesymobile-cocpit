@@ -24,7 +24,7 @@ describe('Phase 7.4 Field Login cutover', () => {
     expect(src).not.toMatch(/startFieldCourierLogin/)
     expect(src).not.toMatch(/from ['"]@\/services\/maestro/)
     expect(src).not.toMatch(/maestro-executor/)
-    expect(src).toMatch(/no Maestro orchestrator/)
+    expect(src).toMatch(/BridgeFlow-only/)
   })
 
   it('pinned start helper compiles then starts WorkflowRunApi', () => {

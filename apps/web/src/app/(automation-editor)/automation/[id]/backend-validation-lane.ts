@@ -120,7 +120,7 @@ function descriptionForValidation(sourceNodeType: string, kind: BackendValidatio
     case "EOD_APPROVE":
       return "End-of-day approval confirmed on server";
     default:
-      if (kind === "server_step") return "Server-side API validation after Maestro";
+      if (kind === "server_step") return "Server-side API validation after BridgeFlow";
       if (kind === "logcat_backend") return "Backend state verified via app logcat";
       return "EventTower GetEvents confirms operation on backend";
   }
@@ -259,7 +259,7 @@ export function layoutBackendValidationLane(
     kind: "assertion",
     position: { x: laneX, y: headerY },
     data: {
-      title: "Post-Maestro checks",
+      title: "Post-BridgeFlow checks",
       subtitle: `${checkCountLabel} · runs after courier UI test`,
       icon: "Database",
       config: { __backendLaneHeader: true, checkCount: validations.length },

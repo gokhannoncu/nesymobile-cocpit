@@ -2,9 +2,9 @@
  * Decides when IF_LOGIN / CHECK_ROUTE may be resolved from GET_STATE.
  *
  * Pulling device state BEFORE LAUNCH_APP is unsafe: the process can report a
- * stale logged-in StopList while Maestro launch lands on the PIN login screen.
+ * stale logged-in StopList while runtime launch lands on the PIN login screen.
  * When a LAUNCH_APP node is present, branch resolution must wait until after
- * launch (Maestro runtime UI probes).
+ * launch (runtime UI probes).
  */
 
 export type PreflightNode = {

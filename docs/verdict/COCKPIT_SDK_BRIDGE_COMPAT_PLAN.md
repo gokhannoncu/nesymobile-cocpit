@@ -121,7 +121,7 @@
 | # | Cockpit |
 |---|---|
 | **8.0 BLOCKER** | `oracle-engine.ts`: 9 legacy sniffer channel → structured WS/WAL; **then** drop `NESY_AUTO_BRIDGE` |
-| **8.0b MAESTRO DELETE** | `maestro-executor` + Maestro YAML workspace yolu + DeviceWorker Maestro driver pre-install + UI “Maestro” metinleri **repo’dan silinir** (§9) |
+| **8.0b MAESTRO DELETE** | `maestro-executor` + Maestro YAML workspace yolu + DeviceWorker Maestro driver pre-install + UI “Maestro” metinleri **repo’dan silinir** (§9). Dual-run/benchmark gate yoktur. |
 | 8.1 | Wire v2 + Interactions structured/WAL UI |
 | 8.1b | `LegacyReceiverChannel` kaldır (VerdictChannel-only) |
 | 8.3 | LegacyAdapter / dual-emit sunset ile senkron |
@@ -133,7 +133,7 @@
 |---|---|
 | B.1 | Bridge protokol istemcisi (`requestId`, idempotent `tap`) |
 | B.2 | Screen State / Screen Map: semantik tap UI |
-| B.3 | BridgeFlowCompiler + dual-run ölçüm → **Maestro cutover** |
+| B.3 | BridgeFlowCompiler + BridgeFlow-only execution wiring → **Maestro direct removal** |
 | B.4 | Production cihaza bridge kurulmaz (kapı) |
 | B.5 | Cockpit’te Maestro bağımlılığı = **0** (Faz 8.0b) |
 
@@ -353,7 +353,7 @@ Nav kaynağı: `packages/metronic/src/config/layout-21.config.tsx`.
 |---|---|---|---|---|---|
 | Workflow Library | `/automation/list` | Host + DeviceWorker | Liste | — | Faz 7 BridgeFlow |
 | Run History | `/automation/history` | Host DB | — | — | Ingest/`end_run` (F4); Maestro artifact UI kaldır |
-| **Field Courier Login** | `/automation/field-login` | **SDK VerdictChannel** + **Bridge tap** | Orchestrator + Maestro login adımı | Receiver erken silinirse ölür; Maestro silinince Bridge yoksa ölür | **F4.2–4.5** + **F7/B Maestro cutover** |
+| **Field Courier Login** | `/automation/field-login` | **SDK VerdictChannel** + **Bridge tap** | Orchestrator + Maestro login adımı | Receiver erken silinirse ölür; Maestro silinince BridgeFlow worker yoksa ölür | **F4.2–4.5** + **F8 Maestro direct removal** |
 | **Load & Tour Flow** | `/automation/01-load-tour-flow` | SDK seed/nav + **Bridge** | Workflow + Maestro YAML | Aynı | **F4** + **F7 BridgeFlow** |
 | Automation Overview | `/automation/overview` | Host | page var | — | — |
 | **Workflow Editor** | `/automation/[id]` | IR + BridgeFlowRunner | Editor + Maestro workspace derleyici | set_run/seed kanal; YAML preview Maestro’ya bağlı | **F4** kanal + **F7** IR→Bridge; Maestro YAML preview **sil** |
@@ -448,7 +448,7 @@ F4:     VerdictChannel + secret/HMAC + field-login kanal gate
 F5:     Screen State dump fallback
 İz B∥:  Bridge APK protokolü + host istemci (F4’ü bloklamaz)
 F7:     BridgeFlowCompiler + runner cutover (Maestro flag OFF)
-F7.5:   Ölçüm gate (VERDICT_START #14) → Maestro silme izni
+F7.5:   Retired — dual-run/benchmark gate kaldırıldı
 F8.0:   Oracle structured
 F8.0b:  Maestro kod/UI/CLI = 0 (DELETE)  ← Cockpit’ten tamamen kaldır
 F8.1b:  LegacyReceiverChannel sil
@@ -505,7 +505,7 @@ Diğer canlı veri çoğunlukla BFF `:4001` / `/automation-api` (Next `app/api` 
 
 ## 9. Maestro — Cockpit’ten tamamen kaldırma (bağlayıcı)
 
-**Hedef:** Operatör ve CI, Cockpit üzerinden **hiç Maestro kullanmaz**. Kalıcı “yedek Maestro” yok. Geçiş ölçümlü; cutover sonrası kod yolu **Delete**.
+**Hedef:** Operatör ve CI, Cockpit üzerinden **hiç Maestro kullanmaz**. Kalıcı “yedek Maestro” yok. Phase 8'de doğrudan kod yolu **Delete** edilir; dual-run/benchmark gate yoktur.
 
 **Yerine geçen yığın (üç parça, karıştırılmaz):**
 
@@ -525,8 +525,8 @@ Diğer canlı veri çoğunlukla BFF `:4001` / `/automation-api` (Next `app/api` 
 | **M0** | Call-site envanter (bu § + §6) | Maestro’ya bağımlı her UI/API listesi |
 | **M1** | Bridge host istemcisi + cihaz hazırlık kapısı | Sessiz fallback yok; prod’a bridge kurulmaz |
 | **M2** | `BridgeFlowCompiler` + `BridgeFlowExecutor` | IR’dan ikinci derleyici; editör/IR aynı |
-| **M3** | Dual-run (Maestro vs BridgeFlow) ölçüm | Gate #14 raporu |
-| **M4** | Cutover: runner + field-login + load-tour + editor Run | Maestro **feature-flag OFF**; tek yürütücü BridgeFlow |
+| **M3** | BridgeFlow execution wiring | Verdict runtime gerçek executor/queue yoluna bağlı |
+| **M4** | Cutover: runner + field-login + load-tour + editor Run | Tek yürütücü BridgeFlow |
 | **M5** | **DELETE** | Aşağıdaki dosya/bağlar repo’dan çıkar; `rg -i maestro` = 0 (docs hariç arşiv notu) |
 
 ### 9.2 Silinecek / değiştirilecek Cockpit yüzeyleri
@@ -552,8 +552,8 @@ Diğer canlı veri çoğunlukla BFF `:4001` / `/automation-api` (Next `app/api` 
 F4 VerdictChannel yeşil (seed/login kanalı)
     ∥ İz B Bridge APK + host istemci
         → M2 BridgeFlowCompiler
-        → M3 ölçüm gate
-        → M4 cutover (flag OFF)
+        → M3 BridgeFlow execution wiring
+        → M4 BridgeFlow-only cutover
         → M5 / Faz 8.0b DELETE
 ```
 
