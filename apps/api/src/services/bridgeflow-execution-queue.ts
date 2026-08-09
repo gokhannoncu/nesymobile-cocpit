@@ -135,12 +135,17 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
 
+    const clock = this.options.clock ?? Date.now
+
     await this.options.prisma.verdictRunStart.updateMany({
       where: { runId: item.runId },
       data: { status: 'RUNNING' },
     })
+    // The cockpit run list reads `workflow_runs.status`, not the run-start row.
+    // Leaving it at `queued` for the whole execution shows every live run as
+    // pending.
+    await this.markRunRow(item.runId, { status: 'running', startedAt: new Date(clock()) })
 
-    const clock = this.options.clock ?? Date.now
     const persistence = new PrismaExecutionPersistence(this.options.prisma)
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
     const runContext = new BridgeFlowRunContext({
@@ -206,7 +211,16 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         where: { runId: item.runId },
         data: { status: result.lifecycle === 'CLOSED' ? 'TERMINAL' : result.lifecycle },
       })
+      // `productVerdict` carries whether the product passed; the run row's
+      // status says whether the execution itself finished. Conflating the two
+      // is how a completed run that found a real defect reads as an infra
+      // failure.
+      await this.markRunRow(item.runId, {
+        status: 'completed',
+        completedAt: new Date(clock()),
+      })
     } catch (error) {
+      await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
       await this.options.prisma.verdictRunStart.updateMany({
         where: { runId: item.runId },
         data: { status: 'FAILED' },
@@ -218,7 +232,28 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
   }
 
+  /**
+   * Mirror execution lifecycle onto the `workflow_runs` row the cockpit reads.
+   *
+   * Best-effort: a run row that cannot be updated must not abort an execution
+   * that is otherwise fine, but the failure is logged rather than swallowed.
+   */
+  private async markRunRow(
+    runId: string,
+    data: { status: string; startedAt?: Date; completedAt?: Date },
+  ): Promise<void> {
+    try {
+      await this.options.prisma.workflowRun.updateMany({ where: { id: runId }, data })
+    } catch (error) {
+      this.options.logger?.('[BridgeFlowExecutionQueue] run row update failed', {
+        runId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
   private async blockRun(item: QueueItem, reason: string): Promise<void> {
+    await this.markRunRow(item.runId, { status: 'blocked', completedAt: new Date(this.options.clock?.() ?? Date.now()) })
     await Promise.all([
       this.options.prisma.verdictRunStart.updateMany({
         where: { runId: item.runId },

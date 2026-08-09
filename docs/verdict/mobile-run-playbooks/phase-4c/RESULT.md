@@ -120,7 +120,7 @@ cd verdict-bridge && ./gradlew :app:testDebugUnitTest --tests …ProtocolV1WaitA
 
 - `contract-fixtures.lock` SHA bump + fixtures remote commit (both repos must move together)
 - DUT live capabilities handshake (CP3-DUT)
-- Tour-approval-push emit still a Mobile residual from M4B
+- ~~Tour-approval-push emit~~ → CLOSED (FCM `TOUR_APPROVAL_PUSH`)
 
 ## 9. Next phase handoff
 

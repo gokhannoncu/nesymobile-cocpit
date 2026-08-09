@@ -12,6 +12,7 @@
 
 import type { PrismaClient } from '@nesy/db'
 
+import { ensureVerdictRunRow } from './verdict-run-row.js'
 import type {
   DomainPackAdminStore,
   DomainPackPublicationState,
@@ -329,6 +330,15 @@ export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
     result: WorkflowRunStartResult
   }): Promise<void> {
     const { request, result } = input
+    // Before the run start is recorded — and therefore before the queue can
+    // pick it up — the run must own a `workflow_runs` row. Every BridgeFlow
+    // persistence table has a foreign key to it, and the cockpit read model
+    // joins it; a run without one dies on its first persisted step.
+    await ensureVerdictRunRow(this.prisma, {
+      runId: result.runId,
+      workflowRef: request.workflowRef,
+      deviceId: request.deviceId,
+    })
     await this.prisma.verdictRunStart.create({
       data: {
         idempotencyKey: input.idempotencyKey,

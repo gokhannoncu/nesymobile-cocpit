@@ -46,6 +46,7 @@ now real, and the lanes that are still open are named rather than implied.
 | BRIDGE_ACTION / wait | `REAL` | `bridgeflow-device-ports.ts` → `BridgeDeviceManager` |
 | RESOLVE_TARGET | `REAL` | target registry → fingerprint → device resolve |
 | Continue gate / final oracle | `REAL` | `OracleEvaluationWorker` + Prisma revision store |
+| Run identity (`workflow_runs` row) | `REAL` | `verdict-run-row.ts` — created at run start; status mirrored by the queue |
 | REMOTE_ACTION / EXTERNAL_ACTION | `OPEN` | no `RemoteActionAdapter` configured; steps fail closed with a logged operation ref |
 | SDK_QUERY | `OPEN` | no host-side SDK query channel; step fails closed |
 | Evidence publication into a run | `OPEN` | no producer publishes into `BridgeFlowEvidenceRuntime` during a BridgeFlow run, so gates reach their deadline |

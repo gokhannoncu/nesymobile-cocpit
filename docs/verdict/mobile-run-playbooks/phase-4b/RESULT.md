@@ -117,7 +117,7 @@ phase4cReadiness: READY
 
 ## 8. Known residual gaps (handoff to M4C / later)
 
-- `nesy.events.critical/tour-approval-push` catalogued but **no emit yet** (`TOUR_APPROVAL_PUSH`)
+- ~~`nesy.events.critical/tour-approval-push` catalogued but no emit~~ → **CLOSED** (FCM `TOUR_APPROVAL_PUSH` emit)
 - Product REAL scan paths do not universally stamp `scannerMode=REAL` (inject/manual do)
 - Prepared-session is SP warm-start flags, not full host fixture schedule restore
 - Production signed `assembleTstrsRelease` package blocked by missing local `storeFile`

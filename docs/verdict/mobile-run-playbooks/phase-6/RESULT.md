@@ -62,7 +62,7 @@ DUT: not run (CP3-DUT / B-12)
 | B-12 | MEDIUM | Bridge smoke handshake flaky | Mobile/Bridge | `OPEN` |
 | B-13 | MEDIUM | wait_any/cancel/capabilities missing | Mobile/Bridge | `CLOSED` (M3/M4C) |
 | CP3-DUT | HIGH/EXTERNAL | Lab DUT | Device owner | `OPEN_EXTERNAL` |
-| PIXEL_MASK | LOW | Screenshot omits bytes when sensitive; no in-process PNG pixel mask yet | Bridge | `OPEN` (honest omit) |
+| PIXEL_MASK | LOW | In-process PNG pixel mask + omit fallback | Bridge | `CLOSED` (code; DUT optional) |
 
 ## 5. Step execution log
 

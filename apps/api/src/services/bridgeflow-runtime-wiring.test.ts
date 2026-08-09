@@ -436,8 +436,15 @@ describe('generic step runtime', () => {
 describe('execution queue device gating', () => {
   function queueHarness(acquireBridge: () => Promise<BridgeDeviceManager>) {
     const statuses: string[] = []
+    const runRowStatuses: string[] = []
     const runtimeWrites: Record<string, unknown>[] = []
     const prisma = {
+      workflowRun: {
+        updateMany: async (input: { data: { status: string } }) => {
+          runRowStatuses.push(input.data.status)
+          return { count: 1 }
+        },
+      },
       verdictRunStart: {
         updateMany: async (input: { data: { status: string } }) => {
           statuses.push(input.data.status)
@@ -475,7 +482,7 @@ describe('execution queue device gating', () => {
       clock: () => 1_000,
     })
 
-    return { queue, statuses, runtimeWrites }
+    return { queue, statuses, runRowStatuses, runtimeWrites }
   }
 
   const item = {
@@ -492,7 +499,7 @@ describe('execution queue device gating', () => {
   }
 
   it('blocks the run with the preflight remediation when the device Bridge is unavailable', async () => {
-    const { queue, statuses, runtimeWrites } = queueHarness(async () => {
+    const { queue, statuses, runRowStatuses, runtimeWrites } = queueHarness(async () => {
       throw new BridgeUnavailableError({
         check: 'ACCESSIBILITY_ENABLED',
         detail: 'bridge accessibility service is off',
@@ -508,6 +515,8 @@ describe('execution queue device gating', () => {
     expect(statuses).toContain('BLOCKED')
     expect(statuses).not.toContain('FAILED')
     expect(runtimeWrites[0]?.terminationReason).toContain('enable the Verdict Bridge accessibility service')
+    // The cockpit list reads the run row, so the block has to be visible there too.
+    expect(runRowStatuses).toContain('blocked')
   })
 
   it('blocks instead of executing when the pinned pack is not in this process', async () => {
