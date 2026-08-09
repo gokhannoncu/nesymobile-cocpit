@@ -26,6 +26,7 @@ import type {
   ReusableFlowFragmentDefinition,
 } from "@nesy/domain-pack-contracts";
 import { NESY_COMPLETE_DELIVERY_MACRO } from "../macros/complete-delivery.js";
+import { NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY } from "../macros/full-courier-golden.js";
 import { NESY_LOGIN_MACRO } from "../macros/login.js";
 import { NESY_OPEN_STOP_MACRO } from "../macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "../macros/process-parcel.js";
@@ -44,6 +45,7 @@ export const NESY_WORKFLOWS = {
   processParcel: "nesy.workflow.process-parcel",
   completeDelivery: "nesy.workflow.complete-delivery",
   tourApproval: "nesy.workflow.tour-approval-lifecycle",
+  fullCourierGolden: NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY,
 } as const;
 
 export const NESY_COURIER_FRAGMENTS: readonly ReusableFlowFragmentDefinition[] = [
@@ -133,6 +135,28 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     fragmentRefs: [NESY_FRAGMENTS.reachOpenStop],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_TOUR_APPROVAL_MACRO.oracleTemplate,
+    producesTerminalVerdict: true,
+  },
+  {
+    workflowKey: NESY_WORKFLOWS.fullCourierGolden,
+    displayName: "Full courier golden — nested stop/parcel FOR_EACH",
+    businessMeaning:
+      "Discovers stops and parcels at runtime and processes them via nested FOR_EACH (max 20 barcodes), without static node duplication.",
+    notResponsibleFor: [
+      "unrolling one IR node per barcode",
+      "treating offline queue as a separate evidence plane",
+      "Maestro orchestration",
+    ],
+    macroRefs: [
+      NESY_LOGIN_MACRO.macroKey,
+      NESY_SELECT_ROUTE_MACRO.macroKey,
+      NESY_OPEN_STOP_MACRO.macroKey,
+      NESY_PROCESS_PARCEL_MACRO.macroKey,
+      NESY_COMPLETE_DELIVERY_MACRO.macroKey,
+    ],
+    fragmentRefs: [NESY_FRAGMENTS.reachOpenStop],
+    occurrenceScope: "INDEPENDENT",
+    oracleTemplate: NESY_COMPLETE_DELIVERY_MACRO.oracleTemplate,
     producesTerminalVerdict: true,
   },
 ];

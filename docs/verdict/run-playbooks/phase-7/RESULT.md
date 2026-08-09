@@ -4,14 +4,14 @@
 runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
-resultState: READY_TO_START
+resultState: IN_PROGRESS
 createdAt: "2026-08-05 14:44:28 +03"
-startedAt: null
+startedAt: "2026-08-09 17:10:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-09 16:42:00 +03"
+lastUpdatedAt: "2026-08-09 17:20:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
+masterPlanDigest: "sha256:38800dbbf65ef935159108e76fca506474205e4f1168a950089436ae5138d51b"
 runPlayFile: "docs/verdict/run-playbooks/phase-7/RUN_PLAY.md"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 targetDomainPack: "@nesy/nesy-courier-domain-pack"
@@ -22,22 +22,16 @@ phase8Readiness: "NOT_EVALUATED"
 
 ## 1. Executive result
 
-Phase 6 gate **açıldı** (`READY_WITH_EXTERNAL_BLOCKERS`). Phase 7 implementation
-başlayabilir (`READY_TO_START`).
+Phase 7 **`IN_PROGRESS`**. Steps **7.0–7.9** closed (2026-08-09).
 
-**Operator note (2026-08-09):** **CP3-DUT** ve **B-12** lab/DUT test işidir;
-kod işi değil. Sonraya bırakıldı. Full CP7 / Act Mode acceptance için sonra
-koşulacak — Phase 7 start’ı bloke etmez. Real-DUT adımları koşulana kadar
-ilgili acceptance maddeleri `BLOCKED_EXTERNAL` kalabilir.
-
-Beklenen hedef:
+**Operator note (2026-08-09):** **CP3-DUT** / **B-12** deferred (lab later).
+Next work starts at **7.10 Backend confirmation**.
 
 ```text
-CHECKPOINT 7: Nesy reference workflows + diagnostics/security acceptance
-Runtime/API/UI source: Phase 4C/5/6 output'ları tüketilecek
-Real DUT: FULL PASS için gerekli (CP3-DUT / B-12 deferred — lab later)
-Maestro cutover/removal: YAPILMAYACAK
-Bridge physical B1 cutover gate: Phase 8'e bırakılacak
+Steps done: 7.0 … 7.9
+Next: 7.10
+Real DUT full PASS: deferred (CP3-DUT / B-12)
+Maestro removal: not in Phase 7
 ```
 
 ## 2. Recovery state
@@ -45,12 +39,12 @@ Bridge physical B1 cutover gate: Phase 8'e bırakılacak
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.1` |
-| Current state | `READY_TO_START` |
-| Last successful step | `7.0` |
-| Last attempted step | `7.1` |
-| Last update | `2026-08-09 16:42:00 +03` |
-| Recovery instruction | `Phase 6 COMPLETED + phase7Readiness=READY_WITH_EXTERNAL_BLOCKERS. Start 7.1. CP3-DUT+B-12 DEFERRED (lab later).` |
+| Current step | `7.10` |
+| Current state | `IN_PROGRESS` |
+| Last successful step | `7.9` |
+| Last attempted step | `7.9` |
+| Last update | `2026-08-09 17:20:00 +03` |
+| Recovery instruction | `Resume at 7.10 Backend confirmation. 7.0–7.9 DONE. CP3-DUT+B-12 DEFERRED.` |
 
 ## 3. Precondition gate
 
@@ -71,9 +65,10 @@ Phase 7 implementation başlamadan önce:
 Başlangıç kararı:
 
 ```text
-implementationStart: ALLOWED
+implementationStart: STARTED
 phase6Gate: READY_WITH_EXTERNAL_BLOCKERS
 deferredLab: CP3-DUT, B-12
+progress: 7.0–7.9 DONE · next 7.10
 ```
 
 ## 4. Inherited blockers / constraints
@@ -91,15 +86,15 @@ deferredLab: CP3-DUT, B-12
 | Step | Status | Evidence |
 |---|---|---|
 | 7.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` |
-| 7.1 Phase 6 gate doğrulama | `READY` | phase-6 COMPLETED + READY_WITH_EXTERNAL_BLOCKERS; CP3-DUT/B-12 deferred |
-| 7.2 Preflight/device baseline | `PENDING` | — |
-| 7.3 Nesy workflow inventory | `PENDING` | — |
-| 7.4 Field Login cutover | `PENDING` | — |
-| 7.5 Load Tour cutover | `PENDING` | — |
-| 7.6 Full courier golden workflow | `PENDING` | — |
-| 7.7 Entity discovery/FOR_EACH | `PENDING` | — |
-| 7.8 Barcode 20 loop | `PENDING` | — |
-| 7.9 Offline queue | `PENDING` | — |
+| 7.1 Phase 6 gate doğrulama | `DONE` | phase-6 COMPLETED + `READY_WITH_EXTERNAL_BLOCKERS` (op 2026-08-09) |
+| 7.2 Preflight/device baseline | `DONE` | digest `38800dbb…` OK; branch `production@6598a92`; DUT snapshot below |
+| 7.3 Nesy workflow inventory | `DONE` | §6 baseline inventory |
+| 7.4 Field Login cutover | `DONE` | WorkflowRunApi + REAL/SETUP intent; tests green |
+| 7.5 Load Tour cutover | `DONE` | Maestro copy cleared; `startPinnedVerdictRun`; cutover tests |
+| 7.6 Full courier golden workflow | `DONE` | `nesy.workflow.full-courier-golden` + nested FOR_EACH IR |
+| 7.7 Entity discovery/FOR_EACH | `DONE` | availableStops → FOR_EACH → parcelState → FOR_EACH |
+| 7.8 Barcode 20 loop | `DONE` | inner `maxIterations: 20`; anti-unroll test |
+| 7.9 Offline queue | `DONE` | LOCAL SWITCH + oracle `PASS_QUEUED_OFFLINE` unit |
 | 7.10 Backend confirmation | `PENDING` | — |
 | 7.11 Dialog/surface policy | `PENDING` | — |
 | 7.12 Tour Approval Lifecycle | `PENDING` | — |
@@ -120,82 +115,101 @@ deferredLab: CP3-DUT, B-12
 
 ## 6. Baseline inventory
 
-Bu bölüm çalışma başladığında doldurulacaktır.
-
 | Soru | Bulgu |
 |---|---|
-| Phase 6 RESULT durumu | `PENDING` |
-| Phase 6 readiness | `PENDING` |
-| Master digest | `PENDING` |
-| Current branch/status | `PENDING` |
-| Real DUT availability | `PENDING` |
-| Nesy app build variant | `PENDING` |
-| SDK version/protocol | `PENDING` |
-| Bridge version/protocol | `PENDING` |
-| Nesy backend/backoffice capability | `PENDING` |
-| Field Login current path | `PENDING` |
-| Load Tour current path | `PENDING` |
-| Nesy Domain Pack profile catalog | `PENDING` |
-| Typecheck baseline | `PENDING` |
-| Test baseline | `PENDING` |
+| Phase 6 RESULT durumu | `COMPLETED` — `docs/verdict/run-playbooks/phase-6/RESULT.md` |
+| Phase 6 readiness | `READY_WITH_EXTERNAL_BLOCKERS` (CP3-DUT/B-12 deferred) |
+| Master digest | `sha256:38800dbbf65ef935159108e76fca506474205e4f1168a950089436ae5138d51b` — `pnpm verdict:verify-master-plan` OK |
+| Current branch/status | `production` @ `6598a92` |
+| Real DUT availability | Attached: `R6CW400BC8N` SM-A346E; `ro.build.type=user` `ro.debuggable=0` — mutation acceptance **DEFERRED** (CP3-DUT) |
+| Nesy app build variant | Not re-probed this session — user build assumed; Act Mode blocked on user image |
+| SDK version/protocol | Deferred deep probe — Bridge capability via Phase 6 readiness probes |
+| Bridge version/protocol | Host B2 baseline from Phase 6 CAPABILITY-NEGOTIATION |
+| Nesy backend/backoffice capability | Pack adapters present (`domain-packs/nesy-courier`); live confirm later |
+| Field Login current path | `/automation/field-login` → `startPinnedVerdictRun` → compile + `/verdict/runtime/runs` (BRIDGEFLOW). History CRUD still `/api/field-courier-login` (legacy list/delete). |
+| Load Tour current path | `/automation/01-load-tour-flow` → `startPinnedVerdictRun`; YAML panel labeled legacy/debug-only |
+| Nesy Domain Pack workflows | `nesy.workflow.login`, `select-route`, `open-stop`, `process-parcel`, `complete-delivery`, `tour-approval-lifecycle` + fragment `reach-open-stop` |
+| Launch profiles | `cold-real-login` (product verdict), `prepared-session` / `direct-state` / `reuse-session` (setup, no product PASS) |
+| Pack macros | `nesy.macro.login` (+ select-route, open-stop, process-parcel, complete-delivery, tour-approval) |
+| Special / legacy paths | `apps/api/src/legacy/field-courier-login.router.ts` + orchestrator (history only); Maestro YAML generator still used by other flows — Field Login start does not call it |
+| Typecheck baseline | Not full-repo this wave — targeted web tests green |
+| Test baseline | `field-login-intent` + `phase-7-field-login-cutover` + `dto-cutover` → 15 PASS |
+
+### 6.1 Nesy workflow inventory (7.3)
+
+| Workflow / surface | Route / key | Start engine | Notes |
+|---|---|---|---|
+| Field Login (cockpit) | `/automation/field-login` · slug `field-courier-login` | Verdict WorkflowRunApi | REAL vs SETUP intent UI (7.4) |
+| Pack login judge | `nesy.workflow.login` | Pack independent workflow | `cold-real-login` only for product PASS |
+| Load Tour | `/automation/01-load-tour-flow` | Verdict WorkflowRunApi | Maestro preview copy remains → 7.5 |
+| Select route | `nesy.workflow.select-route` | Pack | — |
+| Open stop | `nesy.workflow.open-stop` | Pack | — |
+| Process parcel | `nesy.workflow.process-parcel` | Pack | barcode loops → 7.8 |
+| Complete delivery | `nesy.workflow.complete-delivery` | Pack | — |
+| Tour approval | `nesy.workflow.tour-approval-lifecycle` | Pack | → 7.12 |
+| Reach open stop | `nesy.fragment.reach-open-stop` | Fragment | `producesTerminalVerdict: false` |
 
 ## 7. Changed files
 
-Bu bölüm kapanışta doldurulacaktır.
-
 | Path | Değişim | Neden |
 |---|---|---|
-| `docs/verdict/run-playbooks/phase-7/RUN_PLAY.md` | NEW | Phase 7 playbook |
-| `docs/verdict/run-playbooks/phase-7/RESULT.md` | NEW | Phase 7 result tracker |
+| `docs/verdict/run-playbooks/phase-7/RUN_PLAY.md` | UPDATE | Gate + recovery through 7.9 |
+| `docs/verdict/run-playbooks/phase-7/RESULT.md` | UPDATE | 7.0–7.9 evidence |
+| `apps/web/.../field-login/*` + `field-login-intent*` | NEW/UPDATE | 7.4 |
+| `apps/web/.../load-tour-flow-workspace.tsx` | UPDATE | 7.5 Maestro copy → Verdict |
+| `apps/web/src/test/phase-7-load-tour-cutover.test.ts` | NEW | 7.5 static acceptance |
+| `domain-packs/nesy-courier/src/macros/full-courier-golden.ts` | NEW | 7.6–7.8 golden IR |
+| `domain-packs/nesy-courier/src/golden-workflow.test.ts` | NEW | 7.6–7.8 tests |
+| `domain-packs/nesy-courier/src/profiles/workflows.ts` | UPDATE | register golden workflow |
+| `packages/oracle-engine/src/index.test.ts` | UPDATE | 7.9 `PASS_QUEUED_OFFLINE` |
 
-## 8. Verification results
+## 8. Verification results (waves 7.0–7.9)
 
-Bu bölüm kapanışta gerçek komut çıktılarıyla doldurulacaktır.
-
-Beklenen minimum komut seti:
-
-```bash
+```text
 pnpm verdict:verify-master-plan
-pnpm typecheck
-pnpm test
-pnpm --filter @nesy/nesy-courier-domain-pack typecheck
-pnpm --filter @nesy/nesy-courier-domain-pack test
-pnpm --filter @nesy/api typecheck
-pnpm --filter @nesy/api test
-pnpm --filter @nesy/web typecheck
-pnpm --filter @nesy/web test
-git diff --check
-git diff --cached --check
+→ digest OK sha256:38800dbb…
+
+pnpm --filter @nesy/web exec vitest run \
+  src/test/phase-7-field-login-cutover.test.ts \
+  src/test/phase-7-load-tour-cutover.test.ts
+→ PASS
+
+pnpm --filter @nesy/nesy-courier-domain-pack exec vitest run \
+  src/golden-workflow.test.ts src/index.test.ts
+→ 79 PASS
+
+pnpm --filter @nesy/oracle-engine exec vitest run src/index.test.ts
+→ 14 PASS (incl. PASS_QUEUED_OFFLINE)
 ```
 
-Gerçek DUT komutları agent tarafından ayrıca yazılacaktır.
+Full Phase 7 verification suite deferred to 7.25.
 
 ## 9. CHECKPOINT 7 acceptance checklist
 
 | # | Acceptance | Status | Evidence |
 |---|---|---|---|
-| 1 | Phase 6 output'ları doğrulandı. | `PENDING` | — |
-| 2 | Real DUT/device capability snapshot alındı veya external blocker yazıldı. | `PENDING` | — |
-| 3 | Field Login özel Maestro orchestrator olmadan çalışıyor. | `PENDING` | — |
-| 4 | Load Tour özel Maestro orchestrator olmadan çalışıyor. | `PENDING` | — |
-| 5 | Field Login generic WorkflowRunApi kullanıyor. | `PENDING` | — |
-| 6 | Load Tour generic WorkflowRunApi kullanıyor. | `PENDING` | — |
-| 7 | Setup login ile gerçek login E2E ayrımı görünür. | `PENDING` | — |
-| 8 | Setup login gerçek login PASS'i üretmiyor. | `PENDING` | — |
-| 9 | Tam kurye workflow gerçek DUT'ta tamamlanıyor veya real-DUT blocker açık. | `PENDING` | — |
-| 10 | Full workflow source-map/provenance Run Detail'de görünüyor. | `PENDING` | — |
-| 11 | Core package'larda STOP/PARCEL/ROUTE/DELIVERY type/branch yok. | `PENDING` | — |
+| 1 | Phase 6 output'ları doğrulandı. | `PASS` | 7.1 — phase-6 RESULT COMPLETED + readiness |
+| 2 | Real DUT/device capability snapshot alındı veya external blocker yazıldı. | `PASS` | 7.2 — DUT snapshot; CP3-DUT deferred (user/0) |
+| 3 | Field Login özel Maestro orchestrator olmadan çalışıyor. | `PASS` | 7.4 — `startPinnedVerdictRun`; cutover tests |
+| 4 | Load Tour özel Maestro orchestrator olmadan çalışıyor. | `PASS` | 7.5 — `startPinnedVerdictRun`; cutover tests |
+| 5 | Field Login generic WorkflowRunApi kullanıyor. | `PASS` | compile + `/verdict/runtime/runs` |
+| 6 | Load Tour generic WorkflowRunApi kullanıyor. | `PASS` | 7.5 — pinned start + pack pin banner |
+| 7 | Setup login ile gerçek login E2E ayrımı görünür. | `PASS` | Field Login intent radio REAL vs SETUP |
+| 8 | Setup login gerçek login PASS'i üretmiyor. | `PASS` | SETUP → `prepared-session` + `producesProductVerdict: false` |
+| 9 | Tam kurye workflow gerçek DUT'ta tamamlanıyor veya real-DUT blocker açık. | `BLOCKED_EXTERNAL` | Golden IR done (7.6); DUT deferred CP3-DUT |
+| 10 | Full workflow source-map/provenance Run Detail'de görünüyor. | `PASS_PARTIAL` | Golden sourceMap present; live Run Detail DUT later |
+| 11 | Core package'larda STOP/PARCEL/ROUTE/DELIVERY type/branch yok. | `PASS` | Golden Core ids domain-neutral; validateWorkflowIrV2 |
 | 12 | Bridge business command almıyor. | `PENDING` | — |
 | 13 | Executor business command bilmiyor. | `PENDING` | — |
-| 14 | 20 barcode occurrence/evidence doğru. | `PENDING` | — |
-| 15 | 20 barcode runtime entity query + FOR_EACH ile çalışıyor. | `PENDING` | — |
-| 16 | 20 barcode statik node çoğaltması yok. | `PENDING` | — |
-| 17 | Stop/task/shipment/parcel stable entity key'leri occurrence'a bağlı. | `PENDING` | — |
-| 18 | UI'da görünmeyen stop identity bounded entity-target binding ile çözülüyor. | `PENDING` | — |
-| 19 | Bütün stop collection SDK event stream'ine taşınmıyor. | `PENDING` | — |
-| 20 | Offline queue false failure üretmiyor. | `PENDING` | — |
-| 21 | Queue Local subtype olarak değerlendiriliyor. | `PENDING` | — |
-| 22 | PASS_QUEUED_OFFLINE doğru üretiliyor. | `PENDING` | — |
+| 14 | 20 barcode occurrence/evidence doğru. | `PASS_PARTIAL` | IR bound=20; live occurrence DUT later |
+| 15 | 20 barcode runtime entity query + FOR_EACH ile çalışıyor. | `PASS` | 7.8 — nested FOR_EACH + parcelState query |
+| 16 | 20 barcode statik node çoğaltması yok. | `PASS` | stepCount ≪ 20; single body step |
+| 17 | Stop/task/shipment/parcel stable entity key'leri occurrence'a bağlı. | `PASS` | registry + golden entityBinding |
+| 18 | UI'da görünmeyen stop identity bounded entity-target binding ile çözülüyor. | `PASS_PARTIAL` | open-stop target policy inherited; golden uses binding |
+| 19 | Bütün stop collection SDK event stream'ine taşınmıyor. | `PASS` | SDK_QUERY bounded projections only |
+| 20 | Offline queue false failure üretmiyor. | `PASS` | complete-delivery + golden SWITCH; optional queue fact |
+| 21 | Queue Local subtype olarak değerlendiriliyor. | `PASS` | OFFLINE_QUEUE_WATCH plane LOCAL |
+| 22 | PASS_QUEUED_OFFLINE doğru üretiliyor. | `PASS` | 7.9 oracle-engine unit |
 | 23 | Backend confirmation doğru node/iteration/entity correlation ile bağlı. | `PENDING` | — |
 | 24 | HTTP 2xx business success sayılmıyor. | `PENDING` | — |
 | 25 | Dialog policy route/session/update/network/permission yüzeylerini ayırıyor. | `PENDING` | — |
@@ -278,6 +292,8 @@ Bu bölüm çalışma sırasında doldurulacaktır.
 
 | Item | Target phase | Reason |
 |---|---|---|
+| CP3-DUT mutation acceptance | Lab later | Op 2026-08-09 — userdebug/eng DUT required |
+| B-12 30× smoke | Lab later | Op 2026-08-09 — Device Lab |
 | Bridge B1 physical cutover parity | Phase 8 | CP7 real workflows sonrası ölçülür. |
 | Maestro removal | Phase 9 | Phase 8 physical acceptance ve cutover gate sonrası. |
 | Advanced intelligence / Failure Genome | Future | CP7 evidence data biriktikten sonra. |

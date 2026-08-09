@@ -402,6 +402,69 @@ describe("oracle engine v2", () => {
     expect(result.productVerdict).toBe("PASS_ONLINE");
   });
 
+  it("maps satisfied LOCAL queue subtype to PASS_QUEUED_OFFLINE (Phase 7.9)", () => {
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [
+          {
+            factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+            obligation: "REQUIRED",
+            timing: "IMMEDIATE",
+            onTimeout: "FAIL",
+          },
+        ],
+      },
+      facts: [
+        {
+          ...baseFact,
+          factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+          plane: "LOCAL",
+          subtype: "queue",
+          value: true,
+          deliveryLane: "ORDERED_REQUIRED",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 120,
+      startedAtMs: 100,
+    });
+
+    expect(result.outcome).toBe("SATISFIED");
+    expect(result.productVerdict).toBe("PASS_QUEUED_OFFLINE");
+  });
+
+  it("does not treat non-queue LOCAL facts as PASS_QUEUED_OFFLINE", () => {
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [
+          {
+            factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+            obligation: "REQUIRED",
+            timing: "IMMEDIATE",
+            onTimeout: "FAIL",
+          },
+        ],
+      },
+      facts: [
+        {
+          ...baseFact,
+          factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+          plane: "LOCAL",
+          subtype: "mode",
+          value: true,
+          deliveryLane: "ORDERED_REQUIRED",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 120,
+      startedAtMs: 100,
+    });
+
+    expect(result.productVerdict).toBe("PASS_ONLINE");
+  });
+
   it("replays derived facts idempotently and rejects cycles", () => {
     const graph = [
       { factKey: "b", dependsOn: ["a"] },

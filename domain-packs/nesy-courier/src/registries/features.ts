@@ -85,7 +85,11 @@ const DELIVERY_EXECUTABLE: FeatureExecutableContract = {
   contractVersion: 1,
   applicationRef: APP,
   macroRefs: ["nesy.macro.process-parcel", "nesy.macro.complete-delivery"],
-  workflowRefs: ["nesy.workflow.process-parcel", "nesy.workflow.complete-delivery"],
+  workflowRefs: [
+    "nesy.workflow.process-parcel",
+    "nesy.workflow.complete-delivery",
+    "nesy.workflow.full-courier-golden",
+  ],
   invariants: [
     {
       invariantKey: "nesy.invariant.delivery-reaches-backend",

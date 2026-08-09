@@ -46,13 +46,17 @@ import {
   type FieldLoginStep,
 } from '@/services/field-courier-login'
 import { fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client'
+import {
+  FIELD_LOGIN_LAUNCH,
+  FIELD_LOGIN_WORKFLOW_REF,
+  fieldLoginLaunchFor,
+  type FieldLoginIntent,
+} from '@/lib/verdict-runtime/field-login-intent'
 import { startPinnedVerdictRun } from '@/lib/verdict-runtime/start-pinned-run'
 import {
   listNesyMobileAdbDevices,
   type NesyMobileAdbDevice,
 } from '@/services/nesy-mobile-auth'
-
-const FIELD_LOGIN_WORKFLOW_REF = 'field-courier-login'
 
 function isDeviceRunnable(device: NesyMobileAdbDevice) {
   const status = (device.status || '').toLowerCase()
@@ -400,6 +404,7 @@ function FieldLoginCreateModal({
   const router = useRouter()
   const isReplay = Boolean(replayFrom?.courierUserId)
   const [phase, setPhase] = useState<'form' | 'progress'>('form')
+  const [loginIntent, setLoginIntent] = useState<FieldLoginIntent>('REAL_UI_LOGIN')
   const [trackingNumber, setTrackingNumber] = useState('')
   const [barcode, setBarcode] = useState('')
   const [legacyBarcode, setLegacyBarcode] = useState('')
@@ -418,6 +423,7 @@ function FieldLoginCreateModal({
     ) && !submitting
 
   const canSubmit = isReplay ? Boolean(replayFrom?.courierUserId) && !submitting : canSubmitCreate
+  const launch = fieldLoginLaunchFor(loginIntent)
 
   const handleStart = async () => {
     if (!canSubmit) return
@@ -428,11 +434,18 @@ function FieldLoginCreateModal({
       if (!device) {
         throw new Error('No runnable ADB device — attach a device before starting Field Login')
       }
-      // Form fields remain operator context (country/env/courier). Execution is
-      // pinned to the published Nesy Courier Domain Pack via Verdict runtime.
+
+      // CHECKPOINT 7 items 7–8: setup never claims product login PASS.
+      if (loginIntent === 'SETUP_PRECONDITION' && launch.producesProductVerdict) {
+        throw new Error('Setup/precondition login cannot produce a product login PASS')
+      }
+
+      // Form fields remain operator context. Execution is pinned to the published
+      // Domain Pack via Verdict WorkflowRunApi — no Maestro orchestrator.
       const started = await startPinnedVerdictRun({
         workflowRef: FIELD_LOGIN_WORKFLOW_REF,
         deviceId: device.id,
+        profileKey: launch.profileKey,
       })
       setPhase('progress')
       setSession({
@@ -444,7 +457,15 @@ function FieldLoginCreateModal({
             key: 'compile',
             label: 'Compile + pin Domain Pack',
             status: 'done',
-            detail: `${country}/${environment}`,
+            detail: `${country}/${environment} · ${launch.profileKey}`,
+          },
+          {
+            key: 'intent',
+            label: launch.label,
+            status: 'done',
+            detail: launch.producesProductVerdict
+              ? 'Product verdict allowed'
+              : 'No product PASS (setup only)',
           },
           {
             key: 'queue',
@@ -456,7 +477,9 @@ function FieldLoginCreateModal({
       } as unknown as FieldLoginSession)
       onFinished()
       toast.success(
-        `Field Login queued (${isReplay ? 'replay' : 'create'}) — opening Run Detail`,
+        loginIntent === 'SETUP_PRECONDITION'
+          ? 'Setup login queued (no product PASS) — opening Run Detail'
+          : `Real UI login queued (${isReplay ? 'replay' : 'create'}) — opening Run Detail`,
       )
       router.push(`/automation/${FIELD_LOGIN_WORKFLOW_REF}/runs/${started.runId}`)
     } catch (err) {
@@ -538,10 +561,47 @@ function FieldLoginCreateModal({
             Env: <strong>{country.toUpperCase()}</strong> / <strong>{environment}</strong>
             {' · '}
             Requires exactly one ADB device
+            {' · '}
+            Verdict WorkflowRunApi (no Maestro orchestrator)
           </div>
 
           {phase === 'form' ? (
-            isReplay && replayFrom ? (
+            <>
+            <fieldset className="space-y-2 rounded-lg border border-border px-3 py-3">
+              <legend className="px-1 text-xs font-medium text-muted-foreground">
+                Login intent
+              </legend>
+              {(Object.keys(FIELD_LOGIN_LAUNCH) as FieldLoginIntent[]).map((key) => {
+                const option = FIELD_LOGIN_LAUNCH[key]
+                return (
+                  <label
+                    key={key}
+                    className={cn(
+                      'flex cursor-pointer gap-3 rounded-md border px-3 py-2 text-sm transition-colors',
+                      loginIntent === key
+                        ? 'border-nesy/40 bg-nesy/5'
+                        : 'border-transparent bg-muted/20 hover:bg-muted/40',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="field-login-intent"
+                      checked={loginIntent === key}
+                      onChange={() => setLoginIntent(key)}
+                    />
+                    <span>
+                      <span className="font-medium text-foreground">{option.label}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {option.summary}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
+            </fieldset>
+
+            {isReplay && replayFrom ? (
               <div className="space-y-4">
                 <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
                   <p className="text-sm font-semibold text-foreground">
@@ -605,7 +665,8 @@ function FieldLoginCreateModal({
                   className="sm:col-span-2"
                 />
               </div>
-            )
+            )}
+            </>
           ) : (
             <StepTimeline
               steps={session?.steps ?? []}
@@ -633,7 +694,11 @@ function FieldLoginCreateModal({
                 ) : (
                   <UserRoundCog className="size-4" />
                 )}
-                {isReplay ? 'Replay login' : 'Start login'}
+                {loginIntent === 'SETUP_PRECONDITION'
+                  ? 'Start setup (no product PASS)'
+                  : isReplay
+                    ? 'Replay real login'
+                    : 'Start real login'}
               </Button>
             </>
           ) : (
@@ -683,10 +748,17 @@ function Field({
 const LONG_STEP_AFTER_MS = 2500
 
 const LONG_STEP_HINTS: Record<string, string[]> = {
+  bridge_login: [
+    'Launching app on device…',
+    'Entering credentials via Bridge…',
+    'Waiting for BridgeFlow run…',
+    'Almost there…',
+  ],
+  // Legacy history rows may still carry this key — map to Bridge copy.
   maestro_login: [
     'Launching app on device…',
-    'Entering PIN…',
-    'Waiting for Maestro run…',
+    'Entering credentials via Bridge…',
+    'Waiting for BridgeFlow run…',
     'Almost there…',
   ],
   read_device_code: [

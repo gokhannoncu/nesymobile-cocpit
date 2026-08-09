@@ -13,6 +13,8 @@ export async function startPinnedVerdictRun(input: {
   workflowRef: string
   deviceId: string
   workflowIr?: { nodes: unknown[]; connections?: unknown[]; edges?: unknown[] }
+  /** Launch / test profile pin (e.g. nesy.launch.cold-real-login). */
+  profileKey?: string
 }): Promise<WorkflowRunStartApi> {
   const packs = await fetchVerdictDomainPacks()
   const pack = packs.items.find((item) => item.publicationState === 'PUBLISHED')
@@ -49,5 +51,6 @@ export async function startPinnedVerdictRun(input: {
     domainPackKey: pack.packKey,
     domainPackVersion: pack.version,
     domainPackDigest: pack.bundleDigest,
+    ...(input.profileKey ? { profileKey: input.profileKey } : {}),
   })
 }

@@ -4,16 +4,16 @@
 runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
-status: READY_TO_START
-recoveryState: READY_TO_START
+status: IN_PROGRESS
+recoveryState: IN_PROGRESS_AT_7_10
 createdAt: "2026-08-05 14:44:28 +03"
-startedAt: null
+startedAt: "2026-08-09 17:10:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-09 16:42:00 +03"
+lastUpdatedAt: "2026-08-09 17:20:00 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
-masterPlanDigest: "sha256:b81631396044cab7f83f6b6efea2f47ff4b4bda4b177b2d7a2ad705535b660b2"
+masterPlanDigest: "sha256:38800dbbf65ef935159108e76fca506474205e4f1168a950089436ae5138d51b"
 verifyMasterPlanCommand: "pnpm verdict:verify-master-plan"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-6/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-7/RESULT.md"
@@ -370,12 +370,12 @@ Gerçek DUT yoksa:
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.1` |
-| Current state | `READY_TO_START` |
-| Last successful step | `7.0` |
-| Last attempted step | `7.1` |
-| Last update | `2026-08-09 16:42:00 +03` |
-| Recovery instruction | `Gate open. Start Phase 7 from 7.1. CP3-DUT+B-12 DEFERRED (lab later). Real DUT yoksa full CP7 PASS verme.` |
+| Current step | `7.10` |
+| Current state | `IN_PROGRESS` |
+| Last successful step | `7.9` |
+| Last attempted step | `7.9` |
+| Last update | `2026-08-09 17:20:00 +03` |
+| Recovery instruction | `Resume at 7.10 Backend confirmation. 7.0–7.9 DONE. CP3-DUT+B-12 DEFERRED. Real DUT yoksa full CP7 PASS verme.` |
 
 ## 5. Owned paths
 
@@ -427,15 +427,15 @@ handoff yazılmalıdır.
 | Step | Status | Açıklama | Output |
 |---|---|---|---|
 | 7.0 Playbook oluşturma | `DONE` | `RUN_PLAY.md` + `RESULT.md` oluşturuldu. | Phase 7 hazır ama gated |
-| 7.1 Phase 6 gate doğrulama | `PENDING` | Phase 6 `COMPLETED` ve `phase7Readiness` doğrula. | Gate evidence |
-| 7.2 Preflight/device baseline | `PENDING` | Digest, branch, tests, real DUT/capability snapshot. | Baseline |
-| 7.3 Nesy workflow inventory | `PENDING` | Field Login/Load Tour/current special paths/domain pack. | Inventory |
-| 7.4 Field Login cutover | `PENDING` | Generic WorkflowRunApi + Domain Pack. | Field Login |
-| 7.5 Load Tour cutover | `PENDING` | Generic WorkflowRunApi + route readiness. | Load Tour |
-| 7.6 Full courier golden workflow | `PENDING` | End-to-end semantic workflow. | Golden workflow |
-| 7.7 Entity discovery/FOR_EACH | `PENDING` | Stop/task/shipment/parcel stable occurrence. | Entity runtime |
-| 7.8 Barcode 20 loop | `PENDING` | Runtime nested FOR_EACH, no static duplication. | Barcode acceptance |
-| 7.9 Offline queue | `PENDING` | PASS_QUEUED_OFFLINE, local subtype. | Queue evidence |
+| 7.1 Phase 6 gate doğrulama | `DONE` | Phase 6 `COMPLETED` + `READY_WITH_EXTERNAL_BLOCKERS`. | Gate evidence |
+| 7.2 Preflight/device baseline | `DONE` | Digest `38800dbb…`, branch, DUT snapshot. | Baseline |
+| 7.3 Nesy workflow inventory | `DONE` | RESULT §6 inventory. | Inventory |
+| 7.4 Field Login cutover | `DONE` | WorkflowRunApi + REAL/SETUP intent. | Field Login |
+| 7.5 Load Tour cutover | `DONE` | Verdict start; Maestro UI copy cleared. | Load Tour |
+| 7.6 Full courier golden workflow | `DONE` | `nesy.workflow.full-courier-golden` IR. | Golden workflow |
+| 7.7 Entity discovery/FOR_EACH | `DONE` | Nested query→FOR_EACH in golden IR. | Entity runtime |
+| 7.8 Barcode 20 loop | `DONE` | Inner FOR_EACH max=20; anti-unroll test. | Barcode acceptance |
+| 7.9 Offline queue | `DONE` | LOCAL SWITCH + oracle PASS_QUEUED_OFFLINE. | Queue evidence |
 | 7.10 Backend confirmation | `PENDING` | Remote business confirmation/correlation. | Backend evidence |
 | 7.11 Dialog/surface policy | `PENDING` | expected/interrupt/unknown dialog STOP. | Surface policy |
 | 7.12 Tour Approval Lifecycle | `PENDING` | Real/setup modes, backoffice adapter, push/mobile/UI chain. | Tour approval |

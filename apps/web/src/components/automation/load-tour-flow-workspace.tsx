@@ -441,7 +441,7 @@ export function LoadTourFlowWorkspace() {
         },
       })
       toast.success(
-        `Load & Tour queued on Domain Pack (plan ${result.compiledPlanHash.slice(0, 12)}…)`,
+        `Load & Tour queued via Verdict BridgeFlow (${zimmetBarcodes.length} barcode(s), plan ${result.compiledPlanHash.slice(0, 12)}…)`,
       )
       router.push(`/automation/${WORKFLOW_SLUG}/runs/${result.runId}`)
     } catch (err) {
@@ -664,8 +664,8 @@ export function LoadTourFlowWorkspace() {
               <div>
                 <CardTitle className="text-base">Configure & run</CardTitle>
                 <CardDescription className="mt-1 max-w-2xl">
-                  Select Cockpit records, preview Maestro YAML, then execute zimmet
-                  → tour request → tour approve on a connected device.
+                  Select Cockpit records, then queue zimmet → tour request → tour
+                  approve via Verdict WorkflowRunApi (BridgeFlow) on a connected device.
                 </CardDescription>
               </div>
             </div>
@@ -871,9 +871,9 @@ export function LoadTourFlowWorkspace() {
             <Card className="overflow-hidden">
               <CardHeader className="min-h-12 border-b py-3">
                 <CardHeading>
-                  <CardTitle className="text-sm">YAML preview</CardTitle>
+                  <CardTitle className="text-sm">Legacy YAML preview</CardTitle>
                   <CardDescription className="text-xs">
-                    Generated Maestro flow for the current selection
+                    Debug-only legacy YAML — run uses Verdict BridgeFlow, not Maestro
                   </CardDescription>
                 </CardHeading>
                 <CardToolbar>
@@ -1412,7 +1412,7 @@ function RunSummaryPanel({
             </p>
           ) : (
             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-              Connect one Android device via ADB to run Maestro flows.
+              Connect one Android device via ADB to run Verdict BridgeFlow.
             </p>
           )}
         </div>
