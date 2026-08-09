@@ -5,11 +5,11 @@ runPlayId: verdict-cockpit-phase-7-run-play
 phase: "7"
 phaseName: "Nesy Real Workflows + Test Profile Catalog + Diagnostics + Security Acceptance"
 status: IN_PROGRESS
-recoveryState: IN_PROGRESS_AT_7_10
+recoveryState: IN_PROGRESS_AT_7_25
 createdAt: "2026-08-05 14:44:28 +03"
 startedAt: "2026-08-09 17:10:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-09 17:20:00 +03"
+lastUpdatedAt: "2026-08-09 17:42:14 +03"
 timezone: "Europe/Istanbul"
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 masterPlanVersion: "v1.1.3"
@@ -370,12 +370,12 @@ Gerçek DUT yoksa:
 | Alan | Değer |
 |---|---|
 | Current phase | `7` |
-| Current step | `7.10` |
+| Current step | `7.25` |
 | Current state | `IN_PROGRESS` |
-| Last successful step | `7.9` |
-| Last attempted step | `7.9` |
-| Last update | `2026-08-09 17:20:00 +03` |
-| Recovery instruction | `Resume at 7.10 Backend confirmation. 7.0–7.9 DONE. CP3-DUT+B-12 DEFERRED. Real DUT yoksa full CP7 PASS verme.` |
+| Last successful step | `7.24` |
+| Last attempted step | `7.24` |
+| Last update | `2026-08-09 17:42:14 +03` |
+| Recovery instruction | `Resume at 7.25 Verification. 7.0–7.24 DONE. CP3-DUT+B-12 DEFERRED. Real DUT yoksa full CP7 PASS verme.` |
 
 ## 5. Owned paths
 
@@ -436,21 +436,21 @@ handoff yazılmalıdır.
 | 7.7 Entity discovery/FOR_EACH | `DONE` | Nested query→FOR_EACH in golden IR. | Entity runtime |
 | 7.8 Barcode 20 loop | `DONE` | Inner FOR_EACH max=20; anti-unroll test. | Barcode acceptance |
 | 7.9 Offline queue | `DONE` | LOCAL SWITCH + oracle PASS_QUEUED_OFFLINE. | Queue evidence |
-| 7.10 Backend confirmation | `PENDING` | Remote business confirmation/correlation. | Backend evidence |
-| 7.11 Dialog/surface policy | `PENDING` | expected/interrupt/unknown dialog STOP. | Surface policy |
-| 7.12 Tour Approval Lifecycle | `PENDING` | Real/setup modes, backoffice adapter, push/mobile/UI chain. | Tour approval |
-| 7.13 Scanner modes | `PENDING` | real/injected/manual/unknown; release isolation. | Scanner acceptance |
-| 7.14 Launch Profiles | `PENDING` | FULL_JOURNEY/PREPARED_SESSION/DIRECT_STATE. | Launch profiles |
-| 7.15 Continue Gate vs Final Oracle | `PENDING` | early progress and eventual oracle real scenarios. | Oracle acceptance |
-| 7.16 Evidence Journey real fixtures | `PENDING` | SDK/transport/ordered/normalization/correlation cases. | Diagnostics |
-| 7.17 Interaction origin | `PENDING` | injected/manual/unknown and metrics isolation. | Origin evidence |
-| 7.18 Capture policy | `PENDING` | D1/D2/D3, scoped failure capture, no happy full dump. | Capture acceptance |
-| 7.19 Security/RBAC/retention | `PENDING` | audit, redaction, purge, production Act restrictions. | Security |
-| 7.20 Nesy Test Profile catalog | `PENDING` | v1 core profiles in published pack. | Profile catalog |
-| 7.21 Preview profiles | `PENDING` | accessibility/explorer release-gate isolation. | Preview acceptance |
-| 7.22 Campaign schedules | `PENDING` | PR/nightly/weekly/release fake + real fixture. | Campaign acceptance |
-| 7.23 Provenance/deep-links | `PENDING` | list→editor→run→detail→history consistency. | UI/API chain |
-| 7.24 Negative safety tests | `PENDING` | no core leakage, no static barcode, no HTTP-only PASS, no fake preview GO. | Safety suite |
+| 7.10 Backend confirmation | `DONE` | Correlated confirm; HTTP 2xx ≠ success. | Backend evidence |
+| 7.11 Dialog/surface policy | `DONE` | Surface policies + WAIT_ANY legs. | Surface policy |
+| 7.12 Tour Approval Lifecycle | `DONE` | SETUP approve; push WARNING; setup ≠ PASS. | Tour approval |
+| 7.13 Scanner modes | `DONE` | Inject SETUP; automation-only seam. | Scanner acceptance |
+| 7.14 Launch Profiles | `DONE` | FULL_JOURNEY alias + isolation. | Launch profiles |
+| 7.15 Continue Gate vs Final Oracle | `DONE` | CG SATISFY ≠ Final PASS; EVENTUAL separate. | Oracle acceptance |
+| 7.16 Evidence Journey real fixtures | `DONE` | SDK/transport/ordered/normalization/correlation fixtures. | Diagnostics |
+| 7.17 Interaction origin | `DONE` | BRIDGE/MANUAL/UNKNOWN + humanBaseline isolation. | Origin evidence |
+| 7.18 Capture policy | `DONE` | D1/D2/D3 opt-in, no happy dump, repro NOT_CAPTURED. | Capture acceptance |
+| 7.19 Security/RBAC/retention | `DONE` | audit/redaction, purge selector, Act deny, cap fail-fast. | Security |
+| 7.20 Nesy Test Profile catalog | `DONE` | 16 catalog profiles in pack. | Profile catalog |
+| 7.21 Preview profiles | `DONE` | accessibility/explorer non-gating. | Preview acceptance |
+| 7.22 Campaign schedules | `DONE` | PR/nightly/weekly/release fixtures + cell gate. | Campaign acceptance |
+| 7.23 Provenance/deep-links | `DONE` | list→editor→run→detail→history + pins. | UI/API chain |
+| 7.24 Negative safety tests | `DONE` | core leak / barcode / HTTP2xx / preview GO. | Safety suite |
 | 7.25 Verification | `PENDING` | digest/typecheck/test/DUT evidence/diff checks. | Verification |
 | 7.26 RESULT closure | `PENDING` | CHECKPOINT 7 checklist + Phase 8 readiness. | Handoff |
 

@@ -52,7 +52,15 @@ export function classifyEvidenceJourney(
       reason = explicit?.reason
     }
 
-    if (state === 'BLOCKED' && blockedBy === undefined) blockedBy = stage
+    // Fail-closed propagation: an explicit NOT_OBSERVED / BLOCKED mid-journey
+    // must not let later stages invent a green root cause. EMIT NEGATIVE stays
+    // local (SDK emit) without forcing WAL+ to BLOCKED unless also observed.
+    if (
+      blockedBy === undefined &&
+      (state === 'BLOCKED' || (state === 'NOT_OBSERVED' && stage !== 'EMIT'))
+    ) {
+      blockedBy = stage
+    }
     return {
       factKey: observation.factKey,
       occurrenceId: observation.occurrenceId,

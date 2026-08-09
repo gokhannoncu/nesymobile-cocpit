@@ -66,8 +66,8 @@ artifact tek bir yolculuk olarak okunabilir.
 | Semantic action | 8 | 6 slice + 2 interrupt handler |
 | Macro | 8 | 6 slice macro + `grant-permission`, `recover-network` |
 | Launch profile | 4 | `cold-real-login`, `prepared-session`, `direct-state`, `reuse-session` |
-| Test profile | 4 | `release-core`, `preview-smoke`, `bad-day`, `differential-baseline` |
-| Campaign | 1 | `nesy.campaign.release-gate` |
+| Test profile | 16 | Phase 7 catalog (`nesy.smoke.core` … `nesy.preview.smart-explorer`) + legacy `preview-smoke` |
+| Campaign | 4 | `nesy.campaign.pr`, `nightly`, `weekly`, `release` |
 | Feature blueprint | 3 | stop-handling, delivery-completion, tour-approval |
 | Capability | 15 | `verdict.core` 6, `domain.nesy` 9 |
 | Remote adapter | 1 | `nesy.backoffice`, 9 allowlisted operation |

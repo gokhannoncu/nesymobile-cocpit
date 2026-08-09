@@ -395,8 +395,11 @@ export class OrderedEvidenceBus {
     const external = request.signal;
     const forward = () => controller.abort();
     external?.addEventListener("abort", forward, { once: true });
-    const deadline = this.now().getTime() + request.timeoutMs;
-    const timer = setTimeout(() => controller.abort(), request.timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, request.timeoutMs);
     if (typeof timer.unref === "function") timer.unref();
 
     let lastCursor = request.cursor;
@@ -420,7 +423,7 @@ export class OrderedEvidenceBus {
       if (external?.aborted) {
         return { status: "CANCELLED", lane: "ORDERED_REQUIRED", cursor: lastCursor };
       }
-      if (this.now().getTime() >= deadline) {
+      if (timedOut) {
         return { status: "TIMEOUT", lane: "ORDERED_REQUIRED", cursor: lastCursor };
       }
       return { status: "CANCELLED", lane: "ORDERED_REQUIRED", cursor: lastCursor };

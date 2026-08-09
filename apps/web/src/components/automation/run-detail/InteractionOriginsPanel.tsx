@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { fetchVerdictInteractions } from '@/lib/verdict-runtime/client'
+import {
+  asInteractionOrigin,
+  countInteractionOrigins,
+} from '@/lib/verdict-runtime/interaction-origin-metrics'
 import { InteractionOriginBadge, type OriginType } from './InteractionOriginBadge'
-
-function asOrigin(raw: unknown): OriginType {
-  if (raw === 'BRIDGE_INJECTED' || raw === 'MANUAL' || raw === 'UNKNOWN') return raw
-  return 'UNKNOWN'
-}
 
 interface InteractionRow {
   id: string
@@ -19,7 +18,7 @@ interface InteractionRow {
 
 /**
  * Durable interactions for a run. Human baseline counts MANUAL only —
- * BRIDGE_INJECTED never inflates the baseline (CHECKPOINT 71–73).
+ * BRIDGE_INJECTED never inflates the baseline (Phase 7.17 / CHECKPOINT 54–57).
  */
 export function InteractionOriginsPanel({ runId }: { runId: string }) {
   const [rows, setRows] = useState<InteractionRow[]>([])
@@ -38,7 +37,7 @@ export function InteractionOriginsPanel({ runId }: { runId: string }) {
             const row = item as Record<string, unknown>
             return {
               id: String(row.eventId ?? row.id ?? `ix-${index}`),
-              origin: asOrigin(row.origin),
+              origin: asInteractionOrigin(row.origin),
               confidence: typeof row.confidence === 'number' ? row.confidence : undefined,
               summary: typeof row.summary === 'string' ? row.summary : undefined,
               revision: typeof row.revision === 'number' ? row.revision : undefined,
@@ -60,18 +59,7 @@ export function InteractionOriginsPanel({ runId }: { runId: string }) {
     }
   }, [runId])
 
-  const counts = useMemo(() => {
-    const bridge = rows.filter((r) => r.origin === 'BRIDGE_INJECTED').length
-    const manual = rows.filter((r) => r.origin === 'MANUAL').length
-    const unknown = rows.filter((r) => r.origin === 'UNKNOWN').length
-    return {
-      bridge,
-      manual,
-      unknown,
-      /** Anti-inflation: only MANUAL contributes to human baseline. */
-      humanBaseline: manual,
-    }
-  }, [rows])
+  const counts = useMemo(() => countInteractionOrigins(rows), [rows])
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading durable interactions…</p>

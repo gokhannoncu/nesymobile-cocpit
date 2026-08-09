@@ -36,6 +36,16 @@ export const NESY_LAUNCH_PROFILES = {
   reuseSession: "nesy.launch.reuse-session",
 } as const;
 
+/**
+ * Phase 7.14 playbook names → pack profile keys.
+ * FULL_JOURNEY is the product-verdict cold UI path (not a separate IR profile).
+ */
+export const NESY_LAUNCH_PROFILE_ALIASES = {
+  FULL_JOURNEY: NESY_LAUNCH_PROFILES.coldRealLogin,
+  PREPARED_SESSION: NESY_LAUNCH_PROFILES.preparedSession,
+  DIRECT_STATE: NESY_LAUNCH_PROFILES.directState,
+} as const;
+
 export const NESY_COURIER_LAUNCH_PROFILES: readonly LaunchProfile[] = [
   {
     // The only verdict-bearing profile.
