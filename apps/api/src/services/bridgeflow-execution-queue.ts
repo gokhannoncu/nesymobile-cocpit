@@ -23,18 +23,32 @@ import type { CompiledPlanStore } from './workflow-compile.service.js'
 import { PrismaExecutionPersistence } from './bridgeflow-prisma-persistence.js'
 import { BridgeUnavailableError, type BridgeDeviceManager } from './bridge-device-manager.js'
 import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
-import {
-  createBridgeRuntimePort,
-  createGenericStepRuntime,
-  createRemoteStepRuntime,
-} from './bridgeflow-device-ports.js'
+import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-device-ports.js'
+import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
+import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import { DeviceWorkerRegistry } from './device-worker.js'
 
 type QueueItem = Parameters<WorkflowRunExecutionQueue['enqueue']>[0]
-type RemoteStepRuntime = NonNullable<Parameters<typeof createRemoteStepRuntime>[0]['runtime']>
+type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
+
+/**
+ * Back-office credentials from the environment.
+ *
+ * Unset means unconfigured, and every remote operation then fails closed naming
+ * that — which is the correct outcome. Inventing a host would send a dispatcher
+ * mutation somewhere nobody chose.
+ */
+function createEnvBackofficeAdapter(): BackofficeAdapter {
+  return createNesyBackofficeAdapter({
+    credentials: () => ({
+      baseUrl: process.env.NESY_BACKOFFICE_BASE_URL?.trim() ?? '',
+      token: process.env.NESY_BACKOFFICE_TOKEN?.trim() ?? '',
+    }),
+  })
+}
 
 export interface BridgeFlowExecutionQueueOptions {
   prisma: PrismaClient
@@ -47,12 +61,10 @@ export interface BridgeFlowExecutionQueueOptions {
     runId: string
     executionId: string
   }) => Promise<BridgeDeviceManager>
-  /**
-   * Back-office / external action runtime. Absent until a real
-   * `RemoteActionAdapter` is configured — REMOTE_ACTION steps then fail closed
-   * with a logged operation ref rather than silently.
-   */
+  /** Test seam: override the whole REMOTE_ACTION runtime. */
   remoteRuntime?: RemoteStepRuntime
+  /** Test seam: back-office transport. Defaults to the env-configured adapter. */
+  backofficeAdapter?: BackofficeAdapter
   /** Test seam: resolve the pinned domain pack. */
   resolvePack?: (input: {
     packKey: string
@@ -178,10 +190,17 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         },
         conditionContext: runContext.conditionContext(),
         variables: runContext,
-        remoteRuntime: createRemoteStepRuntime({
-          ...(this.options.remoteRuntime === undefined ? {} : { runtime: this.options.remoteRuntime }),
-          ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
-        }),
+        remoteRuntime:
+          this.options.remoteRuntime ??
+          createPackRemoteStepRuntime({
+            runId: item.runId,
+            bundle: resolution.pack.bundle,
+            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(),
+            variables: runContext,
+            evidence: evidenceRuntime,
+            clock,
+            ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+          }),
         genericSteps: createGenericStepRuntime({
           manager,
           variables: runContext,

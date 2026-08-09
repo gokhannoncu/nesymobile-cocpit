@@ -130,37 +130,6 @@ function waitIdFor(context: StepExecutionContext): string {
 }
 
 /**
- * REMOTE_ACTION / EXTERNAL_ACTION runtime.
- *
- * `RemoteActionRuntime` holds the allowlist, idempotency and lease rules, but it
- * needs a `RemoteActionAdapter` — the thing that actually talks to the back
- * office. This process ships no such adapter (the Domain Pack deliberately
- * declares operations, never endpoints), so with none injected the step fails
- * closed and says which operation could not be dispatched. Without this the
- * executor's own `remoteRuntime === undefined` branch fails the step silently,
- * and a missing integration reads as a product failure.
- */
-export function createRemoteStepRuntime(options: {
-  runtime?: {
-    execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult>
-  }
-  logger?: (message: string, detail?: unknown) => void
-}): GenericStepRuntimePort {
-  return {
-    async execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult> {
-      if (options.runtime !== undefined) return options.runtime.execute(step, context)
-      const spec = step.params['spec'] as { adapterRef?: string; operationRef?: string } | undefined
-      options.logger?.('[BridgeFlowRemoteSteps] no remote adapter configured; step failed closed', {
-        planStepId: step.planStepId,
-        adapterRef: spec?.adapterRef,
-        operationRef: spec?.operationRef,
-      })
-      return { succeeded: false, actionResult: 'FAILED' }
-    },
-  }
-}
-
-/**
  * Generic (non-Bridge, non-remote) step runtime.
  *
  * RESOLVE_TARGET is the one kind this process can honour end to end: the pack's

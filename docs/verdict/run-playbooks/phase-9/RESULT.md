@@ -47,7 +47,8 @@ now real, and the lanes that are still open are named rather than implied.
 | RESOLVE_TARGET | `REAL` | target registry → fingerprint → device resolve |
 | Continue gate / final oracle | `REAL` | `OracleEvaluationWorker` + Prisma revision store |
 | Run identity (`workflow_runs` row) | `REAL` | `verdict-run-row.ts` — created at run start; status mirrored by the queue |
-| REMOTE_ACTION / EXTERNAL_ACTION | `OPEN` | no `RemoteActionAdapter` configured; steps fail closed with a logged operation ref |
+| REMOTE_ACTION / EXTERNAL_ACTION | `REAL` | `nesy-backoffice-adapter.ts` + `nesy-backoffice-endpoints.ts` — all 9 allowlisted operations mapped to real Nesy endpoints; needs `NESY_BACKOFFICE_BASE_URL` / `NESY_BACKOFFICE_TOKEN` |
+| Remote evidence publication | `REAL` | `bridgeflow-remote-steps.ts` publishes `outputFactBindings` into the run's `ORDERED_REQUIRED` lane |
 | SDK_QUERY | `OPEN` | no host-side SDK query channel; step fails closed |
 | Evidence publication into a run | `OPEN` | no producer publishes into `BridgeFlowEvidenceRuntime` during a BridgeFlow run, so gates reach their deadline |
 
@@ -79,7 +80,8 @@ Pending.
 
 | ID | Severity | Status | Description | Required action |
 |---|---|---|---|---|
-| REMOTE_ADAPTER_ABSENT | HIGH | `OPEN` | No `RemoteActionAdapter` is configured, so REMOTE_ACTION/EXTERNAL_ACTION steps fail closed. Every pack workflow with a backend confirmation stops there. | Configure a back-office adapter and inject it into `BridgeFlowExecutionQueue`. |
+| BACKOFFICE_CREDENTIALS_ABSENT | HIGH | `OPEN` | The adapter and all 9 endpoint mappings exist, but `NESY_BACKOFFICE_BASE_URL` / `NESY_BACKOFFICE_TOKEN` are unset, so every remote operation fails closed naming that. | Set both for the target country/environment, then run the tour-approval workflow end to end. |
+| BACKOFFICE_INFERRED_ENDPOINTS | MEDIUM | `OPEN` | `read-session` → `User/GetMyInfo` and `read-delivery-status` → `Shipment/SearchShipment` are marked `INFERRED` in `nesy-backoffice-endpoints.ts`: the backend exposes no read for `UserLoginLog`, and delivery proof may be the stronger source. | Confirm both against a live environment; swap `read-delivery-status` to `Tracking/GetShipmentDeliveryProof` if proof-of-delivery is what the oracle should require. |
 | SDK_QUERY_LANE_ABSENT | HIGH | `OPEN` | No host-side SDK query channel, so SDK_QUERY steps fail closed. | Implement the SDK query port and wire it into the generic step runtime. |
 | EVIDENCE_PRODUCER_ABSENT | HIGH | `OPEN` | Nothing publishes facts into `BridgeFlowEvidenceRuntime` during a BridgeFlow run, so continue gates and final oracles run to their deadline. | Connect the device/SDK evidence lane to the run's evidence scope. |
 
