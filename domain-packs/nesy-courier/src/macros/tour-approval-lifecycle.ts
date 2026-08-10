@@ -292,7 +292,7 @@ const GENERIC_IR = irDocument({
 
 const EXPANSION: MacroExpansionSnapshot = {
   macroRef: NESY_TOUR_APPROVAL_MACRO_KEY,
-  authoredBy: "HAND",
+  authoredBy: "COMPILER",
   genericIr: GENERIC_IR,
   irSourceMap: GENERIC_IR.sourceMap,
   domainSourceMap: [
@@ -308,7 +308,7 @@ const EXPANSION: MacroExpansionSnapshot = {
 
 const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   macroRef: NESY_TOUR_APPROVAL_MACRO_KEY,
-  authoredBy: "HAND",
+  authoredBy: "COMPILER",
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.resolve-target"],
   legs: [
     { planStepId: "wait-day-close", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.END_OF_DAY_READY },

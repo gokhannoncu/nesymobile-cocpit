@@ -197,7 +197,7 @@ const GENERIC_IR = irDocument({
 
 const EXPANSION: MacroExpansionSnapshot = {
   macroRef: NESY_OPEN_STOP_MACRO_KEY,
-  authoredBy: "HAND",
+  authoredBy: "COMPILER",
   genericIr: GENERIC_IR,
   irSourceMap: GENERIC_IR.sourceMap,
   domainSourceMap: [
@@ -213,7 +213,7 @@ const EXPANSION: MacroExpansionSnapshot = {
 
 const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   macroRef: NESY_OPEN_STOP_MACRO_KEY,
-  authoredBy: "HAND",
+  authoredBy: "COMPILER",
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.resolve-target"],
   legs: [
     { planStepId: "resolve-row", bridgeVerb: "resolveTarget", targetRef: NESY_TARGETS.stopRow },

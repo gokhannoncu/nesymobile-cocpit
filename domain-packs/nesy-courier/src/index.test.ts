@@ -600,10 +600,10 @@ describe("NESY_COURIER_DOMAIN_PACK_REFERENCE_V1", () => {
     }
   });
 
-  it("labels every snapshot as hand-authored, never as compiler output", () => {
+  it("labels every snapshot as compiler-authored WorkflowIR output", () => {
     for (const slice of NESY_COURIER_DOMAIN_PACK_REFERENCE_V1.slices) {
-      expect(slice.macroExpansion.authoredBy).toBe("HAND");
-      expect(slice.bridgeFlowPlanSnapshot.authoredBy).toBe("HAND");
+      expect(slice.macroExpansion.authoredBy).toBe("COMPILER");
+      expect(slice.bridgeFlowPlanSnapshot.authoredBy).toBe("COMPILER");
       expect(slice.genericIrSnapshot.source.kind).toBe("DOMAIN_PACK_EXPANSION");
     }
   });

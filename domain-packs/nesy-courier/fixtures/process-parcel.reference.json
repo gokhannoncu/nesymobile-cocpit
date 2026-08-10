@@ -81,7 +81,7 @@
   "semanticMacroRef": "nesy.macro.process-parcel",
   "macroExpansion": {
     "macroRef": "nesy.macro.process-parcel",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.process-parcel",
@@ -749,7 +749,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.process-parcel",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.resolve-target",
       "domain.nesy.scanner.inject"

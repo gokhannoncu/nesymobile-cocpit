@@ -857,6 +857,28 @@ model VerdictRunStart {
   @@map("verdict_run_start")
 }
 
+/// Durable BridgeFlow compiled plan store.
+///
+/// A run start pins `compiledPlanRef` + `compiledPlanHash`; this table stores
+/// the immutable plan body so an API restart or a second API process can execute
+/// exactly the plan that was previewed.
+model VerdictCompiledPlan {
+  id                String   @id @default(cuid())
+  planRef           String   @unique @map("plan_ref")
+  planHash          String   @unique @map("plan_hash")
+  workflowRef       String   @map("workflow_ref")
+  domainPackKey     String   @map("domain_pack_key")
+  domainPackVersion String   @map("domain_pack_version")
+  domainPackDigest  String   @map("domain_pack_digest")
+  compilerVersion   String   @map("compiler_version")
+  plan              Json
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([workflowRef, createdAt], map: "verdict_compiled_plan_workflow_idx")
+  @@index([domainPackKey, domainPackVersion], map: "verdict_compiled_plan_pack_idx")
+  @@map("verdict_compiled_plan")
+}
+
 /// Append-only interaction stream consumed by the Run Detail live view through a
 /// monotonic per-run revision cursor. Summaries are redacted before insert.
 model VerdictRunInteraction {

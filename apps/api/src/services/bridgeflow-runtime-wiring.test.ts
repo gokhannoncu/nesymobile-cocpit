@@ -20,6 +20,20 @@ import { BridgeUnavailableError } from './bridge-device-manager.js'
 const PACK = listDomainPacks()[0]!
 
 describe('BridgeFlow compile adapter', () => {
+  it('publishes more than one first-party pack so core stays app-agnostic', () => {
+    const packs = listDomainPacks()
+    expect(packs.map((pack) => pack.packKey)).toEqual(
+      expect.arrayContaining(['nesy.courier', 'match.reaction']),
+    )
+    const second = packs.find((pack) => pack.packKey === 'match.reaction')
+    expect(second?.bundle.registries.macros[0]?.expansionSnapshot?.authoredBy).toBe('COMPILER')
+    expect(resolveDomainPack({
+      packKey: 'match.reaction',
+      packVersion: second!.packVersion,
+      packDigest: second!.packDigest,
+    }).ok).toBe(true)
+  })
+
   it('compiles every pack macro into real plan steps, not the stub NOOP plan', () => {
     const store = new InMemoryCompiledPlanStore()
     const service = createBridgeFlowCompileService(store)

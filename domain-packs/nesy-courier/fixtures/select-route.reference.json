@@ -64,7 +64,7 @@
   "semanticMacroRef": "nesy.macro.select-route",
   "macroExpansion": {
     "macroRef": "nesy.macro.select-route",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.select-route",
@@ -933,7 +933,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.select-route",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.tap",
       "verdict.core.bridge.resolve-target"

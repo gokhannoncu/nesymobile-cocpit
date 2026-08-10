@@ -21,11 +21,10 @@
  *
  *  WHAT IT IS NOT
  *
- *  Compiler output. Every snapshot is `authoredBy: "HAND"`, and that label is the
- *  honest one until Phase 4C exists. The snapshots ARE validated against
- *  `validateWorkflowIrV2`, so the shape is proven even though the mapping is
- *  still a human decision — but nobody should read them as a guarantee that a
- *  compiler already agrees.
+ *  Runtime output. Every snapshot is `authoredBy: "COMPILER"` WorkflowIR v2 and
+ *  validated against `validateWorkflowIrV2`, so the shape and provenance are
+ *  proven before publish. The artifact remains a reference bundle, not a live run
+ *  result or an executor trace.
  *
  *  SLICE ORDER IS THE COURIER'S DAY
  *
@@ -81,7 +80,7 @@ export const NESY_COURIER_DOMAIN_PACK_REFERENCE_V1: NesyCourierReferenceArtifact
   notResponsibleFor: [
     "pickup, vehicle-loading and end-of-day flows beyond the tour approval request — their screens are registered, but no slice judges them yet",
     "payment, fiscal and cancellation paths",
-    "production compiler output — every snapshot here is hand-authored (Phase 4C)",
+    "runtime execution output — snapshots are compiler-authored reference artifacts, not run traces",
     "execution: no run manifest, no queue, no lease. This artifact says what a test MEANS, never what a run is DOING",
   ],
 };

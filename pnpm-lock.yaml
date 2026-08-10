@@ -53,6 +53,9 @@ importers:
       '@nesy/execution-contract':
         specifier: workspace:*
         version: link:../../packages/execution-contract
+      '@nesy/match-reaction-domain-pack':
+        specifier: workspace:*
+        version: link:../../domain-packs/match-reaction
       '@nesy/nesy-courier-domain-pack':
         specifier: workspace:*
         version: link:../../domain-packs/nesy-courier
@@ -237,6 +240,37 @@ importers:
         version: 1.4.0
       typescript:
         specifier: ~5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
+
+  domain-packs/match-reaction:
+    dependencies:
+      '@nesy/domain-pack-contracts':
+        specifier: workspace:*
+        version: link:../../packages/domain-pack-contracts
+      '@nesy/workflow-contract':
+        specifier: workspace:*
+        version: link:../../packages/workflow-contract
+    devDependencies:
+      '@nesy/bridge-contract':
+        specifier: workspace:*
+        version: link:../../packages/bridge-contract
+      '@nesy/bridgeflow-compiler':
+        specifier: workspace:*
+        version: link:../../packages/bridgeflow-compiler
+      '@nesy/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@nesy/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^22.10.10
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.3
         version: 5.8.3
       vitest:
         specifier: ^3.0.5

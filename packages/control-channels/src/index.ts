@@ -394,6 +394,7 @@ function decodeVerdict<Op extends ControlOperation>(
     case "get_device_id":
     case "get_request_key":
     case "get_command_result":
+    case "sql_named":
       return good(data);
     default:
       return fail("UNKNOWN_COMMAND", op.op);
@@ -414,6 +415,18 @@ const es = (key: string, value: string): string[] => [
   key,
   value === "" ? "''" : value,
 ];
+
+function scalarExtra(key: string, value: string | number | boolean | null): string[] {
+  if (value === null) return es(key, "");
+  if (typeof value === "boolean") return ["--ez", key, String(value)];
+  if (typeof value === "number") {
+    if (!Number.isSafeInteger(value)) {
+      throw new Error(`sql_named param ${key} must be a safe integer when sent over adb broadcast`);
+    }
+    return ["--ei", key, String(value)];
+  }
+  return es(key, value);
+}
 
 function verdictBroadcastArgs(
   serial: string,
@@ -457,6 +470,16 @@ function verdictBroadcastArgs(
         const pinFile = sensitiveFiles.get("pin");
         if (pinFile) extras.push(...es("pinFile", pinFile));
       }
+      break;
+    case "sql_named":
+      extras.push(...es("name", op.name));
+      for (const [key, value] of Object.entries(op.params ?? {})) {
+        if (VERDICT_RESERVED_PARAMS.has(key) || key === "name") {
+          throw new Error(`sql_named param uses reserved field: ${key}`);
+        }
+        extras.push(...scalarExtra(key, value));
+      }
+      if (op.maxRows !== undefined) extras.push(...scalarExtra("maxRows", op.maxRows));
       break;
     case "navigate":
       extras.push(...es("destination", op.destination));

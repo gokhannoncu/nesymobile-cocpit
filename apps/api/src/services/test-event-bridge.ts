@@ -13,16 +13,15 @@
  */
 
 import { execFile } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
 import {
   NO_SECRET,
-  asSecret,
   newRequestId,
   type Secret,
 } from "@nesy/control-contract";
 import { parseBroadcastPayload } from "@nesy/control-channels";
 import { createControlExecutor } from "@nesy/control-channels/node";
+import { RunSecretRegistry } from "./run-secret-registry.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -219,12 +218,13 @@ export async function broadcastSetRun(
   const secret =
     runId === ""
       ? NO_SECRET
-      : (options?.secret ?? asSecret(randomBytes(32).toString("base64url")));
+      : (options?.secret ?? RunSecretRegistry.issue({ runId, deviceId, appId }));
   const res = await control(appId).run(deviceId, {
     ...envelope(deviceId, "set-run"),
     op: "set_run",
     runId,
     secret,
+    wakeStopped: true,
     ...(options?.wsEnabled
       ? { wsEnabled: true, wsPort: options.wsPort ?? 8765 }
       : {}),

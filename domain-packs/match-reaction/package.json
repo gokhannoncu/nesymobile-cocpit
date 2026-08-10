@@ -1,0 +1,32 @@
+{
+  "name": "@nesy/match-reaction-domain-pack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Second-domain proof pack for app-agnostic Verdict contracts.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@nesy/domain-pack-contracts": "workspace:*",
+    "@nesy/workflow-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@nesy/bridge-contract": "workspace:*",
+    "@nesy/bridgeflow-compiler": "workspace:*",
+    "@nesy/eslint-config": "workspace:*",
+    "@nesy/typescript-config": "workspace:*",
+    "@types/node": "^22.10.10",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.5"
+  }
+}

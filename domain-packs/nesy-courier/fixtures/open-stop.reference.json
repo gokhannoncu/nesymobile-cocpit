@@ -81,7 +81,7 @@
   "semanticMacroRef": "nesy.macro.open-stop",
   "macroExpansion": {
     "macroRef": "nesy.macro.open-stop",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.open-stop",
@@ -747,7 +747,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.open-stop",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.tap",
       "verdict.core.bridge.resolve-target"

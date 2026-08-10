@@ -120,6 +120,12 @@ function verdictSuccessJson(op: ControlOperation, nonce: string): string {
         ...base,
         data: { state: "pending" },
       });
+    case "sql_named":
+      return JSON.stringify({
+        type: "COMMAND_RESULT",
+        ...base,
+        data: { rows: [{ id: "row-1" }], rowCount: 1, redacted: true },
+      });
     case "get_screen_state":
       return JSON.stringify({
         type: "COMMAND_RESULT",

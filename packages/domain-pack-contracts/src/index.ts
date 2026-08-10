@@ -15,8 +15,9 @@
  *       an immutable, digestible artifact.
  *    2. NO RUNTIME CODE. A published bundle is declarative data. No inline
  *       script, no eval, no dynamic import, no function values.
- *    3. NO COMPILER. Macro expansion snapshots here are hand-authored REVIEW
- *       artifacts. The domain-aware BridgeFlowCompiler is Phase 4C.
+ *    3. NO GENERIC DOMAIN VOCABULARY. Macro expansion snapshots may be
+ *       compiler-authored, but they expand INTO WorkflowIR v2; they never add
+ *       domain-specific step kinds to Core.
  *    4. NO TRANSPORT. Remote operations name an allowlisted adapter operation.
  *       There is no url, method, header or body field to hide an endpoint in.
  * ===========================================================================

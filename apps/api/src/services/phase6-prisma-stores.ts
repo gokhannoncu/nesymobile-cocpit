@@ -10,7 +10,7 @@
  * tests: they are the same contract, without a database.
  */
 
-import type { PrismaClient } from '@nesy/db'
+import { Prisma, type PrismaClient } from '@nesy/db'
 
 import { ensureVerdictRunRow } from './verdict-run-row.js'
 import type {
@@ -35,6 +35,14 @@ import {
   type WorkflowRunStartStore,
 } from './workflow-run.service.js'
 import type {
+  CompiledPlanStore,
+  StoredBridgeFlowPlan,
+} from './workflow-compile.service.js'
+import type {
+  RemoteActionAttemptRecord,
+  RemoteActionAttemptStore,
+} from './remote-action-runtime.js'
+import type {
   DurableInteractionEvent,
   DurableInteractionStore,
   InteractionOrigin,
@@ -44,6 +52,116 @@ import {
   type DeviceMutationLeaseRecord,
   type DeviceMutationLeaseStore,
 } from './device-command-admission.js'
+
+/* ------------------------------------------------------------------ */
+/* Compiled plans                                                      */
+/* ------------------------------------------------------------------ */
+
+export class PrismaCompiledPlanStore implements CompiledPlanStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async put(plan: StoredBridgeFlowPlan): Promise<void> {
+    await this.prisma.verdictCompiledPlan.upsert({
+      where: { planHash: plan.hash.digest },
+      create: {
+        planRef: plan.planId,
+        planHash: plan.hash.digest,
+        workflowRef: String(plan.workflowRef ?? ''),
+        domainPackKey: plan.provenance.packKey,
+        domainPackVersion: plan.provenance.packVersion,
+        domainPackDigest: plan.packDigest,
+        compilerVersion: plan.provenance.compilerVersion,
+        plan: plan as unknown as object,
+      },
+      update: {
+        // Immutable content is keyed by hash; repeated compile of the same plan
+        // may refresh the ref used by the caller but must not alter the body.
+        planRef: plan.planId,
+      },
+    })
+  }
+
+  async get(input: { planRef: string; planHash: string }): Promise<StoredBridgeFlowPlan | undefined> {
+    const row = await this.prisma.verdictCompiledPlan.findFirst({
+      where: {
+        OR: [
+          { planHash: input.planHash },
+          { planRef: input.planRef },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (!row) return undefined
+    if (row.planHash !== input.planHash) return undefined
+    return row.plan as StoredBridgeFlowPlan
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Remote action attempts                                              */
+/* ------------------------------------------------------------------ */
+
+export class PrismaRemoteActionAttemptStore implements RemoteActionAttemptStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async findByIdempotencyKey(input: {
+    runId: string
+    occurrenceId: string
+    operationRef: string
+    idempotencyKey: string
+  }): Promise<RemoteActionAttemptRecord | undefined> {
+    const row = await this.prisma.verdictRemoteActionAttempt.findUnique({
+      where: {
+        runId_occurrenceId_operationRef_idempotencyKey: input,
+      },
+    })
+    return row === null
+      ? undefined
+      : {
+          runId: row.runId,
+          occurrenceId: row.occurrenceId,
+          operationRef: row.operationRef,
+          idempotencyKey: row.idempotencyKey,
+          effectClass: row.effectClass as RemoteActionAttemptRecord['effectClass'],
+          status: row.status as RemoteActionAttemptRecord['status'],
+          ...(row.resourceLeaseId === null ? {} : { resourceLeaseId: row.resourceLeaseId }),
+          ...(row.errorMessage === null ? {} : { errorMessage: row.errorMessage }),
+          ...(typeof row.responsePayload === 'string' ? { responseRef: row.responsePayload } : {}),
+          ...(typeof row.requestPayload === 'string' ? { reconciliationRef: row.requestPayload } : {}),
+        }
+  }
+
+  async upsert(record: RemoteActionAttemptRecord): Promise<void> {
+    const data = {
+      effectClass: record.effectClass,
+      timeoutMs: 0,
+      status: record.status,
+      resourceLeaseId: record.resourceLeaseId ?? null,
+      requestPayload: record.reconciliationRef ?? Prisma.JsonNull,
+      responsePayload: record.responseRef ?? Prisma.JsonNull,
+      errorMessage: record.errorMessage ?? null,
+      completedAt: record.status === 'PENDING' ? null : new Date(),
+    }
+    await this.prisma.verdictRemoteActionAttempt.upsert({
+      where: {
+        runId_occurrenceId_operationRef_idempotencyKey: {
+          runId: record.runId,
+          occurrenceId: record.occurrenceId,
+          operationRef: record.operationRef,
+          idempotencyKey: record.idempotencyKey,
+        },
+      },
+      create: {
+        runId: record.runId,
+        occurrenceId: record.occurrenceId,
+        operationRef: record.operationRef,
+        idempotencyKey: record.idempotencyKey,
+        ...data,
+      },
+      update: data,
+    })
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Domain packs                                                        */

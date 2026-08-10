@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify'
 import type { LaunchProfile, TargetResolutionPolicy } from '@nesy/domain-pack-contracts'
 import { prisma } from '@nesy/db'
 import { createAdbFacade } from '../services/bridge-adb-facade.js'
+import { getDeviceBridgeState } from '../services/test-event-bridge.js'
+import { TestEventWsServer } from '../services/test-event-ws-server.js'
 
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import { DeviceReadinessService } from '../services/device-readiness.service.js'
@@ -14,9 +16,9 @@ import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { BridgeFlowExecutionQueue } from '../services/bridgeflow-execution-queue.js'
 import { createBridgeFlowCompileService } from '../services/bridgeflow-compile-adapter.js'
-import { defaultCompiledPlanStore } from '../services/workflow-compile.service.js'
 import { WorkflowRunService } from '../services/workflow-run.service.js'
 import {
+  PrismaCompiledPlanStore,
   PrismaDeviceMutationLeaseStore,
   PrismaDomainPackAdminStore,
   PrismaDurableInteractionStore,
@@ -25,11 +27,12 @@ import {
   PrismaWorkflowRunStartStore,
 } from '../services/phase6-prisma-stores.js'
 
-const compileService = createBridgeFlowCompileService(defaultCompiledPlanStore)
+const compiledPlanStore = new PrismaCompiledPlanStore(prisma)
+const compileService = createBridgeFlowCompileService(compiledPlanStore)
 const runService = new WorkflowRunService(
   new BridgeFlowExecutionQueue({
     prisma,
-    planStore: defaultCompiledPlanStore,
+    planStore: compiledPlanStore,
     logger: (message, detail) => console.warn(message, detail),
   }),
   new PrismaWorkflowRunStartStore(prisma),
@@ -115,14 +118,20 @@ async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGR
 }
 
 async function probeSdkControl(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
-  // No host-side SDK control channel probe yet — do not invent UP.
   const adb = await probeAdbLane(deviceId)
-  return adb === 'UP' ? 'UNKNOWN' : 'DOWN'
+  if (adb === 'DOWN') return 'DOWN'
+  const state = await getDeviceBridgeState(
+    deviceId,
+    process.env.NESY_MOBILE_APP_ID?.trim() || 'com.nesy.courier',
+  )
+  return state === null ? 'DOWN' : 'UP'
 }
 
 async function probeSdkEventAuth(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
   const adb = await probeAdbLane(deviceId)
-  return adb === 'UP' ? 'UNKNOWN' : 'DOWN'
+  if (adb === 'DOWN') return 'DOWN'
+  if (!TestEventWsServer.isRunning()) return 'DOWN'
+  return TestEventWsServer.isIngestReady() ? 'UP' : 'UNKNOWN'
 }
 
 async function probeDurableIngest(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {

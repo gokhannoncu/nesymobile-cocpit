@@ -17,6 +17,7 @@ import {
   type DomainPackBundle,
   type PublishedVersion,
 } from '@nesy/domain-pack-contracts'
+import { buildMatchReactionBundle } from '@nesy/match-reaction-domain-pack'
 import { buildNesyCourierBundle } from '@nesy/nesy-courier-domain-pack'
 
 export interface ResolvedDomainPack {
@@ -33,6 +34,11 @@ export type DomainPackResolution =
 function publishFirstPartyPacks(): PublishedVersion[] {
   return [
     publishBundle(buildNesyCourierBundle(), {
+      publishedAt: '1970-01-01T00:00:00.000Z',
+      publishedBy: 'first-party-code-resident',
+      sourceCommit: 'workspace',
+    }),
+    publishBundle(buildMatchReactionBundle(), {
       publishedAt: '1970-01-01T00:00:00.000Z',
       publishedBy: 'first-party-code-resident',
       sourceCommit: 'workspace',

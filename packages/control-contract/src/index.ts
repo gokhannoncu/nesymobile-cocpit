@@ -94,6 +94,14 @@ export type ControlOperation = ControlEnvelope &
     | { op: "get_request_key" }
     | { op: "reset_state" }
     | { op: "seed"; verb: string; params: Record<string, string> }
+    | {
+        op: "sql_named";
+        /** App Adapter allowlist key. Never arbitrary SQL. */
+        name: string;
+        /** Broadcast-safe scalar params; nested values fail before dispatch. */
+        params?: Record<string, string | number | boolean | null>;
+        maxRows?: number;
+      }
     | { op: "navigate"; destination: string }
     | { op: "get_command_result"; targetRequestId: string }
     /**
@@ -166,6 +174,7 @@ export interface ControlResultMap {
   get_request_key: { key: string };
   reset_state: Dispatched;
   seed: Dispatched;
+  sql_named: { rows: unknown[]; rowCount?: number; redacted?: boolean; raw?: string };
   navigate: Dispatched;
   get_command_result:
     | { state: "pending" }

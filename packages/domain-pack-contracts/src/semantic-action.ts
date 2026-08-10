@@ -153,11 +153,12 @@ export interface DomainSourceMapEntry {
 export type DomainSourceMap = readonly DomainSourceMapEntry[];
 
 /**
- * A frozen example expansion.
+ * A frozen expansion artifact.
  *
- * Explicitly a REVIEW ARTIFACT, not compiler output: `authoredBy: "HAND"` is the
- * honest label until Phase 4C, and naming it that stops a later reader from
- * treating the snapshot as a guarantee the compiler already agrees with.
+ * First-party packs should use `authoredBy: "COMPILER"` once their deterministic
+ * macro-to-WorkflowIR path is wired. `HAND` remains in the contract so imported
+ * draft packs and negative fixtures can say honestly that a snapshot is only a
+ * reviewed draft and not compiler provenance.
  */
 export interface MacroExpansionSnapshot {
   macroRef: string;

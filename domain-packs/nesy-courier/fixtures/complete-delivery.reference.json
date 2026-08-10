@@ -77,7 +77,7 @@
   "semanticMacroRef": "nesy.macro.complete-delivery",
   "macroExpansion": {
     "macroRef": "nesy.macro.complete-delivery",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.complete-delivery",
@@ -784,7 +784,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.complete-delivery",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.tap",
       "verdict.core.bridge.resolve-target"

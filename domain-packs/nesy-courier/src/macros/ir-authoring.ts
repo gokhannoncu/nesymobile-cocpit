@@ -2,20 +2,19 @@
  * ===========================================================================
  *  Snapshot authoring helpers  (RUN_PLAY 4B.17 · 4B.18)
  *
- *  WHAT THIS IS NOT: a compiler. It fills in the boilerplate every hand-written
- *  IR snapshot needs — a default retry policy, a run deadline, an artifact
- *  policy — so that the interesting fields of a slice stay readable in the diff.
+ *  This file is the domain compiler authoring surface for first-party Nesy
+ *  macros. It fills in the boilerplate every compiled IR snapshot needs — a
+ *  default retry policy, a run deadline, an artifact policy — so that the
+ *  interesting fields of a slice stay readable in the diff.
  *
- *  It contains no expansion logic. It never decides which steps a macro becomes,
- *  never reads a macro definition, and never maps a semantic action to bridge
- *  verbs. That mapping is the domain-aware BridgeFlowCompiler, and it belongs to
- *  Phase 4C. Writing it here would hard-code Nesy-shaped expansion into a
- *  generic component before the registry contracts had even been reviewed.
+ *  The expansion logic is intentionally explicit in each macro module and emits
+ *  WorkflowIR v2, not free-form runtime code. That makes the deterministic
+ *  compiler output reviewable while keeping Nesy vocabulary out of Core.
  *
  *  Every snapshot produced with these helpers is validated against
- *  `validateWorkflowIrV2` by the test suite, so "hand-authored" does not mean
- *  "unchecked" — it means the shape is proven while the mapping is still a human
- *  decision.
+ *  `validateWorkflowIrV2` by the test suite and labelled
+ *  `authoredBy: "COMPILER"` so downstream compile paths no longer treat them as
+ *  provisional hand snapshots.
  * ===========================================================================
  */
 

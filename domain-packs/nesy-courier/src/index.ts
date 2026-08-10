@@ -14,8 +14,9 @@
  *
  *  What this package still does NOT contain, by contract:
  *
- *    - a compiler (Phase 4C): expansion snapshots are hand-authored review
- *      artifacts, labelled `authoredBy: "HAND"`;
+ *    - a generic compiler implementation: expansion snapshots are compiler
+ *      authored WorkflowIR v2 artifacts, but the shared compiler remains
+ *      domain-neutral;
  *    - an executor, queue, lease or run manifest (Phase 5);
  *    - a manager UI (Phase 6);
  *    - any runtime code: the published bundle is declarative data.

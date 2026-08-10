@@ -26,10 +26,20 @@ import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-device-ports.js'
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
+import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import { DeviceWorkerRegistry } from './device-worker.js'
+import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
+import { broadcastSetRun, setRunIdProperty } from './test-event-bridge.js'
+import {
+  isNesyDashboardCountry,
+  isNesyEnvironment,
+  resolveBaseUrl,
+  type NesyDashboardCountry,
+  type NesyEnvironment,
+} from '../nesy-env.js'
 
 type QueueItem = Parameters<WorkflowRunExecutionQueue['enqueue']>[0]
 type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
@@ -43,10 +53,21 @@ type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
  */
 function createEnvBackofficeAdapter(): BackofficeAdapter {
   return createNesyBackofficeAdapter({
-    credentials: () => ({
-      baseUrl: process.env.NESY_BACKOFFICE_BASE_URL?.trim() ?? '',
-      token: process.env.NESY_BACKOFFICE_TOKEN?.trim() ?? '',
-    }),
+    credentials: async () => {
+      const configuredCountry = process.env.NESY_REMOTE_ACTION_COUNTRY?.trim() ?? 'RS'
+      const configuredEnv = process.env.NESY_REMOTE_ACTION_ENV?.trim() ?? 'stage'
+      const country: NesyDashboardCountry = isNesyDashboardCountry(configuredCountry)
+        ? configuredCountry
+        : 'RS'
+      const environment: NesyEnvironment = isNesyEnvironment(configuredEnv)
+        ? configuredEnv
+        : 'stage'
+      const token = process.env.NESY_BACKOFFICE_TOKEN?.trim() || await getDashboardAdminToken(country, environment)
+      return {
+        baseUrl: process.env.NESY_BACKOFFICE_BASE_URL?.trim() || resolveBaseUrl(country, environment),
+        token: token ?? '',
+      }
+    },
   })
 }
 
@@ -148,6 +169,21 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
 
     const clock = this.options.clock ?? Date.now
+    const applicationId = resolution.pack.bundle.registries.applications[0]?.packageIdentity
+    if (applicationId === undefined || applicationId.trim() === '') {
+      await this.blockRun(item, 'domain pack application package identity is missing')
+      return
+    }
+
+    const propertySet = await setRunIdProperty(item.deviceId, item.runId)
+    const sessionSet = await broadcastSetRun(item.deviceId, applicationId, item.runId, {
+      wsEnabled: true,
+      wsPort: 8765,
+    })
+    if (!propertySet || !sessionSet) {
+      await this.blockRun(item, 'SDK run session could not be established through Verdict control channel')
+      return
+    }
 
     await this.options.prisma.verdictRunStart.updateMany({
       where: { runId: item.runId },
@@ -198,6 +234,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(),
             variables: runContext,
             evidence: evidenceRuntime,
+            attemptStore: new PrismaRemoteActionAttemptStore(this.options.prisma),
             clock,
             ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
           }),

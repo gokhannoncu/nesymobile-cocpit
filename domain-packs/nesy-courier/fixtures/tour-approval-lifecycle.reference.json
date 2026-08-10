@@ -93,7 +93,7 @@
   "semanticMacroRef": "nesy.macro.tour-approval-lifecycle",
   "macroExpansion": {
     "macroRef": "nesy.macro.tour-approval-lifecycle",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.tour-approval-lifecycle",
@@ -1066,7 +1066,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.tour-approval-lifecycle",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.tap",
       "verdict.core.bridge.resolve-target"

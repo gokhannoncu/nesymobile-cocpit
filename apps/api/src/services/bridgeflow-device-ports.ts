@@ -18,6 +18,8 @@
 
 import type { UiWaitPlan, WaitAnyResult } from '@nesy/bridge-contract'
 import type { BridgeFlowPlanStep } from '@nesy/bridgeflow-compiler'
+import type { ControlExecutor } from '@nesy/control-contract'
+import { createControlExecutor } from '@nesy/control-channels/node'
 import type {
   BridgeActionResult,
   BridgeRuntimePort,
@@ -142,15 +144,59 @@ export function createGenericStepRuntime(options: {
   variables: VariableRuntimePort
   bundle: DomainPackBundle
   runId: string
+  controlExecutor?: ControlExecutor
   logger?: (message: string, detail?: unknown) => void
 }): GenericStepRuntimePort {
   const { manager, variables, bundle, runId } = options
   const targets = new Map<string, TargetDefinition>(
     bundle.registries.targets.map((target) => [target.targetKey, target]),
   )
+  const applicationId = bundle.registries.applications[0]?.packageIdentity
+  const controlExecutor = options.controlExecutor ?? (
+    applicationId === undefined ? undefined : createControlExecutor({ applicationId })
+  )
 
   return {
-    async execute(step: BridgeFlowPlanStep): Promise<GenericStepResult> {
+    async execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult> {
+      if (step.kind === 'SDK_QUERY') {
+        if (controlExecutor === undefined) {
+          options.logger?.('[BridgeFlowGenericSteps] no SDK control executor for SDK_QUERY', {
+            planStepId: step.planStepId,
+          })
+          return { succeeded: false, actionResult: 'FAILED' }
+        }
+        const queryRef = asString(step.params['queryRef'])
+        const outputVariable = asString(step.params['outputVariable'])
+        const maxRows = Number(step.params['maxRows'] ?? 100)
+        if (queryRef === undefined || outputVariable === undefined || !Number.isSafeInteger(maxRows) || maxRows < 1) {
+          return { succeeded: false, actionResult: 'FAILED' }
+        }
+
+        const result = await controlExecutor.run(manager.deviceId, {
+          op: 'sql_named',
+          requestId: context.requestId,
+          scope: runId,
+          name: queryRef,
+          maxRows,
+        })
+        if (!result.ok) {
+          options.logger?.('[BridgeFlowGenericSteps] SDK_QUERY failed', {
+            planStepId: step.planStepId,
+            queryRef,
+            code: result.code,
+          })
+          return { succeeded: false, actionResult: 'FAILED' }
+        }
+        const rows = Array.isArray(result.data.rows) ? result.data.rows.slice(0, maxRows) : []
+        variables.set(outputVariable, rows)
+        return {
+          succeeded: true,
+          actionResult: 'SUCCEEDED',
+          outputVariable,
+          output: rows,
+        }
+      }
+
       if (step.kind !== 'RESOLVE_TARGET') {
         options.logger?.('[BridgeFlowGenericSteps] no host runtime for step kind', {
           kind: step.kind,

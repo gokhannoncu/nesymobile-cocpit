@@ -2700,7 +2700,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.login",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.login",
@@ -3178,7 +3178,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.login",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.set-text"
@@ -3341,7 +3341,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.select-route",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.select-route",
@@ -3814,7 +3814,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.select-route",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.resolve-target"
@@ -3984,7 +3984,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.open-stop",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.open-stop",
@@ -4349,7 +4349,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.open-stop",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.resolve-target"
@@ -4527,7 +4527,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.process-parcel",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.process-parcel",
@@ -4891,7 +4891,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.process-parcel",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.resolve-target",
             "domain.nesy.scanner.inject"
@@ -5060,7 +5060,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.complete-delivery",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.complete-delivery",
@@ -5443,7 +5443,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.complete-delivery",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.resolve-target"
@@ -5635,7 +5635,7 @@
         ],
         "expansionSnapshot": {
           "macroRef": "nesy.macro.tour-approval-lifecycle",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "genericIr": {
             "schemaVersion": 2,
             "workflowId": "nesy.reference.tour-approval-lifecycle",
@@ -6159,7 +6159,7 @@
         },
         "bridgeFlowPlanSnapshot": {
           "macroRef": "nesy.macro.tour-approval-lifecycle",
-          "authoredBy": "HAND",
+          "authoredBy": "COMPILER",
           "requiredCapabilityRefs": [
             "verdict.core.bridge.tap",
             "verdict.core.bridge.resolve-target"
@@ -6727,6 +6727,63 @@
           ]
         },
         "producesTerminalVerdict": true
+      },
+      {
+        "workflowKey": "nesy.workflow.full-courier-golden",
+        "displayName": "Full courier golden — nested stop/parcel FOR_EACH",
+        "businessMeaning": "Discovers stops and parcels at runtime and processes them via nested FOR_EACH (max 20 barcodes), without static node duplication.",
+        "notResponsibleFor": [
+          "unrolling one IR node per barcode",
+          "treating offline queue as a separate evidence plane",
+          "Maestro orchestration"
+        ],
+        "macroRefs": [
+          "nesy.macro.login",
+          "nesy.macro.select-route",
+          "nesy.macro.open-stop",
+          "nesy.macro.process-parcel",
+          "nesy.macro.complete-delivery"
+        ],
+        "fragmentRefs": [
+          "nesy.fragment.reach-open-stop"
+        ],
+        "occurrenceScope": "INDEPENDENT",
+        "oracleTemplate": {
+          "continueGate": {
+            "allOf": [
+              "APP.DELIVERY_SUBMITTED"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          },
+          "finalOracle": {
+            "requirements": [
+              {
+                "factKey": "REMOTE.DELIVERY_CONFIRMED",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 120000,
+                "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.DELIVERY_SUBMITTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+                "obligation": "OPTIONAL",
+                "timing": "IMMEDIATE",
+                "onTimeout": "WARNING"
+              }
+            ]
+          },
+          "notResponsibleFor": [
+            "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+          ]
+        },
+        "producesTerminalVerdict": true
       }
     ],
     "launchProfiles": [
@@ -6899,10 +6956,10 @@
     ],
     "testProfiles": [
       {
-        "profileKey": "nesy.profile.release-core",
+        "profileKey": "nesy.smoke.core",
         "version": 1,
         "kind": "RELEASE",
-        "displayName": "Core courier journey, release gate",
+        "displayName": "Smoke core courier journey (release gate)",
         "applicationRef": "nesy.courier.mobile",
         "launchProfileRef": "nesy.launch.cold-real-login",
         "includedWorkflowRefs": [
@@ -6938,33 +6995,176 @@
         ]
       },
       {
-        "profileKey": "nesy.profile.preview-smoke",
+        "profileKey": "nesy.regression.critical",
         "version": 1,
-        "kind": "PREVIEW",
-        "displayName": "Fast preview smoke",
+        "kind": "RELEASE",
+        "displayName": "Critical regression — delivery + tour approval",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.login",
+          "nesy.workflow.complete-delivery",
+          "nesy.workflow.tour-approval-lifecycle"
+        ],
+        "releaseGate": true,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "performanceBudgetRefs": [
+          {
+            "budgetRef": "nesy.budget.delivery-confirm-latency",
+            "appliesToRef": "nesy.macro.complete-delivery"
+          }
+        ],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "verdict.core.remote.allowlisted-operation",
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.backoffice.approval-operations"
+        ]
+      },
+      {
+        "profileKey": "nesy.regression.differential",
+        "version": 1,
+        "kind": "DIFFERENTIAL",
+        "displayName": "Differential regression against previous release build",
         "applicationRef": "nesy.courier.mobile",
         "launchProfileRef": "nesy.launch.prepared-session",
         "includedWorkflowRefs": [
           "nesy.workflow.open-stop",
-          "nesy.workflow.process-parcel"
+          "nesy.workflow.complete-delivery"
         ],
         "releaseGate": false,
         "telemetry": {
-          "captureArtifacts": false,
-          "evidenceSampleEveryN": 3,
-          "retainRawEvidence": false
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
         },
-        "performanceBudgetRefs": [],
+        "differential": {
+          "baselineBuildRef": "nesy.build.previous-release",
+          "criticalFactKeys": [
+            "APP.ACTIVE_STOP_MATCHES",
+            "REMOTE.DELIVERY_CONFIRMED",
+            "APP.PARCEL_STATE_PROCESSED"
+          ],
+          "onCriticalDiff": "OPERATOR_ATTENTION"
+        },
+        "performanceBudgetRefs": [
+          {
+            "budgetRef": "nesy.budget.stop-open-latency",
+            "appliesToRef": "nesy.macro.open-stop"
+          }
+        ],
         "requiredCapabilityRefs": [
-          "domain.nesy.adapter.session-prepared",
-          "domain.nesy.scanner.inject"
+          "domain.nesy.adapter.session-prepared"
         ]
       },
       {
-        "profileKey": "nesy.profile.bad-day",
+        "profileKey": "nesy.recovery.payment-process-kill",
         "version": 1,
         "kind": "BAD_DAY",
-        "displayName": "Bad day — network and process faults",
+        "displayName": "Recovery — payment process kill",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.complete-delivery"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "faultPlan": {
+          "expectRecovery": true,
+          "injections": [
+            {
+              "faultRef": "nesy.fault.payment-process-kill",
+              "kind": "PROCESS_DEATH",
+              "triggerRef": "nesy.macro.complete-delivery",
+              "correlationFactKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "expectedRecoveryFactKey": "REMOTE.DELIVERY_CONFIRMED"
+            }
+          ]
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.remote.allowlisted-operation"
+        ]
+      },
+      {
+        "profileKey": "nesy.recovery.fiscal-process-kill",
+        "version": 1,
+        "kind": "BAD_DAY",
+        "displayName": "Recovery — fiscal process kill",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.complete-delivery"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "faultPlan": {
+          "expectRecovery": true,
+          "injections": [
+            {
+              "faultRef": "nesy.fault.fiscal-process-kill",
+              "kind": "PROCESS_DEATH",
+              "triggerRef": "nesy.macro.complete-delivery",
+              "correlationFactKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "expectedRecoveryFactKey": "REMOTE.DELIVERY_CONFIRMED"
+            }
+          ]
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.remote.allowlisted-operation"
+        ]
+      },
+      {
+        "profileKey": "nesy.recovery.queue-flush",
+        "version": 1,
+        "kind": "BAD_DAY",
+        "displayName": "Recovery — offline queue flush",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.complete-delivery"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "faultPlan": {
+          "expectRecovery": true,
+          "injections": [
+            {
+              "faultRef": "nesy.fault.network-drop-at-submit",
+              "kind": "NETWORK",
+              "triggerRef": "nesy.macro.complete-delivery",
+              "correlationFactKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "expectedRecoveryFactKey": "REMOTE.DELIVERY_CONFIRMED"
+            }
+          ]
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.remote.allowlisted-operation"
+        ]
+      },
+      {
+        "profileKey": "nesy.bad-day.state-aware-short",
+        "version": 1,
+        "kind": "BAD_DAY",
+        "displayName": "Bad day — network and process faults (state-aware short)",
         "applicationRef": "nesy.courier.mobile",
         "launchProfileRef": "nesy.launch.cold-real-login",
         "includedWorkflowRefs": [
@@ -7003,12 +7203,137 @@
         ]
       },
       {
-        "profileKey": "nesy.profile.differential-baseline",
+        "profileKey": "nesy.contract.consistency",
         "version": 1,
-        "kind": "DIFFERENTIAL",
-        "displayName": "Differential against the previous release build",
+        "kind": "DIAGNOSTIC",
+        "displayName": "Contract consistency — HTTP/local/remote evidence planes",
         "applicationRef": "nesy.courier.mobile",
         "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.complete-delivery",
+          "nesy.workflow.tour-approval-lifecycle"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.remote.allowlisted-operation",
+          "domain.nesy.adapter.session-prepared"
+        ]
+      },
+      {
+        "profileKey": "nesy.load.normal-60-stop",
+        "version": 1,
+        "kind": "DIAGNOSTIC",
+        "displayName": "Load — normal ~60 stop day",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.full-courier-golden"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 5,
+          "retainRawEvidence": false
+        },
+        "performanceBudgetRefs": [
+          {
+            "budgetRef": "nesy.budget.stop-open-latency",
+            "appliesToRef": "nesy.macro.open-stop"
+          }
+        ],
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "profileKey": "nesy.load.busy-120-stop",
+        "version": 1,
+        "kind": "DIAGNOSTIC",
+        "displayName": "Load — busy ~120 stop day",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.full-courier-golden"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 10,
+          "retainRawEvidence": false
+        },
+        "performanceBudgetRefs": [
+          {
+            "budgetRef": "nesy.budget.stop-open-latency",
+            "appliesToRef": "nesy.macro.open-stop"
+          }
+        ],
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "profileKey": "nesy.compatibility.field-devices",
+        "version": 1,
+        "kind": "DIAGNOSTIC",
+        "displayName": "Compatibility — field device matrix",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.login",
+          "nesy.workflow.open-stop",
+          "nesy.workflow.process-parcel"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "verdict.core.remote.allowlisted-operation",
+          "domain.nesy.adapter.named-query",
+          "domain.nesy.scanner.inject"
+        ]
+      },
+      {
+        "profileKey": "nesy.security.release-isolation",
+        "version": 1,
+        "kind": "RELEASE",
+        "displayName": "Security — release isolation (automation seam leak → NO_GO)",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.cold-real-login",
+        "includedWorkflowRefs": [
+          "nesy.workflow.login"
+        ],
+        "releaseGate": true,
+        "telemetry": {
+          "captureArtifacts": true,
+          "evidenceSampleEveryN": 1,
+          "retainRawEvidence": true
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "domain.nesy.adapter.release-isolation"
+        ]
+      },
+      {
+        "profileKey": "nesy.soak.short",
+        "version": 1,
+        "kind": "DIAGNOSTIC",
+        "displayName": "Short soak — restart/resume state continuity",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.reuse-session",
         "includedWorkflowRefs": [
           "nesy.workflow.open-stop",
           "nesy.workflow.complete-delivery"
@@ -7019,21 +7344,74 @@
           "evidenceSampleEveryN": 1,
           "retainRawEvidence": true
         },
-        "differential": {
-          "baselineBuildRef": "nesy.build.previous-release",
-          "criticalFactKeys": [
-            "APP.ACTIVE_STOP_MATCHES",
-            "REMOTE.DELIVERY_CONFIRMED",
-            "APP.PARCEL_STATE_PROCESSED"
-          ],
-          "onCriticalDiff": "OPERATOR_ATTENTION"
-        },
-        "performanceBudgetRefs": [
-          {
-            "budgetRef": "nesy.budget.stop-open-latency",
-            "appliesToRef": "nesy.macro.open-stop"
-          }
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.session-prepared"
+        ]
+      },
+      {
+        "profileKey": "nesy.profile.preview-smoke",
+        "version": 1,
+        "kind": "PREVIEW",
+        "displayName": "Fast preview smoke (legacy key; non-gating)",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.open-stop",
+          "nesy.workflow.process-parcel"
         ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": false,
+          "evidenceSampleEveryN": 3,
+          "retainRawEvidence": false
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.session-prepared",
+          "domain.nesy.scanner.inject"
+        ]
+      },
+      {
+        "profileKey": "nesy.preview.accessibility.basic",
+        "version": 1,
+        "kind": "PREVIEW",
+        "displayName": "Preview — basic accessibility (Bridge metadata only)",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.open-stop"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": false,
+          "evidenceSampleEveryN": 3,
+          "retainRawEvidence": false
+        },
+        "performanceBudgetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.resolve-target",
+          "domain.nesy.adapter.session-prepared"
+        ]
+      },
+      {
+        "profileKey": "nesy.preview.smart-explorer",
+        "version": 1,
+        "kind": "PREVIEW",
+        "displayName": "Preview — Smart Explorer (crash/ANR/unexpected surface signals)",
+        "applicationRef": "nesy.courier.mobile",
+        "launchProfileRef": "nesy.launch.prepared-session",
+        "includedWorkflowRefs": [
+          "nesy.workflow.open-stop",
+          "nesy.workflow.process-parcel"
+        ],
+        "releaseGate": false,
+        "telemetry": {
+          "captureArtifacts": false,
+          "evidenceSampleEveryN": 3,
+          "retainRawEvidence": false
+        },
+        "performanceBudgetRefs": [],
         "requiredCapabilityRefs": [
           "domain.nesy.adapter.session-prepared"
         ]
@@ -7041,15 +7419,54 @@
     ],
     "campaigns": [
       {
-        "campaignKey": "nesy.campaign.release-gate",
+        "campaignKey": "nesy.campaign.pr",
+        "version": 1,
+        "displayName": "PR campaign — smoke + preview feedback",
+        "profileRefs": [
+          "nesy.profile.preview-smoke",
+          "nesy.smoke.core"
+        ],
+        "releaseGate": false,
+        "onProfileFailure": "CONTINUE"
+      },
+      {
+        "campaignKey": "nesy.campaign.nightly",
+        "version": 1,
+        "displayName": "Nightly campaign — critical regression + bad day",
+        "profileRefs": [
+          "nesy.regression.critical",
+          "nesy.bad-day.state-aware-short",
+          "nesy.contract.consistency"
+        ],
+        "releaseGate": false,
+        "onProfileFailure": "CONTINUE"
+      },
+      {
+        "campaignKey": "nesy.campaign.weekly",
+        "version": 1,
+        "displayName": "Weekly campaign — load + compatibility + soak",
+        "profileRefs": [
+          "nesy.load.normal-60-stop",
+          "nesy.load.busy-120-stop",
+          "nesy.compatibility.field-devices",
+          "nesy.soak.short",
+          "nesy.regression.differential"
+        ],
+        "releaseGate": false,
+        "onProfileFailure": "OPERATOR_ATTENTION"
+      },
+      {
+        "campaignKey": "nesy.campaign.release",
         "version": 1,
         "displayName": "Release gate campaign",
         "profileRefs": [
           "nesy.profile.preview-smoke",
-          "nesy.profile.release-core"
+          "nesy.smoke.core",
+          "nesy.security.release-isolation",
+          "nesy.regression.critical"
         ],
         "releaseGate": true,
-        "onProfileFailure": "CONTINUE"
+        "onProfileFailure": "STOP"
       }
     ],
     "features": [
@@ -7146,7 +7563,8 @@
           ],
           "workflowRefs": [
             "nesy.workflow.process-parcel",
-            "nesy.workflow.complete-delivery"
+            "nesy.workflow.complete-delivery",
+            "nesy.workflow.full-courier-golden"
           ],
           "invariants": [
             {
@@ -7190,7 +7608,7 @@
             "failure and cancellation reason codes"
           ]
         },
-        "executableDigest": "sha256:bd21e1fc9980e2f0f4a74ce26508b360e555889057cefd50f37f5e7804c93e96"
+        "executableDigest": "sha256:fde85f7816ecf8e5e0720814a54f6252b375acc8f16dfb77451a12ce132f71ba"
       },
       {
         "featureKey": "nesy.feature.tour-approval",

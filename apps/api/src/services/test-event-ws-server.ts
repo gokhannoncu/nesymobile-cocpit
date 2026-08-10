@@ -30,6 +30,7 @@ import { getBridgeFlowEvidenceRuntime } from "./bridgeflow-evidence-runtime.js";
 import { createPrismaEvidenceJourneyWriter } from "./evidence-journey-writer.js";
 import { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
 import { DurableBridgeFlowEvidenceIngest } from "./bridgeflow-durable-evidence-ingest.js";
+import { RunSecretRegistry } from "./run-secret-registry.js";
 import { prisma } from "@nesy/db";
 
 export { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
@@ -56,6 +57,7 @@ const INGEST_DISABLED = process.env.VERDICT_INGEST_DISABLED === "1";
  * karşılaştırmalı geçişte bulunabilir").
  */
 const SYNC_SINK_DISABLED = process.env.VERDICT_SYNC_SINK_DISABLED === "1";
+const WS_AUTH_REQUIRED = process.env.VERDICT_WS_AUTH_REQUIRED !== "0";
 
 export function parseOrderedDurableEvent(row: DurableInboxRow): TestBridgeEvent {
   const serialized = JSON.stringify(row.payload);
@@ -237,6 +239,38 @@ export interface IncomingFrameHandlers {
   onControl(frame: IngestFrame): void;
   onHeartbeat(frame: HeartbeatFrame): void;
   onEvent(event: TestBridgeEvent): void;
+}
+
+interface AuthenticatedWsStream {
+  runId: string;
+  sessionId: string;
+}
+
+function parseHelloFrame(data: string): {
+  runId: string
+  sessionId: string
+  nonce: string
+  timestampMillis: number
+  signature: string
+} | null {
+  try {
+    const frame = JSON.parse(data.trim()) as Record<string, unknown>
+    if (frame.type !== 'hello') return null
+    const runId = typeof frame.runId === 'string' ? frame.runId : ''
+    const sessionId = typeof frame.sessionId === 'string' ? frame.sessionId : ''
+    const nonce = typeof frame.nonce === 'string' ? frame.nonce : ''
+    const signature = typeof frame.sig === 'string' ? frame.sig : ''
+    const ts = typeof frame.ts === 'number' ? frame.ts : Number(frame.ts)
+    if (!runId || !sessionId || !nonce || !signature || !Number.isFinite(ts)) return null
+    return { runId, sessionId, nonce, timestampMillis: ts, signature }
+  } catch {
+    return null
+  }
+}
+
+function sameStream(auth: AuthenticatedWsStream | null, runId: string | null, sessionId: string | null): boolean {
+  if (!WS_AUTH_REQUIRED) return true
+  return auth !== null && auth.runId === runId && auth.sessionId === sessionId
 }
 
 /**
@@ -511,18 +545,50 @@ class TestEventWsServerImpl {
       this.connectionCount += 1;
       const connectionId = this.connectionCount;
       console.log(`[TestEventWS] device connection #${connectionId} established`);
+      let authenticated: AuthenticatedWsStream | null = null;
 
       socket.on("message", (data) => {
         const raw = String(data);
+        if (WS_AUTH_REQUIRED && authenticated === null) {
+          const hello = parseHelloFrame(raw);
+          if (hello === null) {
+            console.warn(`[TestEventWS] unauthenticated frame rejected on connection #${connectionId}`);
+            return;
+          }
+          if (!RunSecretRegistry.verifyHello(hello)) {
+            console.warn(`[TestEventWS] hello auth failed for ${hello.runId}/${hello.sessionId}`);
+            socket.close(1008, "auth_failed");
+            return;
+          }
+          const sig = RunSecretRegistry.hostSignature(hello);
+          if (sig === undefined) {
+            socket.close(1008, "auth_unavailable");
+            return;
+          }
+          authenticated = { runId: hello.runId, sessionId: hello.sessionId };
+          if (socket.readyState === socket.OPEN) {
+            socket.send(JSON.stringify({
+              type: "auth",
+              runId: hello.runId,
+              sessionId: hello.sessionId,
+              nonce: hello.nonce,
+              ts: hello.timestampMillis,
+              sig,
+            }));
+          }
+          return;
+        }
         routeIncomingWsFrame(raw, {
           // A gap frame is not a test event: it never reaches the sniffers, only
           // the durable path.
           onControl: (control) => {
+            if (!sameStream(authenticated, control.runId, control.sessionId)) return;
             if (this.ingestReady) void this.acceptDurable(socket, control);
           },
           // Heartbeats deliberately have no seq and bypass the WAL. They update
           // host liveness only; they never reach acceptDurable or the sniffers.
           onHeartbeat: (heartbeat) => {
+            if (!sameStream(authenticated, heartbeat.runId, heartbeat.sessionId)) return;
             const liveness = this.heartbeatLiveness.record(heartbeat);
             console.debug(
               liveness
@@ -532,6 +598,7 @@ class TestEventWsServerImpl {
             );
           },
           onEvent: (event) => {
+            if (!sameStream(authenticated, event.runId, event.sessionId)) return;
             // DUAL WRITE, deliberately (mirrors the mobile side's dual-emit).
             //
             // The synchronous sink injection below is what current runs depend on and

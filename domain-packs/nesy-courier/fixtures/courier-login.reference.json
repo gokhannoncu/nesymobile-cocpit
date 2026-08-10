@@ -71,7 +71,7 @@
   "semanticMacroRef": "nesy.macro.login",
   "macroExpansion": {
     "macroRef": "nesy.macro.login",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "genericIr": {
       "schemaVersion": 2,
       "workflowId": "nesy.reference.login",
@@ -949,7 +949,7 @@
   },
   "bridgeFlowPlanSnapshot": {
     "macroRef": "nesy.macro.login",
-    "authoredBy": "HAND",
+    "authoredBy": "COMPILER",
     "requiredCapabilityRefs": [
       "verdict.core.bridge.tap",
       "verdict.core.bridge.set-text"
