@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { BridgeClient } from '@nesy/bridge-client'
 import { BRIDGE_DEVICE_PORT } from '@nesy/bridge-contract'
 import type {
   DomainPackBundle,
@@ -52,6 +53,8 @@ import {
 } from '../services/phase6-prisma-stores.js'
 
 const execFileAsync = promisify(execFile)
+const BRIDGE_PROTOCOL_READINESS_TTL_MS = 30_000
+const bridgeProtocolReadinessCache = new Map<string, { expiresAt: number; lane: DeviceLaneHealth }>()
 
 const compiledPlanStore = new PrismaCompiledPlanStore(prisma)
 const compileService = createBridgeFlowCompileService(compiledPlanStore)
@@ -109,21 +112,27 @@ async function probeActiveRun(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRAD
   return 'DOWN'
 }
 
-async function probeBridge(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
+async function probeBridge(deviceId: string): Promise<DeviceLaneHealth> {
   const adb = await probeAdbLane(deviceId)
-  if (adb === 'DOWN') return 'DOWN'
-  // Avoid live handshake/`adb forward` here: production DUTs wedge after a few
-  // back-to-back TCP probes (B-12). Readiness only needs "listener bound + a11y
-  // service enabled"; run-time BridgeClient still does a real handshake.
+  if (adb === 'DOWN') return { lane: 'BRIDGE', status: 'DOWN', detail: 'ADB device is not reachable' }
+  // Readiness must prove the same Bridge protocol path a workflow uses. A
+  // bound listener alone can still leave runs blocked at BRIDGE_PING.
   const adbPath = resolveAdbPath()
-  if (adbPath === null) return 'DOWN'
+  if (adbPath === null) return { lane: 'BRIDGE', status: 'DOWN', detail: 'adb executable was not found' }
   const portHex = BRIDGE_DEVICE_PORT.toString(16).toUpperCase().padStart(4, '0')
   try {
     const enabled = await adbFacade.getEnabledAccessibilityServices(deviceId)
     const bridgeEnabled =
       enabled.includes('com.verdict.bridge/.BridgeAccessibilityService') ||
       enabled.includes('com.verdict.bridge/com.verdict.bridge.BridgeAccessibilityService')
-    if (!bridgeEnabled) return 'DOWN'
+    if (!bridgeEnabled) {
+      return {
+        lane: 'BRIDGE',
+        status: 'DOWN',
+        detail: 'BridgeAccessibilityService is not enabled',
+        remediation: 'enable Verdict Bridge accessibility service on the device',
+      }
+    }
 
     const { stdout } = await execFileAsync(
       adbPath,
@@ -136,9 +145,89 @@ async function probeBridge(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'
       ],
       { timeout: 5_000, maxBuffer: 64 * 1024 },
     )
-    return String(stdout).includes(`:${portHex}`) ? 'UP' : 'DOWN'
-  } catch {
-    return 'DOWN'
+    if (!String(stdout).includes(`:${portHex}`)) {
+      return {
+        lane: 'BRIDGE',
+        status: 'DOWN',
+        detail: `Bridge TCP listener is not bound on device port ${BRIDGE_DEVICE_PORT}`,
+        remediation: 'restart or reinstall Verdict Bridge, then re-enable the accessibility service',
+      }
+    }
+
+    const cached = bridgeProtocolReadinessCache.get(deviceId)
+    if (cached && cached.expiresAt > Date.now()) {
+      return {
+        ...cached.lane,
+        detail: `${cached.lane.detail ?? 'Bridge protocol readiness passed'} (cached)`,
+      }
+    }
+
+    const result = await probeBridgeProtocol(deviceId, adbPath)
+    if (result.status === 'UP') {
+      bridgeProtocolReadinessCache.set(deviceId, {
+        expiresAt: Date.now() + BRIDGE_PROTOCOL_READINESS_TTL_MS,
+        lane: result,
+      })
+    }
+    return result
+  } catch (error) {
+    return {
+      lane: 'BRIDGE',
+      status: 'DOWN',
+      detail: error instanceof Error ? error.message : String(error),
+      remediation: 'verify the Bridge APK is installed and its accessibility service is active',
+    }
+  }
+}
+
+async function probeBridgeProtocol(deviceId: string, adbPath: string): Promise<DeviceLaneHealth> {
+  const { stdout } = await execFileAsync(
+    adbPath,
+    ['-s', deviceId, 'forward', 'tcp:0', `tcp:${BRIDGE_DEVICE_PORT}`],
+    { timeout: 5_000, maxBuffer: 64 * 1024 },
+  )
+  const hostPort = Number.parseInt(String(stdout).trim(), 10)
+  if (!Number.isFinite(hostPort) || hostPort <= 0) {
+    return {
+      lane: 'BRIDGE',
+      status: 'DOWN',
+      detail: `adb did not allocate a host port for device port ${BRIDGE_DEVICE_PORT}`,
+      remediation: 'clear stale adb forwards and retry',
+    }
+  }
+
+  const client = new BridgeClient({
+    host: '127.0.0.1',
+    port: hostPort,
+    scope: {
+      runId: `readiness-${Date.now()}`,
+      sessionId: 'readiness',
+      runEpoch: Date.now(),
+    },
+    connectTimeoutMs: 2_000,
+    defaultTimeoutMs: 4_000,
+    maxConnections: 1,
+  })
+  try {
+    const capabilities = await client.connect()
+    return {
+      lane: 'BRIDGE',
+      status: 'UP',
+      detail: `Bridge protocol=${capabilities.protocolVersion} via host tcp:${hostPort}`,
+    }
+  } catch (error) {
+    return {
+      lane: 'BRIDGE',
+      status: 'DOWN',
+      detail: error instanceof Error ? error.message : String(error),
+      remediation: 'restart the Verdict Bridge accessibility service or reinstall the Bridge APK',
+    }
+  } finally {
+    client.dispose('readiness probe complete')
+    await execFileAsync(adbPath, ['-s', deviceId, 'forward', '--remove', `tcp:${hostPort}`], {
+      timeout: 5_000,
+      maxBuffer: 64 * 1024,
+    }).catch(() => undefined)
   }
 }
 
@@ -188,18 +277,47 @@ async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGR
   }
 }
 
+function resolveRuntimeApplicationId(context?: { appId?: string }): string | null {
+  const explicit = context?.appId?.trim() || process.env.NESY_MOBILE_APP_ID?.trim()
+  if (explicit) return explicit
+  for (const pack of listDomainPacks()) {
+    const packageIdentity = pack.bundle.registries.applications[0]?.packageIdentity?.trim()
+    if (packageIdentity) return packageIdentity
+  }
+  return null
+}
+
 async function probeSdkControl(
   deviceId: string,
   context?: { appId?: string },
-): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
+): Promise<DeviceLaneHealth> {
   const adb = await probeAdbLane(deviceId)
-  if (adb === 'DOWN') return 'DOWN'
-  const appId = context?.appId?.trim() || process.env.NESY_MOBILE_APP_ID?.trim() || 'com.nesy.courier'
+  if (adb === 'DOWN') return { lane: 'SDK_CONTROL', status: 'DOWN', detail: 'ADB device is not reachable' }
+  const appId = resolveRuntimeApplicationId(context)
+  if (!appId) {
+    return {
+      lane: 'SDK_CONTROL',
+      status: 'UNKNOWN',
+      detail: 'No application package identity is available for SDK control',
+      remediation: 'pass appId from the workflow application panel or set NESY_MOBILE_APP_ID',
+    }
+  }
   const state = await getDeviceBridgeState(
     deviceId,
     appId,
   )
-  return state === null ? 'DOWN' : 'UP'
+  return state === null
+    ? {
+        lane: 'SDK_CONTROL',
+        status: 'DOWN',
+        detail: `GET_STATE failed for ${appId}`,
+        remediation: 'confirm the selected workflow application package is installed and exposes VerdictControlReceiver',
+      }
+    : {
+        lane: 'SDK_CONTROL',
+        status: 'UP',
+        detail: `${appId} session=${state.sessionId || '<none>'}`,
+      }
 }
 
 async function probeSdkEventAuth(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {

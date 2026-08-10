@@ -75,7 +75,7 @@ export class DeviceReadinessService {
       {
         id: 'CP3-DUT',
         status: 'OPEN_EXTERNAL',
-        remediation: 'run real DUT mutation acceptance on userdebug/eng lab device',
+        remediation: 'run real DUT mutation acceptance on an allowlisted device',
       },
     ]
 

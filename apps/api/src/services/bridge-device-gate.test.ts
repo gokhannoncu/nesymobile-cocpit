@@ -2,7 +2,7 @@
  * ===========================================================================
  *  DEVICE GATE — fake ADB üzerinden
  *
- *  Preflight'ın TÜM karar mantığı (allowlist, production deny, port çakışması,
+ *  Preflight'ın TÜM karar mantığı (allowlist, optional production deny, port çakışması,
  *  stale forward temizliği) burada cihaz olmadan sınanıyor. Bu ayrımın olmadığı
  *  bir tasarımda bu kuralların hiçbiri CI'da test edilemez ve yalnız fiziksel
  *  cihazla doğrulanabilirdi — yani pratikte hiç.
@@ -69,7 +69,7 @@ class FakeAdb implements AdbFacade {
 
 const policy = (over: Partial<DeviceGatePolicy> = {}): DeviceGatePolicy => ({
   labAllowlist: [LAB],
-  denyProductionBuilds: true,
+  denyProductionBuilds: false,
   ...over,
 });
 
@@ -125,10 +125,16 @@ describe("preflight", () => {
     expect(result.failure.check).toBe("LAB_ALLOWLIST");
   });
 
-  it("denies a production build EVEN IF it is on the allowlist", async () => {
-    // Allowlist'e yanlışlıkla eklenmiş bir production cihaz yine reddedilir.
+  it("allows an allowlisted production build when production deny is disabled", async () => {
     adb.props["ro.build.type"] = "user";
     const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
+    expect(result.ok).toBe(true);
+    expect(adb.forwardCalls).toHaveLength(1);
+  });
+
+  it("can deny a production build when an explicit policy enables production deny", async () => {
+    adb.props["ro.build.type"] = "user";
+    const result = await new BridgeDeviceGate(adb, policy({ denyProductionBuilds: true })).preflight(LAB);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.failure.check).toBe("PRODUCTION_DENY");

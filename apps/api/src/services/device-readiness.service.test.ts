@@ -20,8 +20,8 @@ describe('DeviceReadinessService', () => {
       actModePolicy: async () => ({
         lane: 'ACT_MODE_POLICY',
         status: 'BLOCKED',
-        detail: 'ro.build.type=user is not a lab build',
-        remediation: 'use a userdebug/eng lab device',
+        detail: 'device-1 is not on the lab allowlist',
+        remediation: 'add device-1 to VERDICT_BRIDGE_LAB_DEVICES',
       }),
     })
 
@@ -32,8 +32,8 @@ describe('DeviceReadinessService', () => {
       expect.objectContaining({
         lane: 'ACT_MODE_POLICY',
         status: 'BLOCKED',
-        detail: 'ro.build.type=user is not a lab build',
-        remediation: 'use a userdebug/eng lab device',
+        detail: 'device-1 is not on the lab allowlist',
+        remediation: 'add device-1 to VERDICT_BRIDGE_LAB_DEVICES',
       }),
     )
   })

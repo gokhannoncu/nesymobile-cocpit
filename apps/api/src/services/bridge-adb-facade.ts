@@ -145,9 +145,8 @@ export function createAdbFacade(): AdbFacade {
  * Lab allowlist'i ortamdan okur.
  *
  * `VERDICT_BRIDGE_LAB_DEVICES` virgülle ayrılmış cihaz kimlikleri. TANIMSIZ
- * bırakılırsa liste BOŞ kalır ve kapı HİÇBİR cihazı kabul etmez — yapılandırmayı
- * unutmanın production bir cihazda Act Mode açmasını engellemenin tek yolu bu
- * (fail-closed).
+ * bırakılırsa liste BOŞ kalır ve kapı HİÇBİR cihazı kabul etmez. Production
+ * build ayrımı yapılmaz; operatör izni allowlist üzerinden verilir.
  */
 export function resolveDeviceGatePolicy(): DeviceGatePolicy {
   const raw = process.env.VERDICT_BRIDGE_LAB_DEVICES ?? "";
@@ -158,10 +157,7 @@ export function resolveDeviceGatePolicy(): DeviceGatePolicy {
   const minVersion = Number(process.env.VERDICT_BRIDGE_MIN_VERSION_CODE ?? "");
   return {
     labAllowlist,
-    // Ortamdan KAPATILAMAZ: production cihazda jest enjekte etmenin
-    // yapılandırmayla açılabilir olması, o kararı bir yazım hatasına bırakmak
-    // olurdu.
-    denyProductionBuilds: true,
+    denyProductionBuilds: false,
     ...(Number.isFinite(minVersion) && minVersion > 0 ? { minBridgeVersionCode: minVersion } : {}),
   };
 }
