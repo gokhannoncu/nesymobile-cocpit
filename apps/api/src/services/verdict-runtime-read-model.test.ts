@@ -24,6 +24,18 @@ describe('verdict runtime read model', () => {
     })
   })
 
+  it('keeps route correlation on the workflow run id when runtime row id is also selected', () => {
+    const result = toWorkflowRunApi({
+      id: 'bridgeflow-runtime-row-cuid',
+      run_id: 'run-123',
+      status: 'blocked',
+      engine_type: 'BRIDGEFLOW',
+    })
+
+    expect(result.run.id).toBe('run-123')
+    expect(result.correlation.runId).toBe('run-123')
+  })
+
   it('serializes nested PostgreSQL bigint values for Fastify JSON responses', () => {
     expect(
       toJsonSafe({

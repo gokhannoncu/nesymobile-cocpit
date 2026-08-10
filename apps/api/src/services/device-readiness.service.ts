@@ -48,6 +48,7 @@ export class DeviceReadinessService {
       await lane('SDK_EVENT_AUTH', context, this.probes.sdkEventAuth),
       await lane('DURABLE_INGEST', context, this.probes.durableIngest),
       await lane('BRIDGE', context, this.probes.bridge),
+      await lane('ACT_MODE_POLICY', context, this.probes.actModePolicy),
       await lane('BACKEND_CREDENTIALS', context, this.probes.backendCredentials),
       await lane('LOCAL_DB', context, this.probes.localDb),
       await lane('ACTIVE_RUN', context, this.probes.activeRun),
@@ -111,7 +112,7 @@ export class DeviceReadinessService {
 export type DeviceReadinessProbe = (
   deviceId: string,
   context?: DeviceReadinessProbeContext,
-) => ReadinessStatus | Promise<ReadinessStatus>
+) => ReadinessStatus | DeviceLaneHealth | Promise<ReadinessStatus | DeviceLaneHealth>
 
 export interface DeviceReadinessProbeContext {
   deviceId: string
@@ -124,6 +125,7 @@ export interface DeviceReadinessProbes {
   sdkEventAuth?: DeviceReadinessProbe
   durableIngest?: DeviceReadinessProbe
   bridge?: DeviceReadinessProbe
+  actModePolicy?: DeviceReadinessProbe
   backendCredentials?: DeviceReadinessProbe
   localDb?: DeviceReadinessProbe
   activeRun?: DeviceReadinessProbe
@@ -145,7 +147,9 @@ async function lane(
     }
   }
   try {
-    return { lane: name, status: await probe(context.deviceId, context) }
+    const result = await probe(context.deviceId, context)
+    if (typeof result === 'string') return { lane: name, status: result }
+    return { ...result, lane: result.lane || name }
   } catch (error) {
     // A probe that throws is not evidence of health.
     return {

@@ -29,6 +29,8 @@ describe('Phase 7.4 Field Login cutover', () => {
 
   it('pinned start helper compiles then starts WorkflowRunApi', () => {
     const src = readFileSync(START_PINNED, 'utf8')
+    expect(src).toMatch(/fetchVerdictDeviceReadiness/)
+    expect(src).toMatch(/ACT_MODE_POLICY/)
     expect(src).toMatch(/compileVerdictWorkflow/)
     expect(src).toMatch(/startVerdictWorkflowRun/)
     expect(src).toMatch(/profileKey/)

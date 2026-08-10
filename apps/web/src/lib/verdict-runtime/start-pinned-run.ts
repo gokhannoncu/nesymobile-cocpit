@@ -1,5 +1,6 @@
 import {
   compileVerdictWorkflow,
+  fetchVerdictDeviceReadiness,
   fetchVerdictDomainPacks,
   startVerdictWorkflowRun,
 } from './client'
@@ -24,6 +25,8 @@ export async function startPinnedVerdictRun(input: {
   if (!pack) {
     throw new Error('No published Domain Pack to pin a run to')
   }
+
+  await assertActModeReady(input.deviceId)
 
   const compiled = await compileVerdictWorkflow({
     workflowRef: input.workflowRef,
@@ -55,4 +58,18 @@ export async function startPinnedVerdictRun(input: {
     ...(input.profileKey ? { profileKey: input.profileKey } : {}),
     ...(input.inputs ? { inputs: input.inputs } : {}),
   })
+}
+
+async function assertActModeReady(deviceId: string): Promise<void> {
+  const readiness = await fetchVerdictDeviceReadiness(deviceId)
+  const blocker = readiness.lanes.find((lane) => {
+    const name = String(lane.lane ?? '').toUpperCase()
+    const status = String(lane.status ?? '').toUpperCase()
+    return name === 'ACT_MODE_POLICY' && status === 'BLOCKED'
+  })
+  if (!blocker) return
+
+  const detail = typeof blocker.detail === 'string' ? blocker.detail : 'Act Mode is blocked for this device'
+  const remediation = typeof blocker.remediation === 'string' ? blocker.remediation : ''
+  throw new Error([`Act Mode blocked before run start: ${detail}`, remediation].filter(Boolean).join(' — '))
 }

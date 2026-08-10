@@ -302,7 +302,8 @@ export function getTestCampaignResult(campaignId: string): Record<string, unknow
 }
 
 export function toWorkflowRunApi(row: Row): WorkflowRunApi {
-  const runId = String(row.id)
+  const runId = canonicalRunId(row)
+  const runRow = row.id === runId ? row : { ...row, id: runId }
   const rawEngineType = row.engineType ?? row.engine_type
   const engineType = typeof rawEngineType === 'string' ? rawEngineType : 'BRIDGEFLOW'
   const runtimeFieldAliases: Readonly<Record<string, readonly string[]>> = {
@@ -336,7 +337,7 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
   const runtime = Object.fromEntries(runtimeEntries)
   return {
     apiVersion: 'verdict-runtime.v1',
-    run: toJsonSafe(row),
+    run: toJsonSafe(runRow),
     runtime: Object.keys(runtime).length > 0 ? runtime : null,
     partial: false,
     correlation: {
@@ -344,6 +345,14 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
       engineType,
     },
   }
+}
+
+function canonicalRunId(row: Row): string {
+  // `SELECT wr.id, bfr.*` can surface the runtime row's cuid as `id`; the
+  // BridgeFlow FK (`run_id`) is the stable workflow run id used by routes.
+  return typeof row.run_id === 'string' && row.run_id.trim() !== ''
+    ? row.run_id
+    : String(row.id)
 }
 
 export function toJsonSafe<T>(value: T): T {

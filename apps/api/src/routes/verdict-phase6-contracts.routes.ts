@@ -9,7 +9,8 @@ import type {
 } from '@nesy/domain-pack-contracts'
 import { prisma } from '@nesy/db'
 import { resolveAdbPath } from '@nesy/platform-paths'
-import { createAdbFacade } from '../services/bridge-adb-facade.js'
+import { createAdbFacade, resolveDeviceGatePolicy } from '../services/bridge-adb-facade.js'
+import { isProductionBuild } from '../services/bridge-device-gate.js'
 import { getDeviceBridgeState } from '../services/test-event-bridge.js'
 import { TestEventWsServer } from '../services/test-event-ws-server.js'
 import {
@@ -21,7 +22,10 @@ import {
   type NesyEnvironment,
 } from '../nesy-env.js'
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
-import { DeviceReadinessService } from '../services/device-readiness.service.js'
+import {
+  DeviceReadinessService,
+  type DeviceLaneHealth,
+} from '../services/device-readiness.service.js'
 import { DomainPackAdminService } from '../services/domain-pack-admin.service.js'
 import {
   listDomainPacks,
@@ -138,6 +142,34 @@ async function probeBridge(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'
   }
 }
 
+async function probeActModePolicy(deviceId: string): Promise<DeviceLaneHealth> {
+  const policy = resolveDeviceGatePolicy()
+  if (policy.labAllowlist.length === 0 || !policy.labAllowlist.includes(deviceId)) {
+    return {
+      lane: 'ACT_MODE_POLICY',
+      status: 'BLOCKED',
+      detail:
+        policy.labAllowlist.length === 0
+          ? 'the lab allowlist is EMPTY; an empty allowlist denies every device on purpose'
+          : `${deviceId} is not on the lab allowlist`,
+      remediation: `add ${deviceId} to VERDICT_BRIDGE_LAB_DEVICES only if it is a dedicated test device`,
+    }
+  }
+
+  const buildType = (await adbFacade.getProp(deviceId, 'ro.build.type')).trim()
+  if (policy.denyProductionBuilds && isProductionBuild(buildType)) {
+    return {
+      lane: 'ACT_MODE_POLICY',
+      status: 'BLOCKED',
+      detail: `ro.build.type=${buildType || '<empty>'} is not a lab build; Act Mode is refused on production devices`,
+      remediation:
+        'use a userdebug/eng lab device; injecting gestures into a production build is denied by policy',
+    }
+  }
+
+  return { lane: 'ACT_MODE_POLICY', status: 'UP' }
+}
+
 async function probeReceiptBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
   try {
     await prisma.$queryRaw`SELECT 1 FROM bridgeflow_evidence_fact LIMIT 1`
@@ -220,6 +252,7 @@ const deviceReadiness = new DeviceReadinessService(admission, {
   sdkControl: probeSdkControl,
   sdkEventAuth: probeSdkEventAuth,
   durableIngest: probeDurableIngest,
+  actModePolicy: probeActModePolicy,
   backendCredentials: probeBackendCredentials,
 })
 const interactions = new DurableInteractionSubscription(new PrismaDurableInteractionStore(prisma))
