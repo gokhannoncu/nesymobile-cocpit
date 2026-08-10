@@ -824,7 +824,8 @@ export class BridgeFlowExecutor {
         }
         break;
       }
-      case "WAIT_ANY": {
+      case "WAIT_ANY":
+      case "WAIT_EVENT": {
         const result = await this.executeWait(input, step, context);
         outcome.actionResult = result.actionResult;
         outcome.continueGateResult = result.continueGateResult;
@@ -1059,11 +1060,32 @@ export class BridgeFlowExecutor {
     stop: boolean;
   }> {
     const compiled = input.plan.waitPlans.find((candidate) => candidate.planStepId === step.planStepId);
-    if (!compiled || compiled.hostOnlyCancel !== true || typeof this.options.bridge.cancelWait !== "function") {
+    if (!compiled || typeof this.options.bridge.cancelWait !== "function") {
       return { actionResult: "FAILED", continueGateResult: "UNSATISFIED", next: null, stop: true };
     }
 
     await this.assertLiveFence(input.runId, context.recoveryFence);
+    if (step.kind === "WAIT_EVENT") {
+      const factKey = asString(step.params["factKey"]);
+      const immediateFact = factKey === undefined
+        ? undefined
+        : this.correlatedFacts(context).find((fact) => fact.factKey === factKey && fact.value === true);
+      const expectedKey = compiled.expected.find((target) => target.primary)?.key ?? compiled.expected[0]?.key;
+      if (immediateFact !== undefined && expectedKey !== undefined) {
+        await this.options.persistence.settleWaitTerminal({
+          runId: input.runId,
+          occurrenceId: context.occurrenceId,
+          waitPlanId: compiled.waitPlanId,
+          requestId: context.requestId,
+          status: "EXPECTED_MATCH",
+          key: expectedKey,
+          ...(context.recoveryFence === undefined
+            ? {}
+            : { recoveryFence: context.recoveryFence }),
+        });
+        return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next: step.next, stop: false };
+      }
+    }
     this.activeWaits.set(context.requestId, context);
     const waitPromise = this.options.bridge
       .waitAny(adaptCompiledUiWaitPlan(compiled), context)

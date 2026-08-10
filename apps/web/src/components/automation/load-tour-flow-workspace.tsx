@@ -380,6 +380,8 @@ export function LoadTourFlowWorkspace() {
       const result = await startPinnedVerdictRun({
         workflowRef: WORKFLOW_SLUG,
         deviceId: selectedDeviceId,
+        country,
+        environment,
         workflowIr: {
           nodes: workflowNodes,
           edges: workflowEdges,

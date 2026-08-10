@@ -12,7 +12,7 @@ describe('RunSecretRegistry', () => {
     const secret = RunSecretRegistry.issue({
       runId,
       deviceId: 'device-1',
-      appId: 'com.nesy.courier',
+      appId: 'com.arasdigital.nesymobile.rstest',
       nowMs: ts,
     })
 
@@ -44,7 +44,7 @@ describe('RunSecretRegistry', () => {
     const secret = RunSecretRegistry.issue({
       runId,
       deviceId: 'device-1',
-      appId: 'com.nesy.courier',
+      appId: 'com.arasdigital.nesymobile.rstest',
       nowMs: ts,
     })
 

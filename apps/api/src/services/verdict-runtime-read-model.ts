@@ -325,6 +325,7 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
     productVerdict: ['productVerdict', 'product_verdict'],
     evaluationFailureClass: ['evaluationFailureClass', 'evaluation_failure_class'],
     terminationReason: ['terminationReason', 'termination_reason'],
+    failureDetail: ['failureDetail', 'failure_detail'],
     cleanupResult: ['cleanupResult', 'cleanup_result'],
     resourceReleaseResult: ['resourceReleaseResult', 'resource_release_result'],
     schedulerDisposition: ['schedulerDisposition', 'scheduler_disposition'],

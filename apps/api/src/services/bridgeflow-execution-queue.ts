@@ -15,8 +15,13 @@
  * into the run's verdict.
  */
 
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { BridgeFlowExecutor, createInMemoryMutationAdmission } from '@nesy/bridgeflow-executor'
 import type { PrismaClient } from '@nesy/db'
+import type { DomainPackBundle, LaunchProfile } from '@nesy/domain-pack-contracts'
+import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
+import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
 
 import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
@@ -32,7 +37,12 @@ import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import { DeviceWorkerRegistry } from './device-worker.js'
 import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
-import { broadcastSetRun, setRunIdProperty } from './test-event-bridge.js'
+import {
+  broadcastSetRun,
+  getDeviceBridgeState,
+  setRunIdProperty,
+  type DeviceBridgeState,
+} from './test-event-bridge.js'
 import {
   isNesyDashboardCountry,
   isNesyEnvironment,
@@ -43,6 +53,9 @@ import {
 
 type QueueItem = Parameters<WorkflowRunExecutionQueue['enqueue']>[0]
 type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
+
+const execFileAsync = promisify(execFile)
+const UI_FACT_MAX_AGE_MS = 5_000
 
 /**
  * Back-office credentials from the environment.
@@ -69,6 +82,150 @@ function createEnvBackofficeAdapter(): BackofficeAdapter {
       }
     },
   })
+}
+
+/**
+ * Render a thrown value as one readable line.
+ *
+ * `error.message` alone drops the `cause` chain, and that chain is usually where
+ * the actionable half lives: a `BridgeHostError` says "act failed", its cause
+ * says "handshake did not answer within 15000ms". Reporting only the outer
+ * message turns a diagnosable device problem into a generic step failure.
+ */
+export function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error)
+  const chain: string[] = []
+  let current: Error | undefined = error
+  const seen = new Set<Error>()
+  while (current !== undefined && !seen.has(current)) {
+    seen.add(current)
+    const name = current.name && current.name !== 'Error' ? `${current.name}: ` : ''
+    chain.push(`${name}${current.message}`)
+    const cause: unknown = current.cause
+    current = cause instanceof Error ? cause : undefined
+  }
+  return chain.join(' ← ')
+}
+
+function adbBinary(): string {
+  const resolved = resolveAdbPath()
+  if (resolved === null) {
+    throw new Error(`adb binary not found. ${getAdbPathHint()}`)
+  }
+  return resolved
+}
+
+async function adbDevice(deviceId: string, args: string[], timeoutMs = 10_000): Promise<string> {
+  const result = await execFileAsync(adbBinary(), ['-s', deviceId, ...args], {
+    timeout: timeoutMs,
+    maxBuffer: 1024 * 1024,
+  })
+  return String(result.stdout).trim()
+}
+
+function findLaunchProfile(resolution: DomainPackResolution, profileKey: string | null | undefined): LaunchProfile | undefined {
+  const key = profileKey?.trim()
+  if (!key || !resolution.ok) return undefined
+  return resolution.pack.bundle.registries.launchProfiles.find((profile) => profile.profileKey === key)
+}
+
+async function prepareApplicationLaunch(input: {
+  deviceId: string
+  applicationId: string
+  profile: LaunchProfile | undefined
+  logger?: (message: string, detail?: unknown) => void
+}): Promise<string | null> {
+  if (input.profile?.startMode !== 'COLD_START') return null
+
+  try {
+    await adbDevice(input.deviceId, ['shell', 'am', 'force-stop', input.applicationId])
+    await adbDevice(
+      input.deviceId,
+      ['shell', 'monkey', '-p', input.applicationId, '-c', 'android.intent.category.LAUNCHER', '1'],
+      15_000,
+    )
+    input.logger?.('[BridgeFlowExecutionQueue] launched application for COLD_START profile', {
+      deviceId: input.deviceId,
+      applicationId: input.applicationId,
+      profileKey: input.profile.profileKey,
+    })
+    return null
+  } catch (error) {
+    return (
+      `application launch failed for ${input.applicationId} (${input.profile.profileKey}): ` +
+      (error instanceof Error ? error.message : String(error))
+    )
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function readDeviceStateWithRetry(input: {
+  deviceId: string
+  applicationId: string
+  runId: string
+}): Promise<DeviceBridgeState | null> {
+  let last: DeviceBridgeState | null = null
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    last = await getDeviceBridgeState(input.deviceId, input.applicationId).catch(() => null)
+    if (last?.runId === input.runId && last.currentScreen.trim() !== '') return last
+    await sleep(300)
+  }
+  return last
+}
+
+function screenMatchesDeviceState(
+  screen: DomainPackBundle['registries']['screens'][number],
+  state: DeviceBridgeState,
+): boolean {
+  const current = state.currentScreen.trim()
+  if (current === '') return false
+  const runtime = screen.runtimeImplementation
+  if (runtime.kind === 'FRAGMENT') return current === runtime.fragmentTag
+  if (runtime.kind === 'COMPOSE') return current === runtime.routeKey
+  if (runtime.kind === 'ACTIVITY') return current === runtime.componentName || current.endsWith(`/${runtime.componentName}`)
+  return false
+}
+
+function publishCurrentScreenReadiness(input: {
+  bundle: DomainPackBundle
+  state: DeviceBridgeState | null
+  evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
+  runId: string
+  occurrenceId: string
+  iterationKey: string
+  clock: () => number
+}): void {
+  if (input.state?.runId !== input.runId) return
+  let revision = 1
+  for (const screen of input.bundle.registries.screens) {
+    if (!screenMatchesDeviceState(screen, input.state)) continue
+    for (const factKey of screen.readiness.requiredFactKeys) {
+      input.evidenceRuntime.publish({
+        runId: input.runId,
+        revision,
+        lane: 'RECEIPT_SAFE',
+        correlationStatus: 'CORRELATED',
+        trust: 'RESOLVER_ACCEPTED',
+        fact: {
+          factKey,
+          occurrenceId: input.occurrenceId,
+          iterationKey: input.iterationKey,
+          observedAtMs: input.clock(),
+          freshnessMaxAgeMs: UI_FACT_MAX_AGE_MS,
+          plane: 'UI',
+          subtype: 'SDK_STATE_SCREEN',
+          value: true,
+          authority: 'PRIMARY',
+          deliveryLane: 'RECEIPT_SAFE',
+          rawEventId: `sdk-state:${input.runId}:${screen.screenKey}:${factKey}`,
+        } satisfies NormalizedEvidenceFact,
+      })
+      revision += 1
+    }
+  }
 }
 
 export interface BridgeFlowExecutionQueueOptions {
@@ -169,21 +326,66 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
 
     const clock = this.options.clock ?? Date.now
-    const applicationId = resolution.pack.bundle.registries.applications[0]?.packageIdentity
+    const applicationId = item.appId?.trim() || resolution.pack.bundle.registries.applications[0]?.packageIdentity
     if (applicationId === undefined || applicationId.trim() === '') {
       await this.blockRun(item, 'domain pack application package identity is missing')
       return
     }
 
+    const requestedProfileKey = item.profileKey?.trim()
+    const launchProfile = findLaunchProfile(resolution, requestedProfileKey)
+    if (requestedProfileKey && launchProfile === undefined) {
+      await this.blockRun(item, `launch profile ${requestedProfileKey} is not available in the pinned domain pack`)
+      return
+    }
+
     const propertySet = await setRunIdProperty(item.deviceId, item.runId)
+    const launchFailure = await prepareApplicationLaunch({
+      deviceId: item.deviceId,
+      applicationId,
+      profile: launchProfile,
+      ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+    })
+    if (launchFailure !== null) {
+      await this.blockRun(item, launchFailure)
+      return
+    }
+
     const sessionSet = await broadcastSetRun(item.deviceId, applicationId, item.runId, {
       wsEnabled: true,
       wsPort: 8765,
     })
+    let deviceState: DeviceBridgeState | null = null
     if (!propertySet || !sessionSet) {
-      await this.blockRun(item, 'SDK run session could not be established through Verdict control channel')
-      return
+      deviceState = await readDeviceStateWithRetry({
+        deviceId: item.deviceId,
+        applicationId,
+        runId: item.runId,
+      })
+      if (deviceState?.runId !== item.runId) {
+        await this.blockRun(
+          item,
+          `SDK run session could not be established through Verdict control channel ` +
+            `(setprop=${String(propertySet)}, broadcast=${String(sessionSet)}, observed=${deviceState?.runId || '<none>'})`,
+        )
+        return
+      }
     }
+    deviceState ??= await readDeviceStateWithRetry({
+      deviceId: item.deviceId,
+      applicationId,
+      runId: item.runId,
+    })
+    const evidenceRuntime = getBridgeFlowEvidenceRuntime()
+    publishCurrentScreenReadiness({
+      bundle: resolution.pack.bundle,
+      state: deviceState,
+      evidenceRuntime,
+      runId: item.runId,
+      occurrenceId: `${item.runId}:wait-login-ready:0`,
+      iterationKey: 'root',
+      clock,
+    })
 
     await this.options.prisma.verdictRunStart.updateMany({
       where: { runId: item.runId },
@@ -195,7 +397,6 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     await this.markRunRow(item.runId, { status: 'running', startedAt: new Date(clock()) })
 
     const persistence = new PrismaExecutionPersistence(this.options.prisma)
-    const evidenceRuntime = getBridgeFlowEvidenceRuntime()
     const runInputs = item.inputs ?? {}
     const runContext = new BridgeFlowRunContext({
       capabilities: manager.getCapabilities(),
@@ -251,6 +452,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           variables: runContext,
           bundle: resolution.pack.bundle,
           runId: item.runId,
+          applicationId,
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
         }),
         oracle: {
@@ -284,14 +486,76 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         completedAt: new Date(clock()),
       })
     } catch (error) {
-      await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
-      await this.options.prisma.verdictRunStart.updateMany({
-        where: { runId: item.runId },
-        data: { status: 'FAILED' },
-      })
+      // The thrown message is the ONLY account of why this run died: the executor
+      // crashed, so no step, oracle or evidence row explains it. Logging it and
+      // nothing else left `failed` runs diagnosable only from API stdout — which
+      // is not where anyone reads run history from.
+      await this.recordExecutionFailure(item, describeError(error))
       this.options.logger?.('[BridgeFlowExecutionQueue] execution failed', {
         runId: item.runId,
-        error: error instanceof Error ? error.message : String(error),
+        error: describeError(error),
+      })
+    }
+  }
+
+  /**
+   * Persist a mid-flight execution crash.
+   *
+   * `ABORTED` on the closed termination axis, and the real message in
+   * `failureDetail`: putting the message into `terminationReason` would make an
+   * axis with a fixed vocabulary unreadable for every consumer that switches on
+   * it. `NEEDS_ATTENTION` because a crashed executor is infrastructure news, and
+   * the product verdict stays `NOT_EVALUATED` — the workflow never reached one.
+   */
+  private async recordExecutionFailure(item: QueueItem, detail: string): Promise<void> {
+    const clock = this.options.clock ?? Date.now
+    await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
+    try {
+      await Promise.all([
+        this.options.prisma.verdictRunStart.updateMany({
+          where: { runId: item.runId },
+          data: { status: 'FAILED' },
+        }),
+        this.options.prisma.bridgeFlowRunRuntime.upsert({
+          where: { runId: item.runId },
+          create: {
+            runId: item.runId,
+            engineType: 'BRIDGEFLOW',
+            compiledPlanRef: item.compiledPlanRef,
+            compiledPlanHash: item.compiledPlanHash,
+            domainPackKey: item.domainPackKey,
+            domainPackVersion: item.domainPackVersion,
+            domainPackDigest: item.domainPackDigest,
+            workflowIrSchemaVersion: 1,
+            compilerVersion: 'unknown',
+            bridgeProtocolVersion: '1',
+            sdkProtocolVersion: '1',
+            runEpochMs: BigInt(clock()),
+            runEpochUnit: 'MONOTONIC_MS',
+            lifecycle: 'CLOSED',
+            productVerdict: 'NOT_EVALUATED',
+            schedulerDisposition: 'RELEASED',
+            operationalDisposition: 'NEEDS_ATTENTION',
+            terminationReason: 'ABORTED',
+            failureDetail: detail,
+          },
+          update: {
+            lifecycle: 'CLOSED',
+            productVerdict: 'NOT_EVALUATED',
+            schedulerDisposition: 'RELEASED',
+            operationalDisposition: 'NEEDS_ATTENTION',
+            terminationReason: 'ABORTED',
+            failureDetail: detail,
+          },
+        }),
+      ])
+    } catch (persistError) {
+      // Losing the diagnosis is worse than losing the status write, so say so
+      // explicitly rather than letting an empty `failureDetail` read as "no cause".
+      this.options.logger?.('[BridgeFlowExecutionQueue] failure detail could not be persisted', {
+        runId: item.runId,
+        detail,
+        error: describeError(persistError),
       })
     }
   }
@@ -316,6 +580,13 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
   }
 
+  /**
+   * A run that never reached the workflow. The preflight remediation is written
+   * to BOTH `terminationReason` and `failureDetail`: `failureDetail` is where it
+   * belongs, but existing rows and the editor's blocked-run toast already read
+   * the reason off `terminationReason`, and dropping it there would blank the
+   * message for every consumer that has not moved over yet.
+   */
   private async blockRun(item: QueueItem, reason: string): Promise<void> {
     await this.markRunRow(item.runId, { status: 'blocked', completedAt: new Date(this.options.clock?.() ?? Date.now()) })
     await Promise.all([
@@ -344,6 +615,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           schedulerDisposition: 'RELEASED',
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
+          failureDetail: reason,
         },
         update: {
           lifecycle: 'CLOSED',
@@ -351,6 +623,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           schedulerDisposition: 'RELEASED',
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
+          failureDetail: reason,
         },
       }),
     ])

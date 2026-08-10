@@ -240,20 +240,22 @@ export class BridgeDeviceGate {
       };
     }
 
-    // 3. Production deny — allowlist'i geçersiz kılabilir.
-    const buildType = (await this.adb.getProp(deviceId, "ro.build.type")).trim();
-    if (this.policy.denyProductionBuilds && isProductionBuild(buildType)) {
-      return {
-        ok: false,
-        partial,
-        failure: {
-          check: "PRODUCTION_DENY",
-          detail: `ro.build.type=${buildType || "<empty>"} is not a lab build; Act Mode is refused on production devices`,
-          remediation:
-            "use a userdebug/eng lab device; injecting gestures into a production build is denied by policy",
-          fatal: true,
-        },
-      };
+    // 3. Optional production deny — allowlist'i geçersiz kılabilir.
+    if (this.policy.denyProductionBuilds) {
+      const buildType = (await this.adb.getProp(deviceId, "ro.build.type")).trim();
+      if (isProductionBuild(buildType)) {
+        return {
+          ok: false,
+          partial,
+          failure: {
+            check: "PRODUCTION_DENY",
+            detail: `ro.build.type=${buildType || "<empty>"} is not a lab build; Act Mode is refused on production devices`,
+            remediation:
+              "use a userdebug/eng lab device; injecting gestures into a production build is denied by policy",
+            fatal: true,
+          },
+        };
+      }
     }
 
     const [model, sdk] = await Promise.all([
@@ -263,9 +265,11 @@ export class BridgeDeviceGate {
     partial.model = model || null;
     partial.androidSdk = sdk || null;
 
-    // 4. Bridge APK kurulu mu, sürümü ne.
-    const pkg = await this.adb.getPackageInfo(deviceId, BRIDGE_PACKAGE);
-    if (!pkg.installed) {
+    // 4. Bridge APK kurulu mu, sürümü ne. Android PackageManager bazı cihazlarda
+    // kısa süreliğine ADB shell'i kilitleyebiliyor; accessibility + TCP yolunu
+    // ayrıca kanıtladığımız için metadata okunamaması tek başına fatal değil.
+    const pkg = await this.adb.getPackageInfo(deviceId, BRIDGE_PACKAGE).catch(() => null);
+    if (pkg !== null && !pkg.installed) {
       return {
         ok: false,
         partial,
@@ -277,11 +281,11 @@ export class BridgeDeviceGate {
         },
       };
     }
-    partial.bridgeVersionName = pkg.versionName;
-    partial.bridgeVersionCode = pkg.versionCode;
+    partial.bridgeVersionName = pkg?.versionName ?? null;
+    partial.bridgeVersionCode = pkg?.versionCode ?? null;
 
     const minVersion = this.policy.minBridgeVersionCode;
-    if (minVersion !== undefined) {
+    if (minVersion !== undefined && pkg !== null) {
       const actual = Number(pkg.versionCode ?? "0");
       if (!Number.isFinite(actual) || actual < minVersion) {
         return {
@@ -297,11 +301,13 @@ export class BridgeDeviceGate {
       }
     }
 
-    // 5. Erişilebilirlik servisi açık mı. Kapalıysa cihaz TCP'yi dinlemez.
-    const services = await this.adb.getEnabledAccessibilityServices(deviceId);
-    const accessibilityEnabled = services.includes(BRIDGE_PACKAGE);
-    partial.accessibilityEnabled = accessibilityEnabled;
-    if (!accessibilityEnabled) {
+    // 5. Erişilebilirlik servisi açık mı. Bu ADB settings okuması bazı cihazlarda
+    // kısa süreli takılabiliyor; okunamazsa fatal sayma, gerçek kanıtı port +
+    // Bridge protocol handshake versin.
+    const services = await this.adb.getEnabledAccessibilityServices(deviceId).catch(() => null);
+    const accessibilityEnabled = services === null ? null : services.includes(BRIDGE_PACKAGE);
+    if (accessibilityEnabled !== null) partial.accessibilityEnabled = accessibilityEnabled;
+    if (accessibilityEnabled === false) {
       return {
         ok: false,
         partial,
@@ -344,9 +350,9 @@ export class BridgeDeviceGate {
         deviceId,
         model: model || null,
         androidSdk: sdk || null,
-        bridgeVersionName: pkg.versionName,
-        bridgeVersionCode: pkg.versionCode,
-        accessibilityEnabled: true,
+        bridgeVersionName: pkg?.versionName ?? null,
+        bridgeVersionCode: pkg?.versionCode ?? null,
+        accessibilityEnabled: accessibilityEnabled ?? true,
         hostPort,
         // Ping gerçek client'ın işi; kapı yalnız yolu açar. `null` burada
         // "henüz sorulmadı" demek, "başarısız" demek değil.

@@ -29,6 +29,7 @@ class FakeAdb implements AdbFacade {
     "ro.product.model": "SM-TEST",
     "ro.build.version.sdk": "34",
   };
+  propCalls: string[] = [];
   packages: Record<string, { installed: boolean; versionName: string | null; versionCode: string | null }> = {
     [BRIDGE_PACKAGE]: { installed: true, versionName: "1.2.0", versionCode: "120" },
   };
@@ -37,14 +38,17 @@ class FakeAdb implements AdbFacade {
   forwardCalls: { hostPort: number; devicePort: number }[] = [];
   removeCalls: number[] = [];
   failForward = false;
+  failPackageInfo = false;
 
   async listDevices() {
     return this.devices;
   }
   async getProp(_d: string, name: string) {
+    this.propCalls.push(name);
     return this.props[name] ?? "";
   }
   async getPackageInfo(_d: string, name: string) {
+    if (this.failPackageInfo) throw new Error("package manager timed out");
     return this.packages[name] ?? { installed: false, versionName: null, versionCode: null };
   }
   async getEnabledAccessibilityServices() {
@@ -130,6 +134,7 @@ describe("preflight", () => {
     const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
     expect(result.ok).toBe(true);
     expect(adb.forwardCalls).toHaveLength(1);
+    expect(adb.propCalls).not.toContain("ro.build.type");
   });
 
   it("can deny a production build when an explicit policy enables production deny", async () => {
@@ -160,6 +165,16 @@ describe("preflight", () => {
     if (result.ok) return;
     expect(result.failure.check).toBe("BRIDGE_APK_INSTALLED");
     expect(result.failure.remediation).toMatch(/adb -s lab-device-1 install/);
+  });
+
+  it("does not block when package metadata is unavailable but the bridge path can still be proven", async () => {
+    adb.failPackageInfo = true;
+    const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.bridgeVersionName).toBeNull();
+    expect(result.snapshot.bridgeVersionCode).toBeNull();
+    expect(adb.forwardCalls).toHaveLength(1);
   });
 
   it("denies a Bridge build below the required version — protocol drift is not silent", async () => {

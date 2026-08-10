@@ -10,6 +10,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import os from "node:os";
 import path from "node:path";
+import { getAdbPathHint, resolveAdbPath } from "@nesy/platform-paths";
 import { LogcatSniffer } from "./logcat-sniffer.js";
 import { TestEventWsServer, TEST_EVENT_WS_PORT } from "./test-event-ws-server.js";
 import { BridgeDeviceManager, BridgeUnavailableError } from "./bridge-device-manager.js";
@@ -28,8 +29,16 @@ export interface DeviceMetadata {
   fetchedAt: number;
 }
 
+function adbBinary(): string {
+  const resolved = resolveAdbPath();
+  if (resolved === null) {
+    throw new Error(`adb binary not found. ${getAdbPathHint()}`);
+  }
+  return resolved;
+}
+
 async function adb(deviceId: string, args: string[], timeoutMs = 8000): Promise<string> {
-  const result = await execFileAsync("adb", ["-s", deviceId, ...args], {
+  const result = await execFileAsync(adbBinary(), ["-s", deviceId, ...args], {
     timeout: timeoutMs,
     maxBuffer: 1024 * 1024,
   });

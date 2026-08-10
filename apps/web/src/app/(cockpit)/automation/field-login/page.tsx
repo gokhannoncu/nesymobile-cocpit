@@ -446,6 +446,8 @@ function FieldLoginCreateModal({
       const started = await startPinnedVerdictRun({
         workflowRef: FIELD_LOGIN_WORKFLOW_REF,
         deviceId: device.id,
+        country,
+        environment,
         profileKey: launch.profileKey,
       })
       setPhase('progress')

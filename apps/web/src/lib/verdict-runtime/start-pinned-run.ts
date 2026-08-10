@@ -6,6 +6,11 @@ import {
 } from './client'
 import { selectPinnedPublishedPack } from './select-published-pack'
 import type { WorkflowRunStartApi } from './types'
+import {
+  isNesyMobileCountry,
+  isNesyMobileEnvironment,
+  resolveNesyMobileApplicationId,
+} from '@/services/nesy-mobile-env'
 
 /**
  * Compile against the newest executable published Domain Pack, then start a
@@ -15,6 +20,11 @@ export async function startPinnedVerdictRun(input: {
   workflowRef: string
   deviceId: string
   workflowIr?: Record<string, unknown>
+  /** Explicit Android package selected by the workflow/application panel. */
+  appId?: string
+  /** Used to derive appId when the panel selected country/environment instead of a raw package. */
+  country?: string
+  environment?: string
   /** Launch / test profile pin (e.g. nesy.launch.cold-real-login). */
   profileKey?: string
   /** Business inputs addressed by `run.input.<path>` (e.g. pin, sessionCorrelationId). */
@@ -26,7 +36,9 @@ export async function startPinnedVerdictRun(input: {
     throw new Error('No published Domain Pack to pin a run to')
   }
 
-  await assertActModeReady(input.deviceId)
+  const appId = resolveRunAppId(input)
+
+  await assertActModeReady(input.deviceId, appId)
 
   const compiled = await compileVerdictWorkflow({
     workflowRef: input.workflowRef,
@@ -55,13 +67,27 @@ export async function startPinnedVerdictRun(input: {
     domainPackKey: pack.packKey,
     domainPackVersion: pack.version,
     domainPackDigest: pack.bundleDigest,
+    ...(appId ? { appId } : {}),
+    ...(input.country ? { country: input.country } : {}),
+    ...(input.environment ? { environment: input.environment } : {}),
     ...(input.profileKey ? { profileKey: input.profileKey } : {}),
     ...(input.inputs ? { inputs: input.inputs } : {}),
   })
 }
 
-async function assertActModeReady(deviceId: string): Promise<void> {
-  const readiness = await fetchVerdictDeviceReadiness(deviceId)
+function resolveRunAppId(input: { appId?: string; country?: string; environment?: string }): string | undefined {
+  const explicit = input.appId?.trim()
+  if (explicit) return explicit
+  const country = input.country?.trim() ?? ''
+  const environment = input.environment?.trim() ?? ''
+  if (isNesyMobileCountry(country) && isNesyMobileEnvironment(environment)) {
+    return resolveNesyMobileApplicationId(country, environment)
+  }
+  return undefined
+}
+
+async function assertActModeReady(deviceId: string, appId?: string): Promise<void> {
+  const readiness = await fetchVerdictDeviceReadiness(deviceId, appId)
   const blocker = readiness.lanes.find((lane) => {
     const name = String(lane.lane ?? '').toUpperCase()
     const status = String(lane.status ?? '').toUpperCase()

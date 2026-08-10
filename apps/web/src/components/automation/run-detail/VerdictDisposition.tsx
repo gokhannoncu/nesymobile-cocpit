@@ -36,8 +36,12 @@ export function VerdictDisposition({ run }: { run: any }) {
   const termination = pick(runtime.terminationReason)
   const cleanup = pick(runtime.cleanupResult)
   const operational = pick(runtime.operationalDisposition, runtime.schedulerDisposition)
+  // Free text, so it gets its own row rather than a badge: `ABORTED` alone says a
+  // run died without saying what killed it, and that sentence is the whole answer.
+  const failureDetail = asText(runtime.failureDetail)
 
   return (
+    <div className="flex flex-col gap-4">
     <div className="flex flex-wrap gap-4">
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">Lifecycle</span>
@@ -59,6 +63,15 @@ export function VerdictDisposition({ run }: { run: any }) {
         <span className="text-xs text-muted-foreground">Operational</span>
         <Badge variant={badgeVariant(operational)}>{operational}</Badge>
       </div>
+    </div>
+      {failureDetail ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Failure detail</span>
+          <p className="whitespace-pre-wrap break-words font-mono text-xs text-destructive">
+            {failureDetail}
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -23,7 +23,7 @@ async function start(options: FakeBridgeOptions = {}, clientOverrides: Record<st
   client = new BridgeClient({
     host: "127.0.0.1",
     port,
-    scope,
+    scope: { ...scope },
     defaultTimeoutMs: 2_000,
     connectTimeoutMs: 1_000,
     ...clientOverrides,
@@ -46,6 +46,20 @@ describe("handshake and capabilities", () => {
     expect(manifest.supportsWaitAny).toBe(true);
     expect(manifest.supportsCancelRequest).toBe(true);
     expect(manifest.supportsUnsolicitedPush).toBe(false);
+  });
+
+  it("reclaims a bridge stuck on a newer stale scope before pinging", async () => {
+    const { server: s, client: c } = await start({
+      enforceFencing: true,
+      activeScope: { runId: "previous-run", sessionId: "previous-session", runEpoch: 41 },
+    });
+
+    const manifest = await c.connect();
+
+    expect(manifest.protocolVersion).toBe(1);
+    const handshakes = s.received.filter((r) => r.command === "handshake");
+    expect(handshakes).toHaveLength(1);
+    expect(s.received.some((r) => r.command === "ping")).toBe(true);
   });
 
   it("sends handshake before the first command on every NEW socket", async () => {

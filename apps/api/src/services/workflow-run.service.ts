@@ -6,6 +6,8 @@ export const WORKFLOW_RUN_API_VERSION = 'verdict-runtime.v1' as const
 export interface WorkflowRunStartRequest {
   workflowRef: string
   deviceId: string
+  /** Runtime application package selected by the panel/env (e.g. com.arasdigital.nesymobile.rstest). */
+  appId?: string
   compiledPlanRef: string
   compiledPlanHash: string
   domainPackKey: string
@@ -41,6 +43,7 @@ export interface WorkflowRunExecutionQueue {
     profileKey?: string
     profileVersion?: string
     releaseGate?: boolean
+    appId?: string
     inputs?: Readonly<Record<string, unknown>>
     dependencyKind: 'SETUP' | 'DEPENDENT' | 'INDEPENDENT'
   }): Promise<unknown> | unknown
@@ -80,6 +83,7 @@ export function runStartIdempotencyKey(request: WorkflowRunStartRequest): string
   return [
     request.workflowRef,
     request.deviceId,
+    request.appId?.trim() ?? 'pack-default',
     request.compiledPlanHash,
     request.profileKey ?? 'default',
     request.profileVersion ?? 'unversioned',
@@ -146,6 +150,7 @@ export class WorkflowRunService {
       runId,
       workflowRef: request.workflowRef,
       deviceId: request.deviceId,
+      ...(request.appId === undefined ? {} : { appId: request.appId }),
       compiledPlanRef: request.compiledPlanRef,
       compiledPlanHash: request.compiledPlanHash,
       domainPackKey: request.domainPackKey,

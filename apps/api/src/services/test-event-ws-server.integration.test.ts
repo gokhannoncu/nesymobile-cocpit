@@ -106,7 +106,7 @@ describe("WS server durable ingest", () => {
     const secret = RunSecretRegistry.issue({
       runId: RUN,
       deviceId: "ws-integration-device",
-      appId: "com.nesy.courier",
+      appId: "com.arasdigital.nesymobile.rstest",
       nowMs: ts,
     });
     socket.send(JSON.stringify({

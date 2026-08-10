@@ -175,6 +175,7 @@ export function createGenericStepRuntime(options: {
   variables: VariableRuntimePort
   bundle: DomainPackBundle
   runId: string
+  applicationId?: string
   controlExecutor?: ControlExecutor
   logger?: (message: string, detail?: unknown) => void
 }): GenericStepRuntimePort {
@@ -182,7 +183,7 @@ export function createGenericStepRuntime(options: {
   const targets = new Map<string, TargetDefinition>(
     bundle.registries.targets.map((target) => [target.targetKey, target]),
   )
-  const applicationId = bundle.registries.applications[0]?.packageIdentity
+  const applicationId = options.applicationId?.trim() || bundle.registries.applications[0]?.packageIdentity
   const controlExecutor = options.controlExecutor ?? (
     applicationId === undefined ? undefined : createControlExecutor({ applicationId })
   )

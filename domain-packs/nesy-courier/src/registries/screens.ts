@@ -49,13 +49,14 @@ export const NESY_ACTIONS = {
 } as const;
 
 const APP = NESY_COURIER_APPLICATION_KEY;
+const MAIN_ACTIVITY = "com.arasdigital.nesymobile.main.MainActivity";
 
 export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
   {
     screenKey: NESY_SCREENS.login,
     applicationRef: APP,
     displayName: "Login",
-    runtimeImplementation: { kind: "ACTIVITY", componentName: "com.nesy.courier/.auth.LoginActivity" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "LoginFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -78,7 +79,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.routeStopList,
     applicationRef: APP,
     displayName: "Route stop list",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: "com.nesy.courier/.main.MainActivity", routeKey: "route/list" },
+    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "route/list" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -109,7 +110,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.stopTaskList,
     applicationRef: APP,
     displayName: "Stop task list",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: "com.nesy.courier/.main.MainActivity", routeKey: "route/tasks" },
+    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "route/tasks" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -133,7 +134,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.deliveryFlow,
     applicationRef: APP,
     displayName: "Delivery flow",
-    runtimeImplementation: { kind: "FRAGMENT", hostActivity: "com.nesy.courier/.main.MainActivity", fragmentTag: "delivery-flow" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "delivery-flow" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -159,7 +160,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.pickupFlow,
     applicationRef: APP,
     displayName: "Pickup flow",
-    runtimeImplementation: { kind: "FRAGMENT", hostActivity: "com.nesy.courier/.main.MainActivity", fragmentTag: "pickup-flow" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "pickup-flow" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -180,7 +181,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.vehicleLoading,
     applicationRef: APP,
     displayName: "Vehicle loading",
-    runtimeImplementation: { kind: "ACTIVITY", componentName: "com.nesy.courier/.loading.VehicleLoadingActivity" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "VehicleLoadingFragment" },
     entryStrategies: [
       {
         kind: "DEEP_LINK",
@@ -207,7 +208,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.endOfDay,
     applicationRef: APP,
     displayName: "End of day",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: "com.nesy.courier/.main.MainActivity", routeKey: "day/close" },
+    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "day/close" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",

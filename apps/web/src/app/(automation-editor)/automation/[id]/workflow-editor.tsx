@@ -2458,7 +2458,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       setActiveRunId(result.runId);
 
       // Start returns QUEUED immediately; bridge preflight can close the run as
-      // BLOCKED (e.g. empty LAB_ALLOWLIST) before any launch happens.
+      // BLOCKED (e.g. empty LAB_ALLOWLIST) before any launch happens, and the
+      // executor can crash a few steps in. Both close the run inside this window
+      // and neither draws anything on the canvas, so a run that died has to be
+      // reported here or it reads as a successful start that simply never moves.
       try {
         const { fetchVerdictRunDetail } = await import("@/lib/verdict-runtime/client");
         for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -2468,6 +2471,9 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           const disposition = String(
             runtime.operationalDisposition ?? detail.run.operational_disposition ?? "",
           ).toUpperCase();
+          const failureDetail = String(
+            runtime.failureDetail ?? detail.run.failure_detail ?? "",
+          ).trim();
           const terminationReason = String(
             runtime.terminationReason ?? detail.run.termination_reason ?? "",
           ).trim();
@@ -2475,9 +2481,18 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           if (disposition === "BLOCKED" || status === "blocked") {
             setIsTestRunning(false);
             toast.error(
-              terminationReason
-                ? `Run blocked before launch: ${terminationReason}`
+              failureDetail || terminationReason
+                ? `Run blocked before launch: ${failureDetail || terminationReason}`
                 : "Run blocked before launch (bridge preflight).",
+            );
+            return;
+          }
+          if (status === "failed") {
+            setIsTestRunning(false);
+            toast.error(
+              failureDetail
+                ? `Run failed: ${failureDetail}`
+                : "Run failed during execution (no cause recorded).",
             );
             return;
           }

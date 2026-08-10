@@ -14,6 +14,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { getAdbPathHint, resolveAdbPath } from "@nesy/platform-paths";
 import {
   NO_SECRET,
   newRequestId,
@@ -154,8 +155,16 @@ export class TestEventDeduper {
 // Control plane: runId sysprop + broadcasts
 // ─────────────────────────────────────────────────────────────────────────────
 
+function adbBinary(): string {
+  const resolved = resolveAdbPath();
+  if (resolved === null) {
+    throw new Error(`adb binary not found. ${getAdbPathHint()}`);
+  }
+  return resolved;
+}
+
 async function adbShell(deviceId: string, args: string[], timeoutMs = BROADCAST_TIMEOUT_MS): Promise<string> {
-  const result = await execFileAsync("adb", ["-s", deviceId, "shell", ...args], {
+  const result = await execFileAsync(adbBinary(), ["-s", deviceId, "shell", ...args], {
     timeout: timeoutMs,
     maxBuffer: 1024 * 1024,
   });

@@ -225,7 +225,7 @@
         "displayName": "Login",
         "runtimeImplementation": {
           "kind": "ACTIVITY",
-          "componentName": "com.nesy.courier/.auth.LoginActivity"
+          "componentName": "com.arasdigital.nesymobile.main.MainActivity"
         },
         "entryStrategies": [
           {
@@ -259,7 +259,7 @@
         "displayName": "Route stop list",
         "runtimeImplementation": {
           "kind": "COMPOSE",
-          "hostActivity": "com.nesy.courier/.main.MainActivity",
+          "hostActivity": "com.arasdigital.nesymobile.main.MainActivity",
           "routeKey": "route/list"
         },
         "entryStrategies": [
@@ -306,7 +306,7 @@
         "displayName": "Stop task list",
         "runtimeImplementation": {
           "kind": "COMPOSE",
-          "hostActivity": "com.nesy.courier/.main.MainActivity",
+          "hostActivity": "com.arasdigital.nesymobile.main.MainActivity",
           "routeKey": "route/tasks"
         },
         "entryStrategies": [
@@ -347,7 +347,7 @@
         "displayName": "Delivery flow",
         "runtimeImplementation": {
           "kind": "FRAGMENT",
-          "hostActivity": "com.nesy.courier/.main.MainActivity",
+          "hostActivity": "com.arasdigital.nesymobile.main.MainActivity",
           "fragmentTag": "delivery-flow"
         },
         "entryStrategies": [
@@ -386,7 +386,7 @@
         "displayName": "Pickup flow",
         "runtimeImplementation": {
           "kind": "FRAGMENT",
-          "hostActivity": "com.nesy.courier/.main.MainActivity",
+          "hostActivity": "com.arasdigital.nesymobile.main.MainActivity",
           "fragmentTag": "pickup-flow"
         },
         "entryStrategies": [
@@ -419,7 +419,7 @@
         "displayName": "Vehicle loading",
         "runtimeImplementation": {
           "kind": "ACTIVITY",
-          "componentName": "com.nesy.courier/.loading.VehicleLoadingActivity"
+          "componentName": "com.arasdigital.nesymobile.main.MainActivity"
         },
         "entryStrategies": [
           {
@@ -459,7 +459,7 @@
         "displayName": "End of day",
         "runtimeImplementation": {
           "kind": "COMPOSE",
-          "hostActivity": "com.nesy.courier/.main.MainActivity",
+          "hostActivity": "com.arasdigital.nesymobile.main.MainActivity",
           "routeKey": "day/close"
         },
         "entryStrategies": [

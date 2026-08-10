@@ -207,13 +207,26 @@ class BridgeConnection {
    */
   async ensureHandshake(send: (envelope: BridgeCommandEnvelope) => Promise<BridgeResultEnvelope>): Promise<void> {
     if (this.handshaken) return;
-    const envelope: BridgeCommandEnvelope = {
+    let envelope: BridgeCommandEnvelope = {
       ...this.options.scope,
       requestId: `hs-${this.id}-${String(this.options.scope.runEpoch)}`,
       protocolVersion: BRIDGE_PROTOCOL_VERSION,
       command: "handshake",
     };
-    const result = await send(envelope);
+    let result = await send(envelope);
+    if (!result.ok && result.error === "stale_run") {
+      const expectedRunEpoch = Number(result.expectedRunEpoch);
+      if (Number.isSafeInteger(expectedRunEpoch) && expectedRunEpoch >= this.options.scope.runEpoch) {
+        this.options.scope.runEpoch = expectedRunEpoch + 1;
+        envelope = {
+          ...this.options.scope,
+          requestId: `hs-${this.id}-${String(this.options.scope.runEpoch)}`,
+          protocolVersion: BRIDGE_PROTOCOL_VERSION,
+          command: "handshake",
+        };
+        result = await send(envelope);
+      }
+    }
     if (!result.ok) {
       throw new BridgeHostError(
         "BRIDGE_UNAVAILABLE",

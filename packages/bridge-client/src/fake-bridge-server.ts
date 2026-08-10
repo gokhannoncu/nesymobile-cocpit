@@ -61,10 +61,18 @@ export interface FakeBridgeOptions {
   enforceHandshake?: boolean;
   /** Run fencing uygula: farklı epoch/run `stale_run` alır. */
   enforceFencing?: boolean;
+  /** Process-wide active scope, mirroring ProtocolV1's stale_run handoff rule. */
+  activeScope?: FakeScope;
+}
+
+interface FakeScope {
+  runId: string;
+  sessionId: string;
+  runEpoch: number;
 }
 
 interface FakeSession {
-  scope: { runId: string; sessionId: string; runEpoch: number } | null;
+  scope: FakeScope | null;
 }
 
 function stripEnvelopeFields(request: Record<string, unknown>): Record<string, unknown> {
@@ -86,8 +94,11 @@ export class FakeBridgeServer {
   readonly received: { command: string; requestId: string; params: Record<string, unknown> }[] = [];
   /** Aynı anda açık bağlantı sayısının zirvesi — havuz iddiasını kanıtlar. */
   peakConnections = 0;
+  private activeScope: FakeScope | null;
 
-  constructor(private readonly options: FakeBridgeOptions = {}) {}
+  constructor(private readonly options: FakeBridgeOptions = {}) {
+    this.activeScope = options.activeScope ?? null;
+  }
 
   async listen(): Promise<number> {
     const server = createServer((socket) => this.onConnection(socket));
@@ -175,6 +186,30 @@ export class FakeBridgeServer {
     };
 
     if (command === "handshake") {
+      if (this.options.enforceFencing === true && this.activeScope !== null) {
+        const expected = this.activeScope;
+        const sameScope =
+          scope.runEpoch === expected.runEpoch &&
+          scope.runId === expected.runId &&
+          scope.sessionId === expected.sessionId;
+        if (!sameScope && scope.runEpoch <= expected.runEpoch) {
+          this.write(socket, {
+            ok: false,
+            requestId,
+            error:
+              scope.runId === expected.runId &&
+              scope.runEpoch === expected.runEpoch &&
+              scope.sessionId !== expected.sessionId
+                ? "wrong_session"
+                : "stale_run",
+            expectedRunId: expected.runId,
+            expectedSessionId: expected.sessionId,
+            expectedRunEpoch: expected.runEpoch,
+          });
+          return;
+        }
+      }
+      this.activeScope = scope;
       session.scope = scope;
     } else if (this.options.enforceHandshake === true && session.scope === null) {
       this.write(socket, { ok: false, requestId, error: "handshake_required" });

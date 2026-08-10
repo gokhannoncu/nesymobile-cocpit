@@ -594,6 +594,13 @@ model BridgeFlowRunRuntime {
   productVerdict         String   @default("NOT_EVALUATED") @map("product_verdict")
   evaluationFailureClass String   @default("NONE") @map("evaluation_failure_class")
   terminationReason      String   @default("NOT_TERMINATED") @map("termination_reason")
+  /// Free-text diagnosis for a run that could not be executed or crashed mid-flight.
+  ///
+  /// `terminationReason` is a closed axis (`RunTerminationReason`); it cannot carry
+  /// "adb forward failed" or a thrown executor message. Without a home for that
+  /// text the reason a run failed existed only in the API process stdout, so a
+  /// `failed` run was undiagnosable from the cockpit or the database.
+  failureDetail          String?  @map("failure_detail")
   cleanupResult          String   @default("NOT_STARTED") @map("cleanup_result")
   resourceReleaseResult  String   @default("NOT_REQUIRED") @map("resource_release_result")
   schedulerDisposition   String   @default("NOT_SCHEDULED") @map("scheduler_disposition")

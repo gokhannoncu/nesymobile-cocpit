@@ -8,7 +8,7 @@ import {
 } from '@nesy/bridgeflow-executor'
 
 import { createBridgeFlowCompileService } from './bridgeflow-compile-adapter.js'
-import { BridgeFlowExecutionQueue } from './bridgeflow-execution-queue.js'
+import { BridgeFlowExecutionQueue, describeError } from './bridgeflow-execution-queue.js'
 import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-device-ports.js'
 import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { buildTargetFingerprint } from './bridgeflow-target-fingerprint.js'
@@ -546,6 +546,9 @@ describe('execution queue device gating', () => {
     expect(statuses).toContain('BLOCKED')
     expect(statuses).not.toContain('FAILED')
     expect(runtimeWrites[0]?.terminationReason).toContain('enable the Verdict Bridge accessibility service')
+    // `failureDetail` is where free-text diagnosis lives; without it the only
+    // account of why a run died was the API process stdout.
+    expect(runtimeWrites[0]?.failureDetail).toContain('enable the Verdict Bridge accessibility service')
     // The cockpit list reads the run row, so the block has to be visible there too.
     expect(runRowStatuses).toContain('blocked')
   })
@@ -559,5 +562,31 @@ describe('execution queue device gating', () => {
     await new Promise((resolve) => setImmediate(resolve))
 
     expect(statuses).toContain('BLOCKED')
+  })
+})
+
+describe('execution failure diagnosis', () => {
+  it('keeps the cause chain, because the outer message names the wrong culprit', () => {
+    const cause = new Error('handshake did not answer within 15000ms')
+    const outer = new Error('act failed', { cause })
+    outer.name = 'BridgeHostError'
+
+    const described = describeError(outer)
+
+    // "act failed" alone reads as a broken workflow step; the cause is what says
+    // the device never answered, which is the only actionable half.
+    expect(described).toContain('BridgeHostError: act failed')
+    expect(described).toContain('handshake did not answer within 15000ms')
+  })
+
+  it('does not loop forever when a cause chain points back at itself', () => {
+    const looped = new Error('outer')
+    Object.defineProperty(looped, 'cause', { value: looped })
+
+    expect(describeError(looped)).toBe('outer')
+  })
+
+  it('renders a thrown non-Error rather than dropping it', () => {
+    expect(describeError('adb exited 1')).toBe('adb exited 1')
   })
 })

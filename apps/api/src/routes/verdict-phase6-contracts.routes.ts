@@ -22,6 +22,11 @@ import {
   type NesyDashboardCountry,
   type NesyEnvironment,
 } from '../nesy-env.js'
+import {
+  isNesyMobileCountry,
+  isNesyMobileEnvironment,
+  resolveNesyMobileApplicationId,
+} from '../nesy-mobile-env.js'
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import {
   DeviceReadinessService,
@@ -245,8 +250,10 @@ async function probeActModePolicy(deviceId: string): Promise<DeviceLaneHealth> {
     }
   }
 
+  if (!policy.denyProductionBuilds) return { lane: 'ACT_MODE_POLICY', status: 'UP' }
+
   const buildType = (await adbFacade.getProp(deviceId, 'ro.build.type')).trim()
-  if (policy.denyProductionBuilds && isProductionBuild(buildType)) {
+  if (isProductionBuild(buildType)) {
     return {
       lane: 'ACT_MODE_POLICY',
       status: 'BLOCKED',
@@ -280,11 +287,27 @@ async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGR
 function resolveRuntimeApplicationId(context?: { appId?: string }): string | null {
   const explicit = context?.appId?.trim() || process.env.NESY_MOBILE_APP_ID?.trim()
   if (explicit) return explicit
+  const country = process.env.NESY_REMOTE_ACTION_COUNTRY?.trim() ?? 'RS'
+  const environment = process.env.NESY_REMOTE_ACTION_ENV?.trim() ?? 'stage'
+  if (isNesyMobileCountry(country) && isNesyMobileEnvironment(environment)) {
+    return resolveNesyMobileApplicationId(country, environment)
+  }
   for (const pack of listDomainPacks()) {
     const packageIdentity = pack.bundle.registries.applications[0]?.packageIdentity?.trim()
     if (packageIdentity) return packageIdentity
   }
   return null
+}
+
+function resolveRunApplicationId(body: Record<string, unknown>): string | undefined {
+  const explicit = typeof body.appId === 'string' ? body.appId.trim() : ''
+  if (explicit) return explicit
+  const country = typeof body.country === 'string' ? body.country.trim() : ''
+  const environment = typeof body.environment === 'string' ? body.environment.trim() : ''
+  if (isNesyMobileCountry(country) && isNesyMobileEnvironment(environment)) {
+    return resolveNesyMobileApplicationId(country, environment)
+  }
+  return undefined
 }
 
 async function probeSdkControl(
@@ -468,6 +491,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/runs', async (request, reply) => {
     try {
       const body = request.body
+      const appId = resolveRunApplicationId(body)
       const inputs =
         body.inputs !== null && typeof body.inputs === 'object' && !Array.isArray(body.inputs)
           ? (body.inputs as Record<string, unknown>)
@@ -475,6 +499,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
       const result = await runService.start({
         workflowRef: String(body.workflowRef ?? ''),
         deviceId: String(body.deviceId ?? ''),
+        ...(appId === undefined ? {} : { appId }),
         compiledPlanRef: String(body.compiledPlanRef ?? ''),
         compiledPlanHash: String(body.compiledPlanHash ?? ''),
         domainPackKey: String(body.domainPackKey ?? ''),
