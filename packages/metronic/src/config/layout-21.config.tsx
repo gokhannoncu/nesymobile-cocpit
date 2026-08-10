@@ -63,6 +63,12 @@ export const AUTOMATION_LOAD_TOUR_PATH = '/automation/01-load-tour-flow' as cons
 export const AUTOMATION_DOMAIN_PACKS_PATH = '/automation/domain-packs' as const
 export const AUTOMATION_TEST_PROFILES_PATH = '/automation/test-profiles' as const
 export const AUTOMATION_TEST_CAMPAIGNS_PATH = '/automation/test-campaigns' as const
+export const AUTOMATION_RUN_PLANNER_PATH = '/automation/run-planner' as const
+export const AUTOMATION_EXECUTION_QUEUE_PATH = '/automation/execution-queue' as const
+export const AUTOMATION_FEATURES_PATH = '/automation/features' as const
+export const AUTOMATION_COMPONENTS_PATH = '/automation/components' as const
+export const AUTOMATION_CAPABILITIES_PATH = '/automation/capabilities' as const
+export const AUTOMATION_COVERAGE_GRAPH_PATH = '/automation/coverage-graph' as const
 
 // Single source of truth for the cockpit navigation.
 // The left icon rail (SidebarPrimary), secondary menu (SidebarPrimaryMenu), and
@@ -539,6 +545,16 @@ export const WORKSPACES: Workspace[] = [
                 icon: History,
               },
               {
+                title: 'Run Planner',
+                path: AUTOMATION_RUN_PLANNER_PATH,
+                icon: Route,
+              },
+              {
+                title: 'Execution Queue',
+                path: AUTOMATION_EXECUTION_QUEUE_PATH,
+                icon: Activity,
+              },
+              {
                 title: 'Field Courier Login',
                 path: AUTOMATION_FIELD_LOGIN_PATH,
                 icon: UserRoundCog,
@@ -558,6 +574,26 @@ export const WORKSPACES: Workspace[] = [
                 title: 'Domain Pack Catalog',
                 path: AUTOMATION_DOMAIN_PACKS_PATH,
                 icon: Layers,
+              },
+              {
+                title: 'Feature Registry',
+                path: AUTOMATION_FEATURES_PATH,
+                icon: Flag,
+              },
+              {
+                title: 'Component Registry',
+                path: AUTOMATION_COMPONENTS_PATH,
+                icon: Cpu,
+              },
+              {
+                title: 'Capability Contracts',
+                path: AUTOMATION_CAPABILITIES_PATH,
+                icon: Bolt,
+              },
+              {
+                title: 'Coverage Graph',
+                path: AUTOMATION_COVERAGE_GRAPH_PATH,
+                icon: Network,
               },
             ],
           },

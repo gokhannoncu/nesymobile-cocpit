@@ -17,7 +17,7 @@ Kaynak gerçek: her fazın `RESULT.md` `resultState` alanı. Çelişki halinde R
 |---|---|---|
 | **Mobile M\*** | `mobile-run-playbooks/phase-*/RESULT.md` | ← bu dosya |
 | **Cockpit FAZ / CP\*** | `run-playbooks/phase-*/RESULT.md` + master plan `todos: faz-*` | ayrı |
-| **Mobile SSOT checkpoints** | `NesyMobile/verdict-status.json` (örn. `bridge_b2` = compiler/courier) | protokol M3 ≠ `bridge_b2=passed` |
+| **Mobile SSOT checkpoints** | `NesyMobile/verdict-status.json` when present | current `rel/env-dev` checkout has no SSOT file; Cockpit Phase 8/9 evidence is authoritative for BridgeFlow-only runtime |
 
 Master plan üstündeki `faz-0…faz-9` YAML status alanları **Cockpit program fazlarıdır**.
 Mobile `M0` tamamlandı diye `faz-0: completed` yazılmaz.
@@ -29,7 +29,7 @@ Mobile `M0` tamamlandı diye `faz-0: completed` yazılmaz.
 | **M0** | Baseline + envanter + gap | `COMPLETED` | [phase-0/RESULT.md](./phase-0/RESULT.md) | Inventory / gap matrix |
 | **M1** | SDK auth / session fixture | `COMPLETED` | [phase-1/RESULT.md](./phase-1/RESULT.md) | Auth fixtures/tests |
 | **M2** | EmitOutcome + WAL/ACK diagnostic | `COMPLETED` | [phase-2/RESULT.md](./phase-2/RESULT.md) | Diagnostic query surface |
-| **M3** | Bridge B2 protocol | `COMPLETED` | [phase-3/RESULT.md](./phase-3/RESULT.md) | wait_any/cancel/capabilities; SSOT `bridge_b2` hâlâ not_started |
+| **M3** | Bridge B2 protocol | `COMPLETED` | [phase-3/RESULT.md](./phase-3/RESULT.md) | wait_any/cancel/capabilities; historic SSOT note superseded because current mobile checkout has no `verdict-status.json` |
 | **M4A** | Core-contract thin gate | `COMPLETED` | [phase-4a/RESULT.md](./phase-4a/RESULT.md) | Bridge domain leakage 0 |
 | **M4B** | Nesy App Adapter production | `COMPLETED` | [phase-4b/RESULT.md](./phase-4b/RESULT.md) | Adapter ops + queries |
 | **M4C** | Pack ↔ adapter ↔ Bridge uyumu | `COMPLETED` | [phase-4c/RESULT.md](./phase-4c/RESULT.md) | Contract flip + fixtures |

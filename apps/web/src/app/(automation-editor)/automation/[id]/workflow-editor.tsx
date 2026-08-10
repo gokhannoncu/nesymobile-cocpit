@@ -120,7 +120,7 @@ import {
   getBackendLaneNodeDimensions,
 } from "./backend-validation-lane";
 import { BackendLaneNodeView } from "./BackendLaneNodeView";
-import { YamlPreviewPanel } from "./YamlPreviewPanel";
+import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { VerdictEditorToolbar } from "@/components/automation/editor/VerdictEditorToolbar";
 import {
   WorkflowNodeType,
@@ -1529,7 +1529,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
   const [paletteSource, setPaletteSource] = useState<
     | { mode: 'loading' }
     | { mode: 'pack'; packKey: string; packVersion: string; groups: WorkflowPaletteCategory[] }
-    | { mode: 'legacy'; reason: string }
+    | { mode: 'blocked'; reason: string }
   >({ mode: 'loading' })
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateDialogState, setTemplateDialogState] = useState<{
@@ -2036,8 +2036,8 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         const pack = packs.items.find((item) => item.publicationState === 'PUBLISHED')
         if (!pack) {
           setPaletteSource({
-            mode: 'legacy',
-            reason: 'no published Domain Pack — showing legacy palette',
+            mode: 'blocked',
+            reason: 'No published Domain Pack is available. Publish a pack before authoring executable workflow actions.',
           })
           return
         }
@@ -2045,10 +2045,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         if (cancelled) return
         if (catalog.items.length === 0) {
           setPaletteSource({
-            mode: 'legacy',
+            mode: 'blocked',
             reason:
               catalog.blockedReason ??
-              'published pack has no semantic actions — showing legacy palette',
+              'The published Domain Pack has no semantic actions, so executable action authoring is blocked.',
           })
           return
         }
@@ -2063,11 +2063,11 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       } catch (error) {
         if (cancelled) return
         setPaletteSource({
-          mode: 'legacy',
+          mode: 'blocked',
           reason:
             error instanceof Error
-              ? `pack palette unavailable (${error.message}) — showing legacy palette`
-              : 'pack palette unavailable — showing legacy palette',
+              ? `Pack palette unavailable: ${error.message}`
+              : 'Pack palette unavailable.',
         })
       }
     })()
@@ -2088,7 +2088,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     [searchTerm],
   );
   const activePaletteGroups =
-    paletteSource.mode === 'pack' ? paletteSource.groups : workflowComponentGroups
+    paletteSource.mode === 'pack' ? paletteSource.groups : []
   const filteredPaletteGroups = useMemo(
     () =>
       activePaletteGroups
@@ -2931,9 +2931,9 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               </div>
             ) : null}
 
-            {paletteSource.mode === 'legacy' ? (
-              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-medium text-amber-950">
-                legacy palette — {paletteSource.reason}
+            {paletteSource.mode === 'blocked' ? (
+              <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-medium text-rose-950">
+                Domain Pack palette blocked — {paletteSource.reason}
               </div>
             ) : null}
 
@@ -3025,7 +3025,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               className="fixed bottom-0 right-0 top-14 z-20 shrink-0 overflow-hidden border-l border-slate-200 bg-white"
               style={{ width: `${RIGHT_PROPERTIES_PANEL_PX}px` }}
             >
-              <YamlPreviewPanel
+              <NodeSettingsPanel
                 selectedNode={selectedNode}
                 onClose={() => setPropertiesPanelOpen(false)}
                 onRunTest={runWorkflowTest}

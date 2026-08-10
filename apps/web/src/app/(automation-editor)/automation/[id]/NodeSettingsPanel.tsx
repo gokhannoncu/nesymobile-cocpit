@@ -34,7 +34,7 @@ import {
   ScanBarcodeSchema,
 } from "./node-config-registry";
 
-type YamlPreviewPanelProps = {
+type NodeSettingsPanelProps = {
   selectedNode: WorkflowNode | null;
   onClose: () => void;
   onRunTest: () => void;
@@ -93,13 +93,13 @@ function getLaunchAppDraft(config: Record<string, unknown>) {
     : { country: DEFAULT_LAUNCH_APP_COUNTRY, environment: DEFAULT_LAUNCH_APP_ENVIRONMENT, clearState: false };
 }
 
-export function YamlPreviewPanel({
+export function NodeSettingsPanel({
   selectedNode,
   onClose,
   onRunTest,
   runTestDisabled = false,
   onUpdateNodeConfig,
-}: YamlPreviewPanelProps) {
+}: NodeSettingsPanelProps) {
   const selectedConfig = configFor(selectedNode);
   const validationErrors = useMemo(() => validationErrorsFor(selectedNode), [selectedNode]);
 

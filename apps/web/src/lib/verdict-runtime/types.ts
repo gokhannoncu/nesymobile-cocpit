@@ -423,6 +423,8 @@ export interface DomainPackDetailApi {
   evidenceSources: Record<string, unknown>[]
   semanticActions: Record<string, unknown>[]
   macros: Record<string, unknown>[]
+  features: Record<string, unknown>[]
+  capabilities: Record<string, unknown>[]
   oracleTemplates: Record<string, unknown>[]
   launchProfiles: Record<string, unknown>[]
   testProfiles: Record<string, unknown>[]

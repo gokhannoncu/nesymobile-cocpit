@@ -23,7 +23,7 @@ reposunda yapılır.
 |---|---|---|
 | Playbook SSOT | `NesyMobileCocpit` | `docs/verdict/mobile-run-playbooks/` |
 | Master plan | `NesyMobileCocpit` | `docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md` |
-| Mobile SSOT | `NesyMobile` | `verdict-status.json` |
+| Mobile SSOT | `NesyMobile` | `verdict-status.json` when present; current `rel/env-dev` checkout does not contain it |
 | SDK / App Adapter | `NesyMobile` | `verdict-*`, `app/src/automation/**` |
 | Bridge APK | `NesyMobile` | `verdict-bridge/**` |
 | Cockpit host (read-only) | `NesyMobileCocpit` | `packages/bridge-*`, `domain-packs/**` |

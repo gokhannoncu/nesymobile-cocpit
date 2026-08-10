@@ -8,15 +8,22 @@ export default async function TestCampaignDetailPage(props: { params: Promise<{ 
   const { campaignId } = params;
   
   let campaign = null
+  let loadError: string | null = null
   try {
     campaign = await fetchVerdictTestCampaign(campaignId)
   } catch (err) {
-    campaign = {
-      campaignId,
-      type: 'NIGHTLY',
-      failedCells: ['cell-1'],
-      cells: []
-    } as any
+    loadError = err instanceof Error ? err.message : 'Campaign could not be loaded'
+  }
+
+  if (!campaign) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Campaign: {campaignId}</h1>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+          Campaign read model unavailable. {loadError}
+        </div>
+      </div>
+    )
   }
 
   return (

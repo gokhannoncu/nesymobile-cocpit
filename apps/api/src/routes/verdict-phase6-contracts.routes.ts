@@ -488,7 +488,47 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
         }
       }),
     })
-    return { apiVersion: 'verdict-runtime.v1', campaign }
+
+    for (const cell of cells) {
+      const row = cell as Record<string, unknown>
+      const workflowRef = typeof row.workflowRef === 'string' ? row.workflowRef : ''
+      const deviceId = typeof row.deviceId === 'string'
+        ? row.deviceId
+        : typeof row.deviceCell === 'string'
+          ? row.deviceCell
+          : ''
+      const domainPackKey = typeof row.domainPackKey === 'string' ? row.domainPackKey : ''
+      const domainPackVersion = typeof row.domainPackVersion === 'string' ? row.domainPackVersion : ''
+      const domainPackDigest = typeof row.domainPackDigest === 'string' ? row.domainPackDigest : ''
+      if (!workflowRef || !deviceId || !domainPackKey || !domainPackVersion || !domainPackDigest || row.workflowIr === undefined) {
+        continue
+      }
+      const compile = compileService.compileWorkflow({
+        workflowRef,
+        workflowIr: row.workflowIr,
+        domainPackKey,
+        domainPackVersion,
+        domainPackDigest,
+      })
+      if (!compile.ok) continue
+      const started = await runService.startFromCompile(compile, {
+        workflowRef,
+        deviceId,
+        domainPackKey,
+        domainPackVersion,
+        domainPackDigest,
+        releaseGate: row.releaseGate === true,
+        profileKey: typeof row.profileKey === 'string' ? row.profileKey : undefined,
+        profileVersion: row.profileVersion === undefined ? undefined : String(row.profileVersion),
+      })
+      await testCampaigns.attachCellEvidence({
+        campaignId: campaign.campaignId,
+        cellKey: String(row.cellKey ?? ''),
+        runId: started.runId,
+      })
+    }
+
+    return { apiVersion: 'verdict-runtime.v1', campaign: await testCampaigns.get(campaign.campaignId) }
   })
 
   app.get<{

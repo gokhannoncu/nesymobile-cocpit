@@ -27,6 +27,8 @@ export function DomainPackHeader({
   hasValidationErrors
 }: DomainPackHeaderProps) {
   const isDraft = pack.state === 'DRAFT'
+  const sourceCommit = String((pack.manifest?.provenance as Record<string, unknown> | undefined)?.sourceCommit ?? 'workspace')
+  const canonicalSource = pack.state === 'PUBLISHED' ? 'Published immutable snapshot' : 'Draft registry snapshot'
 
   return (
     <div className="flex flex-col gap-4 border-b pb-6 mb-6">
@@ -83,6 +85,15 @@ export function DomainPackHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 ml-14">
+        <div className="rounded-md border bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+          <span className="font-semibold">SSOT:</span> {canonicalSource} · source {sourceCommit}
+        </div>
+        <div className="rounded-md border bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+          <span className="font-semibold">Review gate:</span> {hasValidationErrors ? 'blocked by validation' : 'validation clear'}
+        </div>
+        <div className="rounded-md border bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+          <span className="font-semibold">Migration:</span> publish creates a new immutable version
+        </div>
         {pack.publishedBundleHash && (
           <DomainPackDigestDisplay label="Bundle Hash" digest={pack.publishedBundleHash} />
         )}

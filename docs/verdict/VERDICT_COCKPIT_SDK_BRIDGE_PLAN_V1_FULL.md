@@ -46,7 +46,7 @@ isProject: false
 **DecisionIndexVersion:** `decision-index-v1.1.3`
 **Durum:** Bağlayıcı master plan; uygulama ve kabul kapıları tamamlanmamıştır.  
 **Kapsam:** `/NesyMobileCocpit` içindeki API, Web, workspace paketleri, veritabanı, cihaz işçileri, otomasyon editörü, runtime, oracle, artifact, teşhis, güvenlik ve geçiş kodları.  
-**Mobile SSOT:** `/NesyMobile/verdict-status.json`  
+**Mobile SSOT:** `/NesyMobile/verdict-status.json` when present; current `/NesyMobile` checkout is `rel/env-dev` and does not contain this file, so Cockpit Phase 8/9 evidence is authoritative for BridgeFlow-only runtime status.  
 **Mobile playbook track:** `docs/verdict/mobile-run-playbooks/PROGRESS.md`  
 **Kaynak SDK planı:** `/Users/gokhanoncu/Desktop/Verdict_Dev/plan/verdict_sdk_plan_v3_FULL.md`
 
@@ -65,7 +65,7 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 | M0 Baseline / gap | `COMPLETED` | `mobile-run-playbooks/phase-0/RESULT.md` |
 | M1 SDK auth fixture | `COMPLETED` | `mobile-run-playbooks/phase-1/RESULT.md` |
 | M2 EmitOutcome diagnostic | `COMPLETED` | `mobile-run-playbooks/phase-2/RESULT.md` |
-| M3 Bridge B2 protocol | `COMPLETED` | `mobile-run-playbooks/phase-3/RESULT.md` (SSOT `bridge_b2` hâlâ not_started) |
+| M3 Bridge B2 protocol | `COMPLETED` | `mobile-run-playbooks/phase-3/RESULT.md` (historic SSOT note superseded; current mobile checkout has no `verdict-status.json`) |
 | M4A Core-contract thin gate | `COMPLETED` | `mobile-run-playbooks/phase-4a/RESULT.md` |
 | M4B App Adapter production | `COMPLETED` | `mobile-run-playbooks/phase-4b/RESULT.md` |
 | M4C Compatibility fixtures | `COMPLETED` | `mobile-run-playbooks/phase-4c/RESULT.md` |
@@ -82,7 +82,7 @@ docs/verdict/mobile-run-playbooks/PROGRESS.md
 > `COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`, `CONDITION_ENGINE_AND_BRIDGEFLOW.md`,
 > `FAZ4_COCKPIT_LIVE_INSPECTOR_PLAN.md`, `FAZ8_V1_COMPAT_GATE.md` ve
 > `SISTEM_NASIL_CALISIR.md` destekleyici/dar dokümanlardır. Çelişki halinde bu
-> master plan ve Mobile `verdict-status.json` kazanır.
+> master plan ve, mevcut checkout'ta varsa, Mobile `verdict-status.json` kazanır.
 >
 > **Zaman tahmini yoktur.** İlerleme takvimle değil checkpoint ile ölçülür.
 > Bir checkpoint geçmeden onu izleyen ve geri dönüşü zorlaştıran cutover adımına
@@ -102,7 +102,7 @@ dokümanları kaynak seviyesinde karşılaştırılmıştır.
 | **P0** | Durable ingest ve commit-sonrası ACK var; fakat kabul edilen event'i restart-safe biçimde oracle/workflow'a dağıtan kalıcı consumer baseline'da yoktu. Working tree'de fan-out consumer çalışması başlamış olsa da checkpoint geçmeden tamamlanmış sayılmaz. | Faz 2 · B.5 · D.2 |
 | **P0** | Cockpit'te Verdict Bridge TCP host client yok: handshake, NDJSON framing, typed command, request correlation, treeGen, DumpScope, screenshot artifact ve hata taksonomisi uygulanmamış. | Faz 3 · B.6 · D.3 |
 | **P0** | DeviceWorker yalnız ADB/logcat, SDK WS reverse ve Maestro driver hazırlıyor; Bridge APK/service/forward/ping/capability/device-policy gate'i yok. | Faz 3 · D.4 |
-| **P0** | Workflow runtime hâlâ Maestro YAML üretip tek Maestro prosesi çalıştırıyor. BridgeFlowCompiler ve BridgeFlowExecutor yok. Mobile SSOT `bridge_b2=not_started` diyor. | Faz 4–5 · D.7–D.8 |
+| **P0** | Historical baseline: workflow runtime was Maestro/YAML and BridgeFlowCompiler/Executor were absent. Current Cockpit Phase 8/9 evidence is `BRIDGEFLOW_ONLY`; current `/NesyMobile` checkout has no `verdict-status.json`, so this no longer represents active runtime state. | Faz 4–5 · D.7–D.8 |
 | **P0** | Repo-level typecheck kırmızıydı; unit suite'lerin yeşil olması release baseline'ı için yeterli değil. Gerçek PostgreSQL ve fiziksel DUT testlerinin bir bölümü opt-in/skip. | Faz 0 · G.2 |
 | **P1** | Mevcut Workflow IR ve editor node modeli FOR_EACH, typed condition, retry, dialog policy, waitEvent, occurrence ve evidence policy taşımıyor. | Faz 4 · D.5–D.6 |
 | **P1** | Oracle structured event alabiliyor fakat Bridge UI kanıtı, durable waitEvent, occurrence/iteration correlation ve dört katmanlı completion policy tam değil. | Faz 5 · D.9 |

@@ -2,6 +2,8 @@ import {
   fetchVerdictRunDetail,
   fetchVerdictEvidenceJourney,
 } from '@/lib/verdict-runtime/client'
+import { canReadRawEvidence } from '@/lib/verdict-runtime/rbac'
+import { headers } from 'next/headers'
 import type { RunDetailResult } from '@/lib/verdict-runtime/types'
 import { deriveLayerApplicability } from '@/lib/verdict-runtime/layer-applicability'
 import { EvidenceJourneyDrawer } from '@/components/automation/run-detail/EvidenceJourneyDrawer'
@@ -65,9 +67,7 @@ export default async function RunDetailPage(props: {
   }
 
   const layerStates = deriveLayerApplicability(runDetail)
-  // Cockpit operators currently declare rbac ['*'] on this route — deep-link allowed.
-  // When finer roles land, gate this from session claims (evidence:read).
-  const canViewRawEvidence = true
+  const canViewRawEvidence = canReadRawEvidence(await headers())
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">

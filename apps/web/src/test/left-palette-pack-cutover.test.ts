@@ -30,9 +30,11 @@ describe('Left palette pack cutover (6D.1f)', () => {
     expect(EDITOR).toMatch(/paletteDisabledReason/)
   })
 
-  it('marks legacy fallback explicitly and keeps structural tools separate', () => {
-    expect(EDITOR).toMatch(/legacy palette/)
-    expect(EDITOR).toMatch(/mode: 'legacy'/)
+  it('blocks action authoring instead of falling back to the old palette', () => {
+    expect(EDITOR).toMatch(/Domain Pack palette blocked/)
+    expect(EDITOR).toMatch(/mode: 'blocked'/)
+    expect(EDITOR).not.toMatch(/legacy palette/)
+    expect(EDITOR).not.toMatch(/mode: 'legacy'/)
     expect(PACK_PALETTE).toMatch(/Structural editor tools/)
   })
 
