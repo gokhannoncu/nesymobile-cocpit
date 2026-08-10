@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consumeOrderedDurableEvidenceRow,
   HeartbeatLivenessStore,
+  parseGapStatusFrame,
   parseOrderedDurableEvent,
   routeIncomingWsFrame,
 } from "./test-event-ws-server.js";
@@ -401,3 +402,80 @@ async function expectFinalOracleBlocked(
   });
   expect(result.status).toBe("BLOCKED");
 }
+
+describe("gap_status ask-first routing", () => {
+  const query = JSON.stringify({
+    type: "gap_status",
+    runId: "run-gap",
+    sessionId: "session-gap",
+    generation: "7",
+  });
+
+  it("routes a gap_status question away from gap ingestion", () => {
+    // Ingesting the question would record a loss the device never claimed — the
+    // exact outcome ask-first exists to prevent. It also must not be mistaken for
+    // an event: `gap_status` carries no seq, so the event parser would reject it
+    // and the question would be dropped with a warning instead of answered.
+    const onControl = vi.fn();
+    const onEvent = vi.fn();
+    const onHeartbeat = vi.fn();
+    const onGapStatus = vi.fn();
+
+    routeIncomingWsFrame(query, { onControl, onHeartbeat, onEvent, onGapStatus });
+
+    expect(onGapStatus).toHaveBeenCalledWith({
+      runId: "run-gap",
+      sessionId: "session-gap",
+      generation: "7",
+    });
+    expect(onControl).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(onHeartbeat).not.toHaveBeenCalled();
+  });
+
+  it("still ingests a committed gap, which is a claim rather than a question", () => {
+    const onControl = vi.fn();
+    const onGapStatus = vi.fn();
+
+    routeIncomingWsFrame(
+      JSON.stringify({
+        type: "gap",
+        runId: "run-gap",
+        sessionId: "session-gap",
+        generation: "8",
+        fromSeq: "10",
+        toSeq: "12",
+        reason: "space",
+      }),
+      { onControl, onHeartbeat: vi.fn(), onEvent: vi.fn(), onGapStatus },
+    );
+
+    expect(onGapStatus).not.toHaveBeenCalled();
+    expect(onControl).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "gap", generation: "8", fromSeq: "10", toSeq: "12" }),
+    );
+  });
+
+  it("keeps generation as a decimal string, since it is a Kotlin Long", () => {
+    // Past 2^53 a JSON number rounds. The device sends it as a string for that
+    // reason; parsing it into a JS number here would undo the precaution.
+    const parsed = parseGapStatusFrame(
+      JSON.stringify({
+        type: "gap_status",
+        runId: "run-gap",
+        sessionId: "session-gap",
+        generation: "9007199254740993",
+      }),
+    );
+    expect(parsed?.generation).toBe("9007199254740993");
+  });
+
+  it("rejects a gap_status frame missing its stream identity", () => {
+    // Without both ids the host cannot scope the lookup, and answering the wrong
+    // stream's question would clear an entry for a range nobody recorded.
+    expect(parseGapStatusFrame(JSON.stringify({ type: "gap_status", generation: "7" }))).toBeNull();
+    expect(
+      parseGapStatusFrame(JSON.stringify({ type: "gap_status", runId: "r", sessionId: "s" })),
+    ).toBeNull();
+  });
+});

@@ -327,4 +327,53 @@ export async function ingestFrame(frame: IngestFrame): Promise<IngestResult> {
 /** Same generation, different range — the device's journal and ours disagree. */
 export class GapConflictError extends Error {}
 
+/**
+ * Answers the device's `gap_status` question: did this host already record the gap
+ * with `generation` for this stream?
+ *
+ * ## Why the device has to ask, and why only presence can answer
+ *
+ * A gap entry is reserved BEFORE the segment is deleted and committed after. A
+ * crash in between leaves the device holding an entry it cannot interpret: it does
+ * not know whether the frame ever reached us. It may not guess — publishing a
+ * range we already accepted would report loss twice, and dropping it silently
+ * would report loss never. So it asks by generation, and generations are immutable
+ * on the device (a merge produces a NEW one), which is what makes the row's mere
+ * presence a complete answer.
+ *
+ * ## Why `null` is not `false`
+ *
+ * `true` makes the device clear the entry FOREVER, so it may only be said when a
+ * row was actually read. `false` tells the device publishing is safe. `null` means
+ * "cannot say" — the caller must then answer nothing at all, because the device's
+ * contract (C.5.1c-O) is that silence means do nothing, while a wrong `false`
+ * would re-publish an accepted range and a wrong `true` would erase real evidence.
+ */
+export async function gapGenerationAccepted(
+  runId: string,
+  sessionId: string,
+  generation: string,
+): Promise<boolean | null> {
+  if (!runId || !sessionId) return null;
+  let parsed: bigint;
+  try {
+    parsed = parseSeq(generation, "generation");
+  } catch {
+    return null;
+  }
+
+  try {
+    const rows = await prisma.$queryRaw<{ generation: bigint }[]>`
+      SELECT generation FROM verdict_gap
+      WHERE run_id = ${runId} AND session_id = ${sessionId}
+        AND generation = ${parsed}
+      LIMIT 1`;
+    return rows.length > 0;
+  } catch {
+    // A database that cannot be read cannot prove or disprove acceptance, and
+    // both wrong answers lose evidence. Stay silent instead.
+    return null;
+  }
+}
+
 export { PENDING_ABOVE_LIMIT };

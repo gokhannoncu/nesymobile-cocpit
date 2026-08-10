@@ -18,7 +18,7 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import type { LogcatSniffer } from "./logcat-sniffer.js";
 import { parseTestEventLine, type TestBridgeEvent } from "./test-event-bridge.js";
-import { ingestFrame, type IngestFrame } from "./verdict-ingest.js";
+import { gapGenerationAccepted, ingestFrame, type IngestFrame } from "./verdict-ingest.js";
 import { MonotoneStreamWatermarks } from "./verdict-stream-order.js";
 import {
   SyncDurableComparisonRecorder,
@@ -135,11 +135,13 @@ export const BridgeFlowDurableEvidence = new DurableBridgeFlowEvidenceIngest({
 });
 
 /**
- * A device frame that is not a test event.
+ * A device frame that is not a test event: a gap the device CLAIMS happened.
  *
- * Only `gap` is acted on today. The exact device-side gap frame shape is fixed in
- * Faz 2 when the SDK starts emitting it; this accepts the documented field names
- * and ignores anything else rather than guessing.
+ * The SDK emits this today (`WebSocketSink.publishPendingGaps`, `TYPE_GAP`) for a
+ * committed gap — the deletion is durable and the range is genuinely gone. An
+ * uncommitted gap is a question instead and goes to [parseGapStatusFrame]; the two
+ * must not be confused, because ingesting a question would record a loss the
+ * device never claimed.
  */
 function parseControlFrame(data: string): IngestFrame | null {
   try {
@@ -239,6 +241,8 @@ export interface IncomingFrameHandlers {
   onControl(frame: IngestFrame): void;
   onHeartbeat(frame: HeartbeatFrame): void;
   onEvent(event: TestBridgeEvent): void;
+  /** Optional so existing routing tests keep compiling; the server always supplies it. */
+  onGapStatus?(frame: GapStatusQueryFrame): void;
 }
 
 interface AuthenticatedWsStream {
@@ -274,11 +278,52 @@ function sameStream(auth: AuthenticatedWsStream | null, runId: string | null, se
 }
 
 /**
+ * The device asking whether we already accepted a gap generation (C.5.1c).
+ *
+ * Carries no range on purpose: the device is asking precisely because it does not
+ * know what we hold, and a range it supplied would be a claim rather than a
+ * question.
+ */
+export interface GapStatusQueryFrame {
+  runId: string;
+  sessionId: string;
+  generation: string;
+}
+
+export function parseGapStatusFrame(data: string): GapStatusQueryFrame | null {
+  try {
+    const f = JSON.parse(data.trim()) as Record<string, unknown>;
+    if (f.type !== "gap_status") return null;
+    const runId = typeof f.runId === "string" ? f.runId : null;
+    const sessionId = typeof f.sessionId === "string" ? f.sessionId : null;
+    const generation =
+      typeof f.generation === "number"
+        ? String(f.generation)
+        : typeof f.generation === "string"
+          ? f.generation
+          : null;
+    if (!runId || !sessionId || !generation) return null;
+    return { runId, sessionId, generation };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Keeps control, unsequenced heartbeat, and durable event routing mutually
  * exclusive. Exported to let the wire-level routing contract be unit tested
  * without opening port 8765 or requiring PostgreSQL.
  */
 export function routeIncomingWsFrame(data: string, handlers: IncomingFrameHandlers): void {
+  // Before `parseControlFrame`: `gap_status` is a QUESTION, not a gap to ingest.
+  // Routing it to `onControl` would record a gap the device never claimed had
+  // happened, which is the one outcome the ask-first protocol exists to prevent.
+  const gapStatus = parseGapStatusFrame(data);
+  if (gapStatus) {
+    handlers.onGapStatus?.(gapStatus);
+    return;
+  }
+
   const control = parseControlFrame(data);
   if (control) {
     handlers.onControl(control);
@@ -516,6 +561,51 @@ class TestEventWsServerImpl {
     getVerdictDurableRuntime().nudge({ runId: frame.runId, sessionId: frame.sessionId });
   }
 
+  /**
+   * Answers `gap_status` — the device's ask-first question after a crash between
+   * reserving a gap entry and committing it.
+   *
+   * Without this answer the device is stuck by design: its contract forbids a blind
+   * send after a timeout (C.5.1c-O), so an unanswered question means the entry is
+   * never released. The gap ring is small (7 usable entries) and a full ring makes
+   * `prepareGap` refuse, which leaves the WAL in `space_exhausted` — and a WAL that
+   * cannot append emits NOTHING. The observed end state is a device reporting
+   * `wal=space_exhausted events_emitted=0 ws=connected` while every UI fact the
+   * oracle waits for silently never arrives.
+   *
+   * Silence is the correct response when we cannot prove an answer, so an
+   * unreadable database or a disabled ingest path sends nothing at all rather than
+   * guessing: a wrong `true` erases real evidence, a wrong `false` reports the same
+   * loss twice.
+   */
+  private async answerGapStatus(socket: WebSocket, frame: GapStatusQueryFrame): Promise<void> {
+    if (!this.ingestReady) return;
+    const accepted = await gapGenerationAccepted(
+      frame.runId,
+      frame.sessionId,
+      frame.generation,
+    );
+    if (accepted === null) {
+      console.warn(
+        `[TestEventWS] gap_status for ${frame.runId}/${frame.sessionId} ` +
+          `generation ${frame.generation} could not be answered; staying silent ` +
+          `(the device keeps the entry, which is the safe end of this protocol)`,
+      );
+      return;
+    }
+    if (socket.readyState !== socket.OPEN) return;
+    socket.send(
+      JSON.stringify({
+        type: "gap_status_result",
+        runId: frame.runId,
+        sessionId: frame.sessionId,
+        generation: frame.generation,
+        // String, not boolean: the device compares against "true".
+        accepted: accepted ? "true" : "false",
+      }),
+    );
+  }
+
   ensureStarted(): void {
     if (this.server) return;
 
@@ -584,6 +674,10 @@ class TestEventWsServerImpl {
           onControl: (control) => {
             if (!sameStream(authenticated, control.runId, control.sessionId)) return;
             if (this.ingestReady) void this.acceptDurable(socket, control);
+          },
+          onGapStatus: (query) => {
+            if (!sameStream(authenticated, query.runId, query.sessionId)) return;
+            void this.answerGapStatus(socket, query);
           },
           // Heartbeats deliberately have no seq and bypass the WAL. They update
           // host liveness only; they never reach acceptDurable or the sniffers.
