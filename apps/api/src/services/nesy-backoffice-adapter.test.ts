@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildNesyCourierBundle } from '@nesy/nesy-courier-domain-pack'
 
 import { createNesyBackofficeAdapter, redact } from './nesy-backoffice-adapter.js'
-import { NESY_BACKOFFICE_ENDPOINTS, SCHEDULE_STATUS } from './nesy-backoffice-endpoints.js'
+import { MOBILE_APPROVAL_STATUS, NESY_BACKOFFICE_ENDPOINTS } from './nesy-backoffice-endpoints.js'
 import { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
@@ -34,16 +34,41 @@ describe('back-office endpoint map', () => {
     }
   })
 
-  it('narrows the approval status read to EndOfDayApproved only', () => {
-    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
-    expect(endpoint.body({})).toMatchObject({ ScheduleStatus: [SCHEDULE_STATUS.endOfDayApproved] })
+  it('approves tour requests through the mobile approval queue, not schedule end-of-day', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.approve-tour-request']!
+    expect(endpoint.path).toBe('Task/ValidateMobileApprovalRequests')
+    expect(endpoint.body({ approvalRequest: 'approval-1' })).toEqual({
+      UniqueIdentifier: 'approval-1',
+      Status: MOBILE_APPROVAL_STATUS.approved,
+    })
   })
 
-  it('reads the approval fact from the matching schedule, not from any schedule', () => {
+  it('narrows the approval status read to approved mobile approval requests only', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
+    expect(endpoint.path).toBe('Task/GetMobileApprovalRequests')
+    expect(endpoint.body({})).toEqual({ Status: MOBILE_APPROVAL_STATUS.approved })
+  })
+
+  it('sends AddUserIdToSchedule as the request model the backend service expects', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.seed-route-assignment']!
+    expect(endpoint.body({ scheduleId: 'schedule-1' })).toEqual({ ScheduleId: 'schedule-1' })
+  })
+
+  it('uses delivery proof, not shipment search, for delivery confirmation', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-delivery-status']!
+    expect(endpoint.path).toBe('Tracking/GetShipmentDeliveryProof')
+    expect(endpoint.confidence).toBe('SOURCE_VERIFIED')
+    expect(endpoint.body({ shipment: 'shipment-1' })).toEqual({ ShipmentIdList: ['shipment-1'] })
+    expect(endpoint.normalize!([{ ShipmentId: 'shipment-1' }], { shipment: 'shipment-1' })).toMatchObject({
+      delivery: { completed: true, status: 'PROOF_AVAILABLE', shipmentId: 'shipment-1' },
+    })
+  })
+
+  it('reads the approval fact from the matching mobile approval request, not from any request', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
     const payload = [
-      { ScheduleId: 'other', ScheduleStatus: SCHEDULE_STATUS.endOfDayApproved },
-      { ScheduleId: 'mine', ScheduleStatus: SCHEDULE_STATUS.endOfDayApproved },
+      { UniqueIdentifier: 'other', Status: MOBILE_APPROVAL_STATUS.approved },
+      { UniqueIdentifier: 'mine', Status: MOBILE_APPROVAL_STATUS.approved },
     ]
     expect(endpoint.normalize!(payload, { approvalRequest: 'mine' })).toMatchObject({
       approval: { statusIsApproved: true, approvalRequestCode: 'mine' },

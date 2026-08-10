@@ -1,26 +1,29 @@
 'use client'
-import { CampaignCell } from './CampaignCell'
+import { CampaignCell, type CampaignCellView } from './CampaignCell'
 
-export function CampaignMatrix({ cells }: { cells: any[] }) {
+export function CampaignMatrix({ cells }: { cells: CampaignCellView[] }) {
+  const devices = [...new Set(cells.map((cell) => String((cell as { deviceCell?: unknown }).deviceCell ?? 'unassigned')))]
+  const profiles = [...new Set(cells.map((cell) => String((cell as { profileKey?: unknown }).profileKey ?? 'profile')))]
+
+  if (cells.length === 0) {
+    return <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">No campaign cells yet.</div>
+  }
+
   return (
     <div className="border rounded-md overflow-hidden bg-background">
-      <div className="grid grid-cols-4 gap-px bg-border p-px">
+      <div className="grid gap-px bg-border p-px" style={{ gridTemplateColumns: `180px repeat(${Math.max(devices.length, 1)}, minmax(160px, 1fr))` }}>
         <div className="bg-muted p-2 font-medium text-sm flex items-center">Profile \\ Device</div>
-        <div className="bg-muted p-2 font-medium text-sm text-center">Pixel 7 (API 33)</div>
-        <div className="bg-muted p-2 font-medium text-sm text-center">Galaxy S23 (API 34)</div>
-        <div className="bg-muted p-2 font-medium text-sm text-center">iPhone 15 (iOS 17)</div>
-
-        {/* Demo row 1 */}
-        <div className="bg-background p-2 text-sm font-medium flex items-center">Smoke Suite</div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'PASS', evidenceRef: 'ev-1', runId: 'run-1' }} /></div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'PASS', evidenceRef: 'ev-2', runId: 'run-2' }} /></div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'NO_EVIDENCE' }} /></div>
-
-        {/* Demo row 2 */}
-        <div className="bg-background p-2 text-sm font-medium flex items-center">Auth Regression</div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'FAIL', evidenceRef: 'ev-3', runId: 'run-3' }} /></div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'BLOCKED', evidenceRef: 'ev-4', runId: 'run-4' }} /></div>
-        <div className="bg-background p-1"><CampaignCell cell={{ status: 'PASS', evidenceRef: 'ev-5', runId: 'run-5' }} /></div>
+        {devices.map((device) => <div key={device} className="bg-muted p-2 font-medium text-sm text-center">{device}</div>)}
+        {profiles.flatMap((profile) => [
+          <div key={`${profile}:label`} className="bg-background p-2 text-sm font-medium flex items-center">{profile}</div>,
+          ...devices.map((device) => {
+            const cell = cells.find((item) =>
+              String((item as { profileKey?: unknown }).profileKey ?? 'profile') === profile &&
+              String((item as { deviceCell?: unknown }).deviceCell ?? 'unassigned') === device,
+            )
+            return <div key={`${profile}:${device}`} className="bg-background p-1"><CampaignCell cell={cell ?? { status: 'NO_EVIDENCE' }} /></div>
+          }),
+        ])}
       </div>
     </div>
   )

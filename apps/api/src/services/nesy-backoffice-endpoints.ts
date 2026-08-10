@@ -9,7 +9,7 @@
  * every path below is a `[MessageHandler(ExposeToHttp = true)]` service method
  * reachable through the gateway's `/{service}/{topic}` route.
  *
- * Two operations are marked `INFERRED`. The backend has no endpoint that reads
+ * One operation is marked `INFERRED`. The backend has no endpoint that reads
  * exactly what the pack describes, so the closest honest observation is used and
  * labelled. An inferred mapping still proves something real — it just proves
  * slightly less than the operation's name suggests, and that difference must be
@@ -39,14 +39,12 @@ export interface BackofficeEndpoint {
   normalize?: (payload: unknown, inputs: Readonly<Record<string, unknown>>) => Record<string, unknown>
 }
 
-/** Schedule lifecycle states, from `ScheduleStatusType` in the backend. */
-export const SCHEDULE_STATUS = {
-  beginningOfDay: 0,
-  waitingForApproval: 1,
-  approved: 2,
-  endOfDay: 3,
-  endOfDayApproved: 4,
-  endOfDayRejected: 5,
+/** Mobile approval request states, from `MobileApprovalRequestsStatus`. */
+export const MOBILE_APPROVAL_STATUS = {
+  waiting: 0,
+  approved: 1,
+  rejected: 2,
+  all: 3,
 } as const
 
 function str(value: unknown): string {
@@ -63,12 +61,12 @@ function asArray(payload: unknown): unknown[] {
   return []
 }
 
-function scheduleMatching(payload: unknown, scheduleId: string): Record<string, unknown> | undefined {
+function approvalMatching(payload: unknown, uniqueIdentifier: string): Record<string, unknown> | undefined {
   return asArray(payload).find(
     (row) =>
       row !== null &&
       typeof row === 'object' &&
-      str((row as Record<string, unknown>)['ScheduleId']) === scheduleId,
+      str((row as Record<string, unknown>)['UniqueIdentifier']) === uniqueIdentifier,
   ) as Record<string, unknown> | undefined
 }
 
@@ -79,56 +77,49 @@ function scheduleMatching(payload: unknown, scheduleId: string): Record<string, 
  * this map fails closed rather than falling back to a guessed path.
  */
 export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoint>> = {
-  // ── Tour approval: `ScheduleStatusType` EndOfDay(3) → EndOfDayApproved(4) ──
+  // ── Tour approval: mobile approval queue, not schedule end-of-day ──
   'nesy.backoffice.approve-tour-request': {
-    path: 'Task/ApproveScheduleEndOfDay',
+    path: 'Task/ValidateMobileApprovalRequests',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'TaskService.ApproveScheduleEndOfDay takes ApproveScheduleEndOfDayRequest.ScheduleIdList and moves the schedule to EndOfDayApproved. This is the dispatcher action the courier waits on.',
-    body: (inputs) => ({ ScheduleIdList: [str(inputs['approvalRequest'])] }),
+      'TaskService.ValidateMobileApprovalRequests takes ValidateMobileApprovalRequestModel.UniqueIdentifier and Status. This approves the mobile approval request queue entry; schedule end-of-day is a separate flow.',
+    body: (inputs) => ({
+      UniqueIdentifier: str(inputs['approvalRequest']),
+      Status: MOBILE_APPROVAL_STATUS.approved,
+    }),
   },
 
   'nesy.backoffice.read-tour-approval-request': {
-    path: 'Task/GetBranchSchedulesByBranchId',
+    path: 'Task/GetMobileApprovalRequests',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'The end-of-day request IS the schedule row leaving BeginningOfDay. Filtering the branch schedules on the end-of-day states and matching ScheduleId proves the courier request created a record.',
-    body: (inputs) => ({
-      BranchId: Number(inputs['branchId'] ?? 0),
-      ScheduleStatus: [
-        SCHEDULE_STATUS.endOfDay,
-        SCHEDULE_STATUS.endOfDayApproved,
-        SCHEDULE_STATUS.endOfDayRejected,
-      ],
-    }),
+      'Reads the mobile approval queue for the hub. Matching UniqueIdentifier proves the courier request created an approval record.',
+    body: () => ({ Status: MOBILE_APPROVAL_STATUS.all }),
     normalize: (payload, inputs) => {
-      const schedule = scheduleMatching(payload, str(inputs['approvalRequest']))
+      const approval = approvalMatching(payload, str(inputs['approvalRequest']))
       return {
         request: {
-          exists: schedule !== undefined,
-          status: schedule === undefined ? null : schedule['ScheduleStatus'],
-          approvalRequestCode: schedule === undefined ? null : schedule['ScheduleId'],
+          exists: approval !== undefined,
+          status: approval === undefined ? null : approval['Status'],
+          approvalRequestCode: approval === undefined ? null : approval['UniqueIdentifier'],
         },
       }
     },
   },
 
   'nesy.backoffice.read-tour-approval-status': {
-    path: 'Task/GetBranchSchedulesByBranchId',
+    path: 'Task/GetMobileApprovalRequests',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'Same read, narrowed to EndOfDayApproved(4). The record being present under this filter is the approval itself, not an acknowledgement that an approval call was accepted.',
-    body: (inputs) => ({
-      BranchId: Number(inputs['branchId'] ?? 0),
-      ScheduleStatus: [SCHEDULE_STATUS.endOfDayApproved],
-    }),
+      'Reads approved mobile approval queue entries and matches UniqueIdentifier. This is distinct from schedule EndOfDayApproved.',
+    body: () => ({ Status: MOBILE_APPROVAL_STATUS.approved }),
     normalize: (payload, inputs) => {
-      const schedule = scheduleMatching(payload, str(inputs['approvalRequest']))
+      const approval = approvalMatching(payload, str(inputs['approvalRequest']))
       return {
         approval: {
-          statusIsApproved: schedule !== undefined,
-          status: schedule === undefined ? null : schedule['ScheduleStatus'],
-          approvalRequestCode: schedule === undefined ? null : schedule['ScheduleId'],
+          statusIsApproved: approval !== undefined,
+          status: approval === undefined ? null : approval['Status'],
+          approvalRequestCode: approval === undefined ? null : approval['UniqueIdentifier'],
         },
       }
     },
@@ -156,8 +147,8 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     path: 'Task/AddUserIdToSchedule',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'Writes CourierUserId/CourierName onto the schedule. Body is a bare scheduleId string, not a model — TaskOperation.AddUserIdToSchedule(string scheduleId).',
-    body: (inputs) => str(inputs['scheduleId'] ?? inputs['route']),
+      'TaskService.AddUserIdToSchedule reads AddUserIdToScheduleRequest.ScheduleId, then TaskOperation.AddUserIdToSchedule writes CourierUserId/CourierName from the bearer token.',
+    body: (inputs) => ({ ScheduleId: str(inputs['scheduleId'] ?? inputs['route']) }),
   },
 
   'nesy.backoffice.release-route-assignment': {
@@ -195,24 +186,25 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
   },
 
   'nesy.backoffice.read-delivery-status': {
-    path: 'Shipment/SearchShipment',
-    confidence: 'INFERRED',
+    path: 'Tracking/GetShipmentDeliveryProof',
+    confidence: 'SOURCE_VERIFIED',
     rationale:
-      'Returns the shipment record with its status, correlated by barcode. Tracking/GetShipmentDeliveryProof is the stronger source if proof-of-delivery rather than status is what the oracle should require.',
-    body: (inputs) => ({ Barcode: str(inputs['shipment'] ?? inputs['barcode']) }),
+      'TrackingService.GetShipmentDeliveryProof exposes the proof-of-delivery event log by ShipmentIdList. This is stronger than Shipment/SearchShipment status and matches the delivery confirmation oracle.',
+    body: (inputs) => ({ ShipmentIdList: [str(inputs['shipment'] ?? inputs['shipmentId'] ?? inputs['barcode'])] }),
     normalize: (payload, inputs) => {
-      const barcode = str(inputs['shipment'] ?? inputs['barcode'])
+      const shipmentId = str(inputs['shipment'] ?? inputs['shipmentId'] ?? inputs['barcode'])
       const row = asArray(payload).find(
         (candidate) =>
           candidate !== null &&
           typeof candidate === 'object' &&
-          str((candidate as Record<string, unknown>)['Barcode']) === barcode,
+          (str((candidate as Record<string, unknown>)['ShipmentId']) === shipmentId ||
+            str((candidate as Record<string, unknown>)['Barcode']) === shipmentId),
       ) as Record<string, unknown> | undefined
       return {
         delivery: {
-          recorded: row !== undefined,
-          status: row?.['ShipmentStatus'] ?? null,
-          barcode: row?.['Barcode'] ?? null,
+          completed: row !== undefined,
+          status: row === undefined ? null : 'PROOF_AVAILABLE',
+          shipmentId: row?.['ShipmentId'] ?? shipmentId,
         },
       }
     },

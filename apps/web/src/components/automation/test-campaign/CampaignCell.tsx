@@ -2,9 +2,23 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@nesy/metronic/components/ui/tooltip'
 import Link from 'next/link'
 
-export function CampaignCell({ cell }: { cell: any }) {
-  const hasEvidence = !!cell.evidenceRef
-  const status = cell.status || 'NO_EVIDENCE'
+export interface CampaignCellView {
+  cellKey?: string
+  runId?: string
+  runIds?: string[]
+  runDetailPath?: string
+  evidenceRef?: string
+  evidenceSummaryRef?: string
+  result?: string
+  status?: string
+  blockedReason?: string
+}
+
+export function CampaignCell({ cell }: { cell: CampaignCellView }) {
+  const runId = cell.runId ?? cell.runIds?.[0]
+  const evidenceRef = cell.evidenceRef ?? cell.evidenceSummaryRef
+  const hasEvidence = Boolean(evidenceRef && runId)
+  const status = cell.result ?? cell.status ?? 'NO_EVIDENCE'
   
   if (!hasEvidence) {
     return (
@@ -28,13 +42,13 @@ export function CampaignCell({ cell }: { cell: any }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link href={`/automation/dummy/runs/${cell.runId}`} className={`block w-full h-full min-h-[40px] rounded border ${color} flex flex-col items-center justify-center p-1 hover:brightness-95 transition-all`}>
+          <Link href={cell.runDetailPath ?? `/automation/dummy/runs/${runId}`} className={`block w-full h-full min-h-[40px] rounded border ${color} flex flex-col items-center justify-center p-1 hover:brightness-95 transition-all`}>
             <span className="text-xs font-bold">{status}</span>
           </Link>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Run: {cell.runId}</p>
-          <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {cell.evidenceRef}</p>
+          <p>Run: {runId}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-1">Ref: {evidenceRef}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
