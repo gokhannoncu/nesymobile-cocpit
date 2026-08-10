@@ -26,25 +26,33 @@ export interface DeviceReadinessSnapshot {
   partial: boolean
 }
 
+export interface DeviceReadinessOptions {
+  appId?: string
+}
+
 export class DeviceReadinessService {
   constructor(
     private readonly admission: DeviceCommandAdmission,
     private readonly probes: DeviceReadinessProbes = {},
   ) {}
 
-  async get(deviceId: string): Promise<DeviceReadinessSnapshot> {
+  async get(deviceId: string, options: DeviceReadinessOptions = {}): Promise<DeviceReadinessSnapshot> {
     const admission = await this.admission.snapshot(deviceId)
+    const context: DeviceReadinessProbeContext = {
+      deviceId,
+      appId: options.appId?.trim() || undefined,
+    }
     const lanes: DeviceLaneHealth[] = [
-      await lane('ADB', deviceId, this.probes.adb),
-      await lane('SDK_CONTROL', deviceId, this.probes.sdkControl),
-      await lane('SDK_EVENT_AUTH', deviceId, this.probes.sdkEventAuth),
-      await lane('DURABLE_INGEST', deviceId, this.probes.durableIngest),
-      await lane('BRIDGE', deviceId, this.probes.bridge),
-      await lane('BACKEND_CREDENTIALS', deviceId, this.probes.backendCredentials),
-      await lane('LOCAL_DB', deviceId, this.probes.localDb),
-      await lane('ACTIVE_RUN', deviceId, this.probes.activeRun),
-      await lane('RECEIPT_BUS', deviceId, this.probes.receiptBus),
-      await lane('ORDERED_BUS', deviceId, this.probes.orderedBus),
+      await lane('ADB', context, this.probes.adb),
+      await lane('SDK_CONTROL', context, this.probes.sdkControl),
+      await lane('SDK_EVENT_AUTH', context, this.probes.sdkEventAuth),
+      await lane('DURABLE_INGEST', context, this.probes.durableIngest),
+      await lane('BRIDGE', context, this.probes.bridge),
+      await lane('BACKEND_CREDENTIALS', context, this.probes.backendCredentials),
+      await lane('LOCAL_DB', context, this.probes.localDb),
+      await lane('ACTIVE_RUN', context, this.probes.activeRun),
+      await lane('RECEIPT_BUS', context, this.probes.receiptBus),
+      await lane('ORDERED_BUS', context, this.probes.orderedBus),
     ]
     if (admission.blockedReason) {
       lanes.push({
@@ -102,7 +110,13 @@ export class DeviceReadinessService {
  */
 export type DeviceReadinessProbe = (
   deviceId: string,
+  context?: DeviceReadinessProbeContext,
 ) => ReadinessStatus | Promise<ReadinessStatus>
+
+export interface DeviceReadinessProbeContext {
+  deviceId: string
+  appId?: string
+}
 
 export interface DeviceReadinessProbes {
   adb?: DeviceReadinessProbe
@@ -119,7 +133,7 @@ export interface DeviceReadinessProbes {
 
 async function lane(
   name: string,
-  deviceId: string,
+  context: DeviceReadinessProbeContext,
   probe?: DeviceReadinessProbe,
 ): Promise<DeviceLaneHealth> {
   if (probe === undefined) {
@@ -131,7 +145,7 @@ async function lane(
     }
   }
   try {
-    return { lane: name, status: await probe(deviceId) }
+    return { lane: name, status: await probe(context.deviceId, context) }
   } catch (error) {
     // A probe that throws is not evidence of health.
     return {

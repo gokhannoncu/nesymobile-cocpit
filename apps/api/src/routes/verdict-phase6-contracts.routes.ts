@@ -117,12 +117,16 @@ async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGR
   }
 }
 
-async function probeSdkControl(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
+async function probeSdkControl(
+  deviceId: string,
+  context?: { appId?: string },
+): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
   const adb = await probeAdbLane(deviceId)
   if (adb === 'DOWN') return 'DOWN'
+  const appId = context?.appId?.trim() || process.env.NESY_MOBILE_APP_ID?.trim() || 'com.nesy.courier'
   const state = await getDeviceBridgeState(
     deviceId,
-    process.env.NESY_MOBILE_APP_ID?.trim() || 'com.nesy.courier',
+    appId,
   )
   return state === null ? 'DOWN' : 'UP'
 }

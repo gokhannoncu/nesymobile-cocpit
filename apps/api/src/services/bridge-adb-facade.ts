@@ -13,6 +13,7 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { getAdbPathHint, resolveAdbPath } from "@nesy/platform-paths";
 
 import type { AdbFacade, BridgeDeviceCapabilitySnapshot, DeviceGatePolicy } from "./bridge-device-gate.js";
 
@@ -20,7 +21,11 @@ const execFileAsync = promisify(execFile);
 
 /** `adb` yolu — PATH'te olmayabilir; platform-paths ipucunu da dener. */
 function adbBinary(): string {
-  return process.env.ADB_PATH ?? "adb";
+  const resolved = resolveAdbPath();
+  if (resolved === null) {
+    throw new Error(`adb binary not found. ${getAdbPathHint()}`);
+  }
+  return resolved;
 }
 
 async function adb(args: string[], timeoutMs = 10_000): Promise<string> {

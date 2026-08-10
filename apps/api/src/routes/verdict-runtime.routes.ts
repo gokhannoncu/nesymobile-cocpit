@@ -73,8 +73,13 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
       __phase6ContractSingletons.domainPackReads.listRunTargetResolutions(request.params.runId),
   )
 
-  app.get<{ Params: { deviceId: string } }>('/runtime/devices/:deviceId/readiness', async (request) =>
-    __phase6ContractSingletons.deviceReadiness.get(request.params.deviceId),
+  app.get<{
+    Params: { deviceId: string }
+    Querystring: { appId?: string }
+  }>('/runtime/devices/:deviceId/readiness', async (request) =>
+    __phase6ContractSingletons.deviceReadiness.get(request.params.deviceId, {
+      appId: request.query.appId,
+    }),
   )
 
   app.get<{ Querystring: { limit?: string } }>('/runtime/catalog/workflows', async (request, reply) => {

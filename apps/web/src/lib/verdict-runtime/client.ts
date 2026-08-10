@@ -163,8 +163,11 @@ export async function startVerdictWorkflowRun(body: Record<string, unknown>): Pr
   return postJson<WorkflowRunStartApi>('/verdict/runtime/runs', body)
 }
 
-export async function fetchVerdictDeviceReadiness(deviceId: string): Promise<DeviceReadinessApi> {
-  return getJson<DeviceReadinessApi>(`/verdict/runtime/devices/${encodeURIComponent(deviceId)}/readiness`)
+export async function fetchVerdictDeviceReadiness(deviceId: string, appId?: string): Promise<DeviceReadinessApi> {
+  const params = new URLSearchParams()
+  if (appId !== undefined && appId.trim() !== '') params.set('appId', appId.trim())
+  const query = params.size > 0 ? `?${params.toString()}` : ''
+  return getJson<DeviceReadinessApi>(`/verdict/runtime/devices/${encodeURIComponent(deviceId)}/readiness${query}`)
 }
 
 export async function fetchVerdictTestProfiles(): Promise<TestProfileCatalogApi> {
