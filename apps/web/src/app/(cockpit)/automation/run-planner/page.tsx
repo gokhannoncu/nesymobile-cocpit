@@ -1,16 +1,19 @@
 import {
   fetchVerdictDomainPacks,
+  fetchVerdictRunHistory,
   fetchVerdictTestProfiles,
   fetchVerdictWorkflowCatalog,
 } from '@/lib/verdict-runtime/client'
+import { RunPlannerWorkspace } from './RunPlannerWorkspace'
 
 export default async function RunPlannerPage() {
-  let workflows, packs, profiles
+  let workflows, packs, profiles, runs
   try {
-    ;[workflows, packs, profiles] = await Promise.all([
+    ;[workflows, packs, profiles, runs] = await Promise.all([
       fetchVerdictWorkflowCatalog(100),
       fetchVerdictDomainPacks(),
       fetchVerdictTestProfiles(),
+      fetchVerdictRunHistory({ limit: 50, engineType: 'BRIDGEFLOW' }),
     ])
   } catch (error) {
     return <RuntimeError title="Run Planner unavailable" error={error} />
@@ -38,6 +41,8 @@ export default async function RunPlannerPage() {
         <Metric label="Published Packs" value={publishedPacks.length} />
         <Metric label="Release Profiles" value={releaseProfiles.length} />
       </section>
+
+      <RunPlannerWorkspace workflows={workflows} packs={packs} profiles={profiles} runs={runs} />
 
       <section className="rounded-xl border bg-card p-5">
         <h2 className="text-sm font-semibold">Planner Readiness</h2>

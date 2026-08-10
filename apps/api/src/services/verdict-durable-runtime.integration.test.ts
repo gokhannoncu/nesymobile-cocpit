@@ -14,9 +14,8 @@
  *  - the DISTINCT restart scans over the pending predicates,
  *  - `bigint` seq round-tripping past 2^53.
  *
- *  Requires `VERDICT_DB_IT=1` and a reachable `DATABASE_URL`. Without both the
- *  suite is SKIPPED, never passed: a green run must never be readable as "the
- *  SQL was verified" when nothing connected.
+ *  Requires a reachable `DATABASE_URL`. Without it the suite fails before any
+ *  assertion, so a green run always means the SQL path was exercised.
  *
  *  Every row is namespaced by a unique run id and removed in `afterAll`, so it
  *  is safe against a shared database — but note that a shared database is still
@@ -37,9 +36,9 @@ import {
 import { DurableReceiptBus } from "./verdict-receipt-bus.js";
 import { OrderedEvidenceBus } from "./verdict-ordered-evidence-bus.js";
 import { VerdictDurableRuntime } from "./verdict-wait-event.js";
+import { requireDatabaseUrlForIntegration } from "./db-integration-env.js";
 
-const ENABLED = process.env.VERDICT_DB_IT === "1" && Boolean(process.env.DATABASE_URL);
-const suite = ENABLED ? describe : describe.skip;
+requireDatabaseUrlForIntegration();
 
 /** Unique per process so concurrent executions cannot collide. */
 const RUN = `dr-it-${process.pid}-${process.hrtime.bigint().toString(36)}`;
@@ -104,7 +103,7 @@ function buildLanes() {
   };
 }
 
-suite("durable runtime against PostgreSQL", () => {
+describe("durable runtime against PostgreSQL", () => {
   beforeAll(cleanup);
   afterAll(cleanup);
 

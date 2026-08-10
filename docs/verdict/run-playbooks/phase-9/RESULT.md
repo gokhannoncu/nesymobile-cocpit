@@ -79,6 +79,8 @@ now real, and the lanes that are still open are named rather than implied.
 | `apps/api/src/services/bridgeflow-execution-queue.ts` | set_run bootstrap + remote runtime attempt store | establish SDK run session and execute remote actions |
 | `apps/api/src/services/run-secret-registry.ts` | new | run secret issue/verify/counter-signature |
 | `apps/api/src/services/test-event-bridge.ts` / `test-event-ws-server.ts` | shared secret + authenticated WS gate | pre-auth evidence rejected; frames scoped by run/session |
+| `apps/api/src/services/*integration.test.ts` + `db-integration-env.ts` | DB-backed integration tests mandatory | removed `VERDICT_DB_IT` skip gate; load only `DATABASE_URL` fallback |
+| `packages/db/src/index.ts` | DATABASE_URL fallback | Prisma client can see `apps/api/.env` without loading unrelated secrets |
 
 ## 5. Verification results
 
@@ -102,7 +104,10 @@ pnpm --filter @nesy/api exec vitest run src/services/run-secret-registry.test.ts
 → 5 files / 44 tests PASS
 
 pnpm --filter @nesy/api test
-→ 49 files / 438 tests PASS; 3 files / 38 DB-backed integration tests skipped
+→ prior unit suite PASS; DB-backed integration tests are no longer skipped
+
+pnpm --filter @nesy/api exec vitest run src/services/verdict-ingest.integration.test.ts src/services/verdict-durable-runtime.integration.test.ts src/services/test-event-ws-server.integration.test.ts
+→ 3 files / 37 tests PASS against PostgreSQL
 ```
 
 ## 6. Blockers
@@ -114,6 +119,7 @@ pnpm --filter @nesy/api test
 | SDK_QUERY_LANE_ABSENT | HIGH | `RESOLVED_CODE` | `SDK_QUERY` now maps to Verdict control `sql_named` and stores output variables for later steps. | Run against automation build with App Adapter named-query capability. |
 | EVIDENCE_PRODUCER_ABSENT | HIGH | `RESOLVED_CODE` | Durable WS receipt/ordered evidence producer publishes into `BridgeFlowEvidenceRuntime` after authenticated run/session match. | Run DB-backed ingest integration with migrations applied. |
 | PLAN_STORE_IN_MEMORY | HIGH | `RESOLVED_CODE` | Compiled plans now persist in `verdict_compiled_plan` and are fetched by planRef + planHash. | Deploy migration before multi-process runs. |
+| DB_BACKED_INTEGRATION_UNREACHABLE | HIGH | `RESOLVED` | DB-backed integration tests are mandatory and now pass against PostgreSQL. | Keep these three files in required CI, not skipped. |
 | CROSS_REPO_HMAC_ACCEPTANCE | MEDIUM | `OPEN_EXTERNAL` | Host HMAC canonical implementation added; bit-identical mobile fixture/DUT test still must run in `/NesyMobile`. | Run mobile fixture + physical SDK WS auth acceptance. |
 
 ## 7. Final readiness

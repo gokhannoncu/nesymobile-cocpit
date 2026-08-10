@@ -10,9 +10,9 @@ export default async function ComponentRegistryPage() {
   const rows: { packKey: string; key: string; title: string; kind: string }[] = []
   for (const pack of packs.items.filter((item) => item.publicationState === 'PUBLISHED')) {
     const detail = await fetchVerdictDomainPack(pack.packKey, pack.version)
-    for (const screen of detail.screens) rows.push({ packKey: pack.packKey, key: String(screen.screenKey), title: String(screen.displayName ?? screen.screenKey), kind: 'SCREEN' })
-    for (const surface of detail.surfaces) rows.push({ packKey: pack.packKey, key: String(surface.surfaceKey), title: String(surface.displayName ?? surface.surfaceKey), kind: 'SURFACE' })
-    for (const target of detail.targets) rows.push({ packKey: pack.packKey, key: String(target.targetKey), title: String(target.displayName ?? target.targetKey), kind: 'TARGET' })
+    for (const screen of detail.screens ?? []) rows.push({ packKey: pack.packKey, key: String(screen.screenKey), title: String(screen.displayName ?? screen.screenKey), kind: 'SCREEN' })
+    for (const surface of detail.surfaces ?? []) rows.push({ packKey: pack.packKey, key: String(surface.surfaceKey), title: String(surface.displayName ?? surface.surfaceKey), kind: 'SURFACE' })
+    for (const target of detail.targets ?? []) rows.push({ packKey: pack.packKey, key: String(target.targetKey), title: String(target.displayName ?? target.targetKey), kind: 'TARGET' })
   }
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-8">

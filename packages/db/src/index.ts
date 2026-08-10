@@ -1,4 +1,15 @@
 ﻿import { PrismaClient } from "@prisma/client";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+if (!process.env.DATABASE_URL?.trim()) {
+  const apiEnvPath = resolve(process.cwd(), "../../apps/api/.env");
+  if (existsSync(apiEnvPath)) {
+    const match = /^DATABASE_URL=(.*)$/m.exec(readFileSync(apiEnvPath, "utf8"));
+    const raw = match?.[1]?.trim();
+    if (raw) process.env.DATABASE_URL = raw.replace(/^["']|["']$/g, "");
+  }
+}
 
 declare global {
   var __prisma__: PrismaClient | undefined;

@@ -179,6 +179,10 @@ export async function fetchVerdictTestCampaign(campaignId: string): Promise<Test
   return getJson<TestCampaignResultApi>(`/verdict/runtime/test-campaigns/${encodeURIComponent(campaignId)}`)
 }
 
+export async function startVerdictTestCampaign(body: Record<string, unknown>): Promise<{ campaign: TestCampaignResultApi | null }> {
+  return postJson<{ campaign: TestCampaignResultApi | null }>('/verdict/runtime/test-campaigns', body)
+}
+
 export async function fetchVerdictInteractions(
   runId: string,
   afterRevision = 0,

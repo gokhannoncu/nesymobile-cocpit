@@ -8,9 +8,8 @@
  *  `pg_try_advisory_lock`. Those are exactly the places where code that looks
  *  right does the wrong thing, so they get exercised for real.
  *
- *  Requires `VERDICT_DB_IT=1` and a reachable `DATABASE_URL`. Without them the
- *  suite is SKIPPED, not passed — it must never look like the SQL was verified
- *  when nothing connected.
+ *  Requires a reachable `DATABASE_URL`. Without it the suite fails before any
+ *  assertion, so a green run always means the SQL path was exercised.
  *
  *  Every row it writes is namespaced by a unique run id and removed in
  *  `afterAll`, so it is safe against a shared database.
@@ -20,9 +19,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@nesy/db";
 import { ingestFrame, type IngestFrame } from "./verdict-ingest.js";
 import { runFanoutOnce, type InboxRow } from "./verdict-fanout.js";
+import { requireDatabaseUrlForIntegration } from "./db-integration-env.js";
 
-const ENABLED = process.env.VERDICT_DB_IT === "1" && Boolean(process.env.DATABASE_URL);
-const suite = ENABLED ? describe : describe.skip;
+requireDatabaseUrlForIntegration();
 
 /** Unique per run so concurrent executions cannot collide on a shared DB. */
 const RUN = `it-${process.pid}-${process.hrtime.bigint().toString(36)}`;
@@ -55,7 +54,7 @@ async function cursor(): Promise<{ contiguous: bigint; pending: bigint[]; rescan
   return { contiguous: r.contiguous_seq, pending: r.pending_above, rescans: r.full_rescan_count };
 }
 
-suite("verdict ingest against PostgreSQL", () => {
+describe("verdict ingest against PostgreSQL", () => {
   beforeAll(async () => {
     await prisma.$executeRaw`DELETE FROM verdict_inbox  WHERE run_id = ${RUN}`;
     await prisma.$executeRaw`DELETE FROM verdict_gap    WHERE run_id = ${RUN}`;

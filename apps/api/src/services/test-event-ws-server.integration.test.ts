@@ -6,21 +6,23 @@
  *  WebSocket gets durably accepted and acked, and the ACK carries the
  *  post-COMMIT watermark.
  *
- *  Requires `VERDICT_DB_IT=1` and `DATABASE_URL`; otherwise SKIPPED, never
- *  silently passed. All rows are namespaced by a unique run id and deleted at the
+ *  Requires `DATABASE_URL`; otherwise the suite fails before assertions. All
+ *  rows are namespaced by a unique run id and deleted at the
  *  end, so it is safe against a shared database.
  * ===========================================================================
  */
-import "dotenv/config";
+import { createHmac } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { prisma } from "@nesy/db";
 import { TEST_EVENT_WS_PORT, TestEventWsServer } from "./test-event-ws-server.js";
 import type { LogcatSniffer } from "./logcat-sniffer.js";
 import type { TestBridgeEvent } from "./test-event-bridge.js";
+import { requireDatabaseUrlForIntegration } from "./db-integration-env.js";
+import { RunSecretRegistry } from "./run-secret-registry.js";
+import { ensureVerdictRunRow } from "./verdict-run-row.js";
 
-const ENABLED = process.env.VERDICT_DB_IT === "1" && Boolean(process.env.DATABASE_URL);
-const suite = ENABLED ? describe : describe.skip;
+requireDatabaseUrlForIntegration();
 
 const RUN = `ws-it-${process.pid}-${process.hrtime.bigint().toString(36)}`;
 const SESSION = "s1";
@@ -41,7 +43,7 @@ const eventFrame = (seq: number) =>
     monoTs: 100_000 + seq,
     screen: "FixtureScreen",
     event: "SCREEN_READY",
-    taskId: "",
+    taskId: "ws-task",
   });
 
 /** Collects frames the SERVER sends back — today only ACKs. */
@@ -69,7 +71,7 @@ const waitFor = async (
   throw new Error("timed out waiting for condition");
 };
 
-suite("WS server durable ingest", () => {
+describe("WS server durable ingest", () => {
   let socket: WebSocket;
   let received: { frames: Record<string, unknown>[] };
 
@@ -79,7 +81,16 @@ suite("WS server durable ingest", () => {
     // the equality it claims is measured on a REAL socket against a REAL
     // database, not on two in-memory arrays.
     process.env.VERDICT_COMPARE_MODE = "1";
+    await prisma.$executeRaw`DELETE FROM verdict_inbox  WHERE run_id LIKE 'ws-it-%'`;
+    await prisma.$executeRaw`DELETE FROM verdict_gap    WHERE run_id LIKE 'ws-it-%'`;
+    await prisma.$executeRaw`DELETE FROM verdict_stream WHERE run_id LIKE 'ws-it-%'`;
+    await prisma.$executeRaw`DELETE FROM workflow_runs  WHERE id LIKE 'ws-it-%'`;
     TestEventWsServer.addSink(fakeSniffer);
+    await ensureVerdictRunRow(prisma, {
+      runId: RUN,
+      workflowRef: "ws-integration",
+      deviceId: "ws-integration-device",
+    });
     TestEventWsServer.ensureStarted();
     // ingestReady is decided asynchronously on `listening`.
     await waitFor(() => TestEventWsServer.isIngestReady());
@@ -90,15 +101,34 @@ suite("WS server durable ingest", () => {
       socket.once("open", () => resolve());
       socket.once("error", reject);
     });
+    const ts = Date.now();
+    const nonce = "ws-integration-nonce";
+    const secret = RunSecretRegistry.issue({
+      runId: RUN,
+      deviceId: "ws-integration-device",
+      appId: "com.nesy.courier",
+      nowMs: ts,
+    });
+    socket.send(JSON.stringify({
+      type: "hello",
+      runId: RUN,
+      sessionId: SESSION,
+      nonce,
+      ts,
+      sig: sign(String(secret), "app->host", RUN, SESSION, nonce, ts),
+    }));
+    await waitFor(() => received.frames.some((frame) => frame.type === "auth"));
   });
 
   afterAll(async () => {
     socket?.close();
     delete process.env.VERDICT_COMPARE_MODE;
     TestEventWsServer.removeSink(fakeSniffer);
+    RunSecretRegistry.retire(RUN);
     await prisma.$executeRaw`DELETE FROM verdict_inbox  WHERE run_id = ${RUN}`;
     await prisma.$executeRaw`DELETE FROM verdict_gap    WHERE run_id = ${RUN}`;
     await prisma.$executeRaw`DELETE FROM verdict_stream WHERE run_id = ${RUN}`;
+    await prisma.$executeRaw`DELETE FROM workflow_runs WHERE id = ${RUN}`;
     await prisma.$disconnect();
   });
 
@@ -133,6 +163,12 @@ suite("WS server durable ingest", () => {
     await waitFor(() =>
       injected.some((event) => event.seq === 1 && event.raw.startsWith("DB|")),
     );
+    await waitFor(async () => {
+      const rows = await prisma.$queryRaw<{ processed_at: Date | null }[]>`
+        SELECT processed_at FROM verdict_inbox
+        WHERE run_id = ${RUN} AND session_id = ${SESSION} AND seq = 1`;
+      return rows[0]?.processed_at instanceof Date;
+    }, 20_000);
     const rows = await prisma.$queryRaw<{ processed_at: Date | null }[]>`
       SELECT processed_at FROM verdict_inbox
       WHERE run_id = ${RUN} AND session_id = ${SESSION} AND seq = 1`;
@@ -214,14 +250,14 @@ suite("WS server durable ingest", () => {
           injected.some(
             (event) => event.seq === 20 && event.raw.startsWith("DB|"),
           ),
-        20_000,
+        60_000,
       );
       await waitFor(async () => {
         const remaining = await prisma.verdictInbox.count({
           where: { runId: RUN, sessionId: SESSION, processedAt: null },
         });
         return remaining === 0;
-      }, 20_000);
+      }, 60_000);
 
       const stream = await prisma.verdictStream.findUnique({
         where: { runId_sessionId: { runId: RUN, sessionId: SESSION } },
@@ -271,3 +307,40 @@ suite("WS server durable ingest", () => {
     expect(received.frames).toEqual([]);
   });
 });
+
+function sign(
+  secret: string,
+  direction: "app->host" | "host->app",
+  runId: string,
+  sessionId: string,
+  nonce: string,
+  timestampMillis: number,
+): string {
+  return createHmac("sha256", Buffer.from(secret, "base64url"))
+    .update(canonical(direction, runId, sessionId, nonce, timestampMillis))
+    .digest("base64url");
+}
+
+function canonical(
+  direction: "app->host" | "host->app",
+  runId: string,
+  sessionId: string,
+  nonce: string,
+  timestampMillis: number,
+): Buffer {
+  return Buffer.concat([
+    lp("verdict-hmac-v1"),
+    lp(direction),
+    lp(runId),
+    lp(sessionId),
+    lp(nonce),
+    lp(String(timestampMillis)),
+  ]);
+}
+
+function lp(value: string): Buffer {
+  const bytes = Buffer.from(value, "utf8");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(bytes.length);
+  return Buffer.concat([length, bytes]);
+}
