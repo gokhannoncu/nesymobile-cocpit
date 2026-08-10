@@ -112,9 +112,15 @@ export class BridgeWaitRuntime {
 
     try {
       if (strategy.kind === "SINGLE_WAIT_ANY") {
-        // Bugün ulaşılamaz (cihazda komut yok). Cihaz öğrendiğinde tek
-        // değişiklik burada olacak; çağıran arayüzü aynı kalır.
-        throw new Error("device reports wait_any support but protocol v1 has no such command");
+        // Reachable only if someone flips HOST_SUPPORTS_WAIT_ANY before writing
+        // this branch. The old comment claimed this was unreachable "because the
+        // device has no such command"; the device shipped it, `planWaitExecution`
+        // routed here on capability alone, and every wait on a real device died
+        // at once. The gate now lives in HOST_SUPPORTS_WAIT_ANY.
+        throw new Error(
+          "HOST_SUPPORTS_WAIT_ANY is on but BridgeWaitRuntime has no wait_any path; " +
+            "implement the single-command branch or turn the flag back off",
+        );
       }
 
       const legs = strategy.legs.map(async (leg): Promise<LegOutcome> => {

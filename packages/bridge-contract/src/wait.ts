@@ -91,6 +91,19 @@ export interface UiWaitPlan {
 export const DEFAULT_WAIT_CANDIDATE_LIMIT = 8;
 
 /**
+ * Does the HOST implement the single `wait_any` command yet.
+ *
+ * The device has shipped it (`supportsWaitAny: true`, `handleWaitAny` with
+ * MATCHED / TIMEOUT / CANCELLED / AMBIGUOUS), but `BridgeWaitRuntime` still has
+ * only the raced `wait_node` path; its `SINGLE_WAIT_ANY` branch throws.
+ *
+ * This flag exists so that gap is stated in ONE place instead of being implied by
+ * a stale comment. Flip it to `true` in the same change that implements the
+ * branch — never before, or waits go back to failing on contact with a device.
+ */
+export const HOST_SUPPORTS_WAIT_ANY = false;
+
+/**
  * `wait_any` sonucu.
  *
  * `AMBIGUOUS` ve `TIMEOUT` ayrı: birincisi "birden fazla eşleşme var, hangisi
@@ -220,9 +233,15 @@ export type WaitExecutionStrategy =
 export function planWaitExecution(
   plan: UiWaitPlan,
   capabilities: { supportsWaitAny: boolean },
+  hostSupportsWaitAny: boolean = HOST_SUPPORTS_WAIT_ANY,
 ): WaitExecutionStrategy {
   const timeoutMs = clampWaitTimeoutMs(plan.timeoutMs);
-  if (capabilities.supportsWaitAny) {
+  // BOTH sides have to support it. Selecting on the device's capability alone was
+  // a one-way bet on the host catching up first, and it lost: real devices report
+  // `supportsWaitAny: true`, so every wait on a modern device routed into a host
+  // branch that only throws — the run died at its first wait with
+  // "device reports wait_any support but protocol v1 has no such command".
+  if (capabilities.supportsWaitAny && hostSupportsWaitAny) {
     return { kind: "SINGLE_WAIT_ANY", timeoutMs };
   }
   return {

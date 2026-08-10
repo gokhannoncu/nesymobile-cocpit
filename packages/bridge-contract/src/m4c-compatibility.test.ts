@@ -77,6 +77,10 @@ describe("M4C pack/adapter/bridge compatibility fixtures", () => {
         },
       ],
     };
-    expect(planWaitExecution(plan, manifest).kind).toBe("SINGLE_WAIT_ANY");
+    // The device half of the negotiation: with the host side implemented, an M4C
+    // manifest is enough to collapse the plan to one command. The shipped default
+    // still races wait_node, because only the host is behind.
+    expect(planWaitExecution(plan, manifest, true).kind).toBe("SINGLE_WAIT_ANY");
+    expect(planWaitExecution(plan, manifest).kind).toBe("RACED_WAIT_NODE");
   });
 });

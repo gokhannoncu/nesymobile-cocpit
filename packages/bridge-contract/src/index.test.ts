@@ -54,6 +54,7 @@ import {
   mayAutoRetry,
   looksLikeMillisecondEpoch,
   monotonicRunEpoch,
+  HOST_SUPPORTS_WAIT_ANY,
   planWaitExecution,
   redactForLog,
   validateWaitPlan,
@@ -598,12 +599,21 @@ describe("wait plan", () => {
     expect(strategy.legs[1]).toMatchObject({ key: "route", isInterrupt: false });
   });
 
-  it("collapses to a single wait_any when the device advertises it (Mobile M3+)", () => {
+  it("collapses to a single wait_any only when the host implements it too", () => {
     // Çağıran arayüzü değişmeden tek komuta inebilmeli.
-    const strategy = planWaitExecution(plan, { supportsWaitAny: true });
+    const strategy = planWaitExecution(plan, { supportsWaitAny: true }, true);
     expect(strategy.kind).toBe("SINGLE_WAIT_ANY");
-    // Default modern baseline also collapses.
-    expect(planWaitExecution(plan, deriveCapabilityManifest(1)).kind).toBe("SINGLE_WAIT_ANY");
+    // Default modern baseline also collapses once the host side is in.
+    expect(planWaitExecution(plan, deriveCapabilityManifest(1), true).kind).toBe("SINGLE_WAIT_ANY");
+  });
+
+  it("keeps racing wait_node while the host has no wait_any path", () => {
+    // Selecting on the device capability alone sent every wait on a real device
+    // into a host branch that only throws, killing the run at its first wait.
+    expect(planWaitExecution(plan, { supportsWaitAny: true }, false).kind).toBe("RACED_WAIT_NODE");
+    // And the shipped default must be the safe one until the branch exists.
+    expect(HOST_SUPPORTS_WAIT_ANY).toBe(false);
+    expect(planWaitExecution(plan, deriveCapabilityManifest(1)).kind).toBe("RACED_WAIT_NODE");
   });
 
   it("emits wait_node params the device parses, carrying no dump request", () => {
