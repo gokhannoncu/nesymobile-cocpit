@@ -42,28 +42,28 @@ export function VerdictDisposition({ run }: { run: any }) {
 
   return (
     <div className="flex flex-col gap-4">
-    <div className="flex flex-wrap gap-4">
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Lifecycle</span>
-        <Badge variant={badgeVariant(lifecycle)}>{lifecycle}</Badge>
+      <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Lifecycle</span>
+          <Badge variant={badgeVariant(lifecycle)}>{lifecycle}</Badge>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Business Verdict</span>
+          <Badge variant={badgeVariant(verdict)}>{verdict}</Badge>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Termination</span>
+          <Badge variant={badgeVariant(termination)}>{termination}</Badge>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Cleanup</span>
+          <Badge variant={badgeVariant(cleanup)}>{cleanup}</Badge>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Operational</span>
+          <Badge variant={badgeVariant(operational)}>{operational}</Badge>
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Business Verdict</span>
-        <Badge variant={badgeVariant(verdict)}>{verdict}</Badge>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Termination</span>
-        <Badge variant={badgeVariant(termination)}>{termination}</Badge>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Cleanup</span>
-        <Badge variant={badgeVariant(cleanup)}>{cleanup}</Badge>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Operational</span>
-        <Badge variant={badgeVariant(operational)}>{operational}</Badge>
-      </div>
-    </div>
       {failureDetail ? (
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Failure detail</span>

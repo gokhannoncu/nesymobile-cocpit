@@ -500,7 +500,14 @@ export interface BridgeResultEnvelope {
  * ---------------------------------------------------------------------------
  */
 export const BRIDGE_V1_DEVICE_GAPS = {
-  /** Mobile M3+: cihaz `wait_any` sunar. Eski host fallback hâlâ `planWaitExecution(false)`. */
+  /**
+   * Mobile M3+: cihaz `wait_any` sunar.
+   *
+   * ⚠️ Bu bayrak YALNIZ cihazı anlatır. Host tarafı komutu HENÜZ yazmadı —
+   * bkz. [HOST_SUPPORTS_WAIT_ANY]. İkisini karıştırmak gerçek bir kesintiye yol
+   * açtı: strateji seçimi bu bayrağa bakıyordu, gerçek cihazlar `true` dönüyordu
+   * ve her bekleme yalnız `throw` eden bir host dalına giriyordu.
+   */
   waitAny: true,
   /**
    * Mobile M3+: `cancel_request` + `targetRequestId` var.

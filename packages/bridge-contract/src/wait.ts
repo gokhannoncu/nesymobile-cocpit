@@ -16,9 +16,16 @@
  *        `wait_any`i öğrendiği anda aynı çağıran arayüzünün tek komuta
  *        inebileceği şekilde yazmak.
  *
- *  (b) seçildi. `UiWaitPlan` çağıranın gördüğü sözleşmedir ve cihazın
+ *  (b) seçildi. `UiWaitPlan` çağıranın gördüğü sözleşmedir ve İKİ TARAFIN
  *  yeteneğine göre ya tek `wait_any` ya da N paralel `wait_node` olarak
  *  yürütülür. Çağıran kodu değişmez.
+ *
+ *  "İki tarafın" sonradan eklendi ve bedeli ödenerek öğrenildi: seçim yalnız
+ *  CİHAZIN yeteneğine bakıyordu, cihaz komutu Mobile M3'te ekledi, host dalı
+ *  hiç yazılmadı — ve (a) şıkkının tam olarak kaçınmak istediği şey oldu.
+ *  Fark şu ki taklit host'ta değil SEÇİMDE yapıldı: sözleşme cihazın
+ *  yapabildiğini modelledi, host'un yapabildiğini modellemedi. Kapı
+ *  [HOST_SUPPORTS_WAIT_ANY].
  *
  *  ## Hot path kuralları (RUN_PLAY §3.9, acceptance 17–20)
  *

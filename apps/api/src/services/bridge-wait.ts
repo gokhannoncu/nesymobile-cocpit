@@ -4,12 +4,19 @@
  *
  *  Sözleşme `@nesy/bridge-contract`ta (`UiWaitPlan`); burada onun YÜRÜTÜCÜSÜ.
  *
- *  ## Cihazda `wait_any` yok — yarış host'ta kuruluyor
+ *  ## Yarış host'ta kuruluyor — çünkü eksik olan taraf HOST
  *
- *  Protocol v1'de yalnız tek hedefli `wait_node` var. Bu yürütücü planın her
- *  bacağını AYRI bir bağlantıda paralel `wait_node` olarak koşturur ve ilk
- *  sonuçlanan kazanır. Cihaz `wait_any` öğrendiğinde `planWaitExecution` tek
- *  komut dalını seçer ve BU dosyanın çağıranı değişmez.
+ *  Cihaz `wait_any`i Mobile M3'te ekledi (`handleWaitAny`: MATCHED / TIMEOUT /
+ *  CANCELLED / AMBIGUOUS). Eksik olan bu dosya: tek komut dalı yazılmadı. Bu
+ *  yürütücü planın her bacağını AYRI bir bağlantıda paralel `wait_node` olarak
+ *  koşturur ve ilk sonuçlanan kazanır.
+ *
+ *  ⚠️ Bu dosya "cihazda wait_any yok" diyordu ve `planWaitExecution` yalnız
+ *  cihazın yeteneğine bakıp tek komut dalını seçiyordu. Cihaz komutu ekleyince
+ *  varsayım sessizce tersine döndü: gerçek cihazlar `supportsWaitAny: true`
+ *  dönüyor, strateji yazılmamış dala giriyor, ve her run ilk beklemesinde
+ *  "protocol v1 has no such command" ile ölüyordu. Kapı artık
+ *  [HOST_SUPPORTS_WAIT_ANY]; tek komut dalını YAZAN değişiklik onu açsın.
  *
  *  ## Hot path kuralları — ve neden bu tasarım onları sağlıyor
  *
