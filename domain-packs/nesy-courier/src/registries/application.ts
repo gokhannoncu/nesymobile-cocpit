@@ -51,7 +51,10 @@ export const NESY_COURIER_APPLICATION: ApplicationDefinition = {
   applicationKey: NESY_COURIER_APPLICATION_KEY,
   displayName: "Nesy Courier Mobile",
   platform: "ANDROID",
-  packageIdentity: "com.nesy.courier",
+  // Lab DUT (RS test flavour). Production courier identity stays documented in
+  // versionCompatibility.validatedFlavours; the installed package under test is
+  // what Bridge/SDK control must address.
+  packageIdentity: "com.arasdigital.nesymobile.rstest",
   versionCompatibility: {
     minVersionCode: 41200,
     maxVersionCode: null,

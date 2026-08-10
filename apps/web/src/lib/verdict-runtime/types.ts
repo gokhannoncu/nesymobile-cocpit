@@ -395,6 +395,11 @@ export interface DomainPackSummary {
   publicationState: DomainPackState
   revision: number
   publishedAt?: string
+  /**
+   * True when this process can compile against the pack (code-resident registry
+   * digest match, or a full published admin bundle the compile path can hydrate).
+   */
+  compileReady?: boolean
 }
 
 export interface DomainPackCatalogApi {

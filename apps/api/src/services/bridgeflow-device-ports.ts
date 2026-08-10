@@ -38,17 +38,48 @@ function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
+function resolveArgValue(
+  value: unknown,
+  runInputs: Readonly<Record<string, unknown>>,
+  variables: VariableRuntimePort,
+): unknown {
+  if (typeof value !== 'string') return value
+  if (value.startsWith('run.input.')) {
+    const path = value.slice('run.input.'.length)
+    return path.split('.').reduce<unknown>((acc, key) => {
+      if (acc !== null && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key]
+      }
+      return undefined
+    }, runInputs)
+  }
+  if (value.startsWith('var.')) {
+    return variables.get(value.slice('var.'.length))
+  }
+  return value
+}
+
 export function createBridgeRuntimePort(options: {
   manager: BridgeDeviceManager
   variables: VariableRuntimePort
   runId: string
+  runInputs?: Readonly<Record<string, unknown>>
 }): BridgeRuntimePort {
   const { manager, variables, runId } = options
+  const runInputs = options.runInputs ?? {}
 
   return {
     async act(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<BridgeActionResult> {
       const action = asString(step.params['action']) ?? ''
-      const args = (step.params['args'] ?? {}) as Record<string, unknown>
+      const rawArgs = (step.params['args'] ?? {}) as Record<string, unknown>
+      const args: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(rawArgs)) {
+        args[key] = resolveArgValue(value, runInputs, variables)
+      }
+      // Macro IR uses `valueRef: "run.input.pin"`; Bridge input_text needs `text`.
+      if (args['text'] === undefined && args['valueRef'] !== undefined) {
+        args['text'] = resolveArgValue(args['valueRef'], runInputs, variables)
+      }
 
       if (action === 'back') {
         const envelope = await manager.back({ runId })

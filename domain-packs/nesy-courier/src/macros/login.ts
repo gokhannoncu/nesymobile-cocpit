@@ -25,6 +25,11 @@
  *       credentials, the app holds a session, and the device persisted one
  *       (`APP.LOGIN_SUCCEEDED`, a correlated derivation). A prepared session
  *       satisfies the app-plane fact and nothing else, so it cannot fake this.
+ *
+ *  PRODUCT PATH
+ *
+ *  NesyMobile couriers sign in with the PIN tab (`R.id.pinView` + `btn_login`),
+ *  not the username/password tab. This macro drives that real PIN path.
  * ===========================================================================
  */
 
@@ -42,7 +47,7 @@ export const NESY_LOGIN_MACRO_KEY = "nesy.macro.login";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
-    ...stepBase({ planStepId: "wait-login-ready", sourceMapRef: "sm-login-1", next: "resolve-user-field", timeoutMs: 30_000 }),
+    ...stepBase({ planStepId: "wait-login-ready", sourceMapRef: "sm-login-1", next: "resolve-pin-tab", timeoutMs: 30_000 }),
     kind: "WAIT_EVENT",
     factKey: NESY_FACTS.LOGIN_SCREEN_READY,
     sourceLane: "UI",
@@ -54,51 +59,50 @@ const STEPS: readonly WorkflowStepV2[] = [
   },
   {
     ...stepBase({
-      planStepId: "resolve-user-field",
+      planStepId: "resolve-pin-tab",
       sourceMapRef: "sm-login-2",
-      next: "enter-user",
+      next: "select-pin-tab",
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
     }),
     kind: "RESOLVE_TARGET",
-    targetRef: NESY_TARGETS.loginUserField,
-    outputVariable: "userFieldHandle",
+    targetRef: NESY_TARGETS.loginPinTab,
+    outputVariable: "pinTabHandle",
   },
   {
     ...stepBase({
-      planStepId: "enter-user",
+      planStepId: "select-pin-tab",
       sourceMapRef: "sm-login-3",
-      next: "resolve-secret-field",
-      capabilityRequirements: [requires("verdict.core.bridge.set-text")],
+      next: "resolve-pin-field",
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
     kind: "BRIDGE_ACTION",
-    action: "setText",
-    targetVariable: "userFieldHandle",
-    args: { valueRef: "run.input.userName" },
+    action: "tap",
+    targetVariable: "pinTabHandle",
   },
   {
     ...stepBase({
-      planStepId: "resolve-secret-field",
+      planStepId: "resolve-pin-field",
       sourceMapRef: "sm-login-4",
-      next: "enter-secret",
+      next: "enter-pin",
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
     }),
     kind: "RESOLVE_TARGET",
-    targetRef: NESY_TARGETS.loginPasswordField,
-    outputVariable: "secretFieldHandle",
+    targetRef: NESY_TARGETS.loginPinField,
+    outputVariable: "pinFieldHandle",
   },
   {
     ...stepBase({
-      planStepId: "enter-secret",
+      planStepId: "enter-pin",
       sourceMapRef: "sm-login-5",
       next: "resolve-submit",
       capabilityRequirements: [requires("verdict.core.bridge.set-text")],
     }),
     kind: "BRIDGE_ACTION",
     action: "setText",
-    targetVariable: "secretFieldHandle",
-    args: { valueRef: "run.input.password" },
-    // The value is a declared secret; redaction is restated at the step because
-    // this is the one artifact most likely to be attached to a bug report.
+    targetVariable: "pinFieldHandle",
+    args: { valueRef: "run.input.pin" },
+    // PIN digits are a declared secret; restate redaction at the step because
+    // this is the artifact most likely to be attached to a bug report.
     redactionPolicy: { redactAllInputs: true },
   },
   {
@@ -191,16 +195,15 @@ const STEPS: readonly WorkflowStepV2[] = [
 
 const GENERIC_IR = irDocument({
   workflowId: "nesy.reference.login",
-  name: "Courier login through the real UI",
+  name: "Courier PIN login through the real UI",
   sourceRef: NESY_LOGIN_MACRO_KEY,
   inputs: [
-    { name: "userName", type: "string", required: true },
-    { name: "password", type: "string", required: true, secret: true },
+    { name: "pin", type: "string", required: true, secret: true },
     { name: "sessionCorrelationId", type: "string", required: true },
   ],
   variables: [
-    { name: "userFieldHandle", type: "string" },
-    { name: "secretFieldHandle", type: "string" },
+    { name: "pinTabHandle", type: "string" },
+    { name: "pinFieldHandle", type: "string" },
     { name: "submitHandle", type: "string" },
   ],
   steps: STEPS,
@@ -212,10 +215,10 @@ const GENERIC_IR = irDocument({
   ],
   sourceMap: [
     sourceMapEntry("sm-login-1", "wait-login-ready", NESY_LOGIN_MACRO_KEY, "login screen readiness"),
-    sourceMapEntry("sm-login-2", "resolve-user-field", NESY_LOGIN_MACRO_KEY),
-    sourceMapEntry("sm-login-3", "enter-user", NESY_LOGIN_MACRO_KEY),
-    sourceMapEntry("sm-login-4", "resolve-secret-field", NESY_LOGIN_MACRO_KEY),
-    sourceMapEntry("sm-login-5", "enter-secret", NESY_LOGIN_MACRO_KEY),
+    sourceMapEntry("sm-login-2", "resolve-pin-tab", NESY_LOGIN_MACRO_KEY, "ensure PIN tab is active"),
+    sourceMapEntry("sm-login-3", "select-pin-tab", NESY_LOGIN_MACRO_KEY),
+    sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_MACRO_KEY),
+    sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-7", "tap-submit", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-8", "verify-backend-session", NESY_LOGIN_MACRO_KEY, "backend fact, not a screen transition"),
@@ -235,7 +238,7 @@ const EXPANSION: MacroExpansionSnapshot = {
       macroRef: NESY_LOGIN_MACRO_KEY,
       planStepIds: STEPS.map((step) => step.planStepId),
       sliceRef: "COURIER_LOGIN",
-      note: "Whole macro expands into one linear leg plus a backend validation and a cleanup.",
+      note: "Whole macro expands into one linear PIN-login leg plus a backend validation and a cleanup.",
     },
   ],
 };
@@ -246,8 +249,8 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.set-text"],
   legs: [
     { planStepId: "wait-login-ready", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.LOGIN_SCREEN_READY },
-    { planStepId: "enter-user", bridgeVerb: "setText", targetRef: NESY_TARGETS.loginUserField },
-    { planStepId: "enter-secret", bridgeVerb: "setText", targetRef: NESY_TARGETS.loginPasswordField },
+    { planStepId: "select-pin-tab", bridgeVerb: "tap", targetRef: NESY_TARGETS.loginPinTab },
+    { planStepId: "enter-pin", bridgeVerb: "setText", targetRef: NESY_TARGETS.loginPinField },
     {
       planStepId: "tap-submit",
       bridgeVerb: "tap",
@@ -260,10 +263,11 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
 export const NESY_LOGIN_MACRO: MacroDefinition = {
   macroKey: NESY_LOGIN_MACRO_KEY,
   actionRef: NESY_ACTIONS.login,
-  displayName: "Courier login",
+  displayName: "Courier PIN login",
   businessMeaning:
-    "A courier signs in through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
+    "A courier signs in with their device PIN through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
   notResponsibleFor: [
+    "username/password tab login",
     "password reset and account recovery",
     "biometric re-authentication",
     "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
@@ -271,9 +275,19 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
   ],
   input: {
     fields: [
-      { name: "userName", type: "string", required: true, description: "Courier login identifier." },
-      { name: "password", type: "string", required: true, secret: true },
-      { name: "sessionCorrelationId", type: "string", required: true, description: "Correlates the app sign-in with the backend session record." },
+      {
+        name: "pin",
+        type: "string",
+        required: true,
+        secret: true,
+        description: "Courier device PIN (NesyMobile PIN tab / loginDevice).",
+      },
+      {
+        name: "sessionCorrelationId",
+        type: "string",
+        required: true,
+        description: "Correlates the app sign-in with the backend session record.",
+      },
     ],
   },
   output: {
@@ -290,7 +304,7 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
     screenRefs: [NESY_SCREENS.login, NESY_SCREENS.routeStopList],
     surfaceRefs: [],
     entityTypeRefs: [],
-    targetRefs: [NESY_TARGETS.loginUserField, NESY_TARGETS.loginPasswordField, NESY_TARGETS.loginSubmit],
+    targetRefs: [NESY_TARGETS.loginPinTab, NESY_TARGETS.loginPinField, NESY_TARGETS.loginSubmit],
     factKeys: [
       NESY_FACTS.LOGIN_SCREEN_READY,
       NESY_FACTS.ROUTE_LIST_READY,
@@ -339,7 +353,7 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
 
 export const COURIER_LOGIN_SLICE: NesyReferenceSlice = {
   sliceKey: "COURIER_LOGIN",
-  displayName: "Courier login",
+  displayName: "Courier PIN login",
   businessMeaning: NESY_LOGIN_MACRO.businessMeaning,
   notResponsibleFor: NESY_LOGIN_MACRO.notResponsibleFor,
   inputSchema: NESY_LOGIN_MACRO.input,
@@ -348,7 +362,7 @@ export const COURIER_LOGIN_SLICE: NesyReferenceSlice = {
   screenRefs: [NESY_SCREENS.login, NESY_SCREENS.routeStopList],
   surfaceRefs: [],
   entityBindings: [],
-  targetResolutionRefs: [NESY_TARGETS.loginUserField, NESY_TARGETS.loginPasswordField, NESY_TARGETS.loginSubmit],
+  targetResolutionRefs: [NESY_TARGETS.loginPinTab, NESY_TARGETS.loginPinField, NESY_TARGETS.loginSubmit],
   semanticMacroRef: NESY_LOGIN_MACRO_KEY,
   macroExpansion: EXPANSION,
   genericIrSnapshot: GENERIC_IR,

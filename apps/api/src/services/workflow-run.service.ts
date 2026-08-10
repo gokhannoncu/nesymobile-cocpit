@@ -14,6 +14,8 @@ export interface WorkflowRunStartRequest {
   releaseGate?: boolean
   profileKey?: string
   profileVersion?: string
+  /** Business inputs addressed by `run.input.<path>` (e.g. pin, sessionCorrelationId). */
+  inputs?: Readonly<Record<string, unknown>>
 }
 
 export interface WorkflowRunStartResult {
@@ -39,6 +41,7 @@ export interface WorkflowRunExecutionQueue {
     profileKey?: string
     profileVersion?: string
     releaseGate?: boolean
+    inputs?: Readonly<Record<string, unknown>>
     dependencyKind: 'SETUP' | 'DEPENDENT' | 'INDEPENDENT'
   }): Promise<unknown> | unknown
 }
@@ -73,12 +76,14 @@ export class InMemoryWorkflowRunStartStore implements WorkflowRunStartStore {
 }
 
 export function runStartIdempotencyKey(request: WorkflowRunStartRequest): string {
+  const inputFingerprint = request.inputs === undefined ? '' : JSON.stringify(request.inputs)
   return [
     request.workflowRef,
     request.deviceId,
     request.compiledPlanHash,
     request.profileKey ?? 'default',
     request.profileVersion ?? 'unversioned',
+    inputFingerprint,
   ].join('|')
 }
 
@@ -149,6 +154,7 @@ export class WorkflowRunService {
       ...(request.profileKey === undefined ? {} : { profileKey: request.profileKey }),
       ...(request.profileVersion === undefined ? {} : { profileVersion: request.profileVersion }),
       ...(request.releaseGate === undefined ? {} : { releaseGate: request.releaseGate }),
+      ...(request.inputs === undefined ? {} : { inputs: request.inputs }),
       dependencyKind: 'INDEPENDENT',
     })
     return result

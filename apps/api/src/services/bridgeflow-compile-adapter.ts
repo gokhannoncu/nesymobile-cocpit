@@ -70,6 +70,65 @@ function macrosForWorkflow(bundle: DomainPackBundle, workflowRef: string) {
   return bundle.registries.macros.filter((macro) => refs.has(macro.macroKey))
 }
 
+function isWorkflowIrV2(value: unknown): value is WorkflowIrV2 {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return Array.isArray(record.steps) && typeof record.entryStepId === 'string'
+}
+
+/**
+ * Editor canvas graphs (`nodes`/`connections`) are not BridgeFlow IR. When the
+ * workflowRef matches a pack independent workflow/fragment with exactly one
+ * macro expansion, compile that macro's generic IR instead of failing on the
+ * canvas shape.
+ */
+function materializeWorkflowIr(
+  bundle: DomainPackBundle,
+  workflowRef: string,
+  workflowIr: unknown,
+): { ok: true; ir: WorkflowIrV2 } | { ok: false; issue: CompileIssues[number] } {
+  if (isWorkflowIrV2(workflowIr)) {
+    return { ok: true, ir: workflowIr }
+  }
+
+  const workflow =
+    bundle.registries.independentWorkflows.find((entry) => entry.workflowKey === workflowRef) ??
+    bundle.registries.fragments.find((entry) => entry.fragmentKey === workflowRef)
+
+  if (workflow === undefined) {
+    return {
+      ok: false,
+      issue: {
+        severity: 'ERROR',
+        code: 'INVALID_WORKFLOW_IR',
+        message:
+          `workflowIr is not WorkflowIrV2 and "${workflowRef}" is not a pack independent ` +
+          `workflow/fragment that can supply a macro expansion`,
+      },
+    }
+  }
+
+  const macros = macrosForWorkflow(bundle, workflowRef)
+  const snapshots = macros
+    .map((macro) => macro.expansionSnapshot)
+    .filter((snapshot): snapshot is MacroExpansionSnapshot => snapshot !== undefined)
+
+  if (snapshots.length === 1) {
+    return { ok: true, ir: snapshots[0]!.genericIr }
+  }
+
+  return {
+    ok: false,
+    issue: {
+      severity: 'ERROR',
+      code: 'INVALID_WORKFLOW_IR',
+      message:
+        `workflow "${workflowRef}" has ${snapshots.length} macro expansion snapshot(s); ` +
+        `canvas/empty IR can only auto-materialize when exactly one snapshot exists`,
+    },
+  }
+}
+
 export function createBridgeFlowCompileService(
   planStore: CompiledPlanStore = defaultCompiledPlanStore,
   options: BridgeFlowCompileAdapterOptions = {},
@@ -99,9 +158,14 @@ export function createBridgeFlowCompileService(
         .map((macro) => macro.expansionSnapshot)
         .filter((snapshot): snapshot is MacroExpansionSnapshot => snapshot !== undefined)
 
+      const materialized = materializeWorkflowIr(bundle, request.workflowRef, request.workflowIr)
+      if (!materialized.ok) {
+        return { ok: false, issues: [materialized.issue] }
+      }
+
       const result = compileDomainWorkflow({
         bundle,
-        workflowIr: request.workflowIr as WorkflowIrV2,
+        workflowIr: materialized.ir,
         macros,
         expansionSnapshots,
         deviceCapabilities,

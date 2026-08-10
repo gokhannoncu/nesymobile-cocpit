@@ -2033,7 +2033,8 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       try {
         const packs = await fetchVerdictDomainPacks()
         if (cancelled) return
-        const pack = packs.items.find((item) => item.publicationState === 'PUBLISHED')
+        const { selectPinnedPublishedPack } = await import('@/lib/verdict-runtime/select-published-pack')
+        const pack = selectPinnedPublishedPack(packs.items)
         if (!pack) {
           setPaletteSource({
             mode: 'blocked',
@@ -2409,6 +2410,16 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     }
     setShowValidationWarning(false);
 
+    const authLogin = nodes.find((node) => node.type === WorkflowNodeType.AUTH_LOGIN);
+    const authLoginConfig = (authLogin?.data.config ?? {}) as Record<string, unknown>;
+    const pinCode = typeof authLoginConfig.pinCode === "string" ? authLoginConfig.pinCode.trim() : "";
+    if (authLogin && !/^\d{4}$/.test(pinCode)) {
+      selectNode(authLogin.id);
+      setPropertiesPanelOpen(true);
+      toast.warning("Auth / Login requires a 4-digit PIN before Run Test.");
+      return;
+    }
+
     const payload: WorkflowRunPayload = {
       workflowId,
       workflowName: displayTitle,
@@ -2426,22 +2437,65 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
 
     try {
       const { startPinnedVerdictRun } = await import("@/lib/verdict-runtime/start-pinned-run");
+      const sessionCorrelationId =
+        typeof authLoginConfig.sessionCorrelationId === "string" && authLoginConfig.sessionCorrelationId.trim()
+          ? authLoginConfig.sessionCorrelationId.trim()
+          : crypto.randomUUID();
+      const workflowRef = workflowMeta?.slug?.trim() || workflowId;
       const result = await startPinnedVerdictRun({
-        workflowRef: workflowId,
+        workflowRef,
         deviceId: selectedDevice.id,
         workflowIr: {
           nodes,
           connections,
         },
+        profileKey:
+          workflowRef === "nesy.workflow.login" ? "nesy.launch.cold-real-login" : undefined,
+        inputs: authLogin
+          ? { pin: pinCode, sessionCorrelationId }
+          : undefined,
       });
       setActiveRunId(result.runId);
+
+      // Start returns QUEUED immediately; bridge preflight can close the run as
+      // BLOCKED (e.g. empty LAB_ALLOWLIST) before any launch happens.
+      try {
+        const { fetchVerdictRunDetail } = await import("@/lib/verdict-runtime/client");
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 250 : 400));
+          const detail = await fetchVerdictRunDetail(result.runId);
+          const runtime = detail.runtime ?? {};
+          const disposition = String(
+            runtime.operationalDisposition ?? detail.run.operational_disposition ?? "",
+          ).toUpperCase();
+          const terminationReason = String(
+            runtime.terminationReason ?? detail.run.termination_reason ?? "",
+          ).trim();
+          const status = String(detail.run.status ?? "").toLowerCase();
+          if (disposition === "BLOCKED" || status === "blocked") {
+            setIsTestRunning(false);
+            toast.error(
+              terminationReason
+                ? `Run blocked before launch: ${terminationReason}`
+                : "Run blocked before launch (bridge preflight).",
+            );
+            return;
+          }
+          if (status === "running" || status === "queued" || disposition === "RUNNING") {
+            break;
+          }
+        }
+      } catch {
+        // Fall through to success toast; canvas polling still owns live progress.
+      }
+
       toast.success(`Workflow run started. Progress is shown on the canvas.`);
-    } catch {
+    } catch (error) {
       setActiveRunId(null);
-      window.dispatchEvent(new CustomEvent<WorkflowRunPayload>("nesy:workflow-run-test", { detail: payload }));
-      toast.success(`Run Test payload prepared for ${getDeviceTitle(selectedDevice)}.`);
+      setIsTestRunning(false);
+      toast.error(error instanceof Error ? error.message : "Failed to start workflow run");
     }
-  }, [connections, displayTitle, editorLocked, nodes, selectNode, selectedDevice, workflowId]);
+  }, [connections, displayTitle, editorLocked, nodes, selectNode, selectedDevice, workflowId, workflowMeta]);
 
   const editorInteractionSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: editorLocked ? Infinity : 8 } })
@@ -3050,7 +3104,14 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             aria-label="Verdict authoring panel"
             className="fixed right-0 top-14 bottom-0 z-30 flex"
           >
-            <VerdictEditorToolbar workflowState={{ workflowId, nodes, connections }} />
+            <VerdictEditorToolbar
+              workflowState={{
+                workflowId,
+                workflowSlug: workflowMeta?.slug,
+                nodes,
+                connections,
+              }}
+            />
           </aside>
         ) : null}
 

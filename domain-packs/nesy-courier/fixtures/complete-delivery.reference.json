@@ -349,6 +349,7 @@
         },
         "redactionPolicy": {
           "redactPaths": [
+            "run.input.pin",
             "run.input.password"
           ]
         }
@@ -729,6 +730,7 @@
       },
       "redactionPolicy": {
         "redactPaths": [
+          "run.input.pin",
           "run.input.password"
         ]
       }

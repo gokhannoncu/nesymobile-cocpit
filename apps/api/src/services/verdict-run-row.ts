@@ -18,7 +18,7 @@
  * up in the list with no workflow name at all.
  */
 
-import type { PrismaClient } from '@nesy/db'
+import type { Prisma, PrismaClient } from '@nesy/db'
 
 export interface VerdictRunRowInput {
   runId: string
@@ -26,6 +26,7 @@ export interface VerdictRunRowInput {
   deviceId: string
   country?: string
   environment?: string
+  runInput?: Readonly<Record<string, unknown>>
 }
 
 type RunRowClient = Pick<PrismaClient, 'workflow' | 'workflowVersion' | 'workflowRun'>
@@ -57,6 +58,9 @@ export async function ensureVerdictRunRow(
       deviceId: input.deviceId,
       ...(input.country === undefined ? {} : { country: input.country }),
       ...(input.environment === undefined ? {} : { environment: input.environment }),
+      ...(input.runInput === undefined
+        ? {}
+        : { runInput: input.runInput as Prisma.InputJsonValue }),
     },
   })
 

@@ -16,6 +16,7 @@ describe('Left palette pack cutover (6D.1f)', () => {
   it('loads semantic actions from the published domain pack as primary source', () => {
     expect(EDITOR).toMatch(/fetchVerdictSemanticActions/)
     expect(EDITOR).toMatch(/fetchVerdictDomainPacks/)
+    expect(EDITOR).toMatch(/selectPinnedPublishedPack/)
     expect(EDITOR).toMatch(/buildPackPaletteGroups/)
     expect(PACK_PALETTE).toMatch(/applicationRef/)
     expect(PACK_PALETTE).toMatch(/screenRefs/)

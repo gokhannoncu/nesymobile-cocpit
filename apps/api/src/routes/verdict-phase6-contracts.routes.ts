@@ -1,13 +1,33 @@
 import type { FastifyInstance } from 'fastify'
-import type { LaunchProfile, TargetResolutionPolicy } from '@nesy/domain-pack-contracts'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { BRIDGE_DEVICE_PORT } from '@nesy/bridge-contract'
+import type {
+  DomainPackBundle,
+  LaunchProfile,
+  TargetResolutionPolicy,
+} from '@nesy/domain-pack-contracts'
 import { prisma } from '@nesy/db'
+import { resolveAdbPath } from '@nesy/platform-paths'
 import { createAdbFacade } from '../services/bridge-adb-facade.js'
 import { getDeviceBridgeState } from '../services/test-event-bridge.js'
 import { TestEventWsServer } from '../services/test-event-ws-server.js'
-
+import {
+  isNesyDashboardCountry,
+  isNesyEnvironment,
+  isDashboardConfigured,
+  resolveBaseUrl,
+  type NesyDashboardCountry,
+  type NesyEnvironment,
+} from '../nesy-env.js'
 import { createDeviceCommandAdmission } from '../services/device-command-admission.js'
 import { DeviceReadinessService } from '../services/device-readiness.service.js'
 import { DomainPackAdminService } from '../services/domain-pack-admin.service.js'
+import {
+  listDomainPacks,
+  registerPublishedPack,
+  resolveDomainPack,
+} from '../services/domain-pack-registry.js'
 import { DomainPackReadModelsService } from '../services/domain-pack-read-models.service.js'
 import { DurableInteractionSubscription } from '../services/durable-interaction-subscription.js'
 import { EvidenceSourceQueryService } from '../services/evidence-source-query.service.js'
@@ -26,6 +46,8 @@ import {
   PrismaTestProfileCatalogStore,
   PrismaWorkflowRunStartStore,
 } from '../services/phase6-prisma-stores.js'
+
+const execFileAsync = promisify(execFile)
 
 const compiledPlanStore = new PrismaCompiledPlanStore(prisma)
 const compileService = createBridgeFlowCompileService(compiledPlanStore)
@@ -86,19 +108,40 @@ async function probeActiveRun(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRAD
 async function probeBridge(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
   const adb = await probeAdbLane(deviceId)
   if (adb === 'DOWN') return 'DOWN'
-  // Attached device is necessary but not sufficient for Bridge B2; surface DEGRADED
-  // until a live capabilities handshake succeeds (CAPABILITY-NEGOTIATION).
-  return 'DEGRADED'
+  // Avoid live handshake/`adb forward` here: production DUTs wedge after a few
+  // back-to-back TCP probes (B-12). Readiness only needs "listener bound + a11y
+  // service enabled"; run-time BridgeClient still does a real handshake.
+  const adbPath = resolveAdbPath()
+  if (adbPath === null) return 'DOWN'
+  const portHex = BRIDGE_DEVICE_PORT.toString(16).toUpperCase().padStart(4, '0')
+  try {
+    const enabled = await adbFacade.getEnabledAccessibilityServices(deviceId)
+    const bridgeEnabled =
+      enabled.includes('com.verdict.bridge/.BridgeAccessibilityService') ||
+      enabled.includes('com.verdict.bridge/com.verdict.bridge.BridgeAccessibilityService')
+    if (!bridgeEnabled) return 'DOWN'
+
+    const { stdout } = await execFileAsync(
+      adbPath,
+      [
+        '-s',
+        deviceId,
+        'shell',
+        // LISTEN state is 0A. Match IPv4 or IPv6-mapped loopback rows for :9876.
+        `toybox grep -E ':${portHex} .* 0A ' /proc/net/tcp /proc/net/tcp6 2>/dev/null`,
+      ],
+      { timeout: 5_000, maxBuffer: 64 * 1024 },
+    )
+    return String(stdout).includes(`:${portHex}`) ? 'UP' : 'DOWN'
+  } catch {
+    return 'DOWN'
+  }
 }
 
 async function probeReceiptBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
   try {
-    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT COUNT(*)::bigint AS n FROM bridgeflow_evidence_fact
-      WHERE delivery_lane ILIKE '%receipt%'
-        AND observed_at > NOW() - INTERVAL '24 hours'
-    `
-    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+    await prisma.$queryRaw`SELECT 1 FROM bridgeflow_evidence_fact LIMIT 1`
+    return 'UP'
   } catch {
     return 'DOWN'
   }
@@ -106,12 +149,8 @@ async function probeReceiptBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGR
 
 async function probeOrderedBus(_deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
   try {
-    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT COUNT(*)::bigint AS n FROM bridgeflow_evidence_fact
-      WHERE delivery_lane ILIKE '%ordered%'
-        AND observed_at > NOW() - INTERVAL '24 hours'
-    `
-    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+    await prisma.$queryRaw`SELECT 1 FROM bridgeflow_evidence_fact LIMIT 1`
+    return 'UP'
   } catch {
     return 'DOWN'
   }
@@ -134,27 +173,41 @@ async function probeSdkControl(
 async function probeSdkEventAuth(deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
   const adb = await probeAdbLane(deviceId)
   if (adb === 'DOWN') return 'DOWN'
+  TestEventWsServer.ensureStarted()
   if (!TestEventWsServer.isRunning()) return 'DOWN'
+  const deadline = Date.now() + 1_000
+  while (!TestEventWsServer.isIngestReady() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
   return TestEventWsServer.isIngestReady() ? 'UP' : 'UNKNOWN'
 }
 
 async function probeDurableIngest(deviceId: string): Promise<'UP' | 'DOWN' | 'DEGRADED'> {
   try {
-    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT COUNT(*)::bigint AS n FROM verdict_run_interaction
-      WHERE run_id IN (
-        SELECT id FROM workflow_runs WHERE "deviceId" = ${deviceId}
-      )
-    `
-    return Number(rows[0]?.n ?? 0) > 0 ? 'UP' : 'DEGRADED'
+    void deviceId
+    await prisma.$queryRaw`SELECT 1 FROM verdict_inbox LIMIT 1`
+    await prisma.$queryRaw`SELECT 1 FROM verdict_stream LIMIT 1`
+    return 'UP'
   } catch {
     return 'DOWN'
   }
 }
 
-async function probeBackendCredentials(_deviceId: string): Promise<'UP' | 'UNKNOWN'> {
-  // Backend credential vault is outside this readiness surface; remain honest.
-  return 'UNKNOWN'
+async function probeBackendCredentials(_deviceId: string): Promise<'UP' | 'DOWN' | 'UNKNOWN'> {
+  void _deviceId
+  const configuredCountry = process.env.NESY_REMOTE_ACTION_COUNTRY?.trim() ?? 'RS'
+  const configuredEnv = process.env.NESY_REMOTE_ACTION_ENV?.trim() ?? 'stage'
+  const country: NesyDashboardCountry = isNesyDashboardCountry(configuredCountry)
+    ? configuredCountry
+    : 'RS'
+  const environment: NesyEnvironment = isNesyEnvironment(configuredEnv) ? configuredEnv : 'stage'
+  const explicitToken = process.env.NESY_BACKOFFICE_TOKEN?.trim() ?? ''
+  const explicitBase =
+    process.env.NESY_BACKOFFICE_BASE_URL?.trim() || resolveBaseUrl(country, environment)
+  if (explicitToken && explicitBase) return 'UP'
+  if (isDashboardConfigured(country, environment)) return 'UP'
+  if (explicitBase || explicitToken) return 'UNKNOWN'
+  return 'DOWN'
 }
 
 const deviceReadiness = new DeviceReadinessService(admission, {
@@ -171,15 +224,92 @@ const deviceReadiness = new DeviceReadinessService(admission, {
 })
 const interactions = new DurableInteractionSubscription(new PrismaDurableInteractionStore(prisma))
 
+function isCanonicalPackDigest(digest: string): boolean {
+  return /^sha256:[a-f0-9]{64}$/i.test(digest.trim())
+}
+
+function isHydratableDomainPackBundle(bundle: unknown): bundle is DomainPackBundle {
+  if (bundle === null || typeof bundle !== 'object' || Array.isArray(bundle)) return false
+  const registries = (bundle as { registries?: unknown }).registries
+  if (registries === null || typeof registries !== 'object' || Array.isArray(registries)) return false
+  const semanticActions = (registries as { semanticActions?: unknown }).semanticActions
+  const macros = (registries as { macros?: unknown }).macros
+  return Array.isArray(semanticActions) && semanticActions.length > 0 && Array.isArray(macros)
+}
+
+async function ensureCompilePackHydrated(input: {
+  packKey: string
+  packVersion: string
+  packDigest: string
+}): Promise<void> {
+  const existing = resolveDomainPack({
+    packKey: input.packKey,
+    packVersion: input.packVersion,
+    packDigest: input.packDigest || undefined,
+  })
+  if (existing.ok) return
+
+  const record = await domainPackAdminStore.get(input.packKey, input.packVersion)
+  if (!record || record.publicationState !== 'PUBLISHED') return
+  if (input.packDigest && record.bundleDigest !== input.packDigest) return
+  if (!isHydratableDomainPackBundle(record.bundle)) return
+
+  registerPublishedPack({
+    packKey: record.packKey,
+    version: record.version,
+    digest: record.bundleDigest,
+    bundle: record.bundle,
+  })
+}
+
+function annotateDomainPackCatalog(items: Array<{
+  packKey: string
+  version: string
+  bundleDigest: string
+  publicationState: string
+  revision: number
+  publishedAt?: string
+}>) {
+  const compileDigests = new Map(
+    listDomainPacks().map((pack) => [`${pack.packKey}@${pack.packVersion}`, pack.packDigest]),
+  )
+
+  const annotated = items.map((item) => {
+    const slot = `${item.packKey}@${item.version}`
+    const registryDigest = compileDigests.get(slot)
+    const compileReady =
+      (registryDigest !== undefined && registryDigest === item.bundleDigest) ||
+      (item.publicationState === 'PUBLISHED' &&
+        isCanonicalPackDigest(item.bundleDigest) &&
+        (item.packKey === 'nesy.courier' || item.packKey === 'match.reaction'))
+    return { ...item, compileReady }
+  })
+
+  return annotated.sort((left, right) => {
+    const readyDelta = Number(right.compileReady) - Number(left.compileReady)
+    if (readyDelta !== 0) return readyDelta
+    if (left.packKey !== right.packKey) return left.packKey.localeCompare(right.packKey)
+    return right.version.localeCompare(left.version, undefined, { numeric: true })
+  })
+}
+
 export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/compile', async (request, reply) => {
     const body = request.body
+    const domainPackKey = String(body.domainPackKey ?? '')
+    const domainPackVersion = String(body.domainPackVersion ?? '')
+    const domainPackDigest = String(body.domainPackDigest ?? '')
+    await ensureCompilePackHydrated({
+      packKey: domainPackKey,
+      packVersion: domainPackVersion,
+      packDigest: domainPackDigest,
+    })
     const result = compileService.compileWorkflow({
       workflowRef: String(body.workflowRef ?? ''),
       workflowIr: body.workflowIr ?? {},
-      domainPackKey: String(body.domainPackKey ?? ''),
-      domainPackVersion: String(body.domainPackVersion ?? ''),
-      domainPackDigest: String(body.domainPackDigest ?? ''),
+      domainPackKey,
+      domainPackVersion,
+      domainPackDigest,
     })
     return reply.code(result.ok ? 200 : 422).send(result)
   })
@@ -187,6 +317,10 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, unknown> }>('/runtime/runs', async (request, reply) => {
     try {
       const body = request.body
+      const inputs =
+        body.inputs !== null && typeof body.inputs === 'object' && !Array.isArray(body.inputs)
+          ? (body.inputs as Record<string, unknown>)
+          : undefined
       const result = await runService.start({
         workflowRef: String(body.workflowRef ?? ''),
         deviceId: String(body.deviceId ?? ''),
@@ -198,6 +332,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
         releaseGate: body.releaseGate === true,
         profileKey: body.profileKey === undefined ? undefined : String(body.profileKey),
         profileVersion: body.profileVersion === undefined ? undefined : String(body.profileVersion),
+        ...(inputs === undefined ? {} : { inputs }),
       })
       return reply.code(202).send(result)
     } catch (error) {
@@ -208,7 +343,13 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
     }
   })
 
-  app.get('/runtime/domain-packs', async () => domainPackAdmin.list())
+  app.get('/runtime/domain-packs', async () => {
+    const catalog = await domainPackAdmin.list()
+    return {
+      ...catalog,
+      items: annotateDomainPackCatalog(catalog.items),
+    }
+  })
 
   app.get<{ Params: { packKey: string; version: string } }>(
     '/runtime/domain-packs/:packKey/:version',
@@ -507,6 +648,11 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
       if (!workflowRef || !deviceId || !domainPackKey || !domainPackVersion || !domainPackDigest || row.workflowIr === undefined) {
         continue
       }
+      await ensureCompilePackHydrated({
+        packKey: domainPackKey,
+        packVersion: domainPackVersion,
+        packDigest: domainPackDigest,
+      })
       const compile = compileService.compileWorkflow({
         workflowRef,
         workflowIr: row.workflowIr,

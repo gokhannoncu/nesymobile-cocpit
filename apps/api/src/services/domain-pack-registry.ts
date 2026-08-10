@@ -53,6 +53,10 @@ function publishedPacks(): PublishedVersion[] {
   return published
 }
 
+function packSlotKey(packKey: string, version: string): string {
+  return `${packKey}@${version}`
+}
+
 /** Every pack this process can compile against, with its reproducible digest. */
 export function listDomainPacks(): readonly ResolvedDomainPack[] {
   return publishedPacks().map((entry) => ({
@@ -61,6 +65,36 @@ export function listDomainPacks(): readonly ResolvedDomainPack[] {
     packDigest: entry.digest,
     bundle: entry.bundle,
   }))
+}
+
+/**
+ * Hydrate a published admin-store pack into the compile registry.
+ * Used when the catalog has a historical published version that is not the
+ * current code-resident first-party build (e.g. `nesy.courier@1.0.1` while
+ * source is at `1.0.2`).
+ */
+export function registerPublishedPack(input: {
+  packKey: string
+  version: string
+  digest: string
+  bundle: DomainPackBundle
+}): void {
+  const packs = publishedPacks()
+  const idx = packs.findIndex(
+    (entry) => entry.packKey === input.packKey && entry.version === input.version,
+  )
+  const next: PublishedVersion = {
+    packKey: input.packKey,
+    version: input.version,
+    digest: input.digest,
+    publishedAt: '1970-01-01T00:00:00.000Z',
+    bundle: input.bundle,
+  }
+  if (idx >= 0) {
+    packs[idx] = next
+  } else {
+    packs.push(next)
+  }
 }
 
 export function resolveDomainPack(input: {
@@ -74,7 +108,7 @@ export function resolveDomainPack(input: {
   )
 
   if (match === undefined) {
-    const known = publishedPacks().map((entry) => `${entry.packKey}@${entry.version}`).join(', ')
+    const known = publishedPacks().map((entry) => packSlotKey(entry.packKey, entry.version)).join(', ')
     return {
       ok: false,
       code: 'UNKNOWN_DOMAIN_PACK',

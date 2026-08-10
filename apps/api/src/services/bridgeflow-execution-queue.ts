@@ -196,8 +196,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
 
     const persistence = new PrismaExecutionPersistence(this.options.prisma)
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
+    const runInputs = item.inputs ?? {}
     const runContext = new BridgeFlowRunContext({
       capabilities: manager.getCapabilities(),
+      runInputs,
       clock,
     })
     const oracle = new OracleEvaluationWorker({
@@ -210,7 +212,12 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       const executor = new BridgeFlowExecutor({
         persistence,
         mutationAdmission: createInMemoryMutationAdmission(),
-        bridge: createBridgeRuntimePort({ manager, variables: runContext, runId: item.runId }),
+        bridge: createBridgeRuntimePort({
+          manager,
+          variables: runContext,
+          runId: item.runId,
+          runInputs,
+        }),
         evidence: {
           factsForOccurrence: (occurrenceId) => {
             // Facts are also handed to the condition resolver: a branch that
@@ -233,6 +240,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             bundle: resolution.pack.bundle,
             adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(),
             variables: runContext,
+            runInputs,
             evidence: evidenceRuntime,
             attemptStore: new PrismaRemoteActionAttemptStore(this.options.prisma),
             clock,

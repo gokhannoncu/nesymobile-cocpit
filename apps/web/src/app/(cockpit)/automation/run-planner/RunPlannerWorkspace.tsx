@@ -2,6 +2,11 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { startVerdictTestCampaign } from '@/lib/verdict-runtime/client'
+import {
+  packIdentity,
+  parsePackIdentity,
+  selectPinnedPublishedPack,
+} from '@/lib/verdict-runtime/select-published-pack'
 import type { DomainPackCatalogApi, TestProfileCatalogApi, WorkflowCatalogApi, RunHistoryResult } from '@/lib/verdict-runtime/types'
 
 export function RunPlannerWorkspace({
@@ -15,9 +20,23 @@ export function RunPlannerWorkspace({
   profiles: TestProfileCatalogApi
   runs: RunHistoryResult
 }) {
-  const publishedPacks = packs.items.filter((pack) => pack.publicationState === 'PUBLISHED')
+  const publishedPacks = useMemo(
+    () =>
+      packs.items
+        .filter((pack) => pack.publicationState === 'PUBLISHED')
+        .slice()
+        .sort((left, right) => {
+          const readyDelta = Number(Boolean(right.compileReady)) - Number(Boolean(left.compileReady))
+          if (readyDelta !== 0) return readyDelta
+          return packIdentity(left).localeCompare(packIdentity(right))
+        }),
+    [packs.items],
+  )
+  const defaultPack = selectPinnedPublishedPack(publishedPacks)
   const [workflowId, setWorkflowId] = useState(workflows.items[0]?.id ?? '')
-  const [packKey, setPackKey] = useState(publishedPacks[0]?.packKey ?? '')
+  const [packIdentityValue, setPackIdentityValue] = useState(
+    defaultPack ? packIdentity(defaultPack) : '',
+  )
   const [profileKey, setProfileKey] = useState(profiles.items[0]?.profileKey ?? '')
   const [deviceId, setDeviceId] = useState('lab-device-1')
   const [impact, setImpact] = useState('delivery')
@@ -25,7 +44,13 @@ export function RunPlannerWorkspace({
   const [isPending, startTransition] = useTransition()
 
   const selectedWorkflow = workflows.items.find((workflow) => workflow.id === workflowId)
-  const selectedPack = publishedPacks.find((pack) => pack.packKey === packKey)
+  const selectedPackIdentity = parsePackIdentity(packIdentityValue)
+  const selectedPack = publishedPacks.find(
+    (pack) =>
+      selectedPackIdentity !== null &&
+      pack.packKey === selectedPackIdentity.packKey &&
+      pack.version === selectedPackIdentity.version,
+  )
   const selectedProfile = profiles.items.find((profile) => profile.profileKey === profileKey)
   const activeDeviceRuns = runs.items.filter((run) =>
     String(run.run.deviceId ?? '') === deviceId &&
@@ -43,7 +68,7 @@ export function RunPlannerWorkspace({
   }, [impact, workflows.items])
   const blockedReasons = [
     selectedWorkflow === undefined ? 'Select a workflow.' : null,
-    selectedPack === undefined ? 'Select a published Domain Pack.' : null,
+    selectedPack === undefined ? 'Select a published Domain Pack version.' : null,
     selectedProfile === undefined ? 'Select a Test Profile.' : null,
     activeDeviceRuns.length > 0 ? `Device ${deviceId} already has ${activeDeviceRuns.length} active run(s).` : null,
   ].filter((item): item is string => item !== null)
@@ -76,7 +101,15 @@ export function RunPlannerWorkspace({
     <div className="space-y-8">
       <section className="grid gap-4 md:grid-cols-4">
         <Select label="Workflow" value={workflowId} onChange={setWorkflowId} options={workflows.items.map((w) => ({ value: w.id, label: w.name }))} />
-        <Select label="Domain Pack" value={packKey} onChange={setPackKey} options={publishedPacks.map((p) => ({ value: p.packKey, label: `${p.packKey}@${p.version}` }))} />
+        <Select
+          label="Domain Pack"
+          value={packIdentityValue}
+          onChange={setPackIdentityValue}
+          options={publishedPacks.map((p) => ({
+            value: packIdentity(p),
+            label: `${packIdentity(p)}${p.compileReady ? '' : ' (catalog only)'}`,
+          }))}
+        />
         <Select label="Test Profile" value={profileKey} onChange={setProfileKey} options={profiles.items.map((p) => ({ value: p.profileKey, label: `${p.profileKey} v${p.version}` }))} />
         <label className="text-sm font-medium">Device / Resource
           <input className="mt-2 h-10 w-full rounded-md border px-3 text-sm" value={deviceId} onChange={(event) => setDeviceId(event.target.value)} />

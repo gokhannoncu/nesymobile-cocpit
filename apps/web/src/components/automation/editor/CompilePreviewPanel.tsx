@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { compileVerdictWorkflow, fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client';
+import { selectPinnedPublishedPack } from '@/lib/verdict-runtime/select-published-pack';
 import type { DomainPackSummary } from '@/lib/verdict-runtime/types';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Copy, Terminal } from 'lucide-react';
 
@@ -17,16 +18,17 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
   // runtime would (correctly) reject.
   useEffect(() => {
     let cancelled = false;
-    fetchVerdictDomainPacks()
-      .then((catalog) => {
+    void (async () => {
+      try {
+        const catalog = await fetchVerdictDomainPacks();
         if (cancelled) return;
-        const published = catalog.items.find((item) => item.publicationState === 'PUBLISHED');
+        const published = selectPinnedPublishedPack(catalog.items);
         setPack(published ?? null);
         setPackError(published ? null : 'No published Domain Pack to pin a compiled plan to.');
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setPackError('Domain Pack catalog unavailable.');
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -37,7 +39,7 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
     setCompiling(true);
     try {
       const data = await compileVerdictWorkflow({
-        workflowRef: workflowState?.workflowId ?? '',
+        workflowRef: workflowState?.workflowSlug ?? workflowState?.workflowId ?? '',
         workflowIr: {
           nodes: workflowState?.nodes ?? [],
           connections: workflowState?.connections ?? [],

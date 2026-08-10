@@ -40,7 +40,7 @@ const DEFAULT_POLICIES: WorkflowPolicies = {
   cleanupDeadlineMs: 60_000,
   defaultRetry: READ_ONLY_RETRY,
   artifactPolicy: { captureOnSuccess: false, captureOnFailure: true, kinds: ["SCREENSHOT", "UI_TREE"] },
-  redactionPolicy: { redactPaths: ["run.input.password"] },
+  redactionPolicy: { redactPaths: ["run.input.pin", "run.input.password"] },
 };
 
 /** Fields shared by every step, so a slice file only shows what differs. */

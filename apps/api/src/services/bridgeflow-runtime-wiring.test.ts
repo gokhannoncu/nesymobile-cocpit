@@ -102,6 +102,23 @@ describe('BridgeFlow compile adapter', () => {
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('UNKNOWN_DOMAIN_PACK')
   })
+
+  it('materializes canvas IR for single-macro pack workflows', () => {
+    const service = createBridgeFlowCompileService(new InMemoryCompiledPlanStore())
+    const result = service.compileWorkflow({
+      workflowRef: 'nesy.workflow.login',
+      workflowIr: {
+        nodes: [{ id: 'auth', type: 'AUTH_LOGIN' }],
+        connections: [],
+      },
+      domainPackKey: PACK.packKey,
+      domainPackVersion: PACK.packVersion,
+      domainPackDigest: PACK.packDigest,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([])
+  })
 })
 
 describe('run condition context', () => {

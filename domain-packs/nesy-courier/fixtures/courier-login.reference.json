@@ -1,8 +1,9 @@
 {
   "sliceKey": "COURIER_LOGIN",
-  "displayName": "Courier login",
-  "businessMeaning": "A courier signs in through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
+  "displayName": "Courier PIN login",
+  "businessMeaning": "A courier signs in with their device PIN through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
   "notResponsibleFor": [
+    "username/password tab login",
     "password reset and account recovery",
     "biometric re-authentication",
     "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
@@ -11,16 +12,11 @@
   "inputSchema": {
     "fields": [
       {
-        "name": "userName",
+        "name": "pin",
         "type": "string",
         "required": true,
-        "description": "Courier login identifier."
-      },
-      {
-        "name": "password",
-        "type": "string",
-        "required": true,
-        "secret": true
+        "secret": true,
+        "description": "Courier device PIN (NesyMobile PIN tab / loginDevice)."
       },
       {
         "name": "sessionCorrelationId",
@@ -64,8 +60,8 @@
   "surfaceRefs": [],
   "entityBindings": [],
   "targetResolutionRefs": [
-    "nesy.target.login-user-field",
-    "nesy.target.login-password-field",
+    "nesy.target.login-pin-tab",
+    "nesy.target.login-pin-field",
     "nesy.target.login-submit"
   ],
   "semanticMacroRef": "nesy.macro.login",
@@ -76,19 +72,14 @@
       "schemaVersion": 2,
       "workflowId": "nesy.reference.login",
       "workflowVersion": 1,
-      "name": "Courier login through the real UI",
+      "name": "Courier PIN login through the real UI",
       "source": {
         "kind": "DOMAIN_PACK_EXPANSION",
         "ref": "nesy.macro.login"
       },
       "inputs": [
         {
-          "name": "userName",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "password",
+          "name": "pin",
           "type": "string",
           "required": true,
           "secret": true
@@ -101,11 +92,11 @@
       ],
       "variables": [
         {
-          "name": "userFieldHandle",
+          "name": "pinTabHandle",
           "type": "string"
         },
         {
-          "name": "secretFieldHandle",
+          "name": "pinFieldHandle",
           "type": "string"
         },
         {
@@ -117,7 +108,7 @@
         {
           "planStepId": "wait-login-ready",
           "sourceMapRef": "sm-login-1",
-          "next": "resolve-user-field",
+          "next": "resolve-pin-tab",
           "timeoutMs": 30000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -132,9 +123,9 @@
           "onTimeout": "FAIL"
         },
         {
-          "planStepId": "resolve-user-field",
+          "planStepId": "resolve-pin-tab",
           "sourceMapRef": "sm-login-2",
-          "next": "enter-user",
+          "next": "select-pin-tab",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -147,13 +138,13 @@
             }
           ],
           "kind": "RESOLVE_TARGET",
-          "targetRef": "nesy.target.login-user-field",
-          "outputVariable": "userFieldHandle"
+          "targetRef": "nesy.target.login-pin-tab",
+          "outputVariable": "pinTabHandle"
         },
         {
-          "planStepId": "enter-user",
+          "planStepId": "select-pin-tab",
           "sourceMapRef": "sm-login-3",
-          "next": "resolve-secret-field",
+          "next": "resolve-pin-field",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -161,21 +152,18 @@
           },
           "capabilityRequirements": [
             {
-              "capability": "verdict.core.bridge.set-text",
+              "capability": "verdict.core.bridge.tap",
               "optional": false
             }
           ],
           "kind": "BRIDGE_ACTION",
-          "action": "setText",
-          "targetVariable": "userFieldHandle",
-          "args": {
-            "valueRef": "run.input.userName"
-          }
+          "action": "tap",
+          "targetVariable": "pinTabHandle"
         },
         {
-          "planStepId": "resolve-secret-field",
+          "planStepId": "resolve-pin-field",
           "sourceMapRef": "sm-login-4",
-          "next": "enter-secret",
+          "next": "enter-pin",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -188,11 +176,11 @@
             }
           ],
           "kind": "RESOLVE_TARGET",
-          "targetRef": "nesy.target.login-password-field",
-          "outputVariable": "secretFieldHandle"
+          "targetRef": "nesy.target.login-pin-field",
+          "outputVariable": "pinFieldHandle"
         },
         {
-          "planStepId": "enter-secret",
+          "planStepId": "enter-pin",
           "sourceMapRef": "sm-login-5",
           "next": "resolve-submit",
           "timeoutMs": 20000,
@@ -208,9 +196,9 @@
           ],
           "kind": "BRIDGE_ACTION",
           "action": "setText",
-          "targetVariable": "secretFieldHandle",
+          "targetVariable": "pinFieldHandle",
           "args": {
-            "valueRef": "run.input.password"
+            "valueRef": "run.input.pin"
           },
           "redactionPolicy": {
             "redactAllInputs": true
@@ -399,6 +387,7 @@
         },
         "redactionPolicy": {
           "redactPaths": [
+            "run.input.pin",
             "run.input.password"
           ]
         }
@@ -426,22 +415,23 @@
         },
         {
           "ref": "sm-login-2",
-          "planStepId": "resolve-user-field",
-          "domainSourceRef": "nesy.macro.login"
+          "planStepId": "resolve-pin-tab",
+          "domainSourceRef": "nesy.macro.login",
+          "note": "ensure PIN tab is active"
         },
         {
           "ref": "sm-login-3",
-          "planStepId": "enter-user",
+          "planStepId": "select-pin-tab",
           "domainSourceRef": "nesy.macro.login"
         },
         {
           "ref": "sm-login-4",
-          "planStepId": "resolve-secret-field",
+          "planStepId": "resolve-pin-field",
           "domainSourceRef": "nesy.macro.login"
         },
         {
           "ref": "sm-login-5",
-          "planStepId": "enter-secret",
+          "planStepId": "enter-pin",
           "domainSourceRef": "nesy.macro.login"
         },
         {
@@ -481,22 +471,23 @@
       },
       {
         "ref": "sm-login-2",
-        "planStepId": "resolve-user-field",
-        "domainSourceRef": "nesy.macro.login"
+        "planStepId": "resolve-pin-tab",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "ensure PIN tab is active"
       },
       {
         "ref": "sm-login-3",
-        "planStepId": "enter-user",
+        "planStepId": "select-pin-tab",
         "domainSourceRef": "nesy.macro.login"
       },
       {
         "ref": "sm-login-4",
-        "planStepId": "resolve-secret-field",
+        "planStepId": "resolve-pin-field",
         "domainSourceRef": "nesy.macro.login"
       },
       {
         "ref": "sm-login-5",
-        "planStepId": "enter-secret",
+        "planStepId": "enter-pin",
         "domainSourceRef": "nesy.macro.login"
       },
       {
@@ -532,10 +523,10 @@
         "macroRef": "nesy.macro.login",
         "planStepIds": [
           "wait-login-ready",
-          "resolve-user-field",
-          "enter-user",
-          "resolve-secret-field",
-          "enter-secret",
+          "resolve-pin-tab",
+          "select-pin-tab",
+          "resolve-pin-field",
+          "enter-pin",
           "resolve-submit",
           "tap-submit",
           "verify-backend-session",
@@ -543,7 +534,7 @@
           "clear-session"
         ],
         "sliceRef": "COURIER_LOGIN",
-        "note": "Whole macro expands into one linear leg plus a backend validation and a cleanup."
+        "note": "Whole macro expands into one linear PIN-login leg plus a backend validation and a cleanup."
       }
     ]
   },
@@ -551,19 +542,14 @@
     "schemaVersion": 2,
     "workflowId": "nesy.reference.login",
     "workflowVersion": 1,
-    "name": "Courier login through the real UI",
+    "name": "Courier PIN login through the real UI",
     "source": {
       "kind": "DOMAIN_PACK_EXPANSION",
       "ref": "nesy.macro.login"
     },
     "inputs": [
       {
-        "name": "userName",
-        "type": "string",
-        "required": true
-      },
-      {
-        "name": "password",
+        "name": "pin",
         "type": "string",
         "required": true,
         "secret": true
@@ -576,11 +562,11 @@
     ],
     "variables": [
       {
-        "name": "userFieldHandle",
+        "name": "pinTabHandle",
         "type": "string"
       },
       {
-        "name": "secretFieldHandle",
+        "name": "pinFieldHandle",
         "type": "string"
       },
       {
@@ -592,7 +578,7 @@
       {
         "planStepId": "wait-login-ready",
         "sourceMapRef": "sm-login-1",
-        "next": "resolve-user-field",
+        "next": "resolve-pin-tab",
         "timeoutMs": 30000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -607,9 +593,9 @@
         "onTimeout": "FAIL"
       },
       {
-        "planStepId": "resolve-user-field",
+        "planStepId": "resolve-pin-tab",
         "sourceMapRef": "sm-login-2",
-        "next": "enter-user",
+        "next": "select-pin-tab",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -622,13 +608,13 @@
           }
         ],
         "kind": "RESOLVE_TARGET",
-        "targetRef": "nesy.target.login-user-field",
-        "outputVariable": "userFieldHandle"
+        "targetRef": "nesy.target.login-pin-tab",
+        "outputVariable": "pinTabHandle"
       },
       {
-        "planStepId": "enter-user",
+        "planStepId": "select-pin-tab",
         "sourceMapRef": "sm-login-3",
-        "next": "resolve-secret-field",
+        "next": "resolve-pin-field",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -636,21 +622,18 @@
         },
         "capabilityRequirements": [
           {
-            "capability": "verdict.core.bridge.set-text",
+            "capability": "verdict.core.bridge.tap",
             "optional": false
           }
         ],
         "kind": "BRIDGE_ACTION",
-        "action": "setText",
-        "targetVariable": "userFieldHandle",
-        "args": {
-          "valueRef": "run.input.userName"
-        }
+        "action": "tap",
+        "targetVariable": "pinTabHandle"
       },
       {
-        "planStepId": "resolve-secret-field",
+        "planStepId": "resolve-pin-field",
         "sourceMapRef": "sm-login-4",
-        "next": "enter-secret",
+        "next": "enter-pin",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -663,11 +646,11 @@
           }
         ],
         "kind": "RESOLVE_TARGET",
-        "targetRef": "nesy.target.login-password-field",
-        "outputVariable": "secretFieldHandle"
+        "targetRef": "nesy.target.login-pin-field",
+        "outputVariable": "pinFieldHandle"
       },
       {
-        "planStepId": "enter-secret",
+        "planStepId": "enter-pin",
         "sourceMapRef": "sm-login-5",
         "next": "resolve-submit",
         "timeoutMs": 20000,
@@ -683,9 +666,9 @@
         ],
         "kind": "BRIDGE_ACTION",
         "action": "setText",
-        "targetVariable": "secretFieldHandle",
+        "targetVariable": "pinFieldHandle",
         "args": {
-          "valueRef": "run.input.password"
+          "valueRef": "run.input.pin"
         },
         "redactionPolicy": {
           "redactAllInputs": true
@@ -874,6 +857,7 @@
       },
       "redactionPolicy": {
         "redactPaths": [
+          "run.input.pin",
           "run.input.password"
         ]
       }
@@ -901,22 +885,23 @@
       },
       {
         "ref": "sm-login-2",
-        "planStepId": "resolve-user-field",
-        "domainSourceRef": "nesy.macro.login"
+        "planStepId": "resolve-pin-tab",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "ensure PIN tab is active"
       },
       {
         "ref": "sm-login-3",
-        "planStepId": "enter-user",
+        "planStepId": "select-pin-tab",
         "domainSourceRef": "nesy.macro.login"
       },
       {
         "ref": "sm-login-4",
-        "planStepId": "resolve-secret-field",
+        "planStepId": "resolve-pin-field",
         "domainSourceRef": "nesy.macro.login"
       },
       {
         "ref": "sm-login-5",
-        "planStepId": "enter-secret",
+        "planStepId": "enter-pin",
         "domainSourceRef": "nesy.macro.login"
       },
       {
@@ -961,14 +946,14 @@
         "awaitFactKey": "UI.LOGIN_SCREEN_READY"
       },
       {
-        "planStepId": "enter-user",
-        "bridgeVerb": "setText",
-        "targetRef": "nesy.target.login-user-field"
+        "planStepId": "select-pin-tab",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.login-pin-tab"
       },
       {
-        "planStepId": "enter-secret",
+        "planStepId": "enter-pin",
         "bridgeVerb": "setText",
-        "targetRef": "nesy.target.login-password-field"
+        "targetRef": "nesy.target.login-pin-field"
       },
       {
         "planStepId": "tap-submit",

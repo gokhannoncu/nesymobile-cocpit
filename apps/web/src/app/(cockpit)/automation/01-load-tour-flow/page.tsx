@@ -9,6 +9,7 @@ import { LoadTourFlowWorkspace } from '@/components/automation/load-tour-flow-wo
 import { ProductPage } from '@/components/product'
 import { fetchWorkflow } from '@/services/automation-api'
 import { fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client'
+import { packIdentity, selectPinnedPublishedPack } from '@/lib/verdict-runtime/select-published-pack'
 
 const WORKFLOW_SLUG = '01-load-tour-flow'
 
@@ -26,14 +27,14 @@ export default function LoadTourFlowPage() {
   useEffect(() => {
     void fetchVerdictDomainPacks()
       .then((catalog) => {
-        const published = catalog.items.find((item) => item.publicationState === 'PUBLISHED')
+        const published = selectPinnedPublishedPack(catalog.items)
         if (!published) {
           setPackError('No published Domain Pack — runs cannot be pinned.')
           setPackPin(null)
           return
         }
         setPackError(null)
-        setPackPin(`${published.packKey}@${published.version}`)
+        setPackPin(packIdentity(published))
       })
       .catch((error) => {
         setPackError(error instanceof Error ? error.message : 'Domain Pack catalog unavailable')

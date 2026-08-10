@@ -93,10 +93,19 @@ export function applyLogLine(state, line) {
   const msg = message.toLowerCase()
   let changed = false
 
+  // Next HMR / Fast Refresh often logs "Could not find the module" or a bare
+  // `code: 'ENOENT'` while the server keeps serving — do not sticky-fail on those.
+  const transientDevNoise =
+    /could not find the module|fast refresh|hot-reloader|hot-update|compiling \.\.\.|code:\s*['"]ENOENT['"]/i.test(
+      message,
+    )
+
   const failMatch =
+    !transientDevNoise &&
     /\berror\b|\bfailed\b|elifecycle|cannot find|enoent|eaddrinuse|module not found/i.test(
       message,
-    ) && !/no-unused-vars|no-explicit-any|exhaustive-deps|no-img-element|ban-ts-comment|no-unescaped|useless-escape|jsx-no-comment|jsx-key|react\/|@typescript-eslint|@next\//i.test(
+    ) &&
+    !/no-unused-vars|no-explicit-any|exhaustive-deps|no-img-element|ban-ts-comment|no-unescaped|useless-escape|jsx-no-comment|jsx-key|react\/|@typescript-eslint|@next\//i.test(
       message,
     )
 
@@ -179,7 +188,10 @@ export function applyHealthProbe(state, which, ok) {
   const service = state[which]
   if (ok) {
     if (service.status === 'ready') return false
-    setStatus(service, 'ready', `http://localhost:${state.ports[which]}`)
+    // Health wins over sticky log-based failures (HMR / probe race).
+    service.status = 'ready'
+    service.detail = `http://localhost:${state.ports[which]}`
+    state.error = null
     return true
   }
   if (service.status === 'ready') {

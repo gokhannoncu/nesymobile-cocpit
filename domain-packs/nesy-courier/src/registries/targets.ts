@@ -34,8 +34,10 @@ import { NESY_SCREENS, NESY_SURFACES } from "./screens.js";
 const APP = NESY_COURIER_APPLICATION_KEY;
 
 export const NESY_TARGETS = {
-  loginUserField: "nesy.target.login-user-field",
-  loginPasswordField: "nesy.target.login-password-field",
+  /** Default login tab on NesyMobile (`@string/pin_view`). */
+  loginPinTab: "nesy.target.login-pin-tab",
+  /** Chaos PinView on the PIN tab (`R.id.pinView`). */
+  loginPinField: "nesy.target.login-pin-field",
   loginSubmit: "nesy.target.login-submit",
   routeRow: "nesy.target.route-row",
   routeDialogConfirm: "nesy.target.route-dialog-confirm",
@@ -48,12 +50,17 @@ export const NESY_TARGETS = {
 
 export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
   {
-    targetKey: NESY_TARGETS.loginUserField,
+    targetKey: NESY_TARGETS.loginPinTab,
     applicationRef: APP,
     screenRef: NESY_SCREENS.login,
-    displayName: "Username field",
+    displayName: "PIN login tab",
     resolution: {
-      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_user_input" }, establishesIdentity: true }],
+      // Cold start already selects the PIN tab; TEXT_MATCH recovers if the
+      // username tab was left selected from a prior interactive session.
+      chain: [
+        { kind: "TEXT_MATCH", selector: { text: "PIN" }, establishesIdentity: true },
+        { kind: "ACCESSIBILITY_ID", selector: { id: "tl_login" }, establishesIdentity: false },
+      ],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 10_000,
@@ -61,12 +68,12 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
-    targetKey: NESY_TARGETS.loginPasswordField,
+    targetKey: NESY_TARGETS.loginPinField,
     applicationRef: APP,
     screenRef: NESY_SCREENS.login,
-    displayName: "Password field",
+    displayName: "PIN field",
     resolution: {
-      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_password_input" }, establishesIdentity: true }],
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "pinView" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 10_000,
@@ -79,7 +86,7 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     screenRef: NESY_SCREENS.login,
     displayName: "Sign-in button",
     resolution: {
-      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "login_submit_button" }, establishesIdentity: true }],
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btn_login" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 10_000,

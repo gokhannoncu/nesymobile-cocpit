@@ -27,11 +27,16 @@ export const NESY_COURIER_SEMANTIC_ACTIONS: readonly SemanticActionDefinition[] 
     applicationRef: APP,
     displayName: "Sign in",
     businessMeaning: "A courier authenticates and obtains a working session.",
-    notResponsibleFor: ["password reset", "biometric re-authentication", "session refresh"],
+    notResponsibleFor: [
+      "username/password tab login",
+      "password reset",
+      "biometric re-authentication",
+      "session refresh",
+    ],
     screenRefs: [NESY_SCREENS.login],
     surfaceRefs: [],
     entityTypeRefs: [],
-    targetRefs: [NESY_TARGETS.loginUserField, NESY_TARGETS.loginPasswordField, NESY_TARGETS.loginSubmit],
+    targetRefs: [NESY_TARGETS.loginPinTab, NESY_TARGETS.loginPinField, NESY_TARGETS.loginSubmit],
     requiredCapabilityRefs: ["verdict.core.bridge.set-text", "verdict.core.bridge.tap"],
   },
   {

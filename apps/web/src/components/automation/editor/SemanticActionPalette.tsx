@@ -50,7 +50,8 @@ export function SemanticActionPalette() {
       try {
         const packs = await fetchVerdictDomainPacks()
         if (cancelled) return
-        const pack = packs.items.find((item) => item.publicationState === 'PUBLISHED')
+        const { selectPinnedPublishedPack } = await import('@/lib/verdict-runtime/select-published-pack')
+        const pack = selectPinnedPublishedPack(packs.items)
         if (!pack) {
           setState({
             status: 'empty',

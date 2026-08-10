@@ -63,6 +63,25 @@ describe('applyLogLine', () => {
     assert.notEqual(state.web.status, 'failed')
     assert.equal(state.error, null)
   })
+
+  it('ignores Next HMR module-not-found as failures', () => {
+    const state = createCockpitState('dev')
+    applyLogLine(state, '@nesy/web:dev: ✓ Ready in 694ms')
+    applyLogLine(
+      state,
+      '@nesy/web:dev: ⨯ Error: Could not find the module "/Users/gokhanoncu/Desktop/foo.ts"',
+    )
+    assert.equal(state.web.status, 'ready')
+    assert.equal(state.error, null)
+  })
+
+  it('ignores bare ENOENT code dumps as failures', () => {
+    const state = createCockpitState('dev')
+    applyLogLine(state, '@nesy/web:dev: ✓ Ready in 694ms')
+    applyLogLine(state, "@nesy/web:dev:     code: 'ENOENT',")
+    assert.equal(state.web.status, 'ready')
+    assert.equal(state.error, null)
+  })
 })
 
 describe('applyHealthProbe', () => {
@@ -71,6 +90,17 @@ describe('applyHealthProbe', () => {
     state.api.status = 'starting'
     assert.equal(applyHealthProbe(state, 'api', true), true)
     assert.equal(state.api.status, 'ready')
+  })
+
+  it('recovers web from failed when health ok', () => {
+    const state = createCockpitState('dev')
+    state.web.status = 'failed'
+    state.web.detail = "code: 'ENOENT',"
+    state.error = "code: 'ENOENT',"
+    assert.equal(applyHealthProbe(state, 'web', true), true)
+    assert.equal(state.web.status, 'ready')
+    assert.match(state.web.detail, /4002/)
+    assert.equal(state.error, null)
   })
 })
 

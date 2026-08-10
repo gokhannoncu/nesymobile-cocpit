@@ -52,6 +52,7 @@ import {
   fieldLoginLaunchFor,
   type FieldLoginIntent,
 } from '@/lib/verdict-runtime/field-login-intent'
+import { packIdentity, selectPinnedPublishedPack } from '@/lib/verdict-runtime/select-published-pack'
 import { startPinnedVerdictRun } from '@/lib/verdict-runtime/start-pinned-run'
 import {
   listNesyMobileAdbDevices,
@@ -93,14 +94,14 @@ export default function FieldCourierLoginPage() {
   useEffect(() => {
     void fetchVerdictDomainPacks()
       .then((catalog) => {
-        const published = catalog.items.find((item) => item.publicationState === 'PUBLISHED')
+        const published = selectPinnedPublishedPack(catalog.items)
         if (!published) {
           setPackError('No published Domain Pack — Field Login cannot pin a Verdict run.')
           setPackPin(null)
           return
         }
         setPackError(null)
-        setPackPin(`${published.packKey}@${published.version}`)
+        setPackPin(packIdentity(published))
       })
       .catch((error) => {
         setPackError(error instanceof Error ? error.message : 'Domain Pack catalog unavailable')

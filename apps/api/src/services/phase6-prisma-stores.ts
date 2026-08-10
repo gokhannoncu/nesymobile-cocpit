@@ -61,24 +61,47 @@ export class PrismaCompiledPlanStore implements CompiledPlanStore {
   constructor(private readonly prisma: PrismaClient) {}
 
   async put(plan: StoredBridgeFlowPlan): Promise<void> {
-    await this.prisma.verdictCompiledPlan.upsert({
-      where: { planHash: plan.hash.digest },
-      create: {
-        planRef: plan.planId,
-        planHash: plan.hash.digest,
-        workflowRef: String(plan.workflowRef ?? ''),
-        domainPackKey: plan.provenance.packKey,
-        domainPackVersion: plan.provenance.packVersion,
-        domainPackDigest: plan.packDigest,
-        compilerVersion: plan.provenance.compilerVersion,
-        plan: plan as unknown as object,
-      },
-      update: {
-        // Immutable content is keyed by hash; repeated compile of the same plan
-        // may refresh the ref used by the caller but must not alter the body.
-        planRef: plan.planId,
-      },
-    })
+    const data = {
+      planRef: plan.planId,
+      planHash: plan.hash.digest,
+      workflowRef: String(plan.workflowRef ?? ''),
+      domainPackKey: plan.provenance.packKey,
+      domainPackVersion: plan.provenance.packVersion,
+      domainPackDigest: plan.packDigest,
+      compilerVersion: plan.provenance.compilerVersion,
+      plan: plan as unknown as object,
+    }
+
+    // Prefer hash identity (content-addressed). When the same planRef is
+    // recompiled under a new digest (pack pin change), plan_ref uniqueness
+    // would reject a fresh create — fall back to replacing that ref row.
+    try {
+      await this.prisma.verdictCompiledPlan.upsert({
+        where: { planHash: plan.hash.digest },
+        create: data,
+        update: { planRef: plan.planId },
+      })
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
+      ) {
+        throw error
+      }
+      await this.prisma.verdictCompiledPlan.upsert({
+        where: { planRef: plan.planId },
+        create: data,
+        update: {
+          planHash: data.planHash,
+          workflowRef: data.workflowRef,
+          domainPackKey: data.domainPackKey,
+          domainPackVersion: data.domainPackVersion,
+          domainPackDigest: data.domainPackDigest,
+          compilerVersion: data.compilerVersion,
+          plan: data.plan,
+        },
+      })
+    }
   }
 
   async get(input: { planRef: string; planHash: string }): Promise<StoredBridgeFlowPlan | undefined> {
@@ -456,6 +479,7 @@ export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
       runId: result.runId,
       workflowRef: request.workflowRef,
       deviceId: request.deviceId,
+      ...(request.inputs === undefined ? {} : { runInput: request.inputs }),
     })
     await this.prisma.verdictRunStart.create({
       data: {
