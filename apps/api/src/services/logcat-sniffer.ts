@@ -13,6 +13,7 @@ import { createInterface } from "node:readline";
 import { EventEmitter } from "node:events";
 import { resolveEventName } from "@nesy/control-contract";
 import { parseTestEventLine, TestEventDeduper, type TestBridgeEvent } from "./test-event-bridge.js";
+import { getScreenReadinessObserver } from "./screen-readiness-observer.js";
 
 export interface LogcatEvent {
   action: string;
@@ -218,6 +219,11 @@ export class LogcatSniffer extends EventEmitter {
   private handleTestEvent(event: TestBridgeEvent): void {
     if (this.runId && event.runId && event.runId !== this.runId) return;
     if (!this.deduper.accept(event)) return;
+
+    // Both transports land here — logcat lines and WS frames injected by
+    // TestEventWsServer — so this is the one place that sees every screen
+    // transition exactly once (the deduper above is what makes "once" true).
+    getScreenReadinessObserver().observe(event, Date.now());
 
     this.emit("test_event", event);
 

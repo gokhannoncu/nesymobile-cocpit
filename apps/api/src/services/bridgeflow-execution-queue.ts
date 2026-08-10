@@ -33,6 +33,10 @@ import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import {
+  getScreenReadinessObserver,
+  type ScreenReadinessObserver,
+} from './screen-readiness-observer.js'
 import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import { DeviceWorkerRegistry } from './device-worker.js'
@@ -176,11 +180,11 @@ async function readDeviceStateWithRetry(input: {
   return last
 }
 
-function screenMatchesDeviceState(
+export function screenMatchesScreenName(
   screen: DomainPackBundle['registries']['screens'][number],
-  state: DeviceBridgeState,
+  currentScreen: string,
 ): boolean {
-  const current = state.currentScreen.trim()
+  const current = currentScreen.trim()
   if (current === '') return false
   const runtime = screen.runtimeImplementation
   if (runtime.kind === 'FRAGMENT') return current === runtime.fragmentTag
@@ -189,19 +193,53 @@ function screenMatchesDeviceState(
   return false
 }
 
-function publishCurrentScreenReadiness(input: {
+/**
+ * Publishes `UI.*_READY` for whatever screen the device is on RIGHT NOW, into the
+ * scope of the occurrence that is asking.
+ *
+ * ## Why this is called from the evidence port and not once before the run
+ *
+ * It used to be a single pre-run publish with the occurrence id
+ * `<runId>:wait-login-ready:0` written into the call. That hardcoding made it work
+ * for exactly one step of exactly one workflow, and even there only if the first
+ * evaluation landed inside the 5s freshness window — on a cold start it never did.
+ * Driving it from `factsForOccurrence` instead makes the correlation tuple come
+ * from the executor's own context, so it is right by construction for every step,
+ * every workflow and every FOR_EACH iteration.
+ *
+ * ## Why `observedAtMs` is now and not the event's timestamp
+ *
+ * This is a STATE, not an event: the device sends `SCREEN_READY` /
+ * `SCREEN_EXITED` while the UI settles and then goes quiet, so the last
+ * transition is what holds until the next one. Stamping the transition's own time
+ * would let a screen that is still up go stale after `UI_FACT_MAX_AGE_MS` and fail
+ * the wait — which is the bug this replaces. The claim being made is "as of now,
+ * the device's last transition says this screen is ready", and `subtype`
+ * `SDK_STATE_SCREEN` is exactly that claim.
+ */
+function publishLiveScreenReadiness(input: {
   bundle: DomainPackBundle
-  state: DeviceBridgeState | null
   evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
+  observer: Pick<ScreenReadinessObserver, 'current'>
   runId: string
   occurrenceId: string
   iterationKey: string
   clock: () => number
 }): void {
-  if (input.state?.runId !== input.runId) return
-  let revision = 1
+  const state = input.observer.current(input.runId)
+  // `ready: false` means the device left the screen. Publishing nothing then is
+  // deliberate: a wait must keep waiting, and there is no "not ready" fact to
+  // assert — absence is what the oracle reads as unmet.
+  if (state === undefined || !state.ready) return
+
+  const revisionBase = input.evidenceRuntime.latestRevision({
+    runId: input.runId,
+    occurrenceId: input.occurrenceId,
+    iterationKey: input.iterationKey,
+  })
+  let revision = revisionBase + 1
   for (const screen of input.bundle.registries.screens) {
-    if (!screenMatchesDeviceState(screen, input.state)) continue
+    if (!screenMatchesScreenName(screen, state.screen)) continue
     for (const factKey of screen.readiness.requiredFactKeys) {
       input.evidenceRuntime.publish({
         runId: input.runId,
@@ -377,15 +415,16 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       runId: item.runId,
     })
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
-    publishCurrentScreenReadiness({
-      bundle: resolution.pack.bundle,
-      state: deviceState,
-      evidenceRuntime,
-      runId: item.runId,
-      occurrenceId: `${item.runId}:wait-login-ready:0`,
-      iterationKey: 'root',
-      clock,
-    })
+    const screenObserver = getScreenReadinessObserver()
+    // Seed the observer from the pre-run snapshot so a screen the device settled on
+    // BEFORE the first `SCREEN_READY` reached us is still known. From here on the
+    // event stream owns the state; this only covers the gap at the start.
+    if (deviceState?.runId === item.runId && deviceState.currentScreen.trim() !== '') {
+      screenObserver.observe(
+        { runId: item.runId, screen: deviceState.currentScreen, event: 'SCREEN_READY' },
+        clock(),
+      )
+    }
 
     await this.options.prisma.verdictRunStart.updateMany({
       where: { runId: item.runId },
@@ -420,12 +459,25 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           runInputs,
         }),
         evidence: {
-          factsForOccurrence: (occurrenceId) => {
+          factsForOccurrence: (occurrenceId, iterationKey) => {
+            // Screen readiness is produced HERE, against the caller's own scope.
+            // The device reports its screen continuously but cannot know which plan
+            // occurrence is asking, so the correlation can only be made at the
+            // moment of the question.
+            publishLiveScreenReadiness({
+              bundle: resolution.pack.bundle,
+              evidenceRuntime,
+              observer: screenObserver,
+              runId: item.runId,
+              occurrenceId,
+              iterationKey,
+              clock,
+            })
             // Facts are also handed to the condition resolver: a branch that
             // reads `sdk.state.*` must see what the oracle lane saw, not a
             // second, differently-filtered view of the same run.
             const facts = evidenceRuntime.currentFacts(
-              { runId: item.runId, occurrenceId, iterationKey: '' },
+              { runId: item.runId, occurrenceId, iterationKey },
               clock(),
             )
             runContext.observeFacts(facts)
@@ -495,6 +547,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         runId: item.runId,
         error: describeError(error),
       })
+    } finally {
+      // The observer is process-wide, so a finished run's screen must not linger:
+      // it would be a slow leak in a long-lived API and could answer a later
+      // question with a retired run's screen.
+      screenObserver.forget(item.runId)
     }
   }
 

@@ -43,7 +43,20 @@ export interface BridgeRuntimePort {
 }
 
 export interface EvidenceRuntimePort {
-  factsForOccurrence(occurrenceId: string): readonly ExecutorEvidenceFact[];
+  /**
+   * Facts correlated to one step occurrence.
+   *
+   * `iterationKey` is part of the identity, not extra detail: [correlatedFacts]
+   * drops any fact whose key differs, and the host's evidence runtime buckets
+   * publications by `(runId, occurrenceId, iterationKey)`. Passing only the
+   * occurrence left the host guessing the other half — it guessed `""` while the
+   * producer wrote `"root"`, so the lookup hit a bucket that never existed and
+   * every UI wait timed out with the fact sitting right there.
+   */
+  factsForOccurrence(
+    occurrenceId: string,
+    iterationKey: string,
+  ): readonly ExecutorEvidenceFact[];
 }
 
 export type ExecutorEvidenceFact = NormalizedEvidenceFact;
@@ -254,6 +267,18 @@ export interface OracleRuntimePort {
   >;
 }
 
+/**
+ * How often a `WAIT_EVENT` re-reads its fact. Small enough that a screen the
+ * device already reports does not add visible latency to a run, large enough that
+ * a 30s wait is a few dozen map reads rather than thousands.
+ */
+const FACT_POLL_INTERVAL_MS = 200;
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 export interface BridgeFlowExecutorOptions {
   persistence: ExecutionPersistencePort;
   mutationAdmission: MutationAdmissionPort;
@@ -265,6 +290,16 @@ export interface BridgeFlowExecutorOptions {
   remoteRuntime?: RemoteRuntimePort;
   oracle?: OracleRuntimePort;
   clock: () => number;
+  /**
+   * Delay between re-reads while a `WAIT_EVENT` waits for its fact.
+   *
+   * Injectable so the wait can be tested without real time. This is the ONLY timer
+   * in the executor and it does not contradict "no host-side polling" (RUN_PLAY
+   * §3.9): that rule forbids the host re-reading the DEVICE's UI tree on a timer.
+   * A fact has already arrived at the host when it arrives at all, so this re-reads
+   * an in-memory map and generates no device traffic.
+   */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export class InMemoryExecutionPersistence implements ExecutionPersistencePort {
@@ -1067,23 +1102,40 @@ export class BridgeFlowExecutor {
     await this.assertLiveFence(input.runId, context.recoveryFence);
     if (step.kind === "WAIT_EVENT") {
       const factKey = asString(step.params["factKey"]);
-      const immediateFact = factKey === undefined
-        ? undefined
-        : this.correlatedFacts(context).find((fact) => fact.factKey === factKey && fact.value === true);
       const expectedKey = compiled.expected.find((target) => target.primary)?.key ?? compiled.expected[0]?.key;
-      if (immediateFact !== undefined && expectedKey !== undefined) {
+      if (factKey !== undefined && expectedKey !== undefined) {
+        // A WAIT_EVENT waits for a FACT, so it must never fall through to
+        // `bridge.waitAny`. The compiler builds this step's UI predicate as
+        // `{ by: "id", value: <factKey> }` — it asks the device for a view whose
+        // resource id is "UI.LOGIN_SCREEN_READY". No such view exists, so the
+        // bridge path could only ever time out, and it did: every UI wait failed
+        // against a device that was on the right screen and reporting it.
+        const fact = await this.awaitCorrelatedFact(factKey, compiled.deadlineMs, context, input.signal);
+        const status = fact !== undefined
+          ? "EXPECTED_MATCH"
+          : input.signal?.aborted === true
+            ? "CANCELLED"
+            : "TIMEOUT";
         await this.options.persistence.settleWaitTerminal({
           runId: input.runId,
           occurrenceId: context.occurrenceId,
           waitPlanId: compiled.waitPlanId,
           requestId: context.requestId,
-          status: "EXPECTED_MATCH",
-          key: expectedKey,
+          status,
+          ...(status === "EXPECTED_MATCH" ? { key: expectedKey } : {}),
           ...(context.recoveryFence === undefined
             ? {}
             : { recoveryFence: context.recoveryFence }),
         });
-        return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next: step.next, stop: false };
+        if (status === "EXPECTED_MATCH") {
+          return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next: step.next, stop: false };
+        }
+        return {
+          actionResult: status === "CANCELLED" ? "CANCELLED" : "FAILED",
+          continueGateResult: status === "TIMEOUT" ? "TIMED_OUT" : "UNSATISFIED",
+          next: null,
+          stop: true,
+        };
       }
     }
     this.activeWaits.set(context.requestId, context);
@@ -1169,10 +1221,40 @@ export class BridgeFlowExecutor {
     return { ok: false, next: null };
   }
 
+  /**
+   * Re-reads the occurrence's facts until the awaited one is true or the deadline
+   * passes.
+   *
+   * Re-reading is what makes this work rather than a single check: the host's
+   * producer correlates a live device state to THIS occurrence at query time, so
+   * asking again is how the wait learns the screen arrived. The previous code
+   * checked once, before the wait, which meant a fact that became true one
+   * millisecond later was never seen.
+   */
+  private async awaitCorrelatedFact(
+    factKey: string,
+    deadlineMs: number,
+    context: StepExecutionContext,
+    signal: AbortSignal | undefined,
+  ): Promise<ExecutorEvidenceFact | undefined> {
+    const sleep = this.options.sleep ?? defaultSleep;
+    const expiresAt = this.options.clock() + deadlineMs;
+    for (;;) {
+      const fact = this.correlatedFacts(context).find(
+        (candidate) => candidate.factKey === factKey && candidate.value === true,
+      );
+      if (fact !== undefined) return fact;
+      if (signal?.aborted === true) return undefined;
+      const remaining = expiresAt - this.options.clock();
+      if (remaining <= 0) return undefined;
+      await sleep(Math.min(FACT_POLL_INTERVAL_MS, remaining));
+    }
+  }
+
   private correlatedFacts(context: StepExecutionContext): readonly ExecutorEvidenceFact[] {
     const nowMs = this.options.clock();
     return this.options.evidence
-      .factsForOccurrence(context.occurrenceId)
+      .factsForOccurrence(context.occurrenceId, context.iterationKey)
       .filter((fact) =>
         fact.occurrenceId === context.occurrenceId &&
         fact.iterationKey === context.iterationKey &&
