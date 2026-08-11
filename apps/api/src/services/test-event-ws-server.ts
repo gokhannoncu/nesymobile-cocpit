@@ -390,6 +390,8 @@ class TestEventWsServerImpl {
   private readonly ingress = {
     connections: 0,
     authenticated: 0,
+    rejectedUnauthenticated: 0,
+    closedBeforeAuth: 0,
     gapFrames: 0,
     gapStatusQueries: 0,
     gapStatusAnswered: 0,
@@ -658,11 +660,19 @@ class TestEventWsServerImpl {
       console.log(`[TestEventWS] device connection #${connectionId} established`);
       let authenticated: AuthenticatedWsStream | null = null;
 
+      socket.on("close", () => {
+        if (authenticated === null) this.ingress.closedBeforeAuth += 1;
+      });
+
       socket.on("message", (data) => {
         const raw = String(data);
         if (WS_AUTH_REQUIRED && authenticated === null) {
           const hello = parseHelloFrame(raw);
           if (hello === null) {
+            // Counted, not just logged: a device that believes it is authenticated will
+            // happily write gap frames into a socket the host still treats as anonymous,
+            // and the only symptom is that they vanish.
+            this.ingress.rejectedUnauthenticated += 1;
             console.warn(`[TestEventWS] unauthenticated frame rejected on connection #${connectionId}`);
             return;
           }
