@@ -16,6 +16,7 @@
  */
 
 import { WebSocketServer, type WebSocket } from "ws";
+import { randomUUID } from "node:crypto";
 import type { LogcatSniffer } from "./logcat-sniffer.js";
 import { parseTestEventLine, type TestBridgeEvent } from "./test-event-bridge.js";
 import { gapGenerationAccepted, ingestFrame, type IngestFrame } from "./verdict-ingest.js";
@@ -31,6 +32,7 @@ import { createPrismaEvidenceJourneyWriter } from "./evidence-journey-writer.js"
 import { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
 import { DurableBridgeFlowEvidenceIngest } from "./bridgeflow-durable-evidence-ingest.js";
 import { RunSecretRegistry } from "./run-secret-registry.js";
+import { verdictStreamOwnedBy } from "./verdict-stream-owner.js";
 import { prisma } from "@nesy/db";
 
 export { BridgeFlowEvidenceSources } from "./bridgeflow-evidence-source-registry.js";
@@ -248,6 +250,8 @@ export interface IncomingFrameHandlers {
 interface AuthenticatedWsStream {
   runId: string;
   sessionId: string;
+  deviceId: string;
+  appId: string;
 }
 
 function parseHelloFrame(data: string): {
@@ -388,6 +392,8 @@ class TestEventWsServerImpl {
    * for a stream it was not authenticated for".
    */
   private readonly ingress = {
+    instanceId: randomUUID(),
+    startedAtMs: Date.now(),
     connections: 0,
     authenticated: 0,
     rejectedUnauthenticated: 0,
@@ -398,7 +404,26 @@ class TestEventWsServerImpl {
     droppedForeignStream: 0,
     foreignStreamAccepted: 0,
     lastForeignStream: null as string | null,
+    /** Frames seen after the socket authenticated (hello itself excluded). */
+    postAuthFrames: 0,
+    /** Post-auth frames that matched no known parser. */
+    unrecognizedFrames: 0,
+    /** Post-auth frames whose JSON `type` looked gap-related but failed typed parse. */
+    gapLikeParseMisses: 0,
+    lastFrameTypes: [] as string[],
+    lastUnrecognizedPreview: null as string | null,
+    lastGapLikePreview: null as string | null,
   };
+
+  private noteFrameType(type: string): void {
+    const ring = this.ingress.lastFrameTypes;
+    ring.push(type);
+    if (ring.length > 24) ring.splice(0, ring.length - 24);
+  }
+
+  private previewFrame(raw: string): string {
+    return raw.replace(/\s+/g, " ").slice(0, 240);
+  }
   /**
    * Sync-vs-durable equality evidence. Populated only under
    * `VERDICT_COMPARE_MODE=1`; exposed so the health route and the integration
@@ -582,6 +607,29 @@ class TestEventWsServerImpl {
     getVerdictDurableRuntime().nudge({ runId: frame.runId, sessionId: frame.sessionId });
   }
 
+  private async acceptsForeignStream(
+    authenticated: AuthenticatedWsStream,
+    runId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    if (sameStream(authenticated, runId, sessionId)) return true;
+    this.ingress.lastForeignStream = `${runId}/${sessionId}`;
+    try {
+      const owned = await verdictStreamOwnedBy(runId, authenticated);
+      if (owned) {
+        this.ingress.foreignStreamAccepted += 1;
+        return true;
+      }
+    } catch (error) {
+      console.warn(
+        `[TestEventWS] stream ownership lookup failed for ${runId}/${sessionId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+    this.ingress.droppedForeignStream += 1;
+    return false;
+  }
+
   /**
    * Answers `gap_status` — the device's ask-first question after a crash between
    * reserving a gap entry and committing it.
@@ -661,7 +709,7 @@ class TestEventWsServerImpl {
       let authenticated: AuthenticatedWsStream | null = null;
 
       socket.on("close", () => {
-        if (authenticated === null) this.ingress.closedBeforeAuth += 1;
+        if (WS_AUTH_REQUIRED && authenticated === null) this.ingress.closedBeforeAuth += 1;
       });
 
       socket.on("message", (data) => {
@@ -681,12 +729,22 @@ class TestEventWsServerImpl {
             socket.close(1008, "auth_failed");
             return;
           }
+          const owner = RunSecretRegistry.metadata(hello.runId);
+          if (owner === undefined) {
+            socket.close(1008, "auth_owner_unavailable");
+            return;
+          }
           const sig = RunSecretRegistry.hostSignature(hello);
           if (sig === undefined) {
             socket.close(1008, "auth_unavailable");
             return;
           }
-          authenticated = { runId: hello.runId, sessionId: hello.sessionId };
+          authenticated = {
+            runId: hello.runId,
+            sessionId: hello.sessionId,
+            deviceId: owner.deviceId,
+            appId: owner.appId,
+          };
           this.ingress.authenticated += 1;
           if (socket.readyState === socket.OPEN) {
             socket.send(JSON.stringify({
@@ -700,6 +758,44 @@ class TestEventWsServerImpl {
           }
           return;
         }
+        if (authenticated !== null) {
+          this.ingress.postAuthFrames += 1;
+          let declaredType = "non_json";
+          try {
+            const parsed = JSON.parse(raw.trim()) as Record<string, unknown>;
+            declaredType = typeof parsed.type === "string" ? parsed.type : "untyped";
+          } catch {
+            declaredType = "invalid_json";
+          }
+          this.noteFrameType(declaredType);
+          const gapLike =
+            declaredType === "gap" ||
+            declaredType === "sequence_gap" ||
+            declaredType === "gap_status";
+          const recognized =
+            parseGapStatusFrame(raw) !== null ||
+            parseControlFrame(raw) !== null ||
+            parseHeartbeatFrame(raw) !== null ||
+            parseWsFrame(raw) !== null;
+          if (!recognized) {
+            this.ingress.unrecognizedFrames += 1;
+            this.ingress.lastUnrecognizedPreview = this.previewFrame(raw);
+            if (gapLike) {
+              this.ingress.gapLikeParseMisses += 1;
+              this.ingress.lastGapLikePreview = this.previewFrame(raw);
+              console.warn(
+                `[TestEventWS] gap-like parse miss on #${connectionId}: ${this.previewFrame(raw)}`,
+              );
+            } else if (process.env.VERDICT_WS_TRACE === "1") {
+              console.warn(
+                `[TestEventWS] unrecognized post-auth frame on #${connectionId}: ${this.previewFrame(raw)}`,
+              );
+            }
+          } else if (process.env.VERDICT_WS_TRACE === "1") {
+            console.log(`[TestEventWS] post-auth frame type=${declaredType} on #${connectionId}`);
+          }
+        }
+
         routeIncomingWsFrame(raw, {
           // A gap frame is not a test event: it never reaches the sniffers, only
           // the durable path.
@@ -713,10 +809,9 @@ class TestEventWsServerImpl {
           // `droppedForeignStream: 1` against `lastForeignStream` = a run from hours
           // earlier.
           //
-          // Accepting them is safe in the way that matters: the connection is
-          // authenticated, and a gap carries no evidence content — it only states
-          // that a range of the DEVICE'S OWN records no longer exists. Event frames
-          // stay strictly stream-scoped below, because those do carry content.
+          // The current run secret authenticates the peer, while VerdictStreamOwner
+          // proves that a foreign/older run belongs to that same device + app. Without
+          // both checks, a current run could mutate another run's durable cursor.
           onControl: (control) => {
             this.ingress.gapFrames += 1;
             if (authenticated === null && WS_AUTH_REQUIRED) {
@@ -724,11 +819,19 @@ class TestEventWsServerImpl {
               this.ingress.lastForeignStream = `${control.runId}/${control.sessionId}`;
               return;
             }
-            if (!sameStream(authenticated, control.runId, control.sessionId)) {
-              this.ingress.foreignStreamAccepted += 1;
-              this.ingress.lastForeignStream = `${control.runId}/${control.sessionId}`;
+            if (!WS_AUTH_REQUIRED) {
+              if (this.ingestReady) void this.acceptDurable(socket, control);
+              return;
             }
-            if (this.ingestReady) void this.acceptDurable(socket, control);
+            const peer = authenticated;
+            if (peer === null) return;
+            if (sameStream(peer, control.runId, control.sessionId)) {
+              if (this.ingestReady) void this.acceptDurable(socket, control);
+              return;
+            }
+            void this.acceptsForeignStream(peer, control.runId, control.sessionId).then((accepted) => {
+              if (accepted && this.ingestReady) void this.acceptDurable(socket, control);
+            });
           },
           onGapStatus: (query) => {
             this.ingress.gapStatusQueries += 1;
@@ -737,7 +840,19 @@ class TestEventWsServerImpl {
               this.ingress.lastForeignStream = `${query.runId}/${query.sessionId}`;
               return;
             }
-            void this.answerGapStatus(socket, query);
+            if (!WS_AUTH_REQUIRED) {
+              void this.answerGapStatus(socket, query);
+              return;
+            }
+            const peer = authenticated;
+            if (peer === null) return;
+            if (sameStream(peer, query.runId, query.sessionId)) {
+              void this.answerGapStatus(socket, query);
+              return;
+            }
+            void this.acceptsForeignStream(peer, query.runId, query.sessionId).then((accepted) => {
+              if (accepted) void this.answerGapStatus(socket, query);
+            });
           },
           // Heartbeats deliberately have no seq and bypass the WAL. They update
           // host liveness only; they never reach acceptDurable or the sniffers.
@@ -810,8 +925,11 @@ class TestEventWsServerImpl {
 
   /** True when frames are being durably accepted and acked. */
   /** Wire-level ingress counters, including frames the stream guard discarded. */
-  ingressDiagnostics(): Readonly<Record<string, number | string | null>> {
-    return { ...this.ingress };
+  ingressDiagnostics(): Readonly<Record<string, number | string | null | readonly string[]>> {
+    return {
+      ...this.ingress,
+      lastFrameTypes: [...this.ingress.lastFrameTypes],
+    };
   }
 
   isIngestReady(): boolean {

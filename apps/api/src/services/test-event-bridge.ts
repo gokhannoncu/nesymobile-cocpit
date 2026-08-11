@@ -23,6 +23,7 @@ import {
 import { parseBroadcastPayload } from "@nesy/control-channels";
 import { createControlExecutor } from "@nesy/control-channels/node";
 import { RunSecretRegistry } from "./run-secret-registry.js";
+import { claimVerdictStreamOwner } from "./verdict-stream-owner.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -221,6 +222,23 @@ export async function broadcastSetRun(
     secret?: Secret;
   },
 ): Promise<boolean> {
+  if (runId !== "") {
+    try {
+      const claimed = await claimVerdictStreamOwner({ runId, deviceId, appId });
+      if (!claimed) {
+        console.warn(
+          `[TestEventBridge] refusing SET_RUN: ${runId} is owned by another device/application`,
+        );
+        return false;
+      }
+    } catch (error) {
+      console.warn(
+        `[TestEventBridge] refusing SET_RUN: stream ownership could not be persisted`,
+        error instanceof Error ? error.message : error,
+      );
+      return false;
+    }
+  }
   // Verdict ControlReceiver 32-byte base64url bootstrap secret ister. Legacy
   // kanal bu typed alanı taşımadığı için aynı op eski build'lerde değişmeden
   // çalışır. Empty runId yalnız detach'tir; yeni bir güven kökü kurmaz.

@@ -541,6 +541,21 @@ model VerdictGap {
   @@map("verdict_gap")
 }
 
+/// Durable owner of a Verdict run/stream family.
+///
+/// A device reconnects under its current run secret but may still need to publish
+/// committed gaps for an older run. The current secret proves who the socket is;
+/// this row proves the older run belongs to the same device and application.
+model VerdictStreamOwner {
+  runId     String   @id @map("run_id")
+  deviceId  String   @map("device_id")
+  appId     String   @map("app_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([deviceId, appId], map: "verdict_stream_owner_device_app_idx")
+  @@map("verdict_stream_owner")
+}
+
 /// Per-stream ingest cursor.
 model VerdictStream {
   runId           String   @map("run_id")
