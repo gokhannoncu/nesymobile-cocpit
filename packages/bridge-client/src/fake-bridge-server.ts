@@ -50,6 +50,13 @@ export interface FakeBehaviour {
   respondWithRequestId?: string;
   /** İstenmemiş bir frame gönder (push simülasyonu; host reddetmeli). */
   emitUnsolicited?: boolean;
+  /**
+   * Sonraki çağrılar için davranışlar. İlk çağrı bu nesnenin kendisini kullanır,
+   * ikinci çağrı `then[0]`, üçüncü `then[1]` ... liste biterse sonuncusu tekrar
+   * eder. Retry yollarını sınamanın tek yolu bu: reddin ARDINDAN gelen başarıyı
+   * statik bir map ifade edemez.
+   */
+  then?: FakeBehaviour[];
   /** Sınırı aşan bir satır yaz. */
   oversizedBytes?: number;
 }
@@ -90,6 +97,8 @@ export class FakeBridgeServer {
   private server: Server | null = null;
   private readonly sockets = new Set<Socket>();
   private readonly seen = new Map<string, string>();
+  /** Komut başına çağrı sayacı — `FakeBehaviour.then` bunun üzerinden ilerler. */
+  private readonly callCounts = new Map<string, number>();
   /** Gözlemlenen istekler — testler sıralamayı ve içeriği doğrulayabilsin. */
   readonly received: { command: string; requestId: string; params: Record<string, unknown> }[] = [];
   /** Aynı anda açık bağlantı sayısının zirvesi — havuz iddiasını kanıtlar. */
@@ -252,7 +261,18 @@ export class FakeBridgeServer {
     }
     this.seen.set(`${scope.runId}|${requestId}`, fingerprint);
 
-    const behaviour = this.options.behaviours?.[command] ?? {};
+    // `then` lets one command answer differently on successive calls, which a
+    // static map cannot express. Needed for anything that RETRIES: a refusal
+    // followed by a success is the whole behaviour under test, and without this
+    // the second attempt would get the same canned refusal and the test could
+    // only ever prove that retrying does not help.
+    const configured = this.options.behaviours?.[command];
+    const callIndex = this.callCounts.get(command) ?? 0;
+    this.callCounts.set(command, callIndex + 1);
+    const behaviour =
+      configured?.then !== undefined && callIndex > 0
+        ? (configured.then[Math.min(callIndex - 1, configured.then.length - 1)] ?? configured)
+        : (configured ?? {});
     const defaultCapabilityFields =
       command === "capabilities" && behaviour.fields === undefined
         ? {

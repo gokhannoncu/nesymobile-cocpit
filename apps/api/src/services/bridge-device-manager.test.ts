@@ -200,6 +200,68 @@ describe("target admission before any physical action", () => {
     expect(record.method).toBe("gesture");
   });
 
+  it("retries ONCE when the device refuses with stale_tree, re-resolving first", async () => {
+    // `stale_tree` cihazın "expectTreeGen tutmadı, DOKUNMADIM" cevabı. Etkisizliği
+    // kesin olan tek red bu, ve gerçek cihazda sık: `input_text` sonrası ağaç
+    // ~230ms boyunca ilerlemeye devam ediyor, ona zincirlenen resolve+act ise
+    // 60-120ms sonra iniyor. Executor her aksiyonu `attempt-1` gönderdiği için
+    // burada denenmezse adım yavaşlamaz, FAIL eder.
+    const { manager: m, server: s } = await start({
+      behaviours: {
+        find_id: {
+          fields: { treeGen: 17, id: "btn_confirm" },
+          then: [{ fields: { treeGen: 21, id: "btn_confirm" } }],
+        },
+        tap_id: {
+          ok: false,
+          error: "stale_tree",
+          fields: { treeGen: 21 },
+          then: [{ fields: { method: "gesture" } }],
+        },
+      },
+    });
+    await m.ensureReady();
+    const record = await m.act("tap_id", strong);
+
+    expect(record.terminalState).toBe("SUCCEEDED");
+    const taps = s.received.filter((r) => r.command === "tap_id");
+    expect(taps).toHaveLength(2);
+    // İkinci deneme TAZE nesille gitti — eskisini tekrar göndermek fence'i
+    // anlamsızlaştırır, çünkü aynı sebeple yine reddedilirdi.
+    expect(taps[0]?.params.expectTreeGen).toBe(17);
+    expect(taps[1]?.params.expectTreeGen).toBe(21);
+    // Ve iki gönderim de kayıtta görünüyor; "bir kez denendi" diye okunmamalı.
+    expect(record.markers.filter((mk) => mk.phase === "DISPATCHED")).toHaveLength(2);
+  });
+
+  it("does NOT retry UNKNOWN_EFFECT — that is the refusal whose effect is unknown", async () => {
+    // stale_tree ile aynı kefeye konursa sonuç, onay tuşuna ikinci kez basmak.
+    const { manager: m, server: s } = await start({
+      behaviours: {
+        find_id: { fields: { treeGen: 1, id: "btn_confirm" } },
+        tap_id: { dropConnection: true },
+      },
+    });
+    await m.ensureReady();
+    const record = await m.act("tap_id", strong);
+    expect(record.terminalState).toBe("UNKNOWN_EFFECT");
+    expect(s.received.filter((r) => r.command === "tap_id")).toHaveLength(1);
+  });
+
+  it("gives up after one stale_tree retry rather than looping", async () => {
+    const { manager: m, server: s } = await start({
+      behaviours: {
+        find_id: { fields: { treeGen: 5, id: "btn_confirm" } },
+        tap_id: { ok: false, error: "stale_tree", fields: { treeGen: 6 } },
+      },
+    });
+    await m.ensureReady();
+    const record = await m.act("tap_id", strong);
+    expect(record.terminalState).toBe("FAILED");
+    expect(record.error).toBe("stale_tree");
+    expect(s.received.filter((r) => r.command === "tap_id")).toHaveLength(2);
+  });
+
   it("reports UNKNOWN_EFFECT when the tap response is lost", async () => {
     // Bu kaydın `FAILED` olması, retry'ı meşrulaştırıp onay tuşuna ikinci kez
     // basmakla sonuçlanırdı.

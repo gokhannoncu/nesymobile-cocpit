@@ -51,11 +51,17 @@ class FakeAdb implements AdbFacade {
     this.propCalls.push(name);
     return this.props[name] ?? "";
   }
+  packageInfoCalls = 0;
+  accessibilityReadCalls = 0;
+  diagnosticsCalls = 0;
+
   async getPackageInfo(_d: string, name: string) {
+    this.packageInfoCalls += 1;
     if (this.failPackageInfo) throw new Error("package manager timed out");
     return this.packages[name] ?? { installed: false, versionName: null, versionCode: null };
   }
   async getEnabledAccessibilityServices() {
+    this.accessibilityReadCalls += 1;
     return this.accessibility;
   }
   async isAccessibilityMasterEnabled() {
@@ -80,6 +86,7 @@ class FakeAdb implements AdbFacade {
     this.forwards = this.forwards.filter((f) => f.hostPort !== hostPort);
   }
   async getDiagnostics() {
+    this.diagnosticsCalls += 1;
     return { batteryLevel: 88, charging: true, backgroundRestricted: false, foregroundPackage: "com.x" };
   }
 }
@@ -94,6 +101,82 @@ let adb: FakeAdb;
 
 beforeEach(() => {
   adb = new FakeAdb();
+});
+
+describe("admissionGate", () => {
+  /**
+   * The gate exists so the queue can start the app before preflight finishes.
+   * That trade is only sound if the gate is BOTH cheap and complete: cheap enough
+   * to sit on the critical path, and complete enough that nothing which can refuse
+   * a device is left in the concurrent phase.
+   */
+  it("asks only what can REFUSE the device — no package, accessibility, forward or diagnostics", async () => {
+    const gate = new BridgeDeviceGate(adb, policy({ denyProductionBuilds: true }));
+    const result = await gate.admissionGate(LAB);
+    expect(result.ok).toBe(true);
+    // The only device read it may make is the build type, and only when the
+    // production deny is on. Everything else describes rather than refuses.
+    expect(adb.propCalls).toEqual(["ro.build.type"]);
+    expect(adb.packageInfoCalls).toBe(0);
+    expect(adb.accessibilityReadCalls).toBe(0);
+    expect(adb.forwardCalls).toEqual([]);
+    expect(adb.diagnosticsCalls).toBe(0);
+  });
+
+  it("touches nothing at all when the production deny is off", async () => {
+    const gate = new BridgeDeviceGate(adb, policy());
+    expect((await gate.admissionGate(LAB)).ok).toBe(true);
+    expect(adb.propCalls).toEqual([]);
+  });
+
+  it("refuses a device that is not attached", async () => {
+    adb.devices = [];
+    const gate = new BridgeDeviceGate(adb, policy());
+    const result = await gate.admissionGate(LAB);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.check).toBe("DEVICE_REACHABLE");
+  });
+
+  it("refuses an unlisted device, and an EMPTY allowlist denies everything", async () => {
+    const unlisted = await new BridgeDeviceGate(adb, policy({ labAllowlist: ["other"] })).admissionGate(LAB);
+    expect(unlisted.ok).toBe(false);
+    if (!unlisted.ok) expect(unlisted.failure.check).toBe("LAB_ALLOWLIST");
+
+    const empty = await new BridgeDeviceGate(adb, policy({ labAllowlist: [] })).admissionGate(LAB);
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.failure.detail).toMatch(/EMPTY/);
+  });
+
+  it("refuses a production build even when it is on the allowlist", async () => {
+    adb.props["ro.build.type"] = "user";
+    const gate = new BridgeDeviceGate(adb, policy({ denyProductionBuilds: true }));
+    const result = await gate.admissionGate(LAB);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.check).toBe("PRODUCTION_DENY");
+    expect(result.failure.fatal).toBe(true);
+  });
+
+  it("is the same decision preflight makes — preflight cannot be laxer", async () => {
+    // If these two ever disagree, the concurrent phase would admit a device the
+    // sequential path would have refused, which is the whole risk of the split.
+    for (const over of [
+      { labAllowlist: [] },
+      { labAllowlist: ["other"] },
+      { denyProductionBuilds: true },
+    ] as Partial<DeviceGatePolicy>[]) {
+      adb = new FakeAdb();
+      adb.props["ro.build.type"] = "user";
+      const gate = new BridgeDeviceGate(adb, policy(over));
+      const admission = await gate.admissionGate(LAB);
+      adb = new FakeAdb();
+      adb.props["ro.build.type"] = "user";
+      const full = await new BridgeDeviceGate(adb, policy(over)).preflight(LAB);
+      expect(admission.ok).toBe(full.ok);
+      if (!admission.ok && !full.ok) expect(admission.failure.check).toBe(full.failure.check);
+    }
+  });
 });
 
 describe("preflight", () => {

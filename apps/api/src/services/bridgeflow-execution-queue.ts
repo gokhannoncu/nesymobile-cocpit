@@ -27,6 +27,8 @@ import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
 import { PrismaExecutionPersistence } from './bridgeflow-prisma-persistence.js'
 import { BridgeUnavailableError, type BridgeDeviceManager } from './bridge-device-manager.js'
+import { BridgeDeviceGate } from './bridge-device-gate.js'
+import { createAdbFacade, resolveDeviceGatePolicy } from './bridge-adb-facade.js'
 import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-device-ports.js'
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
@@ -141,11 +143,23 @@ async function prepareApplicationLaunch(input: {
 }): Promise<string | null> {
   if (input.profile?.startMode !== 'COLD_START') return null
 
+  // Package names are interpolated into a single shell line below, so anything
+  // that is not a package name is refused here rather than quoted and hoped for.
+  if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(input.applicationId)) {
+    return `application id ${input.applicationId} is not a package name`
+  }
+
   try {
-    await adbDevice(input.deviceId, ['shell', 'am', 'force-stop', input.applicationId])
+    // One `adb shell`, not two. Each invocation pays a full round trip plus a
+    // shell fork on the device — measured at ~54ms — and the stop/launch pair is
+    // sequential by nature, so there is nothing to lose by sending it as one line.
     await adbDevice(
       input.deviceId,
-      ['shell', 'monkey', '-p', input.applicationId, '-c', 'android.intent.category.LAUNCHER', '1'],
+      [
+        'shell',
+        `am force-stop ${input.applicationId}; ` +
+          `monkey -p ${input.applicationId} -c android.intent.category.LAUNCHER 1`,
+      ],
       15_000,
     )
     input.logger?.('[BridgeFlowExecutionQueue] launched application for COLD_START profile', {
@@ -179,10 +193,20 @@ async function readDeviceStateWithRetry(input: {
   const deadline = Date.now() + deadlineMs
   let last: DeviceBridgeState | null = null
   while (Date.now() <= deadline) {
+    const startedAt = Date.now()
     last = await getDeviceBridgeState(input.deviceId, input.applicationId).catch(() => null)
     if (last?.runId === input.runId && last.currentScreen.trim() !== '') return last
-    if (Date.now() + intervalMs > deadline) break
-    await sleep(intervalMs)
+    // The call is not free — measured at ~129ms, of which ~54ms is the `adb shell`
+    // fork alone — so it already spaces the loop. Sleeping the full interval on top
+    // of it overshoots readiness by up to a whole cycle, and it does so at the worst
+    // possible moment: a call that ran long is a call that just crossed the Bridge's
+    // cold-start stall, which is exactly when the screen is about to appear. Measured
+    // on a real device: the slow poll returns not-ready and the very next one
+    // succeeds in 24ms. So spend the interval, not interval + call.
+    const remainingInterval = intervalMs - (Date.now() - startedAt)
+    if (remainingInterval <= 0) continue
+    if (Date.now() + remainingInterval > deadline) break
+    await sleep(remainingInterval)
   }
   return last
 }
@@ -314,6 +338,8 @@ export interface BridgeFlowExecutionQueueOptions {
     packVersion: string
     packDigest?: string
   }) => DomainPackResolution
+  /** Test seam: the attached/allowlisted/not-production check that gates the launch. */
+  admissionGate?: (deviceId: string) => Promise<{ ok: true } | { ok: false; reason: string }>
 }
 
 async function acquireBridgeFromRegistry(input: {
@@ -323,6 +349,37 @@ async function acquireBridgeFromRegistry(input: {
 }): Promise<BridgeDeviceManager> {
   const worker = DeviceWorkerRegistry.getOrCreate(input.deviceId)
   return worker.acquireBridge(input.runId, input.executionId, Date.now())
+}
+
+/**
+ * Bridge acquisition failure → the run's termination reason.
+ *
+ * Shared by both acquisition paths (awaited up front for a warm start, collected
+ * after the launch for a cold one) so the two cannot drift into reporting the
+ * same failure differently. `BridgeUnavailableError` carries the remediation, and
+ * dropping it is what left the earlier version of this reporting a bare message
+ * that named no fix.
+ */
+function describeBridgeAcquisitionFailure(error: unknown): string {
+  if (error instanceof BridgeUnavailableError) return `${error.message} — ${error.failure.remediation}`
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * The subset of preflight that must answer BEFORE the app is touched.
+ *
+ * `acquireBridge` runs the full preflight, but it now runs concurrently with the
+ * app's cold start, so the checks that decide whether this process may drive the
+ * device at all have to be pulled ahead of the launch. Everything else in
+ * preflight only describes the device; these three refuse it.
+ */
+async function admissionGateFromRegistry(
+  deviceId: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const gate = new BridgeDeviceGate(createAdbFacade(), resolveDeviceGatePolicy())
+  const result = await gate.admissionGate(deviceId)
+  if (result.ok) return { ok: true }
+  return { ok: false, reason: `${result.failure.detail} — ${result.failure.remediation}` }
 }
 
 export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
@@ -372,24 +429,6 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
 
-    let manager: BridgeDeviceManager
-    try {
-      manager = await (this.options.acquireBridge ?? acquireBridgeFromRegistry)({
-        deviceId: item.deviceId,
-        runId: item.runId,
-        executionId: item.executionId,
-      })
-    } catch (error) {
-      const reason =
-        error instanceof BridgeUnavailableError
-          ? `${error.message} — ${error.failure.remediation}`
-          : error instanceof Error
-            ? error.message
-            : String(error)
-      await this.blockRun(item, reason)
-      return
-    }
-
     const clock = this.options.clock ?? Date.now
     const applicationId = item.appId?.trim() || resolution.pack.bundle.registries.applications[0]?.packageIdentity
     if (applicationId === undefined || applicationId.trim() === '') {
@@ -404,8 +443,55 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
 
-    const propertySet = await setRunIdProperty(item.deviceId, item.runId)
     const coldStart = launchProfile?.startMode === 'COLD_START'
+
+    // Preflight is ~950ms of adb, and a cold start leaves the host idle for ~2.6s
+    // while the app boots. Overlapping the two removes preflight from the critical
+    // path entirely. It is safe because adb stays healthy during a boot: measured,
+    // only the Bridge's own TCP service stalls (two window transitions, ~1.2s and
+    // ~1.45s) and every adb call issued inside that window returned normally.
+    //
+    // Only for COLD_START. Without a launch there is no dead time to hide anything
+    // behind, so the stricter ordering is kept: a device whose Bridge is unusable
+    // is reported before this process has touched it at all.
+    const acquire = this.options.acquireBridge ?? acquireBridgeFromRegistry
+    let managerPromise: Promise<BridgeDeviceManager> | null = null
+    let manager: BridgeDeviceManager | null = null
+    if (!coldStart) {
+      try {
+        manager = await acquire({
+          deviceId: item.deviceId,
+          runId: item.runId,
+          executionId: item.executionId,
+        })
+      } catch (error) {
+        await this.blockRun(item, describeBridgeAcquisitionFailure(error))
+        return
+      }
+    }
+    if (coldStart) {
+      // The checks that REFUSE a device — attached, allowlisted, not a production
+      // build — cannot ride along in that concurrent phase. Force-stopping and
+      // relaunching an app is already an intrusion, so they answer first, at a
+      // measured ~60ms. Everything else in preflight merely describes the device.
+      const admission = await (this.options.admissionGate ?? admissionGateFromRegistry)(item.deviceId)
+      if (!admission.ok) {
+        await this.blockRun(item, admission.reason)
+        return
+      }
+      managerPromise = acquire({
+        deviceId: item.deviceId,
+        runId: item.runId,
+        executionId: item.executionId,
+      })
+      // The await is several statements below; without this the rejection would
+      // surface as an unhandled promise before it surfaces as a blocked run.
+      managerPromise.catch(() => undefined)
+    }
+
+    // `setprop` must land BEFORE the process starts — the app reads the run id at
+    // boot and will not pick up a later write.
+    const propertySet = await setRunIdProperty(item.deviceId, item.runId)
     const launchFailure = await prepareApplicationLaunch({
       deviceId: item.deviceId,
       applicationId,
@@ -421,6 +507,25 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       wsEnabled: true,
       wsPort: 8765,
     })
+
+    // Collect the preflight that has been running alongside the launch. Awaited
+    // here rather than at first use so an unreachable Bridge is reported in about
+    // a second, and — more importantly — BEFORE the state wait below, which would
+    // otherwise spend up to 20s failing and then blame the SDK run session for
+    // what is actually a dead Bridge.
+    if (managerPromise !== null) {
+      try {
+        manager = await managerPromise
+      } catch (error) {
+        await this.blockRun(item, describeBridgeAcquisitionFailure(error))
+        return
+      }
+    }
+    if (manager === null) {
+      await this.blockRun(item, 'device Bridge was never acquired for this run')
+      return
+    }
+
     // Cold start: SCREEN_READY often fires with empty runId before set_run, and the
     // fragment will not re-emit once LoginFragment is already resumed. The host must
     // therefore wait for get_state(current_screen) under the new runId — 1.5s was too

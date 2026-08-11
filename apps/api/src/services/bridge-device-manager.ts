@@ -367,7 +367,33 @@ export class BridgeDeviceManager {
 
     lifecycle.mark("DISPATCHED", this.now());
     try {
-      const envelope = await this.submit(command, params, options);
+      let envelope = await this.submit(command, params, options);
+
+      // `stale_tree` — ve YALNIZ `stale_tree` — tekrar denenir.
+      //
+      // Bu reddi cihaz, `expectTreeGen` tutmadığı için AKSİYONU YAPMADAN veriyor
+      // (yukarıdaki fence'in tanımı bu). Yani "cihaza gitti ve dokunmadı" —
+      // etkisizliği kesin olan tek sonuç. `UNKNOWN_EFFECT` tam tersi durumdur ve
+      // asla tekrarlanmaz; ikisini aynı kefeye koymak onay tuşuna iki kez basmak
+      // demek olurdu.
+      //
+      // Tekrar denemeye değer çünkü sık: gerçek cihazda ölçüldü, `input_text`
+      // sonrası ağaç ~230ms boyunca 3 nesil ilerlemeye devam ediyor, oysa onu
+      // izleyen resolve+act zinciri 60-120ms sonra iniyor. Executor her aksiyonu
+      // `attempt-1` olarak gönderiyor ve kendi retry'ı YOK — yani bu olmadan adım
+      // yavaşlamıyor, FAIL ediyor.
+      if (!envelope.ok && envelope.error === "stale_tree" && params.expectTreeGen !== undefined) {
+        const refreshed = await this.resolve(fingerprint, options);
+        if (mayActOnResolution(refreshed) && refreshed.treeGen !== undefined) {
+          lifecycle.withResolution(refreshed);
+          params.expectTreeGen = refreshed.treeGen;
+          // İkinci bir DISPATCHED işareti kasıtlı: kayıtta iki gönderim görünmeli,
+          // yoksa "bir kez denendi" diye okunur.
+          lifecycle.mark("DISPATCHED", this.now());
+          envelope = await this.submit(command, params, options);
+        }
+      }
+
       const method = typeof envelope.method === "string" ? (envelope.method as BridgeActionMethod) : null;
       if (method) lifecycle.withMethod(method);
       // Cihaz jest pencereleri döndüyse kanıt olarak sakla; elle dokunuş
