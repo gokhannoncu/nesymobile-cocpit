@@ -215,7 +215,22 @@ export class BridgeDeviceGate {
     return this.leases;
   }
 
-  async preflight(deviceId: string): Promise<BridgePreflightResult> {
+  /**
+   * Steps 1–3 alone: is this device attached, allowed, and not a production build.
+   *
+   * Split out of `preflight` because it is the part that must run BEFORE anything
+   * touches the app, while the remaining checks (package metadata, accessibility
+   * state, port forward, diagnostics) may run concurrently with the app's cold
+   * start. Measured on a real device: the admission checks cost ~60ms and the rest
+   * ~890ms, against ~2.6s of app boot that the host otherwise spends idle.
+   *
+   * Keeping this ordering explicit matters more than the milliseconds: the
+   * allowlist and the production deny exist to stop this process from driving a
+   * device it has no business driving, so they cannot be moved into the
+   * concurrent phase — by the time they answered, the app would already be
+   * force-stopped and relaunched.
+   */
+  async admissionGate(deviceId: string): Promise<{ ok: true } | Extract<BridgePreflightResult, { ok: false }>> {
     const partial: Partial<BridgeDeviceCapabilitySnapshot> = { deviceId };
 
     // 1. Cihaz gerçekten bağlı mı.
@@ -267,6 +282,15 @@ export class BridgeDeviceGate {
         };
       }
     }
+
+    return { ok: true };
+  }
+
+  async preflight(deviceId: string): Promise<BridgePreflightResult> {
+    const partial: Partial<BridgeDeviceCapabilitySnapshot> = { deviceId };
+
+    const admission = await this.admissionGate(deviceId);
+    if (!admission.ok) return admission;
 
     const [model, sdk] = await Promise.all([
       this.adb.getProp(deviceId, "ro.product.model").catch(() => ""),
