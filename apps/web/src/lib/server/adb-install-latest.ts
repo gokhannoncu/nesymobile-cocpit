@@ -325,6 +325,33 @@ export async function adbInstallApk(
   }
 }
 
+/**
+ * A freshly sideloaded APK is only verified, not compiled, so every cold start
+ * pays ~400ms opening and verifying dex before `Application.onCreate` even runs.
+ * Measured on SM-A346E: splash first frame 1286ms -> 858ms after this step.
+ *
+ * Best effort: a device that refuses the command still has a working install.
+ */
+export async function adbCompileAot(
+  serial: string,
+  applicationId: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const bin = resolveAdbPath()
+  if (!bin) return null
+
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      bin,
+      ['-s', serial, 'shell', 'cmd', 'package', 'compile', '-m', 'speed', '-f', applicationId],
+      { timeout: 300_000, maxBuffer: 1024 * 1024, signal },
+    )
+    return `${stdout ?? ''}${stderr ?? ''}`.trim() || null
+  } catch {
+    return null
+  }
+}
+
 export async function installLatestForCountry(
   input: {
     country: NesyMobileCountry
@@ -425,6 +452,16 @@ export async function installLatestForCountry(
     })
 
     const installOutput = await adbInstallApk(deviceSerial, apkPath, signal)
+
+    throwIfAborted(signal)
+    report({
+      type: 'progress',
+      step: 'install',
+      percent: 92,
+      message: 'AOT derleniyor…',
+      detail: `${deviceSerial} · compile -m speed`,
+    })
+    await adbCompileAot(deviceSerial, version.applicationId, signal)
 
     const result: InstallLatestResult = {
       ok: true,
