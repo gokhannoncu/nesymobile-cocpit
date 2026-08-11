@@ -134,10 +134,12 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     body: () => ({}),
     normalize: (payload) => {
       const record = (payload ?? {}) as Record<string, unknown>
+      const route = record['Route'] ?? null
       return {
         assignment: {
-          assigned: record['HasCourierTodaySchedule'] === true,
-          route: record['Route'] ?? null,
+          exists: record['HasCourierTodaySchedule'] === true,
+          status: route === null ? null : 'ASSIGNED',
+          routeCode: route,
         },
       }
     },
@@ -167,7 +169,16 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     body: () => ({}),
     normalize: (payload) => {
       const rows = asArray(payload)
-      return { routes: { count: rows.length, any: rows.length > 0 } }
+      return {
+        routes: {
+          available: rows.length > 0,
+          status: rows.length === 0 ? 'NONE_OFFERED' : 'OFFERED',
+          // GetBranchSchedules answers for the branch, not for one correlated
+          // request, so there is no backend-issued correlation id to report.
+          correlationId: null,
+          count: rows.length,
+        },
+      }
     },
   },
 
@@ -176,12 +187,23 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     path: 'User/GetMyInfo',
     confidence: 'INFERRED',
     rationale:
-      'The backend writes UserLoginLog on sign-in but exposes no read for it. GetMyInfo resolving the courier token is the closest available proof that the backend authenticated this session — it proves the session is live, not that a specific login row was written.',
+      'The backend writes UserLoginLog on sign-in (UserWebAPI AuthOperation) but exposes no read for it. GetMyInfo resolving the caller token is the closest available observation.\n' +
+      'KNOWN LIMITATION — this runs with the DASHBOARD ADMIN token, so it resolves the admin identity, not the courier that just signed in. It proves the back office is reachable and the admin session is live; it does NOT prove the courier authenticated. `nesy.macro.login` therefore does not treat REMOTE.AUTH_ACCEPTED as REQUIRED. Closing this needs a backend read for the courier login record, or the courier token carried into the evidence lane.',
     body: () => ({}),
     normalize: (payload) => {
       const record = (payload ?? {}) as Record<string, unknown>
       const userId = record['Id'] ?? record['id'] ?? null
-      return { session: { authenticated: userId !== null, userId } }
+      return {
+        session: {
+          accepted: userId !== null,
+          status: userId === null ? null : 'LIVE',
+          // The backend's own identifier for the resolved session. Echoing the
+          // caller's `sessionCorrelationId` back would read as backend
+          // confirmation of a correlation the backend never checked.
+          correlationId: userId,
+          userId,
+        },
+      }
     },
   },
 
@@ -204,6 +226,9 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
         delivery: {
           completed: row !== undefined,
           status: row === undefined ? null : 'PROOF_AVAILABLE',
+          // The matched row's own ShipmentId, not the requested one: an echo of
+          // the input would correlate the observation with itself.
+          correlationId: row?.['ShipmentId'] ?? null,
           shipmentId: row?.['ShipmentId'] ?? shipmentId,
         },
       }

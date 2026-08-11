@@ -209,6 +209,9 @@ function buildStepParams(step: WorkflowStepV2): Readonly<Record<string, unknown>
       params.queryRef = step.queryRef;
       params.maxRows = step.maxRows;
       params.outputVariable = step.outputVariable;
+      if (step.outputFactBindings !== undefined) {
+        params.outputFactBindings = step.outputFactBindings;
+      }
       break;
     case "RESOLVE_TARGET":
       params.targetRef = step.targetRef;

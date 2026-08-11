@@ -22,6 +22,33 @@ function envelope(payload: unknown, resultCode = 200) {
   return new Response(JSON.stringify({ resultCode, payload }), { status: 200 })
 }
 
+/** Dotted-path lookup mirroring `readPath` in `bridgeflow-remote-steps`. */
+function readTestPath(source: unknown, path: string): unknown {
+  let current = source
+  for (const segment of path.split('.')) {
+    if (current === null || typeof current !== 'object') return undefined
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return current
+}
+
+/**
+ * Presence, not truthiness. A path carrying `null` is a normalizer answering
+ * "no value"; a path that is absent is a normalizer that never had the key —
+ * only the second is a contract break.
+ */
+function hasPath(source: unknown, path: string): boolean {
+  let current = source
+  const segments = path.split('.')
+  for (const [index, segment] of segments.entries()) {
+    if (current === null || typeof current !== 'object') return false
+    if (!(segment in (current as Record<string, unknown>))) return false
+    if (index === segments.length - 1) return true
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return false
+}
+
 describe('back-office endpoint map', () => {
   it('covers every operation the pack allowlists', () => {
     const bundle = buildNesyCourierBundle()
@@ -32,6 +59,56 @@ describe('back-office endpoint map', () => {
     for (const operationRef of declared) {
       expect(Object.keys(NESY_BACKOFFICE_ENDPOINTS)).toContain(operationRef)
     }
+  })
+
+  // The mismatch this catches cost a full device run to diagnose: the pack read
+  // `session.accepted` while the normalizer emitted `session.authenticated`, so
+  // `readPath` returned undefined, the fact published as UNKNOWN, the remote step
+  // still reported SUCCEEDED, and the only visible symptom was an
+  // EVIDENCE_INSUFFICIENT final oracle three steps later. A declared path that the
+  // normalizer never emits is a build-time error, not a run-time mystery.
+  //
+  // The shape is asserted TOTAL — every declared path must be present for an empty
+  // backend response too. A normalizer that emits a key only on the happy path
+  // still leaves the oracle waiting out its deadline on the unhappy one, which is
+  // the same failure wearing a different hat.
+  it('emits every response path the pack declares, including for an empty response', () => {
+    const bundle = buildNesyCourierBundle()
+    const missing: string[] = []
+
+    for (const adapter of bundle.registries.remoteAdapters) {
+      for (const operation of adapter.operations) {
+        const declared = operation.outputs.flatMap((output) =>
+          [output.responsePath, output.entityStatusPath, output.correlationPath].filter(
+            (path): path is string => typeof path === 'string' && path !== '',
+          ),
+        )
+        if (declared.length === 0) continue
+
+        const endpoint = NESY_BACKOFFICE_ENDPOINTS[operation.operationRef]
+        if (endpoint?.normalize === undefined) {
+          missing.push(`${operation.operationRef}: declares ${declared.length} path(s) but has no normalize`)
+          continue
+        }
+
+        const normalized = endpoint.normalize(null, {})
+        for (const path of declared) {
+          if (!hasPath(normalized, path)) missing.push(`${operation.operationRef}: ${path}`)
+        }
+
+        // A `responsePath` that resolves to a non-boolean publishes as UNKNOWN by
+        // design (`bridgeflow-remote-steps` refuses to invent a `false`), so a
+        // non-boolean here is a fact that can never settle a requirement.
+        for (const output of operation.outputs) {
+          const value = readTestPath(normalized, output.responsePath)
+          if (hasPath(normalized, output.responsePath) && typeof value !== 'boolean') {
+            missing.push(`${operation.operationRef}: ${output.responsePath} is ${typeof value}, not boolean`)
+          }
+        }
+      }
+    }
+
+    expect(missing).toEqual([])
   })
 
   it('approves tour requests through the mobile approval queue, not schedule end-of-day', () => {
@@ -158,7 +235,67 @@ describe('nesy back-office adapter', () => {
 
     expect(calls[0]?.url).toBe('https://nesy.example/Task/CheckHasCourierTodaySchedule')
     expect(result.terminal.status).toBe('SUCCEEDED')
-    expect(result.normalizedResponse).toMatchObject({ assignment: { assigned: true, route: 'Z-14' } })
+    // `assignment.exists` is what `select-route` actually binds; the earlier
+    // `assigned`/`route` shape resolved to undefined at run time and published
+    // ROUTE_ASSIGNED as UNKNOWN.
+    expect(result.normalizedResponse).toMatchObject({
+      assignment: { exists: true, status: 'ASSIGNED', routeCode: 'Z-14' },
+    })
+  })
+
+  // Measured against RS staging: User/GetMyInfo answers with an envelope nested
+  // inside the envelope (UserOperation.GetMyInfo hands a full ResponseMessage to
+  // SetSuccessResponse, which wraps it again), while GetBranchSchedules,
+  // CheckHasCourierTodaySchedule and GetMobileApprovalRequests answer flat.
+  it('unwraps a nested envelope so the normalizer reads the business payload', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () =>
+        envelope({ resultCode: 200, resultMessage: null, payload: { id: 'user-1', role: 'courier' } }),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.read-session', inputs: {}, timeoutMs: 1_000 },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('SUCCEEDED')
+    expect(result.normalizedResponse).toMatchObject({
+      session: { accepted: true, status: 'LIVE', userId: 'user-1' },
+    })
+  })
+
+  it('leaves a flat envelope alone', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () => envelope({ HasCourierTodaySchedule: true, Route: 'Z-14' }),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.read-route-assignment', inputs: {}, timeoutMs: 1_000 },
+      AUDIT,
+    )
+
+    expect(result.normalizedResponse).toMatchObject({ assignment: { exists: true, routeCode: 'Z-14' } })
+  })
+
+  // The outer envelope says 200 while the inner one carries the refusal. Reading
+  // only the outer code turns "No such user" into a SUCCEEDED remote step that
+  // publishes a fact nobody proved.
+  it('fails on an inner business failure code hidden under an outer 200', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () =>
+        envelope({ resultCode: 400, resultMessage: 'No such user', payload: {} }),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.read-session', inputs: {}, timeoutMs: 1_000 },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('FAILED')
+    expect(result.terminal.error).toContain('No such user')
   })
 
   it('redacts declared sensitive fields before they reach the audit sink', async () => {

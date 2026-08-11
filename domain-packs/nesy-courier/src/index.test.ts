@@ -743,11 +743,36 @@ describe("OPEN_STOP canonical macro", () => {
 describe("COURIER_LOGIN setup/real separation", () => {
   const slice = findReferenceSlice("COURIER_LOGIN");
 
-  it("requires all three planes before calling login a pass", () => {
-    const requirements = slice?.oracle.finalOracle.requirements.map((r) => r.factKey) ?? [];
-    expect(requirements).toContain(NESY_FACTS.LOGIN_SUCCEEDED);
-    expect(requirements).toContain(NESY_FACTS.AUTH_ACCEPTED);
-    expect(requirements).toContain(NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL);
+  it("requires the app and local planes, each from its own observation", () => {
+    const requirements = slice?.oracle.finalOracle.requirements ?? [];
+    const required = requirements.filter((r) => r.obligation === "REQUIRED").map((r) => r.factKey);
+    expect(required).toContain(NESY_FACTS.USER_SESSION_AVAILABLE_APP);
+    expect(required).toContain(NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL);
+
+    // Each required plane must be produced by a step in the plan. Requiring a
+    // fact nothing observes is what made every login run EVIDENCE_INSUFFICIENT.
+    const produced = new Set(
+      (slice?.genericIrSnapshot.steps ?? []).flatMap((step) =>
+        step.kind === "SDK_QUERY" ? (step.outputFactBindings ?? []).map((b) => b.factKey) : [],
+      ),
+    );
+    for (const factKey of required) expect(produced).toContain(factKey);
+  });
+
+  // The back-office read resolves the dashboard admin token, so it cannot tell a
+  // courier who signed in from one who did not. It is recorded, not counted.
+  it("observes the backend plane without letting it vote", () => {
+    const auth = slice?.oracle.finalOracle.requirements.find(
+      (r) => r.factKey === NESY_FACTS.AUTH_ACCEPTED,
+    );
+    expect(auth?.obligation).toBe("OPTIONAL");
+  });
+
+  // APP.LOGIN_SUCCEEDED is derived, and no host runtime reads DerivedFactGraph.
+  // Requiring it is unsatisfiable rather than strict.
+  it("does not require a derived fact no runtime produces", () => {
+    const requirements = slice?.oracle.finalOracle.requirements ?? [];
+    expect(requirements.map((r) => r.factKey)).not.toContain(NESY_FACTS.LOGIN_SUCCEEDED);
   });
 
   it("derives APP.LOGIN_SUCCEEDED from backend, app and local facts together", () => {

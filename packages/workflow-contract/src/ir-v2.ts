@@ -179,6 +179,21 @@ export interface WorkflowStepBase {
   next: string | null;
 }
 
+/**
+ * Binds a column of a query's first row to a normalized fact key.
+ *
+ * The symmetric case of `ExternalActionOutputFactBinding`, and it exists for the
+ * same reason: without it a query can run, succeed and prove nothing. An
+ * `SDK_QUERY` that only fills a variable is readable by later STEPS but invisible
+ * to the ORACLE, so a requirement sourced from an app/local observation waits out
+ * its deadline while the data sits in a variable one step away.
+ */
+export interface SdkQueryOutputFactBinding {
+  factKey: string;
+  /** Column name in the projection the named query returns. */
+  rowColumn: string;
+}
+
 /** Read the app's own state/query surface. Never mutating. */
 export interface SdkQueryStep extends WorkflowStepBase {
   kind: "SDK_QUERY";
@@ -187,6 +202,13 @@ export interface SdkQueryStep extends WorkflowStepBase {
   /** Bounded projection: an unbounded query is a data-exfiltration primitive. */
   maxRows: number;
   outputVariable: string;
+  /**
+   * Facts this observation publishes into the run's evidence scope.
+   *
+   * Optional: most queries feed later steps rather than the oracle. A query that
+   * declares none is a read, not evidence.
+   */
+  outputFactBindings?: readonly SdkQueryOutputFactBinding[];
 }
 
 /** Turn a logical target into a concrete, fingerprinted device target. */

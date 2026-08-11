@@ -245,7 +245,7 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     authority: "PRIMARY",
     displayName: "Local session record",
     factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
-    observationRef: "nesy.db.session",
+    observationRef: NESY_ADAPTER_QUERY_REFS.dbSession,
     freshness: APP_FRESHNESS,
     correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["sessionId"], crossPlane: true },
     redaction: { redactPaths: ["accessToken", "refreshToken"], hashPaths: ["userId"] },

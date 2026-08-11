@@ -342,6 +342,18 @@ function validateStep(ctx: Ctx, step: Record<string, unknown>, path: string): vo
       if (typeof maxRows !== "number" || !Number.isInteger(maxRows) || maxRows < 1) {
         push(ctx, `${path}.maxRows`, "INVALID_TYPE", "maxRows must be an integer >= 1; an unbounded query is an exfiltration primitive");
       }
+      const bindings = step.outputFactBindings;
+      if (bindings !== undefined) {
+        if (!Array.isArray(bindings)) {
+          push(ctx, `${path}.outputFactBindings`, "INVALID_TYPE", "outputFactBindings must be an array");
+        } else {
+          bindings.forEach((binding: unknown, index: number) => {
+            const entry = binding as Record<string, unknown>;
+            requireString(ctx, entry?.factKey, `${path}.outputFactBindings[${index}].factKey`);
+            requireString(ctx, entry?.rowColumn, `${path}.outputFactBindings[${index}].rowColumn`);
+          });
+        }
+      }
       break;
     }
     case "RESOLVE_TARGET":

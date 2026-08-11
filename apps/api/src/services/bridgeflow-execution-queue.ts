@@ -85,6 +85,17 @@ function createEnvBackofficeAdapter(): BackofficeAdapter {
         token: token ?? '',
       }
     },
+    // Without this the only trace of a back-office call was the attempt row's
+    // status, so "SUCCEEDED but published no fact" had to be reproduced by hand
+    // to find out what the backend actually answered. Fields the operation
+    // declared sensitive are already redacted by the adapter.
+    audit: (record) => {
+      console.info(
+        `[NesyBackoffice] ${record.operationRef} ${record.path} → ${record.status}` +
+          ` resultCode=${record.resultCode ?? 'none'} in ${record.durationMs}ms`,
+        { request: record.request, response: record.response },
+      )
+    },
   })
 }
 
@@ -567,6 +578,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           bundle: resolution.pack.bundle,
           runId: item.runId,
           applicationId,
+          evidence: evidenceRuntime,
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
         }),
         oracle: {

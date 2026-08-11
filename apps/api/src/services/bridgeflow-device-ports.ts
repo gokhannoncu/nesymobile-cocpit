@@ -34,10 +34,30 @@ import type {
   VariableRuntimePort,
 } from '@nesy/bridgeflow-executor'
 import type { TargetDefinition, DomainPackBundle } from '@nesy/domain-pack-contracts'
+import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import type { BridgeDeviceManager } from './bridge-device-manager.js'
+import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { buildTargetFingerprint, isTargetFingerprint } from './bridgeflow-target-fingerprint.js'
 
 const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
+
+/** An app/local observation stays usable this long; the requirement's own deadline governs waiting. */
+const SDK_FACT_MAX_AGE_MS = 30_000
+
+/**
+ * Device rows arrive as strings — the named-query projection is a
+ * `Map<String, String?>` on the Android side. `"true"`/`"false"` are the only
+ * things treated as a proven boolean; anything else, including a missing column
+ * and a null, is UNKNOWN rather than false. Reading an absent column as `false`
+ * would turn "we could not observe" into "we observed a negative", which is the
+ * one conversion an oracle must never make on its own.
+ */
+function asFactValue(raw: unknown): boolean | 'UNKNOWN' {
+  if (typeof raw === 'boolean') return raw
+  if (raw === 'true') return true
+  if (raw === 'false') return false
+  return 'UNKNOWN'
+}
 
 /**
  * `evidenceRef` for one bridge action, carrying WHY when the device refused.
@@ -237,9 +257,17 @@ export function createGenericStepRuntime(options: {
   runId: string
   applicationId?: string
   controlExecutor?: ControlExecutor
+  /**
+   * Evidence sink for `SDK_QUERY` fact bindings. Absent means the step still
+   * runs and still fills its variable — it just proves nothing to the oracle.
+   */
+  evidence?: BridgeFlowEvidenceRuntime
+  clock?: () => number
   logger?: (message: string, detail?: unknown) => void
 }): GenericStepRuntimePort {
   const { manager, variables, bundle, runId } = options
+  const clock = options.clock ?? Date.now
+  let evidenceRevision = 0
   const targets = new Map<string, TargetDefinition>(
     bundle.registries.targets.map((target) => [target.targetKey, target]),
   )
@@ -281,6 +309,41 @@ export function createGenericStepRuntime(options: {
         }
         const rows = Array.isArray(result.data.rows) ? result.data.rows.slice(0, maxRows) : []
         variables.set(outputVariable, rows)
+
+        // Bound facts are read from the FIRST row. Every query that binds facts
+        // is a `maxRows: 1` state projection; a multi-row query answers "which
+        // items exist", which is a question for a later step, not for a fact.
+        const bindings = step.params['outputFactBindings']
+        if (Array.isArray(bindings) && options.evidence !== undefined) {
+          const firstRow = (rows[0] ?? {}) as Record<string, unknown>
+          for (const binding of bindings as readonly { factKey: string; rowColumn: string }[]) {
+            evidenceRevision += 1
+            options.evidence.publish({
+              runId,
+              revision: evidenceRevision,
+              lane: 'ORDERED_REQUIRED',
+              correlationStatus: 'CORRELATED',
+              trust: 'RESOLVER_ACCEPTED',
+              fact: {
+                factKey: binding.factKey,
+                occurrenceId: context.occurrenceId,
+                iterationKey: context.iterationKey,
+                observedAtMs: clock(),
+                freshnessMaxAgeMs: SDK_FACT_MAX_AGE_MS,
+                // The pack's own evidence source decides the plane; the fact key
+                // prefix is what carries it, so it is read from there rather than
+                // hard-coded to APP — `nesy.db.session` is a LOCAL observation
+                // arriving through the same transport.
+                plane: binding.factKey.startsWith('LOCAL.') ? 'LOCAL' : 'APP',
+                subtype: queryRef,
+                value: asFactValue(firstRow[binding.rowColumn]),
+                authority: 'PRIMARY',
+                deliveryLane: 'ORDERED_REQUIRED',
+              } satisfies NormalizedEvidenceFact,
+            })
+          }
+        }
+
         return {
           succeeded: true,
           actionResult: 'SUCCEEDED',

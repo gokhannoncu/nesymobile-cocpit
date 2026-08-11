@@ -33,6 +33,15 @@ export const NESY_ADAPTER_QUERY_REFS = {
   parcelState: "nesy.parcelState",
   pendingOperation: "nesy.pendingOperation",
   sessionState: "nesy.sessionState",
+  /**
+   * LOCAL plane counterpart of `sessionState`.
+   *
+   * `sessionState` projects SharedPreferences and SDK runtime state — what the
+   * app believes. This one reads the device's persisted Room login record — what
+   * the device kept. The login oracle compares the two, so one query answering
+   * both would collapse the distinction it is there to test.
+   */
+  dbSession: "nesy.db.session",
   routeState: "nesy.routeState",
 } as const;
 

@@ -132,8 +132,22 @@ export function createNesyBackofficeAdapter(
           return record(failed('back-office returned a non-JSON body'), null)
         }
 
-        const resultCode = numberOrNull(envelope['resultCode'] ?? envelope['ResultCode'])
-        const payload = envelope['payload'] ?? envelope['Payload'] ?? null
+        const outerResultCode = numberOrNull(envelope['resultCode'] ?? envelope['ResultCode'])
+        const outerPayload = envelope['payload'] ?? envelope['Payload'] ?? null
+        // Some topics answer with an envelope nested inside the envelope, so the
+        // payload a normalizer would read is one level further down. Measured
+        // against RS staging: `User/GetMyInfo` nests, while `GetBranchSchedules`,
+        // `CheckHasCourierTodaySchedule` and `GetMobileApprovalRequests` do not —
+        // so this unwraps ON DETECTION rather than always, and a topic that stops
+        // nesting keeps working without a change here.
+        const nested = isEnvelope(outerPayload)
+        const payload = nested === undefined ? outerPayload : (nested['payload'] ?? nested['Payload'] ?? null)
+        // An inner failure code under an outer 200 is the same "2xx as business
+        // success" trap one level deeper: GetMyInfo answers BAD_REQUEST/"No such
+        // user" inside a 200 envelope. The innermost code is the business answer.
+        const innerResultCode =
+          nested === undefined ? null : numberOrNull(nested['resultCode'] ?? nested['ResultCode'])
+        const resultCode = innerResultCode ?? outerResultCode
 
         if (!response.ok) {
           return record(
@@ -145,8 +159,12 @@ export function createNesyBackofficeAdapter(
         // 200 with a business failure code. The envelope, not the status line,
         // is the business answer.
         if (resultCode !== null && resultCode !== 200) {
+          // Report the message from whichever envelope carried the failing code:
+          // the outer one says "OK" while the inner one says why.
           return record(
-            failed(`back-office resultCode ${resultCode}: ${resultMessage(envelope) ?? 'no message'}`),
+            failed(
+              `back-office resultCode ${resultCode}: ${resultMessage(nested ?? envelope) ?? 'no message'}`,
+            ),
             resultCode,
             payload,
           )
@@ -157,8 +175,19 @@ export function createNesyBackofficeAdapter(
             ? { payload }
             : endpoint.normalize(payload, input.inputs)
 
+        // `responseRef` is what reaches `verdict_remote_action_attempt.responsePayload`.
+        // Leaving it unset is why a remote step that succeeded but published
+        // nothing could only be diagnosed by re-running the call by hand.
         return record(
-          { terminal: { status: 'SUCCEEDED' }, normalizedResponse },
+          {
+            terminal: {
+              status: 'SUCCEEDED',
+              ...(auditPolicy.recordResponse
+                ? { responseRef: summarize(redact(payload, auditPolicy.redactFields)) }
+                : {}),
+            },
+            normalizedResponse,
+          },
           resultCode,
           payload,
         )
@@ -203,6 +232,29 @@ export function createNesyBackofficeAdapter(
       }
     },
   }
+}
+
+/** Attempt rows are for diagnosis, not archival: a huge body helps nobody. */
+const RESPONSE_REF_MAX_CHARS = 4_000
+
+function summarize(value: unknown): string {
+  const json = JSON.stringify(value ?? null)
+  return json.length <= RESPONSE_REF_MAX_CHARS
+    ? json
+    : `${json.slice(0, RESPONSE_REF_MAX_CHARS)}…[truncated ${json.length - RESPONSE_REF_MAX_CHARS} chars]`
+}
+
+/**
+ * A `{ resultCode, payload }` envelope, as opposed to a business object that
+ * merely happens to be a record. Both keys are required so an ordinary payload
+ * carrying one of them is never mistaken for a wrapper.
+ */
+function isEnvelope(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const record = value as Record<string, unknown>
+  const hasCode = 'resultCode' in record || 'ResultCode' in record
+  const hasPayload = 'payload' in record || 'Payload' in record
+  return hasCode && hasPayload ? record : undefined
 }
 
 function resultMessage(envelope: Record<string, unknown>): string | undefined {

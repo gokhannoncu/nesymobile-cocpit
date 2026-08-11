@@ -48,7 +48,11 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
-  version: { major: 1, minor: 0, patch: 5 },
+  // 1.0.6 — login observes the APP and LOCAL session planes with SDK_QUERY fact
+  // bindings instead of requiring facts no step produced, and REMOTE.AUTH_ACCEPTED
+  // drops to OPTIONAL because the mapped back-office read resolves the dashboard
+  // admin token rather than the courier's. See `macros/login.ts`.
+  version: { major: 1, minor: 0, patch: 6 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

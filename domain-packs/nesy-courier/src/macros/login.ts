@@ -21,10 +21,21 @@
  *       `producesProductVerdict: true`, so a setup shortcut cannot be swapped in
  *       and keep the verdict.
  *
- *    2. The Final Oracle needs all THREE planes: the backend accepted the
- *       credentials, the app holds a session, and the device persisted one
- *       (`APP.LOGIN_SUCCEEDED`, a correlated derivation). A prepared session
- *       satisfies the app-plane fact and nothing else, so it cannot fake this.
+ *    2. The Final Oracle requires the app plane AND the local plane, each read
+ *       from its own source: `nesy.sessionState` (SharedPreferences + SDK state)
+ *       and `nesy.db.session` (the persisted Room record). A prepared session
+ *       that only sets the in-memory flag satisfies one and not the other.
+ *
+ *  WHAT THIS MACRO DOES NOT PROVE (read before trusting a green run)
+ *
+ *  The BACKEND plane is not required. `nesy.backoffice.read-session` runs with
+ *  the dashboard admin token and resolves the admin's identity, so it cannot
+ *  distinguish a courier who signed in from one who did not. It is kept as an
+ *  OPTIONAL observation and does not vote. See the requirement block below.
+ *
+ *  The three planes are also no longer CORRELATED with each other: the derived
+ *  fact that carried that property (`APP.LOGIN_SUCCEEDED`) has no host reducer,
+ *  so requiring it made every run unsatisfiable rather than strict.
  *
  *  PRODUCT PATH
  *
@@ -36,6 +47,7 @@
 import type { BridgeFlowPlanSnapshot, MacroDefinition, MacroExpansionSnapshot } from "@nesy/domain-pack-contracts";
 import type { WorkflowStepV2 } from "@nesy/workflow-contract";
 import { NESY_BACKOFFICE_ADAPTER_REF, NESY_BACKOFFICE_OPERATIONS } from "../adapters/backoffice.js";
+import { NESY_ADAPTER_QUERY_REFS } from "../registries/application.js";
 import { NESY_FACTS } from "../registries/facts.js";
 import { NESY_ACTIONS, NESY_SCREENS } from "../registries/screens.js";
 import { NESY_TARGETS } from "../registries/targets.js";
@@ -119,7 +131,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-submit",
       sourceMapRef: "sm-login-7",
-      next: "verify-backend-session",
+      next: "read-app-session",
       timeoutMs: 30_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -134,6 +146,42 @@ const STEPS: readonly WorkflowStepV2[] = [
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",
     },
+  },
+  // The app and local planes are OBSERVED here, not inferred from the screen
+  // transition. Before these two steps existed the login macro drove the UI and
+  // then asked the Final Oracle for three planes it had never observed, so
+  // APP.USER_SESSION_AVAILABLE and LOCAL.USER_SESSION_AVAILABLE could only ever
+  // time out — the run reported EVIDENCE_INSUFFICIENT for facts that had no
+  // producer anywhere in the plan.
+  {
+    ...stepBase({
+      planStepId: "read-app-session",
+      sourceMapRef: "sm-login-8a",
+      next: "read-local-session",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.sessionState,
+    maxRows: 1,
+    outputVariable: "appSessionRows",
+    outputFactBindings: [{ factKey: NESY_FACTS.USER_SESSION_AVAILABLE_APP, rowColumn: "is_logged_in" }],
+  },
+  {
+    ...stepBase({
+      planStepId: "read-local-session",
+      sourceMapRef: "sm-login-8b",
+      next: "verify-backend-session",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.dbSession,
+    maxRows: 1,
+    outputVariable: "localSessionRows",
+    outputFactBindings: [
+      { factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL, rowColumn: "session_persisted" },
+    ],
   },
   {
     ...stepBase({
@@ -161,13 +209,49 @@ const STEPS: readonly WorkflowStepV2[] = [
   {
     ...stepBase({ planStepId: "assert-login", sourceMapRef: "sm-login-9", next: null }),
     kind: "ASSERT_FACT",
-    factKey: NESY_FACTS.LOGIN_SUCCEEDED,
+    // ── Asserts the APP plane, not APP.LOGIN_SUCCEEDED ──────────────────────
+    //
+    // `APP.LOGIN_SUCCEEDED` is a DERIVED fact (see `evidence/derived.ts`), and no
+    // host runtime reads `DerivedFactGraph` today — nothing anywhere computes it.
+    // Asserting it meant asserting a fact with no producer, which is not a strict
+    // test but an unsatisfiable one: the run reported EVIDENCE_INSUFFICIENT no
+    // matter how well login worked.
+    //
+    // The three planes it derives from are each REQUIRED below, so the planes are
+    // still covered. What is LOST is the correlation the derivation carried —
+    // that the backend, app and local observations describe the SAME session
+    // rather than three unrelated truths. Restoring it needs the reducer engine
+    // AND a correlatable payload on published facts; both are tracked, and until
+    // then this macro must not claim the property.
+    factKey: NESY_FACTS.USER_SESSION_AVAILABLE_APP,
     expected: true,
     unknownPolicy: "FAIL",
     finalOraclePolicy: {
       requirements: [
-        { factKey: NESY_FACTS.LOGIN_SUCCEEDED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
-        { factKey: NESY_FACTS.AUTH_ACCEPTED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        // ── REMOTE.AUTH_ACCEPTED is DELIBERATELY not REQUIRED ────────────────
+        //
+        // `nesy.backoffice.read-session` maps to `User/GetMyInfo`, and the host
+        // calls it with the DASHBOARD ADMIN token. It therefore resolves the
+        // admin's identity, not the courier who just signed in: it would answer
+        // true on a run where the courier never authenticated at all.
+        //
+        // Requiring it would not make login stricter, it would make it FALSELY
+        // strict — a green REQUIRED tick standing for a check that cannot fail
+        // for the reason it claims. Keeping it OPTIONAL records the observation
+        // without letting it vote.
+        //
+        // To close this properly the backend needs a read for the courier login
+        // record. `UserWebAPI` writes `UserLoginLog` on every attempt
+        // (AuthOperation) but exposes no read for it, so the honest fix is a
+        // backend change, not a pack change. Until then this macro does not
+        // prove the backend plane, and `notResponsibleFor` says so.
+        {
+          factKey: NESY_FACTS.AUTH_ACCEPTED,
+          obligation: "OPTIONAL",
+          timing: "EVENTUAL",
+          deadlineMs: 20_000,
+          onTimeout: "WARNING",
+        },
         {
           factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
           obligation: "REQUIRED",
@@ -203,6 +287,8 @@ const GENERIC_IR = irDocument({
   variables: [
     { name: "pinFieldHandle", type: "string" },
     { name: "submitHandle", type: "string" },
+    { name: "appSessionRows", type: "stringList" },
+    { name: "localSessionRows", type: "stringList" },
   ],
   steps: STEPS,
   entryStepId: "wait-login-ready",
@@ -217,6 +303,8 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-7", "tap-submit", NESY_LOGIN_MACRO_KEY),
+    sourceMapEntry("sm-login-8a", "read-app-session", NESY_LOGIN_MACRO_KEY, "app plane observed, not inferred"),
+    sourceMapEntry("sm-login-8b", "read-local-session", NESY_LOGIN_MACRO_KEY, "local plane observed, not inferred"),
     sourceMapEntry("sm-login-8", "verify-backend-session", NESY_LOGIN_MACRO_KEY, "backend fact, not a screen transition"),
     sourceMapEntry("sm-login-9", "assert-login", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-10", "clear-session", NESY_LOGIN_MACRO_KEY),
@@ -267,6 +355,8 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
     "biometric re-authentication",
     "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
     "multi-device session eviction",
+    "whether the BACKEND authenticated this courier — the only available back-office read resolves the dashboard admin token, so REMOTE.AUTH_ACCEPTED is observed but does not vote",
+    "whether the backend, app and local sessions are the SAME session — the correlated derivation has no host reducer, so the three planes are asserted individually",
   ],
   input: {
     fields: [
@@ -309,7 +399,7 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
       NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
       NESY_FACTS.LOGIN_SUCCEEDED,
     ],
-    queryRefs: ["nesy.sessionState"],
+    queryRefs: [NESY_ADAPTER_QUERY_REFS.sessionState, NESY_ADAPTER_QUERY_REFS.dbSession],
     adapterOperationRefs: [NESY_BACKOFFICE_OPERATIONS.readSession],
   },
   oracleTemplate: {
@@ -319,10 +409,16 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",
     },
+    // Kept identical to `assert-login`'s `finalOraclePolicy`. Two copies of the
+    // same policy that drift are worse than one, so change both together.
     finalOracle: {
       requirements: [
-        { factKey: NESY_FACTS.LOGIN_SUCCEEDED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
-        { factKey: NESY_FACTS.AUTH_ACCEPTED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        {
+          factKey: NESY_FACTS.USER_SESSION_AVAILABLE_APP,
+          obligation: "REQUIRED",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
+        },
         {
           factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
           obligation: "REQUIRED",
@@ -330,9 +426,19 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
           deadlineMs: 30_000,
           onTimeout: "INCONCLUSIVE",
         },
+        {
+          factKey: NESY_FACTS.AUTH_ACCEPTED,
+          obligation: "OPTIONAL",
+          timing: "EVENTUAL",
+          deadlineMs: 20_000,
+          onTimeout: "WARNING",
+        },
       ],
     },
-    notResponsibleFor: ["whether the route list content is correct — only that it became ready"],
+    notResponsibleFor: [
+      "whether the route list content is correct — only that it became ready",
+      "whether the backend authenticated this courier — see the macro header",
+    ],
   },
   interruptPolicy: NESY_DEFAULT_INTERRUPT_POLICY,
   requiredCapabilityRefs: [
@@ -372,14 +478,14 @@ export const COURIER_LOGIN_SLICE: NesyReferenceSlice = {
       scenario:
         "Someone speeds the suite up by running this slice under nesy.launch.prepared-session. The app is already signed in, the route list is ready, and the slice reports PASS without any login having happened.",
       refusedBy:
-        "validateLaunchProfile: PREPARED_SESSION/DIRECT_STATE cannot declare producesProductVerdict:true. Additionally APP.LOGIN_SUCCEEDED is a CORRELATED_ALL_OF over the backend, app and local planes, which a session injection cannot satisfy.",
+        "validateLaunchProfile: PREPARED_SESSION/DIRECT_STATE cannot declare producesProductVerdict:true. The oracle additionally requires the LOCAL plane (nesy.db.session, the persisted Room record) alongside the APP plane, so an injection that only flips the in-memory session flag still fails.",
     },
     {
       caseKey: "SCREEN_TRANSITION_AS_AUTHENTICATION",
       scenario:
         "The app navigates away from the login screen on a cached session while the backend rejected the credentials. A UI-only oracle would call that a pass.",
       refusedBy:
-        "REMOTE.AUTH_ACCEPTED is a REQUIRED IMMEDIATE oracle requirement, sourced from an allowlisted back-office read with an entity status and a correlation id.",
+        "NOT CURRENTLY REFUSED. This case is the reason REMOTE.AUTH_ACCEPTED exists, but the only mapped back-office read resolves the dashboard admin token rather than the courier's, so it cannot tell the two apart and is OPTIONAL. A cached-session pass would be caught only if the app or local plane also failed. Closing this needs a backend read for the courier login record.",
     },
     {
       caseKey: "SESSION_EXPIRY_SILENTLY_HANDLED",
