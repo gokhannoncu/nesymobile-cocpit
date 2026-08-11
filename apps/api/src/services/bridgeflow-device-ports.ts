@@ -16,7 +16,7 @@
  *      must treat as evidence-insufficient.
  */
 
-import type { UiWaitPlan, WaitAnyResult } from '@nesy/bridge-contract'
+import type { BridgeActionRecord, UiWaitPlan, WaitAnyResult } from '@nesy/bridge-contract'
 import type { BridgeFlowPlanStep } from '@nesy/bridgeflow-compiler'
 import type { ControlExecutor } from '@nesy/control-contract'
 import { createControlExecutor } from '@nesy/control-channels/node'
@@ -33,6 +33,30 @@ import type { BridgeDeviceManager } from './bridge-device-manager.js'
 import { buildTargetFingerprint, isTargetFingerprint } from './bridgeflow-target-fingerprint.js'
 
 const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
+
+/**
+ * `evidenceRef` for one bridge action, carrying WHY when the device refused.
+ *
+ * `BridgeActionRecord.error` holds the device's own code — `stale_tree`,
+ * `not_settled`, `obscured`, `not_found` — and it used to be dropped here, so a
+ * `REJECTED` step persisted `bridge:tap_text:<requestId>` and nothing else. That
+ * names the command and the request and answers none of the questions anyone asks
+ * next. `treeGen` rides along because the most common refusal is a stale tree, and
+ * the generation is what makes that diagnosable instead of merely plausible.
+ */
+function describeActionEvidence(record: BridgeActionRecord): string {
+  const parts = [`bridge:${record.command}:${record.requestId}`]
+  if (record.error !== undefined && record.error !== '') {
+    parts.push(record.error)
+    if (record.treeGen !== undefined) parts.push(`treeGen=${String(record.treeGen)}`)
+  }
+  // A contaminated action is not a product failure — somebody touched the screen —
+  // so it has to be distinguishable from one, and only the record says which.
+  if (record.contaminated === true) {
+    parts.push(`contaminated=${record.contaminationDetection ?? 'unspecified'}`)
+  }
+  return parts.join(':')
+}
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
@@ -131,12 +155,22 @@ export function createBridgeRuntimePort(options: {
       })
 
       const terminalState = record.terminalState ?? 'FAILED'
-      const gestureCompleted = record.markers.some((marker) => marker.phase === 'GESTURE_COMPLETED')
 
       return {
         terminalState,
-        effectVerified: terminalState === 'SUCCEEDED' && gestureCompleted && record.method !== null,
-        evidenceRef: `bridge:${record.command}:${record.requestId}`,
+        // Verified means: the device accepted the command, said HOW it acted, and
+        // reported no manual touch inside the action.
+        //
+        // It used to also require a `GESTURE_COMPLETED` marker, which the manager
+        // can only record from `gestureEndMonoTs` — a field protocol v1 never
+        // sends. So `effectVerified` was false for EVERY tap and setText, the
+        // executor turned that into `FAILED` with `evidenceInsufficient`, and no
+        // BRIDGE_ACTION step could ever pass on a real device. The device had
+        // done the tap and answered `ok`; the host was checking for evidence the
+        // protocol does not carry.
+        effectVerified:
+          terminalState === 'SUCCEEDED' && record.method !== null && record.contaminated !== true,
+        evidenceRef: describeActionEvidence(record),
       }
     },
 

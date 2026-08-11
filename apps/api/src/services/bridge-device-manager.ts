@@ -330,12 +330,34 @@ export class BridgeDeviceManager {
       return record;
     }
 
-    const params: Record<string, unknown> = { value: fingerprint.selector.value };
-    if (fingerprint.selector.by === "text" && fingerprint.selector.exact !== undefined) {
-      params.exact = fingerprint.selector.exact;
+    const params: Record<string, unknown> = {};
+    if (command === "input_text") {
+      // ⚠️ `id`, `value` DEĞİL — ve bu, `waitNodeParams`ın `by`/`matchBy` notuyla
+      // aynı sınıf hata. Cihazın `handleInputText`i selector'ı `id` alanından
+      // okur; `value` gönderen istek selector'SIZ çalışır, odaklı bir düzenlenebilir
+      // node yoksa `not_found` döner. Gerçek cihazda tam bu yaşandı: `enter-pin`
+      // `not_found` alıyordu, oysa `pinView` ekrandaydı ve `id` ile tek eşleşme
+      // veriyordu.
+      if (fingerprint.selector.by !== "id") {
+        // Cihazda `input_text` YALNIZ ID ile eşler (`MatchBy.ID`). Metin
+        // selector'ını `id` diye göndermek sessizce yanlış node'a yazmak olurdu;
+        // reddetmek, cihaza hiç gitmediği için güvenle tekrarlanabilir.
+        const record = lifecycle.finish(
+          "REJECTED",
+          `input_text requires an id selector; got by=${fingerprint.selector.by}`,
+        );
+        this.actionLog.push(record);
+        return record;
+      }
+      params.id = fingerprint.selector.value;
+      params.text = options.text ?? "";
+    } else {
+      params.value = fingerprint.selector.value;
+      if (fingerprint.selector.by === "text" && fingerprint.selector.exact !== undefined) {
+        params.exact = fingerprint.selector.exact;
+      }
     }
     if (fingerprint.rowIndexHint !== undefined) params.rowIndex = fingerprint.rowIndexHint;
-    if (command === "input_text") params.text = options.text ?? "";
     if (resolution.treeGen !== undefined) {
       // Beklenen ağaç neslini göndermek, aradaki bir değişikliğin `stale_tree`
       // ile REDDEDİLMESİNİ sağlar — yani yanlış node'a dokunmayı imkânsız kılar.
@@ -354,6 +376,22 @@ export class BridgeDeviceManager {
       const endedAt = typeof envelope.gestureEndMonoTs === "number" ? envelope.gestureEndMonoTs : null;
       if (startedAt !== null) lifecycle.mark("GESTURE_STARTED", startedAt);
       if (endedAt !== null) lifecycle.mark("GESTURE_COMPLETED", endedAt);
+      // ⚠️ Protocol v1 sends NEITHER window field. The two marks above are
+      // therefore dead on every real device today, which is why the port must not
+      // require `GESTURE_COMPLETED` to call an action verified — see
+      // `describeActionEvidence`'s caller. They stay because a device that starts
+      // reporting the window should light them up without a host change.
+      //
+      // Contamination is the claim the window was standing in for, and the device
+      // answers it directly, so read it from there.
+      if (typeof envelope.contaminated === "boolean") {
+        lifecycle.withContamination(
+          envelope.contaminated,
+          typeof envelope.contaminationDetection === "string"
+            ? envelope.contaminationDetection
+            : undefined,
+        );
+      }
 
       const record = envelope.ok
         ? lifecycle.finish("SUCCEEDED")

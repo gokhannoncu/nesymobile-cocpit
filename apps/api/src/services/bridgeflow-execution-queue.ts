@@ -194,6 +194,24 @@ export function screenMatchesScreenName(
 }
 
 /**
+ * Can the mere appearance of a screen settle this fact?
+ *
+ * A screen's `readiness.requiredFactKeys` is a list of everything that must hold
+ * before the screen counts as ready, and only some of those are things the screen
+ * itself demonstrates. `nesy.route.stop-list` requires `UI.ROUTE_LIST_READY` AND
+ * `APP.AVAILABLE_STOPS_LOADED`; the first is what the device showing that screen
+ * proves, the second is a backend projection (`plane: APP`, `kind: NAMED_QUERY`)
+ * that a rendered screen says nothing about. Publishing both would manufacture
+ * evidence that the stops were loaded, which is exactly the kind of fabricated
+ * fact an oracle must never be handed.
+ */
+function isScreenObservableFact(bundle: DomainPackBundle, factKey: string): boolean {
+  return bundle.registries.evidenceSources.some(
+    (source) => source.factKey === factKey && source.plane === 'UI' && source.kind === 'BRIDGE_WATCH',
+  )
+}
+
+/**
  * Publishes `UI.*_READY` for whatever screen the device is on RIGHT NOW, into the
  * scope of the occurrence that is asking.
  *
@@ -240,7 +258,9 @@ function publishLiveScreenReadiness(input: {
   let revision = revisionBase + 1
   for (const screen of input.bundle.registries.screens) {
     if (!screenMatchesScreenName(screen, state.screen)) continue
-    for (const factKey of screen.readiness.requiredFactKeys) {
+    for (const factKey of screen.readiness.requiredFactKeys.filter((key) =>
+      isScreenObservableFact(input.bundle, key),
+    )) {
       input.evidenceRuntime.publish({
         runId: input.runId,
         revision,

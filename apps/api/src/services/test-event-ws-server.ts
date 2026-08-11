@@ -378,6 +378,25 @@ class TestEventWsServerImpl {
    */
   private ingestReady = false;
   private readonly sentAckThrough = new MonotoneStreamWatermarks();
+
+  /**
+   * What actually arrived on the socket, including what was thrown away.
+   *
+   * A frame dropped by [sameStream] leaves no trace anywhere — no ack, no row, no
+   * log — and the device's only symptom is that its journal never drains. Counting
+   * the drops is what turns "the ring is stuck" into "the host refused N gap frames
+   * for a stream it was not authenticated for".
+   */
+  private readonly ingress = {
+    connections: 0,
+    authenticated: 0,
+    gapFrames: 0,
+    gapStatusQueries: 0,
+    gapStatusAnswered: 0,
+    droppedForeignStream: 0,
+    foreignStreamAccepted: 0,
+    lastForeignStream: null as string | null,
+  };
   /**
    * Sync-vs-durable equality evidence. Populated only under
    * `VERDICT_COMPARE_MODE=1`; exposed so the health route and the integration
@@ -594,6 +613,7 @@ class TestEventWsServerImpl {
       return;
     }
     if (socket.readyState !== socket.OPEN) return;
+    this.ingress.gapStatusAnswered += 1;
     socket.send(
       JSON.stringify({
         type: "gap_status_result",
@@ -633,6 +653,7 @@ class TestEventWsServerImpl {
 
     this.server.on("connection", (socket: WebSocket) => {
       this.connectionCount += 1;
+      this.ingress.connections += 1;
       const connectionId = this.connectionCount;
       console.log(`[TestEventWS] device connection #${connectionId} established`);
       let authenticated: AuthenticatedWsStream | null = null;
@@ -656,6 +677,7 @@ class TestEventWsServerImpl {
             return;
           }
           authenticated = { runId: hello.runId, sessionId: hello.sessionId };
+          this.ingress.authenticated += 1;
           if (socket.readyState === socket.OPEN) {
             socket.send(JSON.stringify({
               type: "auth",
@@ -671,12 +693,40 @@ class TestEventWsServerImpl {
         routeIncomingWsFrame(raw, {
           // A gap frame is not a test event: it never reaches the sniffers, only
           // the durable path.
+          // ⚠️ Gap frames are NOT stream-scoped, and requiring them to be was a
+          // deadlock. A gap records that a WAL segment was purged, and the segment
+          // that gets purged belongs to an OLDER run — by construction, never the
+          // one the connection just authenticated as. So every gap frame was
+          // dropped here: no ack, no row, no log. The device's journal ring (seven
+          // entries) then stayed full forever, `prepareGap` refused, and the WAL sat
+          // in `space_exhausted` emitting nothing. Measured on the device:
+          // `droppedForeignStream: 1` against `lastForeignStream` = a run from hours
+          // earlier.
+          //
+          // Accepting them is safe in the way that matters: the connection is
+          // authenticated, and a gap carries no evidence content — it only states
+          // that a range of the DEVICE'S OWN records no longer exists. Event frames
+          // stay strictly stream-scoped below, because those do carry content.
           onControl: (control) => {
-            if (!sameStream(authenticated, control.runId, control.sessionId)) return;
+            this.ingress.gapFrames += 1;
+            if (authenticated === null && WS_AUTH_REQUIRED) {
+              this.ingress.droppedForeignStream += 1;
+              this.ingress.lastForeignStream = `${control.runId}/${control.sessionId}`;
+              return;
+            }
+            if (!sameStream(authenticated, control.runId, control.sessionId)) {
+              this.ingress.foreignStreamAccepted += 1;
+              this.ingress.lastForeignStream = `${control.runId}/${control.sessionId}`;
+            }
             if (this.ingestReady) void this.acceptDurable(socket, control);
           },
           onGapStatus: (query) => {
-            if (!sameStream(authenticated, query.runId, query.sessionId)) return;
+            this.ingress.gapStatusQueries += 1;
+            if (authenticated === null && WS_AUTH_REQUIRED) {
+              this.ingress.droppedForeignStream += 1;
+              this.ingress.lastForeignStream = `${query.runId}/${query.sessionId}`;
+              return;
+            }
             void this.answerGapStatus(socket, query);
           },
           // Heartbeats deliberately have no seq and bypass the WAL. They update
@@ -749,6 +799,11 @@ class TestEventWsServerImpl {
   }
 
   /** True when frames are being durably accepted and acked. */
+  /** Wire-level ingress counters, including frames the stream guard discarded. */
+  ingressDiagnostics(): Readonly<Record<string, number | string | null>> {
+    return { ...this.ingress };
+  }
+
   isIngestReady(): boolean {
     return this.ingestReady;
   }

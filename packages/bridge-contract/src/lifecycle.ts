@@ -97,6 +97,17 @@ export interface BridgeActionRecord {
   error?: string;
   /** Cihazın bildirdiği ağaç nesli (aksiyon anında). */
   treeGen?: number;
+  /**
+   * Cihazın kendi kirlenme yargısı: aksiyon penceresinde ELLE bir dokunuş oldu mu.
+   *
+   * `injectedGestureWindow()` bunu host tarafında türetmeye çalışıyordu ve cihaz o
+   * pencereyi (`gestureStartMonoTs`/`gestureEndMonoTs`) HİÇ göndermiyor — yani o
+   * yol hiçbir zaman çalışmadı. Cihazda ise amaca özel bir tespit var
+   * (`accessibility_touch_interaction_start`), ve doğru kaynak o.
+   */
+  contaminated?: boolean;
+  /** Kirlenmenin nasıl tespit edildiği — teşhis için. */
+  contaminationDetection?: string;
 }
 
 /**
@@ -114,6 +125,8 @@ export class BridgeActionLifecycle {
   private resolution: TargetResolutionEvidence | null = null;
   private method: BridgeActionMethod | null = null;
   private treeGen: number | undefined;
+  private contaminated: boolean | undefined;
+  private contaminationDetection: string | undefined;
 
   constructor(
     readonly requestId: string,
@@ -140,6 +153,13 @@ export class BridgeActionLifecycle {
 
   withMethod(method: BridgeActionMethod): this {
     this.method = method;
+    return this;
+  }
+
+  /** Cihazın kirlenme yargısını kaydeder. */
+  withContamination(contaminated: boolean, detection?: string): this {
+    this.contaminated = contaminated;
+    this.contaminationDetection = detection;
     return this;
   }
 
@@ -171,6 +191,10 @@ export class BridgeActionLifecycle {
       terminalState: this.terminal,
       ...(this.errorCode === undefined ? {} : { error: this.errorCode }),
       ...(this.treeGen === undefined ? {} : { treeGen: this.treeGen }),
+      ...(this.contaminated === undefined ? {} : { contaminated: this.contaminated }),
+      ...(this.contaminationDetection === undefined
+        ? {}
+        : { contaminationDetection: this.contaminationDetection }),
     };
   }
 

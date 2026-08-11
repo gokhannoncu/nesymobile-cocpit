@@ -47,6 +47,18 @@ export async function verdictEventsRoutes(app: FastifyInstance) {
     return health
   })
 
+  /**
+   * Wire-level ingress counters for the device WS.
+   *
+   * Exists because the stream guard drops foreign-stream frames silently: no ack,
+   * no row, no log. A device whose journal never drains has no other way to show
+   * that its gap frames were received and discarded.
+   */
+  app.get('/events/ws-ingress', async () => {
+    const { TestEventWsServer } = await import('../services/test-event-ws-server.js')
+    return TestEventWsServer.ingressDiagnostics()
+  })
+
   /** One stream, reported whether it is healthy or not. */
   app.get<{ Params: { runId: string; sessionId: string } }>(
     '/events/health/:runId/:sessionId',
