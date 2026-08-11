@@ -92,10 +92,6 @@
       ],
       "variables": [
         {
-          "name": "pinTabHandle",
-          "type": "string"
-        },
-        {
           "name": "pinFieldHandle",
           "type": "string"
         },
@@ -108,7 +104,7 @@
         {
           "planStepId": "wait-login-ready",
           "sourceMapRef": "sm-login-1",
-          "next": "resolve-pin-tab",
+          "next": "resolve-pin-field",
           "timeoutMs": 30000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -121,44 +117,6 @@
           "stableForMs": 300,
           "requireCorrelation": false,
           "onTimeout": "FAIL"
-        },
-        {
-          "planStepId": "resolve-pin-tab",
-          "sourceMapRef": "sm-login-2",
-          "next": "select-pin-tab",
-          "timeoutMs": 20000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [
-            {
-              "capability": "verdict.core.bridge.resolve-target",
-              "optional": false
-            }
-          ],
-          "kind": "RESOLVE_TARGET",
-          "targetRef": "nesy.target.login-pin-tab",
-          "outputVariable": "pinTabHandle"
-        },
-        {
-          "planStepId": "select-pin-tab",
-          "sourceMapRef": "sm-login-3",
-          "next": "resolve-pin-field",
-          "timeoutMs": 20000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [
-            {
-              "capability": "verdict.core.bridge.tap",
-              "optional": false
-            }
-          ],
-          "kind": "BRIDGE_ACTION",
-          "action": "tap",
-          "targetVariable": "pinTabHandle"
         },
         {
           "planStepId": "resolve-pin-field",
@@ -414,17 +372,6 @@
           "note": "login screen readiness"
         },
         {
-          "ref": "sm-login-2",
-          "planStepId": "resolve-pin-tab",
-          "domainSourceRef": "nesy.macro.login",
-          "note": "ensure PIN tab is active"
-        },
-        {
-          "ref": "sm-login-3",
-          "planStepId": "select-pin-tab",
-          "domainSourceRef": "nesy.macro.login"
-        },
-        {
           "ref": "sm-login-4",
           "planStepId": "resolve-pin-field",
           "domainSourceRef": "nesy.macro.login"
@@ -470,17 +417,6 @@
         "note": "login screen readiness"
       },
       {
-        "ref": "sm-login-2",
-        "planStepId": "resolve-pin-tab",
-        "domainSourceRef": "nesy.macro.login",
-        "note": "ensure PIN tab is active"
-      },
-      {
-        "ref": "sm-login-3",
-        "planStepId": "select-pin-tab",
-        "domainSourceRef": "nesy.macro.login"
-      },
-      {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",
         "domainSourceRef": "nesy.macro.login"
@@ -523,8 +459,6 @@
         "macroRef": "nesy.macro.login",
         "planStepIds": [
           "wait-login-ready",
-          "resolve-pin-tab",
-          "select-pin-tab",
           "resolve-pin-field",
           "enter-pin",
           "resolve-submit",
@@ -562,10 +496,6 @@
     ],
     "variables": [
       {
-        "name": "pinTabHandle",
-        "type": "string"
-      },
-      {
         "name": "pinFieldHandle",
         "type": "string"
       },
@@ -578,7 +508,7 @@
       {
         "planStepId": "wait-login-ready",
         "sourceMapRef": "sm-login-1",
-        "next": "resolve-pin-tab",
+        "next": "resolve-pin-field",
         "timeoutMs": 30000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -591,44 +521,6 @@
         "stableForMs": 300,
         "requireCorrelation": false,
         "onTimeout": "FAIL"
-      },
-      {
-        "planStepId": "resolve-pin-tab",
-        "sourceMapRef": "sm-login-2",
-        "next": "select-pin-tab",
-        "timeoutMs": 20000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [
-          {
-            "capability": "verdict.core.bridge.resolve-target",
-            "optional": false
-          }
-        ],
-        "kind": "RESOLVE_TARGET",
-        "targetRef": "nesy.target.login-pin-tab",
-        "outputVariable": "pinTabHandle"
-      },
-      {
-        "planStepId": "select-pin-tab",
-        "sourceMapRef": "sm-login-3",
-        "next": "resolve-pin-field",
-        "timeoutMs": 20000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [
-          {
-            "capability": "verdict.core.bridge.tap",
-            "optional": false
-          }
-        ],
-        "kind": "BRIDGE_ACTION",
-        "action": "tap",
-        "targetVariable": "pinTabHandle"
       },
       {
         "planStepId": "resolve-pin-field",
@@ -884,17 +776,6 @@
         "note": "login screen readiness"
       },
       {
-        "ref": "sm-login-2",
-        "planStepId": "resolve-pin-tab",
-        "domainSourceRef": "nesy.macro.login",
-        "note": "ensure PIN tab is active"
-      },
-      {
-        "ref": "sm-login-3",
-        "planStepId": "select-pin-tab",
-        "domainSourceRef": "nesy.macro.login"
-      },
-      {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",
         "domainSourceRef": "nesy.macro.login"
@@ -944,11 +825,6 @@
         "planStepId": "wait-login-ready",
         "bridgeVerb": "watch",
         "awaitFactKey": "UI.LOGIN_SCREEN_READY"
-      },
-      {
-        "planStepId": "select-pin-tab",
-        "bridgeVerb": "tap",
-        "targetRef": "nesy.target.login-pin-tab"
       },
       {
         "planStepId": "enter-pin",

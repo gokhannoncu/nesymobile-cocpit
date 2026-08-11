@@ -142,10 +142,24 @@ export function resolveBridgeFlowDurableEvent(
   if (!finiteNonNegative(candidate.ts)) {
     return rejected('durable event ts must be a finite non-negative number', runId)
   }
+  // `event` is required because it is what selects the trusted source definition.
+  //
+  // `taskId` is NOT, and requiring it here blocked every run on this device. A
+  // fact's scope at this boundary is the BridgeFlow correlation tuple
+  // (`occurrenceId`, `iterationKey`) — `taskId` names a business task and is never
+  // read below, so it cannot be part of evidence identity. Meanwhile the SDK sends
+  // `taskId: ""` for everything that is not task-scoped: `SCREEN_READY`,
+  // `SCREEN_EXITED`, `STATE_LOGIN`, `STATE_ROUTE`. Rejecting those is `blocking`,
+  // which calls `blockRun`, which makes EVERY later continue gate return BLOCKED
+  // without evaluating. Measured: a login run whose PIN entry, submit and real
+  // authentication all succeeded still reported `continueGateResult: UNSATISFIED`
+  // with zero oracle evaluations, because its first screen event was rejected here.
+  //
+  // Events that are not correlated BridgeFlow evidence already have a non-blocking
+  // outcome below (`LEGACY_NO_CONTEXT`); letting them reach it is the whole fix.
   const sourceEvent = nonEmptyString(candidate.event)
-  const taskId = nonEmptyString(candidate.taskId)
-  if (sourceEvent === undefined || taskId === undefined) {
-    return rejected('durable event requires non-empty event and taskId', runId)
+  if (sourceEvent === undefined) {
+    return rejected('durable event requires a non-empty event name', runId)
   }
   if (candidate.data === undefined || candidate.data === null) return { status: 'LEGACY_NO_CONTEXT' }
   if (!isRecord(candidate.data)) return rejected('durable event data must be an object', runId)

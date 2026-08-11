@@ -47,7 +47,7 @@ export const NESY_LOGIN_MACRO_KEY = "nesy.macro.login";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
-    ...stepBase({ planStepId: "wait-login-ready", sourceMapRef: "sm-login-1", next: "resolve-pin-tab", timeoutMs: 30_000 }),
+    ...stepBase({ planStepId: "wait-login-ready", sourceMapRef: "sm-login-1", next: "resolve-pin-field", timeoutMs: 30_000 }),
     kind: "WAIT_EVENT",
     factKey: NESY_FACTS.LOGIN_SCREEN_READY,
     sourceLane: "UI",
@@ -57,28 +57,27 @@ const STEPS: readonly WorkflowStepV2[] = [
     requireCorrelation: false,
     onTimeout: "FAIL",
   },
-  {
-    ...stepBase({
-      planStepId: "resolve-pin-tab",
-      sourceMapRef: "sm-login-2",
-      next: "select-pin-tab",
-      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
-    }),
-    kind: "RESOLVE_TARGET",
-    targetRef: NESY_TARGETS.loginPinTab,
-    outputVariable: "pinTabHandle",
-  },
-  {
-    ...stepBase({
-      planStepId: "select-pin-tab",
-      sourceMapRef: "sm-login-3",
-      next: "resolve-pin-field",
-      capabilityRequirements: [requires("verdict.core.bridge.tap")],
-    }),
-    kind: "BRIDGE_ACTION",
-    action: "tap",
-    targetVariable: "pinTabHandle",
-  },
+  // NO "select the PIN tab" STEP, deliberately.
+  //
+  // There used to be a `resolve-pin-tab` + `select-pin-tab` pair whose identity was
+  // the tab's visible label. On the device that label is not unique: the tab is a
+  // LinearLayout carrying `content-desc="PIN"` wrapping a TextView carrying
+  // `text="PIN"`, and NEITHER node has a resource id. A lookup for "PIN" therefore
+  // matched two nodes, and with `ambiguityPolicy: FAIL` the step failed — sometimes.
+  // Measured on a real device: the same plan gave SUCCEEDED, REJECTED and FAILED on
+  // three consecutive runs, which reads as flakiness in the product rather than as
+  // an unresolvable target in the pack.
+  //
+  // The tap was never on the happy path to begin with: this slice's launch profile
+  // is `nesy.launch.cold-real-login` (`startMode: COLD_START`), and a freshly
+  // started process always opens with the PIN tab selected and `pinView` present.
+  // So the recovery it provided was for a state a cold start cannot be in, bought at
+  // the cost of an ambiguous mutation on every run.
+  //
+  // A conditional tap ("only if the PIN field is absent") is NOT expressible today:
+  // `bridge.node` operands resolve from evidence facts, not from a live node query,
+  // so the condition would be UNKNOWN on every run. If that changes, this is where
+  // the recovery branch belongs.
   {
     ...stepBase({
       planStepId: "resolve-pin-field",
@@ -202,7 +201,6 @@ const GENERIC_IR = irDocument({
     { name: "sessionCorrelationId", type: "string", required: true },
   ],
   variables: [
-    { name: "pinTabHandle", type: "string" },
     { name: "pinFieldHandle", type: "string" },
     { name: "submitHandle", type: "string" },
   ],
@@ -215,8 +213,6 @@ const GENERIC_IR = irDocument({
   ],
   sourceMap: [
     sourceMapEntry("sm-login-1", "wait-login-ready", NESY_LOGIN_MACRO_KEY, "login screen readiness"),
-    sourceMapEntry("sm-login-2", "resolve-pin-tab", NESY_LOGIN_MACRO_KEY, "ensure PIN tab is active"),
-    sourceMapEntry("sm-login-3", "select-pin-tab", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
@@ -249,7 +245,6 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.set-text"],
   legs: [
     { planStepId: "wait-login-ready", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.LOGIN_SCREEN_READY },
-    { planStepId: "select-pin-tab", bridgeVerb: "tap", targetRef: NESY_TARGETS.loginPinTab },
     { planStepId: "enter-pin", bridgeVerb: "setText", targetRef: NESY_TARGETS.loginPinField },
     {
       planStepId: "tap-submit",

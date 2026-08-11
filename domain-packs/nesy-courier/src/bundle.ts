@@ -48,7 +48,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
-  version: { major: 1, minor: 0, patch: 2 },
+  version: { major: 1, minor: 0, patch: 5 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

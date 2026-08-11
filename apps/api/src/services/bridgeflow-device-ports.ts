@@ -16,7 +16,12 @@
  *      must treat as evidence-insufficient.
  */
 
-import type { BridgeActionRecord, UiWaitPlan, WaitAnyResult } from '@nesy/bridge-contract'
+import type {
+  BridgeActionRecord,
+  TargetResolutionEvidence,
+  UiWaitPlan,
+  WaitAnyResult,
+} from '@nesy/bridge-contract'
 import type { BridgeFlowPlanStep } from '@nesy/bridgeflow-compiler'
 import type { ControlExecutor } from '@nesy/control-contract'
 import { createControlExecutor } from '@nesy/control-channels/node'
@@ -54,6 +59,27 @@ function describeActionEvidence(record: BridgeActionRecord): string {
   // so it has to be distinguishable from one, and only the record says which.
   if (record.contaminated === true) {
     parts.push(`contaminated=${record.contaminationDetection ?? 'unspecified'}`)
+  }
+  return parts.join(':')
+}
+
+/**
+ * `evidenceRef` for one target resolution, carrying WHY it did not resolve.
+ *
+ * `RESOLVE_TARGET` used to persist `action_result: FAILED` and nothing else, so a
+ * run report could not distinguish "the node is not on screen" (`not_found`) from
+ * "two nodes match this selector" (`AMBIGUOUS`, with `matched`) from "the tree
+ * moved under us" (`STALE_TREE`, with `treeGen`) — three different bugs with three
+ * different fixes. The selector is included because the same target key can be
+ * resolved by id or by text depending on the chain the pack declares.
+ */
+function describeResolutionEvidence(evidence: TargetResolutionEvidence): string {
+  const { by, value } = evidence.fingerprint.selector
+  const parts = [`resolve:${by}=${value}`, evidence.outcome, `strength=${evidence.strength}`]
+  if (evidence.matchedCount !== undefined) parts.push(`matched=${String(evidence.matchedCount)}`)
+  if (evidence.treeGen !== undefined) parts.push(`treeGen=${String(evidence.treeGen)}`)
+  if (evidence.deviceError !== undefined && evidence.deviceError !== '') {
+    parts.push(evidence.deviceError)
   }
   return parts.join(':')
 }
@@ -285,14 +311,16 @@ export function createGenericStepRuntime(options: {
       }
 
       const evidence = await manager.resolve(fingerprint, { runId })
+      const evidenceRef = describeResolutionEvidence(evidence)
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
-        return { succeeded: false, actionResult: 'FAILED' }
+        return { succeeded: false, actionResult: 'FAILED', evidenceRef }
       }
 
       return {
         succeeded: true,
         actionResult: 'SUCCEEDED',
         outputVariable,
+        evidenceRef,
         output: {
           ...fingerprint,
           ...(evidence.treeGen === undefined ? {} : { capturedTreeGen: evidence.treeGen }),

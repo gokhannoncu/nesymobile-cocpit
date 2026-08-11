@@ -99,6 +99,16 @@ export interface AdbFacade {
   ): Promise<{ installed: boolean; versionName: string | null; versionCode: string | null }>;
   /** `settings get secure enabled_accessibility_services` */
   getEnabledAccessibilityServices(deviceId: string): Promise<string>;
+  /**
+   * `settings get secure accessibility_enabled` — the GLOBAL switch.
+   *
+   * Separate from the service list on purpose: the two disagree. A device can list
+   * the Bridge service and still run none, which is exactly the state that produced
+   * `handshake lost its connection` while this gate reported the path healthy.
+   */
+  isAccessibilityMasterEnabled(deviceId: string): Promise<boolean>;
+  /** Re-bind the Bridge accessibility service. Idempotent. */
+  restoreAccessibilityService(deviceId: string, component: string): Promise<void>;
   /** `adb -s <id> forward --no-rebind tcp:<host> tcp:<device>` */
   forward(deviceId: string, hostPort: number, devicePort: number): Promise<void>;
   /** `adb -s <id> forward --list` */
@@ -304,8 +314,14 @@ export class BridgeDeviceGate {
     // 5. Erişilebilirlik servisi açık mı. Bu ADB settings okuması bazı cihazlarda
     // kısa süreli takılabiliyor; okunamazsa fatal sayma, gerçek kanıtı port +
     // Bridge protocol handshake versin.
-    const services = await this.adb.getEnabledAccessibilityServices(deviceId).catch(() => null);
-    const accessibilityEnabled = services === null ? null : services.includes(BRIDGE_PACKAGE);
+    // The service list alone is not the answer: `accessibility_enabled` is a
+    // separate global switch, and a tap on the Settings toggle clears it while
+    // leaving the list intact. Measured on a lab device: the list still named the
+    // Bridge, the master switch read 0, no bridge process existed, and every run
+    // aborted with `handshake lost its connection` — while this check passed.
+    // So both are read, and a device that is one setting away from usable is
+    // repaired here rather than reported as broken.
+    const accessibilityEnabled = await this.resolveAccessibility(deviceId);
     if (accessibilityEnabled !== null) partial.accessibilityEnabled = accessibilityEnabled;
     if (accessibilityEnabled === false) {
       return {
@@ -313,7 +329,9 @@ export class BridgeDeviceGate {
         partial,
         failure: {
           check: "ACCESSIBILITY_ENABLED",
-          detail: `${BRIDGE_ACCESSIBILITY_COMPONENT} is not in enabled_accessibility_services`,
+          detail:
+            `${BRIDGE_ACCESSIBILITY_COMPONENT} is not running and could not be restored ` +
+            `(enabled_accessibility_services / accessibility_enabled)`,
           remediation:
             "enable the Verdict Bridge accessibility service in Settings → Accessibility; " +
             "the TCP listener only starts with the service",
@@ -361,6 +379,36 @@ export class BridgeDeviceGate {
         checkedAt: this.now(),
       },
     };
+  }
+
+  /**
+   * Is the Bridge accessibility service actually running — and if not, make it.
+   *
+   * Returns `null` when the device could not be asked. That is deliberately not
+   * `false`: an ADB `settings` read stalls on some devices, and treating a stalled
+   * read as "disabled" would refuse a healthy device. The real proof is the port
+   * plus the protocol handshake, which run after this.
+   */
+  private async resolveAccessibility(deviceId: string): Promise<boolean | null> {
+    const [services, masterEnabled] = await Promise.all([
+      this.adb.getEnabledAccessibilityServices(deviceId).catch(() => null),
+      this.adb.isAccessibilityMasterEnabled(deviceId).catch(() => null),
+    ]);
+    if (services === null && masterEnabled === null) return null;
+
+    const listed = services === null ? null : services.includes(BRIDGE_PACKAGE);
+    if (listed === true && masterEnabled !== false) return true;
+    if (listed === null && masterEnabled !== false) return null;
+
+    try {
+      await this.adb.restoreAccessibilityService(deviceId, BRIDGE_ACCESSIBILITY_COMPONENT);
+    } catch {
+      return false;
+    }
+    const after = await this.adb.getEnabledAccessibilityServices(deviceId).catch(() => null);
+    const afterMaster = await this.adb.isAccessibilityMasterEnabled(deviceId).catch(() => null);
+    if (after === null || afterMaster === null) return null;
+    return after.includes(BRIDGE_PACKAGE) && afterMaster;
   }
 
   /**

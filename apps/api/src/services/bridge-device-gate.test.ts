@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { BRIDGE_DEVICE_PORT } from "@nesy/bridge-contract";
 
 import {
+  BRIDGE_ACCESSIBILITY_COMPONENT,
   BRIDGE_PACKAGE,
   BridgeDeviceGate,
   HostPortLeaseStore,
@@ -34,6 +35,9 @@ class FakeAdb implements AdbFacade {
     [BRIDGE_PACKAGE]: { installed: true, versionName: "1.2.0", versionCode: "120" },
   };
   accessibility = `${BRIDGE_PACKAGE}/${BRIDGE_PACKAGE}.BridgeAccessibilityService`;
+  accessibilityMaster = true;
+  restoreCalls: string[] = [];
+  failRestore = false;
   forwards: { hostPort: number; devicePort: number }[] = [];
   forwardCalls: { hostPort: number; devicePort: number }[] = [];
   removeCalls: number[] = [];
@@ -53,6 +57,15 @@ class FakeAdb implements AdbFacade {
   }
   async getEnabledAccessibilityServices() {
     return this.accessibility;
+  }
+  async isAccessibilityMasterEnabled() {
+    return this.accessibilityMaster;
+  }
+  async restoreAccessibilityService(_d: string, component: string) {
+    this.restoreCalls.push(component);
+    if (this.failRestore) throw new Error("secure settings write denied");
+    this.accessibility = component;
+    this.accessibilityMaster = true;
   }
   async forward(_d: string, hostPort: number, devicePort: number) {
     this.forwardCalls.push({ hostPort, devicePort });
@@ -184,8 +197,26 @@ describe("preflight", () => {
     expect(result.failure.check).toBe("BRIDGE_VERSION");
   });
 
-  it("denies a disabled accessibility service — the TCP listener starts with it", async () => {
+  it("restores a disabled accessibility service instead of denying the device", async () => {
     adb.accessibility = "com.something.else/.Service";
+    const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
+    expect(result.ok).toBe(true);
+    expect(adb.restoreCalls).toEqual([BRIDGE_ACCESSIBILITY_COMPONENT]);
+  });
+
+  it("restores the service when the master switch is off but the list is intact", async () => {
+    // The state a Settings toggle leaves behind: the Bridge is still listed, and
+    // reading the list alone reports a healthy device that runs no service.
+    adb.accessibilityMaster = false;
+    const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
+    expect(result.ok).toBe(true);
+    expect(adb.restoreCalls).toEqual([BRIDGE_ACCESSIBILITY_COMPONENT]);
+    expect(adb.accessibilityMaster).toBe(true);
+  });
+
+  it("denies the device when the service cannot be restored", async () => {
+    adb.accessibility = "com.something.else/.Service";
+    adb.failRestore = true;
     const result = await new BridgeDeviceGate(adb, policy()).preflight(LAB);
     expect(result.ok).toBe(false);
     if (result.ok) return;

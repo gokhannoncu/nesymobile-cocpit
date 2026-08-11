@@ -42,6 +42,20 @@ export interface OracleWorkerOptions {
   runtime: BridgeFlowEvidenceRuntime
   persistence: OracleRevisionPersistencePort
   clock?: () => number
+  /**
+   * Give host-held state a chance to become a fact, once per evaluation.
+   *
+   * Some facts have no device event to carry them: `UI.*_READY` is a claim about
+   * the screen the device is on RIGHT NOW, and only the host can attach the
+   * BridgeFlow correlation tuple the resolver demands. That producer used to run
+   * only from the executor's evidence port, which this worker never calls — so a
+   * continue gate on a screen fact read an empty lane for its whole deadline and
+   * timed out against a device that was on the right screen. Measured: 30s of
+   * retries with `evidence_refs: []` and `lastEvidenceRevision: 0`.
+   *
+   * Called before every read so a screen that appears mid-gate is still seen.
+   */
+  refreshFacts?: (scope: EvidenceScope) => void
 }
 
 export interface ContinueGateWork extends EvidenceScope {
@@ -73,15 +87,26 @@ export type FinalOracleWorkerResult =
   | { status: 'CLOSED'; reason: string }
   | { status: 'BLOCKED'; reason: string; evidenceRef?: string }
 
+/** Sentinel so `nextWake` can tell "no host-held state" from a real hook. */
+const NO_REFRESH = (): void => undefined
+
+/**
+ * How often a gate re-reads host-held state. Below the pack's 300ms readiness
+ * stability windows, so a screen cannot settle and be missed between polls.
+ */
+const HOST_STATE_POLL_MS = 250
+
 export class OracleEvaluationWorker {
   private readonly runtime: BridgeFlowEvidenceRuntime
   private readonly persistence: OracleRevisionPersistencePort
   private readonly clock: () => number
+  private readonly refreshFacts: (scope: EvidenceScope) => void
 
   constructor(options: OracleWorkerOptions) {
     this.runtime = options.runtime
     this.persistence = options.persistence
     this.clock = options.clock ?? Date.now
+    this.refreshFacts = options.refreshFacts ?? NO_REFRESH
   }
 
   async runContinueGate(work: ContinueGateWork): Promise<ContinueGateWorkerResult> {
@@ -119,6 +144,7 @@ export class OracleEvaluationWorker {
         return before
       }
       const nowMs = this.clock()
+      this.refreshFacts(work)
       const facts = this.runtime.currentFacts(work, nowMs, 'RECEIPT_SAFE', deadlineAtMs)
       const latestEvidenceRevision = this.runtime.latestRevision(work, 'RECEIPT_SAFE')
       afterEvidenceRevision = Math.max(afterEvidenceRevision, latestEvidenceRevision)
@@ -172,7 +198,11 @@ export class OracleEvaluationWorker {
         scope: work,
         afterRevision: afterEvidenceRevision,
         deadlineAtMs,
-        wakeAtMs: nextStabilityBoundary(work.policy, facts, nowMs),
+        wakeAtMs: this.nextWake(
+          nextStabilityBoundary(work.policy, facts, nowMs),
+          nowMs,
+          deadlineAtMs,
+        ),
         lane: 'RECEIPT_SAFE',
         signal: work.signal,
       })
@@ -234,6 +264,7 @@ export class OracleEvaluationWorker {
         return before
       }
       const nowMs = this.clock()
+      this.refreshFacts(work)
       const facts = this.runtime.currentFacts(work, nowMs, 'ORDERED_REQUIRED', deadlineAtMs)
       afterEvidenceRevision = Math.max(
         afterEvidenceRevision,
@@ -331,6 +362,30 @@ export class OracleEvaluationWorker {
       }
       if (wakeup.status === 'EVIDENCE') afterEvidenceRevision = wakeup.revision
     }
+  }
+
+  /**
+   * When to wake even though no evidence arrived.
+   *
+   * `waitForRevision` wakes on a new evidence REVISION, which is right for facts
+   * that ride on device events. Host-held state has no event: `refreshFacts` turns
+   * "the screen the device is on now" into a fact, and it only runs at the top of
+   * this loop. Without a periodic wake the loop slept from the first pass straight
+   * to the deadline, so a screen that appeared one second after the gate opened was
+   * never published and the gate timed out against it. Measured: two evaluations
+   * 30s apart, the second at the deadline, both holding only the login screen fact.
+   *
+   * The stability boundary still wins when it is sooner — a fact waiting to become
+   * stable must be re-read at its own boundary, not later.
+   */
+  private nextWake(
+    stabilityBoundaryMs: number | undefined,
+    nowMs: number,
+    deadlineAtMs: number,
+  ): number | undefined {
+    if (this.refreshFacts === NO_REFRESH) return stabilityBoundaryMs
+    const poll = Math.min(nowMs + HOST_STATE_POLL_MS, deadlineAtMs)
+    return stabilityBoundaryMs === undefined ? poll : Math.min(stabilityBoundaryMs, poll)
   }
 
   private preflight(

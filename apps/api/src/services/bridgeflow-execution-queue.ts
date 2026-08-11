@@ -170,12 +170,19 @@ async function readDeviceStateWithRetry(input: {
   deviceId: string
   applicationId: string
   runId: string
+  /** Cold start needs a longer window: monkey returns before LoginFragment is up. */
+  deadlineMs?: number
+  intervalMs?: number
 }): Promise<DeviceBridgeState | null> {
+  const deadlineMs = input.deadlineMs ?? 1_500
+  const intervalMs = input.intervalMs ?? 300
+  const deadline = Date.now() + deadlineMs
   let last: DeviceBridgeState | null = null
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  while (Date.now() <= deadline) {
     last = await getDeviceBridgeState(input.deviceId, input.applicationId).catch(() => null)
     if (last?.runId === input.runId && last.currentScreen.trim() !== '') return last
-    await sleep(300)
+    if (Date.now() + intervalMs > deadline) break
+    await sleep(intervalMs)
   }
   return last
 }
@@ -398,6 +405,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
 
     const propertySet = await setRunIdProperty(item.deviceId, item.runId)
+    const coldStart = launchProfile?.startMode === 'COLD_START'
     const launchFailure = await prepareApplicationLaunch({
       deviceId: item.deviceId,
       applicationId,
@@ -413,12 +421,19 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       wsEnabled: true,
       wsPort: 8765,
     })
+    // Cold start: SCREEN_READY often fires with empty runId before set_run, and the
+    // fragment will not re-emit once LoginFragment is already resumed. The host must
+    // therefore wait for get_state(current_screen) under the new runId — 1.5s was too
+    // short (monkey returns before the login UI is up), so wait-login-ready timed out
+    // against a visible LoginFragment with zero evidence facts.
+    const stateWaitMs = coldStart ? 20_000 : 5_000
     let deviceState: DeviceBridgeState | null = null
     if (!propertySet || !sessionSet) {
       deviceState = await readDeviceStateWithRetry({
         deviceId: item.deviceId,
         applicationId,
         runId: item.runId,
+        deadlineMs: stateWaitMs,
       })
       if (deviceState?.runId !== item.runId) {
         await this.blockRun(
@@ -433,6 +448,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       deviceId: item.deviceId,
       applicationId,
       runId: item.runId,
+      deadlineMs: stateWaitMs,
     })
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
     const screenObserver = getScreenReadinessObserver()
@@ -444,6 +460,18 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         { runId: item.runId, screen: deviceState.currentScreen, event: 'SCREEN_READY' },
         clock(),
       )
+      this.options.logger?.('[BridgeFlowExecutionQueue] seeded screen readiness from get_state', {
+        runId: item.runId,
+        screen: deviceState.currentScreen,
+        coldStart,
+      })
+    } else {
+      this.options.logger?.('[BridgeFlowExecutionQueue] screen readiness seed missed get_state', {
+        runId: item.runId,
+        observedRunId: deviceState?.runId ?? null,
+        currentScreen: deviceState?.currentScreen ?? '',
+        coldStart,
+      })
     }
 
     await this.options.prisma.verdictRunStart.updateMany({
@@ -466,6 +494,20 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       runtime: evidenceRuntime,
       persistence,
       clock,
+      // The same producer the executor's evidence port uses. A continue gate on a
+      // `UI.*_READY` fact is a question about the screen the device is on now, and
+      // nothing else publishes that into the gate's lane.
+      refreshFacts: (scope) => {
+        publishLiveScreenReadiness({
+          bundle: resolution.pack.bundle,
+          evidenceRuntime,
+          observer: screenObserver,
+          runId: scope.runId,
+          occurrenceId: scope.occurrenceId,
+          iterationKey: scope.iterationKey,
+          clock,
+        })
+      },
     })
 
     try {

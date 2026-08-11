@@ -46,6 +46,12 @@ class FakeAdb implements AdbFacade {
   async getEnabledAccessibilityServices() {
     return this.accessibility;
   }
+  async isAccessibilityMasterEnabled() {
+    return true;
+  }
+  async restoreAccessibilityService(_d: string, component: string) {
+    this.accessibility = component;
+  }
   async forward(_d: string, hostPort: number, devicePort: number) {
     this.forwards.push({ hostPort, devicePort });
   }

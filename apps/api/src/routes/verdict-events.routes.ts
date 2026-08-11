@@ -59,6 +59,21 @@ export async function verdictEventsRoutes(app: FastifyInstance) {
     return TestEventWsServer.ingressDiagnostics()
   })
 
+  /**
+   * The device's last reported screen per live run.
+   *
+   * `UI.*_READY` facts are produced from this state, so a wait that times out is
+   * either "the device never reported the screen" or "the pack maps that screen to
+   * a different runtime implementation". Both look like an absent fact from the
+   * run record; only this tells them apart.
+   */
+  app.get('/events/screen-readiness', async () => {
+    const { getScreenReadinessObserver } = await import(
+      '../services/screen-readiness-observer.js'
+    )
+    return { runs: getScreenReadinessObserver().snapshot() }
+  })
+
   /** One stream, reported whether it is healthy or not. */
   app.get<{ Params: { runId: string; sessionId: string } }>(
     '/events/health/:runId/:sessionId',

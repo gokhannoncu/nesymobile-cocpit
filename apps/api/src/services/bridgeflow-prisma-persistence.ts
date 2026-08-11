@@ -273,15 +273,47 @@ export class PrismaExecutionPersistence
     )
   }
 
+  /**
+   * The executor's copy of an evaluation the Oracle worker may have already written.
+   *
+   * Two writers, one row: the worker persists a revision per evaluation pass, then
+   * the executor persists the evaluation it was handed back. This used to write
+   * `revision: 1` unconditionally, so as soon as a gate needed more than one pass —
+   * `UNKNOWN` while waiting, then `TIMED_OUT` — the executor's write landed on the
+   * worker's revision 1 with different content and the run died with
+   * `oracle revision collision`. It stayed hidden only because a blocked gate never
+   * evaluated at all.
+   *
+   * Revisions are an append-only audit, so the same content is a REPLAY (write
+   * nothing) and different content is the NEXT revision (never an overwrite).
+   */
   async persistOracleEvaluation(
     record: PersistedOracleEvaluation & { recoveryFence?: RecoveryFence },
   ): Promise<void> {
+    const evidenceRefs = [...record.evaluation.evidenceRefs]
+    const reason = 'reason' in record.evaluation ? record.evaluation.reason : undefined
+    const latest = await this.client.bridgeFlowOracleEvaluation.findFirst({
+      where: {
+        runId: record.runId,
+        occurrenceId: record.occurrenceId,
+        evaluatorKind: record.evaluatorKind,
+      },
+      orderBy: { revision: 'desc' },
+      select: { revision: true, outcome: true, evidenceRefs: true },
+    })
+    if (
+      latest !== null &&
+      latest.outcome === record.evaluation.outcome &&
+      stableJson(latest.evidenceRefs) === stableJson(evidenceRefs)
+    ) {
+      return
+    }
     await this.persistOracleRevision({
       ...record,
-      revision: 1,
+      revision: (latest?.revision ?? 0) + 1,
       lastEvidenceRevision: 0,
-      evidenceRefs: [...record.evaluation.evidenceRefs],
-      ...('reason' in record.evaluation ? { reason: record.evaluation.reason } : {}),
+      evidenceRefs,
+      ...(reason === undefined ? {} : { reason }),
     })
   }
 

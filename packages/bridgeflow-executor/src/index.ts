@@ -227,6 +227,16 @@ export interface GenericStepResult {
   outputVariable?: string;
   output?: unknown;
   actionResult?: StepActionOutcome;
+  /**
+   * Why the step ended this way, in the runtime's own words.
+   *
+   * A generic step writes only the four outcome axes, so a failed
+   * `RESOLVE_TARGET` persisted `action_result: FAILED` and nothing else — the
+   * device's `not_found` / `ambiguous` / `stale_tree` code lived in host stdout
+   * and nowhere a run report could reach. When present this is persisted as an
+   * action transition so the reason survives the process.
+   */
+  evidenceRef?: string;
 }
 
 export interface GenericStepRuntimePort {
@@ -932,6 +942,9 @@ export class BridgeFlowExecutor {
         await this.assertLiveFence(input.runId, context.recoveryFence);
         const result = await generic.execute(step, context);
         outcome.actionResult = result.actionResult ?? (result.succeeded ? "SUCCEEDED" : "FAILED");
+        if (result.evidenceRef !== undefined) {
+          await this.recordGenericStepEvidence(input.runId, context, result.evidenceRef);
+        }
         if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
         if (result.next !== undefined) next = result.next;
         if (!result.succeeded) {
@@ -957,10 +970,18 @@ export class BridgeFlowExecutor {
         ? gateResult.evaluation
         : undefined;
       if (gate === undefined) {
+        // A gate that never evaluated is NOT the same as a gate whose facts did not
+        // hold, and both used to persist the identical `UNSATISFIED` with no oracle
+        // evaluation row. That cost a full debugging session: a login run reported
+        // "the route list was not ready" when the truth was that the run's evidence
+        // stream had been blocked and the gate was short-circuited before it ever
+        // looked at a fact. The status/reason is the only thing that tells them
+        // apart, so it is written where a run report can read it.
         outcome.continueGateResult = "UNSATISFIED";
         state.evidenceInsufficient = true;
         if (input.signal?.aborted) state.automationFailure = true;
         stop = true;
+        await this.recordGateShortCircuit(input.runId, context, gateResult);
       } else {
       await this.options.persistence.persistOracleEvaluation({
         runId: input.runId,
@@ -1260,6 +1281,75 @@ export class BridgeFlowExecutor {
         fact.iterationKey === context.iterationKey &&
         nowMs - fact.observedAtMs <= fact.freshnessMaxAgeMs
       );
+  }
+
+  /**
+   * Persist why a continue gate never produced an evaluation.
+   *
+   * Its own `requestId` suffix, not the step's: a `BRIDGE_ACTION` has already
+   * written a complete, terminal transition sequence under that id, and appending
+   * to it would either be refused or read as a second attempt at the action. This
+   * is a separate observation about the gate, so it gets a separate identity.
+   */
+  private async recordGateShortCircuit(
+    runId: string,
+    context: StepExecutionContext,
+    gateResult: { status: string; reason?: string } | undefined,
+  ): Promise<void> {
+    const status = gateResult?.status ?? "NO_ORACLE_PORT";
+    const reason = gateResult?.reason;
+    const requestId = `${context.requestId}:continue-gate`;
+    const transition = appendActionTransition([], {
+      phase: "RECEIVED",
+      requestId,
+      atMs: this.options.clock(),
+      evidenceRef: `continue-gate:not-evaluated:${status}${reason === undefined ? "" : `:${reason}`}`,
+    })[0];
+    if (transition === undefined) return;
+    await this.options.persistence.persistActionTransition({
+      runId,
+      occurrenceId: context.occurrenceId,
+      transition,
+      ...(context.recoveryFence === undefined ? {} : { recoveryFence: context.recoveryFence }),
+    });
+  }
+
+  /**
+   * Persist a generic step's own account of what happened.
+   *
+   * `TARGET_RESOLVED` rather than a new phase: a generic step's observation IS a
+   * resolution attempt, and the phase vocabulary is ordered and closed, so
+   * inventing a phase would break every consumer that switches on it. No
+   * `terminal` marker — that axis belongs to `EFFECT_VERIFIED`, and nothing was
+   * dispatched here.
+   */
+  private async recordGenericStepEvidence(
+    runId: string,
+    context: StepExecutionContext,
+    evidenceRef: string,
+  ): Promise<void> {
+    const transitions = appendActionTransition(
+      appendActionTransition([], {
+        phase: "RECEIVED",
+        requestId: context.requestId,
+        atMs: this.options.clock(),
+        evidenceRef: "executor:received",
+      }),
+      {
+        phase: "TARGET_RESOLVED",
+        requestId: context.requestId,
+        atMs: this.options.clock(),
+        evidenceRef,
+      },
+    );
+    for (const transition of transitions) {
+      await this.options.persistence.persistActionTransition({
+        runId,
+        occurrenceId: context.occurrenceId,
+        transition,
+        ...(context.recoveryFence === undefined ? {} : { recoveryFence: context.recoveryFence }),
+      });
+    }
   }
 
   private buildPreEffectTransitions(context: StepExecutionContext): readonly ActionTransition[] {

@@ -51,6 +51,11 @@ export const NESY_ACTIONS = {
 const APP = NESY_COURIER_APPLICATION_KEY;
 const MAIN_ACTIVITY = "com.arasdigital.nesymobile.main.MainActivity";
 
+// Every `fragmentTag` below must be the Fragment's Kotlin simple class name:
+// NesyMobile reports `current_screen` from `ScreenCapture` as
+// `fragment.javaClass.simpleName`, never a nav id, label or view tag. The app has
+// no Compose navigation, so `kind: "COMPOSE"` can never match a real screen here.
+
 export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
   {
     screenKey: NESY_SCREENS.login,
@@ -79,7 +84,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.routeStopList,
     applicationRef: APP,
     displayName: "Route stop list",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "route/list" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "StopListFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -110,7 +115,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.stopTaskList,
     applicationRef: APP,
     displayName: "Stop task list",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "route/tasks" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "TaskListFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -134,7 +139,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.deliveryFlow,
     applicationRef: APP,
     displayName: "Delivery flow",
-    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "delivery-flow" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "DeliveryFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -160,7 +165,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.pickupFlow,
     applicationRef: APP,
     displayName: "Pickup flow",
-    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "pickup-flow" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "PickUpFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",
@@ -208,7 +213,7 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
     screenKey: NESY_SCREENS.endOfDay,
     applicationRef: APP,
     displayName: "End of day",
-    runtimeImplementation: { kind: "COMPOSE", hostActivity: MAIN_ACTIVITY, routeKey: "day/close" },
+    runtimeImplementation: { kind: "FRAGMENT", hostActivity: MAIN_ACTIVITY, fragmentTag: "EndOfDayFragment" },
     entryStrategies: [
       {
         kind: "WORKFLOW_ENTRY",

@@ -90,6 +90,20 @@ export class ScreenReadinessObserver {
   size(): number {
     return this.byRun.size
   }
+
+  /**
+   * Every run's last transition, for diagnostics.
+   *
+   * A `WAIT_EVENT`/continue gate on a `UI.*_READY` fact fails identically whether
+   * the device never reported the screen or reported one the pack does not map, and
+   * neither case leaves a trace: the fact is simply absent. This is the only way to
+   * tell those two apart from outside the process.
+   */
+  snapshot(): Readonly<Record<string, ScreenReadinessState>> {
+    return Object.fromEntries(
+      Array.from(this.byRun, ([runId, state]) => [runId, { ...state }]),
+    )
+  }
 }
 
 let singleton: ScreenReadinessObserver | null = null

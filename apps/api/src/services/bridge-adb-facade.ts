@@ -84,6 +84,40 @@ export function createAdbFacade(): AdbFacade {
       return value === "null" ? "" : value;
     },
 
+    async isAccessibilityMasterEnabled(deviceId) {
+      const out = await adb([
+        "-s",
+        deviceId,
+        "shell",
+        "settings",
+        "get",
+        "secure",
+        "accessibility_enabled",
+      ]);
+      return out.trim() === "1";
+    },
+
+    async restoreAccessibilityService(deviceId, component) {
+      // Writing `accessibility_enabled=1` on its own does NOT rebind the service:
+      // measured on a Samsung SM-A346E where the master switch read 1, the service
+      // was still listed, and no bridge process existed. AccessibilityManagerService
+      // only re-binds when the SERVICE LIST transitions, so the list is cleared and
+      // rewritten to force that transition.
+      await adb(["-s", deviceId, "shell", "settings", "put", "secure", "accessibility_enabled", "0"]);
+      await adb(["-s", deviceId, "shell", "settings", "delete", "secure", "enabled_accessibility_services"]);
+      await adb([
+        "-s",
+        deviceId,
+        "shell",
+        "settings",
+        "put",
+        "secure",
+        "enabled_accessibility_services",
+        component,
+      ]);
+      await adb(["-s", deviceId, "shell", "settings", "put", "secure", "accessibility_enabled", "1"]);
+    },
+
     async forward(deviceId, hostPort, devicePort) {
       // `--no-rebind` ŞART: onsuz ikinci bir forward sessizce ilkini çalar ve
       // iki cihaz aynı host portundan konuşur — komutlar YANLIŞ cihaza gider.

@@ -206,6 +206,12 @@ describe('Phase 7.19 security / retention / fail-fast', () => {
       async getEnabledAccessibilityServices() {
         return ''
       },
+      async isAccessibilityMasterEnabled() {
+        return true
+      },
+      async restoreAccessibilityService() {
+        return
+      },
       async forward() {
         return
       },
