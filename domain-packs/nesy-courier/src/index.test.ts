@@ -145,11 +145,11 @@ describe("registries", () => {
       screens: 7,
       surfaces: 8,
       entities: 7,
-      targets: 11,
-      evidenceSources: 40,
+      targets: 16,
+      evidenceSources: 42,
       derivedFacts: 6,
-      semanticActions: 8,
-      macros: 8,
+      semanticActions: 9,
+      macros: 9,
       launchProfiles: 4,
       testProfiles: 16,
       campaigns: 4,
@@ -164,7 +164,7 @@ describe("registries", () => {
     for (const source of NESY_COURIER_EVIDENCE_SOURCES) {
       byPlane[source.plane] = (byPlane[source.plane] ?? 0) + 1;
     }
-    expect(byPlane).toEqual({ UI: 16, APP: 12, LOCAL: 7, REMOTE: 5 });
+    expect(byPlane).toEqual({ UI: 16, APP: 12, LOCAL: 9, REMOTE: 5 });
   });
 
   it("declares the seven minimum screens", () => {
@@ -557,7 +557,7 @@ describe("runtime code policy", () => {
 });
 
 describe("NESY_COURIER_DOMAIN_PACK_REFERENCE_V1", () => {
-  it("carries exactly the six canonical slices, in courier-day order", () => {
+  it("carries exactly the seven canonical slices, in courier-day order", () => {
     expect(NESY_COURIER_DOMAIN_PACK_REFERENCE_V1.slices.map((s) => s.sliceKey)).toEqual(
       NESY_COURIER_REFERENCE_SLICE_KEYS,
     );

@@ -30,6 +30,7 @@ import { NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY } from "../macros/full-courier-go
 import { NESY_LOGIN_MACRO } from "../macros/login.js";
 import { NESY_OPEN_STOP_MACRO } from "../macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "../macros/process-parcel.js";
+import { NESY_LOAD_TO_VEHICLE_MACRO } from "../macros/load-to-vehicle.js";
 import { NESY_SELECT_ROUTE_MACRO } from "../macros/select-route.js";
 import { NESY_TOUR_APPROVAL_MACRO } from "../macros/tour-approval-lifecycle.js";
 import { NESY_FACTS } from "../registries/facts.js";
@@ -41,6 +42,7 @@ export const NESY_FRAGMENTS = {
 export const NESY_WORKFLOWS = {
   login: "nesy.workflow.login",
   selectRoute: "nesy.workflow.select-route",
+  loadToVehicle: "nesy.workflow.load-to-vehicle",
   openStop: "nesy.workflow.open-stop",
   processParcel: "nesy.workflow.process-parcel",
   completeDelivery: "nesy.workflow.complete-delivery",
@@ -100,6 +102,22 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     fragmentRefs: [],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_SELECT_ROUTE_MACRO.oracleTemplate,
+    producesTerminalVerdict: true,
+  },
+  {
+    workflowKey: NESY_WORKFLOWS.loadToVehicle,
+    displayName: "A scanned parcel enters the courier's schedule",
+    businessMeaning: NESY_LOAD_TO_VEHICLE_MACRO.businessMeaning,
+    notResponsibleFor: NESY_LOAD_TO_VEHICLE_MACRO.notResponsibleFor,
+    // ONE macro, and no fragment. Having a route selected is a PRECONDITION —
+    // declared on the macro as `FACT_TRUE: APP.SELECTED_ROUTE_OBSERVED` and
+    // installed by a `reuse-session` launch profile — not a leg of this test. The
+    // `reachOpenStop` fragment would additionally open a stop, which is work that
+    // cannot happen before anything is loaded.
+    macroRefs: [NESY_LOAD_TO_VEHICLE_MACRO.macroKey],
+    fragmentRefs: [],
+    occurrenceScope: "INDEPENDENT",
+    oracleTemplate: NESY_LOAD_TO_VEHICLE_MACRO.oracleTemplate,
     producesTerminalVerdict: true,
   },
   {

@@ -86,6 +86,29 @@ export const NESY_FACTS = {
   OFFLINE_QUEUE_DRAINED: "LOCAL.OFFLINE_QUEUE_DRAINED",
   PARCEL_RECORD_PERSISTED: "LOCAL.PARCEL_RECORD_PERSISTED",
   /**
+   * The scanned parcel is IN the working schedule.
+   *
+   * Observed through `nesy.parcelState` narrowed by the scanned value, so a row
+   * at all means THAT parcel — not "some parcel was loaded". The projection
+   * matches `barcode`, `legacySystemBarcode` and `legacySystemShortBarcode`
+   * against the same argument, which is why one input covers all three spellings.
+   *
+   * Deliberately NOT "status == Loaded": the projection reports `item_status` as
+   * a number in a string (`"4"`), and the host reads a fact value only from
+   * `"true"`/`"false"`. Asserting the status needs a boolean column on the app
+   * side; claiming it from a numeric string would be the harness inventing a
+   * measurement. See the pack's own note in the load macro.
+   */
+  PARCEL_IN_SCHEDULE: "LOCAL.PARCEL_IN_SCHEDULE",
+  /**
+   * The stored schedule now carries a BODY — at least one stop chunk.
+   *
+   * The counterpart of the select-route baseline: route selection creates the
+   * schedule empty, and loading is what puts work in it. "0 at selection, N after
+   * loading" is the shape, and this fact is the N side of it.
+   */
+  SCHEDULE_BODY_STORED: "LOCAL.SCHEDULE_BODY_STORED",
+  /**
    * A schedule is stored WITH ITS BODY — meta row plus stop chunks.
    *
    * A meta row on its own is not a usable plan: `saveScheduleToLocal` writes the

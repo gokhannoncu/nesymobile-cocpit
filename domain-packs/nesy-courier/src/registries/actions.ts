@@ -52,6 +52,33 @@ export const NESY_COURIER_SEMANTIC_ACTIONS: readonly SemanticActionDefinition[] 
     requiredCapabilityRefs: ["verdict.core.bridge.tap"],
   },
   {
+    actionKey: NESY_ACTIONS.loadToVehicle,
+    applicationRef: APP,
+    displayName: "Load parcel to vehicle",
+    businessMeaning:
+      "A courier takes custody of a parcel at the branch and it enters the schedule stored on the device.",
+    notResponsibleFor: [
+      "whether the parcel should have been loaded on this route — the backend refuses when it should not",
+      "the hand-terminal vehicle-loading screen, which is a different flow and endpoint",
+      "camera scanning",
+    ],
+    screenRefs: [NESY_SCREENS.routeStopList],
+    surfaceRefs: [],
+    entityTypeRefs: [NESY_ENTITIES.parcel],
+    targetRefs: [
+      NESY_TARGETS.manualBarcodeEntry,
+      NESY_TARGETS.barcodeInputField,
+      NESY_TARGETS.barcodeInputConfirm,
+      NESY_TARGETS.timeSlotConfirm,
+      NESY_TARGETS.dialogAcknowledge,
+    ],
+    requiredCapabilityRefs: [
+      "verdict.core.bridge.tap",
+      "verdict.core.bridge.set-text",
+      "verdict.core.bridge.resolve-target",
+    ],
+  },
+  {
     actionKey: NESY_ACTIONS.openStop,
     applicationRef: APP,
     displayName: "Open stop",

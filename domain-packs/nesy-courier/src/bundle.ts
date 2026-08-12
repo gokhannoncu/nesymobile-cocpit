@@ -25,6 +25,7 @@ import { NESY_COURIER_DERIVED_FACTS } from "./evidence/derived.js";
 import { NESY_COURIER_EVIDENCE_SOURCES } from "./evidence/sources.js";
 import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
 import { NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
+import { NESY_LOAD_TO_VEHICLE_MACRO } from "./macros/load-to-vehicle.js";
 import { NESY_LOGIN_MACRO } from "./macros/login.js";
 import { NESY_OPEN_STOP_MACRO } from "./macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "./macros/process-parcel.js";
@@ -48,6 +49,28 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.10.1 — LOAD_TO_VEHICLE (zimmet): the seventh slice, and the step that puts
+  //   work into the schedule route selection creates empty. Every target in it was
+  //   DUMPED from the device: manuel_input, et_input_dialog_barcode_number, btn_ok,
+  //   btnSave (RS time range) and btn_arasDg_positive_button. Measured for one
+  //   parcel: Loaded Parcels 0 → 1, one stop appeared, stop_chunk_count 0 → 1, and
+  //   nesy.parcelState for that barcode returned item_status 4 (Loaded).
+  //
+  //   The country rule is a POLICY, not an : Serbia asks for a delivery time
+  //   range and nobody else does, so the picker's confirm target declares
+  //   notFoundPolicy TREAT_AS_ABSENT. A missing picker is a correct state.
+  //
+  //   The slice judges the QUERY planes, not the step wire. ScanProcessor already
+  //   emits LOAD_TO_VEHICLE events for FETCH_SHIPMENT / CREATE_TASK /
+  //   FETCH_SCHEDULE, but the host maps one wire name to one fact and needs a
+  //   boolean valueField on every emit — and a refused frame BLOCKS. One name
+  //   carrying three meanings cannot be registered, so those facts are
+  //   deliberately not declared rather than declared without a producer.
+  //
+  //   select-route's macro oracleTemplate is brought back in step with its own
+  //   ASSERT_FACT policy; the two had drifted, with the template still demanding
+  //   the back-office assignment and gating on stops.
+  //
   // 1.9.0 — route selection is judged by the SCHEDULE it produces, not by a
   //   back-office row. Picking a route is supposed to create today's schedule and
   //   store it; when that create call fails, `StopListFragment` falls back to
@@ -147,7 +170,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 9, patch: 0 },
+  version: { major: 1, minor: 10, patch: 1 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
@@ -207,6 +230,7 @@ export function buildNesyCourierBundle(): DomainPackBundle {
       macros: [
         NESY_LOGIN_MACRO,
         NESY_SELECT_ROUTE_MACRO,
+        NESY_LOAD_TO_VEHICLE_MACRO,
         NESY_OPEN_STOP_MACRO,
         NESY_PROCESS_PARCEL_MACRO,
         NESY_COMPLETE_DELIVERY_MACRO,

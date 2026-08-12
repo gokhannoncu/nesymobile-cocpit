@@ -39,6 +39,7 @@ import { COMPLETE_DELIVERY_SLICE } from "./macros/complete-delivery.js";
 import { COURIER_LOGIN_SLICE } from "./macros/login.js";
 import { OPEN_STOP_SLICE } from "./macros/open-stop.js";
 import { PROCESS_PARCEL_SLICE } from "./macros/process-parcel.js";
+import { LOAD_TO_VEHICLE_SLICE } from "./macros/load-to-vehicle.js";
 import { SELECT_ROUTE_SLICE } from "./macros/select-route.js";
 import { TOUR_APPROVAL_LIFECYCLE_SLICE } from "./macros/tour-approval-lifecycle.js";
 import type { NesyReferenceSlice } from "./slice.js";
@@ -49,6 +50,10 @@ export const NESY_COURIER_REFERENCE_ARTIFACT_KEY = "NESY_COURIER_DOMAIN_PACK_REF
 export const NESY_COURIER_REFERENCE_SLICE_KEYS: readonly string[] = [
   "COURIER_LOGIN",
   "SELECT_ROUTE",
+  // Courier-day order: the route's schedule is created empty, and this is the
+  // step that puts work in it. Everything below depends on something being
+  // loaded first.
+  "LOAD_TO_VEHICLE",
   "OPEN_STOP",
   "PROCESS_PARCEL",
   "COMPLETE_DELIVERY",
@@ -72,6 +77,7 @@ export const NESY_COURIER_DOMAIN_PACK_REFERENCE_V1: NesyCourierReferenceArtifact
   slices: [
     COURIER_LOGIN_SLICE,
     SELECT_ROUTE_SLICE,
+    LOAD_TO_VEHICLE_SLICE,
     OPEN_STOP_SLICE,
     PROCESS_PARCEL_SLICE,
     COMPLETE_DELIVERY_SLICE,

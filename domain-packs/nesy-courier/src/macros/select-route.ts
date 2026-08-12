@@ -472,26 +472,43 @@ export const NESY_SELECT_ROUTE_MACRO: MacroDefinition = {
     queryRefs: ["nesy.routeState"],
     adapterOperationRefs: [NESY_BACKOFFICE_OPERATIONS.readRouteAssignment],
   },
+  // Kept in step with the ASSERT_FACT step's own policy, deliberately. These two
+  // had drifted: the step already judged the schedule while this template still
+  // demanded the back-office assignment and gated on stops. Two places describing
+  // one decision is how a slice starts meaning different things depending on who
+  // reads it — the same class of silent divergence that made `sql_named` run
+  // unfiltered for months.
   oracleTemplate: {
     continueGate: {
-      allOf: [NESY_FACTS.ROUTE_LIST_READY, NESY_FACTS.AVAILABLE_STOPS_LOADED],
+      // Readiness only; stops are not this slice's business (see the step note).
+      allOf: [NESY_FACTS.ROUTE_LIST_READY],
       deadlineMs: 25_000,
       unknownPolicy: "RETRY",
     },
     finalOracle: {
       requirements: [
         { factKey: NESY_FACTS.SELECTED_ROUTE_OBSERVED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        { factKey: NESY_FACTS.SCHEDULE_PERSISTED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        { factKey: NESY_FACTS.SCHEDULE_IS_TODAY, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
         {
-          factKey: NESY_FACTS.ROUTE_ASSIGNED,
+          factKey: NESY_FACTS.SCHEDULE_IN_USE_IS_TODAYS,
           obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 60_000,
-          onTimeout: "INCONCLUSIVE",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
+        },
+        {
+          factKey: NESY_FACTS.SCHEDULE_MATCHES_SELECTED_ROUTE,
+          obligation: "REQUIRED",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
         },
         { factKey: NESY_FACTS.ROUTES_AVAILABLE, obligation: "WARNING", timing: "IMMEDIATE", onTimeout: "WARNING" },
       ],
     },
-    notResponsibleFor: ["the ordering or completeness of the stop list that loads afterwards"],
+    notResponsibleFor: [
+      "the ordering or completeness of the stop list, which is empty at selection time by design",
+      "the back-office assignment record, which has a different owner",
+    ],
   },
   interruptPolicy: NESY_DEFAULT_INTERRUPT_POLICY,
   requiredCapabilityRefs: [
@@ -543,10 +560,11 @@ export const SELECT_ROUTE_SLICE: NesyReferenceSlice = {
         "validateDomainPackBundle raises DIALOG_DECLARED_AS_SCREEN for any screenKey naming a surface kind; the dialog lives in the Surface Registry with defaultPolicy HANDLE.",
     },
     {
-      caseKey: "APP_ONLY_SELECTION",
+      caseKey: "STALE_SCHEDULE_SHOWN_AS_TODAYS",
       scenario:
-        "The app shows the route as selected while the backend never recorded the assignment, so the next day's work is attributed to nobody.",
-      refusedBy: "REMOTE.ROUTE_ASSIGNED is a REQUIRED EVENTUAL requirement read through an allowlisted back-office operation.",
+        "Creating today's schedule fails, the app falls back to whatever Room already held — including yesterday's plan — and the screen looks entirely normal while the courier works it.",
+      refusedBy:
+        "LOCAL.SCHEDULE_IS_TODAY comes from the product's own ScheduleSessionValidator, and APP.SCHEDULE_IN_USE_IS_TODAYS requires the session's schedule id, the stored one and the today verdict to AGREE — which a stale fallback cannot do.",
     },
   ],
 };

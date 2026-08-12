@@ -30,6 +30,7 @@ function readFixture<T>(name: string): T {
 const REFERENCE_FILES: Readonly<Record<string, string>> = {
   COURIER_LOGIN: "courier-login.reference.json",
   SELECT_ROUTE: "select-route.reference.json",
+  LOAD_TO_VEHICLE: "load-to-vehicle.reference.json",
   OPEN_STOP: "open-stop.reference.json",
   PROCESS_PARCEL: "process-parcel.reference.json",
   COMPLETE_DELIVERY: "complete-delivery.reference.json",
@@ -37,8 +38,8 @@ const REFERENCE_FILES: Readonly<Record<string, string>> = {
 };
 
 describe("reference slice fixtures", () => {
-  it("exist for all six slices", () => {
-    expect(Object.keys(REFERENCE_FILES)).toHaveLength(6);
+  it("exist for all seven slices", () => {
+    expect(Object.keys(REFERENCE_FILES)).toHaveLength(7);
   });
 
   for (const slice of NESY_COURIER_DOMAIN_PACK_REFERENCE_V1.slices) {

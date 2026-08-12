@@ -62,6 +62,10 @@ const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
 const DEFAULT_PROFILE = {
   'nesy.workflow.login': 'nesy.launch.cold-real-login',
   'nesy.workflow.select-route': 'nesy.launch.reuse-session',
+  // Zimmet: a route must already be selected, which is exactly what a
+  // reuse-session profile installs. Loading into no schedule makes
+  // `CreateInstantTask` answer "Schedule Not Found".
+  'nesy.workflow.load-to-vehicle': 'nesy.launch.reuse-session',
   'nesy.workflow.open-stop': 'nesy.launch.reuse-session',
   'nesy.workflow.process-parcel': 'nesy.launch.direct-state',
   'nesy.workflow.complete-delivery': 'nesy.launch.direct-state',

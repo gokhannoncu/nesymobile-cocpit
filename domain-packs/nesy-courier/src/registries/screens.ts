@@ -40,6 +40,7 @@ export const NESY_SURFACES = {
 export const NESY_ACTIONS = {
   login: "nesy.action.login",
   selectRoute: "nesy.action.select-route",
+  loadToVehicle: "nesy.action.load-to-vehicle",
   openStop: "nesy.action.open-stop",
   processParcel: "nesy.action.process-parcel",
   completeDelivery: "nesy.action.complete-delivery",

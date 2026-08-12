@@ -1345,8 +1345,7 @@
   "oracle": {
     "continueGate": {
       "allOf": [
-        "UI.ROUTE_LIST_READY",
-        "APP.AVAILABLE_STOPS_LOADED"
+        "UI.ROUTE_LIST_READY"
       ],
       "deadlineMs": 25000,
       "unknownPolicy": "RETRY"
@@ -1360,11 +1359,28 @@
           "onTimeout": "FAIL"
         },
         {
-          "factKey": "REMOTE.ROUTE_ASSIGNED",
+          "factKey": "LOCAL.SCHEDULE_PERSISTED",
           "obligation": "REQUIRED",
-          "timing": "EVENTUAL",
-          "deadlineMs": 60000,
-          "onTimeout": "INCONCLUSIVE"
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
+          "obligation": "REQUIRED",
+          "timing": "IMMEDIATE",
+          "onTimeout": "FAIL"
         },
         {
           "factKey": "REMOTE.ROUTES_AVAILABLE",
@@ -1375,7 +1391,8 @@
       ]
     },
     "notResponsibleFor": [
-      "the ordering or completeness of the stop list that loads afterwards"
+      "the ordering or completeness of the stop list, which is empty at selection time by design",
+      "the back-office assignment record, which has a different owner"
     ]
   },
   "interruptPolicy": {
@@ -1419,9 +1436,9 @@
       "refusedBy": "validateDomainPackBundle raises DIALOG_DECLARED_AS_SCREEN for any screenKey naming a surface kind; the dialog lives in the Surface Registry with defaultPolicy HANDLE."
     },
     {
-      "caseKey": "APP_ONLY_SELECTION",
-      "scenario": "The app shows the route as selected while the backend never recorded the assignment, so the next day's work is attributed to nobody.",
-      "refusedBy": "REMOTE.ROUTE_ASSIGNED is a REQUIRED EVENTUAL requirement read through an allowlisted back-office operation."
+      "caseKey": "STALE_SCHEDULE_SHOWN_AS_TODAYS",
+      "scenario": "Creating today's schedule fails, the app falls back to whatever Room already held — including yesterday's plan — and the screen looks entirely normal while the courier works it.",
+      "refusedBy": "LOCAL.SCHEDULE_IS_TODAY comes from the product's own ScheduleSessionValidator, and APP.SCHEDULE_IN_USE_IS_TODAYS requires the session's schedule id, the stored one and the today verdict to AGREE — which a stale fallback cannot do."
     }
   ]
 }
