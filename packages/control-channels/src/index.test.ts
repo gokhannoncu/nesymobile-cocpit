@@ -413,6 +413,79 @@ describe("Verdict yönlendirme", () => {
     expect(argumentValue(navArgs[0]!, "destination")).toBe("stop_list");
   });
 
+  /**
+   * SÖZLEŞME FIXTURE'I (#18). Cihazdaki `sqlNamedHandler` sorgu argümanlarını
+   * `params["params"]` altında iç içe bir nesne olarak okur; `ControlEnvelopeParser`
+   * bunu `--es params '<json>'` extra'sından ayrıştırır. Host parametre başına
+   * ayrı extra yollarsa (eskiden böyleydi) cihaz argümanları HİÇ görmez ve
+   * parametre alan her named query filtresiz koşar — sessizce, hata vermeden.
+   * Bu iki tarafın ayrışmasını yakalayan tek yer burasıdır.
+   */
+  it("sql_named sorgu argümanlarını tek bir tırnaklı JSON params extra'sı olarak taşır", async () => {
+    const args: string[][] = [];
+    const op: ControlOperation = {
+      ...env(),
+      op: "sql_named",
+      name: "nesy.offeredRoutes",
+      params: { matchKey: "31 *", limit: 5, exact: true },
+      maxRows: 1,
+    };
+    const res = await new VerdictChannel().run(
+      SERIAL,
+      op,
+      ctxWith(verdictRunnerReturning(op, args)),
+    );
+
+    expect(res.ok).toBe(true);
+    const broadcast = args[0]!;
+    expect(argumentValue(broadcast, "name")).toBe("nesy.offeredRoutes");
+    expect(argumentValue(broadcast, "params")).toBe(
+      `'${JSON.stringify({ matchKey: "31 *", limit: 5, exact: true })}'`,
+    );
+    // Parametreler artık üst seviye extra DEĞİL: cihaz onları argüman saymıyor.
+    expect(broadcast).not.toContain("matchKey");
+    expect(broadcast).not.toContain("limit");
+    expect(broadcast).not.toContain("exact");
+    // maxRows bir sorgu argümanı değil, kayıt zamanı sınırı — düz kalır.
+    expect(argumentValue(broadcast, "maxRows")).toBe("1");
+  });
+
+  it("sql_named parametresiz çağrıda params extra'sı eklemez", async () => {
+    const args: string[][] = [];
+    const op: ControlOperation = {
+      ...env(),
+      op: "sql_named",
+      name: "nesy.stopState",
+    };
+    await new VerdictChannel().run(
+      SERIAL,
+      op,
+      ctxWith(verdictRunnerReturning(op, args)),
+    );
+    expect(args[0]).not.toContain("params");
+  });
+
+  it("sql_named param'ı envelope alanını ezmeye çalışırsa coded error döner, throw etmez", async () => {
+    for (const shadowed of ["requestId", "params", "name"]) {
+      const op: ControlOperation = {
+        ...env(),
+        op: "sql_named",
+        name: "nesy.stopState",
+        params: { [shadowed]: "shadowed" },
+      };
+      const res = await new VerdictChannel().run(
+        SERIAL,
+        op,
+        ctxWith(() => Promise.reject(new Error("adb çağrılmamalı"))),
+      );
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.code).toBe("INVALID_PARAM");
+        expect(res.detail).toContain(shadowed);
+      }
+    }
+  });
+
   it("seed params envelope alanını ezmeye çalışırsa coded error döner, throw etmez", async () => {
     const op: ControlOperation = {
       ...env(),

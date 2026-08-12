@@ -428,6 +428,17 @@ function scalarExtra(key: string, value: string | number | boolean | null): stri
   return es(key, value);
 }
 
+/**
+ * `adb shell` argümanları CİHAZ shell'inde YENİDEN ayrıştırılır: `execFile`
+ * yerel bir shell açmaz, ama adb kalan argv'yi boşlukla birleştirip uzak
+ * `sh -c`'ye verir. Bu yüzden JSON gövdesi (süslü parantez, çift tırnak,
+ * değer içindeki boşluk) burada tek tırnakla korunmalı — `es()`'in boş dizgi
+ * için `''` yazması da aynı gerçeğin küçük hâliydi.
+ */
+function deviceShellQuoted(value: string): string {
+  return `'${value.split("'").join("'\\''")}'`;
+}
+
 function verdictBroadcastArgs(
   serial: string,
   op: Exclude<ControlOperation, VerdictDumpOperation>,
@@ -471,16 +482,31 @@ function verdictBroadcastArgs(
         if (pinFile) extras.push(...es("pinFile", pinFile));
       }
       break;
-    case "sql_named":
+    case "sql_named": {
       extras.push(...es("name", op.name));
-      for (const [key, value] of Object.entries(op.params ?? {})) {
+      // Sorgu argümanları TEK bir iç içe `params` nesnesi olarak gider —
+      // cihazdaki `sqlNamedHandler` `params["params"]` okur ve WebSocket
+      // zarfı da aynı şekli taşır. Parametre başına ayrı extra yollamak
+      // (eski hâl) cihazda hiçbir zaman argüman olarak görünmüyordu.
+      const queryParams = op.params ?? {};
+      for (const [key, value] of Object.entries(queryParams)) {
         if (VERDICT_RESERVED_PARAMS.has(key) || key === "name") {
           throw new Error(`sql_named param uses reserved field: ${key}`);
         }
-        extras.push(...scalarExtra(key, value));
+        if (typeof value === "number" && !Number.isSafeInteger(value)) {
+          throw new Error(`sql_named param ${key} must be a safe integer`);
+        }
+      }
+      if (Object.keys(queryParams).length > 0) {
+        extras.push(
+          "--es",
+          "params",
+          deviceShellQuoted(JSON.stringify(queryParams)),
+        );
       }
       if (op.maxRows !== undefined) extras.push(...scalarExtra("maxRows", op.maxRows));
       break;
+    }
     case "navigate":
       extras.push(...es("destination", op.destination));
       break;
@@ -615,15 +641,15 @@ export class VerdictChannel implements ControlChannel {
     op: Op,
     ctx: ChannelContext,
   ): Promise<ControlResult<Op["op"]>> {
-    if (op.op === "seed") {
-      const reserved = Object.keys(op.params).find((key) =>
-        VERDICT_RESERVED_PARAMS.has(key),
+    if (op.op === "seed" || op.op === "sql_named") {
+      const reserved = Object.keys(op.op === "seed" ? op.params : op.params ?? {}).find(
+        (key) => VERDICT_RESERVED_PARAMS.has(key) || (op.op === "sql_named" && key === "name"),
       );
       if (reserved) {
         return {
           ok: false,
           code: "INVALID_PARAM",
-          detail: `seed parametresi reserved envelope alanını kullanıyor: ${reserved}`,
+          detail: `${op.op} parametresi reserved envelope alanını kullanıyor: ${reserved}`,
         } as ControlResult<Op["op"]>;
       }
     }
