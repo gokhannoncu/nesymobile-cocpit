@@ -329,6 +329,236 @@ describe("bridgeflow executor", () => {
     expect(persistence.actionTransitions).toHaveLength(0);
   });
 
+  it("honours onTimeout CONTINUE on a wait, and still refuses to call it a success", async () => {
+    const actedSteps: string[] = [];
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async (step) => {
+          actedSteps.push(step.planStepId);
+          return { terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" };
+        },
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1_000 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: { factsForOccurrence: () => [] },
+      clock: () => 10,
+    });
+
+    await executor.execute({
+      runId: "run-wait-continue",
+      deviceId: "device-1",
+      plan: planFixture({
+        entryStepId: "wait",
+        steps: [
+          {
+            planStepId: "wait",
+            kind: "WAIT_ANY",
+            sourceMapRef: "src:wait",
+            timeoutMs: 1_000,
+            next: "after",
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: {
+              legs: [{ legId: "push", factKey: "app.push", onWin: null }],
+              maxLegs: 1,
+              hostOnlyCancel: true,
+              onTimeout: "CONTINUE",
+            },
+          },
+          {
+            planStepId: "after",
+            kind: "BRIDGE_ACTION",
+            sourceMapRef: "src:after",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: { action: "tap" },
+          },
+        ],
+        waitPlans: [
+          {
+            waitPlanId: "wait-1",
+            planStepId: "wait",
+            sourceMapRef: "src:wait",
+            expected: [{ key: "push", predicate: { selector: { by: "id", value: "push" }, until: "APPEAR" } }],
+            interrupts: [],
+            deadlineMs: 1_000,
+            maxLegs: 1,
+            ambiguityPolicy: "FAIL",
+            hostOnlyCancel: true,
+            capabilityFallbacks: [],
+          },
+        ],
+      }),
+    });
+
+    // The run went on rather than stopping at the optional wait...
+    expect(actedSteps).toEqual(["after"]);
+    // ...but nothing was observed, so neither axis may read as success.
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("SKIPPED");
+    expect(persistence.stepOccurrences[0]?.outcome.continueGateResult).toBe("SKIPPED");
+  });
+
+  it("honours onTimeout CONTINUE on a WAIT_EVENT, the branch fact waits actually take", async () => {
+    const actedSteps: string[] = [];
+    const persistence = new InMemoryExecutionPersistence();
+    let now = 10;
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async (step) => {
+          actedSteps.push(step.planStepId);
+          return { terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" };
+        },
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "push", elapsedMs: 1 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      // No fact ever arrives, so the correlated wait can only time out. If the
+      // bridge path were reached instead it would report EXPECTED_MATCH above —
+      // which is how this test also proves the fact path was the one taken.
+      evidence: { factsForOccurrence: () => [] },
+      // The fact wait polls against the clock, so a frozen clock would spin for
+      // ever. Advancing it from the injected sleep keeps the test instant.
+      clock: () => now,
+      sleep: async (ms: number) => {
+        now += ms;
+      },
+    });
+
+    await executor.execute({
+      runId: "run-wait-event-continue",
+      deviceId: "device-1",
+      plan: planFixture({
+        entryStepId: "wait",
+        steps: [
+          {
+            planStepId: "wait",
+            kind: "WAIT_EVENT",
+            sourceMapRef: "src:wait",
+            timeoutMs: 50,
+            next: "after",
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: {
+              factKey: "APP.PUSH_RECEIVED",
+              sourceLane: "APP",
+              requireCorrelation: true,
+              onTimeout: "CONTINUE",
+            },
+          },
+          {
+            planStepId: "after",
+            kind: "BRIDGE_ACTION",
+            sourceMapRef: "src:after",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: { action: "tap" },
+          },
+        ],
+        waitPlans: [
+          {
+            waitPlanId: "wait-1",
+            planStepId: "wait",
+            sourceMapRef: "src:wait",
+            expected: [{ key: "APP.PUSH_RECEIVED", predicate: { selector: { by: "id", value: "APP.PUSH_RECEIVED" }, until: "APPEAR" } }],
+            interrupts: [],
+            deadlineMs: 50,
+            maxLegs: 1,
+            ambiguityPolicy: "FAIL",
+            hostOnlyCancel: true,
+            capabilityFallbacks: [],
+          },
+        ],
+      }),
+    });
+
+    expect(actedSteps).toEqual(["after"]);
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("SKIPPED");
+    expect(persistence.stepOccurrences[0]?.outcome.continueGateResult).toBe("SKIPPED");
+  });
+
+  it("still stops the run when a wait times out under the default FAIL policy", async () => {
+    const actedSteps: string[] = [];
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async (step) => {
+          actedSteps.push(step.planStepId);
+          return { terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" };
+        },
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1_000 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: { factsForOccurrence: () => [] },
+      clock: () => 10,
+    });
+
+    await executor.execute({
+      runId: "run-wait-fail",
+      deviceId: "device-1",
+      plan: planFixture({
+        entryStepId: "wait",
+        steps: [
+          {
+            planStepId: "wait",
+            kind: "WAIT_ANY",
+            sourceMapRef: "src:wait",
+            timeoutMs: 1_000,
+            next: "after",
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: {
+              legs: [{ legId: "ready", factKey: "ui.ready", onWin: null }],
+              maxLegs: 1,
+              hostOnlyCancel: true,
+              onTimeout: "FAIL",
+            },
+          },
+          {
+            planStepId: "after",
+            kind: "BRIDGE_ACTION",
+            sourceMapRef: "src:after",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: { action: "tap" },
+          },
+        ],
+        waitPlans: [
+          {
+            waitPlanId: "wait-1",
+            planStepId: "wait",
+            sourceMapRef: "src:wait",
+            expected: [{ key: "ready", predicate: { selector: { by: "id", value: "ready" }, until: "APPEAR" } }],
+            interrupts: [],
+            deadlineMs: 1_000,
+            maxLegs: 1,
+            ambiguityPolicy: "FAIL",
+            hostOnlyCancel: true,
+            capabilityFallbacks: [],
+          },
+        ],
+      }),
+    });
+
+    expect(actedSteps).toEqual([]);
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("FAILED");
+    expect(persistence.stepOccurrences[0]?.outcome.continueGateResult).toBe("TIMED_OUT");
+  });
+
   it("routes an expected wait winner to its declared branch", async () => {
     const actedSteps: string[] = [];
     const executor = new BridgeFlowExecutor({

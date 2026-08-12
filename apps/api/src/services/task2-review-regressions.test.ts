@@ -280,7 +280,7 @@ describe('Task 2 reviewer regressions', () => {
     if (resolved.status !== 'ACCEPTED') throw new Error('fixture must resolve')
     await writer.writeResolved(resolved)
 
-    const restarted = new BridgeFlowEvidenceRuntime()
+    const restarted = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     restarted.hydrate([
       ...(await persistence.loadEvidenceScope(scope)),
       { ...publication(9, 'ORDERED_REQUIRED'), correlationStatus: 'MISMATCH' },
@@ -289,14 +289,14 @@ describe('Task 2 reviewer regressions', () => {
     expect(restarted.currentFacts(scope, 200, 'ORDERED_REQUIRED')).toEqual([
       expect.objectContaining({ factKey: 'delivery.persisted', authority: 'CONFIRMATORY' }),
     ])
-    const anotherRestart = new BridgeFlowEvidenceRuntime()
+    const anotherRestart = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     await hydrateEvidenceScope(scope, persistence, anotherRestart)
     expect(anotherRestart.latestRevision(scope, 'ORDERED_REQUIRED')).toBe(1)
   })
 
   it('persists before publication and converts ordered poison into a runtime block', async () => {
     const persistence = new InMemoryEvidenceJourneyPersistence()
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const ingest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(persistence),
@@ -352,7 +352,7 @@ describe('Task 2 reviewer regressions', () => {
   })
 
   it('closes listeners and lets orchestration evict completed scope state', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const ingest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(new InMemoryEvidenceJourneyPersistence()),
@@ -392,7 +392,7 @@ describe('Task 2 reviewer regressions', () => {
       { kind: 'DEADLINE' as const },
     ]
     for (const scenario of scenarios) {
-      const runtime = new BridgeFlowEvidenceRuntime()
+      const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
       runtime.publish(publication(1, 'ORDERED_REQUIRED', { observedAtMs: 0 }))
       const controller = new AbortController()
       if (scenario.kind === 'BLOCKED') {
@@ -434,7 +434,7 @@ describe('Task 2 reviewer regressions', () => {
   it('rechecks block and cancellation after fact collection but before persistence', async () => {
     for (const race of ['BLOCK', 'CANCEL'] as const) {
       const controller = new AbortController()
-      const runtime = new BridgeFlowEvidenceRuntime()
+      const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
       runtime.publish(publication(1, 'ORDERED_REQUIRED', { observedAtMs: 0 }))
       const currentFacts = runtime.currentFacts.bind(runtime)
       runtime.currentFacts = ((...args: Parameters<typeof currentFacts>) => {

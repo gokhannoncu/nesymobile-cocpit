@@ -246,12 +246,44 @@ function resolveInputs(
       const item = variables.get('loop.item')
       inputs[binding.name] = source.path === undefined ? item : readPath(item, source.path)
     } else if (source.kind === 'entityRef') {
-      // The entity's runtime identity is published by an earlier step under the
-      // binding name; the spec's entityBinding only names its type.
-      inputs[binding.name] = variables.get(binding.name)
+      // The entity's runtime identity, from whichever of two places has it.
+      //
+      // Preferred: an earlier step published it under the binding name — that is
+      // an identity the run OBSERVED, and it wins.
+      //
+      // Otherwise the spec's `entityBinding.id` says where it comes from, and
+      // until now nothing read that. The consequence was silent and expensive:
+      // the input resolved to undefined, the adapter searched the back office for
+      // the empty string, found nothing, and published `exists: false`. The step
+      // reported SUCCEEDED — it did call the endpoint — so the run looked healthy
+      // all the way to a Final Oracle that failed for want of evidence the run had
+      // never actually asked for. A read that answers "no" about the wrong record
+      // is worse than one that fails.
+      const published = variables.get(binding.name)
+      inputs[binding.name] =
+        published === undefined || published === null || published === ''
+          ? resolveDeclaredEntityId(spec.entityBinding?.id, runInputs)
+          : published
     }
   }
   return inputs
+}
+
+/**
+ * Read an `entityBinding.id` the way the pack means it.
+ *
+ * `run.input.scheduleId` / `macro.input.stopCode` are PATHS into this run's
+ * inputs. Anything else is a literal id — a pack is allowed to pin one, and
+ * guessing a path out of it would turn a fixed target into a missing one.
+ */
+function resolveDeclaredEntityId(
+  declared: string | undefined,
+  runInputs: Readonly<Record<string, unknown>>,
+): unknown {
+  if (declared === undefined) return undefined
+  const path = /^(run|macro)\.input\./.exec(declared) === null ? undefined : declared.split('.').slice(2).join('.')
+  if (path === undefined) return declared
+  return readPath(runInputs, path)
 }
 
 function resolveIdempotencyKey(
@@ -262,7 +294,7 @@ function resolveIdempotencyKey(
   if (spec.idempotencyClass !== 'KEYED') return ''
   const declared = spec.idempotencyKey
   if (declared === undefined) return context.occurrenceId
-  // The declared key is a path (`run.input.approvalRequestCode`); its resolved
+  // The declared key is a path (`run.input.scheduleId`); its resolved
   // value is what de-duplicates, not the path itself.
   const resolved = readPath(inputs, declared.split('.').at(-1) ?? declared)
   return resolved === undefined || resolved === null ? context.occurrenceId : String(resolved)

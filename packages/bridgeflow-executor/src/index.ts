@@ -1175,6 +1175,12 @@ export class BridgeFlowExecutor {
         if (status === "EXPECTED_MATCH") {
           return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next: step.next, stop: false };
         }
+        // See the same policy check on the bridge wait path below. This is the
+        // branch that actually carries fact waits, so a CONTINUE policy that is
+        // only honoured down there is not honoured at all.
+        if (status === "TIMEOUT" && step.params["onTimeout"] === "CONTINUE") {
+          return { actionResult: "SKIPPED", continueGateResult: "SKIPPED", next: step.next, stop: false };
+        }
         return {
           actionResult: status === "CANCELLED" ? "CANCELLED" : "FAILED",
           continueGateResult: status === "TIMEOUT" ? "TIMED_OUT" : "UNSATISFIED",
@@ -1225,6 +1231,25 @@ export class BridgeFlowExecutor {
         return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next: step.next, stop: false };
       }
       return { actionResult: "FAILED", continueGateResult: "UNSATISFIED", next: null, stop: true };
+    }
+
+    // A timed-out wait is not automatically a failed run. The IR says what a
+    // timeout MEANS for this particular wait (`onTimeout`), and until now the
+    // executor read the deadline but not the policy — so a wait the pack had
+    // explicitly marked as optional still stopped everything.
+    //
+    // The case that exposed it: TOUR_APPROVAL_LIFECYCLE waits for the approval
+    // push, which is legitimately unreliable, declares `onTimeout: CONTINUE`,
+    // and carries the fact as a WARNING requirement. On device every step
+    // through the back-office approval succeeded and the run was still reported
+    // INCONCLUSIVE — a verdict about Firebase, dressed as a verdict about the
+    // product. Exactly what the CONTINUE policy existed to prevent.
+    //
+    // SKIPPED rather than SUCCEEDED, on both axes: nothing was observed and no
+    // effect may be claimed. It is the same distinction an absent target makes —
+    // "this step had no subject" is not "this step worked".
+    if (waitResult.status === "TIMEOUT" && step.params["onTimeout"] === "CONTINUE") {
+      return { actionResult: "SKIPPED", continueGateResult: "SKIPPED", next: step.next, stop: false };
     }
 
     return {

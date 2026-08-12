@@ -28,11 +28,22 @@
  *    APP.TOUR_APPROVAL_REQUESTED           the courier really asked
  *    REMOTE.TOUR_APPROVAL_REQUEST_CREATED  a record really exists
  *    REMOTE.TOUR_APPROVAL_STATUS_APPROVED  that record really reached APPROVED
- *      ↓ CORRELATED_ALL_OF on approvalRequestCode
+ *      ↓ CORRELATED_ALL_OF on scheduleId
  *    REMOTE.TOUR_APPROVAL_CONFIRMED
  *
  *  Correlation is what stops a leftover approval from yesterday's run — or from
- *  another courier — satisfying today's oracle.
+ *  another courier — satisfying today's oracle. It correlates on the SCHEDULE:
+ *  measured on RS staging 2026-08-12, the leaving-request list came back with 47
+ *  rows, most of them other couriers' tours and several already approved.
+ *
+ *  WHAT THIS SLICE LOOKED LIKE BEFORE IT WAS MEASURED
+ *
+ *  Until 2026-08-12 it waited for END_OF_DAY_READY, tapped a target id that
+ *  existed nowhere in the app, and read two back-office operations pointed at
+ *  `MobileApprovalRequests` — a queue this flow never writes to. It also required
+ *  an `approvalRequestCode` input that nothing in the product ever mints. Every
+ *  one of those was plausible on paper. The flow was then run by hand, end to
+ *  end, and none of them survived contact with the device.
  *
  *  THE PUSH IS CONFIRMATORY, NOT REQUIRED
  *
@@ -62,22 +73,25 @@ import { KEYED_MUTATION_RETRY, irDocument, requires, sourceMapEntry, stepBase } 
 
 export const NESY_TOUR_APPROVAL_MACRO_KEY = "nesy.macro.tour-approval-lifecycle";
 
-const REQUEST_ENTITY = { type: NESY_ENTITIES.tourApprovalRequest, id: "run.input.approvalRequestCode" } as const;
+/**
+ * Keyed by the schedule, because the product mints nothing else. See the entity
+ * definition: the request response is a bare string and no approval code exists
+ * on either side of the tap.
+ */
+const REQUEST_ENTITY = { type: NESY_ENTITIES.tourApprovalRequest, id: "run.input.scheduleId" } as const;
 
 const STEPS: readonly WorkflowStepV2[] = [
   // ── Actor 1: the courier, on the device ─────────────────────────────────
-  {
-    ...stepBase({ planStepId: "wait-day-close", sourceMapRef: "sm-appr-1", next: "resolve-request-button", timeoutMs: 25_000 }),
-    kind: "WAIT_EVENT",
-    factKey: NESY_FACTS.END_OF_DAY_READY,
-    sourceLane: "UI",
-    requireCorrelation: false,
-    onTimeout: "FAIL",
-  },
+  //
+  // On the STOP LIST, not at end-of-day. Measured 2026-08-12: the button is
+  // `btn_out` in `fragment_stops.xml`, the tour is requested while the courier
+  // still has work in front of them, and the end-of-day screen is a later and
+  // unrelated part of the day. The macro used to wait for END_OF_DAY_READY here
+  // and could therefore never have reached the button it was aiming at.
   {
     ...stepBase({
       planStepId: "resolve-request-button",
-      sourceMapRef: "sm-appr-2",
+      sourceMapRef: "sm-appr-1",
       next: "tap-request",
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
     }),
@@ -86,16 +100,56 @@ const STEPS: readonly WorkflowStepV2[] = [
     outputVariable: "requestHandle",
   },
   {
+    /**
+     * This tap reaches no backend. It opens the routing chooser — "Please select
+     * your route optimization type!" — and nothing is requested until that
+     * choice is made. So there is deliberately NO continue gate here: gating on
+     * TOUR_APPROVAL_REQUESTED at this point would wait for an event that cannot
+     * arrive yet, and the timeout would blame the product for the pack's
+     * misreading of the flow.
+     */
     ...stepBase({
       planStepId: "tap-request",
-      sourceMapRef: "sm-appr-3",
-      next: "verify-request-record",
+      sourceMapRef: "sm-appr-2",
+      next: "resolve-routing-choice",
       timeoutMs: 30_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
     kind: "BRIDGE_ACTION",
     action: "tap",
     targetVariable: "requestHandle",
+    entityBinding: REQUEST_ENTITY,
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-routing-choice",
+      sourceMapRef: "sm-appr-3",
+      next: "tap-routing-choice",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.tourRoutingAuto,
+    outputVariable: "routingHandle",
+  },
+  {
+    /**
+     * Auto routing, and that is a CHOICE the slice makes rather than a detail it
+     * hides: it sets `calculateRoute: true` on the request, so the backend
+     * generates the route. Manual routing is a different journey with its own
+     * evidence, and `tourRoutingManual` exists for whoever writes it.
+     *
+     * The request event belongs to this step, not the one before it.
+     */
+    ...stepBase({
+      planStepId: "tap-routing-choice",
+      sourceMapRef: "sm-appr-4",
+      next: "verify-request-record",
+      timeoutMs: 30_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "routingHandle",
     entityBinding: REQUEST_ENTITY,
     continueGate: {
       allOf: [NESY_FACTS.TOUR_APPROVAL_REQUESTED],
@@ -107,7 +161,7 @@ const STEPS: readonly WorkflowStepV2[] = [
   {
     ...stepBase({
       planStepId: "verify-request-record",
-      sourceMapRef: "sm-appr-4",
+      sourceMapRef: "sm-appr-5",
       next: "dispatcher-approves",
       timeoutMs: 30_000,
       capabilityRequirements: [requires("verdict.core.remote.allowlisted-operation")],
@@ -145,7 +199,7 @@ const STEPS: readonly WorkflowStepV2[] = [
      */
     ...stepBase({
       planStepId: "dispatcher-approves",
-      sourceMapRef: "sm-appr-5",
+      sourceMapRef: "sm-appr-6",
       next: "verify-approved-status",
       timeoutMs: 40_000,
       retryPolicy: KEYED_MUTATION_RETRY,
@@ -158,7 +212,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       role: "SETUP",
       effectClass: "IDEMPOTENT_MUTATION",
       idempotencyClass: "KEYED",
-      idempotencyKey: "run.input.approvalRequestCode",
+      idempotencyKey: "run.input.scheduleId",
       inputBindings: [{ name: "approvalRequest", source: { kind: "entityRef" } }],
       // Empty on purpose: accepting the call is not the approval.
       outputFactBindings: [],
@@ -173,7 +227,7 @@ const STEPS: readonly WorkflowStepV2[] = [
   {
     ...stepBase({
       planStepId: "verify-approved-status",
-      sourceMapRef: "sm-appr-6",
+      sourceMapRef: "sm-appr-7",
       next: "await-push",
       timeoutMs: 40_000,
       capabilityRequirements: [requires("verdict.core.remote.allowlisted-operation")],
@@ -199,7 +253,7 @@ const STEPS: readonly WorkflowStepV2[] = [
   {
     // CONTINUE on timeout: push delivery is unreliable infrastructure, and a
     // required gate here would produce red runs about the notification service.
-    ...stepBase({ planStepId: "await-push", sourceMapRef: "sm-appr-7", next: "assert-approved", timeoutMs: 120_000 }),
+    ...stepBase({ planStepId: "await-push", sourceMapRef: "sm-appr-8", next: "assert-approved", timeoutMs: 120_000 }),
     kind: "WAIT_EVENT",
     factKey: NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED,
     sourceLane: "APP",
@@ -208,7 +262,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     entityBinding: REQUEST_ENTITY,
   },
   {
-    ...stepBase({ planStepId: "assert-approved", sourceMapRef: "sm-appr-8", next: null, timeoutMs: 60_000 }),
+    ...stepBase({ planStepId: "assert-approved", sourceMapRef: "sm-appr-9", next: null, timeoutMs: 60_000 }),
     kind: "ASSERT_FACT",
     factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED,
     expected: true,
@@ -254,7 +308,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     },
   },
   {
-    ...stepBase({ planStepId: "release-approval-fixture", sourceMapRef: "sm-appr-9", next: null, timeoutMs: 40_000 }),
+    ...stepBase({ planStepId: "release-approval-fixture", sourceMapRef: "sm-appr-10", next: null, timeoutMs: 40_000 }),
     kind: "CLEANUP",
     compensatesStepIds: ["dispatcher-approves"],
     runOnFailure: true,
@@ -267,26 +321,32 @@ const GENERIC_IR = irDocument({
   sourceRef: NESY_TOUR_APPROVAL_MACRO_KEY,
   inputs: [
     { name: "routeCode", type: "string", required: true },
-    { name: "approvalRequestCode", type: "string", required: true },
+    // Was `approvalRequestCode`, which no run could ever supply. The schedule id
+    // is known from route selection onwards and is what the device itself sends.
+    { name: "scheduleId", type: "string", required: true },
   ],
-  variables: [{ name: "requestHandle", type: "string" }],
+  variables: [
+    { name: "requestHandle", type: "string" },
+    { name: "routingHandle", type: "string" },
+  ],
   steps: STEPS,
-  entryStepId: "wait-day-close",
+  entryStepId: "resolve-request-button",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.remote.allowlisted-operation"),
     requires("domain.nesy.backoffice.approval-operations"),
   ],
   sourceMap: [
-    sourceMapEntry("sm-appr-1", "wait-day-close", NESY_TOUR_APPROVAL_MACRO_KEY),
-    sourceMapEntry("sm-appr-2", "resolve-request-button", NESY_TOUR_APPROVAL_MACRO_KEY),
-    sourceMapEntry("sm-appr-3", "tap-request", NESY_TOUR_APPROVAL_MACRO_KEY, "actor 1: the courier, real UI"),
-    sourceMapEntry("sm-appr-4", "verify-request-record", NESY_TOUR_APPROVAL_MACRO_KEY, "back-office fact check 1"),
-    sourceMapEntry("sm-appr-5", "dispatcher-approves", NESY_TOUR_APPROVAL_MACRO_KEY, "actor 2: dispatcher, typed and audited; produces no evidence"),
-    sourceMapEntry("sm-appr-6", "verify-approved-status", NESY_TOUR_APPROVAL_MACRO_KEY, "back-office fact check 2"),
-    sourceMapEntry("sm-appr-7", "await-push", NESY_TOUR_APPROVAL_MACRO_KEY, "confirmatory only"),
-    sourceMapEntry("sm-appr-8", "assert-approved", NESY_TOUR_APPROVAL_MACRO_KEY),
-    sourceMapEntry("sm-appr-9", "release-approval-fixture", NESY_TOUR_APPROVAL_MACRO_KEY),
+    sourceMapEntry("sm-appr-1", "resolve-request-button", NESY_TOUR_APPROVAL_MACRO_KEY),
+    sourceMapEntry("sm-appr-2", "tap-request", NESY_TOUR_APPROVAL_MACRO_KEY, "actor 1: the courier, real UI — opens the routing chooser, calls nothing"),
+    sourceMapEntry("sm-appr-3", "resolve-routing-choice", NESY_TOUR_APPROVAL_MACRO_KEY),
+    sourceMapEntry("sm-appr-4", "tap-routing-choice", NESY_TOUR_APPROVAL_MACRO_KEY, "the tap that actually requests the tour"),
+    sourceMapEntry("sm-appr-5", "verify-request-record", NESY_TOUR_APPROVAL_MACRO_KEY, "back-office fact check 1"),
+    sourceMapEntry("sm-appr-6", "dispatcher-approves", NESY_TOUR_APPROVAL_MACRO_KEY, "actor 2: dispatcher, typed and audited; produces no evidence"),
+    sourceMapEntry("sm-appr-7", "verify-approved-status", NESY_TOUR_APPROVAL_MACRO_KEY, "back-office fact check 2"),
+    sourceMapEntry("sm-appr-8", "await-push", NESY_TOUR_APPROVAL_MACRO_KEY, "confirmatory only"),
+    sourceMapEntry("sm-appr-9", "assert-approved", NESY_TOUR_APPROVAL_MACRO_KEY),
+    sourceMapEntry("sm-appr-10", "release-approval-fixture", NESY_TOUR_APPROVAL_MACRO_KEY),
   ],
 });
 
@@ -311,11 +371,12 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   authoredBy: "COMPILER",
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.resolve-target"],
   legs: [
-    { planStepId: "wait-day-close", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.END_OF_DAY_READY },
+    // No awaited fact on the first tap: it only opens the routing chooser.
+    { planStepId: "tap-request", bridgeVerb: "tap", targetRef: NESY_TARGETS.tourApprovalRequestButton },
     {
-      planStepId: "tap-request",
+      planStepId: "tap-routing-choice",
       bridgeVerb: "tap",
-      targetRef: NESY_TARGETS.tourApprovalRequestButton,
+      targetRef: NESY_TARGETS.tourRoutingAuto,
       awaitFactKey: NESY_FACTS.TOUR_APPROVAL_REQUESTED,
     },
     { planStepId: "await-push", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED },
@@ -343,7 +404,8 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
         type: "entityRef",
         required: true,
         entityTypeRef: NESY_ENTITIES.tourApprovalRequest,
-        description: "Correlation anchor for both back-office fact reads.",
+        description:
+          "Correlation anchor for both back-office fact reads. Resolves to the schedule id — the request carries no identifier of its own.",
       },
     ],
   },
@@ -356,17 +418,20 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
     ],
   },
   preconditions: [
-    { kind: "SCREEN_READY", ref: NESY_SCREENS.endOfDay, deadlineMs: 25_000, onUnmet: "FAIL" },
+    { kind: "SCREEN_READY", ref: NESY_SCREENS.routeStopList, deadlineMs: 25_000, onUnmet: "FAIL" },
     { kind: "FACT_TRUE", ref: NESY_FACTS.SELECTED_ROUTE_OBSERVED, deadlineMs: 20_000, onUnmet: "FAIL" },
     { kind: "FACT_FALSE", ref: NESY_FACTS.TOUR_APPROVAL_CONFIRMED, deadlineMs: 10_000, onUnmet: "FAIL" },
   ],
   allowedRegistryRefs: {
-    screenRefs: [NESY_SCREENS.endOfDay],
+    screenRefs: [NESY_SCREENS.routeStopList],
     surfaceRefs: [NESY_SURFACES.networkDialog, NESY_SURFACES.sessionExpiredDialog],
     entityTypeRefs: [NESY_ENTITIES.route, NESY_ENTITIES.tourApprovalRequest],
-    targetRefs: [NESY_TARGETS.tourApprovalRequestButton],
+    targetRefs: [
+      NESY_TARGETS.tourApprovalRequestButton,
+      NESY_TARGETS.tourRoutingAuto,
+      NESY_TARGETS.tourRoutingManual,
+    ],
     factKeys: [
-      NESY_FACTS.END_OF_DAY_READY,
       NESY_FACTS.SELECTED_ROUTE_OBSERVED,
       NESY_FACTS.TOUR_APPROVAL_REQUESTED,
       NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
@@ -444,16 +509,20 @@ export const TOUR_APPROVAL_LIFECYCLE_SLICE: NesyReferenceSlice = {
   inputSchema: NESY_TOUR_APPROVAL_MACRO.input,
   outputSchema: NESY_TOUR_APPROVAL_MACRO.output,
   preconditions: NESY_TOUR_APPROVAL_MACRO.preconditions,
-  screenRefs: [NESY_SCREENS.endOfDay],
+  screenRefs: [NESY_SCREENS.routeStopList],
   surfaceRefs: [NESY_SURFACES.networkDialog, NESY_SURFACES.sessionExpiredDialog],
   entityBindings: [
     { entityTypeRef: NESY_ENTITIES.route, role: "Scopes the request to the tour that was worked." },
     {
       entityTypeRef: NESY_ENTITIES.tourApprovalRequest,
-      role: "Correlation anchor across the device event and both back-office reads; this is what stops yesterday's approval from satisfying today's oracle.",
+      role: "Correlation anchor across the device event and both back-office reads, resolved to the schedule id; this is what stops another courier's approval from satisfying this run's oracle.",
     },
   ],
-  targetResolutionRefs: [NESY_TARGETS.tourApprovalRequestButton],
+  targetResolutionRefs: [
+    NESY_TARGETS.tourApprovalRequestButton,
+    NESY_TARGETS.tourRoutingAuto,
+    NESY_TARGETS.tourRoutingManual,
+  ],
   semanticMacroRef: NESY_TOUR_APPROVAL_MACRO_KEY,
   macroExpansion: EXPANSION,
   genericIrSnapshot: GENERIC_IR,

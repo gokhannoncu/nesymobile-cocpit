@@ -49,6 +49,34 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.12.0 — TOUR_APPROVAL_LIFECYCLE is rebuilt around what the device and the
+  //   backend actually do, after the flow was run by hand end to end on RS
+  //   staging. Four things were wrong and all four were plausible:
+  //
+  //   The target `tour_approval_request_button` existed nowhere in the app. The
+  //   real control is `btn_out` on the STOP LIST, and the slice was waiting for
+  //   END_OF_DAY_READY on a screen the button does not live on.
+  //
+  //   The request is not one tap. Tapping opens a routing chooser, and only that
+  //   choice issues `Task/RequestLeavingPermission`. The continue gate moved to
+  //   the second tap; gating the first would wait for an event that cannot exist
+  //   yet.
+  //
+  //   Both back-office reads pointed at `MobileApprovalRequests` — a queue this
+  //   flow never writes to. The real state lives on the schedule
+  //   (`ScheduleStatus`: WaitingForApproval → Approved) and is read through
+  //   `GetWaitingLeavingRequests` / `ApproveLeavingPermission`.
+  //
+  //   `approvalRequestCode` was a required input nothing could supply: the
+  //   request answers with a bare string and no identifier is minted anywhere.
+  //   The correlation anchor is the SCHEDULE ID, which the device sends itself.
+  //
+  //   Still open, deliberately: the device-plane "schedule status is Approved"
+  //   fact. Measured, the push does NOT refresh the schedule — 28 seconds and
+  //   zero schedule calls passed between the push and the fetch, which a screen
+  //   change triggered. Backend-approved and device-approved are two different
+  //   claims and this version only makes the first.
+  //
   // 1.11.0 — the zimmet slice gets the model it was written for, now that the
   //   host honours it: the RS time-range picker and the refusal dialog are
   //   absent-tolerant targets (notFoundPolicy TREAT_AS_ABSENT), and a step whose
@@ -177,7 +205,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 11, patch: 0 },
+  version: { major: 1, minor: 12, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

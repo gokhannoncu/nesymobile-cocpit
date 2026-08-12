@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildNesyCourierBundle } from '@nesy/nesy-courier-domain-pack'
 
 import { createNesyBackofficeAdapter, redact } from './nesy-backoffice-adapter.js'
-import { MOBILE_APPROVAL_STATUS, NESY_BACKOFFICE_ENDPOINTS } from './nesy-backoffice-endpoints.js'
+import { NESY_BACKOFFICE_ENDPOINTS, SCHEDULE_STATUS } from './nesy-backoffice-endpoints.js'
 import { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
@@ -111,19 +111,39 @@ describe('back-office endpoint map', () => {
     expect(missing).toEqual([])
   })
 
-  it('approves tour requests through the mobile approval queue, not schedule end-of-day', () => {
+  it('approves the tour through the leaving-permission flow, not the mobile approval queue', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.approve-tour-request']!
-    expect(endpoint.path).toBe('Task/ValidateMobileApprovalRequests')
-    expect(endpoint.body({ approvalRequest: 'approval-1' })).toEqual({
-      UniqueIdentifier: 'approval-1',
-      Status: MOBILE_APPROVAL_STATUS.approved,
+    expect(endpoint.path).toBe('Task/ApproveLeavingPermission')
+    expect(endpoint.body({ approvalRequest: '11-31-20260812-1' })).toEqual({
+      ScheduleIds: ['11-31-20260812-1'],
+      // Present even though the service overwrites the coordinates: it reads the
+      // field before it writes it.
+      EventLocation: { Lat: 0, Lon: 0 },
+      CourierUserNames: [],
     })
   })
 
-  it('narrows the approval status read to approved mobile approval requests only', () => {
-    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
-    expect(endpoint.path).toBe('Task/GetMobileApprovalRequests')
-    expect(endpoint.body({})).toEqual({ Status: MOBILE_APPROVAL_STATUS.approved })
+  it('reads both approval facts from the leaving-request list', () => {
+    const created = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-request']!
+    const status = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
+    expect(created.path).toBe('Task/GetWaitingLeavingRequests')
+    expect(status.path).toBe('Task/GetWaitingLeavingRequests')
+    expect(created.body({})).toEqual({})
+  })
+
+  it('separates "a request exists" from "that request was approved"', () => {
+    const created = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-request']!
+    const status = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
+    // The schedule is listed, but still waiting. An existence check alone would
+    // call this approved; that is the whole reason there are two facts.
+    const waiting = [{ scheduleId: 'mine', scheduleStatus: SCHEDULE_STATUS.waitingForApproval }]
+
+    expect(created.normalize!(waiting, { approvalRequest: 'mine' })).toMatchObject({
+      request: { exists: true, scheduleId: 'mine' },
+    })
+    expect(status.normalize!(waiting, { approvalRequest: 'mine' })).toMatchObject({
+      approval: { statusIsApproved: false, status: SCHEDULE_STATUS.waitingForApproval },
+    })
   })
 
   it('sends AddUserIdToSchedule as the request model the backend service expects', () => {
@@ -141,17 +161,23 @@ describe('back-office endpoint map', () => {
     })
   })
 
-  it('reads the approval fact from the matching mobile approval request, not from any request', () => {
+  it('reads the approval fact from this run\'s schedule, not from any approved schedule', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-tour-approval-status']!
+    // The hub list really does look like this — 47 rows on RS staging, most of
+    // them other couriers' tours, several already approved.
     const payload = [
-      { UniqueIdentifier: 'other', Status: MOBILE_APPROVAL_STATUS.approved },
-      { UniqueIdentifier: 'mine', Status: MOBILE_APPROVAL_STATUS.approved },
+      { scheduleId: 'someone-else', scheduleStatus: SCHEDULE_STATUS.approved },
+      { scheduleId: 'mine', scheduleStatus: SCHEDULE_STATUS.approved },
     ]
     expect(endpoint.normalize!(payload, { approvalRequest: 'mine' })).toMatchObject({
-      approval: { statusIsApproved: true, approvalRequestCode: 'mine' },
+      approval: { statusIsApproved: true, scheduleId: 'mine' },
     })
     expect(endpoint.normalize!(payload, { approvalRequest: 'absent' })).toMatchObject({
-      approval: { statusIsApproved: false },
+      approval: { statusIsApproved: false, scheduleId: null },
+    })
+    // An empty scheduleId must never fall through to the first row.
+    expect(endpoint.normalize!(payload, {})).toMatchObject({
+      approval: { statusIsApproved: false, scheduleId: null },
     })
   })
 })
@@ -349,8 +375,48 @@ describe('remote step runtime', () => {
     params: { spec },
   }
 
+  it('resolves an entityRef input from the spec entityBinding when no step published one', async () => {
+    // The failure this closes: `approvalRequest` resolved to undefined, the
+    // adapter searched for the empty string, the read answered "no such record",
+    // and the step still reported SUCCEEDED. Two runs looked healthy to the last
+    // step before the Final Oracle failed for want of evidence never requested.
+    let seenInputs: Record<string, unknown> | undefined
+    const entityStep = {
+      ...step,
+      params: {
+        spec: {
+          ...spec,
+          inputBindings: [{ name: 'approvalRequest', source: { kind: 'entityRef' } }],
+          entityBinding: { type: 'TOUR_APPROVAL_REQUEST', id: 'run.input.scheduleId' },
+        },
+      },
+    }
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      adapter: {
+        call: async (input) => {
+          seenInputs = { ...input.inputs }
+          return {
+            terminal: { status: 'SUCCEEDED' },
+            normalizedResponse: { approval: { statusIsApproved: true } },
+          }
+        },
+      },
+      // Nothing published `approvalRequest`, which is the normal case: the
+      // schedule id is a run input, not something an earlier step observed.
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime({ now: () => 1_000 }),
+      runInputs: { scheduleId: '11-31-20260812-1' },
+      clock: () => 1_000,
+    })
+
+    await runtime.execute(entityStep as never, STEP_CONTEXT as never)
+    expect(seenInputs?.approvalRequest).toBe('11-31-20260812-1')
+  })
+
   it('publishes the backend fact into the run evidence scope so the oracle can settle', async () => {
-    const evidence = new BridgeFlowEvidenceRuntime()
+    const evidence = new BridgeFlowEvidenceRuntime({ now: () => 1_000 })
     const runtime = createPackRemoteStepRuntime({
       runId: 'run-1',
       bundle,
@@ -383,7 +449,7 @@ describe('remote step runtime', () => {
   })
 
   it('publishes UNKNOWN rather than false when the response never carried the path', async () => {
-    const evidence = new BridgeFlowEvidenceRuntime()
+    const evidence = new BridgeFlowEvidenceRuntime({ now: () => 1_000 })
     const runtime = createPackRemoteStepRuntime({
       runId: 'run-1',
       bundle,
@@ -409,7 +475,7 @@ describe('remote step runtime', () => {
   // untestable, when the run could have judged itself on the planes it observed.
   it('continues past a read-only validation that could not be reached, recording it UNKNOWN', async () => {
     const bundle = buildNesyCourierBundle()
-    const evidence = new BridgeFlowEvidenceRuntime()
+    const evidence = new BridgeFlowEvidenceRuntime({ now: () => 1_000 })
     const runtime = createPackRemoteStepRuntime({
       runId: STEP_CONTEXT.runId,
       bundle,

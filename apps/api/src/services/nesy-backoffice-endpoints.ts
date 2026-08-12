@@ -39,12 +39,19 @@ export interface BackofficeEndpoint {
   normalize?: (payload: unknown, inputs: Readonly<Record<string, unknown>>) => Record<string, unknown>
 }
 
-/** Mobile approval request states, from `MobileApprovalRequestsStatus`. */
-export const MOBILE_APPROVAL_STATUS = {
-  waiting: 0,
-  approved: 1,
-  rejected: 2,
-  all: 3,
+/**
+ * Schedule lifecycle states, from `ScheduleStatusType`.
+ *
+ * The tour approval flow lives entirely on these: `RequestLeavingPermission`
+ * writes `waitingForApproval`, `ApproveLeavingPermission` writes `approved`.
+ */
+export const SCHEDULE_STATUS = {
+  beginningOfDay: 0,
+  waitingForApproval: 1,
+  approved: 2,
+  endOfDay: 3,
+  endOfDayApproved: 4,
+  endOfDayRejected: 5,
 } as const
 
 function str(value: unknown): string {
@@ -61,13 +68,28 @@ function asArray(payload: unknown): unknown[] {
   return []
 }
 
-function approvalMatching(payload: unknown, uniqueIdentifier: string): Record<string, unknown> | undefined {
+/**
+ * Find the leaving-permission row for one schedule.
+ *
+ * `GetWaitingLeavingRequests` returns every WaitingForApproval and Approved
+ * schedule in the hub — 47 of them on RS staging when this was measured — so the
+ * scheduleId match is not a convenience, it is what stops another courier's tour
+ * from answering this run's question.
+ */
+function leavingRequestFor(payload: unknown, scheduleId: string): Record<string, unknown> | undefined {
+  if (scheduleId === '') return undefined
   return asArray(payload).find(
     (row) =>
       row !== null &&
       typeof row === 'object' &&
-      str((row as Record<string, unknown>)['UniqueIdentifier']) === uniqueIdentifier,
+      str((row as Record<string, unknown>)['scheduleId']) === scheduleId,
   ) as Record<string, unknown> | undefined
+}
+
+function scheduleStatusOf(row: Record<string, unknown> | undefined): number | null {
+  if (row === undefined) return null
+  const raw = row['scheduleStatus']
+  return typeof raw === 'number' ? raw : null
 }
 
 /**
@@ -77,49 +99,71 @@ function approvalMatching(payload: unknown, uniqueIdentifier: string): Record<st
  * this map fails closed rather than falling back to a guessed path.
  */
 export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoint>> = {
-  // ── Tour approval: mobile approval queue, not schedule end-of-day ──
+  // ── Tour approval: the leaving-permission flow, keyed by scheduleId ────────
+  //
+  // These three pointed at `MobileApprovalRequests` until 2026-08-12, when the
+  // flow was run by hand on RS staging. That queue is a different mechanism
+  // altogether — written by `SendMobileApprovalRequests`, its `UniqueIdentifier`
+  // supplied by the client, a general "a supervisor must approve this mobile
+  // request" facility. The courier's Request Tour Start button never touches it.
+  // `Task/RequestLeavingPermission` does exactly one thing (TaskOperation.cs:2198):
+  //
+  //     scheduleDocument.ScheduleStatus = ScheduleStatusType.WaitingForApproval
+  //
+  // The old mappings were `SOURCE_VERIFIED` and the label was honest — those
+  // endpoints really do behave as described. They were verified against the wrong
+  // flow. Reading the source proves what an endpoint does, not that it is the
+  // endpoint the operation means.
+  //
+  // The correlation key is `scheduleId` throughout. There is no approval request
+  // code to correlate on: the request response is the bare string "Leaving
+  // permission request saved" and no identifier is minted anywhere.
   'nesy.backoffice.approve-tour-request': {
-    path: 'Task/ValidateMobileApprovalRequests',
+    path: 'Task/ApproveLeavingPermission',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'TaskService.ValidateMobileApprovalRequests takes ValidateMobileApprovalRequestModel.UniqueIdentifier and Status. This approves the mobile approval request queue entry; schedule end-of-day is a separate flow.',
+      'TaskService.ApproveLeavingPermission takes ApproveLeavingPermissionModel{ScheduleIds, EventLocation, CourierUserNames} and moves the schedule WaitingForApproval -> Approved. Measured against RS staging 2026-08-12: 200, and the schedule advanced.',
+    // EventLocation must be an object even though the service overwrites its
+    // coordinates from the request point — it dereferences the field first.
     body: (inputs) => ({
-      UniqueIdentifier: str(inputs['approvalRequest']),
-      Status: MOBILE_APPROVAL_STATUS.approved,
+      ScheduleIds: [str(inputs['approvalRequest'])],
+      EventLocation: { Lat: 0, Lon: 0 },
+      CourierUserNames: [],
     }),
   },
 
   'nesy.backoffice.read-tour-approval-request': {
-    path: 'Task/GetMobileApprovalRequests',
+    path: 'Task/GetWaitingLeavingRequests',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'Reads the mobile approval queue for the hub. Matching UniqueIdentifier proves the courier request created an approval record.',
-    body: () => ({ Status: MOBILE_APPROVAL_STATUS.all }),
+      'Returns every schedule in the hub sitting at WaitingForApproval or Approved. The presence of this run\'s scheduleId proves the courier request was recorded; absence proves it was not.',
+    body: () => ({}),
     normalize: (payload, inputs) => {
-      const approval = approvalMatching(payload, str(inputs['approvalRequest']))
+      const row = leavingRequestFor(payload, str(inputs['approvalRequest']))
       return {
         request: {
-          exists: approval !== undefined,
-          status: approval === undefined ? null : approval['Status'],
-          approvalRequestCode: approval === undefined ? null : approval['UniqueIdentifier'],
+          exists: row !== undefined,
+          status: scheduleStatusOf(row),
+          scheduleId: row === undefined ? null : row['scheduleId'],
         },
       }
     },
   },
 
   'nesy.backoffice.read-tour-approval-status': {
-    path: 'Task/GetMobileApprovalRequests',
+    path: 'Task/GetWaitingLeavingRequests',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'Reads approved mobile approval queue entries and matches UniqueIdentifier. This is distinct from schedule EndOfDayApproved.',
-    body: () => ({ Status: MOBILE_APPROVAL_STATUS.approved }),
+      'Same read, different question: not "is there a request" but "did THIS schedule reach Approved". Both are needed — a schedule can be present and still be WaitingForApproval, which is precisely the failure a single existence check would report as success.',
+    body: () => ({}),
     normalize: (payload, inputs) => {
-      const approval = approvalMatching(payload, str(inputs['approvalRequest']))
+      const row = leavingRequestFor(payload, str(inputs['approvalRequest']))
+      const status = scheduleStatusOf(row)
       return {
         approval: {
-          statusIsApproved: approval !== undefined,
-          status: approval === undefined ? null : approval['Status'],
-          approvalRequestCode: approval === undefined ? null : approval['UniqueIdentifier'],
+          statusIsApproved: status === SCHEDULE_STATUS.approved,
+          status,
+          scheduleId: row === undefined ? null : row['scheduleId'],
         },
       }
     },

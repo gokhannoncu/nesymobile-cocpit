@@ -137,7 +137,7 @@ export function createNesyBackofficeAdapter(
         // Some topics answer with an envelope nested inside the envelope, so the
         // payload a normalizer would read is one level further down. Measured
         // against RS staging: `User/GetMyInfo` nests, while `GetBranchSchedules`,
-        // `CheckHasCourierTodaySchedule` and `GetMobileApprovalRequests` do not —
+        // `CheckHasCourierTodaySchedule` and `GetWaitingLeavingRequests` do not —
         // so this unwraps ON DETECTION rather than always, and a topic that stops
         // nesting keeps working without a change here.
         const nested = isEnvelope(outerPayload)

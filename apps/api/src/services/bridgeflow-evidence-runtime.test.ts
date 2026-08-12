@@ -34,7 +34,9 @@ const fact = (
 
 describe('BridgeFlowEvidenceRuntime', () => {
   it('filters wrong iteration and stale facts before evaluation', () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    // Staleness is judged when the fact is ACCEPTED, so the clock has to sit on
+    // the same synthetic timeline as `observedAtMs` for this to mean anything.
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 100 })
     runtime.publish({
       runId: 'run-1',
       fact: fact(),
@@ -71,6 +73,40 @@ describe('BridgeFlowEvidenceRuntime', () => {
         200,
       ),
     ).toEqual([fact()])
+  })
+
+  it('keeps an accepted fact readable after its freshness window elapses', () => {
+    // The device measurement behind this: a request event satisfied its continue
+    // gate, an optional 120s push wait ran, and by the time the final oracle
+    // asked, the event had aged out of its own occurrence. Every REQUIRED fact
+    // reported REQUIRED_TIMEOUT while every producing step had SUCCEEDED.
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 100 })
+    const scope = { runId: 'run-1', occurrenceId: 'occ-1', iterationKey: 'iteration-1' }
+    runtime.publish({
+      runId: 'run-1',
+      fact: fact({ observedAtMs: 100, freshnessMaxAgeMs: 1_000 }),
+      revision: 1,
+      lane: 'ORDERED_REQUIRED',
+      ...accepted,
+    })
+
+    // Read well beyond the window. Nothing about the observation changed.
+    expect(runtime.currentFacts(scope, 500_000)).toHaveLength(1)
+  })
+
+  it('still refuses an observation that was already stale when offered', () => {
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 10_000 })
+    const scope = { runId: 'run-1', occurrenceId: 'occ-1', iterationKey: 'iteration-1' }
+    runtime.publish({
+      runId: 'run-1',
+      // Observed 10 seconds ago under a 1 second window: too old to enter.
+      fact: fact({ observedAtMs: 0, freshnessMaxAgeMs: 1_000 }),
+      revision: 1,
+      lane: 'ORDERED_REQUIRED',
+      ...accepted,
+    })
+
+    expect(runtime.currentFacts(scope, 10_000)).toEqual([])
   })
 
   it('tags receipt-safe wakeups separately from ordered authority', async () => {

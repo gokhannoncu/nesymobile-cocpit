@@ -97,7 +97,7 @@ function publication(
 
 describe('Task 2 final reviewer regressions', () => {
   it('keeps confirmatory evidence diagnostic and refuses Final Oracle PASS without PRIMARY', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     runtime.publish(publication(1, fact('delivery.persisted', 5, 'CONFIRMATORY')))
     const { persistence, revisions } = oraclePersistence()
 
@@ -146,13 +146,13 @@ describe('Task 2 final reviewer regressions', () => {
       'ORDERED_REQUIRED',
       'RECEIPT_SAFE',
     ])
-    const restarted = new BridgeFlowEvidenceRuntime()
+    const restarted = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     restarted.hydrate(await persistence.loadEvidenceScope(scope))
     expect(restarted.currentFacts(scope, 10, 'ORDERED_REQUIRED')).toHaveLength(1)
   })
 
   it('honors each eventual requirement deadline while retaining earlier valid facts', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     runtime.publish(publication(1, fact('early.fact', 11)))
     runtime.publish(publication(2, fact('late.fact', 50)))
     const { persistence } = oraclePersistence()
@@ -191,7 +191,7 @@ describe('Task 2 final reviewer regressions', () => {
 
   it('persists ordered rejection so restart hydration remains blocked', async () => {
     const persistence = new InMemoryEvidenceJourneyPersistence()
-    const firstRuntime = new BridgeFlowEvidenceRuntime()
+    const firstRuntime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const firstIngest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(persistence),
@@ -221,7 +221,7 @@ describe('Task 2 final reviewer regressions', () => {
       }),
     ])
 
-    const restartedRuntime = new BridgeFlowEvidenceRuntime()
+    const restartedRuntime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const restartedIngest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(persistence),
@@ -253,7 +253,7 @@ describe('Task 2 final reviewer regressions', () => {
   })
 
   it('evaluates a no-eventual policy exactly once without an Infinity timer', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     runtime.waitForRevision = async () => {
       throw new Error('no-eventual policy must not subscribe')
     }
@@ -281,7 +281,7 @@ describe('Task 2 final reviewer regressions', () => {
   })
 
   it('retains valid pre-deadline facts and refs in the timeout revision', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     runtime.publish(publication(1, fact('persisted.fact', 5)))
     const { persistence, revisions } = oraclePersistence()
     const result = await new OracleEvaluationWorker({
@@ -318,7 +318,7 @@ describe('Task 2 final reviewer regressions', () => {
   })
 
   it('fails the worker when immutable Oracle persistence rejects a collision', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     runtime.publish(publication(1, fact('delivery.persisted', 5)))
     const persistence: OracleRevisionPersistencePort = {
       async loadOracleCheckpoint() {
@@ -347,7 +347,7 @@ describe('Task 2 final reviewer regressions', () => {
 
   it('hydrates a durable run-level poison before evaluating existing positive facts', async () => {
     const persistence = new InMemoryEvidenceJourneyPersistence()
-    const firstRuntime = new BridgeFlowEvidenceRuntime()
+    const firstRuntime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const firstIngest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(persistence),
@@ -371,7 +371,7 @@ describe('Task 2 final reviewer regressions', () => {
       }),
     ])
 
-    const restartedRuntime = new BridgeFlowEvidenceRuntime()
+    const restartedRuntime = new BridgeFlowEvidenceRuntime({ now: () => 0 })
     const restartedIngest = new DurableBridgeFlowEvidenceIngest({
       resolver,
       writer: new EvidenceJourneyWriter(persistence),

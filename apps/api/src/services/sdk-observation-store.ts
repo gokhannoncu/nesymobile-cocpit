@@ -1,5 +1,6 @@
 /**
- * Per-run store of facts observed by `SDK_QUERY` steps.
+ * Per-run store of facts this run observed — `SDK_QUERY` steps, back-office
+ * reads, and device events.
  *
  * ## Why a store and not a direct publish
  *
@@ -20,10 +21,26 @@
  *
  * ## Freshness
  *
- * `observedAtMs` is the time of the QUERY, not of the question. A session read
- * two minutes ago must not be re-published as if it were current; the publisher's
- * freshness window is what expires it, and re-publishing with a fresh timestamp
- * would make a stale observation immortal.
+ * `observedAtMs` is the time of the QUERY, not of the question — republishing
+ * with a fresh timestamp would make a stale observation immortal, so that is
+ * never done.
+ *
+ * What CHANGED (2026-08-12): carrying an observation to a later occurrence no
+ * longer counts as a new admission. The freshness window used to expire these on
+ * republication, which sounds right and was measured to be wrong: a run whose
+ * steps span more than the window loses evidence it legitimately holds. Tour
+ * approval spent 120s in an optional push wait and arrived at its Final Oracle
+ * with all five REQUIRED facts reported missing, every producing step having
+ * succeeded.
+ *
+ * The tension is real and worth stating rather than hiding. Freshness protects
+ * against answering today's question with yesterday's observation; occurrence
+ * scoping protects against answering one iteration's question with another's.
+ * Only the second of those is about a fact moving WITHIN a run, so only the
+ * second still applies here. A fact that must be re-read to stay true needs a
+ * re-read step in the macro — the workflow rule of putting observations
+ * immediately before the assert that consumes them — not an invisible expiry
+ * that removes evidence without saying so.
  */
 
 export interface SdkObservation {

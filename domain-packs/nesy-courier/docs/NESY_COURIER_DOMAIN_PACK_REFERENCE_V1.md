@@ -60,11 +60,11 @@ artifact tek bir yolculuk olarak okunabilir.
 | Screen | 7 | `nesy.auth.login`, `nesy.route.stop-list`, `nesy.stop.task-list`, `nesy.delivery.flow`, `nesy.pickup.flow`, `nesy.vehicle-loading`, `nesy.end-of-day` |
 | Surface | 8 | `nesy.route.selection-dialog`, `nesy.mandatory-update-dialog`, `nesy.session-expired-dialog`, `nesy.permission-dialog`, `nesy.network-dialog`, `nesy.scanner.surface`, `nesy.payment.surface`, `nesy.fiscal.surface` |
 | Entity | 7 | `ROUTE`, `STOP`, `TASK`, `SHIPMENT`, `PARCEL`, `PENDING_OPERATION`, `TOUR_APPROVAL_REQUEST` |
-| Target | 10 | login alanları, `nesy.target.route-row`, `nesy.target.stop-row`, `nesy.target.task-row`, scan trigger, delivery complete, tour approval request |
-| Evidence source | 35 | UI 16, APP 10, LOCAL 4, REMOTE 5 (biri `transportSuccessOnly`) |
-| Derived fact | 4 | `APP.LOGIN_SUCCEEDED`, `APP.ACTIVE_STOP_MATCHES`, `REMOTE.DELIVERY_CONFIRMED`, `REMOTE.TOUR_APPROVAL_CONFIRMED` |
-| Semantic action | 8 | 6 slice + 2 interrupt handler |
-| Macro | 8 | 6 slice macro + `grant-permission`, `recover-network` |
+| Target | 18 | login alanları, `nesy.target.route-row`, `nesy.target.stop-row`, `nesy.target.task-row`, scan trigger, delivery complete, tur başlatma düğmesi + rota seçim diyaloğu |
+| Evidence source | 42 | UI 16, APP 10, LOCAL 4, REMOTE 5 (biri `transportSuccessOnly`) |
+| Derived fact | 6 | `APP.LOGIN_SUCCEEDED`, `APP.ACTIVE_STOP_MATCHES`, `REMOTE.DELIVERY_CONFIRMED`, `REMOTE.TOUR_APPROVAL_CONFIRMED` |
+| Semantic action | 9 | 6 slice + 2 interrupt handler |
+| Macro | 9 | 6 slice macro + `grant-permission`, `recover-network` |
 | Launch profile | 4 | `cold-real-login`, `prepared-session`, `direct-state`, `reuse-session` |
 | Test profile | 16 | Phase 7 catalog (`nesy.smoke.core` … `nesy.preview.smart-explorer`) + legacy `preview-smoke` |
 | Campaign | 4 | `nesy.campaign.pr`, `nightly`, `weekly`, `release` |

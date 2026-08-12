@@ -22,7 +22,7 @@
         "type": "entityRef",
         "required": true,
         "entityTypeRef": "TOUR_APPROVAL_REQUEST",
-        "description": "Correlation anchor for both back-office fact reads."
+        "description": "Correlation anchor for both back-office fact reads. Resolves to the schedule id — the request carries no identifier of its own."
       }
     ]
   },
@@ -53,7 +53,7 @@
   "preconditions": [
     {
       "kind": "SCREEN_READY",
-      "ref": "nesy.end-of-day",
+      "ref": "nesy.route.stop-list",
       "deadlineMs": 25000,
       "onUnmet": "FAIL"
     },
@@ -71,7 +71,7 @@
     }
   ],
   "screenRefs": [
-    "nesy.end-of-day"
+    "nesy.route.stop-list"
   ],
   "surfaceRefs": [
     "nesy.network-dialog",
@@ -84,11 +84,13 @@
     },
     {
       "entityTypeRef": "TOUR_APPROVAL_REQUEST",
-      "role": "Correlation anchor across the device event and both back-office reads; this is what stops yesterday's approval from satisfying today's oracle."
+      "role": "Correlation anchor across the device event and both back-office reads, resolved to the schedule id; this is what stops another courier's approval from satisfying this run's oracle."
     }
   ],
   "targetResolutionRefs": [
-    "nesy.target.tour-approval-request-button"
+    "nesy.target.tour-approval-request-button",
+    "nesy.target.tour-routing-auto",
+    "nesy.target.tour-routing-manual"
   ],
   "semanticMacroRef": "nesy.macro.tour-approval-lifecycle",
   "macroExpansion": {
@@ -110,7 +112,7 @@
           "required": true
         },
         {
-          "name": "approvalRequestCode",
+          "name": "scheduleId",
           "type": "string",
           "required": true
         }
@@ -119,28 +121,16 @@
         {
           "name": "requestHandle",
           "type": "string"
+        },
+        {
+          "name": "routingHandle",
+          "type": "string"
         }
       ],
       "steps": [
         {
-          "planStepId": "wait-day-close",
-          "sourceMapRef": "sm-appr-1",
-          "next": "resolve-request-button",
-          "timeoutMs": 25000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [],
-          "kind": "WAIT_EVENT",
-          "factKey": "UI.END_OF_DAY_READY",
-          "sourceLane": "UI",
-          "requireCorrelation": false,
-          "onTimeout": "FAIL"
-        },
-        {
           "planStepId": "resolve-request-button",
-          "sourceMapRef": "sm-appr-2",
+          "sourceMapRef": "sm-appr-1",
           "next": "tap-request",
           "timeoutMs": 20000,
           "retryPolicy": {
@@ -159,8 +149,8 @@
         },
         {
           "planStepId": "tap-request",
-          "sourceMapRef": "sm-appr-3",
-          "next": "verify-request-record",
+          "sourceMapRef": "sm-appr-2",
+          "next": "resolve-routing-choice",
           "timeoutMs": 30000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -177,7 +167,49 @@
           "targetVariable": "requestHandle",
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
+          }
+        },
+        {
+          "planStepId": "resolve-routing-choice",
+          "sourceMapRef": "sm-appr-3",
+          "next": "tap-routing-choice",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.tour-routing-auto",
+          "outputVariable": "routingHandle"
+        },
+        {
+          "planStepId": "tap-routing-choice",
+          "sourceMapRef": "sm-appr-4",
+          "next": "verify-request-record",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "routingHandle",
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.scheduleId"
           },
           "continueGate": {
             "allOf": [
@@ -189,7 +221,7 @@
         },
         {
           "planStepId": "verify-request-record",
-          "sourceMapRef": "sm-appr-4",
+          "sourceMapRef": "sm-appr-5",
           "next": "dispatcher-approves",
           "timeoutMs": 30000,
           "retryPolicy": {
@@ -230,7 +262,7 @@
             },
             "entityBinding": {
               "type": "TOUR_APPROVAL_REQUEST",
-              "id": "run.input.approvalRequestCode"
+              "id": "run.input.scheduleId"
             },
             "reconciliationPolicy": "NONE",
             "auditPolicy": {
@@ -248,7 +280,7 @@
         },
         {
           "planStepId": "dispatcher-approves",
-          "sourceMapRef": "sm-appr-5",
+          "sourceMapRef": "sm-appr-6",
           "next": "verify-approved-status",
           "timeoutMs": 40000,
           "retryPolicy": {
@@ -268,7 +300,7 @@
             "role": "SETUP",
             "effectClass": "IDEMPOTENT_MUTATION",
             "idempotencyClass": "KEYED",
-            "idempotencyKey": "run.input.approvalRequestCode",
+            "idempotencyKey": "run.input.scheduleId",
             "inputBindings": [
               {
                 "name": "approvalRequest",
@@ -285,7 +317,7 @@
             },
             "entityBinding": {
               "type": "TOUR_APPROVAL_REQUEST",
-              "id": "run.input.approvalRequestCode"
+              "id": "run.input.scheduleId"
             },
             "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
             "auditPolicy": {
@@ -303,7 +335,7 @@
         },
         {
           "planStepId": "verify-approved-status",
-          "sourceMapRef": "sm-appr-6",
+          "sourceMapRef": "sm-appr-7",
           "next": "await-push",
           "timeoutMs": 40000,
           "retryPolicy": {
@@ -344,7 +376,7 @@
             },
             "entityBinding": {
               "type": "TOUR_APPROVAL_REQUEST",
-              "id": "run.input.approvalRequestCode"
+              "id": "run.input.scheduleId"
             },
             "reconciliationPolicy": "NONE",
             "auditPolicy": {
@@ -362,7 +394,7 @@
         },
         {
           "planStepId": "await-push",
-          "sourceMapRef": "sm-appr-7",
+          "sourceMapRef": "sm-appr-8",
           "next": "assert-approved",
           "timeoutMs": 120000,
           "retryPolicy": {
@@ -377,12 +409,12 @@
           "onTimeout": "CONTINUE",
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
           }
         },
         {
           "planStepId": "assert-approved",
-          "sourceMapRef": "sm-appr-8",
+          "sourceMapRef": "sm-appr-9",
           "next": null,
           "timeoutMs": 60000,
           "retryPolicy": {
@@ -396,7 +428,7 @@
           "unknownPolicy": "INCONCLUSIVE",
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
           },
           "finalOraclePolicy": {
             "requirements": [
@@ -439,7 +471,7 @@
         },
         {
           "planStepId": "release-approval-fixture",
-          "sourceMapRef": "sm-appr-9",
+          "sourceMapRef": "sm-appr-10",
           "next": null,
           "timeoutMs": 40000,
           "retryPolicy": {
@@ -454,7 +486,7 @@
           "runOnFailure": true
         }
       ],
-      "entryStepId": "wait-day-close",
+      "entryStepId": "resolve-request-button",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -494,51 +526,57 @@
       "sourceMap": [
         {
           "ref": "sm-appr-1",
-          "planStepId": "wait-day-close",
-          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
-        },
-        {
-          "ref": "sm-appr-2",
           "planStepId": "resolve-request-button",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
         },
         {
-          "ref": "sm-appr-3",
+          "ref": "sm-appr-2",
           "planStepId": "tap-request",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
-          "note": "actor 1: the courier, real UI"
+          "note": "actor 1: the courier, real UI — opens the routing chooser, calls nothing"
+        },
+        {
+          "ref": "sm-appr-3",
+          "planStepId": "resolve-routing-choice",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
         },
         {
           "ref": "sm-appr-4",
+          "planStepId": "tap-routing-choice",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "the tap that actually requests the tour"
+        },
+        {
+          "ref": "sm-appr-5",
           "planStepId": "verify-request-record",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
           "note": "back-office fact check 1"
         },
         {
-          "ref": "sm-appr-5",
+          "ref": "sm-appr-6",
           "planStepId": "dispatcher-approves",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
           "note": "actor 2: dispatcher, typed and audited; produces no evidence"
         },
         {
-          "ref": "sm-appr-6",
+          "ref": "sm-appr-7",
           "planStepId": "verify-approved-status",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
           "note": "back-office fact check 2"
         },
         {
-          "ref": "sm-appr-7",
+          "ref": "sm-appr-8",
           "planStepId": "await-push",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
           "note": "confirmatory only"
         },
         {
-          "ref": "sm-appr-8",
+          "ref": "sm-appr-9",
           "planStepId": "assert-approved",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
         },
         {
-          "ref": "sm-appr-9",
+          "ref": "sm-appr-10",
           "planStepId": "release-approval-fixture",
           "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
         }
@@ -547,51 +585,57 @@
     "irSourceMap": [
       {
         "ref": "sm-appr-1",
-        "planStepId": "wait-day-close",
-        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
-      },
-      {
-        "ref": "sm-appr-2",
         "planStepId": "resolve-request-button",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
-        "ref": "sm-appr-3",
+        "ref": "sm-appr-2",
         "planStepId": "tap-request",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
-        "note": "actor 1: the courier, real UI"
+        "note": "actor 1: the courier, real UI — opens the routing chooser, calls nothing"
+      },
+      {
+        "ref": "sm-appr-3",
+        "planStepId": "resolve-routing-choice",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
         "ref": "sm-appr-4",
+        "planStepId": "tap-routing-choice",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "the tap that actually requests the tour"
+      },
+      {
+        "ref": "sm-appr-5",
         "planStepId": "verify-request-record",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "back-office fact check 1"
       },
       {
-        "ref": "sm-appr-5",
+        "ref": "sm-appr-6",
         "planStepId": "dispatcher-approves",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "actor 2: dispatcher, typed and audited; produces no evidence"
       },
       {
-        "ref": "sm-appr-6",
+        "ref": "sm-appr-7",
         "planStepId": "verify-approved-status",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "back-office fact check 2"
       },
       {
-        "ref": "sm-appr-7",
+        "ref": "sm-appr-8",
         "planStepId": "await-push",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "confirmatory only"
       },
       {
-        "ref": "sm-appr-8",
+        "ref": "sm-appr-9",
         "planStepId": "assert-approved",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
-        "ref": "sm-appr-9",
+        "ref": "sm-appr-10",
         "planStepId": "release-approval-fixture",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       }
@@ -601,9 +645,10 @@
         "ref": "ds-appr-1",
         "macroRef": "nesy.macro.tour-approval-lifecycle",
         "planStepIds": [
-          "wait-day-close",
           "resolve-request-button",
           "tap-request",
+          "resolve-routing-choice",
+          "tap-routing-choice",
           "verify-request-record",
           "dispatcher-approves",
           "verify-approved-status",
@@ -632,7 +677,7 @@
         "required": true
       },
       {
-        "name": "approvalRequestCode",
+        "name": "scheduleId",
         "type": "string",
         "required": true
       }
@@ -641,28 +686,16 @@
       {
         "name": "requestHandle",
         "type": "string"
+      },
+      {
+        "name": "routingHandle",
+        "type": "string"
       }
     ],
     "steps": [
       {
-        "planStepId": "wait-day-close",
-        "sourceMapRef": "sm-appr-1",
-        "next": "resolve-request-button",
-        "timeoutMs": 25000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [],
-        "kind": "WAIT_EVENT",
-        "factKey": "UI.END_OF_DAY_READY",
-        "sourceLane": "UI",
-        "requireCorrelation": false,
-        "onTimeout": "FAIL"
-      },
-      {
         "planStepId": "resolve-request-button",
-        "sourceMapRef": "sm-appr-2",
+        "sourceMapRef": "sm-appr-1",
         "next": "tap-request",
         "timeoutMs": 20000,
         "retryPolicy": {
@@ -681,8 +714,8 @@
       },
       {
         "planStepId": "tap-request",
-        "sourceMapRef": "sm-appr-3",
-        "next": "verify-request-record",
+        "sourceMapRef": "sm-appr-2",
+        "next": "resolve-routing-choice",
         "timeoutMs": 30000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -699,7 +732,49 @@
         "targetVariable": "requestHandle",
         "entityBinding": {
           "type": "TOUR_APPROVAL_REQUEST",
-          "id": "run.input.approvalRequestCode"
+          "id": "run.input.scheduleId"
+        }
+      },
+      {
+        "planStepId": "resolve-routing-choice",
+        "sourceMapRef": "sm-appr-3",
+        "next": "tap-routing-choice",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.tour-routing-auto",
+        "outputVariable": "routingHandle"
+      },
+      {
+        "planStepId": "tap-routing-choice",
+        "sourceMapRef": "sm-appr-4",
+        "next": "verify-request-record",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "routingHandle",
+        "entityBinding": {
+          "type": "TOUR_APPROVAL_REQUEST",
+          "id": "run.input.scheduleId"
         },
         "continueGate": {
           "allOf": [
@@ -711,7 +786,7 @@
       },
       {
         "planStepId": "verify-request-record",
-        "sourceMapRef": "sm-appr-4",
+        "sourceMapRef": "sm-appr-5",
         "next": "dispatcher-approves",
         "timeoutMs": 30000,
         "retryPolicy": {
@@ -752,7 +827,7 @@
           },
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
           },
           "reconciliationPolicy": "NONE",
           "auditPolicy": {
@@ -770,7 +845,7 @@
       },
       {
         "planStepId": "dispatcher-approves",
-        "sourceMapRef": "sm-appr-5",
+        "sourceMapRef": "sm-appr-6",
         "next": "verify-approved-status",
         "timeoutMs": 40000,
         "retryPolicy": {
@@ -790,7 +865,7 @@
           "role": "SETUP",
           "effectClass": "IDEMPOTENT_MUTATION",
           "idempotencyClass": "KEYED",
-          "idempotencyKey": "run.input.approvalRequestCode",
+          "idempotencyKey": "run.input.scheduleId",
           "inputBindings": [
             {
               "name": "approvalRequest",
@@ -807,7 +882,7 @@
           },
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
           },
           "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
           "auditPolicy": {
@@ -825,7 +900,7 @@
       },
       {
         "planStepId": "verify-approved-status",
-        "sourceMapRef": "sm-appr-6",
+        "sourceMapRef": "sm-appr-7",
         "next": "await-push",
         "timeoutMs": 40000,
         "retryPolicy": {
@@ -866,7 +941,7 @@
           },
           "entityBinding": {
             "type": "TOUR_APPROVAL_REQUEST",
-            "id": "run.input.approvalRequestCode"
+            "id": "run.input.scheduleId"
           },
           "reconciliationPolicy": "NONE",
           "auditPolicy": {
@@ -884,7 +959,7 @@
       },
       {
         "planStepId": "await-push",
-        "sourceMapRef": "sm-appr-7",
+        "sourceMapRef": "sm-appr-8",
         "next": "assert-approved",
         "timeoutMs": 120000,
         "retryPolicy": {
@@ -899,12 +974,12 @@
         "onTimeout": "CONTINUE",
         "entityBinding": {
           "type": "TOUR_APPROVAL_REQUEST",
-          "id": "run.input.approvalRequestCode"
+          "id": "run.input.scheduleId"
         }
       },
       {
         "planStepId": "assert-approved",
-        "sourceMapRef": "sm-appr-8",
+        "sourceMapRef": "sm-appr-9",
         "next": null,
         "timeoutMs": 60000,
         "retryPolicy": {
@@ -918,7 +993,7 @@
         "unknownPolicy": "INCONCLUSIVE",
         "entityBinding": {
           "type": "TOUR_APPROVAL_REQUEST",
-          "id": "run.input.approvalRequestCode"
+          "id": "run.input.scheduleId"
         },
         "finalOraclePolicy": {
           "requirements": [
@@ -961,7 +1036,7 @@
       },
       {
         "planStepId": "release-approval-fixture",
-        "sourceMapRef": "sm-appr-9",
+        "sourceMapRef": "sm-appr-10",
         "next": null,
         "timeoutMs": 40000,
         "retryPolicy": {
@@ -976,7 +1051,7 @@
         "runOnFailure": true
       }
     ],
-    "entryStepId": "wait-day-close",
+    "entryStepId": "resolve-request-button",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -1016,51 +1091,57 @@
     "sourceMap": [
       {
         "ref": "sm-appr-1",
-        "planStepId": "wait-day-close",
-        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
-      },
-      {
-        "ref": "sm-appr-2",
         "planStepId": "resolve-request-button",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
-        "ref": "sm-appr-3",
+        "ref": "sm-appr-2",
         "planStepId": "tap-request",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
-        "note": "actor 1: the courier, real UI"
+        "note": "actor 1: the courier, real UI — opens the routing chooser, calls nothing"
+      },
+      {
+        "ref": "sm-appr-3",
+        "planStepId": "resolve-routing-choice",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
         "ref": "sm-appr-4",
+        "planStepId": "tap-routing-choice",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "the tap that actually requests the tour"
+      },
+      {
+        "ref": "sm-appr-5",
         "planStepId": "verify-request-record",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "back-office fact check 1"
       },
       {
-        "ref": "sm-appr-5",
+        "ref": "sm-appr-6",
         "planStepId": "dispatcher-approves",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "actor 2: dispatcher, typed and audited; produces no evidence"
       },
       {
-        "ref": "sm-appr-6",
+        "ref": "sm-appr-7",
         "planStepId": "verify-approved-status",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "back-office fact check 2"
       },
       {
-        "ref": "sm-appr-7",
+        "ref": "sm-appr-8",
         "planStepId": "await-push",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
         "note": "confirmatory only"
       },
       {
-        "ref": "sm-appr-8",
+        "ref": "sm-appr-9",
         "planStepId": "assert-approved",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       },
       {
-        "ref": "sm-appr-9",
+        "ref": "sm-appr-10",
         "planStepId": "release-approval-fixture",
         "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
       }
@@ -1075,14 +1156,14 @@
     ],
     "legs": [
       {
-        "planStepId": "wait-day-close",
-        "bridgeVerb": "watch",
-        "awaitFactKey": "UI.END_OF_DAY_READY"
-      },
-      {
         "planStepId": "tap-request",
         "bridgeVerb": "tap",
-        "targetRef": "nesy.target.tour-approval-request-button",
+        "targetRef": "nesy.target.tour-approval-request-button"
+      },
+      {
+        "planStepId": "tap-routing-choice",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.tour-routing-auto",
         "awaitFactKey": "APP.TOUR_APPROVAL_REQUESTED"
       },
       {

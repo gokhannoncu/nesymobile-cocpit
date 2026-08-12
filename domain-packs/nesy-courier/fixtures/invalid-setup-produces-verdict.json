@@ -5,8 +5,8 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 0,
-      "patch": 5
+      "minor": 11,
+      "patch": 0
     },
     "trustTier": "FIRST_PARTY",
     "publicationState": "DRAFT",
@@ -128,7 +128,10 @@
               "nesy.parcelState",
               "nesy.pendingOperation",
               "nesy.sessionState",
-              "nesy.routeState"
+              "nesy.db.session",
+              "nesy.db.schedule",
+              "nesy.routeState",
+              "nesy.offeredRoutes"
             ],
             "automationOnly": true,
             "releaseGuard": "automationRelease=false",
@@ -828,14 +831,14 @@
         "entityType": "TOUR_APPROVAL_REQUEST",
         "applicationRef": "nesy.courier.mobile",
         "displayName": "Tour approval request",
-        "businessKeyPath": "approvalRequestCode",
+        "businessKeyPath": "scheduleId",
         "identityPaths": [
-          "approvalRequestId",
+          "scheduleId",
           "routeCode"
         ],
         "correlation": {
           "correlationPaths": [
-            "approvalRequestCode",
+            "scheduleId",
             "correlationId",
             "routeCode"
           ],
@@ -932,6 +935,133 @@
         }
       },
       {
+        "targetKey": "nesy.target.route-spinner",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "surfaceRef": "nesy.route.selection-dialog",
+        "displayName": "Route spinner that opens the offered list",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "dialog_spinner"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 10000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.manual-barcode-entry",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Manual barcode entry button",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "manuel_input"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 10000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.barcode-input-field",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Typed barcode field",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "et_input_dialog_barcode_number"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 10000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.barcode-input-confirm",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Typed barcode OK button",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "btn_ok"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 10000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.time-slot-confirm",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Delivery time range confirm (RS)",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "btnSave"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "TREAT_AS_ABSENT",
+          "deadlineMs": 8000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.dialog-acknowledge",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Warning dialog acknowledge",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "btn_arasDg_positive_button"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "TREAT_AS_ABSENT",
+          "deadlineMs": 5000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
         "targetKey": "nesy.target.route-row",
         "applicationRef": "nesy.courier.mobile",
         "screenRef": "nesy.route.stop-list",
@@ -940,25 +1070,11 @@
         "resolution": {
           "chain": [
             {
-              "kind": "ACCESSIBILITY_ID",
-              "selector": {
-                "idPrefix": "route_row_"
-              },
-              "establishesIdentity": true
-            },
-            {
               "kind": "ENTITY_BINDING",
               "selector": {
-                "keyPath": "routeCode"
+                "keyPath": "routeLabel"
               },
               "establishesIdentity": true
-            },
-            {
-              "kind": "ROW_INDEX_HINT",
-              "selector": {
-                "containerId": "route_list"
-              },
-              "establishesIdentity": false
             }
           ],
           "ambiguityPolicy": "FAIL",
@@ -987,7 +1103,7 @@
             {
               "kind": "ACCESSIBILITY_ID",
               "selector": {
-                "id": "route_dialog_confirm"
+                "id": "yesButton"
               },
               "establishesIdentity": true
             }
@@ -1156,14 +1272,56 @@
       {
         "targetKey": "nesy.target.tour-approval-request-button",
         "applicationRef": "nesy.courier.mobile",
-        "screenRef": "nesy.end-of-day",
-        "displayName": "Request tour approval button",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Request tour start button (stop list)",
         "resolution": {
           "chain": [
             {
               "kind": "ACCESSIBILITY_ID",
               "selector": {
-                "id": "tour_approval_request_button"
+                "id": "btn_out"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 12000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.tour-routing-auto",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Auto routing choice on the tour start dialog",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "auto_route"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "FAIL",
+          "deadlineMs": 12000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
+        "targetKey": "nesy.target.tour-routing-manual",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "displayName": "Manual routing choice on the tour start dialog",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "manual_route"
               },
               "establishesIdentity": true
             }
@@ -1657,6 +1815,36 @@
         ]
       },
       {
+        "sourceKey": "nesy.app.login-rejected",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Backend refused the credentials",
+        "factKey": "APP.LOGIN_REJECTED",
+        "observationRef": "nesy.events.critical/login-rejected",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": false,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "occurrenceId"
+          ],
+          "crossPlane": false
+        },
+        "redaction": {
+          "redactPaths": [
+            "reason"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
         "sourceKey": "nesy.app.session-state",
         "plane": "APP",
         "kind": "SDK_STATE",
@@ -1762,6 +1950,37 @@
         "authority": "PRIMARY",
         "displayName": "Selected route projection",
         "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+        "observationRef": "nesy.routeState",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "assignedCourierName"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.state-projection"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.schedule-in-use",
+        "plane": "APP",
+        "kind": "SDK_STATE",
+        "authority": "PRIMARY",
+        "displayName": "Schedule the session is working with",
+        "factKey": "APP.SCHEDULE_IN_USE",
         "observationRef": "nesy.routeState",
         "freshness": {
           "maxAgeMs": 15000,
@@ -2106,6 +2325,164 @@
         ]
       },
       {
+        "sourceKey": "nesy.local.schedule-persisted",
+        "plane": "LOCAL",
+        "kind": "DATABASE_VERIFIER",
+        "authority": "PRIMARY",
+        "displayName": "Schedule persisted with its stops",
+        "factKey": "LOCAL.SCHEDULE_PERSISTED",
+        "observationRef": "nesy.db.schedule",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "schedule_courier_name"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "sourceKey": "nesy.local.parcel-in-schedule",
+        "plane": "LOCAL",
+        "kind": "NAMED_QUERY",
+        "authority": "PRIMARY",
+        "displayName": "Scanned parcel is in the working schedule",
+        "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+        "observationRef": "nesy.parcelState",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "waybill_number"
+          ],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "sourceKey": "nesy.local.schedule-body",
+        "plane": "LOCAL",
+        "kind": "DATABASE_VERIFIER",
+        "authority": "PRIMARY",
+        "displayName": "Stored schedule carries stops",
+        "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+        "observationRef": "nesy.db.schedule",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "schedule_courier_name"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "sourceKey": "nesy.local.schedule-route",
+        "plane": "LOCAL",
+        "kind": "DATABASE_VERIFIER",
+        "authority": "PRIMARY",
+        "displayName": "Route the stored schedule was created for",
+        "factKey": "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+        "observationRef": "nesy.db.schedule",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "schedule_courier_name"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
+        "sourceKey": "nesy.local.schedule-is-today",
+        "plane": "LOCAL",
+        "kind": "DATABASE_VERIFIER",
+        "authority": "PRIMARY",
+        "displayName": "Stored schedule is today's",
+        "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+        "observationRef": "nesy.db.schedule",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "schedule_courier_name"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
         "sourceKey": "nesy.remote.auth-accepted",
         "plane": "REMOTE",
         "kind": "REMOTE_VALIDATOR",
@@ -2300,8 +2677,48 @@
               "APP.AVAILABLE_STOPS_LOADED"
             ],
             "parameters": {
-              "comparePath": "stopCode",
-              "against": "macro.input.stopCode"
+              "comparePath": "stopId",
+              "against": "macro.input.requestedItemCode"
+            }
+          },
+          "preserveInputs": true,
+          "requiresCorrelation": true
+        },
+        {
+          "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+          "plane": "APP",
+          "authority": "PRIMARY",
+          "displayName": "The schedule the session uses is today's stored one",
+          "provenance": {
+            "reducerKind": "CORRELATED_ALL_OF",
+            "reducerVersion": 1,
+            "inputFactKeys": [
+              "APP.SCHEDULE_IN_USE",
+              "LOCAL.SCHEDULE_PERSISTED",
+              "LOCAL.SCHEDULE_IS_TODAY"
+            ],
+            "parameters": {
+              "correlationPath": "scheduleId"
+            }
+          },
+          "preserveInputs": true,
+          "requiresCorrelation": true
+        },
+        {
+          "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
+          "plane": "APP",
+          "authority": "PRIMARY",
+          "displayName": "The stored schedule belongs to the selected route",
+          "provenance": {
+            "reducerKind": "ENTITY_STATUS_EQUALS",
+            "reducerVersion": 1,
+            "inputFactKeys": [
+              "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+              "APP.SELECTED_ROUTE_OBSERVED"
+            ],
+            "parameters": {
+              "comparePath": "schedule_route_code",
+              "against": "macro.input.routeCode"
             }
           },
           "preserveInputs": true,
@@ -2399,6 +2816,36 @@
         ],
         "requiredCapabilityRefs": [
           "verdict.core.bridge.tap"
+        ]
+      },
+      {
+        "actionKey": "nesy.action.load-to-vehicle",
+        "applicationRef": "nesy.courier.mobile",
+        "displayName": "Load parcel to vehicle",
+        "businessMeaning": "A courier takes custody of a parcel at the branch and it enters the schedule stored on the device.",
+        "notResponsibleFor": [
+          "whether the parcel should have been loaded on this route — the backend refuses when it should not",
+          "the hand-terminal vehicle-loading screen, which is a different flow and endpoint",
+          "camera scanning"
+        ],
+        "screenRefs": [
+          "nesy.route.stop-list"
+        ],
+        "surfaceRefs": [],
+        "entityTypeRefs": [
+          "PARCEL"
+        ],
+        "targetRefs": [
+          "nesy.target.manual-barcode-entry",
+          "nesy.target.barcode-input-field",
+          "nesy.target.barcode-input-confirm",
+          "nesy.target.time-slot-confirm",
+          "nesy.target.dialog-acknowledge"
+        ],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "verdict.core.bridge.set-text",
+          "verdict.core.bridge.resolve-target"
         ]
       },
       {
@@ -2569,7 +3016,9 @@
           "password reset and account recovery",
           "biometric re-authentication",
           "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
-          "multi-device session eviction"
+          "multi-device session eviction",
+          "whether the BACKEND authenticated this courier — the only available back-office read resolves the dashboard admin token, so REMOTE.AUTH_ACCEPTED is observed but does not vote",
+          "whether the backend, app and local sessions are the SAME session — the correlated derivation has no host reducer, so the three planes are asserted individually"
         ],
         "input": {
           "fields": [
@@ -2631,13 +3080,15 @@
             "UI.LOGIN_SCREEN_READY",
             "UI.ROUTE_LIST_READY",
             "UI.SESSION_EXPIRED_DIALOG_PRESENT",
+            "APP.LOGIN_REJECTED",
             "REMOTE.AUTH_ACCEPTED",
             "APP.USER_SESSION_AVAILABLE",
             "LOCAL.USER_SESSION_AVAILABLE",
             "APP.LOGIN_SUCCEEDED"
           ],
           "queryRefs": [
-            "nesy.sessionState"
+            "nesy.sessionState",
+            "nesy.db.session"
           ],
           "adapterOperationRefs": [
             "nesy.backoffice.read-session"
@@ -2645,8 +3096,9 @@
         },
         "oracleTemplate": {
           "continueGate": {
-            "allOf": [
-              "UI.ROUTE_LIST_READY"
+            "anyOf": [
+              "UI.ROUTE_LIST_READY",
+              "APP.LOGIN_REJECTED"
             ],
             "noneOf": [
               "UI.SESSION_EXPIRED_DIALOG_PRESENT"
@@ -2657,13 +3109,7 @@
           "finalOracle": {
             "requirements": [
               {
-                "factKey": "APP.LOGIN_SUCCEEDED",
-                "obligation": "REQUIRED",
-                "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
-              },
-              {
-                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "factKey": "APP.USER_SESSION_AVAILABLE",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
                 "onTimeout": "FAIL"
@@ -2674,11 +3120,19 @@
                 "timing": "EVENTUAL",
                 "deadlineMs": 30000,
                 "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "obligation": "OPTIONAL",
+                "timing": "EVENTUAL",
+                "deadlineMs": 20000,
+                "onTimeout": "WARNING"
               }
             ]
           },
           "notResponsibleFor": [
-            "whether the route list content is correct — only that it became ready"
+            "whether the route list content is correct — only that it became ready",
+            "whether the backend authenticated this courier — see the macro header"
           ]
         },
         "interruptPolicy": {
@@ -2733,6 +3187,14 @@
               {
                 "name": "submitHandle",
                 "type": "string"
+              },
+              {
+                "name": "appSessionRows",
+                "type": "stringList"
+              },
+              {
+                "name": "localSessionRows",
+                "type": "stringList"
               }
             ],
             "steps": [
@@ -2819,7 +3281,7 @@
               {
                 "planStepId": "tap-submit",
                 "sourceMapRef": "sm-login-7",
-                "next": "verify-backend-session",
+                "next": "read-app-session",
                 "timeoutMs": 30000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -2835,8 +3297,9 @@
                 "action": "tap",
                 "targetVariable": "submitHandle",
                 "continueGate": {
-                  "allOf": [
-                    "UI.ROUTE_LIST_READY"
+                  "anyOf": [
+                    "UI.ROUTE_LIST_READY",
+                    "APP.LOGIN_REJECTED"
                   ],
                   "noneOf": [
                     "UI.SESSION_EXPIRED_DIALOG_PRESENT"
@@ -2844,6 +3307,64 @@
                   "deadlineMs": 30000,
                   "unknownPolicy": "RETRY"
                 }
+              },
+              {
+                "planStepId": "read-app-session",
+                "sourceMapRef": "sm-login-8a",
+                "next": "read-local-session",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.sessionState",
+                "maxRows": 1,
+                "outputVariable": "appSessionRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.USER_SESSION_AVAILABLE",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "is_logged_in"
+                    }
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-local-session",
+                "sourceMapRef": "sm-login-8b",
+                "next": "verify-backend-session",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.db.session",
+                "maxRows": 1,
+                "outputVariable": "localSessionRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.USER_SESSION_AVAILABLE",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "session_persisted"
+                    }
+                  }
+                ]
               },
               {
                 "planStepId": "verify-backend-session",
@@ -2887,6 +3408,7 @@
                     "maxAttempts": 2,
                     "backoffMs": 1000
                   },
+                  "onUnavailable": "RECORD_UNMEASURED",
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
                     "recordRequest": true,
@@ -2912,22 +3434,17 @@
                 },
                 "capabilityRequirements": [],
                 "kind": "ASSERT_FACT",
-                "factKey": "APP.LOGIN_SUCCEEDED",
+                "factKey": "APP.USER_SESSION_AVAILABLE",
                 "expected": true,
                 "unknownPolicy": "FAIL",
                 "finalOraclePolicy": {
                   "requirements": [
                     {
-                      "factKey": "APP.LOGIN_SUCCEEDED",
-                      "obligation": "REQUIRED",
-                      "timing": "IMMEDIATE",
-                      "onTimeout": "FAIL"
-                    },
-                    {
                       "factKey": "REMOTE.AUTH_ACCEPTED",
-                      "obligation": "REQUIRED",
-                      "timing": "IMMEDIATE",
-                      "onTimeout": "FAIL"
+                      "obligation": "OPTIONAL",
+                      "timing": "EVENTUAL",
+                      "deadlineMs": 20000,
+                      "onTimeout": "WARNING"
                     },
                     {
                       "factKey": "LOCAL.USER_SESSION_AVAILABLE",
@@ -3027,6 +3544,18 @@
                 "domainSourceRef": "nesy.macro.login"
               },
               {
+                "ref": "sm-login-8a",
+                "planStepId": "read-app-session",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "app plane observed, not inferred"
+              },
+              {
+                "ref": "sm-login-8b",
+                "planStepId": "read-local-session",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "local plane observed, not inferred"
+              },
+              {
                 "ref": "sm-login-8",
                 "planStepId": "verify-backend-session",
                 "domainSourceRef": "nesy.macro.login",
@@ -3072,6 +3601,18 @@
               "domainSourceRef": "nesy.macro.login"
             },
             {
+              "ref": "sm-login-8a",
+              "planStepId": "read-app-session",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "app plane observed, not inferred"
+            },
+            {
+              "ref": "sm-login-8b",
+              "planStepId": "read-local-session",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "local plane observed, not inferred"
+            },
+            {
               "ref": "sm-login-8",
               "planStepId": "verify-backend-session",
               "domainSourceRef": "nesy.macro.login",
@@ -3098,6 +3639,8 @@
                 "enter-pin",
                 "resolve-submit",
                 "tap-submit",
+                "read-app-session",
+                "read-local-session",
                 "verify-backend-session",
                 "assert-login",
                 "clear-session"
@@ -3213,8 +3756,7 @@
         "oracleTemplate": {
           "continueGate": {
             "allOf": [
-              "UI.ROUTE_LIST_READY",
-              "APP.AVAILABLE_STOPS_LOADED"
+              "UI.ROUTE_LIST_READY"
             ],
             "deadlineMs": 25000,
             "unknownPolicy": "RETRY"
@@ -3228,11 +3770,28 @@
                 "onTimeout": "FAIL"
               },
               {
-                "factKey": "REMOTE.ROUTE_ASSIGNED",
+                "factKey": "LOCAL.SCHEDULE_PERSISTED",
                 "obligation": "REQUIRED",
-                "timing": "EVENTUAL",
-                "deadlineMs": 60000,
-                "onTimeout": "INCONCLUSIVE"
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
               },
               {
                 "factKey": "REMOTE.ROUTES_AVAILABLE",
@@ -3243,7 +3802,8 @@
             ]
           },
           "notResponsibleFor": [
-            "the ordering or completeness of the stop list that loads afterwards"
+            "the ordering or completeness of the stop list, which is empty at selection time by design",
+            "the back-office assignment record, which has a different owner"
           ]
         },
         "interruptPolicy": {
@@ -3290,6 +3850,22 @@
                 "type": "stringList"
               },
               {
+                "name": "selectedRouteRows",
+                "type": "stringList"
+              },
+              {
+                "name": "loadedRows",
+                "type": "stringList"
+              },
+              {
+                "name": "localScheduleRows",
+                "type": "stringList"
+              },
+              {
+                "name": "spinnerHandle",
+                "type": "string"
+              },
+              {
                 "name": "rowHandle",
                 "type": "string"
               },
@@ -3332,8 +3908,11 @@
                   }
                 ],
                 "kind": "SDK_QUERY",
-                "queryRef": "nesy.routeState",
-                "maxRows": 50,
+                "queryRef": "nesy.offeredRoutes",
+                "params": {
+                  "matchKey": "run.input.routeCode"
+                },
+                "maxRows": 1000,
                 "outputVariable": "offeredRouteRows"
               },
               {
@@ -3358,10 +3937,10 @@
                   "right": {
                     "kind": "operand",
                     "source": "step.output",
-                    "path": "read-offered-routes.codes"
+                    "path": "read-offered-routes.match_key"
                   }
                 },
-                "onTrue": "resolve-row",
+                "onTrue": "resolve-spinner",
                 "onFalse": "report-not-offered",
                 "unknownPolicy": "FAIL"
               },
@@ -3377,6 +3956,66 @@
                 "capabilityRequirements": [],
                 "kind": "ANNOTATE",
                 "message": "The requested route is not in the offered projection; no row was tapped."
+              },
+              {
+                "planStepId": "resolve-spinner",
+                "sourceMapRef": "sm-route-4a",
+                "next": "tap-spinner",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.route-spinner",
+                "outputVariable": "spinnerHandle"
+              },
+              {
+                "planStepId": "tap-spinner",
+                "sourceMapRef": "sm-route-4b",
+                "next": "scroll-to-row",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "spinnerHandle"
+              },
+              {
+                "planStepId": "scroll-to-row",
+                "sourceMapRef": "sm-route-4c",
+                "next": "resolve-row",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.scroll-to-item",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "scrollToItem",
+                "args": {
+                  "listClass": "android.widget.ListView",
+                  "rowIndex": "var.offeredRouteRows.route_index"
+                }
               },
               {
                 "planStepId": "resolve-row",
@@ -3398,7 +4037,7 @@
                 "outputVariable": "rowHandle",
                 "entityBinding": {
                   "type": "ROUTE",
-                  "id": "run.input.routeCode"
+                  "id": "var.offeredRouteRows.route_label"
                 }
               },
               {
@@ -3446,7 +4085,7 @@
               {
                 "planStepId": "tap-confirm",
                 "sourceMapRef": "sm-route-8",
-                "next": "verify-assignment",
+                "next": "read-local-schedule",
                 "timeoutMs": 25000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -3463,71 +4102,122 @@
                 "targetVariable": "confirmHandle",
                 "continueGate": {
                   "allOf": [
-                    "UI.ROUTE_LIST_READY",
-                    "APP.AVAILABLE_STOPS_LOADED"
+                    "UI.ROUTE_LIST_READY"
                   ],
                   "deadlineMs": 25000,
                   "unknownPolicy": "RETRY"
                 }
               },
               {
-                "planStepId": "verify-assignment",
-                "sourceMapRef": "sm-route-9",
+                "planStepId": "read-selected-route",
+                "sourceMapRef": "sm-route-8a",
                 "next": "assert-selection",
-                "timeoutMs": 30000,
+                "timeoutMs": 15000,
                 "retryPolicy": {
                   "maxAttempts": 1,
                   "effectClass": "READ_ONLY"
                 },
                 "capabilityRequirements": [
                   {
-                    "capability": "verdict.core.remote.allowlisted-operation",
+                    "capability": "domain.nesy.adapter.state-projection",
                     "optional": false
                   }
                 ],
-                "kind": "REMOTE_ACTION",
-                "spec": {
-                  "adapterRef": "nesy.backoffice",
-                  "operationRef": "nesy.backoffice.read-route-assignment",
-                  "role": "VALIDATION",
-                  "effectClass": "READ_ONLY",
-                  "idempotencyClass": "NATURALLY_IDEMPOTENT",
-                  "inputBindings": [
-                    {
-                      "name": "route",
-                      "source": {
-                        "kind": "entityRef"
-                      }
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.routeState",
+                "maxRows": 1,
+                "outputVariable": "selectedRouteRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "route_selected"
                     }
-                  ],
-                  "outputFactBindings": [
-                    {
-                      "factKey": "REMOTE.ROUTE_ASSIGNED",
-                      "responsePath": "assignment.exists"
+                  },
+                  {
+                    "factKey": "APP.SCHEDULE_IN_USE",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "schedule_in_use"
+                    },
+                    "correlationColumn": "schedule_id"
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-local-schedule",
+                "sourceMapRef": "sm-route-8c",
+                "next": "read-available-stops",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.db.schedule",
+                "maxRows": 1,
+                "outputVariable": "localScheduleRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.SCHEDULE_PERSISTED",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "schedule_persisted"
+                    },
+                    "correlationColumn": "schedule_id"
+                  },
+                  {
+                    "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "schedule_is_today"
+                    },
+                    "correlationColumn": "schedule_id"
+                  },
+                  {
+                    "factKey": "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "schedule_present"
+                    },
+                    "correlationColumn": "schedule_route_code"
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-available-stops",
+                "sourceMapRef": "sm-route-8b",
+                "next": "read-selected-route",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.availableStops",
+                "maxRows": 200,
+                "outputVariable": "loadedRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                    "from": {
+                      "kind": "ROWS_PRESENT"
                     }
-                  ],
-                  "timeoutPolicy": {
-                    "timeoutMs": 20000,
-                    "maxAttempts": 2,
-                    "backoffMs": 1000
-                  },
-                  "entityBinding": {
-                    "type": "ROUTE",
-                    "id": "run.input.routeCode"
-                  },
-                  "reconciliationPolicy": "NONE",
-                  "auditPolicy": {
-                    "recordRequest": true,
-                    "recordResponse": true,
-                    "redactFields": [
-                      "assignment.assignedCourierName"
-                    ]
-                  },
-                  "allowedEnvironments": [
-                    "qa",
-                    "staging"
-                  ]
-                }
+                  }
+                ]
               },
               {
                 "planStepId": "assert-selection",
@@ -3556,14 +4246,25 @@
                       "onTimeout": "FAIL"
                     },
                     {
-                      "factKey": "REMOTE.ROUTE_ASSIGNED",
+                      "factKey": "LOCAL.SCHEDULE_PERSISTED",
                       "obligation": "REQUIRED",
-                      "timing": "EVENTUAL",
-                      "deadlineMs": 60000,
-                      "onTimeout": "INCONCLUSIVE"
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
                     },
                     {
-                      "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                      "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
+                    },
+                    {
+                      "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
+                    },
+                    {
+                      "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
                       "obligation": "REQUIRED",
                       "timing": "IMMEDIATE",
                       "onTimeout": "FAIL"
@@ -3634,9 +4335,28 @@
                 "domainSourceRef": "nesy.macro.select-route"
               },
               {
+                "ref": "sm-route-4a",
+                "planStepId": "resolve-spinner",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "the offered list lives in a spinner popup"
+              },
+              {
+                "ref": "sm-route-4b",
+                "planStepId": "tap-spinner",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "the list does not exist until the spinner opens"
+              },
+              {
+                "ref": "sm-route-4c",
+                "planStepId": "scroll-to-row",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "positions the list; establishes no identity"
+              },
+              {
                 "ref": "sm-route-5",
                 "planStepId": "resolve-row",
-                "domainSourceRef": "nesy.macro.select-route"
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "identity is the label the dialog renders"
               },
               {
                 "ref": "sm-route-6",
@@ -3654,9 +4374,22 @@
                 "domainSourceRef": "nesy.macro.select-route"
               },
               {
-                "ref": "sm-route-9",
-                "planStepId": "verify-assignment",
-                "domainSourceRef": "nesy.macro.select-route"
+                "ref": "sm-route-8a",
+                "planStepId": "read-selected-route",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "app plane observed, not inferred"
+              },
+              {
+                "ref": "sm-route-8b",
+                "planStepId": "read-available-stops",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "stops loaded is a result-set property"
+              },
+              {
+                "ref": "sm-route-8c",
+                "planStepId": "read-local-schedule",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "Room truth: stored, and is it today's"
               },
               {
                 "ref": "sm-route-10",
@@ -3688,9 +4421,28 @@
               "domainSourceRef": "nesy.macro.select-route"
             },
             {
+              "ref": "sm-route-4a",
+              "planStepId": "resolve-spinner",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "the offered list lives in a spinner popup"
+            },
+            {
+              "ref": "sm-route-4b",
+              "planStepId": "tap-spinner",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "the list does not exist until the spinner opens"
+            },
+            {
+              "ref": "sm-route-4c",
+              "planStepId": "scroll-to-row",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "positions the list; establishes no identity"
+            },
+            {
               "ref": "sm-route-5",
               "planStepId": "resolve-row",
-              "domainSourceRef": "nesy.macro.select-route"
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "identity is the label the dialog renders"
             },
             {
               "ref": "sm-route-6",
@@ -3708,9 +4460,22 @@
               "domainSourceRef": "nesy.macro.select-route"
             },
             {
-              "ref": "sm-route-9",
-              "planStepId": "verify-assignment",
-              "domainSourceRef": "nesy.macro.select-route"
+              "ref": "sm-route-8a",
+              "planStepId": "read-selected-route",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "app plane observed, not inferred"
+            },
+            {
+              "ref": "sm-route-8b",
+              "planStepId": "read-available-stops",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "stops loaded is a result-set property"
+            },
+            {
+              "ref": "sm-route-8c",
+              "planStepId": "read-local-schedule",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "Room truth: stored, and is it today's"
             },
             {
               "ref": "sm-route-10",
@@ -3727,11 +4492,16 @@
                 "read-offered-routes",
                 "check-offered",
                 "report-not-offered",
+                "resolve-spinner",
+                "tap-spinner",
+                "scroll-to-row",
                 "resolve-row",
                 "tap-row",
                 "resolve-confirm",
                 "tap-confirm",
-                "verify-assignment",
+                "read-selected-route",
+                "read-local-schedule",
+                "read-available-stops",
                 "assert-selection"
               ],
               "sliceRef": "SELECT_ROUTE",
@@ -3762,6 +4532,826 @@
               "bridgeVerb": "tap",
               "targetRef": "nesy.target.route-dialog-confirm",
               "awaitFactKey": "APP.AVAILABLE_STOPS_LOADED"
+            }
+          ]
+        }
+      },
+      {
+        "macroKey": "nesy.macro.load-to-vehicle",
+        "actionRef": "nesy.action.load-to-vehicle",
+        "displayName": "Load parcel to vehicle",
+        "businessMeaning": "A courier takes custody of a parcel at the branch: the app accepts the scanned parcel, the backend creates the task for it, and the parcel appears in the schedule stored on the device.",
+        "notResponsibleFor": [
+          "whether the parcel SHOULD have been loaded on this route — the backend owns that judgement and answers with a refusal",
+          "which delivery time range is correct; the RS picker's default is confirmed, not chosen",
+          "the stop ordering the loaded parcel produces",
+          "the hand-terminal vehicle-loading screen, which is a different flow with its own endpoint (Task/InsertCargoTransaction)",
+          "camera scanning; the typed-entry path is driven because a run cannot present a physical label"
+        ],
+        "input": {
+          "fields": [
+            {
+              "name": "scanValue",
+              "type": "string",
+              "required": true,
+              "description": "The value typed into the barcode field: parcel barcode, legacy system barcode or legacy short barcode."
+            },
+            {
+              "name": "alternateKey",
+              "type": "string",
+              "required": false,
+              "description": "Waybill number, used to look the parcel up when the author identified it that way."
+            }
+          ]
+        },
+        "output": {
+          "fields": [
+            {
+              "name": "parcelLoaded",
+              "type": "boolean",
+              "factKey": "LOCAL.PARCEL_IN_SCHEDULE"
+            },
+            {
+              "name": "scanValue",
+              "type": "string"
+            }
+          ]
+        },
+        "preconditions": [
+          {
+            "kind": "FACT_TRUE",
+            "ref": "APP.USER_SESSION_AVAILABLE",
+            "deadlineMs": 10000,
+            "onUnmet": "FAIL"
+          },
+          {
+            "kind": "FACT_TRUE",
+            "ref": "APP.SELECTED_ROUTE_OBSERVED",
+            "deadlineMs": 10000,
+            "onUnmet": "FAIL"
+          },
+          {
+            "kind": "SURFACE_ABSENT",
+            "ref": "nesy.mandatory-update-dialog",
+            "deadlineMs": 5000,
+            "onUnmet": "FAIL"
+          }
+        ],
+        "allowedRegistryRefs": {
+          "screenRefs": [
+            "nesy.route.stop-list"
+          ],
+          "surfaceRefs": [],
+          "entityTypeRefs": [
+            "PARCEL"
+          ],
+          "targetRefs": [
+            "nesy.target.manual-barcode-entry",
+            "nesy.target.barcode-input-field",
+            "nesy.target.barcode-input-confirm",
+            "nesy.target.time-slot-confirm",
+            "nesy.target.dialog-acknowledge"
+          ],
+          "factKeys": [
+            "UI.ROUTE_LIST_READY",
+            "LOCAL.PARCEL_IN_SCHEDULE",
+            "LOCAL.SCHEDULE_BODY_STORED",
+            "APP.AVAILABLE_STOPS_LOADED",
+            "APP.SELECTED_ROUTE_OBSERVED",
+            "APP.USER_SESSION_AVAILABLE"
+          ],
+          "queryRefs": [
+            "nesy.parcelState",
+            "nesy.db.schedule",
+            "nesy.availableStops"
+          ],
+          "adapterOperationRefs": []
+        },
+        "oracleTemplate": {
+          "continueGate": {
+            "allOf": [
+              "UI.ROUTE_LIST_READY"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          },
+          "finalOracle": {
+            "requirements": [
+              {
+                "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              }
+            ]
+          },
+          "notResponsibleFor": [
+            "the backend's own custody record; this slice judges the device and the schedule it stores"
+          ]
+        },
+        "interruptPolicy": {
+          "handledSurfaceRefs": [
+            "nesy.permission-dialog",
+            "nesy.network-dialog"
+          ],
+          "fatalSurfaceRefs": [
+            "nesy.mandatory-update-dialog",
+            "nesy.session-expired-dialog"
+          ],
+          "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+          "maxHandledInterrupts": 3
+        },
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "verdict.core.bridge.set-text",
+          "verdict.core.bridge.resolve-target",
+          "verdict.core.bridge.watch-fact",
+          "domain.nesy.adapter.named-query"
+        ],
+        "expansionSnapshot": {
+          "macroRef": "nesy.macro.load-to-vehicle",
+          "authoredBy": "COMPILER",
+          "genericIr": {
+            "schemaVersion": 2,
+            "workflowId": "nesy.reference.load-to-vehicle",
+            "workflowVersion": 1,
+            "name": "Take custody of a parcel",
+            "source": {
+              "kind": "DOMAIN_PACK_EXPANSION",
+              "ref": "nesy.macro.load-to-vehicle"
+            },
+            "inputs": [
+              {
+                "name": "scanValue",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "alternateKey",
+                "type": "string",
+                "required": false
+              }
+            ],
+            "variables": [
+              {
+                "name": "manualEntryHandle",
+                "type": "string"
+              },
+              {
+                "name": "inputFieldHandle",
+                "type": "string"
+              },
+              {
+                "name": "inputConfirmHandle",
+                "type": "string"
+              },
+              {
+                "name": "timeSlotHandle",
+                "type": "string"
+              },
+              {
+                "name": "dialogHandle",
+                "type": "string"
+              },
+              {
+                "name": "itemRows",
+                "type": "stringList"
+              },
+              {
+                "name": "loadScheduleRows",
+                "type": "stringList"
+              },
+              {
+                "name": "loadedRows",
+                "type": "stringList"
+              }
+            ],
+            "steps": [
+              {
+                "planStepId": "wait-stop-list-ready",
+                "sourceMapRef": "sm-load-1",
+                "next": "resolve-manual-entry",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "WAIT_EVENT",
+                "factKey": "UI.ROUTE_LIST_READY",
+                "sourceLane": "UI",
+                "stableForMs": 200,
+                "requireCorrelation": false,
+                "onTimeout": "FAIL"
+              },
+              {
+                "planStepId": "resolve-manual-entry",
+                "sourceMapRef": "sm-load-2",
+                "next": "tap-manual-entry",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.manual-barcode-entry",
+                "outputVariable": "manualEntryHandle"
+              },
+              {
+                "planStepId": "tap-manual-entry",
+                "sourceMapRef": "sm-load-3",
+                "next": "resolve-barcode-field",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "manualEntryHandle"
+              },
+              {
+                "planStepId": "resolve-barcode-field",
+                "sourceMapRef": "sm-load-4",
+                "next": "enter-barcode",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.barcode-input-field",
+                "outputVariable": "inputFieldHandle"
+              },
+              {
+                "planStepId": "enter-barcode",
+                "sourceMapRef": "sm-load-5",
+                "next": "resolve-input-confirm",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.set-text",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "setText",
+                "targetVariable": "inputFieldHandle",
+                "args": {
+                  "valueRef": "run.input.scanValue"
+                }
+              },
+              {
+                "planStepId": "resolve-input-confirm",
+                "sourceMapRef": "sm-load-6",
+                "next": "tap-input-confirm",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.barcode-input-confirm",
+                "outputVariable": "inputConfirmHandle"
+              },
+              {
+                "planStepId": "tap-input-confirm",
+                "sourceMapRef": "sm-load-7",
+                "next": "resolve-time-slot",
+                "timeoutMs": 40000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "inputConfirmHandle"
+              },
+              {
+                "planStepId": "resolve-time-slot",
+                "sourceMapRef": "sm-load-8",
+                "next": "tap-time-slot",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.time-slot-confirm",
+                "outputVariable": "timeSlotHandle"
+              },
+              {
+                "planStepId": "tap-time-slot",
+                "sourceMapRef": "sm-load-9",
+                "next": "resolve-acknowledge",
+                "timeoutMs": 40000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "timeSlotHandle"
+              },
+              {
+                "planStepId": "resolve-acknowledge",
+                "sourceMapRef": "sm-load-10",
+                "next": "tap-acknowledge",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.dialog-acknowledge",
+                "outputVariable": "dialogHandle"
+              },
+              {
+                "planStepId": "tap-acknowledge",
+                "sourceMapRef": "sm-load-10a",
+                "next": "read-parcel-state",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "dialogHandle"
+              },
+              {
+                "planStepId": "read-parcel-state",
+                "sourceMapRef": "sm-load-11",
+                "next": "read-local-schedule",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.parcelState",
+                "params": {
+                  "barcode": "run.input.scanValue",
+                  "waybillNumber": "run.input.alternateKey"
+                },
+                "maxRows": 20,
+                "outputVariable": "itemRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                    "from": {
+                      "kind": "ROWS_PRESENT"
+                    },
+                    "correlationColumn": "barcode"
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-local-schedule",
+                "sourceMapRef": "sm-load-12",
+                "next": "read-available-stops",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.db.schedule",
+                "maxRows": 1,
+                "outputVariable": "loadScheduleRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                    "from": {
+                      "kind": "COLUMN",
+                      "column": "schedule_body_stored"
+                    },
+                    "correlationColumn": "schedule_id"
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-available-stops",
+                "sourceMapRef": "sm-load-13",
+                "next": "assert-loaded",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.availableStops",
+                "maxRows": 200,
+                "outputVariable": "loadedRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                    "from": {
+                      "kind": "ROWS_PRESENT"
+                    }
+                  }
+                ]
+              },
+              {
+                "planStepId": "assert-loaded",
+                "sourceMapRef": "sm-load-14",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ASSERT_FACT",
+                "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                "expected": true,
+                "unknownPolicy": "FAIL",
+                "entityBinding": {
+                  "type": "PARCEL",
+                  "id": "run.input.scanValue"
+                },
+                "finalOraclePolicy": {
+                  "requirements": [
+                    {
+                      "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
+                    },
+                    {
+                      "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
+                    },
+                    {
+                      "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "FAIL"
+                    }
+                  ]
+                }
+              }
+            ],
+            "entryStepId": "wait-stop-list-ready",
+            "policies": {
+              "runDeadlineMs": 600000,
+              "cleanupDeadlineMs": 60000,
+              "defaultRetry": {
+                "maxAttempts": 1,
+                "effectClass": "READ_ONLY"
+              },
+              "artifactPolicy": {
+                "captureOnSuccess": false,
+                "captureOnFailure": true,
+                "kinds": [
+                  "SCREENSHOT",
+                  "UI_TREE"
+                ]
+              },
+              "redactionPolicy": {
+                "redactPaths": [
+                  "run.input.pin",
+                  "run.input.password"
+                ]
+              }
+            },
+            "capabilityRequirements": [
+              {
+                "capability": "verdict.core.bridge.tap",
+                "optional": false
+              },
+              {
+                "capability": "verdict.core.bridge.set-text",
+                "optional": false
+              },
+              {
+                "capability": "verdict.core.bridge.watch-fact",
+                "optional": false
+              }
+            ],
+            "sourceMap": [
+              {
+                "ref": "sm-load-1",
+                "planStepId": "wait-stop-list-ready",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-2",
+                "planStepId": "resolve-manual-entry",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-3",
+                "planStepId": "tap-manual-entry",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "typed entry, not the camera"
+              },
+              {
+                "ref": "sm-load-4",
+                "planStepId": "resolve-barcode-field",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-5",
+                "planStepId": "enter-barcode",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "one value, any accepted spelling"
+              },
+              {
+                "ref": "sm-load-6",
+                "planStepId": "resolve-input-confirm",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-7",
+                "planStepId": "tap-input-confirm",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "the backend round trip is behind this tap"
+              },
+              {
+                "ref": "sm-load-8",
+                "planStepId": "resolve-time-slot",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "RS only; absent elsewhere by policy"
+              },
+              {
+                "ref": "sm-load-9",
+                "planStepId": "tap-time-slot",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-10",
+                "planStepId": "resolve-acknowledge",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "absent on the happy path; SKIPPED when so"
+              },
+              {
+                "ref": "sm-load-10a",
+                "planStepId": "tap-acknowledge",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "a refusal ends inside the run that caused it"
+              },
+              {
+                "ref": "sm-load-11",
+                "planStepId": "read-parcel-state",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "narrowed to THIS parcel"
+              },
+              {
+                "ref": "sm-load-12",
+                "planStepId": "read-local-schedule",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "the schedule gained a body"
+              },
+              {
+                "ref": "sm-load-13",
+                "planStepId": "read-available-stops",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "REQUIRED here, unlike select-route"
+              },
+              {
+                "ref": "sm-load-14",
+                "planStepId": "assert-loaded",
+                "domainSourceRef": "nesy.macro.load-to-vehicle"
+              }
+            ]
+          },
+          "irSourceMap": [
+            {
+              "ref": "sm-load-1",
+              "planStepId": "wait-stop-list-ready",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-2",
+              "planStepId": "resolve-manual-entry",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-3",
+              "planStepId": "tap-manual-entry",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "typed entry, not the camera"
+            },
+            {
+              "ref": "sm-load-4",
+              "planStepId": "resolve-barcode-field",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-5",
+              "planStepId": "enter-barcode",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "one value, any accepted spelling"
+            },
+            {
+              "ref": "sm-load-6",
+              "planStepId": "resolve-input-confirm",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-7",
+              "planStepId": "tap-input-confirm",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "the backend round trip is behind this tap"
+            },
+            {
+              "ref": "sm-load-8",
+              "planStepId": "resolve-time-slot",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "RS only; absent elsewhere by policy"
+            },
+            {
+              "ref": "sm-load-9",
+              "planStepId": "tap-time-slot",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-10",
+              "planStepId": "resolve-acknowledge",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "absent on the happy path; SKIPPED when so"
+            },
+            {
+              "ref": "sm-load-10a",
+              "planStepId": "tap-acknowledge",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "a refusal ends inside the run that caused it"
+            },
+            {
+              "ref": "sm-load-11",
+              "planStepId": "read-parcel-state",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "narrowed to THIS parcel"
+            },
+            {
+              "ref": "sm-load-12",
+              "planStepId": "read-local-schedule",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "the schedule gained a body"
+            },
+            {
+              "ref": "sm-load-13",
+              "planStepId": "read-available-stops",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "REQUIRED here, unlike select-route"
+            },
+            {
+              "ref": "sm-load-14",
+              "planStepId": "assert-loaded",
+              "domainSourceRef": "nesy.macro.load-to-vehicle"
+            }
+          ],
+          "domainSourceMap": [
+            {
+              "ref": "ds-load-1",
+              "macroRef": "nesy.macro.load-to-vehicle",
+              "planStepIds": [
+                "wait-stop-list-ready",
+                "resolve-manual-entry",
+                "tap-manual-entry",
+                "resolve-barcode-field",
+                "enter-barcode",
+                "resolve-input-confirm",
+                "tap-input-confirm",
+                "resolve-time-slot",
+                "tap-time-slot",
+                "resolve-acknowledge",
+                "tap-acknowledge",
+                "read-parcel-state",
+                "read-local-schedule",
+                "read-available-stops",
+                "assert-loaded"
+              ],
+              "sliceRef": "LOAD_TO_VEHICLE",
+              "note": "Linear. Two steps are absent-tolerant by target policy: the RS time-range picker and the refusal dialog."
+            }
+          ]
+        },
+        "bridgeFlowPlanSnapshot": {
+          "macroRef": "nesy.macro.load-to-vehicle",
+          "authoredBy": "COMPILER",
+          "requiredCapabilityRefs": [
+            "verdict.core.bridge.tap",
+            "verdict.core.bridge.set-text",
+            "verdict.core.bridge.resolve-target"
+          ],
+          "legs": [
+            {
+              "planStepId": "wait-stop-list-ready",
+              "bridgeVerb": "watch",
+              "awaitFactKey": "UI.ROUTE_LIST_READY"
+            },
+            {
+              "planStepId": "tap-manual-entry",
+              "bridgeVerb": "tap",
+              "targetRef": "nesy.target.manual-barcode-entry"
+            },
+            {
+              "planStepId": "enter-barcode",
+              "bridgeVerb": "setText",
+              "targetRef": "nesy.target.barcode-input-field"
+            },
+            {
+              "planStepId": "tap-input-confirm",
+              "bridgeVerb": "tap",
+              "targetRef": "nesy.target.barcode-input-confirm",
+              "awaitFactKey": "APP.AVAILABLE_STOPS_LOADED"
+            },
+            {
+              "planStepId": "tap-time-slot",
+              "bridgeVerb": "tap",
+              "targetRef": "nesy.target.time-slot-confirm"
             }
           ]
         }
@@ -3934,6 +5524,10 @@
                 "type": "stringList"
               },
               {
+                "name": "activeRows",
+                "type": "stringList"
+              },
+              {
                 "name": "rowHandle",
                 "type": "string"
               }
@@ -3957,7 +5551,15 @@
                 "kind": "SDK_QUERY",
                 "queryRef": "nesy.availableStops",
                 "maxRows": 200,
-                "outputVariable": "availableRows"
+                "outputVariable": "availableRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                    "from": {
+                      "kind": "ROWS_PRESENT"
+                    }
+                  }
+                ]
               },
               {
                 "planStepId": "check-present",
@@ -4061,7 +5663,7 @@
               {
                 "planStepId": "await-destination",
                 "sourceMapRef": "sm-open-6",
-                "next": "assert-correct-item",
+                "next": "read-active-stop",
                 "timeoutMs": 25000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -4081,12 +5683,41 @@
                   {
                     "legId": "task-list",
                     "factKey": "UI.TASK_LIST_READY",
-                    "onWin": "assert-correct-item"
+                    "onWin": "read-active-stop"
                   },
                   {
                     "legId": "delivery",
                     "factKey": "UI.DELIVERY_FLOW_READY",
-                    "onWin": "assert-correct-item"
+                    "onWin": "read-active-stop"
+                  }
+                ]
+              },
+              {
+                "planStepId": "read-active-stop",
+                "sourceMapRef": "sm-open-6a",
+                "next": "assert-correct-item",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.stopState",
+                "maxRows": 1,
+                "outputVariable": "activeRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "APP.ACTIVE_STOP_OBSERVED",
+                    "from": {
+                      "kind": "ROWS_PRESENT"
+                    },
+                    "correlationColumn": "stop_id"
                   }
                 ]
               },
@@ -4201,6 +5832,12 @@
                 "domainSourceRef": "nesy.macro.open-stop"
               },
               {
+                "ref": "sm-open-6a",
+                "planStepId": "read-active-stop",
+                "domainSourceRef": "nesy.macro.open-stop",
+                "note": "active stop observed, not inferred"
+              },
+              {
                 "ref": "sm-open-6",
                 "planStepId": "await-destination",
                 "domainSourceRef": "nesy.macro.open-stop",
@@ -4245,6 +5882,12 @@
               "domainSourceRef": "nesy.macro.open-stop"
             },
             {
+              "ref": "sm-open-6a",
+              "planStepId": "read-active-stop",
+              "domainSourceRef": "nesy.macro.open-stop",
+              "note": "active stop observed, not inferred"
+            },
+            {
               "ref": "sm-open-6",
               "planStepId": "await-destination",
               "domainSourceRef": "nesy.macro.open-stop",
@@ -4268,6 +5911,7 @@
                 "resolve-row",
                 "tap-row",
                 "await-destination",
+                "read-active-stop",
                 "assert-correct-item"
               ],
               "sliceRef": "OPEN_STOP",
@@ -5418,7 +7062,7 @@
               "type": "entityRef",
               "required": true,
               "entityTypeRef": "TOUR_APPROVAL_REQUEST",
-              "description": "Correlation anchor for both back-office fact reads."
+              "description": "Correlation anchor for both back-office fact reads. Resolves to the schedule id — the request carries no identifier of its own."
             }
           ]
         },
@@ -5449,7 +7093,7 @@
         "preconditions": [
           {
             "kind": "SCREEN_READY",
-            "ref": "nesy.end-of-day",
+            "ref": "nesy.route.stop-list",
             "deadlineMs": 25000,
             "onUnmet": "FAIL"
           },
@@ -5468,7 +7112,7 @@
         ],
         "allowedRegistryRefs": {
           "screenRefs": [
-            "nesy.end-of-day"
+            "nesy.route.stop-list"
           ],
           "surfaceRefs": [
             "nesy.network-dialog",
@@ -5479,10 +7123,11 @@
             "TOUR_APPROVAL_REQUEST"
           ],
           "targetRefs": [
-            "nesy.target.tour-approval-request-button"
+            "nesy.target.tour-approval-request-button",
+            "nesy.target.tour-routing-auto",
+            "nesy.target.tour-routing-manual"
           ],
           "factKeys": [
-            "UI.END_OF_DAY_READY",
             "APP.SELECTED_ROUTE_OBSERVED",
             "APP.TOUR_APPROVAL_REQUESTED",
             "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -5582,7 +7227,7 @@
                 "required": true
               },
               {
-                "name": "approvalRequestCode",
+                "name": "scheduleId",
                 "type": "string",
                 "required": true
               }
@@ -5591,28 +7236,16 @@
               {
                 "name": "requestHandle",
                 "type": "string"
+              },
+              {
+                "name": "routingHandle",
+                "type": "string"
               }
             ],
             "steps": [
               {
-                "planStepId": "wait-day-close",
-                "sourceMapRef": "sm-appr-1",
-                "next": "resolve-request-button",
-                "timeoutMs": 25000,
-                "retryPolicy": {
-                  "maxAttempts": 1,
-                  "effectClass": "READ_ONLY"
-                },
-                "capabilityRequirements": [],
-                "kind": "WAIT_EVENT",
-                "factKey": "UI.END_OF_DAY_READY",
-                "sourceLane": "UI",
-                "requireCorrelation": false,
-                "onTimeout": "FAIL"
-              },
-              {
                 "planStepId": "resolve-request-button",
-                "sourceMapRef": "sm-appr-2",
+                "sourceMapRef": "sm-appr-1",
                 "next": "tap-request",
                 "timeoutMs": 20000,
                 "retryPolicy": {
@@ -5631,8 +7264,8 @@
               },
               {
                 "planStepId": "tap-request",
-                "sourceMapRef": "sm-appr-3",
-                "next": "verify-request-record",
+                "sourceMapRef": "sm-appr-2",
+                "next": "resolve-routing-choice",
                 "timeoutMs": 30000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -5649,7 +7282,49 @@
                 "targetVariable": "requestHandle",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.approvalRequestCode"
+                  "id": "run.input.scheduleId"
+                }
+              },
+              {
+                "planStepId": "resolve-routing-choice",
+                "sourceMapRef": "sm-appr-3",
+                "next": "tap-routing-choice",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.resolve-target",
+                    "optional": false
+                  }
+                ],
+                "kind": "RESOLVE_TARGET",
+                "targetRef": "nesy.target.tour-routing-auto",
+                "outputVariable": "routingHandle"
+              },
+              {
+                "planStepId": "tap-routing-choice",
+                "sourceMapRef": "sm-appr-4",
+                "next": "verify-request-record",
+                "timeoutMs": 30000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "verdict.core.bridge.tap",
+                    "optional": false
+                  }
+                ],
+                "kind": "BRIDGE_ACTION",
+                "action": "tap",
+                "targetVariable": "routingHandle",
+                "entityBinding": {
+                  "type": "TOUR_APPROVAL_REQUEST",
+                  "id": "run.input.scheduleId"
                 },
                 "continueGate": {
                   "allOf": [
@@ -5661,7 +7336,7 @@
               },
               {
                 "planStepId": "verify-request-record",
-                "sourceMapRef": "sm-appr-4",
+                "sourceMapRef": "sm-appr-5",
                 "next": "dispatcher-approves",
                 "timeoutMs": 30000,
                 "retryPolicy": {
@@ -5702,7 +7377,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.approvalRequestCode"
+                    "id": "run.input.scheduleId"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -5720,7 +7395,7 @@
               },
               {
                 "planStepId": "dispatcher-approves",
-                "sourceMapRef": "sm-appr-5",
+                "sourceMapRef": "sm-appr-6",
                 "next": "verify-approved-status",
                 "timeoutMs": 40000,
                 "retryPolicy": {
@@ -5740,7 +7415,7 @@
                   "role": "SETUP",
                   "effectClass": "IDEMPOTENT_MUTATION",
                   "idempotencyClass": "KEYED",
-                  "idempotencyKey": "run.input.approvalRequestCode",
+                  "idempotencyKey": "run.input.scheduleId",
                   "inputBindings": [
                     {
                       "name": "approvalRequest",
@@ -5757,7 +7432,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.approvalRequestCode"
+                    "id": "run.input.scheduleId"
                   },
                   "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
                   "auditPolicy": {
@@ -5775,7 +7450,7 @@
               },
               {
                 "planStepId": "verify-approved-status",
-                "sourceMapRef": "sm-appr-6",
+                "sourceMapRef": "sm-appr-7",
                 "next": "await-push",
                 "timeoutMs": 40000,
                 "retryPolicy": {
@@ -5816,7 +7491,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.approvalRequestCode"
+                    "id": "run.input.scheduleId"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -5834,7 +7509,7 @@
               },
               {
                 "planStepId": "await-push",
-                "sourceMapRef": "sm-appr-7",
+                "sourceMapRef": "sm-appr-8",
                 "next": "assert-approved",
                 "timeoutMs": 120000,
                 "retryPolicy": {
@@ -5849,12 +7524,12 @@
                 "onTimeout": "CONTINUE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.approvalRequestCode"
+                  "id": "run.input.scheduleId"
                 }
               },
               {
                 "planStepId": "assert-approved",
-                "sourceMapRef": "sm-appr-8",
+                "sourceMapRef": "sm-appr-9",
                 "next": null,
                 "timeoutMs": 60000,
                 "retryPolicy": {
@@ -5868,7 +7543,7 @@
                 "unknownPolicy": "INCONCLUSIVE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.approvalRequestCode"
+                  "id": "run.input.scheduleId"
                 },
                 "finalOraclePolicy": {
                   "requirements": [
@@ -5911,7 +7586,7 @@
               },
               {
                 "planStepId": "release-approval-fixture",
-                "sourceMapRef": "sm-appr-9",
+                "sourceMapRef": "sm-appr-10",
                 "next": null,
                 "timeoutMs": 40000,
                 "retryPolicy": {
@@ -5926,7 +7601,7 @@
                 "runOnFailure": true
               }
             ],
-            "entryStepId": "wait-day-close",
+            "entryStepId": "resolve-request-button",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -5966,51 +7641,57 @@
             "sourceMap": [
               {
                 "ref": "sm-appr-1",
-                "planStepId": "wait-day-close",
-                "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
-              },
-              {
-                "ref": "sm-appr-2",
                 "planStepId": "resolve-request-button",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
               },
               {
-                "ref": "sm-appr-3",
+                "ref": "sm-appr-2",
                 "planStepId": "tap-request",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
-                "note": "actor 1: the courier, real UI"
+                "note": "actor 1: the courier, real UI — opens the routing chooser, calls nothing"
+              },
+              {
+                "ref": "sm-appr-3",
+                "planStepId": "resolve-routing-choice",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
               },
               {
                 "ref": "sm-appr-4",
+                "planStepId": "tap-routing-choice",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+                "note": "the tap that actually requests the tour"
+              },
+              {
+                "ref": "sm-appr-5",
                 "planStepId": "verify-request-record",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
                 "note": "back-office fact check 1"
               },
               {
-                "ref": "sm-appr-5",
+                "ref": "sm-appr-6",
                 "planStepId": "dispatcher-approves",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
                 "note": "actor 2: dispatcher, typed and audited; produces no evidence"
               },
               {
-                "ref": "sm-appr-6",
+                "ref": "sm-appr-7",
                 "planStepId": "verify-approved-status",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
                 "note": "back-office fact check 2"
               },
               {
-                "ref": "sm-appr-7",
+                "ref": "sm-appr-8",
                 "planStepId": "await-push",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
                 "note": "confirmatory only"
               },
               {
-                "ref": "sm-appr-8",
+                "ref": "sm-appr-9",
                 "planStepId": "assert-approved",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
               },
               {
-                "ref": "sm-appr-9",
+                "ref": "sm-appr-10",
                 "planStepId": "release-approval-fixture",
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
               }
@@ -6019,51 +7700,57 @@
           "irSourceMap": [
             {
               "ref": "sm-appr-1",
-              "planStepId": "wait-day-close",
-              "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
-            },
-            {
-              "ref": "sm-appr-2",
               "planStepId": "resolve-request-button",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
             },
             {
-              "ref": "sm-appr-3",
+              "ref": "sm-appr-2",
               "planStepId": "tap-request",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
-              "note": "actor 1: the courier, real UI"
+              "note": "actor 1: the courier, real UI — opens the routing chooser, calls nothing"
+            },
+            {
+              "ref": "sm-appr-3",
+              "planStepId": "resolve-routing-choice",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
             },
             {
               "ref": "sm-appr-4",
+              "planStepId": "tap-routing-choice",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+              "note": "the tap that actually requests the tour"
+            },
+            {
+              "ref": "sm-appr-5",
               "planStepId": "verify-request-record",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
               "note": "back-office fact check 1"
             },
             {
-              "ref": "sm-appr-5",
+              "ref": "sm-appr-6",
               "planStepId": "dispatcher-approves",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
               "note": "actor 2: dispatcher, typed and audited; produces no evidence"
             },
             {
-              "ref": "sm-appr-6",
+              "ref": "sm-appr-7",
               "planStepId": "verify-approved-status",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
               "note": "back-office fact check 2"
             },
             {
-              "ref": "sm-appr-7",
+              "ref": "sm-appr-8",
               "planStepId": "await-push",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
               "note": "confirmatory only"
             },
             {
-              "ref": "sm-appr-8",
+              "ref": "sm-appr-9",
               "planStepId": "assert-approved",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
             },
             {
-              "ref": "sm-appr-9",
+              "ref": "sm-appr-10",
               "planStepId": "release-approval-fixture",
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
             }
@@ -6073,9 +7760,10 @@
               "ref": "ds-appr-1",
               "macroRef": "nesy.macro.tour-approval-lifecycle",
               "planStepIds": [
-                "wait-day-close",
                 "resolve-request-button",
                 "tap-request",
+                "resolve-routing-choice",
+                "tap-routing-choice",
                 "verify-request-record",
                 "dispatcher-approves",
                 "verify-approved-status",
@@ -6097,14 +7785,14 @@
           ],
           "legs": [
             {
-              "planStepId": "wait-day-close",
-              "bridgeVerb": "watch",
-              "awaitFactKey": "UI.END_OF_DAY_READY"
-            },
-            {
               "planStepId": "tap-request",
               "bridgeVerb": "tap",
-              "targetRef": "nesy.target.tour-approval-request-button",
+              "targetRef": "nesy.target.tour-approval-request-button"
+            },
+            {
+              "planStepId": "tap-routing-choice",
+              "bridgeVerb": "tap",
+              "targetRef": "nesy.target.tour-routing-auto",
               "awaitFactKey": "APP.TOUR_APPROVAL_REQUESTED"
             },
             {
@@ -6336,7 +8024,9 @@
           "password reset and account recovery",
           "biometric re-authentication",
           "session refresh after expiry (the expired-session dialog is FATAL here on purpose)",
-          "multi-device session eviction"
+          "multi-device session eviction",
+          "whether the BACKEND authenticated this courier — the only available back-office read resolves the dashboard admin token, so REMOTE.AUTH_ACCEPTED is observed but does not vote",
+          "whether the backend, app and local sessions are the SAME session — the correlated derivation has no host reducer, so the three planes are asserted individually"
         ],
         "macroRefs": [
           "nesy.macro.login"
@@ -6345,8 +8035,9 @@
         "occurrenceScope": "INDEPENDENT",
         "oracleTemplate": {
           "continueGate": {
-            "allOf": [
-              "UI.ROUTE_LIST_READY"
+            "anyOf": [
+              "UI.ROUTE_LIST_READY",
+              "APP.LOGIN_REJECTED"
             ],
             "noneOf": [
               "UI.SESSION_EXPIRED_DIALOG_PRESENT"
@@ -6357,13 +8048,7 @@
           "finalOracle": {
             "requirements": [
               {
-                "factKey": "APP.LOGIN_SUCCEEDED",
-                "obligation": "REQUIRED",
-                "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
-              },
-              {
-                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "factKey": "APP.USER_SESSION_AVAILABLE",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
                 "onTimeout": "FAIL"
@@ -6374,11 +8059,19 @@
                 "timing": "EVENTUAL",
                 "deadlineMs": 30000,
                 "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "REMOTE.AUTH_ACCEPTED",
+                "obligation": "OPTIONAL",
+                "timing": "EVENTUAL",
+                "deadlineMs": 20000,
+                "onTimeout": "WARNING"
               }
             ]
           },
           "notResponsibleFor": [
-            "whether the route list content is correct — only that it became ready"
+            "whether the route list content is correct — only that it became ready",
+            "whether the backend authenticated this courier — see the macro header"
           ]
         },
         "producesTerminalVerdict": true
@@ -6393,7 +8086,6 @@
           "whether the offered route set is business-correct (only that the backend offered at least one)"
         ],
         "macroRefs": [
-          "nesy.macro.login",
           "nesy.macro.select-route"
         ],
         "fragmentRefs": [],
@@ -6401,8 +8093,7 @@
         "oracleTemplate": {
           "continueGate": {
             "allOf": [
-              "UI.ROUTE_LIST_READY",
-              "APP.AVAILABLE_STOPS_LOADED"
+              "UI.ROUTE_LIST_READY"
             ],
             "deadlineMs": 25000,
             "unknownPolicy": "RETRY"
@@ -6416,11 +8107,28 @@
                 "onTimeout": "FAIL"
               },
               {
-                "factKey": "REMOTE.ROUTE_ASSIGNED",
+                "factKey": "LOCAL.SCHEDULE_PERSISTED",
                 "obligation": "REQUIRED",
-                "timing": "EVENTUAL",
-                "deadlineMs": 60000,
-                "onTimeout": "INCONCLUSIVE"
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
               },
               {
                 "factKey": "REMOTE.ROUTES_AVAILABLE",
@@ -6431,7 +8139,60 @@
             ]
           },
           "notResponsibleFor": [
-            "the ordering or completeness of the stop list that loads afterwards"
+            "the ordering or completeness of the stop list, which is empty at selection time by design",
+            "the back-office assignment record, which has a different owner"
+          ]
+        },
+        "producesTerminalVerdict": true
+      },
+      {
+        "workflowKey": "nesy.workflow.load-to-vehicle",
+        "displayName": "A scanned parcel enters the courier's schedule",
+        "businessMeaning": "A courier takes custody of a parcel at the branch: the app accepts the scanned parcel, the backend creates the task for it, and the parcel appears in the schedule stored on the device.",
+        "notResponsibleFor": [
+          "whether the parcel SHOULD have been loaded on this route — the backend owns that judgement and answers with a refusal",
+          "which delivery time range is correct; the RS picker's default is confirmed, not chosen",
+          "the stop ordering the loaded parcel produces",
+          "the hand-terminal vehicle-loading screen, which is a different flow with its own endpoint (Task/InsertCargoTransaction)",
+          "camera scanning; the typed-entry path is driven because a run cannot present a physical label"
+        ],
+        "macroRefs": [
+          "nesy.macro.load-to-vehicle"
+        ],
+        "fragmentRefs": [],
+        "occurrenceScope": "INDEPENDENT",
+        "oracleTemplate": {
+          "continueGate": {
+            "allOf": [
+              "UI.ROUTE_LIST_READY"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          },
+          "finalOracle": {
+            "requirements": [
+              {
+                "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              }
+            ]
+          },
+          "notResponsibleFor": [
+            "the backend's own custody record; this slice judges the device and the schedule it stores"
           ]
         },
         "producesTerminalVerdict": true
@@ -6552,7 +8313,6 @@
           "how long the backend takes to confirm — only that it confirms within the declared deadline"
         ],
         "macroRefs": [
-          "nesy.macro.process-parcel",
           "nesy.macro.complete-delivery"
         ],
         "fragmentRefs": [
@@ -7628,6 +9388,16 @@
         "automationOnly": false
       },
       {
+        "capabilityKey": "verdict.core.bridge.scroll-to-item",
+        "layer": "verdict.core",
+        "provider": "BRIDGE",
+        "displayName": "Scroll a collection to an item",
+        "description": "Bring a collection row onto screen so a target can be resolved against it. Positions only — it establishes no identity and decides no target.",
+        "runtimeDetected": true,
+        "detectionRef": "bridge.capabilities.scrollToItem",
+        "automationOnly": false
+      },
+      {
         "capabilityKey": "verdict.core.bridge.watch-fact",
         "layer": "verdict.core",
         "provider": "BRIDGE",
@@ -7813,7 +9583,7 @@
                 "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
                 "responsePath": "request.exists",
                 "entityStatusPath": "request.status",
-                "correlationPath": "request.approvalRequestCode"
+                "correlationPath": "request.scheduleId"
               }
             ],
             "audit": {
@@ -7849,7 +9619,7 @@
                 "factKey": "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
                 "responsePath": "approval.statusIsApproved",
                 "entityStatusPath": "approval.status",
-                "correlationPath": "approval.approvalRequestCode"
+                "correlationPath": "approval.scheduleId"
               }
             ],
             "audit": {

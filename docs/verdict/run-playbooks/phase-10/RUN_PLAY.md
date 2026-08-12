@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 20:15:00 +03"
+lastUpdatedAt: "2026-08-12 20:35:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.11.0"
+domainPackVersion: "1.12.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -502,6 +502,111 @@ düzeltme önlerini açtı ama **hiçbiri henüz ölçülmedi**.
 
 Sıra: `reset_state → login → select-route → load-to-vehicle → open-stop`.
 
+### 5.0d Tur onayı uçtan uca ÖLÇÜLDÜ — makro yanlış akışı test ediyormuş
+
+2026-08-12 akşamı, cihazda ve RS staging'de, `tour-approval-lifecycle`'ın
+tamamı elle koşuldu. Makro çalıştırılmadı; her adım tek tek ölçüldü, çünkü
+makronun kendisinin doğru akışı tarif ettiği varsayımı test edilecek şeydi.
+Etmiyormuş.
+
+**Ölçülen gerçek akış** (schedule `11-31-20260812-1`, rota 31):
+
+```text
+btn_out tap  →  rota optimizasyon diyaloğu (auto_route | manual_route)
+             →  POST Task/RequestLeavingPermission {calculateRoute, scheduleId}
+             →  schedule.ScheduleStatus = WaitingForApproval(1)
+             →  NESY_TEST_EVENT TOUR_STARTED
+GetWaitingLeavingRequests  →  kayıt bulundu (scheduleId + scheduleStatus)
+ApproveLeavingPermission   →  200, ScheduleStatus = Approved(2)
+             →  +6.3 sn: FCM push, TOUR_APPROVAL_PUSH decision=APPROVED
+             →  +28 sn : Task/GetMyScheduleByZoneCode — ama push yüzünden DEĞİL
+```
+
+**Bulgu 1 — pack yanlış kuyruğu hedefliyor.** `Task/RequestLeavingPermission`
+`MobileApprovalRequests` koleksiyonuna **hiç dokunmuyor**; yaptığı tek şey
+`scheduleDocument.ScheduleStatus = WaitingForApproval` (TaskOperation.cs:2198).
+`MobileApprovalRequests` ayrı bir mekanizma: `SendMobileApprovalRequests` ile
+yazılıyor, `UniqueIdentifier`'ı istemci üretiyor, genel amaçlı "bu mobil isteği
+amir onaylasın" kuyruğu. Tur onayıyla ilgisi yok.
+
+Yani `nesy-backoffice-endpoints.ts`'teki üç tur-onayı operasyonunun üçü de yanlış
+hedefte. `SOURCE_VERIFIED` etiketleri **dürüst** — o endpoint'ler gerçekten öyle
+çalışıyor — ama doğrulanan şey yanlış akıştı. **Kaynağı okumak, doğru kaynağı
+okuduğunu garanti etmiyor.** Bu, §2'deki desenin yeni bir yüzü: orada pack
+bildiriyor host okumuyordu; burada host doğru okuyor ama yanlış yeri.
+
+Doğrusu:
+
+| Rol | Gerçek yol | Anahtar |
+|---|---|---|
+| istek | `Task/RequestLeavingPermission` | `scheduleId` |
+| bulma + statü | `Task/GetWaitingLeavingRequests` | `scheduleId` |
+| onay | `Task/ApproveLeavingPermission` (`{ScheduleIds, EventLocation, CourierUserNames}`) | `scheduleId` |
+
+`ApproveLeavingPermission` idempotent: `WaitingForApproval` şartlı update yapıyor
+ve `ModifiedCount > 0` değilse atlıyor (TaskOperation.cs:2325). Çifte onay zaten
+imkânsız — makronun `KEYED` + `RECONCILE_BEFORE_RELEASE` kurgusu bu akış için
+gereğinden ağır ama zararsız.
+
+**Bulgu 2 — `approvalRequestCode` üretilmiyor.** İstek yanıtı düz bir string
+("Leaving permission request saved"); hiçbir kimlik dönmüyor. Makronun zorunlu
+`approvalRequestCode` girdisi **doldurulamaz bir alan** — tap'ten önce
+bilinemez, tap'ten sonra da verilmiyor. Korelasyon çapası `scheduleId` olmalı;
+onu `select-route` zaten üretiyor ve cihaz istekte kendisi gönderiyor.
+
+**Bulgu 3 — push schedule'ı tazelemiyor.** Push ile fetch arasında 28 saniye ve
+**sıfır** schedule çağrısı var (HTTP logunda yalnız 10 sn'lik `Task/Info` sağlık
+atışları). Fetch'i tetikleyen, bildirim ekranından çıkış oldu — fragment resume.
+FCM handler yalnız bildirimi kaydedip yerel yayın yapıyor; alıcı
+(`MainActivity.kt:275`) bildirim listesini açıyor, schedule'a dokunmuyor.
+
+Dilim açısından: "bildirim → fetch → APPROVED" nedensel zinciri **kurulamaz**;
+tazelemeyi tetikleyen açık bir adım modellenmeli. Ürün açısından: durak
+listesinde bekleyen kurye, ekranla etkileşime girmedikçe onayı görmüyor. 28 sn
+ölçüldü; daha uzun periyotlu bir tazeleme var mı — **ölçülmedi**, alt sınır bu.
+
+**Bulgu 4 — statü UI'dan okunamaz.** `btn_out`'un etiketi schedule statüsünün
+fonksiyonu, ama `Approved(2)` ve `EndOfDay(3)` **aynı** metni taşıyor ("End Of
+Tour"); tek ayırt edici `enabled`. O da güvenilmez: tıklama handler'ı her
+tap'ten 1 sn sonra `isEnabled = true` yazıyor (StopListFragment.kt:1961-1963) ve
+ölçümde `WaitingForApproval` statüsünde bile `enabled: true` görüldü. Sayısal
+statüyü taşıyan ayrı bir Verdict olayı **şart**; UI okuması ancak teyit kanalı
+olabilir.
+
+**Bulgu 5 — iki küçük delik.** `TOUR_APPROVAL_PUSH` 23 ms arayla **iki kez**
+yayınlanıyor (`handleIntent` ve `onMessageReceived` ikisi de çağırıyor). Ve hem
+`TOUR_STARTED` hem push olayları `occurrenceId: run_…:tap-acknowledge:0`
+taşıyor — bir önceki `load-to-vehicle` koşusundan kalma. `requireOccurrenceMatch:
+true` ile bu, korelasyonu sessizce düşürür.
+
+**Yapıldı:** `targets.ts` düzeltildi (aşağıda). **Yapılmadı:** adapter
+operasyonları hâlâ yanlış kuyrukta, makro hâlâ `endOfDay` bekliyor,
+`approvalRequestCode` hâlâ zorunlu girdi, cihaz-düzlemi statü fact'i hâlâ yok.
+
+### 5.0e `targets.ts` düzeltildi — hedef ne var olmuş ne doğru ekrandaydı
+
+`tour_approval_request_button` uygulamanın **hiçbir yerinde** geçmiyordu ve
+`endOfDay` ekranında aranıyordu. Gerçeği: `btn_out`, **stop list** ekranında
+(`fragment_stops.xml:121`). `route_row_*` ile birebir aynı hastalık — hedef
+cihazdan ölçülerek değil, isimden türetilerek yazılmış.
+
+Düzeltildi: `tourApprovalRequestButton` → `ACCESSIBILITY_ID: btn_out`,
+`screenRef: routeStopList`. Zincir tek halka, bilerek: `btn_out`'un kendi metni
+yok (etiket tıklanamayan `text1` çocuğunda, o da ekranda dört kez tekrarlıyor) ve
+metin zaten statüyle değişiyor.
+
+Eklendi: `tourRoutingAuto` (`auto_route`) ve `tourRoutingManual`
+(`manual_route`). Tur isteği **tek tap değil** — arada rota optimizasyon
+diyaloğu var ve backend çağrısını ancak buradaki seçim yapıyor.
+
+Bilinçli boşluk: bu diyalog kendi başına bir **surface**, ama `NESY_SURFACES`'a
+eklemek interrupt policy ve kendi policy testini gerektiriyor. Şimdilik ikisi de
+stop list ekranına asıldı ve durum `targets.ts` yorumunda kayıtlı — kaçak
+girmesin diye.
+
+Pack testleri 134/134 yeşil (target sayısı 16 → 18, referans dokümanı §2 tablosu
+da güncellendi; o tabloda başka bayat sayılar da vardı, onlar da düzeltildi).
+
 ### 5.0a Kapatıldı — iki host boşluğu: opsiyonel etkileşim modellenebiliyor (#20)
 
 **İkisi de kapatıldı ve cihazda doğrulandı** (`tap-acknowledge action=SKIPPED`,
@@ -587,6 +692,140 @@ APP.AVAILABLE_STOPS_LOADED           VIOLATED    tek kalan: durak yok → §5.0
 > ile sabitlendi (yanlış schedule id → false, yanlış rota → false, eksik girdi →
 > sessiz), ama "türetilmiş fact oracle'a ULAŞIR" invaryantı için kuyruk seviyesinde
 > bir test yok. Bu delik bir kez daha açılırsa yine sessizce açılır.
+
+### 5.0f Tur onayı 1.12.0 ile cihazda koştu — yedi adım geçti, oracle görmedi
+
+Pack **1.12.0**: hedefler, makro ve adapter operasyonları §5.0d'deki ölçüme göre
+yeniden yazıldı. Katalog seed'lendi
+(`sha256:09a4dce8…`), cihazda koşuldu.
+
+**Cihazda kanıtlanan** (`run_309118ae`):
+
+```text
+resolve-request-button  SUCCEEDED   btn_out çözüldü
+tap-request             SUCCEEDED   rota diyaloğu açıldı
+resolve-routing-choice  SUCCEEDED   auto_route RESOLVED_UNIQUE
+tap-routing-choice      SUCCEEDED   gate SATISFIED — istek gitti
+verify-request-record   SUCCEEDED   GetWaitingLeavingRequests
+dispatcher-approves     SUCCEEDED   ApproveLeavingPermission
+verify-approved-status  SUCCEEDED   statü okundu
+await-push              SKIPPED     onTimeout CONTINUE (aşağıya bakın)
+assert-approved         çalıştı     → INCONCLUSIVE
+```
+
+Yani §5.0d'de elle ölçülen akışın tamamı artık **makroyla** koşuyor. Yeni
+hedefler ve yeni endpoint'ler doğru: hiçbir adım hedef bulamamaktan ya da yanlış
+kuyruktan düşmedi.
+
+**Kapatılan host boşluğu — `onTimeout` okunmuyordu.** İlk koşuda `await-push`
+`FAILED` verip koşuyu durdurdu, oysa adım `onTimeout: CONTINUE` bildiriyor.
+Executor bekleme adımının deadline'ını okuyup **politikasını okumuyordu**; üstelik
+iki ayrı zaman aşımı dalı var ve fact beklemelerinin geçtiği dal (`WAIT_EVENT`,
+`index.ts:1181`) ilk düzeltmede atlanmıştı — yalnız köprü dalını düzeltmek hiçbir
+şeyi düzeltmiyor. Artık `CONTINUE` → `SKIPPED` (her iki eksende), `next` izlenir.
+`SUCCEEDED` değil: hiçbir şey gözlenmedi, etki iddia edilemez — `TREAT_AS_ABSENT`
+hedeflerdeki ayrımın aynısı. İki executor testi eklendi (biri WAIT_EVENT dalı
+için, ki asıl taşıyan o).
+
+Bu, aynı sınıfın **altıncı** örneği: pack bildiriyor, host okumuyor.
+
+**AÇIK — beş fact'in hiçbiri final oracle'a ulaşmıyor.** Üreten adımların
+**dokuzu da** başarılı, buna rağmen:
+
+```text
+APP.TOUR_APPROVAL_REQUESTED           REQUIRED_TIMEOUT
+REMOTE.TOUR_APPROVAL_REQUEST_CREATED  REQUIRED_TIMEOUT
+REMOTE.TOUR_APPROVAL_STATUS_APPROVED  REQUIRED_TIMEOUT
+REMOTE.TOUR_APPROVAL_CONFIRMED        REQUIRED_TIMEOUT
+APP.TOUR_APPROVAL_PUSH_RECEIVED       WARNING_TIMEOUT
+```
+
+`APP.TOUR_APPROVAL_REQUESTED` aynı koşuda `tap-routing-choice`'un continue
+gate'ini SATISFIED yaptı — yani fact gözlendi, sonra kayboldu. Sorun üretimde
+değil, **occurrence'lar arası görünürlükte**.
+
+**İki hipotez kuruldu, ikisi de gerçek kusur çıktı, ikisi de düzeltildi — ve
+hiçbiri bu belirtiyi çözmedi.** Üçü de cihazda ölçüldü; sıradaki oturum bunları
+yeniden denemesin.
+
+*Hipotez 1 — tazelik.* Adım zamanlamaları ölçüldü: istek olayı 17:27:22'de geldi
+ve continue gate'i doyurdu; opsiyonel push beklemesi 120 sn'lik bütçesinin
+tamamını yaktı; `assert-approved` 17:29:41'de sordu. Olay o an **139 sn** yaşındaydı,
+APP tazelik penceresi ise 15 sn. İki backend okuması da (30 sn pencere) bayattı.
+Sebep buymuş gibi duruyordu.
+
+Ve `currentFacts` gerçekten de tazeliği **her okumada** yeniden uyguluyordu: koşunun
+kabul ettiği, koreleettiği, üzerine iş yaptığı bir fact, dünyada hiçbir şey
+değişmeden, yalnız okuyucu geç kaldığı için kendi occurrence'ından siliniyordu.
+Düzeltildi: **tazelik girişi denetler, ikameti değil** — "teklif edildiğinde zaten
+eski miydi" sorusunun tek cevabı var ve bir kez, kabul anında sorulur. Üç yeni
+test. Belirti değişmedi.
+
+*Hipotez 2 — asimetrik yenileme.* Oracle worker'ın `refreshFacts` kancası yalnız
+canlı ekran hazırlığını yayınlıyordu; executor'ın `factsForOccurrence` portu ise
+ayrıca SDK/remote gözlemlerini yeniden yayınlayıp türetilmiş fact'leri
+hesaplıyordu. Oracle bir EVENTUAL deadline boyunca kendi döngüsünde okuduğu için,
+koşunun çoğunda **dar pencereden bakan taraf asıl karar veren taraftı**. Düzeltildi:
+tek bir `refreshOccurrenceEvidence` her ikisini de besliyor, bir daha ayrışamazlar.
+Belirti değişmedi.
+
+*Elenenler:* fact üretimi (adımlar başarılı, gate doyuyor), tazelik penceresi,
+iki yenileme yolunun asimetrisi.
+
+*Sonra ölçüldü ve üçüncü hipotez de yanlış çıktı.* Trace (`VERDICT_FACT_TRACE`
+ortam değişkeni, `refreshOccurrenceEvidence` içinde) her occurrence'ın gerçekte
+ne gördüğünü yazdırdı. iterationKey her yerde `root`; uyuşmazlık yok.
+
+**Trace fact DEĞERLERİNİ de yazdırınca gerçek sebep göründü:**
+
+```text
+REMOTE.TOUR_APPROVAL_REQUEST_CREATED = false
+REMOTE.TOUR_APPROVAL_STATUS_APPROVED = false
+```
+
+Fact'ler eksik değildi. **Oradaydılar ve "hayır" diyorlardı.** Bir requirement
+durumu (`REQUIRED_TIMEOUT`) bu iki hâli aynı gösteriyor: "oracle fact'i göremiyor"
+ile "oracle `false` diyen bir fact görüyor". Üç hipotezi bu yüzden yanlış yerde
+aradım. **Ders: fact eksikliğini teşhis ederken önce değerini yazdırın.**
+
+**Kök neden — entity kimliği hiç çözülmüyordu.** `resolveInputs`'ta `entityRef`
+kaynaklı bir girdi yalnızca `variables.get(binding.name)`'e bakıyordu, yani daha
+önceki bir adımın yayınladığı çalışma-zamanı kimliğine. Tur onayında böyle bir
+adım yok — schedule id bir koşu girdisi. Sonuç: girdi `undefined`, adapter back
+office'te **boş dizeyi** aradı, bulamadı, `exists: false` yayınladı. Adım
+`SUCCEEDED` raporladı (endpoint gerçekten çağrılmıştı), koşu son adıma kadar
+sağlıklı göründü.
+
+Pack bunu zaten bildiriyordu: `entityBinding: { type, id: "run.input.scheduleId" }`.
+Host yalnızca `type`'ı okuyup `id`'yi görmezden geliyordu. **Aynı sınıfın
+yedinci örneği.** Düzeltildi: adım bir kimlik yayınlamışsa o kazanır (koşunun
+GÖZLEMLEDİĞİ kimliktir), yoksa `entityBinding.id` çözülür — `run.input.*` /
+`macro.input.*` bir yol, gerisi sabit id. Test eklendi.
+
+**Düzeltme sonrası cihazda ölçüldü:** dört fact de `true`, doğru lane, PRIMARY
+yetki, `assert-approved`'ın occurrence'ında. `await-push` de artık `SKIPPED`
+değil `SUCCEEDED` — push korele oldu.
+
+**HÂLÂ AÇIK:** oracle bunları buna rağmen saymıyor; beş requirement da
+`REQUIRED_TIMEOUT`. Yani kalan boşluk tam olarak "fact mevcut, doğru, doğru
+lane'de, doğru occurrence'ta" ile "oracle onu sayıyor" arasında. Kalan adaylar,
+bu sefer daraltılmış: requirement'ların korelasyon şartı (fact'lerde entity ile
+eşleşen `correlationValue` yok) ve `observedBeforeMs` penceresi. Türetilmiş
+`REMOTE.TOUR_APPROVAL_CONFIRMED` de `assert-approved`'ta artık üretilmiyor — bu,
+korelasyon şartı hipotezini destekliyor, çünkü `CORRELATED_ALL_OF` girdilerinin
+korele olmasını istiyor.
+
+Sonraki adım: `evaluateFinalOracle`'a giren fact'lerin `correlationValue`'sunu
+yazdırın; üçünü de tahminle değil ölçümle eleyin.
+
+Verdict bu yüzden hâlâ `INCONCLUSIVE / EVIDENCE_INSUFFICIENT`. Ürün hakkında
+hiçbir şey söylemiyor — §2'nin tarif ettiği durumun ta kendisi.
+
+**Yan bulgu:** koşuyu tekrarlamak için schedule'ı `Task/RejectLeavingPermission`
+ile `BeginningOfDay`'e çekiyoruz (statüyü koşulsuz yazıyor, `RejectionReason` bir
+enum). Ama bu cihaza bir bildirim push'u gönderiyor ve uygulama **kendiliğinden
+bildirim listesi ekranına gidiyor** — sonraki koşu `btn_out`'u bulamıyor. Bildirim
+ekranı pack'te bir surface olarak modellenmiş değil; şimdilik elle çıkılıyor.
 
 ### 5.1 TAMAMLANDI — select-route'u cihazda tamamla (#17 + #18 ölçümü)
 

@@ -55,7 +55,14 @@ export const NESY_TARGETS = {
   taskRow: "nesy.target.task-row",
   scanTrigger: "nesy.target.scan-trigger",
   deliveryCompleteButton: "nesy.target.delivery-complete-button",
+  /**
+   * Requests tour start from the STOP LIST — not from end-of-day. Its label is
+   * the schedule status, so the id is the only stable handle.
+   */
   tourApprovalRequestButton: "nesy.target.tour-approval-request-button",
+  /** Routing chooser shown between the request tap and the backend call. */
+  tourRoutingAuto: "nesy.target.tour-routing-auto",
+  tourRoutingManual: "nesy.target.tour-routing-manual",
 } as const;
 
 export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
@@ -346,14 +353,70 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
+    /**
+     * MEASURED on device 2026-08-12 (R6CW400BC8N, schedule 11-31-20260812-1).
+     *
+     * The previous definition was invented twice over: it looked for an id
+     * `tour_approval_request_button` that exists nowhere in the app, on the
+     * end-of-day screen. The real control is `btn_out` on the STOP LIST
+     * (`fragment_stops.xml`), and tapping it is what reaches
+     * `Task/RequestLeavingPermission`.
+     *
+     * ID ONLY, DELIBERATELY. `btn_out` carries no text of its own; the label
+     * lives on a child `text1` and is a pure function of the schedule status
+     * (StopListFragment ~1924): BeginningOfDay → "Request Tour Start",
+     * WaitingForApproval → "Waiting Approval", Approved AND EndOfDay → both
+     * "End Of Tour". Matching on text would therefore bind to a non-clickable
+     * child, would break the moment the status advances, and could not tell
+     * Approved from EndOfDay anyway. `enabled` is no help either: the click
+     * handler re-enables the view a second after every tap, so a disabled
+     * status renders as `enabled: true` (measured).
+     */
     targetKey: NESY_TARGETS.tourApprovalRequestButton,
     applicationRef: APP,
-    screenRef: NESY_SCREENS.endOfDay,
-    displayName: "Request tour approval button",
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Request tour start button (stop list)",
     resolution: {
-      chain: [
-        { kind: "ACCESSIBILITY_ID", selector: { id: "tour_approval_request_button" }, establishesIdentity: true },
-      ],
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btn_out" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  /**
+   * The routing chooser, measured in the same run: tapping the request button
+   * does NOT call the backend. A dialog opens first — "Please select your route
+   * optimization type!" — and only the choice made here issues
+   * `Task/RequestLeavingPermission` with the `calculateRoute` flag set
+   * accordingly. A slice that models the request as one tap never leaves this
+   * dialog.
+   *
+   * Both are hung off the stop list screen rather than a surface of their own.
+   * The dialog IS a distinct surface and belongs in NESY_SURFACES with an
+   * interrupt policy; that is a registry change with its own policy test, so it
+   * is recorded here as a known gap instead of being smuggled in.
+   */
+  {
+    targetKey: NESY_TARGETS.tourRoutingAuto,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Auto routing choice on the tour start dialog",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "auto_route" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.tourRoutingManual,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Manual routing choice on the tour start dialog",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "manual_route" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 12_000,

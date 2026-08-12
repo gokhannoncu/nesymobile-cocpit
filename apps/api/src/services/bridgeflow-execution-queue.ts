@@ -16,6 +16,7 @@
  */
 
 import { execFile } from 'node:child_process'
+import { appendFileSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { BridgeFlowExecutor, createInMemoryMutationAdmission } from '@nesy/bridgeflow-executor'
 import type { PrismaClient } from '@nesy/db'
@@ -375,6 +376,10 @@ function publishSdkObservations(input: {
       lane: 'ORDERED_REQUIRED',
       correlationStatus: 'CORRELATED',
       trust: 'RESOLVER_ACCEPTED',
+      // This run made the observation, so the run admitted it when it was made.
+      // Re-judging it here would refuse every observation older than the window
+      // simply for having been carried to a later occurrence.
+      acceptedAtMs: observation.observedAtMs,
       fact: {
         factKey: observation.factKey,
         occurrenceId: input.occurrenceId,
@@ -819,23 +824,112 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       runInputs,
       clock,
     })
+    /**
+     * Bring one occurrence's evidence up to date and return everything it can
+     * see. The executor's evidence port and the oracle worker's `refreshFacts`
+     * BOTH go through here; that is the point of it existing.
+     *
+     * Three producers, none of which can address an occurrence on its own:
+     *
+     *   Screen readiness — the device reports its screen continuously but cannot
+     *   know which plan occurrence is asking, so the correlation can only be made
+     *   at the moment of the question.
+     *
+     *   SDK and back-office observations — made in one occurrence, read from
+     *   another.
+     *
+     *   Derived facts — appended, never substituted (`preserveInputs` is always
+     *   true), because a conclusion that replaced its inputs would leave the next
+     *   reader unable to see what it was built from. Published rather than only
+     *   returned: the oracle worker builds its own set from
+     *   `runtime.currentFacts` and never calls the derivation engine.
+     */
+    const refreshOccurrenceEvidence = (
+      occurrenceId: string,
+      iterationKey: string,
+    ): readonly NormalizedEvidenceFact[] => {
+      publishLiveScreenReadiness({
+        bundle: resolution.pack.bundle,
+        evidenceRuntime,
+        observer: screenObserver,
+        runId: item.runId,
+        occurrenceId,
+        iterationKey,
+        clock,
+      })
+      publishSdkObservations({
+        evidenceRuntime,
+        observations: sdkObservations,
+        runId: item.runId,
+        occurrenceId,
+        iterationKey,
+      })
+      const observed = evidenceRuntime.currentFacts(
+        { runId: item.runId, occurrenceId, iterationKey },
+        clock(),
+      )
+      const derived = deriveFacts({
+        bundle: resolution.pack.bundle,
+        facts: observed,
+        expectations: runInputExpectations,
+      })
+      publishDerivedFacts({
+        evidenceRuntime,
+        derived,
+        runId: item.runId,
+        occurrenceId,
+        iterationKey,
+      })
+      // Set VERDICT_FACT_TRACE to a file path to record what each occurrence can
+      // actually see. Three wrong hypotheses died to this trace and the real
+      // cause only became visible once the fact VALUES were printed next to the
+      // keys — "the oracle cannot see the fact" and "the oracle can see a fact
+      // that says false" look identical in a requirement state.
+      const tracePath = process.env.VERDICT_FACT_TRACE
+      if (tracePath !== undefined && tracePath !== '') {
+        try {
+          appendFileSync(
+            tracePath,
+            `${JSON.stringify({
+              at: new Date(clock()).toISOString(),
+              occurrenceId,
+              iterationKey,
+              ordered: evidenceRuntime
+                .currentFacts(
+                  { runId: item.runId, occurrenceId, iterationKey },
+                  clock(),
+                  'ORDERED_REQUIRED',
+                )
+                .map((f) => `${f.factKey}=${String(f.value)}/${f.authority}`),
+              derived: derived.map((f) => f.factKey),
+            })}\n`,
+            'utf8',
+          )
+        } catch {
+          // Diagnostics must never take a run down.
+        }
+      }
+      return [...observed, ...derived]
+    }
     const oracle = new OracleEvaluationWorker({
       runtime: evidenceRuntime,
       persistence,
       clock,
-      // The same producer the executor's evidence port uses. A continue gate on a
-      // `UI.*_READY` fact is a question about the screen the device is on now, and
-      // nothing else publishes that into the gate's lane.
+      // THE SAME VIEW THE EXECUTOR GETS, not a narrower one.
+      //
+      // This used to publish live screen readiness and nothing else, while the
+      // executor's `factsForOccurrence` port below also republished SDK and
+      // back-office observations into the asking occurrence and recomputed the
+      // pack's derived facts. The oracle worker re-reads facts on its own loop
+      // for the whole of an EVENTUAL deadline, so for most of a run the only
+      // reader that matters was looking through the smaller window.
+      //
+      // Measured on device: every step of TOUR_APPROVAL_LIFECYCLE succeeded and
+      // all five REQUIRED facts still came back REQUIRED_TIMEOUT. Two of them had
+      // already settled a continue gate in the same run.
+      //
       refreshFacts: (scope) => {
-        publishLiveScreenReadiness({
-          bundle: resolution.pack.bundle,
-          evidenceRuntime,
-          observer: screenObserver,
-          runId: scope.runId,
-          occurrenceId: scope.occurrenceId,
-          iterationKey: scope.iterationKey,
-          clock,
-        })
+        refreshOccurrenceEvidence(scope.occurrenceId, scope.iterationKey)
       },
     })
 
@@ -854,60 +948,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
         }),
         evidence: {
-          factsForOccurrence: (occurrenceId, iterationKey) => {
-            // Screen readiness is produced HERE, against the caller's own scope.
-            // The device reports its screen continuously but cannot know which plan
-            // occurrence is asking, so the correlation can only be made at the
-            // moment of the question.
-            publishLiveScreenReadiness({
-              bundle: resolution.pack.bundle,
-              evidenceRuntime,
-              observer: screenObserver,
-              runId: item.runId,
-              occurrenceId,
-              iterationKey,
-              clock,
-            })
-            // Same move for what earlier SDK_QUERY steps read: the observation
-            // was made in one occurrence, and this is the one asking.
-            publishSdkObservations({
-              evidenceRuntime,
-              observations: sdkObservations,
-              runId: item.runId,
-              occurrenceId,
-              iterationKey,
-            })
+          factsForOccurrence: (occurrenceId: string, iterationKey: string) => {
+            const facts = refreshOccurrenceEvidence(occurrenceId, iterationKey)
             // Facts are also handed to the condition resolver: a branch that
             // reads `sdk.state.*` must see what the oracle lane saw, not a
             // second, differently-filtered view of the same run.
-            const observed = evidenceRuntime.currentFacts(
-              { runId: item.runId, occurrenceId, iterationKey },
-              clock(),
-            )
-            // The pack's DERIVED facts, computed from what this occurrence
-            // observed. They are appended, never substituted: `preserveInputs` is
-            // always true, and a conclusion that replaced its inputs would leave
-            // the next reader unable to see what it was built from.
-            const derived = deriveFacts({
-              bundle: resolution.pack.bundle,
-              facts: observed,
-              expectations: runInputExpectations,
-            })
-            // PUBLISHED, not just returned. The oracle worker builds its own fact
-            // set from `runtime.currentFacts` and never calls the derivation
-            // engine, so a derived fact that only reached this return value was
-            // visible to the condition resolver and invisible to every oracle —
-            // every derived REQUIREMENT timed out naming a fact the run had in
-            // fact concluded. Measured on device: both schedule derivations came
-            // back `REQUIRED_TIMEOUT` while their inputs were all present.
-            publishDerivedFacts({
-              evidenceRuntime,
-              derived,
-              runId: item.runId,
-              occurrenceId,
-              iterationKey,
-            })
-            const facts = [...observed, ...derived]
             runContext.observeFacts(facts)
             return facts
           },

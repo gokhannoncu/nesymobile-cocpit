@@ -15,6 +15,7 @@ import {
   type DurableEvidenceResolution,
   type EvidenceSourceResolver,
 } from './evidence-source-resolver.js'
+import { getSdkObservationStore } from './sdk-observation-store.js'
 
 export type PreparedDurableEvidence =
   | {
@@ -69,7 +70,30 @@ export class DurableBridgeFlowEvidenceIngest {
   }
 
   publish(prepared: PreparedDurableEvidence): void {
-    if (prepared.status === 'ACCEPTED') this.options.runtime.publish(prepared.publication)
+    if (prepared.status !== 'ACCEPTED') return
+    this.options.runtime.publish(prepared.publication)
+    // ALSO into the run's observation store, so the fact can be carried to the
+    // occurrence that asks later.
+    //
+    // A device event is stamped with the occurrence that was WAITING for it, and
+    // evidence is scoped by occurrence — so publishing alone made it visible to
+    // exactly one step and to nothing downstream. Measured: the courier's request
+    // event satisfied its continue gate and was then absent from every later
+    // occurrence, including the one carrying the Final Oracle that required it.
+    // SDK queries and back-office reads already go through the store for this
+    // reason; device events were the one producer that did not.
+    const fact = prepared.publication.fact
+    if (typeof fact.value === 'boolean' || fact.value === 'UNKNOWN') {
+      getSdkObservationStore().record(prepared.publication.runId, {
+        factKey: fact.factKey,
+        value: fact.value,
+        observedAtMs: fact.observedAtMs,
+        queryRef: fact.subtype ?? 'device-event',
+        ...(typeof fact.correlationValue === 'string'
+          ? { correlationValue: fact.correlationValue }
+          : {}),
+      })
+    }
   }
 
   async observeOrderedBlock(

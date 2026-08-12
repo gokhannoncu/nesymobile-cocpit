@@ -29,6 +29,7 @@ const write = (name, value) => {
 const fileNameBySlice = {
   COURIER_LOGIN: "courier-login.reference.json",
   SELECT_ROUTE: "select-route.reference.json",
+  LOAD_TO_VEHICLE: "load-to-vehicle.reference.json",
   OPEN_STOP: "open-stop.reference.json",
   PROCESS_PARCEL: "process-parcel.reference.json",
   COMPLETE_DELIVERY: "complete-delivery.reference.json",

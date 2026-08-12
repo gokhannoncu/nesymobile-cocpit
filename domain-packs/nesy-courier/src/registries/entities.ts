@@ -106,11 +106,23 @@ export const NESY_COURIER_ENTITIES: readonly EntityDefinition[] = [
     entityType: NESY_ENTITIES.tourApprovalRequest,
     applicationRef: APP,
     displayName: "Tour approval request",
-    businessKeyPath: "approvalRequestCode",
-    identityPaths: ["approvalRequestId", "routeCode"],
+    /**
+     * Keyed by the SCHEDULE, because the product mints no key of its own.
+     *
+     * Measured 2026-08-12: `Task/RequestLeavingPermission` answers with the bare
+     * string "Leaving permission request saved" and stamps the state onto the
+     * schedule. There is no approval request code — not before the tap, not
+     * after it. `approvalRequestCode` was a field only this pack believed in, and
+     * a required run input nobody could ever fill.
+     *
+     * The request is still a real business object; its identity just happens to
+     * be the schedule it was raised against.
+     */
+    businessKeyPath: "scheduleId",
+    identityPaths: ["scheduleId", "routeCode"],
     // crossPlane is mandatory here: the whole slice is about matching what the
     // courier asked for against what the dispatcher approved.
-    correlation: { correlationPaths: ["approvalRequestCode", "correlationId", "routeCode"], crossPlane: true },
+    correlation: { correlationPaths: ["scheduleId", "correlationId", "routeCode"], crossPlane: true },
     freshness: { maxAgeMs: 60_000, onStale: "REFRESH" },
     redaction: { redactPaths: ["requesterName", "approverName"], hashPaths: ["requesterId", "approverId"] },
     sourceQueryRefs: [NESY_ADAPTER_QUERY_REFS.routeState],

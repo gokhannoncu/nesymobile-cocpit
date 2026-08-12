@@ -16,6 +16,16 @@ export interface EvidencePublication {
   lane: EvidenceDeliveryLane
   correlationStatus: 'CORRELATED' | 'MISMATCH' | 'PENDING'
   trust: 'RESOLVER_ACCEPTED'
+  /**
+   * When the RUN admitted this observation, if that is not now.
+   *
+   * Carrying one occurrence's observation to the occurrence that is asking is
+   * bookkeeping, not a second observation — so it must not be re-judged for
+   * freshness as though it had just arrived. Without this, any fact republished
+   * later than its own window was silently refused, which is worse than the
+   * bug it replaced: the run had the evidence and threw it away in transit.
+   */
+  acceptedAtMs?: number
 }
 
 export type EvidenceWakeup =
@@ -41,8 +51,13 @@ export interface BlockedRevision {
   evidenceRef?: string
 }
 
+/** A publication plus the moment the run accepted it. Internal to the store. */
+interface StoredPublication extends EvidencePublication {
+  acceptedAtMs: number
+}
+
 export class BridgeFlowEvidenceRuntime {
-  private readonly publications = new Map<string, Map<string, EvidencePublication>>()
+  private readonly publications = new Map<string, Map<string, StoredPublication>>()
   private readonly blocked = new Map<string, BlockedRevision>()
   private readonly blockedRuns = new Map<string, BlockedRevision>()
   private readonly closed = new Map<string, string>()
@@ -110,7 +125,30 @@ export class BridgeFlowEvidenceRuntime {
         (publication) =>
           publication.trust === 'RESOLVER_ACCEPTED' &&
           publication.correlationStatus === 'CORRELATED' &&
-          (lane === undefined || publication.lane === lane),
+          (lane === undefined || publication.lane === lane) &&
+          // FRESHNESS GATES ADMISSION, NOT RESIDENCE.
+          //
+          // This used to be `nowMs - observedAtMs <= freshnessMaxAgeMs`, re-checked
+          // on every read — so a fact the run had already accepted, correlated and
+          // acted on simply vanished from its own occurrence once the window
+          // elapsed. Nothing changed in the world; the reader just got later.
+          //
+          // Measured on device (run_309118ae): the courier's request event landed
+          // at 17:27:22 and satisfied its continue gate. The optional push wait
+          // then burned its full 120s deadline, so by the time `assert-approved`
+          // asked at 17:29:41 the event was 139s old against a 15s window — and
+          // both back-office reads, taken before that wait, were stale too. All
+          // five REQUIRED facts reported REQUIRED_TIMEOUT while every step that
+          // produced them had SUCCEEDED. Any slice with a long wait in the middle
+          // would lose everything gathered before it.
+          //
+          // What freshness is actually for is unchanged: an observation that was
+          // ALREADY old when offered is refused entry. That question has one
+          // answer, asked once, at acceptance. Whether the world has since moved
+          // on is a different question, and the one correlation and re-observation
+          // exist to answer.
+          publication.acceptedAtMs - publication.fact.observedAtMs <=
+            publication.fact.freshnessMaxAgeMs,
       )
       .map((publication) => publication.fact)
       .filter(
@@ -118,8 +156,7 @@ export class BridgeFlowEvidenceRuntime {
           fact.occurrenceId === scope.occurrenceId &&
           fact.iterationKey === scope.iterationKey &&
           fact.observedAtMs < observedBeforeMs &&
-          nowMs >= fact.observedAtMs &&
-          nowMs - fact.observedAtMs <= fact.freshnessMaxAgeMs,
+          nowMs >= fact.observedAtMs,
       )
       .sort((left, right) => {
         const observed = left.observedAtMs - right.observedAtMs
@@ -237,7 +274,7 @@ export class BridgeFlowEvidenceRuntime {
 
   private store(publication: EvidencePublication): void {
     const key = scopeKey(scopeOf(publication))
-    const bucket = this.publications.get(key) ?? new Map<string, EvidencePublication>()
+    const bucket = this.publications.get(key) ?? new Map<string, StoredPublication>()
     const fact = { ...publication.fact, deliveryLane: publication.lane }
     const identity = JSON.stringify([
       publication.revision,
@@ -245,7 +282,11 @@ export class BridgeFlowEvidenceRuntime {
       fact.factKey,
       fact.rawEventId ?? '',
     ])
-    bucket.set(identity, { ...publication, fact })
+    // When the run ACCEPTED this observation. Freshness is judged once, here —
+    // see `currentFacts`. A republished fact carries its original admission.
+    const acceptedAtMs =
+      publication.acceptedAtMs ?? bucket.get(identity)?.acceptedAtMs ?? this.now()
+    bucket.set(identity, { ...publication, fact, acceptedAtMs })
     this.publications.set(key, bucket)
   }
 
