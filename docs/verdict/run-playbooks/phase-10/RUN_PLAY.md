@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 11:30:00 +03"
+lastUpdatedAt: "2026-08-12 14:45:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.5.0"
+domainPackVersion: "1.6.1"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -138,7 +138,7 @@ Oy kullanmayan bir ayağın erişilemez olması testi düşürmemeli.
 | # | İş | Durum |
 |---|---|---|
 | 16 | `select-route` sunulan rotaları okuyor | `DONE` |
-| 17 | Rota diyaloğu hedef modeli | `OPEN` |
+| 17 | Rota diyaloğu hedef modeli | `DONE` |
 | 18 | `sql_named` parametre transport'u | `DONE` |
 
 - Her bağımsız iş akışı artık **tek makro** referans ediyor. `macroRefs: [login, X]`
@@ -216,7 +216,66 @@ Uygulama tarafındaki filtre zaten yerinde
 (`NesyAppAdapterQueryCapability.kt`, `params["matchKey"]` okuyor); eksik olan tek
 şey transport'tu. Bu ölçüm §5.1'in ilk adımı.
 
-### 3.6 Sırbistan fiscal kuralı
+### 3.6 #17 — rota diyaloğu gerçek arayüze bağlandı
+
+Doküman bunu "hedefleri yeniden yaz" işi sanıyordu. Ölçüm dört bağımsız engel
+gösterdi ve üçü **generic katmanın** eksiğiydi, bu uygulamanın özelliği değil.
+Kullanıcı kararı: dördü de yapılsın, **pack en son** yazılsın — eksik host'a
+karşı yazılan pack workaround kodlar.
+
+**L1 — dinamik hedef kimliği (host).** Pack koşudan önce yazıldığı için kimliğin
+NEREDEN geldiğini bildirebilir, hangi kaydın istendiğini bilemez.
+`buildTargetFingerprint` yalnız literal okuyordu; pack `idPrefix`/`keyPath` (bir
+kural) veriyordu → zincir sonuna kadar yürünüyor, hedef `undefined` dönüyor ve
+`resolve-row` cihaza hiç sormadan, sebep bile söylemeden düşüyordu. Artık adımın
+`entityBinding.id`'si (`run.input.` / `var.`) çözülüp fingerprint'e veriliyor; iki
+kural da pack tarafından BİLDİRİLİYOR: `idPrefix + entityKey`, ve `ENTITY_BINDING`
+için "entity key metnin kendisidir". Key'i olmayan halka **atlanıyor**, boş
+dizgiye çevrilmiyor — `route_row_` her satırla eşleşir.
+
+**L3 — id'siz koleksiyon (cihaz).** `scroll_to_item` `listId`'yi birebir
+eşliyordu; Android'in Spinner popup'ı, AlertDialog listesi ve autocomplete'i kendi
+layout'undan doğduğu için `viewIdResourceName` **null**. Artık `listId` **ya da**
+`listClass` — birebir `className` **ve** `collectionInfo != null`. İkinci koşul
+taşıyıcı: sınıf adı tek başına aynı sınıftan sıradan bir container'ı da adlar ve
+onu kaydırmak, başarı diye okunan bir no-op olur. İki eşleşme `ambiguous` ile
+düşüyor, tıpkı iki id gibi. İki form birlikte gönderilirse `multiple_list_forms`.
+
+**L3b — aynı ağacın iki farklı anlık görüntüsü.** İlk cihaz koşusunda `dump`
+listeyi görüyor, `scroll_to_item` görmüyordu. Sebep: aksiyon yolu `toActionSnapshot`
+kullanıyor ve orada `className` **null**, `collectionInfo` **hiç doldurulmuyordu**.
+Yani protokolün planlayabildiği bir seçiciyi executor planlayamıyordu. Planlayıcının
+okuduğu alan, o planlayıcıya verilen HER anlık görüntüde bulunmalı — hafif bir
+görüntü, farklı bir ağaçtır.
+
+**L4 — scroll yolu (host).** `scroll_to_item` `BRIDGE_COMMANDS`'ta ilan edilmişti
+ama hiçbir host yolu çağıramıyordu (`act()` dört komut kabul ediyor). Artık
+`manager.scrollToItem()` var ve `BRIDGE_ACTION action: "scrollToItem"` dalı
+`back`/`swipe` gibi hedef aramadan önce duruyor — **konumlandırır, kimlik
+kurmaz**. `rowIndex` `resolveArgValue`'dan geçiyor, yani sorgu sonucundan
+(`var.…`) gelebiliyor: hangi satırda olduğu BU koşunun olgusu.
+
+`var.` referansları artık nokta yolu izliyor ve bunu **condition dilinin aynı
+`dig()` fonksiyonuyla** yapıyor — "yol satır kümesi üzerinde ne demek" sorusunun
+iki kopyası kaçınılmaz olarak ayrışırdı. Skaler bir argüman TEK değer ister: sütun
+çekimi diziyse ve birden fazla eleman varsa `undefined` döner, `[0]` alınmaz —
+hangi kaydın istendiği hakkında tahmin, bu kod tabanının başka her yerde
+reddettiği yanlış-satır hatasıdır.
+
+**Bekleme, uyku değil.** Popup, tap döndükten sonra platformun bağladığı bir
+pencere: aynı nefeste atılan scroll `not_found` diyor, bir saniye sonrası
+başarılı. Host yalnız `not_found`'u yeniden deniyor — o ret planlama sırasında
+verildiği için cihaz hiçbir şeye dokunmamıştır, `stale_tree`'yi tekrarlanabilir
+yapan özelliğin aynısı. Bütçe adımın kendi `timeoutMs`'i, yani pack'te bildirilen
+bir ifade; host'ta gömülü bir sabit değil.
+
+**L2 — pack (1.6.1).** Ölçülen arayüz: `dialog_spinner` (Spinner), popup
+`ListView` (id yok), satırlar `android:id/text1` paylaşıyor, onay `yesButton`.
+Zincir: `matchKey` ile tek satır çek → spinner'ı çöz ve bas → `route_index` ile
+listeyi konumlandır → satırı **etiketiyle** çöz (`route_label`: fiscal rotada
+`31 *`, `routeCode` ise `31`) → bas → `yesButton`'a bas.
+
+### 3.7 Sırbistan fiscal kuralı
 
 `31 *` içindeki yıldız **rota kodunun parçası değil** — fiscal zorunluluğunu
 gösteren, Sırbistan'a özel bir iş kuralı. Diğer ülkelerde aynı rota `31`.
@@ -229,7 +288,7 @@ satır üretiyor, ikisi de aynı `route_code`'da anlaşıyor — böylece workfl
 
 **Ölçüldü:** 253 rota → 353 satır, 200 satır fiscal (100 fiscal + 153 düz rota).
 
-### 3.7 Yan bulgu — erişilebilirlik onarımı
+### 3.8 Yan bulgu — erişilebilirlik onarımı
 
 `restoreAccessibilityService` dört ayrı adb çağrısıydı ve `accessibility_enabled=0`
 ile başlıyordu. Kesinti (API restart) **cihazın genel erişilebilirlik anahtarını
@@ -241,11 +300,16 @@ sessizce kapatmaktır. Ana anahtar artık hiç 0'a yazılmıyor.
 ```text
 login   doğru PIN    → PASS_ONLINE    9 adım    (9 ardışık koşu, 0 stale_run)
 login   yanlış PIN   → FAIL_PRODUCT   9 adım
-select-route          → wait-dialog / read-offered-routes / check-offered SUCCEEDED
-                        resolve-row FAILED  (#18 öncesi ölçüm; transport düzeldi,
-                        yeniden koşulmadı — §5.1)
+select-route  route 31 → FAIL_PRODUCT   14/14 adım SUCCEEDED, failureClass NONE
+                        APP.SELECTED_ROUTE_OBSERVED  SATISFIED  (uygulama rotayı seçti)
+                        APP.AVAILABLE_STOPS_LOADED   VIOLATED   (durak yüklenmedi)
+                        REMOTE.ROUTE_ASSIGNED        VIOLATED   (backend atanmış demiyor)
+                        REMOTE.ROUTES_AVAILABLE      WARNING_TIMEOUT (yalnız teşhis)
+                        Kanıt hattı KARAR ÜRETİYOR: ölçüldü ve false, INCONCLUSIVE değil
 sql_named params      → argümanlar handler'a ulaşıyor, değer birebir taşınıyor
                         (§3.5 sondaları, #18 sonrası)
+offeredRoutes         → parametresiz 353 satır, matchKey="31" TEK satır
+                        (index 29), matchKey="31 *" aynı satır, "999" boş
 ```
 
 Statik kanıt kapsaması (6 makro):
@@ -262,7 +326,8 @@ complete-delivery  2 eksik
 Faza başlarken bu tablo `login OK` + diğer beşi eksikti.
 
 **Testler:** API 532 · pack 133 · executor 32 · contract 82 · compiler 39 ·
-oracle-engine 16 · control-channels 39 · mobil `verdict-core` 430.
+oracle-engine 16 · control-channels 39 · mobil `verdict-core` 430 ·
+`verdict-bridge` 63.
 
 `verdict-core`'da 3 test kırmızı ve **üçü de temiz ağaçta da kırmızı** —
 değişiklikler stash'lenip tekrar koşularak doğrulandı: `LogcatSinkCorpusTest` ×2,
@@ -272,45 +337,102 @@ baseline budur, fazlası sizindir.
 
 ## 5. Kalan iş
 
-### 5.1 SIRADAKİ — select-route'u cihazda tamamla (#17 + #18 ölçümü)
+### 5.0 SIRADAKİ — select-route'un FAIL_PRODUCT'ı ürün mü, veri mi?
+
+`select-route` artık cihazda uçtan uca koşuyor ve karar üretiyor. Kalan soru
+kanıt hattında değil, **cevabın kendisinde**: iki fact ölçüldü ve false çıktı.
+
+| Fact | Ölçüm | Ayrıştırılacak |
+|---|---|---|
+| `APP.AVAILABLE_STOPS_LOADED` | `nesy.availableStops` boş döndü | Rota 31'in bugün durağı var mı? Elle seçilen rota 3'te de boş geldi — iki rotada boş olması veri koşuluna işaret ediyor, ama app'in durakları hiç yüklemediği de aynı şekilde görünür |
+| `REMOTE.ROUTE_ASSIGNED` | `assignment.exists` false; remote çağrı `SUCCEEDED` (yani ölçüldü) | Uygulama rotayı yerelde seçip backend'e hiç bildirmiyor mu, yoksa staging bu kurye/rota için atama tutmuyor mu? |
+
+Ayrım basit bir sorguyla yapılır: aynı kurye/rota için backend tarafında atama ve
+durak var mı? Varsa ürün kusuru; yoksa test verisi ince ve fact'ler
+`onTimeout: FAIL` yerine veri önkoşuluna bağlanmalı.
+
+> Bu, fazın hedefinin **tuttuğunun** kanıtı: eskiden aynı koşu
+> `INCONCLUSIVE / EVIDENCE_INSUFFICIENT` diyordu ve soru sorulamıyordu bile.
+
+### 5.1 TAMAMLANDI — select-route'u cihazda tamamla (#17 + #18 ölçümü)
 
 #18 transport'u açtı; **select-route'un kalan tek engeli #17'dir.** İki adım, bu
 sırayla — çünkü ilki ikincinin girdisini üretiyor.
 
-**Adım 1 — #18'in aşağı akış etkisini ölç (kısa, engelleyici değil).**
-Önkoşul: VPN + API ayakta. API çalışıyorsa yeni `control-channels/dist`'i alması
-için bir kez yeniden başlat (`touch apps/api/src/server.ts`).
+#### Adım 1 — `DONE`, cihazda ölçüldü
+
+§3.5'in açık bıraktığı halka kapandı. `scripts/verdict-run.mjs` ile login
+koşuldu (`PASS_ONLINE`, 9 adım), rota diyaloğu açıldı
+(`nesy.sessionState.route_dialog_visible = true`), sonra:
 
 ```text
-login koş → rota diyaloğunu aç  (NesyOfferedRoutesStore bellekte, diyalog doldurur)
-nesy.offeredRoutes matchKey="31"  → 353 değil TEK satır beklenir
-aynı sorgu matchKey="31 *"        → fiscal etiketiyle de tek satır
-                                    (eskiden transport bu değeri hiç kabul etmiyordu)
+nesy.offeredRoutes  parametresiz        → 353 satır
+nesy.offeredRoutes  matchKey="31"       →   1 satır  route_code=31 route_index=29
+nesy.offeredRoutes  matchKey="31 *"     →   1 satır  AYNI route_code=31, index 29
+nesy.offeredRoutes  matchKey="999"      →   0 satır  (sunulmayan rota → boş, "hepsi" değil)
 ```
 
-Bu ölçüm §3.5'in bilinçli olarak açık bıraktığı halkadır. Adım 2 zaten aynı yolu
-gerçek veriyle kullanacağı için ayrıca koşmak zorunlu değil — ama bir hata olursa
-onu **transport'ta** mı **hedef zincirinde** mi olduğunu ayırt etmenin en ucuz
-yolu budur.
+Fiscal etiketiyle sorgulamak artık mümkün; boşluklu değer eskiden transport'ta
+reddediliyordu. `route_index` de okunabiliyor — Adım 2'nin ihtiyacı olan girdi bu.
 
-**Adım 2 — #17 rota diyaloğu hedef zincirini gerçek arayüze göre yaz.**
-Pack `route_row_*`, `route_list`, `route_dialog_confirm` bekliyor; cihazda
-gerçekte `dialog_spinner` ve `yesButton` var — yani pack'in hedefleri kurgusal.
-Kullanıcı kararı: **gerçek UI sürülecek** (uygulamanın `select_route` komutu
-değil), ama indeksle hızlı:
+#### Adım 2 — `DONE`; plan ölçümle değişti, sonuç §3.6'da
+
+Aşağıdaki tanı ve sıralama korunuyor: L1→L3→L4→L2 uygulandı, cihazda 14/14 adım
+geçti ve koşu `FAIL_PRODUCT` üretti (§4). Uygulamanın ayrıntısı §3.6'da; burada
+kalan, tanının nasıl çıktığı — dokümanın eski planı üç engeli hiç görmüyordu.
+
+**Ölçüm, buradaki eski planı çürüttü.** Cihazdaki gerçek diyalog (bridge'in kendi
+ağacından, `dump`):
 
 ```text
-matchKey ile tek satır çek → route_index al
-→ scroll_to_item (listId + rowIndex) ile doğrudan pozisyona git
-→ öğeye bas → yesButton'a bas
+courierName    TextView      "Please Select Route"
+dialog_spinner Spinner       clickable    → basınca popup ListView açılır
+  popup:       ListView      id=null      collectionInfo={rowCount:-1,…}
+    satırlar:  CheckedTextView  id=android:id/text1  rowIndex=0..8  text=route_label
+yesButton      LinearLayout  clickable    "OK"
+logout         LinearLayout  clickable    "Logout"
 ```
 
-Bridge `scroll_to_item`'ı zaten `listId` + `rowIndex` ile destekliyor. 253 rotada
-bile tek atış, tarama yok. `route_index` artık gerçekten okunabiliyor — #18'den
-önce o satırı tek başına çekmek imkânsızdı, `resolve-row` bu yüzden düşüyordu.
+Dört bağımsız engel çıktı; üçü dokümanda hiç yoktu:
+
+| # | Engel | Kanıt |
+|---|---|---|
+| E1 | `routeRow` hedefi **hiç selector üretmiyor** | `buildTargetFingerprint` `ACCESSIBILITY_ID` için `id/viewId/accessibilityId/resourceId`, `ENTITY_BINDING` için `text/value/label/entityKey` okuyor; pack `idPrefix` ve `keyPath` veriyor → ikisi de atlanıyor → `undefined` → `RESOLVE_TARGET` selector'sız `FAILED` |
+| E2 | Hedef kimliği **statik**, dinamik olamıyor | `RESOLVE_TARGET` runtime'ı `step.entityBinding`'i hiç okumuyor; fingerprint yalnız pack'teki sabit dizgiden kuruluyor. Hangi rotanın istendiği koşudan geliyor → statik selector yetmez |
+| E3 | Satırların **kendine ait id'si yok** | Hepsi `android:id/text1` paylaşıyor → id ile eşleme ambiguous. Tek kimlik `route_label` metni — ve fiscal rotada bu `"31 *"`, `routeCode` ise `"31"`: ikisi AYNI DEĞİL |
+| E4 | Popup listesi **adreslenemiyor** | `selectListNode` `viewIdResourceName`'i birebir eşliyor; ListView'ın id'si `null` (Android'in kendi Spinner popup'ı, uygulama id'si asla taşımaz). Üstelik host'ta `scroll_to_item` yolu **yok**: `manager.act` yalnız `tap_id/tap_text/activate_id/input_text` kabul ediyor |
+
+> **Düzeltme:** `resolve-row FAILED`'in sebebi #18 değildi — E1'di. Transport
+> düzelmesi o adımı kendiliğinden geçirmez. §4'teki eski not bu yüzden yanıltıcıydı.
+
+**Doküman "bridge scroll_to_item'ı zaten destekliyor" diyordu; doğru ama eksik:**
+cihaz destekliyor, **host çağıramıyor** ve liste **id'siz olduğu için** cihaz da
+bu listeyi kabul etmez.
+
+##### Uygulama sırası (bağımlılık sırası, atlanamaz)
+
+| Katman | İş | Neden bu sırada |
+|---|---|---|
+| **L1** host | `RESOLVE_TARGET` dinamik kimlik: adımın entity key'i (`run.input.` / `var.`) çözülüp `buildTargetFingerprint`'e verilsin; `ENTITY_BINDING.keyPath` nereden okunacağını söylesin | E1+E2. Bu olmadan HİÇBİR satır adreslenemez |
+| **L2** pack | Gerçek hedefler (`dialog_spinner`, satır = `route_label` metni, `yesButton`) + `SDK_QUERY params: { matchKey: run.input.routeCode }` ile tek satır → `route_label` ve `route_index` değişkenleri. Sürüm 1.6.0 + seed + fixture | E3. `SdkQueryStep.params` sözleşmede zaten var (#18 onu açtı) |
+| **L3** bridge | `scroll_to_item` id'siz koleksiyonu adresleyebilsin: `listId` **ya da** `listClass` (birebir `className` + `collectionInfo != null`), ambiguity'de fail closed | E4 cihaz tarafı. Android framework popup'ları hiçbir zaman uygulama id'si taşımaz — bu genel bir boşluk, spinner'a özel değil |
+| **L4** host | `manager.scrollToItem()` + `act()` içinde `action: 'scrollToItem'` dalı (`back`/`swipe` gibi, hedef aramadan önce), `rowIndex` `var.`'dan çözülsün | E4 host tarafı |
+
+**L1+L2 tek başına** ilk görünür penceredeki rotaları (satır 0-8: `1 *`, `2 *`,
+`3`, `4`, `5`, `7`, `8 *`, `9`, `10`) uçtan uca seçilebilir yapar — zincirin
+tamamı kanıtlanır. **L3+L4** aynı zinciri 253 rotanın hepsine genişletir; `31`
+(index 29) sanallaştırıldığı için ona L3+L4 olmadan ulaşılamaz.
 
 **Bitiş ölçütü:** `select-route` cihazda uçtan uca koşar ve `PASS_ONLINE` ya da
 `FAIL_PRODUCT` üretir; `resolve-row` dahil hiçbir adım `INCONCLUSIVE` bırakmaz.
+İlk görünür penceredeki bir rota ile ölçmek L1+L2'yi kapatır; `31` ile ölçmek
+L3+L4'ü de kapatır.
+
+##### Yan bulgu — diyalogda `back` = logout
+
+Rota diyaloğunda geri tuşu diyaloğu kapatmakla kalmıyor, **oturumu düşürüyor**
+(`is_logged_in` false). Teşhis sırasında ölçüldü. Diyalogda `back` gönderen bir
+adım, önkoşulu sessizce yok eder.
 
 ### 5.2 Sonra — cihazda hiç koşulmamış iş akışları
 
@@ -331,7 +453,174 @@ boşlukları da var.
 | `APP.SESSION_ISOLATION_ASSERTED` | sorgu değil, operasyon |
 | `LOCAL.OFFLINE_QUEUE_DRAINED` | kuyruk gözlemi bağlı değil |
 
-## 6. Çalışma notları
+## 6. Cihazda koşu nasıl yapılır
+
+### 6.1 Runner ve eski script'in sınırı
+
+`scripts/diag-login-run.py` cockpit'in "Run Test" yolunu birebir taklit eder
+(`apps/web/src/lib/verdict-runtime/start-pinned-run.ts` ile aynı sıra). Ama iki
+yeri sabit yazılmış ve Windows'ta koşmaz:
+
+```python
+API    = "http://127.0.0.1:4001/api"
+WF     = "nesy.workflow.login"          # tek iş akışı
+DEVICE = "R6CW400BC8N"
+subprocess.run(["/Users/gokhanoncu/Library/Android/sdk/platform-tools/adb", ...])
+```
+
+`adb` yolu macOS'e sabit (`logcat -c` ve sonda logcat okuması için). Repoda
+`@nesy/platform-paths` içinde `resolveAdbPath()` var; kalıcı bir runner onu
+kullanmalı ya da `ADB_PATH` ortam değişkenini okumalı.
+
+**Kalıcı runner yazıldı: `scripts/verdict-run.mjs`.** Aşağıdaki sırayı koşar,
+`adb` yolunu `@nesy/platform-paths`'ten (ya da `$ADB_PATH`'ten) çözer, launch
+profile'ı iş akışına göre tablodan seçer ve benzersiz `sessionCorrelationId`'yi
+çağıran unutsa bile enjekte eder.
+
+```bash
+node scripts/verdict-run.mjs nesy.workflow.login --input pin=3680 --reset
+node scripts/verdict-run.mjs nesy.workflow.select-route --input routeCode=31
+```
+
+`--reset` koşudan ÖNCE `reset_state` gönderir (§6.6 kalıbı). `--json` ham koşu
+detayını, `--no-logcat` sonda logcat özetini kapatır.
+
+### 6.2 Runner'ın izlediği sıra
+
+Her adım bir öncekinin çıktısını kullanır; atlanamaz.
+
+| # | Ne | Uç |
+|---|---|---|
+| 1 | Cihaz hazırlığı | `GET /verdict/runtime/devices/{id}/readiness?appId={pkg}` |
+| 2 | Pack pinle | `GET /verdict/runtime/domain-packs` → `PUBLISHED` + `compileReady`, `nesy.courier`, en yüksek sürüm |
+| 3 | Workflow IR | `GET /workflows/{workflowRef}` → `currentVersion.nodes/connections` |
+| 4 | Derle | `POST /verdict/runtime/compile` |
+| 5 | Başlat | `POST /verdict/runtime/runs` → `202` + `runId` |
+| 6 | Yokla | `GET /verdict/runtime/runs/{runId}` terminal olana kadar |
+
+**Derleme gövdesi:**
+
+```json
+{ "workflowRef": "...", "workflowIr": { "nodes": [], "connections": [] },
+  "domainPackKey": "nesy.courier", "domainPackVersion": "...",
+  "domainPackDigest": "sha256:..." }
+```
+
+Kanvas boş olabilir — derleyici pack'in makro anlık görüntüsünden materyalize
+eder. Bunun **tek makro** gerektirdiğini unutma (§3.4).
+
+**Koşu gövdesi:**
+
+```json
+{ "workflowRef": "...", "deviceId": "R6CW400BC8N",
+  "compiledPlanRef": "...", "compiledPlanHash": "...",
+  "domainPackKey": "nesy.courier", "domainPackVersion": "...",
+  "domainPackDigest": "sha256:...",
+  "profileKey": "nesy.launch.cold-real-login",
+  "inputs": { "pin": "3680", "sessionCorrelationId": "diag-<benzersiz>" } }
+```
+
+`profileKey` **zorunlu sayılmalı**: onsuz hiçbir şey uygulamayı soğuk başlatmaz
+ve `wait-login-ready` yalnızca zaman aşımına uğrar.
+
+| İş akışı | profileKey | inputs |
+|---|---|---|
+| `nesy.workflow.login` | `nesy.launch.cold-real-login` | `pin` |
+| `nesy.workflow.select-route` | `nesy.launch.reuse-session` | `routeCode` (ör. `31` veya `31 *`) |
+| `nesy.workflow.open-stop` | `nesy.launch.reuse-session` | `requestedItemCode` |
+| `nesy.workflow.process-parcel` | `nesy.launch.direct-state` | `scanPayload`, `taskCode` |
+| `nesy.workflow.complete-delivery` | `nesy.launch.direct-state` | `consignmentNumber` |
+| `nesy.workflow.tour-approval-lifecycle` | `nesy.launch.reuse-session` | `routeCode`, `approvalRequestCode` |
+
+> **Koşu başlatma idempotent.** Aynı gövde aynı `runId`'yi döndürür — yeni koşu
+> başlamaz, eski koşunun sonucunu okursun. `inputs` içine her seferinde benzersiz
+> bir `sessionCorrelationId` koy. Bu, "düzelttim ama hiçbir şey değişmedi"
+> sanılan bir turu yuttu.
+
+### 6.3 Sonucu okuma
+
+`GET /verdict/runtime/runs/{runId}` beş yeri birden verir:
+
+| Alan | Ne söyler |
+|---|---|
+| `run.product_verdict` / `evaluation_failure_class` | Nihai karar |
+| `steps[]` | `action_result`, `continue_gate_result`, `final_oracle_result` |
+| `oracleEvaluations[]` | Gereksinim gereksinim durum + `evidence_refs` |
+| `actionTransitions[]` | `evidence_ref` — cihazın **reddetme sebebi** burada |
+| `remoteActions[]` | Back-office çağrısı, artık gövdesiyle birlikte |
+
+`INCONCLUSIVE` gördüğünde sırayla bak: hangi adım düştü → `actionTransitions`
+son `evidence_ref` → `oracleEvaluations` içinde hangi fact `REQUIRED_TIMEOUT`.
+
+### 6.4 Teşhis sondaları
+
+Koşu dışında cihaza doğrudan sormak, bir hatanın kanıt hattında mı yoksa üründe
+mi olduğunu ayırt eden en hızlı yol.
+
+**Named query** (`packages/control-channels/dist/node-executor.js`,
+`createControlExecutor({ applicationId })`):
+
+```js
+exec.run(DEVICE, { op: 'sql_named', requestId, scope: 'probe',
+                   name: 'nesy.sessionState', maxRows: 1 })
+```
+
+Faydalı sorgular: `nesy.sessionState` (`is_logged_in`, `current_screen`,
+`route_dialog_visible`), `nesy.db.session`, `nesy.offeredRoutes`
+(`params: { matchKey }`), `nesy.stopState`.
+
+**Oturumu sıfırla** (çıkış yaptırır — negatif koşu ve temiz önkoşul için):
+
+```js
+exec.run(DEVICE, { op: 'reset_state', requestId, scope: 'probe' })
+```
+
+**Kanıt hattı sağlığı:** `GET /api/verdict/events/health` → ilgili `runId`'nin
+`orderedLag` ve `lastError` alanları. `orderedLag > 0` sıralı hattın tıkandığını
+söyler.
+
+**Cihaz olayları:** `adb logcat -d | grep NESY_TEST_EVENT` — `event`, `data`,
+`occurrenceId`/`iterationKey` alanlarını doğrular. Korelasyon alanları yoksa olay
+`LEGACY_NO_CONTEXT` olarak dosyalanır ve hiçbir oracle'a ulaşmaz.
+
+**Köprü sağlığı:** `node scripts/verdict-bridge-smoke.mjs <deviceId> --read-only`.
+`scoped-dump` adımındaki `treeGen` artmıyorsa erişilebilirlik servisi yarım
+bağlanmıştır. Bu script çıkışta port yönlendirmesini **kaldırır**; preflight
+yeniden kurar.
+
+### 6.5 Koşu öncesi kontrol listesi
+
+```text
+1. VPN açık            nslookup nesy-staging-api.cityexpress.rs → 10.216.x.x
+                       curl -o /dev/null -w "%{http_code}" https://…  (TLS geçerli olmalı)
+2. Cihaz bağlı         adb devices → "device"
+3. APK güncel          adb shell dumpsys package com.arasdigital.nesymobile.rstest | grep lastUpdateTime
+4. Pack katalogda      GET /verdict/runtime/domain-packs → beklenen sürüm + digest
+5. API ayakta          curl -o /dev/null -w "%{http_code}" http://127.0.0.1:4001/api/verdict/runtime/domain-packs
+```
+
+Pack ya da host kodu değiştiyse:
+
+```bash
+pnpm --filter @nesy/nesy-courier-domain-pack build
+pnpm --filter @nesy/api seed:verdict-catalog     # SÜRÜM YÜKSELTMEDEN reddeder
+touch apps/api/src/server.ts                     # tsx watch yeniden başlatır (~30 sn)
+```
+
+### 6.6 Ardışık koşu
+
+Aynı önkoşuldan başlamayan koşular birbirini yanıltır. Kalıp:
+
+```text
+her tur: reset_state → koşuyu başlat → verdict + adımları oku
+```
+
+`reset_state` kasıtlı olarak koşulardan **önce** çağrılır: hem önkoşulu geri
+kurar (login ekranı), hem de eskiden bir sonraki koşuyu `stale_run`'a düşüren
+kanal müdahalesini tekrarlar — yani çit düzeltmesini (§3.3) her turda yeniden
+sınar. Bu kalıpla 9 ardışık `PASS_ONLINE` ölçüldü, `stale_run` sıfır.
+
+## 7. Çalışma notları
 
 - **Pack değişimi:** build → `seed:verdict-catalog` → API reload.
   **Sürüm yükseltmeden seed reddeder** (digest değişti).
@@ -348,12 +637,33 @@ boşlukları da var.
   string olarak gider ve **cihaz kabuğu için tırnaklanmalı**: `adb shell` argv'yi
   boşlukla birleştirip uzak `sh -c`'ye verir, yani orada yeniden ayrıştırılır.
   Tırnaklanmamış boşluklu değer sessizce ikiye bölünür.
+- **Rota diyaloğunda `back` = LOGOUT.** Diyaloğu kapatmakla kalmıyor, oturumu
+  düşürüyor. Teşhis sırasında `is_logged_in` false'a döndü; diyalogda geri
+  gönderen bir adım önkoşulu sessizce yok eder.
+- **Yarıda kalan `select-route` koşusu dropdown'ı AÇIK bırakıyor** ve popup
+  açıkken `dialog_spinner` aktif pencerede olmadığı için bir sonraki koşu
+  `resolve-spinner`'da `not_found` alır. Makronun popup'ı kapatan bir `CLEANUP`
+  adımı yok; şimdilik kalıp `reset_state → login → select-route`. Ölçüldü:
+  temizlik yapılmadan ikinci koşu, kod doğruyken bile düşer.
+- **`verdict-bridge` ayrı bir Gradle projesi** (`verdict-bridge/gradlew`), kök
+  `Nesy Mobile` projesinden `:verdict-bridge:app:...` diye çağrılamaz.
+- **Bridge APK'sı imza uyuşmazlığı verebilir:** cihazdaki kopya başka bir
+  makinenin `debug.keystore`'uyla imzalanmışsa `INSTALL_FAILED_UPDATE_INCOMPATIBLE`
+  gelir ve tek yol `adb uninstall com.verdict.bridge`. Kaldırma erişilebilirlik
+  servisini düşürür; `bridge-adb-facade.ts`'teki sırayla geri gelir (servis
+  listesini SİL + yaz + master switch 1 — master switch ASLA 0 yazılmaz).
+- **`ProtocolV1WaitAnyTest > wait_any times out with bounded evaluations under
+  wake source` FLAKY.** Tam suite altında düşüp `--rerun-tasks` ile geçiyor;
+  zamana duyarlı. Bir kez kırmızı gördüğünüzde tekrar koşun.
+- **`NesyOfferedRoutesStore` bellekte.** Rota diyaloğu açılmadan boş; taze
+  kurulumda `offeredRoutes` filtreli/filtresiz 0 satır verir ve hiçbir şeyi
+  ayırt etmez. Ölçüm için önce login + diyalog gerekir.
 - API tam suite'i yük altında `test-event-ws-server.integration`'da takılabiliyor
   (8765 portu); izole koşuda geçiyor — çakışma, gerçek hata değil.
 - Backend (`NESY.WebAPI`) **salt okunur** (kullanıcı kararı). Bilinen iki kusur
   orada duruyor: `GetMyInfo` çift zarfı, `UserLoginLog` için okuma ucu yokluğu.
 
-## 7. Fazın kapanma ölçütü
+## 8. Fazın kapanma ölçütü
 
 ```text
 her bağımsız iş akışı cihazda koşar ve PASS_ONLINE ya da FAIL_PRODUCT üretir

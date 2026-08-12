@@ -145,7 +145,7 @@ describe("registries", () => {
       screens: 7,
       surfaces: 8,
       entities: 7,
-      targets: 10,
+      targets: 11,
       evidenceSources: 36,
       derivedFacts: 4,
       semanticActions: 8,
@@ -154,7 +154,7 @@ describe("registries", () => {
       testProfiles: 16,
       campaigns: 4,
       features: 3,
-      capabilities: 15,
+      capabilities: 16,
       adapterOperations: 9,
     });
   });

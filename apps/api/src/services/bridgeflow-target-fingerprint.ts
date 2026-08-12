@@ -8,6 +8,29 @@
  * "identity" survives a background re-sort by silently addressing a different
  * record, which is the failure mode where every oracle passes and the data is
  * still wrong.
+ *
+ * ### Per-occurrence identity (`entityKey`)
+ *
+ * A pack is authored before any run exists, so it can only ever declare WHERE
+ * an identity comes from — never which record this run wants. Without that
+ * substitution the host could address nothing but constants: a target for "the
+ * row of the requested route" produced NO selector at all, because the pack
+ * declares `idPrefix` / `keyPath` (a rule) and this builder only read literals
+ * (a value). The chain was walked to the end and the target came back
+ * unaddressable, which is what a resolve step reports as a bare failure.
+ *
+ * `entityKey` is that missing half: the step's `entityBinding.id` resolved for
+ * this occurrence. Two composition rules, both DECLARED by the pack rather than
+ * inferred here:
+ *
+ *   - `ACCESSIBILITY_ID` + `idPrefix` → id is `idPrefix + entityKey`.
+ *   - `ENTITY_BINDING` → the entity key IS the addressable text.
+ *
+ * A declared literal still wins for `TEXT_MATCH`, which exists precisely to
+ * name a constant. And a chain link whose rule needs an entity key it did not
+ * get is SKIPPED, not guessed at — the next provider gets its turn, and a chain
+ * that runs out still returns `undefined`. Substituting an empty string would
+ * address the first row that happens to match nothing in particular.
  */
 
 import type { TargetFingerprint } from '@nesy/bridge-contract'
@@ -24,7 +47,12 @@ function selectorString(
   return undefined
 }
 
-export function buildTargetFingerprint(target: TargetDefinition): TargetFingerprint | undefined {
+export function buildTargetFingerprint(
+  target: TargetDefinition,
+  /** Identity for THIS occurrence — the step's `entityBinding.id`, resolved. */
+  entityKey?: string,
+): TargetFingerprint | undefined {
+  const key = entityKey !== undefined && entityKey !== '' ? entityKey : undefined
   const rowIndexHint = target.resolution.chain
     .filter((strategy) => strategy.kind === 'ROW_INDEX_HINT')
     .map((strategy) => strategy.selector['rowIndex'])
@@ -34,7 +62,11 @@ export function buildTargetFingerprint(target: TargetDefinition): TargetFingerpr
     if (!strategy.establishesIdentity) continue
 
     if (strategy.kind === 'ACCESSIBILITY_ID' || strategy.kind === 'INSPECTOR_MAPPING') {
-      const id = selectorString(strategy, ['id', 'viewId', 'accessibilityId', 'resourceId'])
+      const literal = selectorString(strategy, ['id', 'viewId', 'accessibilityId', 'resourceId'])
+      const prefix = selectorString(strategy, ['idPrefix'])
+      // A prefix is a RULE for building an id, so it is only usable with the
+      // key it is a prefix of. `route_row_` alone matches every row.
+      const id = literal ?? (prefix !== undefined && key !== undefined ? `${prefix}${key}` : undefined)
       if (id === undefined) continue
       return {
         version: 1,
@@ -45,7 +77,11 @@ export function buildTargetFingerprint(target: TargetDefinition): TargetFingerpr
     }
 
     if (strategy.kind === 'ENTITY_BINDING' || strategy.kind === 'TEXT_MATCH') {
-      const text = selectorString(strategy, ['text', 'value', 'label', 'entityKey'])
+      // ENTITY_BINDING means "identity is the entity key", so the run's key
+      // outranks anything the pack could have written down. TEXT_MATCH means
+      // "identity is this constant", so the literal is the answer.
+      const literal = selectorString(strategy, ['text', 'value', 'label', 'entityKey'])
+      const text = strategy.kind === 'ENTITY_BINDING' ? (key ?? literal) : (literal ?? key)
       if (text === undefined) continue
       const exact = strategy.selector['exact']
       return {

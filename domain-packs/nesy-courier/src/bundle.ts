@@ -48,6 +48,22 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.6.1 — the route dialog is retargeted at the arrangement the product
+  //   actually renders. `route_row_*`, `route_list` and `route_dialog_confirm`
+  //   were never on screen: the dialog is a Spinner (`dialog_spinner`) whose
+  //   popup list carries NO id, rows share `android:id/text1`, and the confirm
+  //   button is `yesButton`. Row identity is therefore the label the courier
+  //   reads — `31 *` for a Serbian fiscal route, `31` elsewhere — bound from the
+  //   projection rather than from the raw input. The offered read is narrowed by
+  //   `matchKey`, which is what makes the row's index available at all, and the
+  //   list is positioned by `scrollToItem` before the row is resolved: 9 of 253
+  //   rows are on screen, so every route past the first screenful was
+  //   unreachable, not merely hard to reach. The scroll step declares its own
+  //   budget: the popup is a window the platform attaches after the tap returns,
+  //   so a scroll issued in the same breath answers not_found and the same
+  //   scroll succeeds a second later. How long a surface may take is a statement
+  //   about the product, so it lives here.
+  //
   // 1.5.0 — the fiscal marker is separated from route identity. Serbia shows
   //   fiscal-mandatory routes as `31 *`; the asterisk is a business rule, not a
   //   character of the code, and other countries offer the same route as `31`.
@@ -94,7 +110,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 5, patch: 0 },
+  version: { major: 1, minor: 6, patch: 1 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

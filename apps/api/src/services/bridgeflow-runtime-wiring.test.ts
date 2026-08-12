@@ -391,6 +391,167 @@ describe('bridge runtime port', () => {
       evidenceRef: 'bridgeflow:bridge-action-without-resolved-target',
     })
   })
+
+  /**
+   * `scroll_to_item` was declared in `BRIDGE_COMMANDS` and implemented on the
+   * device, but no host path could issue it: `act()` accepts four commands and
+   * no port drove the rest. A virtualized row is absent from the tree, so every
+   * selector honestly answers `not_found` — the list has to be positioned first
+   * or the row is unreachable at any distance down the list.
+   */
+  const scrollStep = (args: Record<string, unknown>) => ({
+    planStepId: 'scroll-to-row',
+    kind: 'BRIDGE_ACTION' as const,
+    sourceMapRef: 'src:scroll',
+    timeoutMs: 1_000,
+    next: null,
+    capabilityRequirements: [],
+    evidenceRequirements: [],
+    params: { action: 'scrollToItem', args },
+  })
+
+  it('positions a list by class and a run-supplied row index', async () => {
+    const calls: unknown[] = []
+    const variables = new BridgeFlowRunContext()
+    // Which row holds the requested record is a fact of THIS run: it came from a
+    // named query, so it can only arrive through a variable.
+    variables.set('routeIndex', 29)
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async (selector: unknown) => {
+          calls.push(selector)
+          return { ok: true, treeGen: 12 }
+        },
+      } as never),
+      variables,
+      runId: 'run-1',
+    })
+
+    await expect(
+      port.act(
+        scrollStep({ listClass: 'android.widget.ListView', rowIndex: 'var.routeIndex' }) as never,
+        STEP_CONTEXT as never,
+      ),
+    ).resolves.toMatchObject({ terminalState: 'SUCCEEDED', effectVerified: true })
+    expect(calls).toEqual([{ listClass: 'android.widget.ListView', rowIndex: 29 }])
+  })
+
+  it('never sends both list forms; listId wins and listClass is dropped', async () => {
+    const calls: unknown[] = []
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async (selector: unknown) => {
+          calls.push(selector)
+          return { ok: true }
+        },
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+    })
+
+    await port.act(
+      scrollStep({ listId: 'route_list', listClass: 'android.widget.ListView', rowIndex: 2 }) as never,
+      STEP_CONTEXT as never,
+    )
+    expect(calls).toEqual([{ listId: 'route_list', rowIndex: 2 }])
+  })
+
+  it('refuses a scroll that names no list rather than picking one', async () => {
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async () => {
+          throw new Error('no list was named; the host must not choose one')
+        },
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+    })
+
+    await expect(
+      port.act(scrollStep({ rowIndex: 3 }) as never, STEP_CONTEXT as never),
+    ).resolves.toMatchObject({
+      terminalState: 'FAILED',
+      evidenceRef: 'bridgeflow:scroll-without-list-selector',
+    })
+  })
+
+  /**
+   * The popup is a window the platform attaches after the tap returns, so the
+   * first scroll legitimately finds no list. Retrying only `not_found` is safe:
+   * that refusal is decided while planning, before anything is touched.
+   */
+  it('waits out a list that has not attached yet, within the step budget', async () => {
+    let attempts = 0
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async () => {
+          attempts += 1
+          return attempts < 3 ? { ok: false, error: 'not_found' } : { ok: true }
+        },
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+    })
+
+    await expect(
+      port.act(
+        { ...scrollStep({ listClass: 'android.widget.ListView', rowIndex: 29 }), timeoutMs: 5_000 } as never,
+        STEP_CONTEXT as never,
+      ),
+    ).resolves.toMatchObject({ terminalState: 'SUCCEEDED' })
+    expect(attempts).toBe(3)
+  })
+
+  it('stops retrying when the budget runs out and reports the last refusal', async () => {
+    let attempts = 0
+    let now = 0
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async () => {
+          attempts += 1
+          now += 400
+          return { ok: false, error: 'not_found' }
+        },
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+      clock: () => now,
+    })
+
+    await expect(
+      port.act(
+        { ...scrollStep({ listClass: 'android.widget.ListView', rowIndex: 29 }), timeoutMs: 1_000 } as never,
+        STEP_CONTEXT as never,
+      ),
+    ).resolves.toMatchObject({
+      terminalState: 'FAILED',
+      evidenceRef: 'bridge:scroll_to_item:android.widget.ListView:row=29:not_found',
+    })
+    // Bounded: it does not keep asking forever, and it does not stop after one.
+    expect(attempts).toBeGreaterThan(1)
+    expect(attempts).toBeLessThan(6)
+  })
+
+  it('reports the device refusal instead of calling the scroll effective', async () => {
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        scrollToItem: async () => ({ ok: false, error: 'ambiguous', count: 2 }),
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+    })
+
+    await expect(
+      port.act(
+        scrollStep({ listClass: 'android.widget.ListView', rowIndex: 29 }) as never,
+        STEP_CONTEXT as never,
+      ),
+    ).resolves.toMatchObject({
+      terminalState: 'FAILED',
+      effectVerified: false,
+      evidenceRef: 'bridge:scroll_to_item:android.widget.ListView:row=29:ambiguous',
+    })
+  })
 })
 
 describe('generic step runtime', () => {

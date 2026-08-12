@@ -37,6 +37,7 @@ import type { TargetDefinition, DomainPackBundle } from '@nesy/domain-pack-contr
 import type { BridgeDeviceManager } from './bridge-device-manager.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 import { buildTargetFingerprint, isTargetFingerprint } from './bridgeflow-target-fingerprint.js'
+import { dig } from './condition-engine.js'
 
 const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
 
@@ -127,7 +128,20 @@ function resolveArgValue(
     }, runInputs)
   }
   if (value.startsWith('var.')) {
-    return variables.get(value.slice('var.'.length))
+    const [name, ...path] = value.slice('var.'.length).split('.')
+    if (name === undefined || name === '') return undefined
+    const base = variables.get(name)
+    if (path.length === 0) return base
+    // Same plucking rule the condition language uses, from the same
+    // implementation — two copies of "what does a path mean over rows" would
+    // drift, and a macro would read differently in a condition than in an arg.
+    const dug = dig(base, path)
+    // A scalar argument needs exactly ONE value. Plucking a column from a row
+    // set yields an array, and taking `[0]` would be a guess about WHICH record
+    // the run meant — precisely the wrong-row bug this codebase refuses
+    // elsewhere. One row answers; several mean the query was not narrow enough.
+    if (Array.isArray(dug)) return dug.length === 1 ? dug[0] : undefined
+    return dug
   }
   return value
 }
@@ -143,10 +157,13 @@ export function createBridgeRuntimePort(options: {
    * `LEGACY_NO_CONTEXT` — received and then invisible to every oracle.
    */
   controlExecutor?: ControlExecutor
+  /** Injectable so a test can prove the scroll wait is bounded, not slept. */
+  clock?: () => number
   logger?: (message: string, detail?: unknown) => void
 }): BridgeRuntimePort {
   const { manager, variables, runId } = options
   const runInputs = options.runInputs ?? {}
+  const clock = options.clock ?? Date.now
 
   /**
    * Push the correlation tuple to the app before it can emit about this action.
@@ -212,6 +229,59 @@ export function createBridgeRuntimePort(options: {
           // to verify against; the step's continue gate is what confirms it.
           effectVerified: envelope.ok,
           evidenceRef: `bridge:back:${context.requestId}`,
+        }
+      }
+
+      // Positions a list; addresses nothing. It therefore takes no
+      // `targetVariable` and sits with `back`/`swipe` above the target lookup —
+      // a later tap still has to establish identity and still fails closed on
+      // ambiguity. `rowIndex` arrives through `resolveArgValue`, so it can come
+      // from a query result (`var.…`): which row holds the requested record is a
+      // fact of THIS run, not something a pack could have written down.
+      if (action === 'scrollToItem' || action === 'scroll_to_item') {
+        const rawRowIndex = args['rowIndex']
+        const rowIndex = typeof rawRowIndex === 'number' ? rawRowIndex : Number(rawRowIndex)
+        const listId = asString(args['listId'])
+        const listClass = asString(args['listClass'])
+        if (listId === undefined && listClass === undefined) {
+          return {
+            terminalState: 'FAILED',
+            effectVerified: false,
+            evidenceRef: 'bridgeflow:scroll-without-list-selector',
+          }
+        }
+        const selector = {
+          ...(listId === undefined ? {} : { listId }),
+          ...(listId === undefined && listClass !== undefined ? { listClass } : {}),
+          ...(Number.isSafeInteger(rowIndex) && rowIndex >= 0 ? { rowIndex } : {}),
+          ...(asString(args['text']) === undefined ? {} : { text: asString(args['text']) }),
+        }
+        // A list that was just opened is not in the tree yet. Measured: tapping
+        // the route spinner and scrolling in the same breath answers `not_found`,
+        // while the same scroll succeeds a second later — the popup is a window
+        // the platform still has to attach.
+        //
+        // Retrying THIS error is safe and only this one: `not_found` is decided
+        // while planning the scroll, so the device refused before touching
+        // anything — the same "went to the device and did not act" property that
+        // makes `stale_tree` retryable. Any other refusal is returned as-is.
+        //
+        // The budget is the step's declared timeout, so how long a surface may
+        // take to appear stays a statement in the pack rather than a constant
+        // buried in the host.
+        const deadline = clock() + (step.timeoutMs > 0 ? step.timeoutMs : 10_000)
+        let envelope = await manager.scrollToItem(selector, { runId })
+        while (!envelope.ok && envelope.error === 'not_found' && clock() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 250))
+          envelope = await manager.scrollToItem(selector, { runId })
+        }
+        return {
+          terminalState: envelope.ok ? 'SUCCEEDED' : 'FAILED',
+          effectVerified: envelope.ok,
+          evidenceRef:
+            `bridge:scroll_to_item:${listId ?? listClass}:row=${
+              Number.isSafeInteger(rowIndex) ? rowIndex : '-'
+            }` + (envelope.ok ? '' : `:${String(envelope.error ?? 'unknown')}`),
         }
       }
 
@@ -451,10 +521,27 @@ export function createGenericStepRuntime(options: {
         return { succeeded: false, actionResult: 'FAILED' }
       }
 
-      const fingerprint = buildTargetFingerprint(target)
+      // The step says WHICH record this occurrence is about; the target says how
+      // a record of that kind is addressed. Neither half addresses anything
+      // alone, and this binding was the missing half: a target keyed on the
+      // requested entity produced no selector at all, so the resolve step failed
+      // before the device was ever asked.
+      const entityKey = resolveArgValue(step.entityBinding?.id, options.runInputs ?? {}, variables)
+      const fingerprint = buildTargetFingerprint(
+        target,
+        typeof entityKey === 'string' || typeof entityKey === 'number'
+          ? String(entityKey)
+          : undefined,
+      )
       if (fingerprint === undefined) {
         // The chain declares no strategy this host can turn into a selector.
-        return { succeeded: false, actionResult: 'FAILED' }
+        return {
+          succeeded: false,
+          actionResult: 'FAILED',
+          evidenceRef: `resolve:no-selector:target=${targetRef}:entityKey=${
+            entityKey === undefined ? 'unresolved' : 'present'
+          }`,
+        }
       }
 
       const evidence = await manager.resolve(fingerprint, { runId })

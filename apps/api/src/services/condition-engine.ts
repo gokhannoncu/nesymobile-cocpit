@@ -130,7 +130,7 @@ function fromRecord(
  * contribute nothing rather than `undefined`: a partial projection should narrow
  * the answer, not poison it.
  */
-function dig(value: unknown, segments: readonly string[]): unknown {
+export function dig(value: unknown, segments: readonly string[]): unknown {
   let current = value
   for (const segment of segments) {
     if (Array.isArray(current)) {

@@ -507,6 +507,42 @@ export class BridgeDeviceManager {
   }
 
   /**
+   * `scroll_to_item` — bir satırı GÖRÜNÜR kılar, kimliğini KURMAZ.
+   *
+   * Ayrım load-bearing: sanallaştırılmış bir satır ağaçta yoktur, dolayısıyla
+   * hiçbir selector onu bulamaz ve `find_*` haklı olarak `not_found` der. Bu
+   * komut yalnız listeyi konumlandırır; hangi satıra dokunulacağına hâlâ
+   * `tap_text`/`tap_id` karar verir ve ambiguity'de düşer. `rowIndex`'i kimlik
+   * saymak, arka planda liste yeniden sıralandığında sessizce başka kaydı
+   * adreslemek olurdu — her oracle yeşilken veriyi yanlış yapan hata.
+   *
+   * Sözleşme komutu (`BRIDGE_COMMANDS`) ilan edilmişti ama host hiç
+   * çağıramıyordu: `act()` yalnız dört komutu kabul ediyor ve hiçbir port bunu
+   * sürmüyordu. Yani cihaz destekliyor, host isteyemiyordu.
+   */
+  async scrollToItem(
+    selector: {
+      listId?: string;
+      listClass?: string;
+      rowIndex?: number;
+      text?: string;
+      exact?: boolean;
+    },
+    options: { runId?: string } = {},
+  ): Promise<BridgeResultEnvelope> {
+    const params: Record<string, unknown> = {};
+    // Tam BİR liste formu; ikisini birlikte yollamak cihazda
+    // `multiple_list_forms` ile reddedilir ve reddedilmesi doğrudur.
+    if (selector.listId !== undefined) params.listId = selector.listId;
+    else if (selector.listClass !== undefined) params.listClass = selector.listClass;
+    if (selector.rowIndex !== undefined) params.rowIndex = selector.rowIndex;
+    if (selector.text !== undefined) {
+      params.match = { by: "text", value: selector.text, exact: selector.exact ?? true };
+    }
+    return this.submit("scroll_to_item", params, options);
+  }
+
+  /**
    * Bekleme planı — `wait_any` sözleşmesi, v1'de yarıştırılmış `wait_node`.
    */
   async waitAny(waitId: string, plan: UiWaitPlan, signal?: AbortSignal): Promise<WaitAnyResult> {

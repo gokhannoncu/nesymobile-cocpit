@@ -95,6 +95,10 @@
           "type": "stringList"
         },
         {
+          "name": "spinnerHandle",
+          "type": "string"
+        },
+        {
           "name": "rowHandle",
           "type": "string"
         },
@@ -138,6 +142,9 @@
           ],
           "kind": "SDK_QUERY",
           "queryRef": "nesy.offeredRoutes",
+          "params": {
+            "matchKey": "run.input.routeCode"
+          },
           "maxRows": 1000,
           "outputVariable": "offeredRouteRows"
         },
@@ -166,7 +173,7 @@
               "path": "read-offered-routes.match_key"
             }
           },
-          "onTrue": "resolve-row",
+          "onTrue": "resolve-spinner",
           "onFalse": "report-not-offered",
           "unknownPolicy": "FAIL"
         },
@@ -182,6 +189,66 @@
           "capabilityRequirements": [],
           "kind": "ANNOTATE",
           "message": "The requested route is not in the offered projection; no row was tapped."
+        },
+        {
+          "planStepId": "resolve-spinner",
+          "sourceMapRef": "sm-route-4a",
+          "next": "tap-spinner",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.route-spinner",
+          "outputVariable": "spinnerHandle"
+        },
+        {
+          "planStepId": "tap-spinner",
+          "sourceMapRef": "sm-route-4b",
+          "next": "scroll-to-row",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "spinnerHandle"
+        },
+        {
+          "planStepId": "scroll-to-row",
+          "sourceMapRef": "sm-route-4c",
+          "next": "resolve-row",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.scroll-to-item",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "scrollToItem",
+          "args": {
+            "listClass": "android.widget.ListView",
+            "rowIndex": "var.offeredRouteRows.route_index"
+          }
         },
         {
           "planStepId": "resolve-row",
@@ -203,7 +270,7 @@
           "outputVariable": "rowHandle",
           "entityBinding": {
             "type": "ROUTE",
-            "id": "run.input.routeCode"
+            "id": "var.offeredRouteRows.route_label"
           }
         },
         {
@@ -495,9 +562,28 @@
           "domainSourceRef": "nesy.macro.select-route"
         },
         {
+          "ref": "sm-route-4a",
+          "planStepId": "resolve-spinner",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "the offered list lives in a spinner popup"
+        },
+        {
+          "ref": "sm-route-4b",
+          "planStepId": "tap-spinner",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "the list does not exist until the spinner opens"
+        },
+        {
+          "ref": "sm-route-4c",
+          "planStepId": "scroll-to-row",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "positions the list; establishes no identity"
+        },
+        {
           "ref": "sm-route-5",
           "planStepId": "resolve-row",
-          "domainSourceRef": "nesy.macro.select-route"
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "identity is the label the dialog renders"
         },
         {
           "ref": "sm-route-6",
@@ -561,9 +647,28 @@
         "domainSourceRef": "nesy.macro.select-route"
       },
       {
+        "ref": "sm-route-4a",
+        "planStepId": "resolve-spinner",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the offered list lives in a spinner popup"
+      },
+      {
+        "ref": "sm-route-4b",
+        "planStepId": "tap-spinner",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the list does not exist until the spinner opens"
+      },
+      {
+        "ref": "sm-route-4c",
+        "planStepId": "scroll-to-row",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "positions the list; establishes no identity"
+      },
+      {
         "ref": "sm-route-5",
         "planStepId": "resolve-row",
-        "domainSourceRef": "nesy.macro.select-route"
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "identity is the label the dialog renders"
       },
       {
         "ref": "sm-route-6",
@@ -612,6 +717,9 @@
           "read-offered-routes",
           "check-offered",
           "report-not-offered",
+          "resolve-spinner",
+          "tap-spinner",
+          "scroll-to-row",
           "resolve-row",
           "tap-row",
           "resolve-confirm",
@@ -654,6 +762,10 @@
       {
         "name": "loadedRows",
         "type": "stringList"
+      },
+      {
+        "name": "spinnerHandle",
+        "type": "string"
       },
       {
         "name": "rowHandle",
@@ -699,6 +811,9 @@
         ],
         "kind": "SDK_QUERY",
         "queryRef": "nesy.offeredRoutes",
+        "params": {
+          "matchKey": "run.input.routeCode"
+        },
         "maxRows": 1000,
         "outputVariable": "offeredRouteRows"
       },
@@ -727,7 +842,7 @@
             "path": "read-offered-routes.match_key"
           }
         },
-        "onTrue": "resolve-row",
+        "onTrue": "resolve-spinner",
         "onFalse": "report-not-offered",
         "unknownPolicy": "FAIL"
       },
@@ -743,6 +858,66 @@
         "capabilityRequirements": [],
         "kind": "ANNOTATE",
         "message": "The requested route is not in the offered projection; no row was tapped."
+      },
+      {
+        "planStepId": "resolve-spinner",
+        "sourceMapRef": "sm-route-4a",
+        "next": "tap-spinner",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.route-spinner",
+        "outputVariable": "spinnerHandle"
+      },
+      {
+        "planStepId": "tap-spinner",
+        "sourceMapRef": "sm-route-4b",
+        "next": "scroll-to-row",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "spinnerHandle"
+      },
+      {
+        "planStepId": "scroll-to-row",
+        "sourceMapRef": "sm-route-4c",
+        "next": "resolve-row",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.scroll-to-item",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "scrollToItem",
+        "args": {
+          "listClass": "android.widget.ListView",
+          "rowIndex": "var.offeredRouteRows.route_index"
+        }
       },
       {
         "planStepId": "resolve-row",
@@ -764,7 +939,7 @@
         "outputVariable": "rowHandle",
         "entityBinding": {
           "type": "ROUTE",
-          "id": "run.input.routeCode"
+          "id": "var.offeredRouteRows.route_label"
         }
       },
       {
@@ -1056,9 +1231,28 @@
         "domainSourceRef": "nesy.macro.select-route"
       },
       {
+        "ref": "sm-route-4a",
+        "planStepId": "resolve-spinner",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the offered list lives in a spinner popup"
+      },
+      {
+        "ref": "sm-route-4b",
+        "planStepId": "tap-spinner",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the list does not exist until the spinner opens"
+      },
+      {
+        "ref": "sm-route-4c",
+        "planStepId": "scroll-to-row",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "positions the list; establishes no identity"
+      },
+      {
         "ref": "sm-route-5",
         "planStepId": "resolve-row",
-        "domainSourceRef": "nesy.macro.select-route"
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "identity is the label the dialog renders"
       },
       {
         "ref": "sm-route-6",

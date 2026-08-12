@@ -47,6 +47,18 @@ const CORE_CAPABILITIES: readonly CapabilityContract[] = [
     automationOnly: false,
   },
   {
+    capabilityKey: "verdict.core.bridge.scroll-to-item",
+    layer: "verdict.core",
+    provider: "BRIDGE",
+    displayName: "Scroll a collection to an item",
+    description:
+      "Bring a collection row onto screen so a target can be resolved against it. " +
+      "Positions only — it establishes no identity and decides no target.",
+    runtimeDetected: true,
+    detectionRef: "bridge.capabilities.scrollToItem",
+    automationOnly: false,
+  },
+  {
     capabilityKey: "verdict.core.bridge.watch-fact",
     layer: "verdict.core",
     provider: "BRIDGE",

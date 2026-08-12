@@ -39,6 +39,8 @@ export const NESY_TARGETS = {
   /** Chaos PinView on the PIN tab (`R.id.pinView`). */
   loginPinField: "nesy.target.login-pin-field",
   loginSubmit: "nesy.target.login-submit",
+  /** Spinner that OPENS the route list; the list itself has no app id. */
+  routeSpinner: "nesy.target.route-spinner",
   routeRow: "nesy.target.route-row",
   routeDialogConfirm: "nesy.target.route-dialog-confirm",
   stopRow: "nesy.target.stop-row",
@@ -94,6 +96,24 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
+    // MEASURED on device, not assumed: the dialog is a Spinner plus two buttons.
+    // `route_row_*`, `route_list` and `route_dialog_confirm` were invented ids —
+    // nothing on screen ever carried them, so the chain below is what the
+    // product actually shows.
+    targetKey: NESY_TARGETS.routeSpinner,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.routeSelectionDialog,
+    displayName: "Route spinner that opens the offered list",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "dialog_spinner" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
     targetKey: NESY_TARGETS.routeRow,
     applicationRef: APP,
     screenRef: NESY_SCREENS.routeStopList,
@@ -101,9 +121,15 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     displayName: "Route row inside the selection dialog",
     resolution: {
       chain: [
-        { kind: "ACCESSIBILITY_ID", selector: { idPrefix: "route_row_" }, establishesIdentity: true },
-        { kind: "ENTITY_BINDING", selector: { keyPath: "routeCode" }, establishesIdentity: true },
-        { kind: "ROW_INDEX_HINT", selector: { containerId: "route_list" }, establishesIdentity: false },
+        // Rows share ONE id (`android:id/text1`), so an id can only ever be
+        // ambiguous here. The only per-row identity the product exposes is the
+        // label it renders — and that label is what the courier reads, which is
+        // also the right thing for a test to mean by "that route".
+        //
+        // The key is supplied per run: for a Serbian fiscal route the row says
+        // "31 *" while `routeCode` is "31", so the macro binds the LABEL from the
+        // projection rather than the raw input.
+        { kind: "ENTITY_BINDING", selector: { keyPath: "routeLabel" }, establishesIdentity: true },
       ],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
@@ -124,7 +150,8 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     surfaceRef: NESY_SURFACES.routeSelectionDialog,
     displayName: "Route dialog confirm button",
     resolution: {
-      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "route_dialog_confirm" }, establishesIdentity: true }],
+      // `yesButton` on device; it renders the label "OK".
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "yesButton" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 10_000,

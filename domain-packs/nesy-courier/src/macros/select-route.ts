@@ -53,6 +53,11 @@ const STEPS: readonly WorkflowStepV2[] = [
     // answers which route is already selected — "none" at this point in the flow —
     // so the check below could never pass whatever the backend offered.
     queryRef: NESY_ADAPTER_QUERY_REFS.offeredRoutes,
+    // Narrowed to the requested route, which turns a list read into an answer:
+    // the row carries the LABEL the dialog renders and the INDEX it sits at.
+    // Measured: 353 rows unfiltered, one row for `matchKey`, and `31 *` resolves
+    // to the same row as `31`.
+    params: { matchKey: "run.input.routeCode" },
     // Bounded projection. An unbounded read of the route list would be a
     // data-exfiltration primitive with a UI in front of it — but the bound has to
     // clear the real list, because a truncated projection answers "not offered"
@@ -74,7 +79,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       // agree on `route_code`, so nothing downstream cares which arrived.
       right: { kind: "operand", source: "step.output", path: "read-offered-routes.match_key" },
     },
-    onTrue: "resolve-row",
+    onTrue: "resolve-spinner",
     onFalse: "report-not-offered",
     // Not BRANCH: if we cannot tell whether the route is offered, tapping
     // anything would be a guess about which row belongs to this courier.
@@ -84,6 +89,58 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({ planStepId: "report-not-offered", sourceMapRef: "sm-route-4", next: null }),
     kind: "ANNOTATE",
     message: "The requested route is not in the offered projection; no row was tapped.",
+  },
+  // The offered list is inside a Spinner popup, so it does not exist until the
+  // spinner is tapped. Resolving a row before that is resolving against a screen
+  // the row is not on yet.
+  {
+    ...stepBase({
+      planStepId: "resolve-spinner",
+      sourceMapRef: "sm-route-4a",
+      next: "tap-spinner",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.routeSpinner,
+    outputVariable: "spinnerHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-spinner",
+      sourceMapRef: "sm-route-4b",
+      next: "scroll-to-row",
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "spinnerHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "scroll-to-row",
+      sourceMapRef: "sm-route-4c",
+      next: "resolve-row",
+      // The popup is a window the platform still has to attach: measured, a
+      // scroll issued in the same breath as the spinner tap answers `not_found`
+      // and the same scroll succeeds a second later. This budget is how long the
+      // surface is allowed to take — a statement about the product, which is why
+      // it lives here and not in the host.
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.scroll-to-item")],
+    }),
+    kind: "BRIDGE_ACTION",
+    // Positions the list; establishes NOTHING. A virtualized row is absent from
+    // the accessibility tree, so `resolve-row` below would honestly answer
+    // `not_found` for any route past the first screenful — measured: the list
+    // shows 9 of 253 rows, and route 31 sits at index 29.
+    //
+    // `listClass`, not `listId`: Android builds the Spinner dropdown from its own
+    // layout, so the ListView carries no application id to name it by.
+    action: "scrollToItem",
+    args: {
+      listClass: "android.widget.ListView",
+      rowIndex: "var.offeredRouteRows.route_index",
+    },
   },
   {
     ...stepBase({
@@ -95,7 +152,12 @@ const STEPS: readonly WorkflowStepV2[] = [
     kind: "RESOLVE_TARGET",
     targetRef: NESY_TARGETS.routeRow,
     outputVariable: "rowHandle",
-    entityBinding: { type: NESY_ENTITIES.route, id: "run.input.routeCode" },
+    // The LABEL, not `routeCode`: a Serbian fiscal route renders as "31 *" while
+    // its code is "31". The row identity has to be what the product draws, and
+    // the projection is what knows the difference. Scrolling put the row on
+    // screen; this step is what decides WHICH row is tapped, and it still fails
+    // closed if two rows carry the same label.
+    entityBinding: { type: NESY_ENTITIES.route, id: "var.offeredRouteRows.route_label" },
   },
   {
     ...stepBase({
@@ -238,6 +300,7 @@ const GENERIC_IR = irDocument({
     { name: "offeredRouteRows", type: "stringList" },
     { name: "selectedRouteRows", type: "stringList" },
     { name: "loadedRows", type: "stringList" },
+    { name: "spinnerHandle", type: "string" },
     { name: "rowHandle", type: "string" },
     { name: "confirmHandle", type: "string" },
   ],
@@ -249,7 +312,10 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-route-2", "read-offered-routes", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-3", "check-offered", NESY_SELECT_ROUTE_MACRO_KEY, "guards against tapping a row that is not offered"),
     sourceMapEntry("sm-route-4", "report-not-offered", NESY_SELECT_ROUTE_MACRO_KEY),
-    sourceMapEntry("sm-route-5", "resolve-row", NESY_SELECT_ROUTE_MACRO_KEY),
+    sourceMapEntry("sm-route-4a", "resolve-spinner", NESY_SELECT_ROUTE_MACRO_KEY, "the offered list lives in a spinner popup"),
+    sourceMapEntry("sm-route-4b", "tap-spinner", NESY_SELECT_ROUTE_MACRO_KEY, "the list does not exist until the spinner opens"),
+    sourceMapEntry("sm-route-4c", "scroll-to-row", NESY_SELECT_ROUTE_MACRO_KEY, "positions the list; establishes no identity"),
+    sourceMapEntry("sm-route-5", "resolve-row", NESY_SELECT_ROUTE_MACRO_KEY, "identity is the label the dialog renders"),
     sourceMapEntry("sm-route-6", "tap-row", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-7", "resolve-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-8", "tap-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
