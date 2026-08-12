@@ -116,9 +116,29 @@ function fromRecord(
   return toLiteral(dig(record[head], segments.slice(1)), origin)
 }
 
+/**
+ * Walk a dotted path, PLUCKING a column when the value is a row set.
+ *
+ * A named query answers with rows, and the question a condition asks of it is
+ * almost always about one column across all of them — "is the requested route
+ * among the offered ones". Without plucking, the only expressible questions are
+ * about row zero, and a macro wanting the list had to invent a field the
+ * projection never carried.
+ *
+ * An array of rows + a segment therefore yields the array of that column's
+ * values, which is exactly what `in` compares against. Rows missing the column
+ * contribute nothing rather than `undefined`: a partial projection should narrow
+ * the answer, not poison it.
+ */
 function dig(value: unknown, segments: readonly string[]): unknown {
   let current = value
   for (const segment of segments) {
+    if (Array.isArray(current)) {
+      current = current
+        .map((row) => (row !== null && typeof row === 'object' ? (row as Record<string, unknown>)[segment] : undefined))
+        .filter((entry) => entry !== undefined)
+      continue
+    }
     if (current === null || typeof current !== 'object') return undefined
     current = (current as Record<string, unknown>)[segment]
   }

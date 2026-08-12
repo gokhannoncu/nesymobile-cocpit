@@ -43,6 +43,20 @@ export const NESY_ADAPTER_QUERY_REFS = {
    */
   dbSession: "nesy.db.session",
   routeState: "nesy.routeState",
+  /**
+   * What the route dialog is OFFERING right now.
+   *
+   * Distinct from `routeState`, which answers which route is SELECTED — before a
+   * selection that is "none", so reading it to ask "was this route offered"
+   * could never be satisfied.
+   *
+   * Rows carry `match_key` (a name the route answers to), `route_code` (its
+   * identity), `route_label` (as displayed) and `fiscal_required`. The last is a
+   * Serbian business rule the spinner encodes as a trailing `*`: fiscal receipts
+   * are mandatory on that route. It is reported as a fact rather than left buried
+   * in a display string, because a route is the same route with or without it.
+   */
+  offeredRoutes: "nesy.offeredRoutes",
 } as const;
 
 /** Preparation and injection operations. All automation-only. */

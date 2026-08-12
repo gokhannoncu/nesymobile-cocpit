@@ -27,6 +27,18 @@ export interface NormalizedEvidenceFact {
   deliveryLane: EvidenceDeliveryLane;
   rawEventId?: string;
   reducerTrace?: readonly string[];
+  /**
+   * The business identity this observation is ABOUT — a shipment id, an approval
+   * request code, the stop the app says is active.
+   *
+   * Carried so a `CORRELATED_ALL_OF` derivation can check that its inputs describe
+   * the same thing. Without it "the backend approved a tour" and "the courier
+   * requested one" combine into a conclusion about no particular tour, which is
+   * the exact mistake `requiresCorrelation` exists to prevent — so a derivation
+   * that needs correlation refuses to fire when this is absent rather than
+   * assuming the inputs match.
+   */
+  correlationValue?: string;
 }
 
 export interface RawEvidenceEvent {

@@ -137,8 +137,8 @@
             }
           ],
           "kind": "SDK_QUERY",
-          "queryRef": "nesy.routeState",
-          "maxRows": 50,
+          "queryRef": "nesy.offeredRoutes",
+          "maxRows": 1000,
           "outputVariable": "offeredRouteRows"
         },
         {
@@ -163,7 +163,7 @@
             "right": {
               "kind": "operand",
               "source": "step.output",
-              "path": "read-offered-routes.codes"
+              "path": "read-offered-routes.match_key"
             }
           },
           "onTrue": "resolve-row",
@@ -698,8 +698,8 @@
           }
         ],
         "kind": "SDK_QUERY",
-        "queryRef": "nesy.routeState",
-        "maxRows": 50,
+        "queryRef": "nesy.offeredRoutes",
+        "maxRows": 1000,
         "outputVariable": "offeredRouteRows"
       },
       {
@@ -724,7 +724,7 @@
           "right": {
             "kind": "operand",
             "source": "step.output",
-            "path": "read-offered-routes.codes"
+            "path": "read-offered-routes.match_key"
           }
         },
         "onTrue": "resolve-row",

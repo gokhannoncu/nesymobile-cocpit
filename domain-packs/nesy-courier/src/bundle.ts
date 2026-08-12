@@ -48,6 +48,26 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.5.0 — the fiscal marker is separated from route identity. Serbia shows
+  //   fiscal-mandatory routes as `31 *`; the asterisk is a business rule, not a
+  //   character of the code, and other countries offer the same route as `31`.
+  //   The projection now reports `route_code`, `route_label` and
+  //   `fiscal_required` separately and answers to either spelling.
+  //
+  // 1.4.1 — the offered-routes projection is bounded at 500, not 50: the device
+  //   offers 253 routes and refused the read outright, and a truncated list would
+  //   have answered "not offered" for a route that was.
+  //
+  // 1.4.0 — select-route reads the OFFERED routes (`nesy.offeredRoutes`) instead
+  //   of the SELECTED one, and its condition addresses a column the projection
+  //   actually has. The check could not pass before whatever the backend offered.
+  //
+  // 1.3.0 — the host now computes the pack's DERIVED facts, so open-stop's
+  //   wrong-row guard and the tour-approval confirmation can be satisfied at all.
+  //   open-stop's active-stop observation carries the stop identity the guard
+  //   compares, and ACTIVE_STOP_MATCHES now compares against the input the macro
+  //   actually declares (`requestedItemCode`) rather than a name nothing used.
+  //
   // 1.2.0 — every independent workflow references exactly ONE macro. Signing in
   //   is a precondition installed by a launch profile, not a leg of the test:
   //   chaining it produced two expansion snapshots, which an empty canvas cannot
@@ -74,7 +94,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 2, patch: 0 },
+  version: { major: 1, minor: 5, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

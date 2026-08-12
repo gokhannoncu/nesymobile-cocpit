@@ -204,6 +204,15 @@ export interface SdkQueryOutputFactBinding {
   from:
     | { kind: "COLUMN"; column: string }
     | { kind: "ROWS_PRESENT" };
+  /**
+   * Column carrying the business identity this observation is about.
+   *
+   * Optional, and only worth setting when a derived fact has to check that its
+   * inputs describe the same entity — `nesy.stopState.stop_id` answers "WHICH
+   * stop is active", which is what turns "a stop is open" into "the REQUESTED
+   * stop is open".
+   */
+  correlationColumn?: string;
 }
 
 /** Read the app's own state/query surface. Never mutating. */
@@ -214,6 +223,20 @@ export interface SdkQueryStep extends WorkflowStepBase {
   /** Bounded projection: an unbounded query is a data-exfiltration primitive. */
   maxRows: number;
   outputVariable: string;
+  /**
+   * Parameters the named query filters on.
+   *
+   * The device has always accepted them; the IR simply never sent any, so every
+   * query returned its whole projection and any narrowing had to happen host-side
+   * — which the condition language cannot express (it can pluck a column across
+   * rows, not pick a row by one column and read another). The practical effect
+   * was that a plan could ask "which routes are offered" but never "where in the
+   * list is THIS one".
+   *
+   * Values are `run.input.<name>`, `var.<name>` or literals, resolved the same way
+   * `BRIDGE_ACTION` args are.
+   */
+  params?: Readonly<Record<string, string>>;
   /**
    * Facts this observation publishes into the run's evidence scope.
    *

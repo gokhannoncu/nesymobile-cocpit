@@ -56,7 +56,11 @@ export const NESY_COURIER_DERIVED_FACTS: DerivedFactGraph = {
         reducerKind: "ENTITY_STATUS_EQUALS",
         reducerVersion: 1,
         inputFactKeys: [NESY_FACTS.ACTIVE_STOP_OBSERVED, NESY_FACTS.AVAILABLE_STOPS_LOADED],
-        parameters: { comparePath: "stopCode", against: "macro.input.stopCode" },
+        // `requestedItemCode` is what the macro's input is actually called. This
+        // said `stopCode`, a name no macro declares, so the comparison had nothing
+        // to compare against — the guard would have stayed silent even once a
+        // reducer existed to run it.
+        parameters: { comparePath: "stopId", against: "macro.input.requestedItemCode" },
       },
       preserveInputs: true,
       requiresCorrelation: true,

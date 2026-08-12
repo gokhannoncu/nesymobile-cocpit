@@ -49,10 +49,15 @@ const STEPS: readonly WorkflowStepV2[] = [
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
-    queryRef: "nesy.routeState",
+    // The OFFERED set, not the selected route. This read `nesy.routeState`, which
+    // answers which route is already selected — "none" at this point in the flow —
+    // so the check below could never pass whatever the backend offered.
+    queryRef: NESY_ADAPTER_QUERY_REFS.offeredRoutes,
     // Bounded projection. An unbounded read of the route list would be a
-    // data-exfiltration primitive with a UI in front of it.
-    maxRows: 50,
+    // data-exfiltration primitive with a UI in front of it — but the bound has to
+    // clear the real list, because a truncated projection answers "not offered"
+    // for a route that was offered.
+    maxRows: 1_000,
     outputVariable: "offeredRouteRows",
   },
   {
@@ -62,7 +67,12 @@ const STEPS: readonly WorkflowStepV2[] = [
       kind: "comparison",
       operator: "in",
       left: { kind: "operand", source: "run.input", path: "routeCode" },
-      right: { kind: "operand", source: "step.output", path: "read-offered-routes.codes" },
+      // `match_key`, not `route_code`: a Serbian fiscal route is SHOWN as "31 *"
+      // and an author typing what the courier sees is right to type that, while
+      // the same route is plain "31" in every other country. The projection emits
+      // a row per addressable name so one `in` accepts both spellings; the rows
+      // agree on `route_code`, so nothing downstream cares which arrived.
+      right: { kind: "operand", source: "step.output", path: "read-offered-routes.match_key" },
     },
     onTrue: "resolve-row",
     onFalse: "report-not-offered",

@@ -171,7 +171,14 @@ const STEPS: readonly WorkflowStepV2[] = [
     maxRows: 1,
     outputVariable: "activeRows",
     outputFactBindings: [
-      { factKey: NESY_FACTS.ACTIVE_STOP_OBSERVED, from: { kind: "ROWS_PRESENT" } },
+      {
+        factKey: NESY_FACTS.ACTIVE_STOP_OBSERVED,
+        from: { kind: "ROWS_PRESENT" },
+        // WHICH stop, not just that one is open. `APP.ACTIVE_STOP_MATCHES` is the
+        // wrong-row guard, and it can only compare an identity the observation
+        // actually carried.
+        correlationColumn: "stop_id",
+      },
     ],
   },
   {

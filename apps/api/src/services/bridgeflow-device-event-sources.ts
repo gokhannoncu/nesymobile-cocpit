@@ -36,6 +36,9 @@ export const NESY_ROUTE_DIALOG_READY_FACT = 'UI.ROUTE_DIALOG_READY'
  */
 const SURFACE_READY_MAX_AGE_MS = 30_000
 
+/** A business event happened at a moment; the window bounds how long it answers for. */
+const BUSINESS_EVENT_MAX_AGE_MS = 60_000
+
 /**
  * Registers the device-event sources this host trusts.
  *
@@ -81,5 +84,66 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: SURFACE_READY_MAX_AGE_MS,
     valueField: 'surface_ready',
+  })
+
+  registry.register({
+    sourceEvent: 'SURFACE_SCANNER_READY',
+    factKey: 'UI.SCANNER_SURFACE_READY',
+    plane: 'UI',
+    subtype: 'surface-ready',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: SURFACE_READY_MAX_AGE_MS,
+    valueField: 'surface_ready',
+  })
+
+  // Business events the app already emitted but nothing on the host was told to
+  // read. Each carries a value field that is present on EVERY emit of its wire —
+  // a frame missing it is a blocking rejection, not an ignored one, so a field
+  // that only appears on the happy path would stop the run it was meant to prove.
+  //
+  // `DELIVERY_UI_COMPLETED`, not `DELIVERY_PERSISTED`: the latter is emitted only
+  // from an androidTest benchmark, while the delivery flow emits the former when
+  // the event is saved (offline queue or online). Registering the benchmark wire
+  // would have created a source no run could ever satisfy.
+  registry.register({
+    sourceEvent: 'PARCEL_SCANNED',
+    factKey: 'APP.PARCEL_SCANNED',
+    plane: 'APP',
+    subtype: 'scan-accepted',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField: 'scan_accepted',
+  })
+  registry.register({
+    sourceEvent: 'DELIVERY_UI_COMPLETED',
+    factKey: 'APP.DELIVERY_SUBMITTED',
+    plane: 'APP',
+    subtype: 'delivery-submitted',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField: 'delivery_submitted',
+  })
+  registry.register({
+    sourceEvent: 'TOUR_STARTED',
+    factKey: 'APP.TOUR_APPROVAL_REQUESTED',
+    plane: 'APP',
+    subtype: 'tour-requested',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField: 'tour_requested',
+  })
+  registry.register({
+    sourceEvent: 'TOUR_APPROVAL_PUSH',
+    factKey: 'APP.TOUR_APPROVAL_PUSH_RECEIVED',
+    plane: 'APP',
+    subtype: 'tour-approval-push',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField: 'push_received',
   })
 }

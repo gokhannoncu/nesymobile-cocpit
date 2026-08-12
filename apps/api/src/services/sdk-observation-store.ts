@@ -33,6 +33,8 @@ export interface SdkObservation {
   observedAtMs: number
   /** Named query the observation came from, kept for the fact's `subtype`. */
   queryRef: string
+  /** WHICH entity this observation is about, when a derivation needs to check identity. */
+  correlationValue?: string
 }
 
 export class SdkObservationStore {

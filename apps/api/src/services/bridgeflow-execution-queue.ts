@@ -36,7 +36,9 @@ import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-back
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
+import { deriveFacts } from './derived-fact-engine.js'
 import { createControlExecutor } from '@nesy/control-channels/node'
+import type { ControlExecutor } from '@nesy/control-contract'
 import {
   getScreenReadinessObserver,
   type ScreenReadinessObserver,
@@ -291,6 +293,59 @@ function isScreenObservableFact(bundle: DomainPackBundle, factKey: string): bool
  * `observedAtMs` is carried through from the original read rather than restamped,
  * so an observation that has gone stale expires instead of being renewed forever.
  */
+/**
+ * Installs the precondition a launch profile PROMISES.
+ *
+ * `preparationOperationRefs` existed only in the contract, its validation and a
+ * read model — nothing ever invoked it. Every `PREPARED_SESSION` and
+ * `DIRECT_STATE` profile was therefore inert: a workflow whose slice declares
+ * "starts from a signed-in app" was launched against whatever state the device
+ * happened to be in, and died on its first wait. Login was the only workflow that
+ * did not notice, because it is the one that creates its own precondition.
+ *
+ * Failure is the CALLER's to escalate as BLOCKED, never as a product failure: a
+ * precondition that could not be installed means the workflow was never
+ * exercised, and recording that as a defect would put a lab problem into the
+ * product's verdict.
+ */
+async function applyLaunchPreparation(input: {
+  controlExecutor: ControlExecutor
+  deviceId: string
+  runId: string
+  profile: LaunchProfile
+  logger?: (message: string, detail?: unknown) => void
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const refs = input.profile.preparationOperationRefs ?? []
+  if (refs.length === 0) return { ok: true }
+
+  for (const [index, operationRef] of refs.entries()) {
+    const result = await input.controlExecutor.run(input.deviceId, {
+      op: 'seed',
+      verb: operationRef,
+      // The operations default their own parameters (`prepareSession` marks the
+      // session logged in unless told otherwise). Passing nothing keeps the pack
+      // the only place that decides WHICH preparation runs, and the app the only
+      // place that decides what it means.
+      params: {},
+      requestId: `${input.runId}-prep-${String(index)}`,
+      scope: input.runId,
+    })
+    if (!result.ok) {
+      return {
+        ok: false,
+        reason:
+          `launch profile "${input.profile.profileKey}" could not install its precondition: ` +
+          `operation "${operationRef}" answered ${result.code}`,
+      }
+    }
+    input.logger?.('[BridgeFlowExecutionQueue] launch preparation applied', {
+      runId: input.runId,
+      operationRef,
+    })
+  }
+  return { ok: true }
+}
+
 /** Fact keys are plane-prefixed by contract; the prefix is the authority on plane. */
 function planeOf(factKey: string): NormalizedEvidenceFact['plane'] {
   if (factKey.startsWith('LOCAL.')) return 'LOCAL'
@@ -334,6 +389,9 @@ function publishSdkObservations(input: {
         value: observation.value,
         authority: 'PRIMARY',
         deliveryLane: 'ORDERED_REQUIRED',
+        ...(observation.correlationValue === undefined
+          ? {}
+          : { correlationValue: observation.correlationValue }),
       } satisfies NormalizedEvidenceFact,
     })
   }
@@ -628,17 +686,50 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       runId: item.runId,
       deadlineMs: stateWaitMs,
     })
-    const evidenceRuntime = getBridgeFlowEvidenceRuntime()
-    const sdkObservations = getSdkObservationStore()
-    // One control channel for the whole run: the bridge port uses it to tell the
-    // app which occurrence its emits belong to, the generic-step runtime to read
-    // named queries.
+    // One control channel for the whole run: launch preparation installs the
+    // profile's precondition through it, the bridge port tells the app which
+    // occurrence its emits belong to, and the generic-step runtime reads named
+    // queries.
     const controlExecutor =
       applicationId === undefined ? undefined : createControlExecutor({ applicationId })
+
+    // The launch profile's precondition is installed BEFORE the plan runs and
+    // AFTER the run session exists — the operations are scoped to this run, and a
+    // session prepared under no run would belong to nobody.
+    if (launchProfile !== undefined && controlExecutor !== undefined) {
+      const prepared = await applyLaunchPreparation({
+        controlExecutor,
+        deviceId: item.deviceId,
+        runId: item.runId,
+        profile: launchProfile,
+        ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+      })
+      if (!prepared.ok) {
+        await this.blockRun(item, prepared.reason)
+        return
+      }
+    }
+
+    const evidenceRuntime = getBridgeFlowEvidenceRuntime()
+    const sdkObservations = getSdkObservationStore()
     const screenObserver = getScreenReadinessObserver()
     // Seed the observer from the pre-run snapshot so a screen the device settled on
     // BEFORE the first `SCREEN_READY` reached us is still known. From here on the
     // event stream owns the state; this only covers the gap at the start.
+    // Same gap, for SURFACES. A dialog announces itself once, when it opens — and
+    // it routinely opens BEFORE the host attaches this run, so the announcement was
+    // addressed to nobody and `select-route` waited out its deadline against a
+    // route dialog that was on screen the whole time. The device now reports
+    // visibility as state, and this seeds it; the SURFACE_* events still cover a
+    // dialog that appears once the run is already listening.
+    if (deviceState?.runId === item.runId && deviceState.raw['route_dialog_visible'] === true) {
+      sdkObservations.record(item.runId, {
+        factKey: 'UI.ROUTE_DIALOG_READY',
+        value: true,
+        observedAtMs: clock(),
+        queryRef: 'device-state:route_dialog_visible',
+      })
+    }
     if (deviceState?.runId === item.runId && deviceState.currentScreen.trim() !== '') {
       screenObserver.observe(
         { runId: item.runId, screen: deviceState.currentScreen, event: 'SCREEN_READY' },
@@ -669,6 +760,19 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
 
     const persistence = new PrismaExecutionPersistence(this.options.prisma)
     const runInputs = item.inputs ?? {}
+    // What an `ENTITY_STATUS_EQUALS` derivation compares the OBSERVED entity
+    // against. The pack names the source (`macro.input.stopCode`); the value can
+    // only come from this run, because it is what THIS run asked for.
+    const runInputExpectations: Record<string, string | undefined> = Object.fromEntries(
+      Object.entries(runInputs).flatMap(([name, value]) =>
+        typeof value === 'string'
+          ? [
+              [`macro.input.${name}`, value],
+              [`run.input.${name}`, value],
+            ]
+          : [],
+      ),
+    )
     const runContext = new BridgeFlowRunContext({
       capabilities: manager.getCapabilities(),
       runInputs,
@@ -735,10 +839,22 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             // Facts are also handed to the condition resolver: a branch that
             // reads `sdk.state.*` must see what the oracle lane saw, not a
             // second, differently-filtered view of the same run.
-            const facts = evidenceRuntime.currentFacts(
+            const observed = evidenceRuntime.currentFacts(
               { runId: item.runId, occurrenceId, iterationKey },
               clock(),
             )
+            // The pack's DERIVED facts, computed from what this occurrence
+            // observed. They are appended, never substituted: `preserveInputs` is
+            // always true, and a conclusion that replaced its inputs would leave
+            // the next reader unable to see what it was built from.
+            const facts = [
+              ...observed,
+              ...deriveFacts({
+                bundle: resolution.pack.bundle,
+                facts: observed,
+                expectations: runInputExpectations,
+              }),
+            ]
             runContext.observeFacts(facts)
             return facts
           },
@@ -765,6 +881,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           bundle: resolution.pack.bundle,
           runId: item.runId,
           applicationId,
+          runInputs,
           observations: sdkObservations,
           ...(controlExecutor === undefined ? {} : { controlExecutor }),
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),

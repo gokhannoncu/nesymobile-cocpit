@@ -296,7 +296,8 @@
               "factKey": "APP.ACTIVE_STOP_OBSERVED",
               "from": {
                 "kind": "ROWS_PRESENT"
-              }
+              },
+              "correlationColumn": "stop_id"
             }
           ]
         },
@@ -712,7 +713,8 @@
             "factKey": "APP.ACTIVE_STOP_OBSERVED",
             "from": {
               "kind": "ROWS_PRESENT"
-            }
+            },
+            "correlationColumn": "stop_id"
           }
         ]
       },

@@ -48,6 +48,13 @@ const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
  * would turn "we could not observe" into "we observed a negative", which is the
  * one conversion an oracle must never make on its own.
  */
+/** A blank column is no identity at all, and must not read as one. */
+function asOptionalString(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const trimmed = raw.trim()
+  return trimmed === '' ? undefined : trimmed
+}
+
 function asFactValue(raw: unknown): boolean | 'UNKNOWN' {
   if (typeof raw === 'boolean') return raw
   if (raw === 'true') return true
@@ -301,6 +308,8 @@ export function createGenericStepRuntime(options: {
   variables: VariableRuntimePort
   bundle: DomainPackBundle
   runId: string
+  /** Resolves `run.input.*` in a query's declared params. */
+  runInputs?: Readonly<Record<string, unknown>>
   applicationId?: string
   controlExecutor?: ControlExecutor
   /**
@@ -337,11 +346,28 @@ export function createGenericStepRuntime(options: {
           return { succeeded: false, actionResult: 'FAILED' }
         }
 
+        // Resolved the same way BRIDGE_ACTION args are, so a query can be narrowed
+        // by what THIS run asked for. `sql_named` has always carried `params`; the
+        // host simply never filled them, so every projection came back whole and
+        // any narrowing had to happen in the condition language — which cannot
+        // pick a row by one column and read another.
+        const declaredParams = step.params['queryParams']
+        const queryParams: Record<string, string | number | boolean | null> = {}
+        if (declaredParams !== null && typeof declaredParams === 'object') {
+          for (const [name, ref] of Object.entries(declaredParams as Record<string, string>)) {
+            const resolved = resolveArgValue(ref, options.runInputs ?? {}, variables)
+            if (typeof resolved === 'string' || typeof resolved === 'number' || typeof resolved === 'boolean') {
+              queryParams[name] = resolved
+            }
+          }
+        }
+
         const result = await controlExecutor.run(manager.deviceId, {
           op: 'sql_named',
           requestId: context.requestId,
           scope: runId,
           name: queryRef,
+          ...(Object.keys(queryParams).length === 0 ? {} : { params: queryParams }),
           maxRows,
         })
         if (!result.ok) {
@@ -354,6 +380,12 @@ export function createGenericStepRuntime(options: {
         }
         const rows = Array.isArray(result.data.rows) ? result.data.rows.slice(0, maxRows) : []
         variables.set(outputVariable, rows)
+        // Also under the STEP ID, because that is the name a `step.output` operand
+        // uses: `step.output` + path `read-offered-routes.route_code` reads as "the
+        // route codes that step produced". Storing only under `outputVariable` left
+        // every such condition resolving MISSING — and with `unknownPolicy: FAIL`,
+        // failing the step rather than reporting the mismatch.
+        variables.set(step.planStepId, rows)
 
         // Bound facts are read from the FIRST row. Every query that binds facts
         // is a `maxRows: 1` state projection; a multi-row query answers "which
@@ -369,6 +401,7 @@ export function createGenericStepRuntime(options: {
           type Binding = {
             factKey: string
             from: { kind: 'COLUMN'; column: string } | { kind: 'ROWS_PRESENT' }
+            correlationColumn?: string
           }
           for (const binding of bindings as readonly Binding[]) {
             // An empty result set is a PROVEN negative, not an unknown: the query
@@ -378,11 +411,19 @@ export function createGenericStepRuntime(options: {
               binding.from.kind === 'ROWS_PRESENT'
                 ? rows.length > 0
                 : asFactValue(firstRow[binding.from.column])
+            // WHICH entity this observation is about, when the pack asked for it.
+            // A derivation that has to prove the observed stop is the requested
+            // one needs the identity, not only that some stop was observed.
+            const correlationValue =
+              binding.correlationColumn === undefined
+                ? undefined
+                : asOptionalString(firstRow[binding.correlationColumn])
             options.observations.record(runId, {
               factKey: binding.factKey,
               value,
               observedAtMs: clock(),
               queryRef,
+              ...(correlationValue === undefined ? {} : { correlationValue }),
             })
           }
         }
