@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 17:45:00 +03"
+lastUpdatedAt: "2026-08-12 20:15:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.9.0"
+domainPackVersion: "1.11.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -336,7 +336,92 @@ APP.SCHEDULE_MATCHES_SELECTED_ROUTE  SATISFIED   schedule rota 31 için yaratıl
 REMOTE.ROUTES_AVAILABLE              WARNING_TIMEOUT (yalnız teşhis, karar vermez)
 ```
 
-### 3.8 Sırbistan fiscal kuralı
+### 3.8 #20 — zimmet alma (`LOAD_TO_VEHICLE`), yedinci dilim
+
+Rota seçimi schedule'ı boş yaratıyor; **işi içine koyan adım bu.** Kullanıcı
+kararı: önce cihazda ÖLÇ, sonra pack'i yaz. #17'de tersi yapılmış ve üç engelle
+karşılaşılmıştı.
+
+**Zimmet cihazda tek akış değil — üç ayrı yol var:**
+
+| Yol | Tetikleyici | Uç |
+|---|---|---|
+| **A. FORCE_LOAD** | Barkod schedule'da **yok** | `GetShipmentCreateInstantTaskServiceData` → `CreateInstantTask` |
+| B. LOAD | Barkod schedule'da var, Loaded değil | offline kuyruk → `LoadParcelToCourierVehicle` |
+| C. VehicleLoading | Menü → el terminali | `InsertCargoTransaction` (TTI + torba/kargo) |
+
+Boş schedule'da `getTransaction` eşleşme bulamaz ve `FORCE_LOAD` döner — yani
+**bizim durumumuzda daima A yolu**, ve asıl akış `StopListFragment` değil
+`ScanProcessor`.
+
+**Ölçülen arayüz** (hepsi bridge dump'ından, layout'tan değil):
+
+```text
+StopList     app:manuel_input · app:camera · app:tv_total_picked_up_count
+             app:tv_remaining_count · app:rv (COLL) · app:btn_out "Request Tour Start"
+Giriş        app:title "Write barcode number" · app:et_input_dialog_barcode_number
+             app:btn_ok            ← OK'ında doğrulama YOK, hepsi yorumlanmış
+Hata         app:tv_arasDg_title · app:tv_arasDg_message · app:btn_arasDg_positive_button
+RS seçici    app:dialogTitle "Select Time Range" · NumberPicker · app:btnSave "Select"
+```
+
+**Ölçülen olay akışı** — geçersiz barkod ve mutlu yol:
+
+```text
+PARCEL_SCANNED        SCAN_PARCEL       SUCCESS   taskId=<barkod>
+VEHICLE_LOADING_STEP  LOAD_TO_VEHICLE   ERROR     step=FETCH_SHIPMENT
+DIALOG_SHOWN          LOAD_TO_VEHICLE   dialog=GENERIC_ERROR
+                      message="9999999999999999 barcode not found."
+— mutlu yol —
+VEHICLE_LOADING_STEP  SUCCESS  step=FETCH_SHIPMENT
+DIALOG_SHOWN          dialogType=SingleChoicePickerDialogFragment
+                      fragmentTag=TimeSlotSelectionPickerFragment   ← RS
+VEHICLE_LOADING_STEP  SUCCESS  step=CREATE_TASK
+VEHICLE_LOADING_STEP  SUCCESS  step=FETCH_SCHEDULE
+```
+
+Sonrasında: `Loaded Parcels` 0→1, bir durak, `stop_chunk_count` 0→1,
+`nesy.parcelState{barcode}` → `item_status=4` (Loaded).
+
+**Backend kuralları** (`ShipmentOperation.GetShipmentCreateInstantTaskServiceData`,
+sırayla): alıcı adı/adresi boş → red · barkod yok → red · `Returned` →
+`-HASRETURN` · `Delivered` → `-DELY` + ALRT olayı · **başka şube → UYARI**
+(devam edilebilir) · `Weight==0` + INIT yok → `-UNLOAD`/`-PICKUP` · RDOC + ENTY yok
++ `IsRdocUnloadRequiredOnAssignment` → `-ENTY` · Direct4Me pickup → `-PICKUP` ·
+tek parça + rol courier + son olay DELY/DELR/LOST/STOR → red. Geçerse backend
+**yazmaz**, `CreateInstantTaskRequest`'i mobile geri verir. `CreateInstantTask`
+ise `AddParcelsToSchedule` ile `Loaded/OnDeliveryCourier` yazar,
+`InsertUniqueScheduleBarcodeKey` idempotency çiti kurar, durakları
+`(lat, lon, timeWindow, counterLocationId)` ile gruplar ve `AutoApproveOnTour`
+çağırır. **Lat/Lon null ise parça sessizce atlanır.**
+
+**Üç tuzak, pack'te kayıtlı:**
+
+1. **Dilim bugün RS-only** ve bunu söylüyor. RS saat aralığı seçicisi
+   `TREAT_AS_ABSENT` ile ülke-nötr modellenmek istendi; **host `notFoundPolicy`'yi
+   hiç okumuyor** (§5.0). Politika `FAIL` bırakıldı — çalışmayan bir politikayla
+   nötrlük iddia eden yorum, yalan söyleyen yorumdur.
+2. **Adım teli kanıt olarak bağlanmadı.** `VEHICLE_LOADING_STEP` tek tel adında üç
+   anlam taşıyor ve boolean alanı yok; host sözlüğü tel adı → tek fact eşliyor ve
+   `valueField`'ı her emit'te şart koşuyor, kare reddi de **bloke edici**. Dilim
+   bu yüzden ölçülmüş **sorgu düzlemlerinden** karar veriyor.
+3. **Durum karşılaştırması yapılmadı.** `item_status` sayıyı dizgide taşıyor
+   (`"4"`); host fact değerini yalnız `"true"/"false"`'dan okur. `ROWS_PRESENT` ile
+   "bu parça schedule'da mı" soruldu — sorgu barkodla daraltıldığı için cevap **o
+   parça** hakkında. `== Loaded` iddiası app tarafında boolean kolon gerektirir.
+
+**Cihazda `PASS_ONLINE`** (13/13 adım, oracle SATISFIED):
+
+```text
+LOCAL.PARCEL_IN_SCHEDULE     SATISFIED
+LOCAL.SCHEDULE_BODY_STORED   SATISFIED
+APP.AVAILABLE_STOPS_LOADED   SATISFIED   ← burada REQUIRED, select-route'ta değil
+```
+
+`AVAILABLE_STOPS_LOADED` ayrımı bilinçli: seçimde schedule boş doğar (§5.0), ama
+zimmet tam olarak durağı yaratan şeydir.
+
+### 3.9 Sırbistan fiscal kuralı
 
 `31 *` içindeki yıldız **rota kodunun parçası değil** — fiscal zorunluluğunu
 gösteren, Sırbistan'a özel bir iş kuralı. Diğer ülkelerde aynı rota `31`.
@@ -349,7 +434,7 @@ satır üretiyor, ikisi de aynı `route_code`'da anlaşıyor — böylece workfl
 
 **Ölçüldü:** 253 rota → 353 satır, 200 satır fiscal (100 fiscal + 153 düz rota).
 
-### 3.9 Yan bulgu — erişilebilirlik onarımı
+### 3.10 Yan bulgu — erişilebilirlik onarımı
 
 `restoreAccessibilityService` dört ayrı adb çağrısıydı ve `accessibility_enabled=0`
 ile başlıyordu. Kesinti (API restart) **cihazın genel erişilebilirlik anahtarını
@@ -366,17 +451,22 @@ select-route  route 31 → PASS_ONLINE    14/14 adım SUCCEEDED, oracle SATISFIE
                         SCHEDULE_IN_USE_IS_TODAYS · SCHEDULE_MATCHES_SELECTED_ROUTE → hepsi SATISFIED
                         ROUTES_AVAILABLE WARNING_TIMEOUT (yalnız teşhis, karar vermez)
                         AVAILABLE_STOPS_LOADED artık gereksinim DEĞİL: seçimde schedule boş doğar
+load-to-vehicle       → PASS_ONLINE    13/13 adım SUCCEEDED, oracle SATISFIED
+                        PARCEL_IN_SCHEDULE · SCHEDULE_BODY_STORED
+                        AVAILABLE_STOPS_LOADED → hepsi SATISFIED
+                        RS saat aralığı seçicisi çözüldü ve onaylandı
 sql_named params      → argümanlar handler'a ulaşıyor, değer birebir taşınıyor
                         (§3.5 sondaları, #18 sonrası)
 offeredRoutes         → parametresiz 353 satır, matchKey="31" TEK satır
                         (index 29), matchKey="31 *" aynı satır, "999" boş
 ```
 
-Statik kanıt kapsaması (6 makro):
+Statik kanıt kapsaması (7 makro):
 
 ```text
 login              OK
 select-route       OK
+load-to-vehicle    OK
 open-stop          OK
 tour-approval      OK
 process-parcel     2 eksik
@@ -385,7 +475,7 @@ complete-delivery  2 eksik
 
 Faza başlarken bu tablo `login OK` + diğer beşi eksikti.
 
-**Testler:** API 532 · pack 133 · executor 32 · contract 82 · compiler 39 ·
+**Testler:** API bridgeflow+derived 82 · pack 134 · executor 32 · compiler 39 ·
 oracle-engine 16 · control-channels 39 · mobil `verdict-core` 430 ·
 `verdict-bridge` 63.
 
@@ -397,7 +487,41 @@ baseline budur, fazlası sizindir.
 
 ## 5. Kalan iş
 
-### 5.0 Kapatıldı — durak zorunluluğu iş kuralına aykırıydı
+### 5.0 SIRADAKİ — `open-stop` ve `tour-approval` cihazda hiç koşulmadı
+
+Önkoşulları artık **kurulabilir** ve türetilmiş fact'leri artık **akıyor**:
+
+```text
+login → select-route → load-to-vehicle    üçü de cihazda PASS_ONLINE
+```
+
+Zimmet durağı yaratıyor, yani `open-stop`'un açacağı şey artık var. Her ikisi de
+`APP.ACTIVE_STOP_MATCHES` / `REMOTE.TOUR_APPROVAL_CONFIRMED` gibi türetilmiş
+fact'lere dayanıyor — bunlar §5.0c'ye kadar hiçbir oracle'a ulaşmıyordu, o
+düzeltme önlerini açtı ama **hiçbiri henüz ölçülmedi**.
+
+Sıra: `reset_state → login → select-route → load-to-vehicle → open-stop`.
+
+### 5.0a Kapatıldı — iki host boşluğu: opsiyonel etkileşim modellenebiliyor (#20)
+
+**İkisi de kapatıldı ve cihazda doğrulandı** (`tap-acknowledge action=SKIPPED`,
+koşu `PASS_ONLINE`). Aşağıdaki teşhis, neyin neden değiştiğinin kaydı.
+
+**Düzeltme (a):** `RESOLVE_TARGET` artık hedefin `notFoundPolicy`'sini okuyor.
+`NOT_FOUND` + `TREAT_AS_ABSENT` → adım geçer ve değişkene açık bir işaretçi
+yazılır (`{ absentTarget: true, targetRef }`) — boş değişken DEĞİL, çünkü "pack
+burada olmayabilir diyor" ile "resolve hiç koşmadı" birbirine benzememeli. Yalnız
+`NOT_FOUND` tolere edilir; `AMBIGUOUS`/`STALE_TREE` hâlâ hata ("ayırt edemedim",
+"orada değil"in tersidir).
+
+**Düzeltme (b):** `BridgeActionTerminalState`'e `SKIPPED` eklendi; executor'da
+ayrı dal — automation failure değil, success de değil, `effectVerified` okunmaz.
+Prisma'da `actionResult` düz `String`, migration gerekmedi.
+
+**Testler:** absent hedef cihaza ulaşırsa fake manager throw ediyor; boş değişken
+hâlâ FAILED; `AMBIGUOUS` tolere edilmiyor.
+
+### 5.0b Kapatıldı — durak zorunluluğu iş kuralına aykırıydı
 
 Kullanıcı düzeltmesi: **rota seçimi schedule'ı BOŞ yaratır.** Kurye sonra aracına
 load yapar ve schedule kendini yüklenenden doldurur. Yani seçim sonrası durak
@@ -412,7 +536,7 @@ sonra durakların var olması gerekir.
 
 `select-route` bundan sonra cihazda **`PASS_ONLINE`** üretiyor (§4).
 
-### 5.0b Kapatıldı — iki türetilmiş fact artık ateşliyor (#19)
+### 5.0c Kapatıldı — iki türetilmiş fact artık ateşliyor (#19)
 
 İkisi de `REQUIRED_TIMEOUT` veriyordu. İki ayrı sebep çıktı; **biri tahmin
 ettiğim yer değildi ve daha büyüktü.**
@@ -463,23 +587,6 @@ APP.AVAILABLE_STOPS_LOADED           VIOLATED    tek kalan: durak yok → §5.0
 > ile sabitlendi (yanlış schedule id → false, yanlış rota → false, eksik girdi →
 > sessiz), ama "türetilmiş fact oracle'a ULAŞIR" invaryantı için kuyruk seviyesinde
 > bir test yok. Bu delik bir kez daha açılırsa yine sessizce açılır.
-
-### 5.0b Sonra — `AVAILABLE_STOPS_LOADED` ürün mü, veri mi?
-
-`select-route` artık cihazda uçtan uca koşuyor ve karar üretiyor. Kalan soru
-kanıt hattında değil, **cevabın kendisinde**: iki fact ölçüldü ve false çıktı.
-
-| Fact | Ölçüm | Ayrıştırılacak |
-|---|---|---|
-| `APP.AVAILABLE_STOPS_LOADED` | `nesy.availableStops` boş döndü | Rota 31'in bugün durağı var mı? Elle seçilen rota 3'te de boş geldi — iki rotada boş olması veri koşuluna işaret ediyor, ama app'in durakları hiç yüklemediği de aynı şekilde görünür |
-| `REMOTE.ROUTE_ASSIGNED` | `assignment.exists` false; remote çağrı `SUCCEEDED` (yani ölçüldü) | Uygulama rotayı yerelde seçip backend'e hiç bildirmiyor mu, yoksa staging bu kurye/rota için atama tutmuyor mu? |
-
-Ayrım basit bir sorguyla yapılır: aynı kurye/rota için backend tarafında atama ve
-durak var mı? Varsa ürün kusuru; yoksa test verisi ince ve fact'ler
-`onTimeout: FAIL` yerine veri önkoşuluna bağlanmalı.
-
-> Bu, fazın hedefinin **tuttuğunun** kanıtı: eskiden aynı koşu
-> `INCONCLUSIVE / EVIDENCE_INSUFFICIENT` diyordu ve soru sorulamıyordu bile.
 
 ### 5.1 TAMAMLANDI — select-route'u cihazda tamamla (#17 + #18 ölçümü)
 
@@ -561,15 +668,15 @@ Rota diyaloğunda geri tuşu diyaloğu kapatmakla kalmıyor, **oturumu düşür�
 (`is_logged_in` false). Teşhis sırasında ölçüldü. Diyalogda `back` gönderen bir
 adım, önkoşulu sessizce yok eder.
 
-### 5.2 Sonra — cihazda hiç koşulmamış iş akışları
+### 5.2 Sonra — shipment gerektiren iki iş akışı
 
-`open-stop` ve `tour-approval` **kanıt olarak tam** ama cihazda hiç koşulmadı;
-önkoşul verisi gerekiyor (rota seçili / durak açık). select-route bitince bu
-önkoşul kendiliğinden kurulabilir hâle geliyor — sıralama tesadüf değil.
+`process-parcel` ve `complete-delivery` **taranacak bir shipment istiyor**
+(`scripts/create-ready-rs-shipments.mjs`, ya da tek gönderi için §7'deki not) ve
+ayrıca §5.3'teki kanıt boşlukları var — yani `open-stop`/`tour-approval`'dan
+(§5.0) farklı olarak bunlar yalnız önkoşulla açılmıyor.
 
-`process-parcel` ve `complete-delivery` shipment istiyor:
-`scripts/create-ready-rs-shipments.mjs`. Bu ikisinin ayrıca §5.3'teki kanıt
-boşlukları da var.
+`process-parcel` de türetilmiş fact'e dayanıyor (`APP.ACTIVE_STOP_MATCHES`);
+§5.0c o yolu açtı ama ölçülmedi.
 
 ### 5.3 Kalan kanıt boşlukları
 
@@ -654,6 +761,7 @@ ve `wait-login-ready` yalnızca zaman aşımına uğrar.
 |---|---|---|
 | `nesy.workflow.login` | `nesy.launch.cold-real-login` | `pin` |
 | `nesy.workflow.select-route` | `nesy.launch.reuse-session` | `routeCode` (ör. `31` veya `31 *`) |
+| `nesy.workflow.load-to-vehicle` | `nesy.launch.reuse-session` | `scanValue` (yazılan barkod), `alternateKey` (waybill — §7'deki normalizasyon notu) |
 | `nesy.workflow.open-stop` | `nesy.launch.reuse-session` | `requestedItemCode` |
 | `nesy.workflow.process-parcel` | `nesy.launch.direct-state` | `scanPayload`, `taskCode` |
 | `nesy.workflow.complete-delivery` | `nesy.launch.direct-state` | `consignmentNumber` |
@@ -764,6 +872,19 @@ sınar. Bu kalıpla 9 ardışık `PASS_ONLINE` ölçüldü, `stale_run` sıfır.
   string olarak gider ve **cihaz kabuğu için tırnaklanmalı**: `adb shell` argv'yi
   boşlukla birleştirip uzak `sh -c`'ye verir, yani orada yeniden ayrıştırılır.
   Tırnaklanmamış boşluklu değer sessizce ikiye bölünür.
+- **Cihazın sakladığı barkod, cockpit'in create yanıtındakiyle AYNI OLMAYABİLİR.**
+  Ölçüldü: aynı script'in iki çağrısından biri `N6880110004100000…`, diğeri
+  `N6880100000000000…` döndürdü; cihaz her ikisini de normalize edilmiş biçimde
+  sakladı. Yazılan barkodla `nesy.parcelState{barcode}` boş dönebilir,
+  `{waybillNumber}` bulur. Zimmet makrosu iki anahtarı birlikte geçiyor
+  (`scanValue` + `alternateKey`); tek anahtara güvenen bir kanıt okuması kırılgan.
+- **Zimmet koşusu için parça HER SEFERİNDE yeni olmalı.** Aynı barkod ikinci kez
+  okutulduğunda `getTransaction` `FORCE_LOAD` değil `ALREADY_LOAD` döner ve makro
+  kendi yolundan çıkar. `scratchpad/create-one-loadable.mjs` tek gönderi yaratır;
+  repodaki `scripts/create-ready-rs-shipments.mjs` sekiz tip yaratıyor.
+- **`shipments/create` yanıtı bazen `parcels` alanını taşımıyor.** shipmentId
+  dönüyor ama barkod çıkarılamıyor; o çağrı unload edilmemiş bir gönderi bırakır.
+  Barkod gerektiren bir script bu durumu ele almalı, sessizce geçmemeli.
 - **Rota diyaloğunda `back` = LOGOUT.** Diyaloğu kapatmakla kalmıyor, oturumu
   düşürüyor. Teşhis sırasında `is_logged_in` false'a döndü; diyalogda geri
   gönderen bir adım önkoşulu sessizce yok eder.

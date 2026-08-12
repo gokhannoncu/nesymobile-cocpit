@@ -18,7 +18,7 @@
         "description": "The value typed into the barcode field: parcel barcode, legacy system barcode or legacy short barcode."
       },
       {
-        "name": "shipmentId",
+        "name": "alternateKey",
         "type": "string",
         "required": false,
         "description": "Waybill number, used to look the parcel up when the author identified it that way."
@@ -116,6 +116,10 @@
         },
         {
           "name": "timeSlotHandle",
+          "type": "string"
+        },
+        {
+          "name": "dialogHandle",
           "type": "string"
         },
         {
@@ -288,7 +292,7 @@
         {
           "planStepId": "tap-time-slot",
           "sourceMapRef": "sm-load-9",
-          "next": "read-parcel-state",
+          "next": "resolve-acknowledge",
           "timeoutMs": 40000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -303,6 +307,44 @@
           "kind": "BRIDGE_ACTION",
           "action": "tap",
           "targetVariable": "timeSlotHandle"
+        },
+        {
+          "planStepId": "resolve-acknowledge",
+          "sourceMapRef": "sm-load-10",
+          "next": "tap-acknowledge",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.dialog-acknowledge",
+          "outputVariable": "dialogHandle"
+        },
+        {
+          "planStepId": "tap-acknowledge",
+          "sourceMapRef": "sm-load-10a",
+          "next": "read-parcel-state",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "dialogHandle"
         },
         {
           "planStepId": "read-parcel-state",
@@ -525,6 +567,18 @@
           "domainSourceRef": "nesy.macro.load-to-vehicle"
         },
         {
+          "ref": "sm-load-10",
+          "planStepId": "resolve-acknowledge",
+          "domainSourceRef": "nesy.macro.load-to-vehicle",
+          "note": "absent on the happy path; SKIPPED when so"
+        },
+        {
+          "ref": "sm-load-10a",
+          "planStepId": "tap-acknowledge",
+          "domainSourceRef": "nesy.macro.load-to-vehicle",
+          "note": "a refusal ends inside the run that caused it"
+        },
+        {
           "ref": "sm-load-11",
           "planStepId": "read-parcel-state",
           "domainSourceRef": "nesy.macro.load-to-vehicle",
@@ -600,6 +654,18 @@
         "domainSourceRef": "nesy.macro.load-to-vehicle"
       },
       {
+        "ref": "sm-load-10",
+        "planStepId": "resolve-acknowledge",
+        "domainSourceRef": "nesy.macro.load-to-vehicle",
+        "note": "absent on the happy path; SKIPPED when so"
+      },
+      {
+        "ref": "sm-load-10a",
+        "planStepId": "tap-acknowledge",
+        "domainSourceRef": "nesy.macro.load-to-vehicle",
+        "note": "a refusal ends inside the run that caused it"
+      },
+      {
         "ref": "sm-load-11",
         "planStepId": "read-parcel-state",
         "domainSourceRef": "nesy.macro.load-to-vehicle",
@@ -637,6 +703,8 @@
           "tap-input-confirm",
           "resolve-time-slot",
           "tap-time-slot",
+          "resolve-acknowledge",
+          "tap-acknowledge",
           "read-parcel-state",
           "read-local-schedule",
           "read-available-stops",
@@ -683,6 +751,10 @@
       },
       {
         "name": "timeSlotHandle",
+        "type": "string"
+      },
+      {
+        "name": "dialogHandle",
         "type": "string"
       },
       {
@@ -855,7 +927,7 @@
       {
         "planStepId": "tap-time-slot",
         "sourceMapRef": "sm-load-9",
-        "next": "read-parcel-state",
+        "next": "resolve-acknowledge",
         "timeoutMs": 40000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -870,6 +942,44 @@
         "kind": "BRIDGE_ACTION",
         "action": "tap",
         "targetVariable": "timeSlotHandle"
+      },
+      {
+        "planStepId": "resolve-acknowledge",
+        "sourceMapRef": "sm-load-10",
+        "next": "tap-acknowledge",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.dialog-acknowledge",
+        "outputVariable": "dialogHandle"
+      },
+      {
+        "planStepId": "tap-acknowledge",
+        "sourceMapRef": "sm-load-10a",
+        "next": "read-parcel-state",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "dialogHandle"
       },
       {
         "planStepId": "read-parcel-state",
@@ -1092,6 +1202,18 @@
         "domainSourceRef": "nesy.macro.load-to-vehicle"
       },
       {
+        "ref": "sm-load-10",
+        "planStepId": "resolve-acknowledge",
+        "domainSourceRef": "nesy.macro.load-to-vehicle",
+        "note": "absent on the happy path; SKIPPED when so"
+      },
+      {
+        "ref": "sm-load-10a",
+        "planStepId": "tap-acknowledge",
+        "domainSourceRef": "nesy.macro.load-to-vehicle",
+        "note": "a refusal ends inside the run that caused it"
+      },
+      {
         "ref": "sm-load-11",
         "planStepId": "read-parcel-state",
         "domainSourceRef": "nesy.macro.load-to-vehicle",
@@ -1240,7 +1362,7 @@
     {
       "caseKey": "DIALOG_OUTLIVES_THE_RUN",
       "scenario": "A refusal dialog is left open, and the NEXT run fails resolving a target on a screen the dialog covers — blaming the following run for this one's refusal.",
-      "refusedBy": "NOT refused inside this slice, and recorded rather than hidden: a dismiss step cannot be written while the host ignores notFoundPolicy, because it would then fail on every clean run. The precondition is restored between runs by reset_state + login. The acknowledge target is registered and the step is one line away once the policy is honoured."
+      "refusedBy": "resolve-acknowledge and tap-acknowledge close the shared ArasDialog, and both are absent-tolerant (notFoundPolicy TREAT_AS_ABSENT → SKIPPED) so they cost nothing on a clean run. The refusal ends inside the run that caused it instead of being inherited by the next one."
     }
   ]
 }

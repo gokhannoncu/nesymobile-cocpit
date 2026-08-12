@@ -22,22 +22,21 @@
  *  gained one stop, `stop_chunk_count` went 0 → 1, and `nesy.parcelState` for that
  *  barcode returned `item_status = 4` (Loaded).
  *
- *  ### TRAP 1 — this slice is RS-ONLY today, and says so
+ *  ### TRAP 1 — the country rule is a POLICY here, not an `if`
  *
  *  Serbia asks for a delivery time range before the task is created; nobody else
- *  does. The intended model was `notFoundPolicy: TREAT_AS_ABSENT` on the picker's
- *  confirm target, so a missing picker would be a correct state. MEASURED: the
- *  host's `RESOLVE_TARGET` runtime never reads `notFoundPolicy` — anything but
- *  `RESOLVED_UNIQUE` is a step failure — and the action contract has no "nothing
- *  to do" terminal state either (`SUCCEEDED` with `effectVerified: false` is
- *  converted to `FAILED` + evidenceInsufficient by the executor).
+ *  does. That is expressed as `notFoundPolicy: TREAT_AS_ABSENT` on the picker's
+ *  confirm target: a missing picker is a correct state, and the dependent tap
+ *  reports `SKIPPED` rather than failing. A `countryCode == "RS"` branch in the
+ *  macro would have put a device-side condition into pack vocabulary, and every
+ *  new country would edit the macro.
  *
- *  So the picker step is REQUIRED here and this slice runs in Serbia. Extending
- *  it needs one of: the host honouring `notFoundPolicy`, or the picker declared
- *  as a SURFACE with a registered readiness wire — the device already announces
- *  it as `DIALOG_SHOWN { fragmentTag: TimeSlotSelectionPickerFragment }`, but no
- *  fact is bound to that wire yet. Claiming country neutrality with a policy the
- *  host ignores would be a comment that lies.
+ *  This cost two host fixes to become true, both of the phase's signature kind.
+ *  `notFoundPolicy` had been part of `TargetResolutionPolicy` all along and the
+ *  runtime never read it, and the action contract had no way to say "there was
+ *  nothing to do" — `SUCCEEDED` with `effectVerified: false` was converted to
+ *  `FAILED` + evidenceInsufficient. Measured before the fix: this slice's cleanup
+ *  step aborted a run in which nine steps were green and the parcel was loaded.
  *
  *  ### TRAP 2 — the step wire cannot carry the evidence yet
  *
@@ -56,19 +55,14 @@
  *  Declaring a REQUIRED fact with no producer is the one thing this phase exists
  *  to stop.
  *
- *  ### TRAP 3 — a refusal dialog outlives the run, and this slice cannot close it
+ *  ### TRAP 3 — a refusal dialog outlives the run
  *
- *  Every refusal path ends in a dialog, and an aborted run that leaves one open
- *  makes the NEXT run fail on a screen it never reached — measured with the route
- *  spinner popup. A cleanup step was written for it and REMOVED: with
- *  `notFoundPolicy` unread, a dialog-dismiss step fails on every happy-path run,
- *  which is a worse lie than the mess it cleans. Measured exactly that: nine steps
- *  green, the parcel loaded, and the run aborted on the cleanup that had nothing
- *  to do.
- *
- *  Until the host honours the policy, the precondition is restored the way the
- *  runner already does it: `reset_state` then login. The target stays in the
- *  registry so the step is one line away.
+ *  Every refusal path ends in a dialog. An aborted run that leaves one open makes
+ *  the NEXT run fail on a screen it never reached — measured with the route
+ *  spinner popup, whose leftover state turned the following run's
+ *  `resolve-spinner` into `not_found`. `resolve-acknowledge` + `tap-acknowledge`
+ *  close it, and both are absent-tolerant so the happy path reports them as
+ *  `SKIPPED` and walks on. The refusal ends inside the run that caused it.
  * ===========================================================================
  */
 
@@ -194,7 +188,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-time-slot",
       sourceMapRef: "sm-load-9",
-      next: "read-parcel-state",
+      next: "resolve-acknowledge",
       timeoutMs: 40_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -205,6 +199,37 @@ const STEPS: readonly WorkflowStepV2[] = [
     // courier picks is a business choice this slice does not judge, and driving
     // the NumberPicker to a specific value would assert something the slice does
     // not claim. Measured: confirming the default completed the load.
+    //
+    // Outside Serbia this step reports `SKIPPED` — the target was declared
+    // absent-tolerant and the picker is not there. Not a success, not a failure:
+    // the step had no subject.
+  },
+  // Cleanup, absent on the happy path. Every refusal path ends in a dialog, and
+  // an aborted run that leaves one open makes the NEXT run fail on a screen it
+  // never reached — measured with the route spinner popup, whose leftover state
+  // turned the following run's `resolve-spinner` into `not_found`. The refusal
+  // ends inside the run that caused it.
+  {
+    ...stepBase({
+      planStepId: "resolve-acknowledge",
+      sourceMapRef: "sm-load-10",
+      next: "tap-acknowledge",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.dialogAcknowledge,
+    outputVariable: "dialogHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-acknowledge",
+      sourceMapRef: "sm-load-10a",
+      next: "read-parcel-state",
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "dialogHandle",
   },
   // OBSERVED LAST, immediately before the assert. An SDK observation is
   // republished carrying its ORIGINAL timestamp against a 30 s freshness bound,
@@ -310,6 +335,7 @@ const GENERIC_IR = irDocument({
     { name: "inputFieldHandle", type: "string" },
     { name: "inputConfirmHandle", type: "string" },
     { name: "timeSlotHandle", type: "string" },
+    { name: "dialogHandle", type: "string" },
     { name: "itemRows", type: "stringList" },
     { name: "loadScheduleRows", type: "stringList" },
     { name: "loadedRows", type: "stringList" },
@@ -331,6 +357,8 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-load-7", "tap-input-confirm", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "the backend round trip is behind this tap"),
     sourceMapEntry("sm-load-8", "resolve-time-slot", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "RS only; absent elsewhere by policy"),
     sourceMapEntry("sm-load-9", "tap-time-slot", NESY_LOAD_TO_VEHICLE_MACRO_KEY),
+    sourceMapEntry("sm-load-10", "resolve-acknowledge", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "absent on the happy path; SKIPPED when so"),
+    sourceMapEntry("sm-load-10a", "tap-acknowledge", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "a refusal ends inside the run that caused it"),
     sourceMapEntry("sm-load-11", "read-parcel-state", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "narrowed to THIS parcel"),
     sourceMapEntry("sm-load-12", "read-local-schedule", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "the schedule gained a body"),
     sourceMapEntry("sm-load-13", "read-available-stops", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "REQUIRED here, unlike select-route"),
@@ -399,7 +427,7 @@ export const NESY_LOAD_TO_VEHICLE_MACRO: MacroDefinition = {
           "The value typed into the barcode field: parcel barcode, legacy system barcode or legacy short barcode.",
       },
       {
-        name: "shipmentId",
+        name: "alternateKey",
         type: "string",
         required: false,
         description: "Waybill number, used to look the parcel up when the author identified it that way.",
@@ -543,7 +571,7 @@ export const LOAD_TO_VEHICLE_SLICE: NesyReferenceSlice = {
       scenario:
         "A refusal dialog is left open, and the NEXT run fails resolving a target on a screen the dialog covers — blaming the following run for this one's refusal.",
       refusedBy:
-        "NOT refused inside this slice, and recorded rather than hidden: a dismiss step cannot be written while the host ignores notFoundPolicy, because it would then fail on every clean run. The precondition is restored between runs by reset_state + login. The acknowledge target is registered and the step is one line away once the policy is honoured.",
+        "resolve-acknowledge and tap-acknowledge close the shared ArasDialog, and both are absent-tolerant (notFoundPolicy TREAT_AS_ABSENT → SKIPPED) so they cost nothing on a clean run. The refusal ends inside the run that caused it instead of being inherited by the next one.",
     },
   ],
 };

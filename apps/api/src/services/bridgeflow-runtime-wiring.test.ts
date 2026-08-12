@@ -532,6 +532,55 @@ describe('bridge runtime port', () => {
     expect(attempts).toBeLessThan(6)
   })
 
+  /**
+   * An interaction the product only shows in some environments — Serbia's
+   * delivery time-range picker, a refusal dialog on the happy path — used to be
+   * unmodellable. `notFoundPolicy` was declared on every target and read by
+   * nobody, and the action contract had no way to say "there was nothing to do":
+   * `SUCCEEDED` with `effectVerified: false` became FAILED + evidenceInsufficient.
+   * Measured before the fix: a cleanup step aborted a run in which nine steps
+   * were green and the parcel had loaded.
+   */
+  it('skips an action whose target was resolved as declared-absent', async () => {
+    const variables = new BridgeFlowRunContext()
+    variables.set('target', { absentTarget: true, targetRef: 'nesy.target.time-slot-confirm' })
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        act: async () => {
+          throw new Error('an absent target must never reach the device')
+        },
+      } as never),
+      variables,
+      runId: 'run-1',
+    })
+
+    await expect(port.act(tapStep as never, STEP_CONTEXT as never)).resolves.toMatchObject({
+      terminalState: 'SKIPPED',
+      // No effect happened, so none is claimed. SKIPPED is read instead.
+      effectVerified: false,
+      evidenceRef: 'bridge:skipped:target-absent:nesy.target.time-slot-confirm',
+    })
+  })
+
+  it('still refuses a MISSING target, which is a broken plan rather than an absent one', async () => {
+    // The absent marker is a distinct shape for exactly this reason: an empty
+    // variable means the resolve step never ran, and that must stay a failure.
+    const port = createBridgeRuntimePort({
+      manager: fakeManager({
+        act: async () => {
+          throw new Error('the device must not be touched without a resolved target')
+        },
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      runId: 'run-1',
+    })
+
+    await expect(port.act(tapStep as never, STEP_CONTEXT as never)).resolves.toMatchObject({
+      terminalState: 'FAILED',
+      evidenceRef: 'bridgeflow:bridge-action-without-resolved-target',
+    })
+  })
+
   it('reports the device refusal instead of calling the scroll effective', async () => {
     const port = createBridgeRuntimePort({
       manager: fakeManager({
@@ -608,6 +657,80 @@ describe('generic step runtime', () => {
         capabilityRequirements: [],
         evidenceRequirements: [],
         params: { targetRef, outputVariable: 'target' },
+      } as never,
+      STEP_CONTEXT as never,
+    )
+
+    expect(result.succeeded).toBe(false)
+  })
+
+  /**
+   * The pack's `notFoundPolicy`, honoured. It was declared on every target and
+   * read by nobody, so an interaction the product only shows in some
+   * environments could not be modelled: declaring TREAT_AS_ABSENT bought nothing
+   * and the macro had to pretend the target was mandatory.
+   */
+  it('treats a declared-absent target as absent instead of failing', async () => {
+    const absentTolerant = bundle.registries.targets.find(
+      (t) => t.resolution.notFoundPolicy === 'TREAT_AS_ABSENT',
+    )
+    expect(absentTolerant, 'the pack should carry at least one absent-tolerant target').toBeDefined()
+
+    const variables = new BridgeFlowRunContext()
+    const runtime = createGenericStepRuntime({
+      manager: fakeManager({
+        resolve: async (fp) => ({ outcome: 'NOT_FOUND', fingerprint: fp, strength: 'STRONG' }),
+      } as never),
+      variables,
+      bundle,
+      runId: 'run-1',
+    })
+
+    const result = await runtime.execute(
+      {
+        planStepId: 'resolve',
+        kind: 'RESOLVE_TARGET',
+        sourceMapRef: 'src:resolve',
+        timeoutMs: 1_000,
+        next: null,
+        capabilityRequirements: [],
+        evidenceRequirements: [],
+        params: { targetRef: absentTolerant!.targetKey, outputVariable: 'target' },
+      } as never,
+      STEP_CONTEXT as never,
+    )
+
+    expect(result.succeeded).toBe(true)
+    // A MARKER, not an empty variable: the dependent action must be able to tell
+    // "declared absent" from "the resolve step never ran".
+    expect(result.output).toEqual({ absentTarget: true, targetRef: absentTolerant!.targetKey })
+  })
+
+  it('does not treat AMBIGUOUS as absent, even when the policy tolerates absence', async () => {
+    // "We could not tell which one" is the opposite of "it is not there", and
+    // tolerating it would let the run act on a guess about which node was meant.
+    const absentTolerant = bundle.registries.targets.find(
+      (t) => t.resolution.notFoundPolicy === 'TREAT_AS_ABSENT',
+    )
+    const runtime = createGenericStepRuntime({
+      manager: fakeManager({
+        resolve: async (fp) => ({ outcome: 'AMBIGUOUS', fingerprint: fp, strength: 'STRONG', matchedCount: 2 }),
+      } as never),
+      variables: new BridgeFlowRunContext(),
+      bundle,
+      runId: 'run-1',
+    })
+
+    const result = await runtime.execute(
+      {
+        planStepId: 'resolve',
+        kind: 'RESOLVE_TARGET',
+        sourceMapRef: 'src:resolve',
+        timeoutMs: 1_000,
+        next: null,
+        capabilityRequirements: [],
+        evidenceRequirements: [],
+        params: { targetRef: absentTolerant!.targetKey, outputVariable: 'target' },
       } as never,
       STEP_CONTEXT as never,
     )

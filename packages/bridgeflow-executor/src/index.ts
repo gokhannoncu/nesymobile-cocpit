@@ -856,6 +856,16 @@ export class BridgeFlowExecutor {
           state.unknownEffect = true;
           outcome.actionResult = "UNKNOWN_EFFECT";
           stop = true;
+        } else if (actionResult.terminalState === "SKIPPED") {
+          // Nothing to do, and that is a correct outcome: the step's target is
+          // declared `TREAT_AS_ABSENT` and was absent. NOT an automation failure
+          // and NOT a success — the run continues and the report says the step
+          // had no subject.
+          //
+          // `effectVerified` is deliberately not consulted. There was no effect,
+          // so demanding its verification is how an optional interaction used to
+          // become `FAILED` + evidenceInsufficient on every clean run.
+          outcome.actionResult = "SKIPPED";
         } else if (actionResult.terminalState !== "SUCCEEDED") {
           outcome.actionResult = actionResult.terminalState;
           state.automationFailure = true;

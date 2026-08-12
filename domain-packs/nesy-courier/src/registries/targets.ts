@@ -176,17 +176,16 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     resolution: {
       chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btnSave" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
-      // The picker is shown for Serbia and for nobody else (`ScanProcessor` gates
-      // it on `countryCode == "RS"` plus an unselected waybill), so the country
-      // rule WANTS to be `TREAT_AS_ABSENT` here — a missing picker is a correct
-      // state, unlike a missing OK button on the dialog above.
+      // The country rule, expressed as a policy rather than as an
+      // `if (countryCode == "RS")` in a macro: the picker is shown for Serbia and
+      // for nobody else (`ScanProcessor` gates it on `countryCode == "RS"` plus an
+      // unselected waybill), so a missing picker is a CORRECT state — unlike a
+      // missing OK button on the typed-barcode dialog above, which is a defect.
       //
-      // FAIL anyway, and deliberately: MEASURED that the host's RESOLVE_TARGET
-      // runtime never reads `notFoundPolicy` — anything but `RESOLVED_UNIQUE` is
-      // a step failure. Declaring the policy we want would describe behaviour the
-      // runtime does not have, and the slice would read as country-neutral while
-      // failing everywhere but Serbia. FAIL states what is actually enforced.
-      notFoundPolicy: "FAIL",
+      // The host now honours this: NOT_FOUND with TREAT_AS_ABSENT resolves to an
+      // absent marker and the dependent action reports `SKIPPED`. It briefly did
+      // not, and the pack had to declare FAIL and call itself RS-only.
+      notFoundPolicy: "TREAT_AS_ABSENT",
       deadlineMs: 8_000,
       reverifyBeforeAction: true,
     },

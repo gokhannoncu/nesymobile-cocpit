@@ -112,6 +112,28 @@ function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
+/**
+ * A target the pack declared absent-tolerant, resolved and found absent.
+ *
+ * Written by the RESOLVE_TARGET runtime and read by `act`. It is a distinct
+ * SHAPE rather than a missing variable on purpose: "the pack says this may not
+ * be here" and "the resolve step never ran" must not look alike, or a broken
+ * plan would silently behave like an optional one.
+ */
+interface AbsentTarget {
+  absentTarget: true
+  targetRef: string
+}
+
+function isAbsentTarget(value: unknown): value is AbsentTarget {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    (value as Partial<AbsentTarget>).absentTarget === true &&
+    typeof (value as Partial<AbsentTarget>).targetRef === 'string'
+  )
+}
+
 function resolveArgValue(
   value: unknown,
   runInputs: Readonly<Record<string, unknown>>,
@@ -300,6 +322,19 @@ export function createBridgeRuntimePort(options: {
 
       const targetVariable = asString(step.params['targetVariable'])
       const fingerprint = targetVariable === undefined ? undefined : variables.get(targetVariable)
+
+      // The target was resolved and declared ABSENT by its own pack policy, so
+      // there is nothing to act on. `SKIPPED` says exactly that: no effect was
+      // produced and none was expected. Returning SUCCEEDED here would claim a
+      // verified effect that never happened, and FAILED would blame the run for
+      // the product being correct in a country that has no such dialog.
+      if (isAbsentTarget(fingerprint)) {
+        return {
+          terminalState: 'SKIPPED',
+          effectVerified: false,
+          evidenceRef: `bridge:skipped:target-absent:${fingerprint.targetRef}`,
+        }
+      }
       if (!isTargetFingerprint(fingerprint)) {
         // The compiler already rejects a BRIDGE_ACTION whose target variable has
         // no prior RESOLVE_TARGET, so reaching here means the resolve step did
@@ -547,6 +582,28 @@ export function createGenericStepRuntime(options: {
       const evidence = await manager.resolve(fingerprint, { runId })
       const evidenceRef = describeResolutionEvidence(evidence)
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
+        // The pack's `notFoundPolicy`, finally read. It has always been part of
+        // `TargetResolutionPolicy` and this runtime ignored it, so a target that
+        // is SUPPOSED to be absent sometimes — Serbia's delivery time-range
+        // picker, a refusal dialog on the happy path — could not be modelled at
+        // all. Declaring the policy bought nothing and the pack had to pretend
+        // the target was mandatory.
+        //
+        // Only NOT_FOUND is tolerated, and only when the pack says so. AMBIGUOUS,
+        // STALE_TREE and a rejected weak target stay failures: those are "we
+        // could not tell", which is the opposite of "it is not there".
+        if (evidence.outcome === 'NOT_FOUND' && target.resolution.notFoundPolicy === 'TREAT_AS_ABSENT') {
+          return {
+            succeeded: true,
+            actionResult: 'SUCCEEDED',
+            outputVariable,
+            // An explicit marker, not an empty variable. A later BRIDGE_ACTION
+            // must be able to tell "declared absent" from "the resolve step never
+            // ran", and an absent value cannot carry that difference.
+            output: { absentTarget: true, targetRef },
+            evidenceRef,
+          }
+        }
         return { succeeded: false, actionResult: 'FAILED', evidenceRef }
       }
 

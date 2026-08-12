@@ -49,6 +49,13 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.11.0 — the zimmet slice gets the model it was written for, now that the
+  //   host honours it: the RS time-range picker and the refusal dialog are
+  //   absent-tolerant targets (notFoundPolicy TREAT_AS_ABSENT), and a step whose
+  //   target is declared absent reports the new SKIPPED terminal state instead of
+  //   failing. 1.10.1 had to declare FAIL and call the slice RS-only because the
+  //   runtime read neither.
+  //
   // 1.10.1 — LOAD_TO_VEHICLE (zimmet): the seventh slice, and the step that puts
   //   work into the schedule route selection creates empty. Every target in it was
   //   DUMPED from the device: manuel_input, et_input_dialog_barcode_number, btn_ok,
@@ -170,7 +177,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 10, patch: 1 },
+  version: { major: 1, minor: 11, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

@@ -39,13 +39,28 @@ export type BridgeActionPhase =
  * olabilir. Bunu `FAILED` saymak, retry'ı meşrulaştırır ve çift etki üretir.
  * `REJECTED` ise aksiyonun cihaza HİÇ gitmediğini söyler — host hedefi
  * reddetti; burada retry güvenlidir çünkü hiçbir şey olmadı.
+ *
+ * `SKIPPED` neden ayrı: yapılacak bir şey YOKTU. Hedefi `TREAT_AS_ABSENT`
+ * bildiren bir adım, o hedef ekranda olmadığında bir şeye dokunmaz — ve bu
+ * DOĞRU bir sonuçtur, çünkü ortama göre var olmayan bir arayüz parçası vardır
+ * (Sırbistan'ın saat aralığı seçicisi başka hiçbir ülkede çıkmaz).
+ *
+ * Bu durum olmadan opsiyonel bir etkileşimi dürüstçe kodlamanın yolu yoktu:
+ * `SUCCEEDED` + `effectVerified: false` executor tarafından `FAILED`'a
+ * çevriliyor, `SUCCEEDED` + `true` demek ise ölçülmemiş bir etkiyi doğrulanmış
+ * ilan etmek. Ölçüldü: bu yüzden mutlu yolda hiçbir işi olmayan bir temizlik
+ * adımı, dokuz adım yeşil ve iş tamamlanmışken koşuyu düşürüyordu.
+ *
+ * `SKIPPED` bir BAŞARI DEĞİLDİR ve etki iddia etmez; "bu adımın konusu yoktu"
+ * der. Bu yüzden `effectVerified` ile birlikte okunmaz.
  */
 export type BridgeActionTerminalState =
   | "SUCCEEDED"
   | "FAILED"
   | "UNKNOWN_EFFECT"
   | "REJECTED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "SKIPPED";
 
 export const BRIDGE_ACTION_TERMINAL_STATES: readonly BridgeActionTerminalState[] = [
   "SUCCEEDED",
@@ -53,6 +68,7 @@ export const BRIDGE_ACTION_TERMINAL_STATES: readonly BridgeActionTerminalState[]
   "UNKNOWN_EFFECT",
   "REJECTED",
   "CANCELLED",
+  "SKIPPED",
 ];
 
 /** Bu terminal durumdan sonra aynı aksiyon otomatik tekrarlanabilir mi? */
