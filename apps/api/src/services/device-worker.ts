@@ -84,7 +84,16 @@ export class DeviceWorker {
 
   async acquireBridge(runId: string, sessionId: string, runEpoch: number): Promise<BridgeDeviceManager> {
     await this.prepare();
-    if (this.bridge) return this.bridge;
+    if (this.bridge) {
+      // Reuse the connection, NOT the previous run's identity. The manager is
+      // cached per device, so without this every run after the first drove the
+      // device under run #1's fence.
+      this.bridge.rebindScope({ runId, sessionId, runEpoch });
+      await this.bridge.ensureReady();
+      this.activeRunId = runId;
+      this.bridge.getScheduler().setState({ activeRunId: runId });
+      return this.bridge;
+    }
 
     const manager = new BridgeDeviceManager({
       deviceId: this.deviceId,

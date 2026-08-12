@@ -184,10 +184,33 @@ export function resolveBridgeFlowDurableEvent(
   const scope = { runId, occurrenceId, iterationKey }
   const definition = resolver.resolve(sourceEvent)
   if (definition === undefined) {
-    return rejected(`unknown evidence source ${sourceEvent}`, runId, scope)
+    // NOT a rejection. An undeclared wire is a diagnostic, not a contract
+    // violation: the app emits many events per run (`INTERACTION_CLICK`,
+    // `HTTP_CALL`, `SCREEN_READY`) and only a few are declared evidence.
+    //
+    // This used to be unreachable in practice because nothing correlated device
+    // emits, so every frame stopped at LEGACY_NO_CONTEXT above. The moment the
+    // host began stamping the occurrence onto the app's context, every one of
+    // those ordinary events started arriving WITH a correlation tuple, reached
+    // this line, and blocked the ordered lane — measured as `orderedLag: 10`
+    // with the run's own evidence stuck behind unrelated click events.
+    //
+    // "I was not told this event means anything" is not the same claim as "this
+    // event is malformed", and only the second is worth stopping a run for.
+    return { status: 'LEGACY_NO_CONTEXT' }
   }
   if (!definition.deliveryLanes.includes(lane)) {
-    return rejected(`source ${sourceEvent} is not trusted for lane ${lane}`, runId, scope)
+    // Ignored on this lane, not refused. `deliveryLanes` is a statement about
+    // where the source may be BELIEVED — "do not count me on the receipt lane" —
+    // and the frames themselves are fanned out to both lanes by the ingest, so a
+    // lane the source does not claim is the normal case, not an anomaly.
+    //
+    // Refusing here blocked the whole scope: an ORDERED-only source arriving on
+    // its receipt copy marked the run blocked, and the continue gate then returned
+    // BLOCKED without evaluating — measured as a gate that gave up after four
+    // UNKNOWN evaluations while the fact it was waiting for sat accepted in the
+    // ordered lane.
+    return { status: 'LEGACY_NO_CONTEXT' }
   }
 
   for (const [field, trusted] of [

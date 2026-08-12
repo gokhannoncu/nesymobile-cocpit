@@ -190,8 +190,20 @@ export interface WorkflowStepBase {
  */
 export interface SdkQueryOutputFactBinding {
   factKey: string;
-  /** Column name in the projection the named query returns. */
-  rowColumn: string;
+  /**
+   * Where the fact's boolean comes from.
+   *
+   * `COLUMN` reads a named column of the FIRST row, which only answers a
+   * question the projection already carries a boolean for (`route_selected`).
+   * Most projections do not: `nesy.availableStops` returns stop ids and counts,
+   * and the question an oracle asks of it is "did the app load any stops at
+   * all" — a property of the RESULT SET, not of a column. `ROWS_PRESENT` is that
+   * question, and having to state which one is being asked keeps a binding from
+   * quietly claiming more than the projection can support.
+   */
+  from:
+    | { kind: "COLUMN"; column: string }
+    | { kind: "ROWS_PRESENT" };
 }
 
 /** Read the app's own state/query surface. Never mutating. */

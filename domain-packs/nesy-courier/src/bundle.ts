@@ -48,11 +48,33 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
-  // 1.0.6 — login observes the APP and LOCAL session planes with SDK_QUERY fact
-  // bindings instead of requiring facts no step produced, and REMOTE.AUTH_ACCEPTED
-  // drops to OPTIONAL because the mapped back-office read resolves the dashboard
-  // admin token rather than the courier's. See `macros/login.ts`.
-  version: { major: 1, minor: 0, patch: 6 },
+  // 1.2.0 — every independent workflow references exactly ONE macro. Signing in
+  //   is a precondition installed by a launch profile, not a leg of the test:
+  //   chaining it produced two expansion snapshots, which an empty canvas cannot
+  //   auto-materialize, so five workflows could not compile at all — and it also
+  //   would have reported a login defect as a route-selection failure.
+  //
+  // 1.1.0 — select-route and open-stop now OBSERVE the app-plane facts their
+  //   oracles require (SDK_QUERY fact bindings), and select-route's confirm gate
+  //   no longer waits on a fact produced two steps below it. Binding shape is now
+  //   explicit about the question asked: a column, or whether the projection
+  //   returned any row at all.
+  //
+  // Newest first. Every entry below is about ONE theme: the login slice used to
+  // require evidence nothing produced, and each bump removed one such gap.
+  //
+  // 1.0.8 — the back-office read no longer aborts the run when it cannot be
+  //   reached (`onUnavailable: RECORD_UNMEASURED`). It does not vote, so an
+  //   outage must not turn a decidable login run into an automation failure.
+  // 1.0.7 — a refused login is now its own fact (`APP.LOGIN_REJECTED`, from the
+  //   app's `STATE_LOGIN_REJECTED` wire), and tap-submit's gate closes on EITHER
+  //   outcome, so the run reaches its oracle instead of timing out and reporting
+  //   "not enough evidence" for a product that answered clearly.
+  // 1.0.6 — login OBSERVES the APP and LOCAL session planes with SDK_QUERY fact
+  //   bindings instead of requiring facts no step produced, and
+  //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
+  //   read resolves the dashboard admin token rather than the courier's.
+  version: { major: 1, minor: 2, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

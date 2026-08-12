@@ -104,6 +104,10 @@
           "type": "stringList"
         },
         {
+          "name": "activeRows",
+          "type": "stringList"
+        },
+        {
           "name": "rowHandle",
           "type": "string"
         }
@@ -127,7 +131,15 @@
           "kind": "SDK_QUERY",
           "queryRef": "nesy.availableStops",
           "maxRows": 200,
-          "outputVariable": "availableRows"
+          "outputVariable": "availableRows",
+          "outputFactBindings": [
+            {
+              "factKey": "APP.AVAILABLE_STOPS_LOADED",
+              "from": {
+                "kind": "ROWS_PRESENT"
+              }
+            }
+          ]
         },
         {
           "planStepId": "check-present",
@@ -231,7 +243,7 @@
         {
           "planStepId": "await-destination",
           "sourceMapRef": "sm-open-6",
-          "next": "assert-correct-item",
+          "next": "read-active-stop",
           "timeoutMs": 25000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -251,12 +263,40 @@
             {
               "legId": "task-list",
               "factKey": "UI.TASK_LIST_READY",
-              "onWin": "assert-correct-item"
+              "onWin": "read-active-stop"
             },
             {
               "legId": "delivery",
               "factKey": "UI.DELIVERY_FLOW_READY",
-              "onWin": "assert-correct-item"
+              "onWin": "read-active-stop"
+            }
+          ]
+        },
+        {
+          "planStepId": "read-active-stop",
+          "sourceMapRef": "sm-open-6a",
+          "next": "assert-correct-item",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.state-projection",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.stopState",
+          "maxRows": 1,
+          "outputVariable": "activeRows",
+          "outputFactBindings": [
+            {
+              "factKey": "APP.ACTIVE_STOP_OBSERVED",
+              "from": {
+                "kind": "ROWS_PRESENT"
+              }
             }
           ]
         },
@@ -371,6 +411,12 @@
           "domainSourceRef": "nesy.macro.open-stop"
         },
         {
+          "ref": "sm-open-6a",
+          "planStepId": "read-active-stop",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "active stop observed, not inferred"
+        },
+        {
           "ref": "sm-open-6",
           "planStepId": "await-destination",
           "domainSourceRef": "nesy.macro.open-stop",
@@ -415,6 +461,12 @@
         "domainSourceRef": "nesy.macro.open-stop"
       },
       {
+        "ref": "sm-open-6a",
+        "planStepId": "read-active-stop",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "active stop observed, not inferred"
+      },
+      {
         "ref": "sm-open-6",
         "planStepId": "await-destination",
         "domainSourceRef": "nesy.macro.open-stop",
@@ -438,6 +490,7 @@
           "resolve-row",
           "tap-row",
           "await-destination",
+          "read-active-stop",
           "assert-correct-item"
         ],
         "sliceRef": "OPEN_STOP",
@@ -467,6 +520,10 @@
         "type": "stringList"
       },
       {
+        "name": "activeRows",
+        "type": "stringList"
+      },
+      {
         "name": "rowHandle",
         "type": "string"
       }
@@ -490,7 +547,15 @@
         "kind": "SDK_QUERY",
         "queryRef": "nesy.availableStops",
         "maxRows": 200,
-        "outputVariable": "availableRows"
+        "outputVariable": "availableRows",
+        "outputFactBindings": [
+          {
+            "factKey": "APP.AVAILABLE_STOPS_LOADED",
+            "from": {
+              "kind": "ROWS_PRESENT"
+            }
+          }
+        ]
       },
       {
         "planStepId": "check-present",
@@ -594,7 +659,7 @@
       {
         "planStepId": "await-destination",
         "sourceMapRef": "sm-open-6",
-        "next": "assert-correct-item",
+        "next": "read-active-stop",
         "timeoutMs": 25000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -614,12 +679,40 @@
           {
             "legId": "task-list",
             "factKey": "UI.TASK_LIST_READY",
-            "onWin": "assert-correct-item"
+            "onWin": "read-active-stop"
           },
           {
             "legId": "delivery",
             "factKey": "UI.DELIVERY_FLOW_READY",
-            "onWin": "assert-correct-item"
+            "onWin": "read-active-stop"
+          }
+        ]
+      },
+      {
+        "planStepId": "read-active-stop",
+        "sourceMapRef": "sm-open-6a",
+        "next": "assert-correct-item",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.state-projection",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.stopState",
+        "maxRows": 1,
+        "outputVariable": "activeRows",
+        "outputFactBindings": [
+          {
+            "factKey": "APP.ACTIVE_STOP_OBSERVED",
+            "from": {
+              "kind": "ROWS_PRESENT"
+            }
           }
         ]
       },
@@ -732,6 +825,12 @@
         "ref": "sm-open-5",
         "planStepId": "tap-row",
         "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-6a",
+        "planStepId": "read-active-stop",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "active stop observed, not inferred"
       },
       {
         "ref": "sm-open-6",

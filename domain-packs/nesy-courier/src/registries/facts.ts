@@ -47,6 +47,15 @@ export const NESY_FACTS = {
   TOUR_APPROVAL_REQUESTED: "APP.TOUR_APPROVAL_REQUESTED",
   TOUR_APPROVAL_PUSH_RECEIVED: "APP.TOUR_APPROVAL_PUSH_RECEIVED",
   LOGIN_SUCCEEDED: "APP.LOGIN_SUCCEEDED",
+  /**
+   * The backend REFUSED the credentials.
+   *
+   * Not the negation of a session fact. "No session" covers a refused login, a
+   * login never attempted, and automation that broke before typing — and a test
+   * that cannot tell those apart blames itself for a product defect. This fact is
+   * only ever true when the product itself said no.
+   */
+  LOGIN_REJECTED: "APP.LOGIN_REJECTED",
   SESSION_ISOLATION_ASSERTED: "APP.SESSION_ISOLATION_ASSERTED",
 
   // ── LOCAL plane (device store, offline queue) ──────────────────────────

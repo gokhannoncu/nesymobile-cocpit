@@ -87,7 +87,16 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     displayName: "Route selection reaches the backend",
     businessMeaning: NESY_SELECT_ROUTE_MACRO.businessMeaning,
     notResponsibleFor: NESY_SELECT_ROUTE_MACRO.notResponsibleFor,
-    macroRefs: [NESY_LOGIN_MACRO.macroKey, NESY_SELECT_ROUTE_MACRO.macroKey],
+    // ONE macro. Signing in is a PRECONDITION of route selection, not part of
+    // it, and the slice already says so (`FACT_TRUE: APP.USER_SESSION_AVAILABLE`).
+    // A launch profile installs that precondition — `nesy.launch.reuse-session`
+    // or `prepared-session` — which is what those profiles exist for.
+    //
+    // Listing the login macro here instead made the workflow two expansion
+    // snapshots, and an empty canvas can only auto-materialize from one, so the
+    // workflow could not compile at all. It also mixed two verdicts into one run:
+    // a login failure would have been reported as a route-selection failure.
+    macroRefs: [NESY_SELECT_ROUTE_MACRO.macroKey],
     fragmentRefs: [],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_SELECT_ROUTE_MACRO.oracleTemplate,
@@ -120,7 +129,11 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     displayName: "A completed delivery is confirmed by the backend",
     businessMeaning: NESY_COMPLETE_DELIVERY_MACRO.businessMeaning,
     notResponsibleFor: NESY_COMPLETE_DELIVERY_MACRO.notResponsibleFor,
-    macroRefs: [NESY_PROCESS_PARCEL_MACRO.macroKey, NESY_COMPLETE_DELIVERY_MACRO.macroKey],
+    // ONE macro, same reasoning as `selectRoute`: a scanned parcel is a
+    // PRECONDITION of completing the delivery, installed by a `direct-state`
+    // launch profile rather than replayed through the scan macro. Chaining them
+    // also meant a scanning defect would be reported as a delivery failure.
+    macroRefs: [NESY_COMPLETE_DELIVERY_MACRO.macroKey],
     fragmentRefs: [NESY_FRAGMENTS.reachOpenStop],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_COMPLETE_DELIVERY_MACRO.oracleTemplate,

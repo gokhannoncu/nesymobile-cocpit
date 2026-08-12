@@ -124,6 +124,29 @@ describe("readiness", () => {
     expect(m.getScheduler().getState().deviceReady).toBe(true);
   });
 
+  // The manager is cached per device for the process lifetime. Before it could be
+  // rebound, every run after the first drove the device under run #1's runId —
+  // the device answered `stale_run` once its own active scope moved on, and where
+  // it did NOT answer, a retired run's identity was acting on the device.
+  it("rebinds the run scope so a reused manager stops acting as the previous run", async () => {
+    const { manager } = await start();
+    await manager.ensureReady();
+    expect(manager.getScope()).toMatchObject({ runId: "run-1", runEpoch: 2 });
+
+    manager.rebindScope({ runId: "run-2", sessionId: "sess-2", runEpoch: 3 });
+    expect(manager.getScope()).toMatchObject({ runId: "run-2", sessionId: "sess-2", runEpoch: 3 });
+
+    // Reconnects under the new scope rather than reusing the old handshake.
+    await expect(manager.ensureReady()).resolves.toBeTruthy();
+  });
+
+  it("leaves the connection alone when the scope has not changed", async () => {
+    const { manager } = await start();
+    const snapshot = await manager.ensureReady();
+    manager.rebindScope({ ...scope });
+    expect(await manager.ensureReady()).toBe(snapshot);
+  });
+
   it("throws BridgeUnavailableError with remediation instead of falling back", async () => {
     // Fallback cazip görünür — "en azından bir şey yapmış oluruz" — ama
     // yaptığı şey kanıtı sessizce koordinat tabanlı bir tap'e indirmek.

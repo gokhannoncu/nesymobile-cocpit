@@ -121,6 +121,23 @@ export interface ExternalActionSpec {
   idempotencyKey?: string;
   inputBindings: readonly ExternalActionInputBinding[];
   outputFactBindings: readonly ExternalActionOutputFactBinding[];
+  /**
+   * What a FAILED call means for the run. Defaults to `FAIL_RUN`.
+   *
+   * `RECORD_UNMEASURED` exists for the case where the operation's fact does not
+   * decide the verdict anyway. A login test that treats the backend plane as
+   * OPTIONAL should not be aborted because the back office was unreachable — that
+   * reports an infrastructure outage as if the product were untestable, when the
+   * run could have judged itself perfectly well on the planes it did observe.
+   *
+   * The step is still recorded as FAILED and its facts are published UNKNOWN:
+   * "we tried and could not tell" is the claim, never "it was fine".
+   *
+   * Restricted to READ_ONLY VALIDATION by `validateExternalAction`. A mutation
+   * that failed may or may not have landed, and continuing past it is how a run
+   * ends up approving a tour twice.
+   */
+  onUnavailable?: "FAIL_RUN" | "RECORD_UNMEASURED";
   timeoutPolicy: ExternalActionTimeoutPolicy;
   /** Refs into the run's declared resource requirements. Opaque to Core. */
   resourceRequirementRefs?: readonly string[];
@@ -138,7 +155,8 @@ export interface ExternalActionViolation {
     | "SETUP_PRODUCES_VERDICT"
     | "MISSING_OUTPUT_FACT"
     | "UNAUDITED_MUTATION"
-    | "MISSING_RECONCILIATION";
+    | "MISSING_RECONCILIATION"
+    | "UNSAFE_CONTINUE_ON_FAILURE";
   message: string;
 }
 
@@ -174,6 +192,22 @@ export function validateExternalAction(spec: ExternalActionSpec): ExternalAction
     violations.push({
       code: "MISSING_IDEMPOTENCY_KEY",
       message: `operation "${spec.operationRef}" declares KEYED idempotency but carries no idempotencyKey`,
+    });
+  }
+
+  // Continuing past a failed call is only safe when the call CHANGED NOTHING.
+  // A mutation that reported FAILED may still have landed, so a run that walked
+  // on would be reasoning about a backend state it never confirmed — and could
+  // repeat the mutation later.
+  if (
+    spec.onUnavailable === "RECORD_UNMEASURED" &&
+    (spec.role !== "VALIDATION" || spec.effectClass !== "READ_ONLY")
+  ) {
+    violations.push({
+      code: "UNSAFE_CONTINUE_ON_FAILURE",
+      message:
+        `operation "${spec.operationRef}" declares onUnavailable RECORD_UNMEASURED but is ` +
+        `${spec.role}/${spec.effectClass}; only a READ_ONLY VALIDATION may be continued past`,
     });
   }
 

@@ -33,7 +33,11 @@ async function adb(args: string[], timeoutMs = 10_000): Promise<string> {
   return String(result.stdout);
 }
 
-export function createAdbFacade(): AdbFacade {
+/**
+ * @param exec Test seam. Defaults to the real `adb` child process.
+ */
+export function createAdbFacade(exec: (args: string[], timeoutMs?: number) => Promise<string> = adb): AdbFacade {
+  const adb = exec
   return {
     async listDevices() {
       const out = await adb(["devices"]);
@@ -103,7 +107,20 @@ export function createAdbFacade(): AdbFacade {
       // was still listed, and no bridge process existed. AccessibilityManagerService
       // only re-binds when the SERVICE LIST transitions, so the list is cleared and
       // rewritten to force that transition.
-      await adb(["-s", deviceId, "shell", "settings", "put", "secure", "accessibility_enabled", "0"]);
+      //
+      // THE MASTER SWITCH IS NEVER WRITTEN TO 0 HERE, and that ordering is the
+      // point. This used to begin with `accessibility_enabled=0` and end with
+      // `=1`, four separate adb calls with no transaction between them. Anything
+      // that killed the host mid-sequence — an API restart under `tsx watch`, a
+      // cancelled command — left the DEVICE with accessibility globally disabled
+      // and the service still listed. Observed exactly that: master `0`, service
+      // present, no bridge process, and the only visible symptom was "the bridge
+      // suddenly broke". That is not a test-harness failure, it is the harness
+      // silently turning off an accessibility feature on someone's phone.
+      //
+      // The list transition alone still forces the rebind, so every interruption
+      // point now leaves the device no worse than "a service is missing from the
+      // list", which the next preflight detects and repairs.
       await adb(["-s", deviceId, "shell", "settings", "delete", "secure", "enabled_accessibility_services"]);
       await adb([
         "-s",

@@ -35,6 +35,8 @@ import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import { getSdkObservationStore } from './sdk-observation-store.js'
+import { createControlExecutor } from '@nesy/control-channels/node'
 import {
   getScreenReadinessObserver,
   type ScreenReadinessObserver,
@@ -62,6 +64,8 @@ type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
 
 const execFileAsync = promisify(execFile)
 const UI_FACT_MAX_AGE_MS = 5_000
+/** An app/local session observation stays usable this long; the requirement's own deadline governs waiting. */
+const SDK_FACT_MAX_AGE_MS = 30_000
 
 /**
  * Back-office credentials from the environment.
@@ -277,6 +281,64 @@ function isScreenObservableFact(bundle: DomainPackBundle, factKey: string): bool
  * the device's last transition says this screen is ready", and `subtype`
  * `SDK_STATE_SCREEN` is exactly that claim.
  */
+/**
+ * Republishes what `SDK_QUERY` steps observed into the scope of the occurrence
+ * that is asking — the same correlation-at-question-time move
+ * [publishLiveScreenReadiness] makes, and for the same reason: the observation
+ * happens in one step, the oracle that needs it lives in another, and evidence is
+ * scoped per occurrence.
+ *
+ * `observedAtMs` is carried through from the original read rather than restamped,
+ * so an observation that has gone stale expires instead of being renewed forever.
+ */
+/** Fact keys are plane-prefixed by contract; the prefix is the authority on plane. */
+function planeOf(factKey: string): NormalizedEvidenceFact['plane'] {
+  if (factKey.startsWith('LOCAL.')) return 'LOCAL'
+  if (factKey.startsWith('REMOTE.')) return 'REMOTE'
+  if (factKey.startsWith('UI.')) return 'UI'
+  return 'APP'
+}
+
+function publishSdkObservations(input: {
+  evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
+  observations: ReturnType<typeof getSdkObservationStore>
+  runId: string
+  occurrenceId: string
+  iterationKey: string
+}): void {
+  const scope = {
+    runId: input.runId,
+    occurrenceId: input.occurrenceId,
+    iterationKey: input.iterationKey,
+  }
+  let revision = input.evidenceRuntime.latestRevision(scope)
+  for (const observation of input.observations.current(input.runId)) {
+    revision += 1
+    input.evidenceRuntime.publish({
+      runId: input.runId,
+      revision,
+      lane: 'ORDERED_REQUIRED',
+      correlationStatus: 'CORRELATED',
+      trust: 'RESOLVER_ACCEPTED',
+      fact: {
+        factKey: observation.factKey,
+        occurrenceId: input.occurrenceId,
+        iterationKey: input.iterationKey,
+        observedAtMs: observation.observedAtMs,
+        freshnessMaxAgeMs: SDK_FACT_MAX_AGE_MS,
+        // The pack's evidence source owns the plane, and the fact key prefix is
+        // what carries it. All three planes travel this path: `nesy.db.session`
+        // is LOCAL, `nesy.sessionState` is APP, and a back-office read is REMOTE.
+        plane: planeOf(observation.factKey),
+        subtype: observation.queryRef,
+        value: observation.value,
+        authority: 'PRIMARY',
+        deliveryLane: 'ORDERED_REQUIRED',
+      } satisfies NormalizedEvidenceFact,
+    })
+  }
+}
+
 function publishLiveScreenReadiness(input: {
   bundle: DomainPackBundle
   evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
@@ -567,6 +629,12 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       deadlineMs: stateWaitMs,
     })
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
+    const sdkObservations = getSdkObservationStore()
+    // One control channel for the whole run: the bridge port uses it to tell the
+    // app which occurrence its emits belong to, the generic-step runtime to read
+    // named queries.
+    const controlExecutor =
+      applicationId === undefined ? undefined : createControlExecutor({ applicationId })
     const screenObserver = getScreenReadinessObserver()
     // Seed the observer from the pre-run snapshot so a screen the device settled on
     // BEFORE the first `SCREEN_READY` reached us is still known. From here on the
@@ -635,6 +703,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           variables: runContext,
           runId: item.runId,
           runInputs,
+          // Shared with the generic-step runtime below so both speak to the app
+          // over ONE control channel rather than each opening its own.
+          ...(controlExecutor === undefined ? {} : { controlExecutor }),
+          ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
         }),
         evidence: {
           factsForOccurrence: (occurrenceId, iterationKey) => {
@@ -650,6 +722,15 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
               occurrenceId,
               iterationKey,
               clock,
+            })
+            // Same move for what earlier SDK_QUERY steps read: the observation
+            // was made in one occurrence, and this is the one asking.
+            publishSdkObservations({
+              evidenceRuntime,
+              observations: sdkObservations,
+              runId: item.runId,
+              occurrenceId,
+              iterationKey,
             })
             // Facts are also handed to the condition resolver: a branch that
             // reads `sdk.state.*` must see what the oracle lane saw, not a
@@ -673,6 +754,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             variables: runContext,
             runInputs,
             evidence: evidenceRuntime,
+            observations: sdkObservations,
             attemptStore: new PrismaRemoteActionAttemptStore(this.options.prisma),
             clock,
             ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
@@ -683,7 +765,8 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           bundle: resolution.pack.bundle,
           runId: item.runId,
           applicationId,
-          evidence: evidenceRuntime,
+          observations: sdkObservations,
+          ...(controlExecutor === undefined ? {} : { controlExecutor }),
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
         }),
         oracle: {
@@ -731,6 +814,9 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       // it would be a slow leak in a long-lived API and could answer a later
       // question with a retired run's screen.
       screenObserver.forget(item.runId)
+      // Same reasoning for SDK observations: process-wide store, so a finished
+      // run's session reads must not outlive it.
+      sdkObservations.clear(item.runId)
     }
   }
 

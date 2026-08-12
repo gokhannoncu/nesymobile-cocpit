@@ -87,6 +87,14 @@
           "type": "stringList"
         },
         {
+          "name": "selectedRouteRows",
+          "type": "stringList"
+        },
+        {
+          "name": "loadedRows",
+          "type": "stringList"
+        },
+        {
           "name": "rowHandle",
           "type": "string"
         },
@@ -243,7 +251,7 @@
         {
           "planStepId": "tap-confirm",
           "sourceMapRef": "sm-route-8",
-          "next": "verify-assignment",
+          "next": "read-selected-route",
           "timeoutMs": 25000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -260,12 +268,68 @@
           "targetVariable": "confirmHandle",
           "continueGate": {
             "allOf": [
-              "UI.ROUTE_LIST_READY",
-              "APP.AVAILABLE_STOPS_LOADED"
+              "UI.ROUTE_LIST_READY"
             ],
             "deadlineMs": 25000,
             "unknownPolicy": "RETRY"
           }
+        },
+        {
+          "planStepId": "read-selected-route",
+          "sourceMapRef": "sm-route-8a",
+          "next": "read-available-stops",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.state-projection",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.routeState",
+          "maxRows": 1,
+          "outputVariable": "selectedRouteRows",
+          "outputFactBindings": [
+            {
+              "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+              "from": {
+                "kind": "COLUMN",
+                "column": "route_selected"
+              }
+            }
+          ]
+        },
+        {
+          "planStepId": "read-available-stops",
+          "sourceMapRef": "sm-route-8b",
+          "next": "verify-assignment",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.availableStops",
+          "maxRows": 200,
+          "outputVariable": "loadedRows",
+          "outputFactBindings": [
+            {
+              "factKey": "APP.AVAILABLE_STOPS_LOADED",
+              "from": {
+                "kind": "ROWS_PRESENT"
+              }
+            }
+          ]
         },
         {
           "planStepId": "verify-assignment",
@@ -451,6 +515,18 @@
           "domainSourceRef": "nesy.macro.select-route"
         },
         {
+          "ref": "sm-route-8a",
+          "planStepId": "read-selected-route",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "app plane observed, not inferred"
+        },
+        {
+          "ref": "sm-route-8b",
+          "planStepId": "read-available-stops",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "stops loaded is a result-set property"
+        },
+        {
           "ref": "sm-route-9",
           "planStepId": "verify-assignment",
           "domainSourceRef": "nesy.macro.select-route"
@@ -505,6 +581,18 @@
         "domainSourceRef": "nesy.macro.select-route"
       },
       {
+        "ref": "sm-route-8a",
+        "planStepId": "read-selected-route",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "app plane observed, not inferred"
+      },
+      {
+        "ref": "sm-route-8b",
+        "planStepId": "read-available-stops",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "stops loaded is a result-set property"
+      },
+      {
         "ref": "sm-route-9",
         "planStepId": "verify-assignment",
         "domainSourceRef": "nesy.macro.select-route"
@@ -528,6 +616,8 @@
           "tap-row",
           "resolve-confirm",
           "tap-confirm",
+          "read-selected-route",
+          "read-available-stops",
           "verify-assignment",
           "assert-selection"
         ],
@@ -555,6 +645,14 @@
     "variables": [
       {
         "name": "offeredRouteRows",
+        "type": "stringList"
+      },
+      {
+        "name": "selectedRouteRows",
+        "type": "stringList"
+      },
+      {
+        "name": "loadedRows",
         "type": "stringList"
       },
       {
@@ -714,7 +812,7 @@
       {
         "planStepId": "tap-confirm",
         "sourceMapRef": "sm-route-8",
-        "next": "verify-assignment",
+        "next": "read-selected-route",
         "timeoutMs": 25000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -731,12 +829,68 @@
         "targetVariable": "confirmHandle",
         "continueGate": {
           "allOf": [
-            "UI.ROUTE_LIST_READY",
-            "APP.AVAILABLE_STOPS_LOADED"
+            "UI.ROUTE_LIST_READY"
           ],
           "deadlineMs": 25000,
           "unknownPolicy": "RETRY"
         }
+      },
+      {
+        "planStepId": "read-selected-route",
+        "sourceMapRef": "sm-route-8a",
+        "next": "read-available-stops",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.state-projection",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.routeState",
+        "maxRows": 1,
+        "outputVariable": "selectedRouteRows",
+        "outputFactBindings": [
+          {
+            "factKey": "APP.SELECTED_ROUTE_OBSERVED",
+            "from": {
+              "kind": "COLUMN",
+              "column": "route_selected"
+            }
+          }
+        ]
+      },
+      {
+        "planStepId": "read-available-stops",
+        "sourceMapRef": "sm-route-8b",
+        "next": "verify-assignment",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.availableStops",
+        "maxRows": 200,
+        "outputVariable": "loadedRows",
+        "outputFactBindings": [
+          {
+            "factKey": "APP.AVAILABLE_STOPS_LOADED",
+            "from": {
+              "kind": "ROWS_PRESENT"
+            }
+          }
+        ]
       },
       {
         "planStepId": "verify-assignment",
@@ -920,6 +1074,18 @@
         "ref": "sm-route-8",
         "planStepId": "tap-confirm",
         "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-8a",
+        "planStepId": "read-selected-route",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "app plane observed, not inferred"
+      },
+      {
+        "ref": "sm-route-8b",
+        "planStepId": "read-available-stops",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "stops loaded is a result-set property"
       },
       {
         "ref": "sm-route-9",

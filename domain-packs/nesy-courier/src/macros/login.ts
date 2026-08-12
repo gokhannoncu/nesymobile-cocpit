@@ -138,10 +138,19 @@ const STEPS: readonly WorkflowStepV2[] = [
     kind: "BRIDGE_ACTION",
     action: "tap",
     targetVariable: "submitHandle",
-    // Readiness only. Leaving the login screen is not proof of authentication —
-    // that is what the Final Oracle below is for.
+    // Readiness only — "the login attempt has RESOLVED", either way. Leaving the
+    // login screen is not proof of authentication; that is what the Final Oracle
+    // below is for.
+    //
+    // `anyOf` and not `allOf`, and this is the whole point: a gate that waits only
+    // for the route list cannot close when the product refuses the credentials, so
+    // it times out, the executor stops the run, and the oracle never evaluates. A
+    // wrong PIN then reported EVIDENCE_INSUFFICIENT — "the harness could not tell"
+    // — for a run in which the product had answered perfectly clearly. Admitting
+    // the refusal as a closing condition lets the run reach its oracle and be
+    // judged on what happened.
     continueGate: {
-      allOf: [NESY_FACTS.ROUTE_LIST_READY],
+      anyOf: [NESY_FACTS.ROUTE_LIST_READY, NESY_FACTS.LOGIN_REJECTED],
       noneOf: [NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT],
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",
@@ -165,7 +174,9 @@ const STEPS: readonly WorkflowStepV2[] = [
     queryRef: NESY_ADAPTER_QUERY_REFS.sessionState,
     maxRows: 1,
     outputVariable: "appSessionRows",
-    outputFactBindings: [{ factKey: NESY_FACTS.USER_SESSION_AVAILABLE_APP, rowColumn: "is_logged_in" }],
+    outputFactBindings: [
+      { factKey: NESY_FACTS.USER_SESSION_AVAILABLE_APP, from: { kind: "COLUMN", column: "is_logged_in" } },
+    ],
   },
   {
     ...stepBase({
@@ -180,7 +191,10 @@ const STEPS: readonly WorkflowStepV2[] = [
     maxRows: 1,
     outputVariable: "localSessionRows",
     outputFactBindings: [
-      { factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL, rowColumn: "session_persisted" },
+      {
+        factKey: NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
+        from: { kind: "COLUMN", column: "session_persisted" },
+      },
     ],
   },
   {
@@ -201,6 +215,12 @@ const STEPS: readonly WorkflowStepV2[] = [
       inputBindings: [{ name: "sessionCorrelationId", source: { kind: "runInput", path: "sessionCorrelationId" } }],
       outputFactBindings: [{ factKey: NESY_FACTS.AUTH_ACCEPTED, responsePath: "session.accepted" }],
       timeoutPolicy: { timeoutMs: 20_000, maxAttempts: 2, backoffMs: 1_000 },
+      // This read does not vote (see the requirement block below), so an
+      // unreachable back office must not abort a run that observed the app and
+      // local planes perfectly well. Measured: a VPN whose TLS path changed
+      // mid-session turned a decidable login run into AUTOMATION_FAILURE.
+      // READ_ONLY, so continuing past it cannot leave an unconfirmed mutation.
+      onUnavailable: "RECORD_UNMEASURED",
       reconciliationPolicy: "NONE",
       auditPolicy: { recordRequest: true, recordResponse: true, redactFields: ["session.tokenHint"] },
       allowedEnvironments: ["qa", "staging"],
@@ -394,6 +414,7 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
       NESY_FACTS.LOGIN_SCREEN_READY,
       NESY_FACTS.ROUTE_LIST_READY,
       NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT,
+      NESY_FACTS.LOGIN_REJECTED,
       NESY_FACTS.AUTH_ACCEPTED,
       NESY_FACTS.USER_SESSION_AVAILABLE_APP,
       NESY_FACTS.USER_SESSION_AVAILABLE_LOCAL,
@@ -403,8 +424,9 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
     adapterOperationRefs: [NESY_BACKOFFICE_OPERATIONS.readSession],
   },
   oracleTemplate: {
+    // Mirrors `tap-submit`'s gate; change both together.
     continueGate: {
-      allOf: [NESY_FACTS.ROUTE_LIST_READY],
+      anyOf: [NESY_FACTS.ROUTE_LIST_READY, NESY_FACTS.LOGIN_REJECTED],
       noneOf: [NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT],
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",

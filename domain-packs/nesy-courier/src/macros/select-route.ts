@@ -20,6 +20,7 @@
 import type { BridgeFlowPlanSnapshot, MacroDefinition, MacroExpansionSnapshot } from "@nesy/domain-pack-contracts";
 import type { WorkflowStepV2 } from "@nesy/workflow-contract";
 import { NESY_BACKOFFICE_ADAPTER_REF, NESY_BACKOFFICE_OPERATIONS } from "../adapters/backoffice.js";
+import { NESY_ADAPTER_QUERY_REFS } from "../registries/application.js";
 import { NESY_ENTITIES } from "../registries/entities.js";
 import { NESY_FACTS } from "../registries/facts.js";
 import { NESY_ACTIONS, NESY_SCREENS, NESY_SURFACES } from "../registries/screens.js";
@@ -113,18 +114,60 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-confirm",
       sourceMapRef: "sm-route-8",
-      next: "verify-assignment",
+      next: "read-selected-route",
       timeoutMs: 25_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
     kind: "BRIDGE_ACTION",
     action: "tap",
     targetVariable: "confirmHandle",
+    // Screen readiness ONLY.
+    //
+    // This gate used to also require `APP.AVAILABLE_STOPS_LOADED`, a fact
+    // produced by the projection read two steps BELOW it — so the gate waited for
+    // something that could not exist until it had already passed, and timed out
+    // every time. Readiness is what a gate can answer; whether the stops actually
+    // loaded is a question for the oracle, measured by `read-available-stops`.
     continueGate: {
-      allOf: [NESY_FACTS.ROUTE_LIST_READY, NESY_FACTS.AVAILABLE_STOPS_LOADED],
+      allOf: [NESY_FACTS.ROUTE_LIST_READY],
       deadlineMs: 25_000,
       unknownPolicy: "RETRY",
     },
+  },
+  // The app plane is OBSERVED after the confirmation, not inferred from the tap.
+  {
+    ...stepBase({
+      planStepId: "read-selected-route",
+      sourceMapRef: "sm-route-8a",
+      next: "read-available-stops",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.routeState,
+    maxRows: 1,
+    outputVariable: "selectedRouteRows",
+    outputFactBindings: [
+      { factKey: NESY_FACTS.SELECTED_ROUTE_OBSERVED, from: { kind: "COLUMN", column: "route_selected" } },
+    ],
+  },
+  {
+    ...stepBase({
+      planStepId: "read-available-stops",
+      sourceMapRef: "sm-route-8b",
+      next: "verify-assignment",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.availableStops,
+    maxRows: 200,
+    outputVariable: "loadedRows",
+    // The projection carries stop ids and counts, no boolean — "did any stop
+    // load" is a property of the result set, and an empty set is a proven no.
+    outputFactBindings: [
+      { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, from: { kind: "ROWS_PRESENT" } },
+    ],
   },
   {
     ...stepBase({
@@ -183,6 +226,8 @@ const GENERIC_IR = irDocument({
   inputs: [{ name: "routeCode", type: "string", required: true }],
   variables: [
     { name: "offeredRouteRows", type: "stringList" },
+    { name: "selectedRouteRows", type: "stringList" },
+    { name: "loadedRows", type: "stringList" },
     { name: "rowHandle", type: "string" },
     { name: "confirmHandle", type: "string" },
   ],
@@ -198,6 +243,8 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-route-6", "tap-row", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-7", "resolve-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-8", "tap-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
+    sourceMapEntry("sm-route-8a", "read-selected-route", NESY_SELECT_ROUTE_MACRO_KEY, "app plane observed, not inferred"),
+    sourceMapEntry("sm-route-8b", "read-available-stops", NESY_SELECT_ROUTE_MACRO_KEY, "stops loaded is a result-set property"),
     sourceMapEntry("sm-route-9", "verify-assignment", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-10", "assert-selection", NESY_SELECT_ROUTE_MACRO_KEY),
   ],

@@ -623,6 +623,43 @@ describe("REMOTE_ACTION / EXTERNAL_ACTION primitive", () => {
     expect(validateExternalAction({ ...safe, effectClass: "UNKNOWN" }).map((v) => v.code)).toContain("UNSAFE_RETRY");
   });
 
+  // Continuing past a failed call is safe only when the call changed nothing. A
+  // mutation that reported FAILED may still have landed, and a run that walks on
+  // is reasoning about a backend state it never confirmed.
+  it("allows a read-only validation to be continued past when it cannot be reached", () => {
+    const readOnly: ExternalActionSpec = {
+      ...safe,
+      effectClass: "READ_ONLY",
+      idempotencyClass: "NATURALLY_IDEMPOTENT",
+      idempotencyKey: undefined,
+      reconciliationPolicy: "NONE",
+      onUnavailable: "RECORD_UNMEASURED",
+    };
+    expect(validateExternalAction(readOnly)).toEqual([]);
+  });
+
+  it("refuses to continue past a failed mutation", () => {
+    expect(
+      validateExternalAction({ ...safe, onUnavailable: "RECORD_UNMEASURED" }).map((v) => v.code),
+    ).toContain("UNSAFE_CONTINUE_ON_FAILURE");
+  });
+
+  it("refuses to continue past a failed setup or teardown, even read-only", () => {
+    for (const role of ["SETUP", "TEARDOWN"] as const) {
+      expect(
+        validateExternalAction({
+          ...safe,
+          role,
+          effectClass: "READ_ONLY",
+          idempotencyClass: "NATURALLY_IDEMPOTENT",
+          idempotencyKey: undefined,
+          reconciliationPolicy: "NONE",
+          onUnavailable: "RECORD_UNMEASURED",
+        }).map((v) => v.code),
+      ).toContain("UNSAFE_CONTINUE_ON_FAILURE");
+    }
+  });
+
   it("refuses a setup action that produces business evidence (§11.17)", () => {
     expect(validateExternalAction({ ...safe, role: "SETUP" }).map((v) => v.code)).toContain("SETUP_PRODUCES_VERDICT");
   });

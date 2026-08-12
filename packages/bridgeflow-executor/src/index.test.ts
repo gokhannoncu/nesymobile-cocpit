@@ -144,6 +144,75 @@ describe("bridgeflow executor", () => {
     expect(persistence.actionTransitions.map((transition) => transition.phase)).toContain("EFFECT_VERIFIED");
   });
 
+  // A fact OBSERVED to be the opposite of what the plan asserted is the product
+  // failing. A fact nobody could observe is the harness failing. Reporting both as
+  // "not enough evidence" — which this did — hides every real product defect
+  // behind a message that blames the test.
+  describe("ASSERT_FACT separates a measured failure from an unmeasured one", () => {
+    function assertPlan(): BridgeFlowPlan {
+      return planFixture({
+        entryStepId: "assert-1",
+        steps: [
+          {
+            planStepId: "assert-1",
+            kind: "ASSERT_FACT",
+            sourceMapRef: "src:assert",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            params: { factKey: "app.session", expected: true },
+          },
+        ],
+      } as Partial<BridgeFlowPlan>);
+    }
+
+    function fact(value: boolean | "UNKNOWN") {
+      return {
+        factKey: "app.session",
+        occurrenceId: "run-1:assert-1:0",
+        iterationKey: "root",
+        observedAtMs: 10,
+        freshnessMaxAgeMs: 1_000,
+        plane: "APP" as const,
+        subtype: "sdk",
+        value,
+        authority: "PRIMARY" as const,
+        deliveryLane: "ORDERED_REQUIRED" as const,
+      };
+    }
+
+    async function runWith(facts: ReturnType<typeof fact>[]) {
+      return new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => facts },
+        clock: () => 10,
+      }).execute({ runId: "run-1", deviceId: "device-1", plan: assertPlan() });
+    }
+
+    it("reports a measured false as a product failure", async () => {
+      const result = await runWith([fact(false)]);
+      expect(result.productVerdict).toBe("FAIL_PRODUCT");
+      expect(result.evaluationFailureClass).not.toBe("EVIDENCE_INSUFFICIENT");
+    });
+
+    it("reports an UNKNOWN value as evidence-insufficient, not as a product failure", async () => {
+      const result = await runWith([fact("UNKNOWN")]);
+      expect(result.productVerdict).toBe("INCONCLUSIVE");
+    });
+
+    it("reports an absent fact as evidence-insufficient", async () => {
+      const result = await runWith([]);
+      expect(result.productVerdict).toBe("INCONCLUSIVE");
+    });
+  });
+
   it("requires effect verification before a step can succeed", async () => {
     const persistence = new InMemoryExecutionPersistence();
     const executor = new BridgeFlowExecutor({

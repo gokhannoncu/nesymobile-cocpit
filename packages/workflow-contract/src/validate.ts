@@ -349,8 +349,14 @@ function validateStep(ctx: Ctx, step: Record<string, unknown>, path: string): vo
         } else {
           bindings.forEach((binding: unknown, index: number) => {
             const entry = binding as Record<string, unknown>;
-            requireString(ctx, entry?.factKey, `${path}.outputFactBindings[${index}].factKey`);
-            requireString(ctx, entry?.rowColumn, `${path}.outputFactBindings[${index}].rowColumn`);
+            const at = `${path}.outputFactBindings[${index}]`;
+            requireString(ctx, entry?.factKey, `${at}.factKey`);
+            const from = entry?.from as Record<string, unknown> | undefined;
+            if (from?.kind === "COLUMN") {
+              requireString(ctx, from.column, `${at}.from.column`);
+            } else if (from?.kind !== "ROWS_PRESENT") {
+              push(ctx, `${at}.from`, "INVALID_TYPE", "from must be { kind: 'COLUMN', column } or { kind: 'ROWS_PRESENT' }");
+            }
           });
         }
       }

@@ -34,15 +34,11 @@ import type {
   VariableRuntimePort,
 } from '@nesy/bridgeflow-executor'
 import type { TargetDefinition, DomainPackBundle } from '@nesy/domain-pack-contracts'
-import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import type { BridgeDeviceManager } from './bridge-device-manager.js'
-import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import type { SdkObservationStore } from './sdk-observation-store.js'
 import { buildTargetFingerprint, isTargetFingerprint } from './bridgeflow-target-fingerprint.js'
 
 const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
-
-/** An app/local observation stays usable this long; the requirement's own deadline governs waiting. */
-const SDK_FACT_MAX_AGE_MS = 30_000
 
 /**
  * Device rows arrive as strings — the named-query projection is a
@@ -134,12 +130,62 @@ export function createBridgeRuntimePort(options: {
   variables: VariableRuntimePort
   runId: string
   runInputs?: Readonly<Record<string, unknown>>
+  /**
+   * Used to tell the app WHICH plan occurrence its own emits belong to. Absent
+   * means the device keeps emitting uncorrelated frames, which the host files as
+   * `LEGACY_NO_CONTEXT` — received and then invisible to every oracle.
+   */
+  controlExecutor?: ControlExecutor
+  logger?: (message: string, detail?: unknown) => void
 }): BridgeRuntimePort {
   const { manager, variables, runId } = options
   const runInputs = options.runInputs ?? {}
 
+  /**
+   * Push the correlation tuple to the app before it can emit about this action.
+   *
+   * The app cannot know which occurrence is asking — it only knows a login was
+   * refused. Correlation can therefore only be established from this side, and
+   * only just before the action that provokes the emit. Sent before EVERY bridge
+   * action rather than only gated ones: an action without a gate can still be the
+   * one whose emit a later oracle reads, and a wrong occurrence is worse than a
+   * missing one because it looks correlated.
+   *
+   * A failure here is logged and swallowed. Correlation is what makes an emit
+   * usable as evidence; it is not what makes the tap valid, and refusing to tap
+   * because a best-effort hint did not land would turn a diagnostic gap into a
+   * failed run.
+   */
+  async function pushCorrelation(context: StepExecutionContext): Promise<void> {
+    if (options.controlExecutor === undefined) return
+    try {
+      const result = await options.controlExecutor.run(manager.deviceId, {
+        op: 'seed',
+        verb: 'nesy.binding.correlation',
+        requestId: `${context.requestId}-corr`,
+        scope: runId,
+        params: {
+          occurrenceId: context.occurrenceId,
+          iterationPath: context.iterationKey,
+        },
+      })
+      if (!result.ok) {
+        options.logger?.('[BridgeFlowBridgePort] correlation push refused', {
+          occurrenceId: context.occurrenceId,
+          code: result.code,
+        })
+      }
+    } catch (error) {
+      options.logger?.('[BridgeFlowBridgePort] correlation push failed', {
+        occurrenceId: context.occurrenceId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
   return {
     async act(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<BridgeActionResult> {
+      await pushCorrelation(context)
       const action = asString(step.params['action']) ?? ''
       const rawArgs = (step.params['args'] ?? {}) as Record<string, unknown>
       const args: Record<string, unknown> = {}
@@ -258,16 +304,15 @@ export function createGenericStepRuntime(options: {
   applicationId?: string
   controlExecutor?: ControlExecutor
   /**
-   * Evidence sink for `SDK_QUERY` fact bindings. Absent means the step still
-   * runs and still fills its variable — it just proves nothing to the oracle.
+   * Sink for `SDK_QUERY` fact bindings. Absent means the step still runs and
+   * still fills its variable — it just proves nothing to the oracle.
    */
-  evidence?: BridgeFlowEvidenceRuntime
+  observations?: SdkObservationStore
   clock?: () => number
   logger?: (message: string, detail?: unknown) => void
 }): GenericStepRuntimePort {
   const { manager, variables, bundle, runId } = options
   const clock = options.clock ?? Date.now
-  let evidenceRevision = 0
   const targets = new Map<string, TargetDefinition>(
     bundle.registries.targets.map((target) => [target.targetKey, target]),
   )
@@ -313,33 +358,31 @@ export function createGenericStepRuntime(options: {
         // Bound facts are read from the FIRST row. Every query that binds facts
         // is a `maxRows: 1` state projection; a multi-row query answers "which
         // items exist", which is a question for a later step, not for a fact.
+        //
+        // RECORDED, not published: evidence is scoped by occurrence, so a fact
+        // published here would be visible only to this step and never to the
+        // Final Oracle three steps later. The evidence port republishes these
+        // into the asking occurrence's scope. See `sdk-observation-store`.
         const bindings = step.params['outputFactBindings']
-        if (Array.isArray(bindings) && options.evidence !== undefined) {
+        if (Array.isArray(bindings) && options.observations !== undefined) {
           const firstRow = (rows[0] ?? {}) as Record<string, unknown>
-          for (const binding of bindings as readonly { factKey: string; rowColumn: string }[]) {
-            evidenceRevision += 1
-            options.evidence.publish({
-              runId,
-              revision: evidenceRevision,
-              lane: 'ORDERED_REQUIRED',
-              correlationStatus: 'CORRELATED',
-              trust: 'RESOLVER_ACCEPTED',
-              fact: {
-                factKey: binding.factKey,
-                occurrenceId: context.occurrenceId,
-                iterationKey: context.iterationKey,
-                observedAtMs: clock(),
-                freshnessMaxAgeMs: SDK_FACT_MAX_AGE_MS,
-                // The pack's own evidence source decides the plane; the fact key
-                // prefix is what carries it, so it is read from there rather than
-                // hard-coded to APP — `nesy.db.session` is a LOCAL observation
-                // arriving through the same transport.
-                plane: binding.factKey.startsWith('LOCAL.') ? 'LOCAL' : 'APP',
-                subtype: queryRef,
-                value: asFactValue(firstRow[binding.rowColumn]),
-                authority: 'PRIMARY',
-                deliveryLane: 'ORDERED_REQUIRED',
-              } satisfies NormalizedEvidenceFact,
+          type Binding = {
+            factKey: string
+            from: { kind: 'COLUMN'; column: string } | { kind: 'ROWS_PRESENT' }
+          }
+          for (const binding of bindings as readonly Binding[]) {
+            // An empty result set is a PROVEN negative, not an unknown: the query
+            // ran and the app had nothing to show. A missing column is not — that
+            // is a projection that never carried the answer.
+            const value =
+              binding.from.kind === 'ROWS_PRESENT'
+                ? rows.length > 0
+                : asFactValue(firstRow[binding.from.column])
+            options.observations.record(runId, {
+              factKey: binding.factKey,
+              value,
+              observedAtMs: clock(),
+              queryRef,
             })
           }
         }

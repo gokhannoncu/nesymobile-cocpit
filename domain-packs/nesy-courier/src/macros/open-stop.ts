@@ -72,6 +72,11 @@ const STEPS: readonly WorkflowStepV2[] = [
     queryRef: NESY_ADAPTER_QUERY_REFS.availableStops,
     maxRows: 200,
     outputVariable: "availableRows",
+    // The projection carries stop ids and counts, no boolean — "did any stop
+    // load" is a property of the result set, and an empty set is a proven no.
+    outputFactBindings: [
+      { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, from: { kind: "ROWS_PRESENT" } },
+    ],
   },
   {
     // Safeguard 2, part two. UNKNOWN is FAIL: "we could not tell whether this
@@ -138,7 +143,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "await-destination",
       sourceMapRef: "sm-open-6",
-      next: "assert-correct-item",
+      next: "read-active-stop",
       timeoutMs: 25_000,
       capabilityRequirements: [optionally("wait_any", "SEQUENTIAL_LEGS")],
     }),
@@ -146,8 +151,27 @@ const STEPS: readonly WorkflowStepV2[] = [
     maxLegs: 2,
     hostOnlyCancel: true,
     legs: [
-      { legId: "task-list", factKey: NESY_FACTS.TASK_LIST_READY, onWin: "assert-correct-item" },
-      { legId: "delivery", factKey: NESY_FACTS.DELIVERY_FLOW_READY, onWin: "assert-correct-item" },
+      { legId: "task-list", factKey: NESY_FACTS.TASK_LIST_READY, onWin: "read-active-stop" },
+      { legId: "delivery", factKey: NESY_FACTS.DELIVERY_FLOW_READY, onWin: "read-active-stop" },
+    ],
+  },
+  {
+    // Which stop the app now considers active — OBSERVED, not inferred from the
+    // fact that a destination screen appeared. `nesy.stopState` is a maxRows: 1
+    // projection, so "a stop is active" is exactly whether it returned a row.
+    ...stepBase({
+      planStepId: "read-active-stop",
+      sourceMapRef: "sm-open-6a",
+      next: "assert-correct-item",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.stopState,
+    maxRows: 1,
+    outputVariable: "activeRows",
+    outputFactBindings: [
+      { factKey: NESY_FACTS.ACTIVE_STOP_OBSERVED, from: { kind: "ROWS_PRESENT" } },
     ],
   },
   {
@@ -175,6 +199,7 @@ const GENERIC_IR = irDocument({
   inputs: [{ name: "requestedItemCode", type: "string", required: true }],
   variables: [
     { name: "availableRows", type: "stringList" },
+    { name: "activeRows", type: "stringList" },
     { name: "rowHandle", type: "string" },
   ],
   steps: STEPS,
@@ -190,6 +215,7 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-open-3", "report-absent", NESY_OPEN_STOP_MACRO_KEY, "precondition mismatch path"),
     sourceMapEntry("sm-open-4", "resolve-row", NESY_OPEN_STOP_MACRO_KEY, "safeguards 3+4: provider chain, ambiguity fail-closed"),
     sourceMapEntry("sm-open-5", "tap-row", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-6a", "read-active-stop", NESY_OPEN_STOP_MACRO_KEY, "active stop observed, not inferred"),
     sourceMapEntry("sm-open-6", "await-destination", NESY_OPEN_STOP_MACRO_KEY, "safeguard 5: task list OR delivery flow"),
     sourceMapEntry("sm-open-7", "assert-correct-item", NESY_OPEN_STOP_MACRO_KEY, "safeguard 6: the wrong-row guard"),
   ],

@@ -404,6 +404,63 @@ describe('remote step runtime', () => {
     expect(facts[0]?.value).toBe('UNKNOWN')
   })
 
+  // An unreachable back office aborted a login run whose backend requirement was
+  // OPTIONAL anyway — reporting an infrastructure outage as if the product were
+  // untestable, when the run could have judged itself on the planes it observed.
+  it('continues past a read-only validation that could not be reached, recording it UNKNOWN', async () => {
+    const bundle = buildNesyCourierBundle()
+    const evidence = new BridgeFlowEvidenceRuntime()
+    const runtime = createPackRemoteStepRuntime({
+      runId: STEP_CONTEXT.runId,
+      bundle,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'FAILED', error: 'back-office unreachable' },
+          normalizedResponse: {},
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence,
+      clock: () => 0,
+    })
+
+    const result = await runtime.execute(
+      {
+        planStepId: 'verify-backend-session',
+        kind: 'REMOTE_ACTION',
+        params: {
+          spec: {
+            adapterRef: 'nesy.backoffice',
+            operationRef: 'nesy.backoffice.read-session',
+            role: 'VALIDATION',
+            effectClass: 'READ_ONLY',
+            idempotencyClass: 'NATURALLY_IDEMPOTENT',
+            inputBindings: [],
+            outputFactBindings: [{ factKey: 'REMOTE.AUTH_ACCEPTED', responsePath: 'session.accepted' }],
+            timeoutPolicy: { timeoutMs: 1_000, maxAttempts: 1 },
+            onUnavailable: 'RECORD_UNMEASURED',
+            reconciliationPolicy: 'NONE',
+            auditPolicy: { recordRequest: true, recordResponse: true },
+          },
+        },
+      } as never,
+      STEP_CONTEXT as never,
+    )
+
+    // The run continues, and the step still says FAILED: a green row for a call
+    // that never answered would be a lie told to whoever reads the run later.
+    expect(result.succeeded).toBe(true)
+    expect(result.actionResult).toBe('FAILED')
+
+    const facts = evidence.currentFacts(
+      { runId: STEP_CONTEXT.runId, occurrenceId: STEP_CONTEXT.occurrenceId, iterationKey: STEP_CONTEXT.iterationKey },
+      0,
+      'ORDERED_REQUIRED',
+    )
+    // UNKNOWN, never false — "we tried and could not tell" is the honest claim.
+    expect(facts.map((f) => [f.factKey, f.value])).toEqual([['REMOTE.AUTH_ACCEPTED', 'UNKNOWN']])
+  })
+
   it('refuses an operation the pack does not allowlist without calling the adapter', async () => {
     const runtime = createPackRemoteStepRuntime({
       runId: 'run-1',

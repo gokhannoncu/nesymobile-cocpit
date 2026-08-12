@@ -19,6 +19,8 @@ import customersRouter from './legacy/customers.router.js'
 import pickupsRouter from './legacy/pickups.router.js'
 import happyPathRouter from './legacy/happy-path.router.js'
 import { createSocketServer, type AppSocketServer } from './plugins/socket.js'
+import { BridgeFlowEvidenceSources } from './services/bridgeflow-evidence-source-registry.js'
+import { registerNesyDeviceEventSources } from './services/bridgeflow-device-event-sources.js'
 
 export type AppContext = {
   env: Env
@@ -43,6 +45,10 @@ export async function buildApp(env: Env) {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
+
+  // Before any route can ingest a device frame: an unregistered `sourceEvent` is
+  // refused by the durable resolver, and the registry is empty until this runs.
+  registerNesyDeviceEventSources(BridgeFlowEvidenceSources)
 
   await app.register(healthRoutes)
   await app.register(nesyAuthRoutes, { prefix: '/api/nesy/auth' })

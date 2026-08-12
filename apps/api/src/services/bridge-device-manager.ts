@@ -93,7 +93,11 @@ export interface ScreenshotArtifact {
 export class BridgeDeviceManager {
   readonly deviceId: string;
   private readonly gate: BridgeDeviceGate;
-  private readonly scope: BridgeRunScope;
+  /**
+   * NOT readonly: the manager outlives a single run (one per device, cached by
+   * `DeviceWorker`), and the scope is this device's run FENCE. See [rebindScope].
+   */
+  private scope: BridgeRunScope;
   private readonly artifactRoot: string;
   private readonly logger: (message: string) => void;
   private readonly now: () => number;
@@ -135,6 +139,45 @@ export class BridgeDeviceManager {
 
   getScheduler(): DeviceAdmissionScheduler {
     return this.scheduler;
+  }
+
+  getScope(): BridgeRunScope {
+    return { ...this.scope };
+  }
+
+  /**
+   * Point this manager at a NEW run.
+   *
+   * The manager is cached per device for the process lifetime, so without this it
+   * kept sending commands under the FIRST run's `runId`/`sessionId` forever. Two
+   * consequences, both bad: the device's fence (`ProtocolV1.validateActionScope`)
+   * answers `stale_run` as soon as the device's active scope moves on — observed
+   * as `TREE_UNAVAILABLE:stale_run` on every run after an out-of-band control op,
+   * clearing only when the API process restarted — and, worse, while it does NOT
+   * fail, every later run acts on the device under a retired run's identity,
+   * which is exactly what run fencing exists to prevent.
+   *
+   * The client is dropped rather than reused: the handshake is per socket and
+   * carries the scope, so a rebound scope needs a fresh one. `snapshot` and
+   * `capabilities` are kept — they describe the DEVICE, not the run.
+   */
+  rebindScope(scope: BridgeRunScope): void {
+    if (
+      this.scope.runId === scope.runId &&
+      this.scope.sessionId === scope.sessionId &&
+      this.scope.runEpoch === scope.runEpoch
+    ) {
+      return;
+    }
+    this.logger(
+      `[BridgeDeviceManager:${this.deviceId}] rebinding run scope ` +
+        `${this.scope.runId} -> ${scope.runId} (epoch ${String(this.scope.runEpoch)} -> ${String(scope.runEpoch)})`,
+    );
+    this.scope = { ...scope };
+    this.client?.dispose();
+    this.client = null;
+    this.waitRuntime = null;
+    this.requestCounter = 0;
   }
 
   /**

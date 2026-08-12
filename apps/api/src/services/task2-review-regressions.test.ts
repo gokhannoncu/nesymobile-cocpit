@@ -134,6 +134,10 @@ describe('Task 2 reviewer regressions', () => {
         audit,
       ),
     ).toMatchObject({ status: 'REJECTED', blocking: true })
+    // An UNDECLARED wire is ignored, not refused. The app emits many correlated
+    // events per run — clicks, HTTP calls, screen transitions — and only a few are
+    // declared evidence. Refusing the rest blocks the ordered lane behind traffic
+    // that was never making a claim.
     expect(
       resolveBridgeFlowDurableEvent(
         rawEvent({ event: 'UNKNOWN_SOURCE' }),
@@ -141,7 +145,43 @@ describe('Task 2 reviewer regressions', () => {
         resolver,
         audit,
       ),
-    ).toMatchObject({ status: 'REJECTED', blocking: true })
+    ).toEqual({ status: 'LEGACY_NO_CONTEXT' })
+  })
+
+  // The ingest fans every frame out to BOTH lanes, so a source that declares only
+  // one will always see the other. Refusing there blocked the run's whole evidence
+  // scope over a copy the source never claimed.
+  it('ignores a source on a lane it does not declare instead of blocking the scope', () => {
+    const orderedOnly = new StaticEvidenceSourceResolver([
+      {
+        sourceEvent: 'ORDERED_ONLY_SOURCE',
+        factKey: 'ordered.only',
+        plane: 'APP',
+        subtype: 'sdk',
+        authority: 'PRIMARY',
+        deliveryLanes: ['ORDERED_REQUIRED'],
+        freshnessMaxAgeMs: 10_000,
+        valueField: 'factValue',
+      },
+    ])
+
+    expect(
+      resolveBridgeFlowDurableEvent(
+        rawEvent({ event: 'ORDERED_ONLY_SOURCE' }),
+        'RECEIPT_SAFE',
+        orderedOnly,
+        audit,
+      ),
+    ).toEqual({ status: 'LEGACY_NO_CONTEXT' })
+
+    expect(
+      resolveBridgeFlowDurableEvent(
+        rawEvent({ event: 'ORDERED_ONLY_SOURCE' }),
+        'ORDERED_REQUIRED',
+        orderedOnly,
+        audit,
+      ),
+    ).toMatchObject({ status: 'ACCEPTED' })
   })
 
   it('distinguishes legacy no-context from malformed partial correlation without throwing', () => {

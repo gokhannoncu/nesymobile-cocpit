@@ -198,8 +198,21 @@ describe('Task 2 final reviewer regressions', () => {
       runtime: firstRuntime,
     })
 
+    // A MALFORMED frame, not merely an undeclared one. An event the resolver was
+    // never told about is a diagnostic and is ignored; a frame that claims a
+    // correlation tuple and then only half-supplies it is broken, and that is what
+    // must stop the lane.
+    const contradicts = {
+      ...rawEvent(),
+      data: {
+        occurrenceId: scope.occurrenceId,
+        iterationKey: scope.iterationKey,
+        factValue: 'true',
+        factKey: 'something.else',
+      },
+    }
     await expect(
-      firstIngest.persist(rawEvent('UNKNOWN_CORRELATED_SOURCE'), 'ORDERED_REQUIRED', audit),
+      firstIngest.persist(contradicts, 'ORDERED_REQUIRED', audit),
     ).rejects.toThrow('ordered evidence rejected')
     expect(persistence.rows).toEqual([
       expect.objectContaining({
@@ -216,7 +229,7 @@ describe('Task 2 final reviewer regressions', () => {
     })
     await restartedIngest.hydrate(scope)
     expect(restartedRuntime.blockedState(scope)).toMatchObject({
-      reason: expect.stringContaining('unknown evidence source'),
+      reason: expect.stringContaining('does not match trusted source definition'),
     })
     restartedRuntime.publish(publication(2, fact('delivery.persisted', 6)))
     const { persistence: oraclePort } = oraclePersistence()

@@ -210,8 +210,9 @@
           "action": "tap",
           "targetVariable": "submitHandle",
           "continueGate": {
-            "allOf": [
-              "UI.ROUTE_LIST_READY"
+            "anyOf": [
+              "UI.ROUTE_LIST_READY",
+              "APP.LOGIN_REJECTED"
             ],
             "noneOf": [
               "UI.SESSION_EXPIRED_DIALOG_PRESENT"
@@ -242,7 +243,10 @@
           "outputFactBindings": [
             {
               "factKey": "APP.USER_SESSION_AVAILABLE",
-              "rowColumn": "is_logged_in"
+              "from": {
+                "kind": "COLUMN",
+                "column": "is_logged_in"
+              }
             }
           ]
         },
@@ -268,7 +272,10 @@
           "outputFactBindings": [
             {
               "factKey": "LOCAL.USER_SESSION_AVAILABLE",
-              "rowColumn": "session_persisted"
+              "from": {
+                "kind": "COLUMN",
+                "column": "session_persisted"
+              }
             }
           ]
         },
@@ -314,6 +321,7 @@
               "maxAttempts": 2,
               "backoffMs": 1000
             },
+            "onUnavailable": "RECORD_UNMEASURED",
             "reconciliationPolicy": "NONE",
             "auditPolicy": {
               "recordRequest": true,
@@ -695,8 +703,9 @@
         "action": "tap",
         "targetVariable": "submitHandle",
         "continueGate": {
-          "allOf": [
-            "UI.ROUTE_LIST_READY"
+          "anyOf": [
+            "UI.ROUTE_LIST_READY",
+            "APP.LOGIN_REJECTED"
           ],
           "noneOf": [
             "UI.SESSION_EXPIRED_DIALOG_PRESENT"
@@ -727,7 +736,10 @@
         "outputFactBindings": [
           {
             "factKey": "APP.USER_SESSION_AVAILABLE",
-            "rowColumn": "is_logged_in"
+            "from": {
+              "kind": "COLUMN",
+              "column": "is_logged_in"
+            }
           }
         ]
       },
@@ -753,7 +765,10 @@
         "outputFactBindings": [
           {
             "factKey": "LOCAL.USER_SESSION_AVAILABLE",
-            "rowColumn": "session_persisted"
+            "from": {
+              "kind": "COLUMN",
+              "column": "session_persisted"
+            }
           }
         ]
       },
@@ -799,6 +814,7 @@
             "maxAttempts": 2,
             "backoffMs": 1000
           },
+          "onUnavailable": "RECORD_UNMEASURED",
           "reconciliationPolicy": "NONE",
           "auditPolicy": {
             "recordRequest": true,
@@ -991,8 +1007,9 @@
   },
   "oracle": {
     "continueGate": {
-      "allOf": [
-        "UI.ROUTE_LIST_READY"
+      "anyOf": [
+        "UI.ROUTE_LIST_READY",
+        "APP.LOGIN_REJECTED"
       ],
       "noneOf": [
         "UI.SESSION_EXPIRED_DIALOG_PRESENT"

@@ -93,6 +93,27 @@ const UI_SOURCES: readonly EvidenceSourceDefinition[] = [
 
 const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
   {
+    // The product's own refusal, carried by the app's `STATE_LOGIN_REJECTED` wire.
+    //
+    // `SDK_EVENT`, not `SDK_STATE`: this is a thing that HAPPENED at a moment, and
+    // re-reading it later would answer about a different login attempt. Absence is
+    // the negative — a login that was never refused emits nothing.
+    sourceKey: "nesy.app.login-rejected",
+    plane: "APP",
+    kind: "SDK_EVENT",
+    authority: "PRIMARY",
+    displayName: "Backend refused the credentials",
+    factKey: NESY_FACTS.LOGIN_REJECTED,
+    observationRef: "nesy.events.critical/login-rejected",
+    freshness: APP_FRESHNESS,
+    correlation: { requireEntityMatch: false, requireOccurrenceMatch: true, correlationPaths: ["occurrenceId"], crossPlane: false },
+    // The backend's refusal message can name the account; it is a reason string,
+    // not evidence, so it never reaches the lane.
+    redaction: { redactPaths: ["reason"] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
+  },
+  {
     sourceKey: "nesy.app.session-state",
     plane: "APP",
     kind: "SDK_STATE",

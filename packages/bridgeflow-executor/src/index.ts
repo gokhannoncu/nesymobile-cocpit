@@ -899,10 +899,24 @@ export class BridgeFlowExecutor {
         const factKey = asString(step.params["factKey"]);
         const expected = step.params["expected"];
         const fact = this.correlatedFacts(context).find((candidate) => candidate.factKey === factKey);
-        const satisfied = fact !== undefined && typeof expected === "boolean" && fact.value === expected;
+        // MEASURED means the run observed a real boolean. `'UNKNOWN'` and an
+        // absent fact are both "nobody could tell", which is a different claim.
+        const measured = fact !== undefined && typeof fact.value === "boolean";
+        const satisfied = measured && typeof expected === "boolean" && fact.value === expected;
         outcome.actionResult = satisfied ? "SUCCEEDED" : "FAILED";
         if (!satisfied) {
-          state.evidenceInsufficient = true;
+          if (measured) {
+            // The fact was observed and it is the opposite of what the plan
+            // asserted: the PRODUCT failed. Recording `evidenceInsufficient` here
+            // — as this did for both branches — made every real product failure
+            // report as "not enough evidence", because `aggregateProductVerdicts`
+            // short-circuits on that flag before it ever looks at the verdicts the
+            // Final Oracle produced. A wrong PIN, observed and refused end to end,
+            // came out INCONCLUSIVE while the oracle beside it said VIOLATED.
+            state.productVerdicts.push("FAIL_PRODUCT");
+          } else {
+            state.evidenceInsufficient = true;
+          }
           stop = true;
         }
         break;

@@ -55,6 +55,10 @@ describe("Phase 7.11 dialog / surface policy", () => {
     expect(wait.legs.map((l) => l.factKey).sort()).toEqual(
       [NESY_FACTS.TASK_LIST_READY, NESY_FACTS.DELIVERY_FLOW_READY].sort(),
     );
-    expect(wait.legs.every((l) => l.onWin === "assert-correct-item")).toBe(true);
+    // Both legs converge on the SAME next step — that is the property worth
+    // pinning, not its name. Whichever destination screen wins, the run then
+    // observes which stop the app made active before asserting anything about it.
+    expect(new Set(wait.legs.map((l) => l.onWin)).size).toBe(1);
+    expect(wait.legs[0]?.onWin).toBe("read-active-stop");
   });
 });

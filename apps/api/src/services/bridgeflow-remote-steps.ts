@@ -28,6 +28,7 @@ import type { ExternalActionSpec } from '@nesy/workflow-contract'
 
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import type { SdkObservationStore } from './sdk-observation-store.js'
 import {
   RemoteActionRuntime,
   InMemoryRemoteActionAttemptStore,
@@ -44,6 +45,8 @@ export interface RemoteStepRuntimeOptions {
   adapter: BackofficeAdapter
   variables: VariableRuntimePort
   evidence: BridgeFlowEvidenceRuntime
+  /** Cross-step sink so a later step's oracle can see this observation. */
+  observations?: SdkObservationStore
   /** Run inputs addressed by `runInput` bindings. */
   runInputs?: Readonly<Record<string, unknown>>
   attemptStore?: RemoteActionAttemptStore
@@ -67,6 +70,45 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
           planStepId: step.planStepId,
         })
         return { succeeded: false, actionResult: 'FAILED' }
+      }
+
+      /**
+       * Publish one bound fact into BOTH the cross-step store and this step's own
+       * scope.
+       *
+       * The store is what a LATER step's oracle can see — evidence is scoped per
+       * occurrence, so publishing only locally made a backend check invisible to
+       * the Final Oracle it exists to settle. The local publish still matters for
+       * a continue gate on THIS step, which reads its own scope.
+       */
+      const publishFact = (factKey: string, value: boolean | 'UNKNOWN'): void => {
+        const observedAtMs = clock()
+        options.observations?.record(options.runId, {
+          factKey,
+          value,
+          observedAtMs,
+          queryRef: spec.operationRef,
+        })
+        revision += 1
+        options.evidence.publish({
+          runId: options.runId,
+          revision,
+          lane: 'ORDERED_REQUIRED',
+          correlationStatus: 'CORRELATED',
+          trust: 'RESOLVER_ACCEPTED',
+          fact: {
+            factKey,
+            occurrenceId: context.occurrenceId,
+            iterationKey: context.iterationKey,
+            observedAtMs,
+            freshnessMaxAgeMs: REMOTE_FACT_MAX_AGE_MS,
+            plane: 'REMOTE',
+            subtype: spec.operationRef,
+            value,
+            authority: 'PRIMARY',
+            deliveryLane: 'ORDERED_REQUIRED',
+          } satisfies NormalizedEvidenceFact,
+        })
       }
 
       const inputs = resolveInputs(spec, options.variables, options.runInputs ?? {})
@@ -121,6 +163,27 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
           status: result.terminal.status,
           reason: result.blockedReason,
         })
+
+        // A read-only validation the pack marked continuable: record that the
+        // observation could not be made and let the run judge itself on the
+        // planes it DID observe. Without this an unreachable back office aborted
+        // a login run whose backend requirement was OPTIONAL anyway — reporting
+        // an infrastructure outage as if the product were untestable.
+        //
+        // UNKNOWN_EFFECT is excluded on purpose. "The call may or may not have
+        // landed" is exactly the state no run may walk past, and the contract
+        // already restricts this policy to READ_ONLY, so reaching it here would
+        // mean two guards disagreed.
+        if (spec.onUnavailable === 'RECORD_UNMEASURED' && result.terminal.status === 'FAILED') {
+          for (const binding of spec.outputFactBindings) {
+            publishFact(binding.factKey, 'UNKNOWN')
+          }
+          // FAILED is still what the step row says: the call did fail, and a
+          // green step for a call that never answered would be a lie told to
+          // whoever reads the run later.
+          return { succeeded: true, actionResult: 'FAILED' }
+        }
+
         // UNKNOWN_EFFECT is surfaced as itself: the executor treats it as an
         // unknown-effect stop, which is what stops a duplicate mutation.
         return {
@@ -131,28 +194,9 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
 
       for (const binding of spec.outputFactBindings) {
         const value = readPath(captured, binding.responsePath)
-        revision += 1
-        options.evidence.publish({
-          runId: options.runId,
-          revision,
-          lane: 'ORDERED_REQUIRED',
-          correlationStatus: 'CORRELATED',
-          trust: 'RESOLVER_ACCEPTED',
-          fact: {
-            factKey: binding.factKey,
-            occurrenceId: context.occurrenceId,
-            iterationKey: context.iterationKey,
-            observedAtMs: clock(),
-            freshnessMaxAgeMs: REMOTE_FACT_MAX_AGE_MS,
-            plane: 'REMOTE',
-            subtype: spec.operationRef,
-            // A path the response did not carry is UNKNOWN, never false: an
-            // invented `false` would read as a proven negative.
-            value: typeof value === 'boolean' ? value : 'UNKNOWN',
-            authority: 'PRIMARY',
-            deliveryLane: 'ORDERED_REQUIRED',
-          } satisfies NormalizedEvidenceFact,
-        })
+        // A path the response did not carry is UNKNOWN, never false: an invented
+        // `false` would read as a proven negative.
+        publishFact(binding.factKey, typeof value === 'boolean' ? value : 'UNKNOWN')
       }
 
       return { succeeded: true, actionResult: 'SUCCEEDED' }
