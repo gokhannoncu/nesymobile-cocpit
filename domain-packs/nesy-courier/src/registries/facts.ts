@@ -41,6 +41,28 @@ export const NESY_FACTS = {
   /** The wrong-row guard. See `open-stop.ts`. */
   ACTIVE_STOP_MATCHES: "APP.ACTIVE_STOP_MATCHES",
   SELECTED_ROUTE_OBSERVED: "APP.SELECTED_ROUTE_OBSERVED",
+  /**
+   * The SESSION is working with a schedule — the screen has one in hand.
+   *
+   * Deliberately says nothing about WHICH schedule, because that is the whole
+   * question: selecting a route is supposed to create today's schedule, and when
+   * that creation fails the app loads whatever Room happens to hold — including
+   * yesterday's. A screen showing a plan is therefore not evidence that the plan
+   * is today's, and folding the two into one fact would hide exactly the defect
+   * worth catching. Correlated with [SCHEDULE_IS_TODAY] by schedule id.
+   */
+  SCHEDULE_IN_USE: "APP.SCHEDULE_IN_USE",
+  /** Derived: the schedule the session is using IS today's persisted one. */
+  SCHEDULE_IN_USE_IS_TODAYS: "APP.SCHEDULE_IN_USE_IS_TODAYS",
+  /**
+   * Derived: the stored schedule was created FOR the route this run selected.
+   *
+   * Freshness is not enough. A schedule can be today's, stored and on screen and
+   * still belong to a different route — the courier would then work someone
+   * else's plan on a day that looks perfectly normal, which is the same class of
+   * silent wrongness as tapping the wrong row.
+   */
+  SCHEDULE_MATCHES_SELECTED_ROUTE: "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
   PARCEL_SCANNED: "APP.PARCEL_SCANNED",
   PARCEL_STATE_PROCESSED: "APP.PARCEL_STATE_PROCESSED",
   DELIVERY_SUBMITTED: "APP.DELIVERY_SUBMITTED",
@@ -63,6 +85,33 @@ export const NESY_FACTS = {
   OFFLINE_QUEUE_ITEM_WAITING: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
   OFFLINE_QUEUE_DRAINED: "LOCAL.OFFLINE_QUEUE_DRAINED",
   PARCEL_RECORD_PERSISTED: "LOCAL.PARCEL_RECORD_PERSISTED",
+  /**
+   * A schedule is stored WITH ITS BODY — meta row plus stop chunks.
+   *
+   * A meta row on its own is not a usable plan: `saveScheduleToLocal` writes the
+   * meta and the stop chunks separately, so a half-written schedule looks present
+   * and works badly. The projection counts chunks for that exact schedule id.
+   */
+  SCHEDULE_PERSISTED: "LOCAL.SCHEDULE_PERSISTED",
+  /**
+   * WHICH route the stored schedule was created for.
+   *
+   * A separate fact from [SCHEDULE_PERSISTED] because a fact carries ONE
+   * correlation value and these two are correlated on different things: the
+   * stored plan is identified by its schedule id, while "is this the right
+   * route" can only be judged against the route code. `ENTITY_STATUS_EQUALS`
+   * compares the observation's correlation value, so the claim about the route
+   * has to be the fact that carries the route.
+   */
+  SCHEDULE_ROUTE_OBSERVED: "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+  /**
+   * The stored schedule is TODAY'S, by the product's own rule.
+   *
+   * Read from `ScheduleSessionValidator`, the same object the screens consult —
+   * not a re-implementation of the date comparison, which would only ever prove
+   * the copy agrees with itself.
+   */
+  SCHEDULE_IS_TODAY: "LOCAL.SCHEDULE_IS_TODAY",
 
   // ── REMOTE plane (backend validators, back-office adapter) ─────────────
   AUTH_ACCEPTED: "REMOTE.AUTH_ACCEPTED",

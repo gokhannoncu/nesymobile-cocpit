@@ -14,6 +14,14 @@
  *  need a fabricated entry strategy and every flow would have to remember to
  *  handle it. As a surface with `defaultPolicy: HANDLE` and this macro as its
  *  handler, it is dealt with once wherever it fires.
+ *
+ *  TRAP 3 — the schedule this slice produces is EMPTY, and that is correct.
+ *  Selecting a route creates the day's schedule with no stops; the courier then
+ *  loads the vehicle and the schedule fills itself from what was loaded. So the
+ *  question here is whether TODAY'S schedule exists, is stored, belongs to the
+ *  selected route and is the one the session is using — never whether it has
+ *  work in it yet. Requiring stops turned the product's designed behaviour into
+ *  `FAIL_PRODUCT`.
  * ===========================================================================
  */
 
@@ -186,7 +194,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-confirm",
       sourceMapRef: "sm-route-8",
-      next: "read-selected-route",
+      next: "read-local-schedule",
       timeoutMs: 25_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -206,12 +214,21 @@ const STEPS: readonly WorkflowStepV2[] = [
       unknownPolicy: "RETRY",
     },
   },
+  // OBSERVED LAST, immediately before the assert, and that ordering is
+  // load-bearing rather than cosmetic. An SDK observation is republished into the
+  // asking occurrence carrying its ORIGINAL timestamp, and the publisher stamps a
+  // 30s freshness bound, so a fact observed early in a long slice is dropped as
+  // stale by the time the final oracle asks. Measured: this read sat two steps
+  // higher and `APP.SCHEDULE_IN_USE` never reached the derivation, which then
+  // stayed silent and reported `REQUIRED_TIMEOUT` for a fact the device had
+  // answered. Observe closest to the claim.
+  //
   // The app plane is OBSERVED after the confirmation, not inferred from the tap.
   {
     ...stepBase({
       planStepId: "read-selected-route",
       sourceMapRef: "sm-route-8a",
-      next: "read-available-stops",
+      next: "assert-selection",
       timeoutMs: 15_000,
       capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
     }),
@@ -221,13 +238,59 @@ const STEPS: readonly WorkflowStepV2[] = [
     outputVariable: "selectedRouteRows",
     outputFactBindings: [
       { factKey: NESY_FACTS.SELECTED_ROUTE_OBSERVED, from: { kind: "COLUMN", column: "route_selected" } },
+      // WHICH schedule the session holds, carried as the correlation key. On its
+      // own this proves only that the screen has a plan — see the fact's note.
+      {
+        factKey: NESY_FACTS.SCHEDULE_IN_USE,
+        from: { kind: "COLUMN", column: "schedule_in_use" },
+        correlationColumn: "schedule_id",
+      },
+    ],
+  },
+  // Selecting a route is supposed to CREATE today's schedule and store it. When
+  // that creation fails the app falls back to `loadStopListFromLocal()` for ANY
+  // schedule Room happens to hold — including yesterday's — and the screen looks
+  // entirely normal. So the local plane is read on its own terms: is a schedule
+  // stored with its stops, and is it today's by the product's own rule. The
+  // derived fact correlates both against the id the session is actually using.
+  {
+    ...stepBase({
+      planStepId: "read-local-schedule",
+      sourceMapRef: "sm-route-8c",
+      next: "read-available-stops",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.dbSchedule,
+    maxRows: 1,
+    outputVariable: "localScheduleRows",
+    outputFactBindings: [
+      {
+        factKey: NESY_FACTS.SCHEDULE_PERSISTED,
+        from: { kind: "COLUMN", column: "schedule_persisted" },
+        correlationColumn: "schedule_id",
+      },
+      {
+        factKey: NESY_FACTS.SCHEDULE_IS_TODAY,
+        from: { kind: "COLUMN", column: "schedule_is_today" },
+        correlationColumn: "schedule_id",
+      },
+      // Correlated on the ROUTE, not the schedule id: a fact carries one
+      // correlation value, and this claim is judged against the route the run
+      // asked for. Same row, different question.
+      {
+        factKey: NESY_FACTS.SCHEDULE_ROUTE_OBSERVED,
+        from: { kind: "COLUMN", column: "schedule_present" },
+        correlationColumn: "schedule_route_code",
+      },
     ],
   },
   {
     ...stepBase({
       planStepId: "read-available-stops",
       sourceMapRef: "sm-route-8b",
-      next: "verify-assignment",
+      next: "read-selected-route",
       timeoutMs: 15_000,
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
@@ -235,36 +298,32 @@ const STEPS: readonly WorkflowStepV2[] = [
     queryRef: NESY_ADAPTER_QUERY_REFS.availableStops,
     maxRows: 200,
     outputVariable: "loadedRows",
-    // The projection carries stop ids and counts, no boolean — "did any stop
-    // load" is a property of the result set, and an empty set is a proven no.
+    // OBSERVED, never required here — and that is a BUSINESS RULE, not leniency.
+    //
+    // Selecting a route creates the schedule EMPTY by design. The courier then
+    // loads the vehicle and the schedule fills itself from what was loaded. So an
+    // empty stop list immediately after selection is the product working
+    // correctly, and a REQUIRED stop fact turned correct behaviour into
+    // `FAIL_PRODUCT` — measured: route 31's schedule was today's, stored, in use
+    // and for the right route, and the run still failed on zero stops.
+    //
+    // The observation stays because the COUNT is worth recording: it is the
+    // baseline the loading flow is judged against, and "0 at selection, N after
+    // loading" is the shape a later slice asserts. `APP.AVAILABLE_STOPS_LOADED`
+    // is still REQUIRED where it belongs — after a stop is opened, stops must
+    // exist.
     outputFactBindings: [
       { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, from: { kind: "ROWS_PRESENT" } },
     ],
   },
-  {
-    ...stepBase({
-      planStepId: "verify-assignment",
-      sourceMapRef: "sm-route-9",
-      next: "assert-selection",
-      timeoutMs: 30_000,
-      capabilityRequirements: [requires("verdict.core.remote.allowlisted-operation")],
-    }),
-    kind: "REMOTE_ACTION",
-    spec: {
-      adapterRef: NESY_BACKOFFICE_ADAPTER_REF,
-      operationRef: NESY_BACKOFFICE_OPERATIONS.readRouteAssignment,
-      role: "VALIDATION",
-      effectClass: "READ_ONLY",
-      idempotencyClass: "NATURALLY_IDEMPOTENT",
-      inputBindings: [{ name: "route", source: { kind: "entityRef" } }],
-      outputFactBindings: [{ factKey: NESY_FACTS.ROUTE_ASSIGNED, responsePath: "assignment.exists" }],
-      timeoutPolicy: { timeoutMs: 20_000, maxAttempts: 2, backoffMs: 1_000 },
-      entityBinding: { type: NESY_ENTITIES.route, id: "run.input.routeCode" },
-      reconciliationPolicy: "NONE",
-      auditPolicy: { recordRequest: true, recordResponse: true, redactFields: ["assignment.assignedCourierName"] },
-      allowedEnvironments: ["qa", "staging"],
-    },
-  },
+  // The back-office assignment read is GONE from this slice, deliberately.
+  //
+  // What route selection must get right is on the device: a schedule for today
+  // was created, stored with its stops, and is the one the screen is working
+  // with. Whether a back-office table also lists the assignment is a different
+  // question with a different owner, and requiring it here made a staging data
+  // gap read as a route-selection defect. `REMOTE.ROUTE_ASSIGNED` stays in the
+  // registry for slices that genuinely reason about the backend's own record.
   {
     ...stepBase({ planStepId: "assert-selection", sourceMapRef: "sm-route-10", next: null }),
     kind: "ASSERT_FACT",
@@ -275,14 +334,28 @@ const STEPS: readonly WorkflowStepV2[] = [
     finalOraclePolicy: {
       requirements: [
         { factKey: NESY_FACTS.SELECTED_ROUTE_OBSERVED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        // The three that decide whether the day's plan is real. The derived one
+        // is what a mismatch trips: it requires the ids to agree, so yesterday's
+        // plan sitting on screen cannot satisfy it.
+        { factKey: NESY_FACTS.SCHEDULE_PERSISTED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        { factKey: NESY_FACTS.SCHEDULE_IS_TODAY, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
         {
-          factKey: NESY_FACTS.ROUTE_ASSIGNED,
+          factKey: NESY_FACTS.SCHEDULE_IN_USE_IS_TODAYS,
           obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 60_000,
-          onTimeout: "INCONCLUSIVE",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
         },
-        { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        {
+          factKey: NESY_FACTS.SCHEDULE_MATCHES_SELECTED_ROUTE,
+          obligation: "REQUIRED",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
+        },
+        // `APP.AVAILABLE_STOPS_LOADED` is NOT a requirement of this slice.
+        // Route selection creates the schedule empty; the courier loads the
+        // vehicle and the schedule fills from what was loaded. Requiring stops
+        // here asserted a state the product is not supposed to be in yet.
+        //
         // WARNING, not REQUIRED: this fact diagnoses an empty dialog, it does not
         // decide whether selection worked.
         { factKey: NESY_FACTS.ROUTES_AVAILABLE, obligation: "WARNING", timing: "IMMEDIATE", onTimeout: "WARNING" },
@@ -300,6 +373,7 @@ const GENERIC_IR = irDocument({
     { name: "offeredRouteRows", type: "stringList" },
     { name: "selectedRouteRows", type: "stringList" },
     { name: "loadedRows", type: "stringList" },
+    { name: "localScheduleRows", type: "stringList" },
     { name: "spinnerHandle", type: "string" },
     { name: "rowHandle", type: "string" },
     { name: "confirmHandle", type: "string" },
@@ -321,7 +395,7 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-route-8", "tap-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-8a", "read-selected-route", NESY_SELECT_ROUTE_MACRO_KEY, "app plane observed, not inferred"),
     sourceMapEntry("sm-route-8b", "read-available-stops", NESY_SELECT_ROUTE_MACRO_KEY, "stops loaded is a result-set property"),
-    sourceMapEntry("sm-route-9", "verify-assignment", NESY_SELECT_ROUTE_MACRO_KEY),
+    sourceMapEntry("sm-route-8c", "read-local-schedule", NESY_SELECT_ROUTE_MACRO_KEY, "Room truth: stored, and is it today's"),
     sourceMapEntry("sm-route-10", "assert-selection", NESY_SELECT_ROUTE_MACRO_KEY),
   ],
 });

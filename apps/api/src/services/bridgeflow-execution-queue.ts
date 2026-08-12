@@ -397,6 +397,47 @@ function publishSdkObservations(input: {
   }
 }
 
+/**
+ * Publishes the pack's derived conclusions as evidence.
+ *
+ * On BOTH lanes, deliberately. Continue gates read `RECEIPT_SAFE` and the final
+ * oracle reads `ORDERED_REQUIRED`, so a conclusion published to one lane is
+ * missing from the other — and the wrong-row guard (`APP.ACTIVE_STOP_MATCHES`)
+ * is exactly the kind of derived fact a GATE has to see before the run walks
+ * further into the wrong record.
+ *
+ * `reducerTrace` travels with the fact: a conclusion without its derivation is an
+ * assertion nobody can re-litigate six months later.
+ */
+function publishDerivedFacts(input: {
+  evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
+  derived: readonly NormalizedEvidenceFact[]
+  runId: string
+  occurrenceId: string
+  iterationKey: string
+}): void {
+  if (input.derived.length === 0) return
+  const scope = {
+    runId: input.runId,
+    occurrenceId: input.occurrenceId,
+    iterationKey: input.iterationKey,
+  }
+  let revision = input.evidenceRuntime.latestRevision(scope)
+  for (const lane of ['ORDERED_REQUIRED', 'RECEIPT_SAFE'] as const) {
+    for (const fact of input.derived) {
+      revision += 1
+      input.evidenceRuntime.publish({
+        runId: input.runId,
+        revision,
+        lane,
+        correlationStatus: 'CORRELATED',
+        trust: 'RESOLVER_ACCEPTED',
+        fact: { ...fact, deliveryLane: lane },
+      })
+    }
+  }
+}
+
 function publishLiveScreenReadiness(input: {
   bundle: DomainPackBundle
   evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
@@ -847,14 +888,26 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             // observed. They are appended, never substituted: `preserveInputs` is
             // always true, and a conclusion that replaced its inputs would leave
             // the next reader unable to see what it was built from.
-            const facts = [
-              ...observed,
-              ...deriveFacts({
-                bundle: resolution.pack.bundle,
-                facts: observed,
-                expectations: runInputExpectations,
-              }),
-            ]
+            const derived = deriveFacts({
+              bundle: resolution.pack.bundle,
+              facts: observed,
+              expectations: runInputExpectations,
+            })
+            // PUBLISHED, not just returned. The oracle worker builds its own fact
+            // set from `runtime.currentFacts` and never calls the derivation
+            // engine, so a derived fact that only reached this return value was
+            // visible to the condition resolver and invisible to every oracle —
+            // every derived REQUIREMENT timed out naming a fact the run had in
+            // fact concluded. Measured on device: both schedule derivations came
+            // back `REQUIRED_TIMEOUT` while their inputs were all present.
+            publishDerivedFacts({
+              evidenceRuntime,
+              derived,
+              runId: item.runId,
+              occurrenceId,
+              iterationKey,
+            })
+            const facts = [...observed, ...derived]
             runContext.observeFacts(facts)
             return facts
           },

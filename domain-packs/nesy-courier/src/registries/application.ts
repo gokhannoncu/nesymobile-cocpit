@@ -42,6 +42,24 @@ export const NESY_ADAPTER_QUERY_REFS = {
    * both would collapse the distinction it is there to test.
    */
   dbSession: "nesy.db.session",
+  /**
+   * The working schedule as ROOM holds it — not as the session believes it.
+   *
+   * Selecting a route is supposed to create today's schedule and persist it. When
+   * the create call fails, `StopListFragment` falls back to
+   * `loadStopListFromLocal()` for ANY schedule already in Room, including the
+   * previous day's, and the screen shows it as if it were today's work. Reading
+   * this alongside `routeState` is what makes that state visible: one answers
+   * "which schedule is the session using", the other "what is actually stored,
+   * and is it today's". A single query answering both would erase the mismatch
+   * that IS the defect.
+   *
+   * `schedule_is_today` comes from the product's own `ScheduleSessionValidator`,
+   * and `id_date_is_today` is a second independent reading from the schedule id's
+   * date segment — reported separately so a disagreement between the app's two
+   * notions of "today" shows up instead of being averaged.
+   */
+  dbSchedule: "nesy.db.schedule",
   routeState: "nesy.routeState",
   /**
    * What the route dialog is OFFERING right now.

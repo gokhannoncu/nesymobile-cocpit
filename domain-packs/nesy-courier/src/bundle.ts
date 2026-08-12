@@ -48,6 +48,43 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.9.0 — route selection is judged by the SCHEDULE it produces, not by a
+  //   back-office row. Picking a route is supposed to create today's schedule and
+  //   store it; when that create call fails, `StopListFragment` falls back to
+  //   `loadStopListFromLocal()` for ANY schedule Room holds — including the
+  //   previous day's — and the screen looks entirely normal while the courier
+  //   works a stale plan. Nothing in a run said so, because "a schedule is on
+  //   screen" was never separated from "today's schedule was created".
+  //
+  //   So the two planes are now read on their own terms and correlated:
+  //   `APP.SCHEDULE_IN_USE` (which schedule the session holds),
+  //   `LOCAL.SCHEDULE_PERSISTED` (the plan is stored: a meta row with a parseable
+  //   payload) and
+  //   `LOCAL.SCHEDULE_IS_TODAY` (the product's own `ScheduleSessionValidator`
+  //   rule, not a copy of it). The derived `APP.SCHEDULE_IN_USE_IS_TODAYS`
+  //   requires all three to agree ON THE SCHEDULE ID, which is what a stale
+  //   fallback cannot do.
+  //
+  //   `REMOTE.ROUTE_ASSIGNED` leaves this slice's oracle. Whether a back-office
+  //   table lists the assignment is a different question with a different owner,
+  //   and requiring it here made a staging data gap read as a route-selection
+  //   defect. The fact stays in the registry for slices that reason about the
+  //   backend's own record.
+  //
+  //   The stored schedule must also belong to the SELECTED route
+  //   (`APP.SCHEDULE_MATCHES_SELECTED_ROUTE`): freshness alone would accept a
+  //   today, on-screen schedule created for a different route, and the courier
+  //   would work someone else's plan on a day that looks normal.
+  //
+  //   `APP.AVAILABLE_STOPS_LOADED` is NOT a requirement of this slice, and that
+  //   is the product's business rule rather than leniency: selecting a route
+  //   creates the schedule EMPTY, the courier then loads the vehicle, and the
+  //   schedule fills itself from what was loaded. A REQUIRED stop fact turned
+  //   correct behaviour into FAIL_PRODUCT — measured, route 31's schedule was
+  //   today's, stored, in use and for the right route, and the run still failed
+  //   on zero stops. The count is still observed, because "0 at selection, N
+  //   after loading" is the baseline the loading flow is judged against.
+  //
   // 1.6.1 — the route dialog is retargeted at the arrangement the product
   //   actually renders. `route_row_*`, `route_list` and `route_dialog_confirm`
   //   were never on screen: the dialog is a Spinner (`dialog_spinner`) whose
@@ -110,7 +147,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 6, patch: 1 },
+  version: { major: 1, minor: 9, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

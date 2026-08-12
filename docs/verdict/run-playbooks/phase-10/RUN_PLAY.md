@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 14:45:00 +03"
+lastUpdatedAt: "2026-08-12 17:45:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.6.1"
+domainPackVersion: "1.9.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -275,7 +275,68 @@ Zincir: `matchKey` ile tek satır çek → spinner'ı çöz ve bas → `route_in
 listeyi konumlandır → satırı **etiketiyle** çöz (`route_label`: fiscal rotada
 `31 *`, `routeCode` ise `31`) → bas → `yesButton`'a bas.
 
-### 3.7 Sırbistan fiscal kuralı
+### 3.7 #19 — select-route'un iş alanı: schedule (kullanıcı kararı)
+
+**Doğru soru "backend atadı mı" değil.** Rota seçilince bir schedule yaratılır ve
+mobilde Room'a yazılır. Yaratılamadığında `StopListFragment` şunu yapıyor:
+
+```kotlin
+Resource.Status.ERROR -> {
+    if (viewModel.isScheduleNotNull()) loadStopListFromLocal()  // ← DÜNDEN kalma da olabilir
+    else logout
+}
+```
+
+Ekran tamamen normal görünür, kurye bayat bir planla çalışır ve koşu bunu hiç
+söylemez — çünkü "ekranda bir plan var" ile "bugünün planı yaratıldı" aynı şeye
+sayılıyordu. Kullanıcı kararı: **remote doğrulama bu dilimden çıkar**, doğrulama
+uygulamada yapılır.
+
+**Yeni named query `nesy.db.schedule`** (LOCAL düzlem, Room gerçeği). Ölçülen
+alanlar cihazda doğrulandı:
+
+```text
+schedule_id       = 11-31-20260812-1     → rota 31, tarih bugün
+schedule_is_today = true                 (ürünün KENDİ ScheduleSessionValidator'ı)
+id_date_is_today  = true                 (ikinci bağımsız okuma: id'nin tarih segmenti)
+persisted_at      = 12-08-2026-15:45:38  persisted_today = true
+stop_chunk_count  = 0                    schedule_body_stored = false
+courier_matches_session = true
+```
+
+Tarih kuralı **kopyalanmadı**: ekranların danıştığı validator'ın kendisi okunuyor.
+Kopya yazılsa, ürün kuralı değiştiğinde gözlem kendi kopyasıyla hemfikir kalırdı.
+İki "bugün" okuması ayrı raporlanıyor ki aralarındaki bir çelişki görünür olsun.
+
+**`schedule_persisted` durak sayısına BAĞLANMADI.** İlk tasarımda `chunk > 0`
+şartı vardı; o, durağı olmayan bir rotayı ürün kusuru sayardı. Boş gün bir kusur
+değil. Sayı yine raporlanıyor (`schedule_body_stored`, `stop_chunk_count`), yani
+"yazma yarım kaldı" ile "bugün iş yok" hâlâ ayırt edilebilir.
+
+**Oracle (pack 1.7.3):** `REMOTE.ROUTE_ASSIGNED` çıktı. Yerine
+`LOCAL.SCHEDULE_PERSISTED`, `LOCAL.SCHEDULE_IS_TODAY`, türetilmiş
+`APP.SCHEDULE_IN_USE_IS_TODAYS` (üçü **schedule id üzerinde** uyuşmalı) ve
+`APP.SCHEDULE_MATCHES_SELECTED_ROUTE` girdi.
+
+**İŞ KURALI DÜZELTMESİ (kullanıcı):** rota seçimi schedule'ı **BOŞ** yaratır;
+kurye aracına load yapar ve schedule kendini yüklenenden doldurur. Dolayısıyla
+seçim sonrası durak beklemek ürünün tasarımını FAIL etmek olur.
+`APP.AVAILABLE_STOPS_LOADED` bu dilimde gereksinim değil — gözlem olarak kaldı,
+çünkü sayı load akışının tabanı ("seçimde 0, yüklemeden sonra N"). Fact ait olduğu
+yerde hâlâ REQUIRED: bir durak açıldıktan sonra durakların var olması gerekir.
+
+**Cihazda ölçüldü** (14/14 adım SUCCEEDED, oracle SATISFIED, **`PASS_ONLINE`**):
+
+```text
+LOCAL.SCHEDULE_IS_TODAY              SATISFIED   bugünün planı
+LOCAL.SCHEDULE_PERSISTED             SATISFIED   saklandı
+APP.SELECTED_ROUTE_OBSERVED          SATISFIED
+APP.SCHEDULE_IN_USE_IS_TODAYS        SATISFIED   ekrandaki = saklanan = bugünün (id'ler uyuştu)
+APP.SCHEDULE_MATCHES_SELECTED_ROUTE  SATISFIED   schedule rota 31 için yaratılmış
+REMOTE.ROUTES_AVAILABLE              WARNING_TIMEOUT (yalnız teşhis, karar vermez)
+```
+
+### 3.8 Sırbistan fiscal kuralı
 
 `31 *` içindeki yıldız **rota kodunun parçası değil** — fiscal zorunluluğunu
 gösteren, Sırbistan'a özel bir iş kuralı. Diğer ülkelerde aynı rota `31`.
@@ -288,7 +349,7 @@ satır üretiyor, ikisi de aynı `route_code`'da anlaşıyor — böylece workfl
 
 **Ölçüldü:** 253 rota → 353 satır, 200 satır fiscal (100 fiscal + 153 düz rota).
 
-### 3.8 Yan bulgu — erişilebilirlik onarımı
+### 3.9 Yan bulgu — erişilebilirlik onarımı
 
 `restoreAccessibilityService` dört ayrı adb çağrısıydı ve `accessibility_enabled=0`
 ile başlıyordu. Kesinti (API restart) **cihazın genel erişilebilirlik anahtarını
@@ -300,12 +361,11 @@ sessizce kapatmaktır. Ana anahtar artık hiç 0'a yazılmıyor.
 ```text
 login   doğru PIN    → PASS_ONLINE    9 adım    (9 ardışık koşu, 0 stale_run)
 login   yanlış PIN   → FAIL_PRODUCT   9 adım
-select-route  route 31 → FAIL_PRODUCT   14/14 adım SUCCEEDED, failureClass NONE
-                        APP.SELECTED_ROUTE_OBSERVED  SATISFIED  (uygulama rotayı seçti)
-                        APP.AVAILABLE_STOPS_LOADED   VIOLATED   (durak yüklenmedi)
-                        REMOTE.ROUTE_ASSIGNED        VIOLATED   (backend atanmış demiyor)
-                        REMOTE.ROUTES_AVAILABLE      WARNING_TIMEOUT (yalnız teşhis)
-                        Kanıt hattı KARAR ÜRETİYOR: ölçüldü ve false, INCONCLUSIVE değil
+select-route  route 31 → PASS_ONLINE    14/14 adım SUCCEEDED, oracle SATISFIED
+                        SELECTED_ROUTE_OBSERVED · SCHEDULE_PERSISTED · SCHEDULE_IS_TODAY
+                        SCHEDULE_IN_USE_IS_TODAYS · SCHEDULE_MATCHES_SELECTED_ROUTE → hepsi SATISFIED
+                        ROUTES_AVAILABLE WARNING_TIMEOUT (yalnız teşhis, karar vermez)
+                        AVAILABLE_STOPS_LOADED artık gereksinim DEĞİL: seçimde schedule boş doğar
 sql_named params      → argümanlar handler'a ulaşıyor, değer birebir taşınıyor
                         (§3.5 sondaları, #18 sonrası)
 offeredRoutes         → parametresiz 353 satır, matchKey="31" TEK satır
@@ -337,7 +397,74 @@ baseline budur, fazlası sizindir.
 
 ## 5. Kalan iş
 
-### 5.0 SIRADAKİ — select-route'un FAIL_PRODUCT'ı ürün mü, veri mi?
+### 5.0 Kapatıldı — durak zorunluluğu iş kuralına aykırıydı
+
+Kullanıcı düzeltmesi: **rota seçimi schedule'ı BOŞ yaratır.** Kurye sonra aracına
+load yapar ve schedule kendini yüklenenden doldurur. Yani seçim sonrası durak
+beklemek, ürünün tasarlanmış davranışını `FAIL_PRODUCT` yapıyordu — ölçüldü: rota
+31'in schedule'ı bugüne ait, saklanmış, kullanımda ve doğru rotaya aitti, koşu
+yine sıfır durak yüzünden düşüyordu.
+
+`APP.AVAILABLE_STOPS_LOADED` bu dilimin gereksinimi olmaktan çıktı; **gözlem
+olarak kaldı**, çünkü sayı load akışının karşılaştırılacağı taban: "seçimde 0,
+yüklemeden sonra N". Fact hâlâ ait olduğu yerde REQUIRED — bir durak açıldıktan
+sonra durakların var olması gerekir.
+
+`select-route` bundan sonra cihazda **`PASS_ONLINE`** üretiyor (§4).
+
+### 5.0b Kapatıldı — iki türetilmiş fact artık ateşliyor (#19)
+
+İkisi de `REQUIRED_TIMEOUT` veriyordu. İki ayrı sebep çıktı; **biri tahmin
+ettiğim yer değildi ve daha büyüktü.**
+
+**(b) `ENTITY_STATUS_EQUALS` `comparePath`'i KULLANMIYOR.**
+`derived-fact-engine.ts` gözlemin `correlationValue`'sunu alıp
+`expectations[against]` ile karşılaştırıyor; `comparePath` hiçbir yerde okunmuyor.
+Benim tanımım korelasyon değeri olarak schedule **id**'sini taşıyordu
+(`11-31-20260812-1`), rota kodunu değil. Düzeltme: `nesy.db.schedule`'a
+`correlationColumn: "schedule_route_code"` ile ikinci bir fact
+(`LOCAL.SCHEDULE_ROUTE_OBSERVED`) bağlandı ve türetim onun üzerine kuruldu. Bir
+fact TEK korelasyon değeri taşır; aynı satır hakkındaki iki farklı soru iki fact
+gerektirir.
+
+**(a) TÜRETİLMİŞ FACT'LER HİÇ YAYINLANMIYORDU.** İlk hipotezim (`observationRef`
+çakışması) yanlıştı — `publishSdkObservations` kaynak eşlemesi yapmıyor, her
+gözlemi factKey ile yayınlıyor. İkinci hipotezim (30 sn tazelik penceresi) de
+yanlıştı: gözlemleri assert'in hemen öncesine taşımak hiçbir şeyi değiştirmedi.
+
+Gerçek sebep: `deriveFacts` yalnız `bridgeflow-execution-queue`'nun
+`factsForOccurrence` dönüş değerinde kullanılıyordu. **Oracle worker kendi fact
+kümesini `runtime.currentFacts` ile kuruyor ve türetim motorunu hiç çağırmıyor.**
+Yani türetilmiş her fact condition resolver'a görünüyor, hiçbir oracle'a
+görünmüyordu — ve türetilmiş HER gereksinim, koşu o sonuca varmış olsa bile zaman
+aşımına uğruyordu. Bu yalnız schedule'ı değil, `APP.ACTIVE_STOP_MATCHES` (yanlış
+satır koruması) ve `REMOTE.TOUR_APPROVAL_CONFIRMED` dahil tüm türetimleri
+etkiliyordu; open-stop ve tour-approval cihazda hiç koşulmadığı için kimse
+görmemişti.
+
+Düzeltme: `publishDerivedFacts` — türetilmiş fact'ler kanıt runtime'ına **iki
+hatta da** yayınlanıyor (`ORDERED_REQUIRED` + `RECEIPT_SAFE`), `reducerTrace`
+ile birlikte. İki hat, çünkü kapılar `RECEIPT_SAFE` okuyor ve yanlış-satır
+koruması tam olarak bir KAPININ görmesi gereken türetilmiş fact.
+
+**Cihazda ölçüldü — ikisi de SATISFIED:**
+
+```text
+LOCAL.SCHEDULE_IS_TODAY              SATISFIED   bugünün planı
+LOCAL.SCHEDULE_PERSISTED             SATISFIED   saklandı
+APP.SELECTED_ROUTE_OBSERVED          SATISFIED
+APP.SCHEDULE_IN_USE_IS_TODAYS        SATISFIED   ekrandaki = saklanan = bugünün (id'ler uyuştu)
+APP.SCHEDULE_MATCHES_SELECTED_ROUTE  SATISFIED   schedule rota 31 için yaratılmış
+APP.AVAILABLE_STOPS_LOADED           VIOLATED    tek kalan: durak yok → §5.0
+```
+
+> Kapsama boşluğu, bilinçli: `publishDerivedFacts` modül-özel ve yalnız cihaz
+> koşusuyla doğrulandı. Tanımların doğruluğu `derived-schedule-facts.test.ts`
+> ile sabitlendi (yanlış schedule id → false, yanlış rota → false, eksik girdi →
+> sessiz), ama "türetilmiş fact oracle'a ULAŞIR" invaryantı için kuyruk seviyesinde
+> bir test yok. Bu delik bir kez daha açılırsa yine sessizce açılır.
+
+### 5.0b Sonra — `AVAILABLE_STOPS_LOADED` ürün mü, veri mi?
 
 `select-route` artık cihazda uçtan uca koşuyor ve karar üretiyor. Kalan soru
 kanıt hattında değil, **cevabın kendisinde**: iki fact ölçüldü ve false çıktı.

@@ -95,6 +95,10 @@
           "type": "stringList"
         },
         {
+          "name": "localScheduleRows",
+          "type": "stringList"
+        },
+        {
           "name": "spinnerHandle",
           "type": "string"
         },
@@ -318,7 +322,7 @@
         {
           "planStepId": "tap-confirm",
           "sourceMapRef": "sm-route-8",
-          "next": "read-selected-route",
+          "next": "read-local-schedule",
           "timeoutMs": 25000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -344,7 +348,7 @@
         {
           "planStepId": "read-selected-route",
           "sourceMapRef": "sm-route-8a",
-          "next": "read-available-stops",
+          "next": "assert-selection",
           "timeoutMs": 15000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -367,13 +371,67 @@
                 "kind": "COLUMN",
                 "column": "route_selected"
               }
+            },
+            {
+              "factKey": "APP.SCHEDULE_IN_USE",
+              "from": {
+                "kind": "COLUMN",
+                "column": "schedule_in_use"
+              },
+              "correlationColumn": "schedule_id"
+            }
+          ]
+        },
+        {
+          "planStepId": "read-local-schedule",
+          "sourceMapRef": "sm-route-8c",
+          "next": "read-available-stops",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.db.schedule",
+          "maxRows": 1,
+          "outputVariable": "localScheduleRows",
+          "outputFactBindings": [
+            {
+              "factKey": "LOCAL.SCHEDULE_PERSISTED",
+              "from": {
+                "kind": "COLUMN",
+                "column": "schedule_persisted"
+              },
+              "correlationColumn": "schedule_id"
+            },
+            {
+              "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+              "from": {
+                "kind": "COLUMN",
+                "column": "schedule_is_today"
+              },
+              "correlationColumn": "schedule_id"
+            },
+            {
+              "factKey": "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+              "from": {
+                "kind": "COLUMN",
+                "column": "schedule_present"
+              },
+              "correlationColumn": "schedule_route_code"
             }
           ]
         },
         {
           "planStepId": "read-available-stops",
           "sourceMapRef": "sm-route-8b",
-          "next": "verify-assignment",
+          "next": "read-selected-route",
           "timeoutMs": 15000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -397,65 +455,6 @@
               }
             }
           ]
-        },
-        {
-          "planStepId": "verify-assignment",
-          "sourceMapRef": "sm-route-9",
-          "next": "assert-selection",
-          "timeoutMs": 30000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [
-            {
-              "capability": "verdict.core.remote.allowlisted-operation",
-              "optional": false
-            }
-          ],
-          "kind": "REMOTE_ACTION",
-          "spec": {
-            "adapterRef": "nesy.backoffice",
-            "operationRef": "nesy.backoffice.read-route-assignment",
-            "role": "VALIDATION",
-            "effectClass": "READ_ONLY",
-            "idempotencyClass": "NATURALLY_IDEMPOTENT",
-            "inputBindings": [
-              {
-                "name": "route",
-                "source": {
-                  "kind": "entityRef"
-                }
-              }
-            ],
-            "outputFactBindings": [
-              {
-                "factKey": "REMOTE.ROUTE_ASSIGNED",
-                "responsePath": "assignment.exists"
-              }
-            ],
-            "timeoutPolicy": {
-              "timeoutMs": 20000,
-              "maxAttempts": 2,
-              "backoffMs": 1000
-            },
-            "entityBinding": {
-              "type": "ROUTE",
-              "id": "run.input.routeCode"
-            },
-            "reconciliationPolicy": "NONE",
-            "auditPolicy": {
-              "recordRequest": true,
-              "recordResponse": true,
-              "redactFields": [
-                "assignment.assignedCourierName"
-              ]
-            },
-            "allowedEnvironments": [
-              "qa",
-              "staging"
-            ]
-          }
         },
         {
           "planStepId": "assert-selection",
@@ -484,14 +483,25 @@
                 "onTimeout": "FAIL"
               },
               {
-                "factKey": "REMOTE.ROUTE_ASSIGNED",
+                "factKey": "LOCAL.SCHEDULE_PERSISTED",
                 "obligation": "REQUIRED",
-                "timing": "EVENTUAL",
-                "deadlineMs": 60000,
-                "onTimeout": "INCONCLUSIVE"
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
               },
               {
-                "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              },
+              {
+                "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
                 "onTimeout": "FAIL"
@@ -613,9 +623,10 @@
           "note": "stops loaded is a result-set property"
         },
         {
-          "ref": "sm-route-9",
-          "planStepId": "verify-assignment",
-          "domainSourceRef": "nesy.macro.select-route"
+          "ref": "sm-route-8c",
+          "planStepId": "read-local-schedule",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "Room truth: stored, and is it today's"
         },
         {
           "ref": "sm-route-10",
@@ -698,9 +709,10 @@
         "note": "stops loaded is a result-set property"
       },
       {
-        "ref": "sm-route-9",
-        "planStepId": "verify-assignment",
-        "domainSourceRef": "nesy.macro.select-route"
+        "ref": "sm-route-8c",
+        "planStepId": "read-local-schedule",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "Room truth: stored, and is it today's"
       },
       {
         "ref": "sm-route-10",
@@ -725,8 +737,8 @@
           "resolve-confirm",
           "tap-confirm",
           "read-selected-route",
+          "read-local-schedule",
           "read-available-stops",
-          "verify-assignment",
           "assert-selection"
         ],
         "sliceRef": "SELECT_ROUTE",
@@ -761,6 +773,10 @@
       },
       {
         "name": "loadedRows",
+        "type": "stringList"
+      },
+      {
+        "name": "localScheduleRows",
         "type": "stringList"
       },
       {
@@ -987,7 +1003,7 @@
       {
         "planStepId": "tap-confirm",
         "sourceMapRef": "sm-route-8",
-        "next": "read-selected-route",
+        "next": "read-local-schedule",
         "timeoutMs": 25000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -1013,7 +1029,7 @@
       {
         "planStepId": "read-selected-route",
         "sourceMapRef": "sm-route-8a",
-        "next": "read-available-stops",
+        "next": "assert-selection",
         "timeoutMs": 15000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -1036,13 +1052,67 @@
               "kind": "COLUMN",
               "column": "route_selected"
             }
+          },
+          {
+            "factKey": "APP.SCHEDULE_IN_USE",
+            "from": {
+              "kind": "COLUMN",
+              "column": "schedule_in_use"
+            },
+            "correlationColumn": "schedule_id"
+          }
+        ]
+      },
+      {
+        "planStepId": "read-local-schedule",
+        "sourceMapRef": "sm-route-8c",
+        "next": "read-available-stops",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.db.schedule",
+        "maxRows": 1,
+        "outputVariable": "localScheduleRows",
+        "outputFactBindings": [
+          {
+            "factKey": "LOCAL.SCHEDULE_PERSISTED",
+            "from": {
+              "kind": "COLUMN",
+              "column": "schedule_persisted"
+            },
+            "correlationColumn": "schedule_id"
+          },
+          {
+            "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+            "from": {
+              "kind": "COLUMN",
+              "column": "schedule_is_today"
+            },
+            "correlationColumn": "schedule_id"
+          },
+          {
+            "factKey": "LOCAL.SCHEDULE_ROUTE_OBSERVED",
+            "from": {
+              "kind": "COLUMN",
+              "column": "schedule_present"
+            },
+            "correlationColumn": "schedule_route_code"
           }
         ]
       },
       {
         "planStepId": "read-available-stops",
         "sourceMapRef": "sm-route-8b",
-        "next": "verify-assignment",
+        "next": "read-selected-route",
         "timeoutMs": 15000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -1066,65 +1136,6 @@
             }
           }
         ]
-      },
-      {
-        "planStepId": "verify-assignment",
-        "sourceMapRef": "sm-route-9",
-        "next": "assert-selection",
-        "timeoutMs": 30000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [
-          {
-            "capability": "verdict.core.remote.allowlisted-operation",
-            "optional": false
-          }
-        ],
-        "kind": "REMOTE_ACTION",
-        "spec": {
-          "adapterRef": "nesy.backoffice",
-          "operationRef": "nesy.backoffice.read-route-assignment",
-          "role": "VALIDATION",
-          "effectClass": "READ_ONLY",
-          "idempotencyClass": "NATURALLY_IDEMPOTENT",
-          "inputBindings": [
-            {
-              "name": "route",
-              "source": {
-                "kind": "entityRef"
-              }
-            }
-          ],
-          "outputFactBindings": [
-            {
-              "factKey": "REMOTE.ROUTE_ASSIGNED",
-              "responsePath": "assignment.exists"
-            }
-          ],
-          "timeoutPolicy": {
-            "timeoutMs": 20000,
-            "maxAttempts": 2,
-            "backoffMs": 1000
-          },
-          "entityBinding": {
-            "type": "ROUTE",
-            "id": "run.input.routeCode"
-          },
-          "reconciliationPolicy": "NONE",
-          "auditPolicy": {
-            "recordRequest": true,
-            "recordResponse": true,
-            "redactFields": [
-              "assignment.assignedCourierName"
-            ]
-          },
-          "allowedEnvironments": [
-            "qa",
-            "staging"
-          ]
-        }
       },
       {
         "planStepId": "assert-selection",
@@ -1153,14 +1164,25 @@
               "onTimeout": "FAIL"
             },
             {
-              "factKey": "REMOTE.ROUTE_ASSIGNED",
+              "factKey": "LOCAL.SCHEDULE_PERSISTED",
               "obligation": "REQUIRED",
-              "timing": "EVENTUAL",
-              "deadlineMs": 60000,
-              "onTimeout": "INCONCLUSIVE"
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
             },
             {
-              "factKey": "APP.AVAILABLE_STOPS_LOADED",
+              "factKey": "LOCAL.SCHEDULE_IS_TODAY",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "APP.SCHEDULE_IN_USE_IS_TODAYS",
+              "obligation": "REQUIRED",
+              "timing": "IMMEDIATE",
+              "onTimeout": "FAIL"
+            },
+            {
+              "factKey": "APP.SCHEDULE_MATCHES_SELECTED_ROUTE",
               "obligation": "REQUIRED",
               "timing": "IMMEDIATE",
               "onTimeout": "FAIL"
@@ -1282,9 +1304,10 @@
         "note": "stops loaded is a result-set property"
       },
       {
-        "ref": "sm-route-9",
-        "planStepId": "verify-assignment",
-        "domainSourceRef": "nesy.macro.select-route"
+        "ref": "sm-route-8c",
+        "planStepId": "read-local-schedule",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "Room truth: stored, and is it today's"
       },
       {
         "ref": "sm-route-10",
