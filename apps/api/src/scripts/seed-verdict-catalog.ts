@@ -97,7 +97,7 @@ interface CanvasNodeSeed {
   title: string
   subtitle: string
   icon: string
-  config: Record<string, unknown>
+  config: Prisma.InputJsonObject
 }
 
 const LAUNCH_NODE: CanvasNodeSeed = {
@@ -183,16 +183,25 @@ const CANVAS_CHAINS: Record<string, readonly CanvasNodeSeed[]> = {
   ],
 }
 
+/**
+ * The canvas this script has an opinion about, or `null`.
+ *
+ * `null` is not the same as an empty canvas, and the difference is destructive:
+ * the version row is UPSERTED, so returning `{ nodes: [], edges: [] }` for a
+ * workflow with no chain here made a re-seed erase whatever an operator had
+ * drawn. Measured on the shared DB — `nesy.workflow.login` was carrying a
+ * six-node canvas that no version of this script produces.
+ */
 function canvasForWorkflow(workflowKey: string): {
   nodes: Prisma.InputJsonValue
   edges: Prisma.InputJsonValue
-} {
+} | null {
   const chain = CANVAS_CHAINS[workflowKey]
   if (chain === undefined) {
-    return { nodes: [], edges: [] }
+    return null
   }
 
-  const nodes = chain.map((seed, index) => ({
+  const nodes: Prisma.InputJsonValue[] = chain.map((seed, index) => ({
     id: seed.id,
     type: seed.type,
     kind: 'action',
@@ -210,7 +219,7 @@ function canvasForWorkflow(workflowKey: string): {
     connections: [],
   }))
 
-  const edges = chain.slice(0, -1).map((seed, index) => ({
+  const edges: Prisma.InputJsonValue[] = chain.slice(0, -1).map((seed, index) => ({
     id: `${seed.id}-to-${chain[index + 1]!.id}`,
     sourceNodeId: seed.id,
     targetNodeId: chain[index + 1]!.id,
@@ -245,31 +254,29 @@ async function seedWorkflowCatalog(): Promise<void> {
       },
     })
 
+    const config = {
+      source: 'domain-pack-seed',
+      workflowRef: workflow.workflowKey,
+      macroRefs: workflow.macroRefs,
+      fragmentRefs: workflow.fragmentRefs,
+    }
+
     const version = await prisma.workflowVersion.upsert({
       where: { workflowId_version: { workflowId: row.id, version: 1 } },
       create: {
         workflowId: row.id,
         version: 1,
-        nodes: canvas.nodes,
-        edges: canvas.edges,
-        config: {
-          source: 'domain-pack-seed',
-          workflowRef: workflow.workflowKey,
-          macroRefs: workflow.macroRefs,
-          fragmentRefs: workflow.fragmentRefs,
-        },
+        nodes: canvas?.nodes ?? [],
+        edges: canvas?.edges ?? [],
+        config,
         changelog: 'Provisioned from Nesy Courier Domain Pack seed.',
         createdBy: PUBLISHED_BY,
       },
+      // Only the canvas this script authored is re-asserted. A workflow with no
+      // chain above keeps the canvas already stored for it.
       update: {
-        nodes: canvas.nodes,
-        edges: canvas.edges,
-        config: {
-          source: 'domain-pack-seed',
-          workflowRef: workflow.workflowKey,
-          macroRefs: workflow.macroRefs,
-          fragmentRefs: workflow.fragmentRefs,
-        },
+        ...(canvas === null ? {} : { nodes: canvas.nodes, edges: canvas.edges }),
+        config,
         changelog: 'Provisioned from Nesy Courier Domain Pack seed.',
       },
     })
