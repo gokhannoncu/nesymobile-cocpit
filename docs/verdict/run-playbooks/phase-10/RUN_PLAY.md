@@ -13,7 +13,7 @@ timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.19.2"
+domainPackVersion: "1.20.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -1217,6 +1217,70 @@ L3+L4'ü de kapatır.
 Rota diyaloğunda geri tuşu diyaloğu kapatmakla kalmıyor, **oturumu düşürüyor**
 (`is_logged_in` false). Teşhis sırasında ölçüldü. Diyalogda `back` gönderen bir
 adım, önkoşulu sessizce yok eder.
+
+### 5.0q PROCESS_PARCEL tek bir dala daraltıldı (1.20.0) — koşu enjeksiyonda takılı
+
+**Önce harita çıkarıldı.** Durakta bir barkod okutmak tek akış değil: task
+sayfasındaki `whenBarcodeDetect` yaklaşık **yirmi** sonuca ayrılıyor — pickup,
+return document, D4M/LOS, force load, labelless, gray label — ve dallar ülkeye
+(`RS/HR/SI/BA/ME/AZ/BG`; B2 kontrolü SI'yi hariç tutuyor), schedule statüsüne,
+task tipine, item durumuna/konumuna, pickup tipine, `counterLocationType`'a, PAK
+header'a, offline moda ve assistant-courier bayrağına göre bölünüyor.
+
+Üç bulgu haritanın kendisinden daha önemli:
+
+**1. `ScanProcessor` bu sayfada YOK** — yalnız `StopListFragment`'ın. Zimmet
+ağacının tamamı task sayfasından erişilemez. Makro bir tarayıcı yüzeyi
+bekliyordu; o ekranı bu dilim hiç ziyaret etmiyor.
+
+**2. `APP.PARCEL_SCANNED` yönlendirmeden ÖNCE, kabul edilen her tarama için
+yayınlanıyor** (`MainActivity` ~1636). Makronun bugün çalışan tek fact'i buydu.
+Yani sadece ona dayanan bir koşu, **hiçbir şey yapmayıp toast gösteren dallarda
+da yeşil verirdi.** Kanıt üretmeden geçen bir test.
+
+**3. `getTransaction` saf sınıflandırıcı değil — mutasyon yapıp kaydediyor**
+(`SharedViewModel` ~1754, ~1792). Fiili döndürmeden önce item durumunu değiştirip
+schedule'ı diske yazıyor. Koşu sonra reddedilse bile DB değişmiş oluyor.
+
+**Seçilen dal: C3 — teslim.** Durakta okutulan parça teslim akışını açar. Dilim
+ülkeye bağlı DEĞİL (koşulları item durumu/konumu, schedule statüsü, task tipi);
+yalnızca RS cihazında koşuluyor. Ülkeye bağlı komşular (`B2` return-document,
+`B3a/C6` PAK+peşin ödeme, LOS) açıkça kapsam dışı.
+
+**Yeni ayırt edici: `APP.DELIVERY_FLOW_STARTED`.** Cihaza boolean `delivery_started`
+ve korelasyon için `barcode` eklendi (`DELIVERY_STARTED` teli; tek ad, tek anlam,
+boolean değer — `VEHICLE_LOADING_STEP` dersi).
+
+**`APP.SCHEDULE_STATUS_APPROVED` oracle'a REQUIRED olarak girdi.** `Delivery` ile
+`Already_Load`'u ayıran **tek** alan `scheduleStatus == Approved(2)`
+(`SharedViewModel` ~1766 vs ~1773) ve ekranda görünmüyor. Dün eklenen fact'in
+asıl işi buymuş.
+
+**İki gereklilik yanlıştı, eksik değil.** `LOCAL.PARCEL_RECORD_PERSISTED` bu
+dalın yapmadığı bir yerel yazmayı istiyordu — kaldırıldı.
+`APP.SESSION_ISOLATION_ASSERTED` istenmesi doğruydu ama makro
+`nesy.assert.release-isolation`'ı hiç çağırmıyordu, yani yalnız zaman aşımına
+uğrayabilirdi; artık çağırıyor. Enjeksiyon yapan tek dilimde bu en çok önemli
+olan: o dikiş release'e sızarsa, suite gerçek kuryenin giremediği bir yolu
+kanıtlıyor olurdu.
+
+### 5.0r AÇIK — cihaz komutlarının host'ta çalıştırıcısı yok
+
+Koşu `inject-payload`'da düşüyor, cihaza hiç ulaşmadan. Sebep sınıfı tanıdık ama
+şekli yeni:
+
+`nesy.setup.scanner-inject` cihazda bir **komut** (`NesyAppAdapterCommands` ~618,
+`nesy.assert.release-isolation` ve `nesy.setup.prepared-session` ile aynı aile).
+Pack ise onu bir **adapter operasyonu** olarak REMOTE_ACTION ile çağırıyor — ve
+host'un tek uzak adaptörü back-office HTTP'si, bu ref için endpoint'i yok.
+
+Yol zaten var ve kullanılıyor: launch profile önkoşullarını
+`controlExecutor.run(deviceId, { op: 'seed', … })` ile kuruyor
+(`bridgeflow-execution-queue.ts` ~323). Eksik olan, operationRef'i bir cihaz
+komutu olan REMOTE_ACTION adımlarını o yola bağlamak.
+
+**Uyarı:** bu turda eklediğim `assert-release-isolation` adımı **aynı aileden** ve
+aynı sebeple düşecek. İkisi tek düzeltmeyle açılır; ayrı ayrı kovalanmamalı.
 
 ### 5.2 Sonra — shipment gerektiren iki iş akışı
 

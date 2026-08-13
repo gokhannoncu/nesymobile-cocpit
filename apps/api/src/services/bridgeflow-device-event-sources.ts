@@ -130,6 +130,7 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
     valueField: 'scan_accepted',
+    correlationField: 'barcode',
   })
   registry.register({
     sourceEvent: 'DELIVERY_UI_COMPLETED',
@@ -140,6 +141,24 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
     valueField: 'delivery_submitted',
+  })
+  // WHICH flow a scan at a stop started.
+  //
+  // `PARCEL_SCANNED` is emitted for every accepted scan BEFORE the app routes it,
+  // so a slice resting on it alone goes green on branches that show a toast and
+  // do nothing. Mapped 2026-08-13: `whenBarcodeDetect` has roughly twenty
+  // outcomes and most of them emit nothing whatsoever. This wire is what
+  // distinguishes the delivery branch from its neighbours.
+  registry.register({
+    sourceEvent: 'DELIVERY_STARTED',
+    factKey: 'APP.DELIVERY_FLOW_STARTED',
+    plane: 'APP',
+    subtype: 'delivery-started',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField: 'delivery_started',
+    correlationField: 'barcode',
   })
   registry.register({
     sourceEvent: 'TOUR_STARTED',

@@ -78,6 +78,16 @@ export const NESY_FACTS = {
   PARCEL_SCANNED: "APP.PARCEL_SCANNED",
   PARCEL_STATE_PROCESSED: "APP.PARCEL_STATE_PROCESSED",
   DELIVERY_SUBMITTED: "APP.DELIVERY_SUBMITTED",
+  /**
+   * The scan at a stop opened the DELIVERY flow.
+   *
+   * Not the same claim as [PARCEL_SCANNED], which fires for every accepted scan
+   * before the app decides what the barcode means. Roughly twenty branches leave
+   * `whenBarcodeDetect` — pickup, return document, D4M/LOS, force load, and a
+   * long tail that only shows a toast — and most emit nothing. This says which
+   * one ran.
+   */
+  DELIVERY_FLOW_STARTED: "APP.DELIVERY_FLOW_STARTED",
   TOUR_APPROVAL_REQUESTED: "APP.TOUR_APPROVAL_REQUESTED",
   TOUR_APPROVAL_PUSH_RECEIVED: "APP.TOUR_APPROVAL_PUSH_RECEIVED",
   /**

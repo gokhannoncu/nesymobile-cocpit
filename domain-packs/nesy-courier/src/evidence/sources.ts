@@ -203,6 +203,27 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
+    /**
+     * WHICH flow the scan started, as opposed to that a scan happened.
+     *
+     * `nesy.app.scan-accepted` above fires for every accepted scan before the app
+     * routes it, so a slice resting on it alone passes on branches that show a
+     * toast and change nothing. This source is the discriminator.
+     */
+    sourceKey: "nesy.app.delivery-started",
+    plane: "APP",
+    kind: "SDK_EVENT",
+    authority: "PRIMARY",
+    displayName: "Delivery flow started by a scan",
+    factKey: NESY_FACTS.DELIVERY_FLOW_STARTED,
+    observationRef: "nesy.events.critical/delivery-started",
+    freshness: APP_FRESHNESS,
+    correlation: ENTITY_CORRELATION,
+    redaction: { redactPaths: ["taskParty"], hashPaths: ["barcode"] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
+  },
+  {
     sourceKey: "nesy.app.parcel-state",
     plane: "APP",
     kind: "NAMED_QUERY",

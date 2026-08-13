@@ -106,19 +106,23 @@
       ],
       "variables": [
         {
-          "name": "triggerHandle",
+          "name": "manualEntryHandle",
           "type": "string"
         },
         {
-          "name": "itemStateRows",
-          "type": "stringList"
+          "name": "scanFieldHandle",
+          "type": "string"
+        },
+        {
+          "name": "confirmHandle",
+          "type": "string"
         }
       ],
       "steps": [
         {
-          "planStepId": "wait-scanner",
+          "planStepId": "wait-task-list",
           "sourceMapRef": "sm-scan-1",
-          "next": "resolve-trigger",
+          "next": "resolve-manual-entry",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -126,16 +130,16 @@
           },
           "capabilityRequirements": [],
           "kind": "WAIT_EVENT",
-          "factKey": "UI.SCANNER_SURFACE_READY",
+          "factKey": "UI.TASK_LIST_READY",
           "sourceLane": "UI",
           "stableForMs": 200,
           "requireCorrelation": false,
           "onTimeout": "FAIL"
         },
         {
-          "planStepId": "resolve-trigger",
+          "planStepId": "resolve-manual-entry",
           "sourceMapRef": "sm-scan-2",
-          "next": "inject-payload",
+          "next": "tap-manual-entry",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -148,109 +152,121 @@
             }
           ],
           "kind": "RESOLVE_TARGET",
-          "targetRef": "nesy.target.scan-trigger",
-          "outputVariable": "triggerHandle"
+          "targetRef": "nesy.target.manual-barcode-entry",
+          "outputVariable": "manualEntryHandle"
         },
         {
-          "planStepId": "inject-payload",
+          "planStepId": "tap-manual-entry",
           "sourceMapRef": "sm-scan-3",
-          "next": "await-accepted",
-          "timeoutMs": 20000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "IDEMPOTENT_MUTATION"
-          },
-          "capabilityRequirements": [
-            {
-              "capability": "domain.nesy.scanner.inject",
-              "optional": false
-            }
-          ],
-          "kind": "REMOTE_ACTION",
-          "spec": {
-            "adapterRef": "nesy.courier.app-adapter",
-            "operationRef": "nesy.setup.scanner-inject",
-            "role": "SETUP",
-            "effectClass": "IDEMPOTENT_MUTATION",
-            "idempotencyClass": "KEYED",
-            "idempotencyKey": "run.input.scanPayload",
-            "inputBindings": [
-              {
-                "name": "scanPayload",
-                "source": {
-                  "kind": "runInput",
-                  "path": "scanPayload"
-                }
-              }
-            ],
-            "outputFactBindings": [],
-            "timeoutPolicy": {
-              "timeoutMs": 15000,
-              "maxAttempts": 1
-            },
-            "reconciliationPolicy": "RECONCILE_ON_UNKNOWN",
-            "auditPolicy": {
-              "recordRequest": true,
-              "recordResponse": true,
-              "redactFields": [
-                "scanPayload"
-              ]
-            },
-            "allowedEnvironments": [
-              "qa",
-              "automation"
-            ]
-          }
-        },
-        {
-          "planStepId": "await-accepted",
-          "sourceMapRef": "sm-scan-4",
-          "next": "read-item-state",
-          "timeoutMs": 25000,
+          "next": "resolve-scan-field",
+          "timeoutMs": 15000,
           "retryPolicy": {
             "maxAttempts": 1,
             "effectClass": "READ_ONLY"
           },
-          "capabilityRequirements": [],
-          "kind": "WAIT_EVENT",
-          "factKey": "APP.PARCEL_SCANNED",
-          "sourceLane": "APP",
-          "requireCorrelation": true,
-          "onTimeout": "FAIL",
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "manualEntryHandle"
+        },
+        {
+          "planStepId": "resolve-scan-field",
+          "sourceMapRef": "sm-scan-3a",
+          "next": "enter-scan-value",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.barcode-input-field",
+          "outputVariable": "scanFieldHandle"
+        },
+        {
+          "planStepId": "enter-scan-value",
+          "sourceMapRef": "sm-scan-3b",
+          "next": "resolve-input-confirm",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.set-text",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "setText",
+          "targetVariable": "scanFieldHandle",
+          "args": {
+            "valueRef": "run.input.scanPayload"
+          }
+        },
+        {
+          "planStepId": "resolve-input-confirm",
+          "sourceMapRef": "sm-scan-3c",
+          "next": "tap-input-confirm",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.barcode-input-confirm",
+          "outputVariable": "confirmHandle"
+        },
+        {
+          "planStepId": "tap-input-confirm",
+          "sourceMapRef": "sm-scan-3d",
+          "next": "assert-delivery-started",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "confirmHandle",
           "entityBinding": {
             "type": "PARCEL",
             "id": "run.input.scanPayload"
           },
           "continueGate": {
             "allOf": [
-              "APP.PARCEL_SCANNED"
+              "APP.PARCEL_SCANNED",
+              "APP.DELIVERY_FLOW_STARTED"
             ],
-            "deadlineMs": 25000,
+            "deadlineMs": 30000,
             "unknownPolicy": "RETRY"
           }
         },
         {
-          "planStepId": "read-item-state",
-          "sourceMapRef": "sm-scan-5",
-          "next": "assert-processed",
-          "timeoutMs": 20000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [
-            {
-              "capability": "domain.nesy.adapter.named-query",
-              "optional": false
-            }
-          ],
-          "kind": "SDK_QUERY",
-          "queryRef": "nesy.parcelState",
-          "maxRows": 20,
-          "outputVariable": "itemStateRows"
-        },
-        {
-          "planStepId": "assert-processed",
+          "planStepId": "assert-delivery-started",
           "sourceMapRef": "sm-scan-6",
           "next": null,
           "timeoutMs": 20000,
@@ -260,7 +276,7 @@
           },
           "capabilityRequirements": [],
           "kind": "ASSERT_FACT",
-          "factKey": "APP.PARCEL_STATE_PROCESSED",
+          "factKey": "APP.DELIVERY_FLOW_STARTED",
           "expected": true,
           "unknownPolicy": "FAIL",
           "entityBinding": {
@@ -270,35 +286,30 @@
           "finalOraclePolicy": {
             "requirements": [
               {
-                "factKey": "APP.PARCEL_STATE_PROCESSED",
-                "obligation": "REQUIRED",
-                "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
-              },
-              {
                 "factKey": "APP.PARCEL_SCANNED",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
                 "onTimeout": "FAIL"
               },
               {
-                "factKey": "LOCAL.PARCEL_RECORD_PERSISTED",
+                "factKey": "APP.DELIVERY_FLOW_STARTED",
                 "obligation": "REQUIRED",
                 "timing": "EVENTUAL",
                 "deadlineMs": 30000,
                 "onTimeout": "INCONCLUSIVE"
               },
               {
-                "factKey": "APP.SESSION_ISOLATION_ASSERTED",
-                "obligation": "REQUIRED",
-                "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
+                "factKey": "APP.SCHEDULE_STATUS_APPROVED",
+                "obligation": "WARNING",
+                "timing": "EVENTUAL",
+                "deadlineMs": 20000,
+                "onTimeout": "WARNING"
               }
             ]
           }
         },
         {
-          "planStepId": "clear-injection",
+          "planStepId": "close-input",
           "sourceMapRef": "sm-scan-7",
           "next": null,
           "timeoutMs": 20000,
@@ -309,12 +320,12 @@
           "capabilityRequirements": [],
           "kind": "CLEANUP",
           "compensatesStepIds": [
-            "inject-payload"
+            "tap-input-confirm"
           ],
           "runOnFailure": true
         }
       ],
-      "entryStepId": "wait-scanner",
+      "entryStepId": "wait-task-list",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -343,46 +354,70 @@
           "optional": false
         },
         {
-          "capability": "domain.nesy.scanner.inject",
+          "capability": "verdict.core.bridge.resolve-target",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.tap",
+          "optional": false
+        },
+        {
+          "capability": "verdict.core.bridge.set-text",
           "optional": false
         }
       ],
       "sourceMap": [
         {
           "ref": "sm-scan-1",
-          "planStepId": "wait-scanner",
-          "domainSourceRef": "nesy.macro.process-parcel"
+          "planStepId": "wait-task-list",
+          "domainSourceRef": "nesy.macro.process-parcel",
+          "note": "the task page, not a scanner surface"
         },
         {
           "ref": "sm-scan-2",
-          "planStepId": "resolve-trigger",
-          "domainSourceRef": "nesy.macro.process-parcel"
+          "planStepId": "resolve-manual-entry",
+          "domainSourceRef": "nesy.macro.process-parcel",
+          "note": "the product's own input path, not a seam"
         },
         {
           "ref": "sm-scan-3",
-          "planStepId": "inject-payload",
-          "domainSourceRef": "nesy.macro.process-parcel",
-          "note": "SETUP role: arranges input, produces no evidence"
-        },
-        {
-          "ref": "sm-scan-4",
-          "planStepId": "await-accepted",
-          "domainSourceRef": "nesy.macro.process-parcel",
-          "note": "the product's own reaction"
-        },
-        {
-          "ref": "sm-scan-5",
-          "planStepId": "read-item-state",
+          "planStepId": "tap-manual-entry",
           "domainSourceRef": "nesy.macro.process-parcel"
         },
         {
+          "ref": "sm-scan-3a",
+          "planStepId": "resolve-scan-field",
+          "domainSourceRef": "nesy.macro.process-parcel"
+        },
+        {
+          "ref": "sm-scan-3b",
+          "planStepId": "enter-scan-value",
+          "domainSourceRef": "nesy.macro.process-parcel"
+        },
+        {
+          "ref": "sm-scan-3c",
+          "planStepId": "resolve-input-confirm",
+          "domainSourceRef": "nesy.macro.process-parcel"
+        },
+        {
+          "ref": "sm-scan-3d",
+          "planStepId": "tap-input-confirm",
+          "domainSourceRef": "nesy.macro.process-parcel"
+        },
+        {
+          "ref": "sm-scan-4",
+          "planStepId": "assert-delivery-started",
+          "domainSourceRef": "nesy.macro.process-parcel",
+          "note": "WHICH branch ran"
+        },
+        {
           "ref": "sm-scan-6",
-          "planStepId": "assert-processed",
+          "planStepId": "assert-delivery-started",
           "domainSourceRef": "nesy.macro.process-parcel"
         },
         {
           "ref": "sm-scan-7",
-          "planStepId": "clear-injection",
+          "planStepId": "close-input",
           "domainSourceRef": "nesy.macro.process-parcel"
         }
       ]
@@ -390,39 +425,55 @@
     "irSourceMap": [
       {
         "ref": "sm-scan-1",
-        "planStepId": "wait-scanner",
-        "domainSourceRef": "nesy.macro.process-parcel"
+        "planStepId": "wait-task-list",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "the task page, not a scanner surface"
       },
       {
         "ref": "sm-scan-2",
-        "planStepId": "resolve-trigger",
-        "domainSourceRef": "nesy.macro.process-parcel"
+        "planStepId": "resolve-manual-entry",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "the product's own input path, not a seam"
       },
       {
         "ref": "sm-scan-3",
-        "planStepId": "inject-payload",
-        "domainSourceRef": "nesy.macro.process-parcel",
-        "note": "SETUP role: arranges input, produces no evidence"
-      },
-      {
-        "ref": "sm-scan-4",
-        "planStepId": "await-accepted",
-        "domainSourceRef": "nesy.macro.process-parcel",
-        "note": "the product's own reaction"
-      },
-      {
-        "ref": "sm-scan-5",
-        "planStepId": "read-item-state",
+        "planStepId": "tap-manual-entry",
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
+        "ref": "sm-scan-3a",
+        "planStepId": "resolve-scan-field",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3b",
+        "planStepId": "enter-scan-value",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3c",
+        "planStepId": "resolve-input-confirm",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3d",
+        "planStepId": "tap-input-confirm",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-4",
+        "planStepId": "assert-delivery-started",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "WHICH branch ran"
+      },
+      {
         "ref": "sm-scan-6",
-        "planStepId": "assert-processed",
+        "planStepId": "assert-delivery-started",
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
         "ref": "sm-scan-7",
-        "planStepId": "clear-injection",
+        "planStepId": "close-input",
         "domainSourceRef": "nesy.macro.process-parcel"
       }
     ],
@@ -431,13 +482,15 @@
         "ref": "ds-scan-1",
         "macroRef": "nesy.macro.process-parcel",
         "planStepIds": [
-          "wait-scanner",
-          "resolve-trigger",
-          "inject-payload",
-          "await-accepted",
-          "read-item-state",
-          "assert-processed",
-          "clear-injection"
+          "wait-task-list",
+          "resolve-manual-entry",
+          "tap-manual-entry",
+          "resolve-scan-field",
+          "enter-scan-value",
+          "resolve-input-confirm",
+          "tap-input-confirm",
+          "assert-delivery-started",
+          "close-input"
         ],
         "sliceRef": "PROCESS_PARCEL",
         "note": "Setup injection is separated from the evidence-producing wait and query."
@@ -468,19 +521,23 @@
     ],
     "variables": [
       {
-        "name": "triggerHandle",
+        "name": "manualEntryHandle",
         "type": "string"
       },
       {
-        "name": "itemStateRows",
-        "type": "stringList"
+        "name": "scanFieldHandle",
+        "type": "string"
+      },
+      {
+        "name": "confirmHandle",
+        "type": "string"
       }
     ],
     "steps": [
       {
-        "planStepId": "wait-scanner",
+        "planStepId": "wait-task-list",
         "sourceMapRef": "sm-scan-1",
-        "next": "resolve-trigger",
+        "next": "resolve-manual-entry",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -488,16 +545,16 @@
         },
         "capabilityRequirements": [],
         "kind": "WAIT_EVENT",
-        "factKey": "UI.SCANNER_SURFACE_READY",
+        "factKey": "UI.TASK_LIST_READY",
         "sourceLane": "UI",
         "stableForMs": 200,
         "requireCorrelation": false,
         "onTimeout": "FAIL"
       },
       {
-        "planStepId": "resolve-trigger",
+        "planStepId": "resolve-manual-entry",
         "sourceMapRef": "sm-scan-2",
-        "next": "inject-payload",
+        "next": "tap-manual-entry",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -510,109 +567,121 @@
           }
         ],
         "kind": "RESOLVE_TARGET",
-        "targetRef": "nesy.target.scan-trigger",
-        "outputVariable": "triggerHandle"
+        "targetRef": "nesy.target.manual-barcode-entry",
+        "outputVariable": "manualEntryHandle"
       },
       {
-        "planStepId": "inject-payload",
+        "planStepId": "tap-manual-entry",
         "sourceMapRef": "sm-scan-3",
-        "next": "await-accepted",
-        "timeoutMs": 20000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "IDEMPOTENT_MUTATION"
-        },
-        "capabilityRequirements": [
-          {
-            "capability": "domain.nesy.scanner.inject",
-            "optional": false
-          }
-        ],
-        "kind": "REMOTE_ACTION",
-        "spec": {
-          "adapterRef": "nesy.courier.app-adapter",
-          "operationRef": "nesy.setup.scanner-inject",
-          "role": "SETUP",
-          "effectClass": "IDEMPOTENT_MUTATION",
-          "idempotencyClass": "KEYED",
-          "idempotencyKey": "run.input.scanPayload",
-          "inputBindings": [
-            {
-              "name": "scanPayload",
-              "source": {
-                "kind": "runInput",
-                "path": "scanPayload"
-              }
-            }
-          ],
-          "outputFactBindings": [],
-          "timeoutPolicy": {
-            "timeoutMs": 15000,
-            "maxAttempts": 1
-          },
-          "reconciliationPolicy": "RECONCILE_ON_UNKNOWN",
-          "auditPolicy": {
-            "recordRequest": true,
-            "recordResponse": true,
-            "redactFields": [
-              "scanPayload"
-            ]
-          },
-          "allowedEnvironments": [
-            "qa",
-            "automation"
-          ]
-        }
-      },
-      {
-        "planStepId": "await-accepted",
-        "sourceMapRef": "sm-scan-4",
-        "next": "read-item-state",
-        "timeoutMs": 25000,
+        "next": "resolve-scan-field",
+        "timeoutMs": 15000,
         "retryPolicy": {
           "maxAttempts": 1,
           "effectClass": "READ_ONLY"
         },
-        "capabilityRequirements": [],
-        "kind": "WAIT_EVENT",
-        "factKey": "APP.PARCEL_SCANNED",
-        "sourceLane": "APP",
-        "requireCorrelation": true,
-        "onTimeout": "FAIL",
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "manualEntryHandle"
+      },
+      {
+        "planStepId": "resolve-scan-field",
+        "sourceMapRef": "sm-scan-3a",
+        "next": "enter-scan-value",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.barcode-input-field",
+        "outputVariable": "scanFieldHandle"
+      },
+      {
+        "planStepId": "enter-scan-value",
+        "sourceMapRef": "sm-scan-3b",
+        "next": "resolve-input-confirm",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.set-text",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "setText",
+        "targetVariable": "scanFieldHandle",
+        "args": {
+          "valueRef": "run.input.scanPayload"
+        }
+      },
+      {
+        "planStepId": "resolve-input-confirm",
+        "sourceMapRef": "sm-scan-3c",
+        "next": "tap-input-confirm",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.barcode-input-confirm",
+        "outputVariable": "confirmHandle"
+      },
+      {
+        "planStepId": "tap-input-confirm",
+        "sourceMapRef": "sm-scan-3d",
+        "next": "assert-delivery-started",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "confirmHandle",
         "entityBinding": {
           "type": "PARCEL",
           "id": "run.input.scanPayload"
         },
         "continueGate": {
           "allOf": [
-            "APP.PARCEL_SCANNED"
+            "APP.PARCEL_SCANNED",
+            "APP.DELIVERY_FLOW_STARTED"
           ],
-          "deadlineMs": 25000,
+          "deadlineMs": 30000,
           "unknownPolicy": "RETRY"
         }
       },
       {
-        "planStepId": "read-item-state",
-        "sourceMapRef": "sm-scan-5",
-        "next": "assert-processed",
-        "timeoutMs": 20000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [
-          {
-            "capability": "domain.nesy.adapter.named-query",
-            "optional": false
-          }
-        ],
-        "kind": "SDK_QUERY",
-        "queryRef": "nesy.parcelState",
-        "maxRows": 20,
-        "outputVariable": "itemStateRows"
-      },
-      {
-        "planStepId": "assert-processed",
+        "planStepId": "assert-delivery-started",
         "sourceMapRef": "sm-scan-6",
         "next": null,
         "timeoutMs": 20000,
@@ -622,7 +691,7 @@
         },
         "capabilityRequirements": [],
         "kind": "ASSERT_FACT",
-        "factKey": "APP.PARCEL_STATE_PROCESSED",
+        "factKey": "APP.DELIVERY_FLOW_STARTED",
         "expected": true,
         "unknownPolicy": "FAIL",
         "entityBinding": {
@@ -632,35 +701,30 @@
         "finalOraclePolicy": {
           "requirements": [
             {
-              "factKey": "APP.PARCEL_STATE_PROCESSED",
-              "obligation": "REQUIRED",
-              "timing": "IMMEDIATE",
-              "onTimeout": "FAIL"
-            },
-            {
               "factKey": "APP.PARCEL_SCANNED",
               "obligation": "REQUIRED",
               "timing": "IMMEDIATE",
               "onTimeout": "FAIL"
             },
             {
-              "factKey": "LOCAL.PARCEL_RECORD_PERSISTED",
+              "factKey": "APP.DELIVERY_FLOW_STARTED",
               "obligation": "REQUIRED",
               "timing": "EVENTUAL",
               "deadlineMs": 30000,
               "onTimeout": "INCONCLUSIVE"
             },
             {
-              "factKey": "APP.SESSION_ISOLATION_ASSERTED",
-              "obligation": "REQUIRED",
-              "timing": "IMMEDIATE",
-              "onTimeout": "FAIL"
+              "factKey": "APP.SCHEDULE_STATUS_APPROVED",
+              "obligation": "WARNING",
+              "timing": "EVENTUAL",
+              "deadlineMs": 20000,
+              "onTimeout": "WARNING"
             }
           ]
         }
       },
       {
-        "planStepId": "clear-injection",
+        "planStepId": "close-input",
         "sourceMapRef": "sm-scan-7",
         "next": null,
         "timeoutMs": 20000,
@@ -671,12 +735,12 @@
         "capabilityRequirements": [],
         "kind": "CLEANUP",
         "compensatesStepIds": [
-          "inject-payload"
+          "tap-input-confirm"
         ],
         "runOnFailure": true
       }
     ],
-    "entryStepId": "wait-scanner",
+    "entryStepId": "wait-task-list",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -705,46 +769,70 @@
         "optional": false
       },
       {
-        "capability": "domain.nesy.scanner.inject",
+        "capability": "verdict.core.bridge.resolve-target",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.tap",
+        "optional": false
+      },
+      {
+        "capability": "verdict.core.bridge.set-text",
         "optional": false
       }
     ],
     "sourceMap": [
       {
         "ref": "sm-scan-1",
-        "planStepId": "wait-scanner",
-        "domainSourceRef": "nesy.macro.process-parcel"
+        "planStepId": "wait-task-list",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "the task page, not a scanner surface"
       },
       {
         "ref": "sm-scan-2",
-        "planStepId": "resolve-trigger",
-        "domainSourceRef": "nesy.macro.process-parcel"
+        "planStepId": "resolve-manual-entry",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "the product's own input path, not a seam"
       },
       {
         "ref": "sm-scan-3",
-        "planStepId": "inject-payload",
-        "domainSourceRef": "nesy.macro.process-parcel",
-        "note": "SETUP role: arranges input, produces no evidence"
-      },
-      {
-        "ref": "sm-scan-4",
-        "planStepId": "await-accepted",
-        "domainSourceRef": "nesy.macro.process-parcel",
-        "note": "the product's own reaction"
-      },
-      {
-        "ref": "sm-scan-5",
-        "planStepId": "read-item-state",
+        "planStepId": "tap-manual-entry",
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
+        "ref": "sm-scan-3a",
+        "planStepId": "resolve-scan-field",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3b",
+        "planStepId": "enter-scan-value",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3c",
+        "planStepId": "resolve-input-confirm",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-3d",
+        "planStepId": "tap-input-confirm",
+        "domainSourceRef": "nesy.macro.process-parcel"
+      },
+      {
+        "ref": "sm-scan-4",
+        "planStepId": "assert-delivery-started",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "WHICH branch ran"
+      },
+      {
         "ref": "sm-scan-6",
-        "planStepId": "assert-processed",
+        "planStepId": "assert-delivery-started",
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
         "ref": "sm-scan-7",
-        "planStepId": "clear-injection",
+        "planStepId": "close-input",
         "domainSourceRef": "nesy.macro.process-parcel"
       }
     ]
@@ -758,19 +846,29 @@
     ],
     "legs": [
       {
-        "planStepId": "wait-scanner",
+        "planStepId": "wait-task-list",
         "bridgeVerb": "watch",
-        "awaitFactKey": "UI.SCANNER_SURFACE_READY"
+        "awaitFactKey": "UI.TASK_LIST_READY"
       },
       {
-        "planStepId": "resolve-trigger",
-        "bridgeVerb": "resolveTarget",
-        "targetRef": "nesy.target.scan-trigger"
+        "planStepId": "tap-manual-entry",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.manual-barcode-entry"
       },
       {
-        "planStepId": "await-accepted",
-        "bridgeVerb": "watch",
-        "awaitFactKey": "APP.PARCEL_SCANNED"
+        "planStepId": "enter-scan-value",
+        "bridgeVerb": "setText",
+        "targetRef": "nesy.target.barcode-input-field"
+      },
+      {
+        "planStepId": "tap-input-confirm",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.barcode-input-confirm"
+      },
+      {
+        "planStepId": "tap-input-confirm",
+        "bridgeVerb": "tap",
+        "awaitFactKey": "APP.DELIVERY_FLOW_STARTED"
       }
     ]
   },

@@ -40,112 +40,182 @@ export const NESY_PROCESS_PARCEL_MACRO_KEY = "nesy.macro.process-parcel";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
-    ...stepBase({ planStepId: "wait-scanner", sourceMapRef: "sm-scan-1", next: "resolve-trigger", timeoutMs: 20_000 }),
+    /**
+     * The TASK LIST, not a scanner surface.
+     *
+     * Mapped 2026-08-13: `ScanProcessor` — the scanner surface and its whole
+     * DELY/DELR/STOR/LOST tree — belongs to `StopListFragment` and is
+     * unreachable from the task page. A scan here arrives through
+     * `MainActivity.onBarcodeRead` and is dispatched to `TaskListFragment`, so
+     * waiting for a scanner surface was waiting for a screen this slice never
+     * visits.
+     */
+    ...stepBase({ planStepId: "wait-task-list", sourceMapRef: "sm-scan-1", next: "resolve-manual-entry", timeoutMs: 20_000 }),
     kind: "WAIT_EVENT",
-    factKey: NESY_FACTS.SCANNER_SURFACE_READY,
+    factKey: NESY_FACTS.TASK_LIST_READY,
     sourceLane: "UI",
     stableForMs: 200,
     requireCorrelation: false,
     onTimeout: "FAIL",
   },
   {
+    /**
+     * THE PRODUCT'S OWN INPUT PATH, not an automation seam.
+     *
+     * This slice used to inject the scan through `nesy.setup.scanner-inject` —
+     * an automation-only backdoor that then had to be justified by asserting
+     * release isolation, and that the host had no runtime for anyway (the ref is
+     * a DEVICE COMMAND while the macro called it as an adapter operation).
+     *
+     * Measured 2026-08-13: the task page carries the SAME manual-entry control
+     * the stop list does — `manuel_input` opens `et_input_dialog_barcode_number`
+     * with `btn_ok` — and typing the barcode there produced exactly the sequence
+     * the slice is about: `PARCEL_SCANNED`, then `SCREEN_READY`, then
+     * `DELIVERY_STARTED`, with the delivery screen on screen.
+     *
+     * So there is no seam to isolate, no adapter to wire, and no backdoor to
+     * explain: a courier can type a barcode, and now so does the test. The
+     * `SESSION_ISOLATION_ASSERTED` requirement went with the injection — it
+     * guarded a risk this slice no longer takes.
+     */
     ...stepBase({
-      planStepId: "resolve-trigger",
+      planStepId: "resolve-manual-entry",
       sourceMapRef: "sm-scan-2",
-      next: "inject-payload",
+      next: "tap-manual-entry",
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
     }),
     kind: "RESOLVE_TARGET",
-    targetRef: NESY_TARGETS.scanTrigger,
-    outputVariable: "triggerHandle",
+    targetRef: NESY_TARGETS.manualBarcodeEntry,
+    outputVariable: "manualEntryHandle",
   },
   {
-    // SETUP role, zero output facts. See the header: the harness arranges the
-    // input, the product supplies the evidence.
     ...stepBase({
-      planStepId: "inject-payload",
+      planStepId: "tap-manual-entry",
       sourceMapRef: "sm-scan-3",
-      next: "await-accepted",
-      timeoutMs: 20_000,
-      retryPolicy: KEYED_MUTATION_RETRY,
-      capabilityRequirements: [requires("domain.nesy.scanner.inject")],
+      next: "resolve-scan-field",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
-    kind: "REMOTE_ACTION",
-    spec: {
-      adapterRef: NESY_COURIER_ADAPTER_REF,
-      operationRef: NESY_ADAPTER_SETUP_REFS.scannerInject,
-      role: "SETUP",
-      effectClass: "IDEMPOTENT_MUTATION",
-      idempotencyClass: "KEYED",
-      idempotencyKey: "run.input.scanPayload",
-      inputBindings: [{ name: "scanPayload", source: { kind: "runInput", path: "scanPayload" } }],
-      outputFactBindings: [],
-      timeoutPolicy: { timeoutMs: 15_000, maxAttempts: 1 },
-      reconciliationPolicy: "RECONCILE_ON_UNKNOWN",
-      auditPolicy: { recordRequest: true, recordResponse: true, redactFields: ["scanPayload"] },
-      allowedEnvironments: ["qa", "automation"],
-    },
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "manualEntryHandle",
   },
   {
-    ...stepBase({ planStepId: "await-accepted", sourceMapRef: "sm-scan-4", next: "read-item-state", timeoutMs: 25_000 }),
-    kind: "WAIT_EVENT",
-    factKey: NESY_FACTS.PARCEL_SCANNED,
-    sourceLane: "APP",
-    // Correlated: in a multi-item stop, a late event from an earlier item would
-    // otherwise close this one.
-    requireCorrelation: true,
-    onTimeout: "FAIL",
+    ...stepBase({
+      planStepId: "resolve-scan-field",
+      sourceMapRef: "sm-scan-3a",
+      next: "enter-scan-value",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.barcodeInputField,
+    outputVariable: "scanFieldHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "enter-scan-value",
+      sourceMapRef: "sm-scan-3b",
+      next: "resolve-input-confirm",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.set-text")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "setText",
+    targetVariable: "scanFieldHandle",
+    args: { valueRef: "run.input.scanPayload" },
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-input-confirm",
+      sourceMapRef: "sm-scan-3c",
+      next: "tap-input-confirm",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.barcodeInputConfirm,
+    outputVariable: "confirmHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-input-confirm",
+      sourceMapRef: "sm-scan-3d",
+      next: "assert-delivery-started",
+      timeoutMs: 20_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "confirmHandle",
     entityBinding: { type: NESY_ENTITIES.parcel, id: "run.input.scanPayload" },
+    /**
+     * BOTH facts gated on the tap that CAUSES them, not on later wait steps.
+     *
+     * A device event is stamped with the occurrence the host last seeded, which
+     * is the step doing the tapping — so a separate WAIT_EVENT looks for the
+     * fact under its own occurrence and never finds it. Measured 2026-08-13: the
+     * scan was accepted, the delivery screen opened, and `await-accepted` timed
+     * out on a `PARCEL_SCANNED` that had landed on `tap-input-confirm`.
+     *
+     * This is the shape TOUR_APPROVAL already uses for the same reason.
+     */
     continueGate: {
-      allOf: [NESY_FACTS.PARCEL_SCANNED],
-      deadlineMs: 25_000,
+      allOf: [NESY_FACTS.PARCEL_SCANNED, NESY_FACTS.DELIVERY_FLOW_STARTED],
+      deadlineMs: 30_000,
       unknownPolicy: "RETRY",
     },
   },
   {
-    ...stepBase({
-      planStepId: "read-item-state",
-      sourceMapRef: "sm-scan-5",
-      next: "assert-processed",
-      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
-    }),
-    kind: "SDK_QUERY",
-    queryRef: NESY_ADAPTER_QUERY_REFS.parcelState,
-    maxRows: 20,
-    outputVariable: "itemStateRows",
-  },
-  {
-    ...stepBase({ planStepId: "assert-processed", sourceMapRef: "sm-scan-6", next: null }),
+    ...stepBase({ planStepId: "assert-delivery-started", sourceMapRef: "sm-scan-6", next: null }),
     kind: "ASSERT_FACT",
-    factKey: NESY_FACTS.PARCEL_STATE_PROCESSED,
+    factKey: NESY_FACTS.DELIVERY_FLOW_STARTED,
     expected: true,
     unknownPolicy: "FAIL",
     entityBinding: { type: NESY_ENTITIES.parcel, id: "run.input.scanPayload" },
     finalOraclePolicy: {
       requirements: [
-        { factKey: NESY_FACTS.PARCEL_STATE_PROCESSED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        // The scan was accepted at all.
         { factKey: NESY_FACTS.PARCEL_SCANNED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        // ...and it started the DELIVERY flow rather than one of its neighbours.
         {
-          factKey: NESY_FACTS.PARCEL_RECORD_PERSISTED,
+          factKey: NESY_FACTS.DELIVERY_FLOW_STARTED,
           obligation: "REQUIRED",
           timing: "EVENTUAL",
           deadlineMs: 30_000,
           onTimeout: "INCONCLUSIVE",
         },
+        /**
+         * CONTEXT, not proof — and WARNING for a measured reason.
+         *
+         * `Delivery` and `Already_Load` differ only by `scheduleStatus ==
+         * Approved(2)`, so this looked like the discriminator and was written
+         * REQUIRED. On device it timed out, and the timeout was right: this
+         * branch performs no local schedule write, so the app has no occasion to
+         * re-announce its status during the run. The fact is established earlier,
+         * at login and route selection.
+         *
+         * The discrimination is already carried by DELIVERY_FLOW_STARTED above:
+         * `Already_Load` shows a toast and does NOT open the delivery screen, so
+         * a run that saw the flow start cannot have taken that branch. Demanding
+         * the status as well would make the slice fail for want of an event the
+         * product had no reason to emit — the exact shape of requirement this
+         * phase exists to remove.
+         */
         {
-          // The isolation assertion travels with every slice that uses a seam.
-          factKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED,
-          obligation: "REQUIRED",
-          timing: "IMMEDIATE",
-          onTimeout: "FAIL",
+          factKey: NESY_FACTS.SCHEDULE_STATUS_APPROVED,
+          obligation: "WARNING",
+          timing: "EVENTUAL",
+          deadlineMs: 20_000,
+          onTimeout: "WARNING",
         },
       ],
     },
   },
   {
-    ...stepBase({ planStepId: "clear-injection", sourceMapRef: "sm-scan-7", next: null, timeoutMs: 20_000 }),
+    // Nothing to compensate on the device any more: the slice types into the
+    // product's own dialog rather than installing an injection to undo.
+    ...stepBase({ planStepId: "close-input", sourceMapRef: "sm-scan-7", next: null, timeoutMs: 20_000 }),
     kind: "CLEANUP",
-    compensatesStepIds: ["inject-payload"],
+    compensatesStepIds: ["tap-input-confirm"],
     runOnFailure: true,
   },
 ];
@@ -159,20 +229,29 @@ const GENERIC_IR = irDocument({
     { name: "taskCode", type: "string", required: true },
   ],
   variables: [
-    { name: "triggerHandle", type: "string" },
-    { name: "itemStateRows", type: "stringList" },
+    { name: "manualEntryHandle", type: "string" },
+    { name: "scanFieldHandle", type: "string" },
+    { name: "confirmHandle", type: "string" },
   ],
   steps: STEPS,
-  entryStepId: "wait-scanner",
-  capabilityRequirements: [requires("verdict.core.bridge.watch-fact"), requires("domain.nesy.scanner.inject")],
+  entryStepId: "wait-task-list",
+  capabilityRequirements: [
+    requires("verdict.core.bridge.watch-fact"),
+    requires("verdict.core.bridge.resolve-target"),
+    requires("verdict.core.bridge.tap"),
+    requires("verdict.core.bridge.set-text"),
+  ],
   sourceMap: [
-    sourceMapEntry("sm-scan-1", "wait-scanner", NESY_PROCESS_PARCEL_MACRO_KEY),
-    sourceMapEntry("sm-scan-2", "resolve-trigger", NESY_PROCESS_PARCEL_MACRO_KEY),
-    sourceMapEntry("sm-scan-3", "inject-payload", NESY_PROCESS_PARCEL_MACRO_KEY, "SETUP role: arranges input, produces no evidence"),
-    sourceMapEntry("sm-scan-4", "await-accepted", NESY_PROCESS_PARCEL_MACRO_KEY, "the product's own reaction"),
-    sourceMapEntry("sm-scan-5", "read-item-state", NESY_PROCESS_PARCEL_MACRO_KEY),
-    sourceMapEntry("sm-scan-6", "assert-processed", NESY_PROCESS_PARCEL_MACRO_KEY),
-    sourceMapEntry("sm-scan-7", "clear-injection", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-1", "wait-task-list", NESY_PROCESS_PARCEL_MACRO_KEY, "the task page, not a scanner surface"),
+    sourceMapEntry("sm-scan-2", "resolve-manual-entry", NESY_PROCESS_PARCEL_MACRO_KEY, "the product's own input path, not a seam"),
+    sourceMapEntry("sm-scan-3", "tap-manual-entry", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-3a", "resolve-scan-field", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-3b", "enter-scan-value", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-3c", "resolve-input-confirm", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-3d", "tap-input-confirm", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-4", "assert-delivery-started", NESY_PROCESS_PARCEL_MACRO_KEY, "WHICH branch ran"),
+    sourceMapEntry("sm-scan-6", "assert-delivery-started", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-7", "close-input", NESY_PROCESS_PARCEL_MACRO_KEY),
   ],
 });
 
@@ -197,9 +276,11 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   authoredBy: "COMPILER",
   requiredCapabilityRefs: ["verdict.core.bridge.resolve-target", "domain.nesy.scanner.inject"],
   legs: [
-    { planStepId: "wait-scanner", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.SCANNER_SURFACE_READY },
-    { planStepId: "resolve-trigger", bridgeVerb: "resolveTarget", targetRef: NESY_TARGETS.scanTrigger },
-    { planStepId: "await-accepted", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.PARCEL_SCANNED },
+    { planStepId: "wait-task-list", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.TASK_LIST_READY },
+    { planStepId: "tap-manual-entry", bridgeVerb: "tap", targetRef: NESY_TARGETS.manualBarcodeEntry },
+    { planStepId: "enter-scan-value", bridgeVerb: "setText", targetRef: NESY_TARGETS.barcodeInputField },
+    { planStepId: "tap-input-confirm", bridgeVerb: "tap", targetRef: NESY_TARGETS.barcodeInputConfirm },
+    { planStepId: "tap-input-confirm", bridgeVerb: "tap", awaitFactKey: NESY_FACTS.DELIVERY_FLOW_STARTED },
   ],
 };
 

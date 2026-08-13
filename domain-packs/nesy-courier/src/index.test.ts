@@ -146,7 +146,7 @@ describe("registries", () => {
       surfaces: 10,
       entities: 7,
       targets: 23,
-      evidenceSources: 44,
+      evidenceSources: 45,
       derivedFacts: 6,
       semanticActions: 10,
       macros: 10,
@@ -164,7 +164,7 @@ describe("registries", () => {
     for (const source of NESY_COURIER_EVIDENCE_SOURCES) {
       byPlane[source.plane] = (byPlane[source.plane] ?? 0) + 1;
     }
-    expect(byPlane).toEqual({ UI: 17, APP: 13, LOCAL: 9, REMOTE: 5 });
+    expect(byPlane).toEqual({ UI: 17, APP: 14, LOCAL: 9, REMOTE: 5 });
   });
 
   it("declares the seven minimum screens", () => {

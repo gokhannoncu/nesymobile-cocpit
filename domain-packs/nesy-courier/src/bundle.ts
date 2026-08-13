@@ -49,6 +49,48 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.21.1 — both scan facts are gated on the TAP that causes them instead of on
+  //   separate wait steps. A device event is stamped with the occurrence the host
+  //   last seeded — the tapping step — so a wait looked under its own occurrence
+  //   and never found a fact that had plainly arrived. Same shape TOUR_APPROVAL
+  //   already uses.
+  //
+  // 1.21.0 — PROCESS_PARCEL drives the product's own input instead of a seam.
+  //   It injected the scan through `nesy.setup.scanner-inject`, an
+  //   automation-only backdoor that then had to be justified by asserting
+  //   release isolation — and that the host had no runtime for anyway, the ref
+  //   being a DEVICE COMMAND called as an adapter operation.
+  //
+  //   Measured: the task page carries the SAME manual-entry control as the stop
+  //   list (`manuel_input` → `et_input_dialog_barcode_number` → `btn_ok`), and
+  //   typing there produced PARCEL_SCANNED, SCREEN_READY and DELIVERY_STARTED
+  //   with the delivery screen open. A courier can type a barcode, so the test
+  //   does too. No seam, no adapter to wire, no backdoor to explain — and
+  //   `SESSION_ISOLATION_ASSERTED` went with the injection, because it guarded a
+  //   risk this slice no longer takes.
+  //
+  // 1.20.0 — PROCESS_PARCEL names ONE branch instead of implying all of them.
+  //   Mapped 2026-08-13: a scan on the task page has roughly twenty outcomes —
+  //   pickup, return document, D4M/LOS, force load, labelless, gray label — split
+  //   by country, schedule status, task type, item state and pickup type, and
+  //   MOST OF THEM EMIT NOTHING. `APP.PARCEL_SCANNED` fires for every accepted
+  //   scan BEFORE the app routes it, so a slice resting on it would have gone
+  //   green on branches that show a toast and change nothing.
+  //
+  //   The slice now claims the DELIVERY branch and says so: scan at a stop opens
+  //   the delivery flow. `APP.DELIVERY_FLOW_STARTED` is the new discriminator,
+  //   and `APP.SCHEDULE_STATUS_APPROVED` is required alongside it because that
+  //   single field is the ONLY thing separating a real delivery from the
+  //   `Already_Load` warning toast — invisible on screen, so it has to be
+  //   evidence.
+  //
+  //   Two requirements were wrong rather than merely unproduced.
+  //   `LOCAL.PARCEL_RECORD_PERSISTED` asked for a local write this branch does
+  //   not perform. `APP.SESSION_ISOLATION_ASSERTED` was right to demand but
+  //   nothing invoked `nesy.assert.release-isolation`, so it could only time
+  //   out; the macro now calls it, which matters most in the one slice that
+  //   INJECTS a scan.
+  //
   // 1.19.0 — the wrong-row guard gets an observation it did not parameterise.
   //   `nesy.stopState` requires a stopId, so it answers 'tell me about THIS
   //   stop' — a run that passes the id it hoped for and gets a row back has
@@ -274,7 +316,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 19, patch: 2 },
+  version: { major: 1, minor: 21, patch: 2 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
