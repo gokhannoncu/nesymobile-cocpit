@@ -2420,6 +2420,17 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       return;
     }
 
+    const selectRoute = nodes.find((node) => node.type === WorkflowNodeType.SELECT_ROUTE);
+    const selectRouteConfig = (selectRoute?.data.config ?? {}) as Record<string, unknown>;
+    const routeCode =
+      typeof selectRouteConfig.routeNumber === "string" ? selectRouteConfig.routeNumber.trim() : "";
+    if (selectRoute && routeCode.length === 0) {
+      selectNode(selectRoute.id);
+      setPropertiesPanelOpen(true);
+      toast.warning("Select Route requires a route number before Run Test.");
+      return;
+    }
+
     const payload: WorkflowRunPayload = {
       workflowId,
       workflowName: displayTitle,
@@ -2450,10 +2461,13 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           connections,
         },
         profileKey:
-          workflowRef === "nesy.workflow.login" ? "nesy.launch.cold-real-login" : undefined,
-        inputs: authLogin
-          ? { pin: pinCode, sessionCorrelationId }
-          : undefined,
+          workflowRef === "nesy.workflow.login" || workflowRef === "nesy.workflow.login-and-select-route"
+            ? "nesy.launch.cold-real-login"
+            : undefined,
+        inputs: {
+          ...(authLogin ? { pin: pinCode, sessionCorrelationId } : {}),
+          ...(routeCode ? { routeCode } : {}),
+        },
       });
       setActiveRunId(result.runId);
 

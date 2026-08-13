@@ -74,6 +74,20 @@ export async function verdictEventsRoutes(app: FastifyInstance) {
     return { runs: getScreenReadinessObserver().snapshot() }
   })
 
+  /**
+   * What the live run stream is currently holding.
+   *
+   * "The run page is not moving" has two very different causes — nothing is
+   * being produced, or nothing is subscribed — and from outside the process they
+   * look identical. This separates them: buffered events with zero subscribers
+   * is a socket problem, zero events with a subscriber is a producer problem.
+   */
+  app.get('/events/live-runs', async () => {
+    const { getRunLiveHub } = await import('../services/run-live-hub.js')
+    const { runLiveWatcherCount } = await import('../services/run-live-watcher.js')
+    return { runs: getRunLiveHub().snapshot(), watchers: runLiveWatcherCount() }
+  })
+
   /** One stream, reported whether it is healthy or not. */
   app.get<{ Params: { runId: string; sessionId: string } }>(
     '/events/health/:runId/:sessionId',

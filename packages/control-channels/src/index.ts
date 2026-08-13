@@ -264,11 +264,61 @@ type VerdictDumpOperation = Extract<
   ControlOperation,
   { op: "get_run" | "get_command_result" | "get_screen_state" }
 >;
+type VerdictProviderOperation =
+  | VerdictDumpOperation
+  | Extract<ControlOperation, { op: "get_health" }>;
 
 function asJsonObject(value: unknown): JsonObject | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonObject)
     : null;
+}
+
+function invalidKnownSnapshotField(
+  data: JsonObject,
+  fields: Readonly<
+    Record<
+      string,
+      | "number"
+      | "boolean"
+      | "string"
+      | "nullableString"
+      | "object"
+      | "stringOrObject"
+      | "booleanOrObject"
+      | "scalar"
+      | "objectArray"
+    >
+  >,
+): string | null {
+  for (const [field, expected] of Object.entries(fields)) {
+    const value = data[field];
+    if (value === undefined) continue;
+    const valid =
+      expected === "number"
+        ? typeof value === "number" && Number.isFinite(value)
+        : expected === "boolean"
+          ? typeof value === "boolean"
+          : expected === "string"
+            ? typeof value === "string"
+            : expected === "nullableString"
+              ? value === null || typeof value === "string"
+              : expected === "object"
+                ? asJsonObject(value) !== null
+                : expected === "stringOrObject"
+                  ? typeof value === "string" || asJsonObject(value) !== null
+                  : expected === "booleanOrObject"
+                    ? typeof value === "boolean" || asJsonObject(value) !== null
+                    : expected === "scalar"
+                      ? value === null ||
+                        typeof value === "boolean" ||
+                        typeof value === "string" ||
+                        (typeof value === "number" && Number.isFinite(value))
+                      : Array.isArray(value) &&
+                        value.every((entry) => asJsonObject(entry) !== null);
+    if (!valid) return field;
+  }
+  return null;
 }
 
 function decodeVerdict<Op extends ControlOperation>(
@@ -378,6 +428,67 @@ function decodeVerdict<Op extends ControlOperation>(
   if (!data) return fail("PROTOCOL_VIOLATION", "COMMAND_RESULT.data nesnesi yok");
 
   switch (op.op) {
+    case "get_health": {
+      const invalid = invalidKnownSnapshotField(data, {
+        pid: "number",
+        apiLevel: "number",
+        profileable: "boolean",
+        inCriticalSpan: "boolean",
+        heapUsedMb: "number",
+        heapMaxMb: "number",
+        nativeHeapMb: "number",
+        gcCount: "number",
+        blockingGcTimeMs: "number",
+        crashedSince: "scalar",
+        anrRisk: "booleanOrObject",
+        eventsEmitted: "number",
+        droppedSince: "number",
+        gapEntriesUsed: "number",
+        gapUsableEntries: "number",
+        screen: "string",
+        operation: "nullableString",
+        spanId: "nullableString",
+        wal: "stringOrObject",
+        gaps: "objectArray",
+        gapEntries: "objectArray",
+        wsAuth: "stringOrObject",
+        gapPublish: "object",
+      });
+      const anrRisk = asJsonObject(data.anrRisk);
+      const invalidAnrRisk = anrRisk
+        ? invalidKnownSnapshotField(anrRisk, {
+            blockedMs: "number",
+            level: "string",
+          })
+        : null;
+      return invalid || invalidAnrRisk
+        ? fail(
+            "PROTOCOL_VIOLATION",
+            `get_health.${invalid ?? `anrRisk.${invalidAnrRisk}`} geçersiz`,
+          )
+        : good(data);
+    }
+    case "get_memory_snapshot": {
+      const invalid = invalidKnownSnapshotField(data, {
+        pid: "number",
+        heapUsedBytes: "number",
+        heapCommittedBytes: "number",
+        heapMaxBytes: "number",
+        nativeAllocatedBytes: "number",
+        capturedAtMs: "number",
+        rssBytes: "number",
+        pssBytes: "number",
+        usedBytes: "number",
+        javaHeapUsedBytes: "number",
+        javaHeapMaxBytes: "number",
+        nativeHeapAllocatedBytes: "number",
+        availableMemoryBytes: "number",
+        lowMemory: "boolean",
+      });
+      return invalid
+        ? fail("PROTOCOL_VIOLATION", `get_memory_snapshot.${invalid} geçersiz`)
+        : good(data);
+    }
     case "get_screen_state": {
       const state =
         asJsonObject(data.state) ??
@@ -609,7 +720,7 @@ function sensitiveSidecarDeleteArgs(
 
 function verdictDumpArgs(
   serial: string,
-  op: VerdictDumpOperation,
+  op: VerdictProviderOperation,
   ctx: Pick<ChannelContext, "applicationId">,
   nonce: string,
 ): string[] {
@@ -792,13 +903,51 @@ export class VerdictChannel implements ControlChannel {
         detail: "resultData / verdict.result.json uyuşmuyor",
       } as ControlResult<Op["op"]>;
     }
-    const result = decodeVerdict(
+    let result = decodeVerdict(
       op,
       pending.dataJson ?? pending.extrasJson,
       nonce,
       pending,
       stdout,
     );
+    // The existing SDK transport-cycle probe establishes get_health's
+    // compatibility convention: receiver first, then the read-only provider
+    // when an older/intermediate build returns no usable ordered result.
+    if (
+      op.op === "get_health" &&
+      !result.ok &&
+      (result.code === "CHANNEL_UNAVAILABLE" ||
+        result.code === "PROTOCOL_VIOLATION" ||
+        result.code === "UNKNOWN_COMMAND")
+    ) {
+      try {
+        const fallbackNonce = secureNonce();
+        const fallbackStdout = await ctx.adb(
+          serial,
+          verdictDumpArgs(
+            serial,
+            op as Extract<ControlOperation, { op: "get_health" }>,
+            ctx,
+            fallbackNonce,
+          ),
+          VERDICT_DUMP_TIMEOUT_MS,
+        );
+        result = decodeVerdict(
+          op,
+          firstVerdictJson(fallbackStdout),
+          fallbackNonce,
+          {
+            resultCode: null,
+            resultType: null,
+            nonce: null,
+          },
+          fallbackStdout,
+        );
+      } catch {
+        // Keep the original coded receiver failure. Both paths are read-only;
+        // unavailability must not escape as a thrown workflow error.
+      }
+    }
     if (
       !result.ok &&
       (result.code === "CHANNEL_UNAVAILABLE" ||

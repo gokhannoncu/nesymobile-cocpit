@@ -6,6 +6,7 @@ import type {
   EvidenceSourceCatalogApi,
   LaunchProfileCatalogApi,
   RunDetailResult,
+  RunTelemetryDto,
   RunEvidenceSourceCatalogApi,
   RunHistoryQuery,
   RunHistoryResult,
@@ -16,7 +17,6 @@ import type {
   TestCampaignResultApi,
   TestProfileCatalogApi,
   WorkflowCompileApi,
-  WorkflowRunApi,
   WorkflowRunStartApi,
   DomainPackCatalogApi,
   DomainPackDetailApi,
@@ -47,6 +47,12 @@ export async function fetchVerdictRunDetail(runId: string): Promise<RunDetailRes
 
 export async function fetchVerdictEvidenceJourney(runId: string): Promise<EvidenceJourneyResult> {
   return getJson<EvidenceJourneyResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-journey`)
+}
+
+export async function fetchVerdictRunTelemetry(runId: string): Promise<RunTelemetryDto> {
+  return getJson<RunTelemetryDto>(
+    `/verdict/runtime/runs/${encodeURIComponent(runId)}/telemetry`,
+  )
 }
 
 export async function fetchVerdictEvidenceSources(): Promise<EvidenceSourceCatalogApi> {

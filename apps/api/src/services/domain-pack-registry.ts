@@ -7,7 +7,8 @@
  * against *something else* than the caller believes, and a plan attributed to
  * the wrong pack version is worse than a compile error.
  *
- * First-party packs are code-resident and published at load. `publishBundle`
+ * First-party packs are code-resident and published at load (nesy.courier@1.26.0).
+ * `publishBundle`
  * computes the digest over the published form, so the digest is deterministic
  * across processes — provenance timestamps are added after digesting.
  */

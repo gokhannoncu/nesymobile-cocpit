@@ -40,6 +40,7 @@ import {
 } from '../services/domain-pack-registry.js'
 import { DomainPackReadModelsService } from '../services/domain-pack-read-models.service.js'
 import { DurableInteractionSubscription } from '../services/durable-interaction-subscription.js'
+import { publishRunLiveEvent, runLiveKeys } from '../services/run-live-hub.js'
 import { EvidenceSourceQueryService } from '../services/evidence-source-query.service.js'
 import { BridgeFlowEvidenceSources } from '../services/bridgeflow-evidence-source-registry.js'
 import { TestCampaignService } from '../services/test-campaign.service.js'
@@ -872,14 +873,30 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
     Body: Record<string, unknown>
   }>('/runtime/runs/:runId/interactions', async (request) => {
     const body = request.body
-    return interactions.append({
+    const interaction = {
       eventId: String(body.eventId ?? `evt_${Date.now()}`),
       runId: request.params.runId,
       origin: (body.origin as 'BRIDGE_INJECTED' | 'MANUAL' | 'UNKNOWN') ?? 'UNKNOWN',
       confidence: Number(body.confidence ?? 0),
       occurredAtMs: Number(body.occurredAtMs ?? Date.now()),
       summary: String(body.summary ?? ''),
+    }
+    const appended = await interactions.append(interaction)
+    publishRunLiveEvent({
+      runId: interaction.runId,
+      kind: 'INTERACTION',
+      level: 'INFO',
+      title: `${interaction.origin} · ${interaction.summary || interaction.eventId}`,
+      atMs: interaction.occurredAtMs,
+      dedupeKey: runLiveKeys.interaction(interaction.eventId),
+      detail: {
+        eventId: interaction.eventId,
+        origin: interaction.origin,
+        confidence: interaction.confidence,
+        summary: interaction.summary,
+      },
     })
+    return appended
   })
 }
 

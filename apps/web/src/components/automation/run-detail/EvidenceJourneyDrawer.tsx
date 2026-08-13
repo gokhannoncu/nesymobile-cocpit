@@ -112,7 +112,7 @@ export function EvidenceJourneyDrawer({
           Evidence Journey
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-[540px]">
         <SheetHeader>
           <SheetTitle>Evidence Journey</SheetTitle>
         </SheetHeader>

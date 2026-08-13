@@ -96,6 +96,48 @@ function verdictSuccessJson(op: ControlOperation, nonce: string): string {
           currentScreen: "StopList",
         },
       });
+    case "get_health":
+      return JSON.stringify({
+        type: "COMMAND_RESULT",
+        ...base,
+        data: {
+          pid: 321,
+          apiLevel: 36,
+          profileable: true,
+          inCriticalSpan: false,
+          heapUsedMb: 42,
+          heapMaxMb: 128,
+          nativeHeapMb: 7,
+          gcCount: 3,
+          blockingGcTimeMs: 11,
+          crashedSince: false,
+          anrRisk: { blockedMs: 450, level: "HIGH" },
+          eventsEmitted: 200,
+          droppedSince: 2,
+          gapEntriesUsed: 4,
+          gapUsableEntries: 12,
+          wal: "degraded",
+          gapEntries: [{ from: 4, to: 6 }],
+          wsAuth: { state: "authenticated" },
+          futureHealthField: { additive: true },
+        },
+      });
+    case "get_memory_snapshot":
+      return JSON.stringify({
+        type: "COMMAND_RESULT",
+        ...base,
+        data: {
+          pid: 321,
+          heapUsedBytes: 8_000_000,
+          heapCommittedBytes: 12_000_000,
+          heapMaxBytes: 32_000_000,
+          nativeAllocatedBytes: 4_000_000,
+          capturedAtMs: 1234,
+          rssBytes: 20_000_000,
+          lowMemory: false,
+          futureMemoryField: "preserved",
+        },
+      });
     case "get_run":
       return JSON.stringify({
         type: "COMMAND_RESULT",
@@ -300,6 +342,105 @@ describe("Verdict yönlendirme", () => {
       `${APP_ID}/com.verdict.sdk.core.VerdictControlReceiver`,
     );
     expect(args[0]).toContain(`${APP_ID}.VERDICT_CMD`);
+  });
+
+  it("health ve memory snapshot salt-okunur receiver sorgularıdır; additive alanları korur", async () => {
+    for (const opName of ["get_health", "get_memory_snapshot"] as const) {
+      const args: string[][] = [];
+      const op: ControlOperation = { ...env(), op: opName };
+      const res = await new VerdictChannel().run(
+        SERIAL,
+        op,
+        ctxWith(verdictRunnerReturning(op, args)),
+      );
+      expect(res.ok).toBe(true);
+      expect(args[0]).toContain("broadcast");
+      expect(args[0]).not.toContain("dumpsys");
+      expect(argumentValue(args[0]!, "op")).toBe(opName);
+      if (res.ok && opName === "get_health") {
+        const data = res.data as Record<string, unknown>;
+        expect(data).toMatchObject({
+          heapUsedMb: 42,
+          nativeHeapMb: 7,
+          wal: "degraded",
+          anrRisk: { blockedMs: 450, level: "HIGH" },
+          eventsEmitted: 200,
+          gapEntriesUsed: 4,
+          gapUsableEntries: 12,
+        });
+        expect(data.futureHealthField).toEqual({
+          additive: true,
+        });
+      }
+      if (res.ok && opName === "get_memory_snapshot") {
+        const data = res.data as Record<string, unknown>;
+        expect(data).toMatchObject({
+          pid: 321,
+          heapUsedBytes: 8_000_000,
+          heapCommittedBytes: 12_000_000,
+          heapMaxBytes: 32_000_000,
+          nativeAllocatedBytes: 4_000_000,
+        });
+        expect(data.futureMemoryField).toBe("preserved");
+      }
+    }
+  });
+
+  it("get_health ordered-result yoksa mevcut salt-okunur provider fallback'ini kullanır", async () => {
+    const calls: string[][] = [];
+    const op: ControlOperation = { ...env(), op: "get_health" };
+    const runner: AdbRunner = (_serial, args) => {
+      calls.push(args);
+      if (args.includes("broadcast")) return Promise.resolve(completed(0));
+      const nonce = verdictNonce(args);
+      const json = verdictSuccessJson(op, nonce);
+      return Promise.resolve(`PROVIDER ${APP_ID}/.VerdictDumpProvider\n${json}\n`);
+    };
+
+    const res = await new VerdictChannel().run(SERIAL, op, ctxWith(runner));
+
+    expect(res.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain("broadcast");
+    expect(calls[1]).toContain("dumpsys");
+    expect(calls[1]).toContain("--verdict-command=get_health");
+  });
+
+  it("health ve memory bilinen alanları yanlış tipliyse fail closed olur", async () => {
+    for (const op of [
+      { ...env(), op: "get_health", data: { wal: 42 } },
+      {
+        ...env(),
+        op: "get_health",
+        data: { anrRisk: { blockedMs: "450", level: "HIGH" } },
+      },
+      {
+        ...env(),
+        op: "get_memory_snapshot",
+        data: { heapUsedBytes: "not-a-number" },
+      },
+    ] as const) {
+      const runner: AdbRunner = (_serial, args) => {
+        const nonce = verdictNonce(args);
+        const json = JSON.stringify({
+          type: "COMMAND_RESULT",
+          requestId: op.requestId,
+          nonce,
+          data: { ...op.data, futureField: true },
+        });
+        return Promise.resolve(
+          args.includes("dumpsys")
+            ? `PROVIDER ${json}`
+            : verdictCompleted(-1, json, "COMMAND_RESULT", nonce),
+        );
+      };
+      const res = await new VerdictChannel().run(
+        SERIAL,
+        op as ControlOperation,
+        ctxWith(runner),
+      );
+      expect(res).toMatchObject({ ok: false, code: "PROTOCOL_VIOLATION" });
+    }
   });
 
   it("set_run secret'ını stdin sidecar'a taşır; broadcast argv'sine koymaz", async () => {

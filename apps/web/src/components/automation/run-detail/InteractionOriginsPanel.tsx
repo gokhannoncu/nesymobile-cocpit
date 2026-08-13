@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerdictInteractions } from '@/lib/verdict-runtime/client'
 import {
   asInteractionOrigin,
@@ -20,14 +20,28 @@ interface InteractionRow {
  * Durable interactions for a run. Human baseline counts MANUAL only —
  * BRIDGE_INJECTED never inflates the baseline (Phase 7.17 / CHECKPOINT 54–57).
  */
-export function InteractionOriginsPanel({ runId }: { runId: string }) {
+export function InteractionOriginsPanel({
+  runId,
+  /**
+   * Bumped by the page's live stream. Interactions are appended while the run is
+   * running, so a panel that only read once would keep showing the count the run
+   * had when the page opened.
+   */
+  refreshToken = 0,
+}: {
+  runId: string
+  refreshToken?: number
+}) {
   const [rows, setRows] = useState<InteractionRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  // Only the first read is a "loading" state: a refresh must not replace a list
+  // the operator is reading with a spinner every time an event arrives.
+  const loadedOnceRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    if (!loadedOnceRef.current) setLoading(true)
     void fetchVerdictInteractions(runId, 0)
       .then((page) => {
         if (cancelled) return
@@ -52,12 +66,14 @@ export function InteractionOriginsPanel({ runId }: { runId: string }) {
         }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        loadedOnceRef.current = true
+        setLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [runId])
+  }, [runId, refreshToken])
 
   const counts = useMemo(() => countInteractionOrigins(rows), [rows])
 

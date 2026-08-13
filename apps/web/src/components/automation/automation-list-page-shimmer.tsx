@@ -53,27 +53,29 @@ export function AutomationListGridShimmer({ count = 3 }: { count?: number }) {
 
 function WorkflowCardSkeleton() {
   return (
-    <article className="rounded-md border border-border bg-card p-4 shadow-xs" aria-hidden>
-      <div className="flex items-center justify-between gap-2">
-        <ShimmerBlock className="h-6 w-20" />
-        <ShimmerBlock className="h-6 w-24" />
-      </div>
-      <div className="mt-5 flex items-center gap-4">
-        <ShimmerBlock className="size-16 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-6 w-4/5" />
-          <ShimmerBlock className="mt-2 h-4 w-3/5" />
+    <article className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs" aria-hidden>
+      <div className="p-4">
+        <div className="flex gap-3">
+          <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1">
+            <ShimmerBlock className="h-4 w-4/5" />
+            <ShimmerBlock className="mt-2 h-4 w-3/5" />
+            <div className="mt-2 flex gap-2">
+              <ShimmerBlock className="h-5 w-16 rounded-md" />
+              <ShimmerBlock className="h-5 w-14 rounded-md" />
+            </div>
+          </div>
+        </div>
+        <ShimmerBlock className="mt-3 h-4 w-full" />
+        <ShimmerBlock className="mt-2 h-4 w-11/12" />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <ShimmerBlock className="h-6 w-24 rounded-md" />
+          <ShimmerBlock className="h-6 w-12 rounded-md" />
+          <ShimmerBlock className="h-6 w-20 rounded-md" />
         </div>
       </div>
-      <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-4">
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-3 w-24" />
-          <ShimmerBlock className="mt-2 h-3 w-12" />
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ShimmerBlock className="h-9 w-16" />
-          <ShimmerBlock className="h-9 w-20" />
-        </div>
+      <div className="border-t border-border/80 px-4 py-2.5">
+        <ShimmerBlock className="h-4 w-28" />
       </div>
     </article>
   )

@@ -202,6 +202,7 @@ model WorkflowRun {
   version            WorkflowVersion            @relation(fields: [versionId], references: [id])
   stepResults        WorkflowStepResult[]
   diagnosticCaptures VerdictDiagnosticCapture[]
+  telemetrySnapshots VerdictRunTelemetrySnapshot[]
   bridgeflowRuntime  BridgeFlowRunRuntime?
   bridgeflowSteps    BridgeFlowStepOccurrence[]
   bridgeflowActions  BridgeFlowActionTransition[]
@@ -290,6 +291,28 @@ model VerdictDiagnosticCapture {
   @@index([runId, createdAt], map: "verdict_diagnostic_capture_run_created_idx")
   @@index([sensitive, createdAt], map: "verdict_diagnostic_capture_sensitive_idx")
   @@map("verdict_diagnostic_capture")
+}
+
+/// Additive, read-only control-plane observations captured during a workflow run.
+///
+/// This is a child of WorkflowRun because sampling starts only after the Cockpit
+/// run/session is established. Cascade deletion keeps telemetry retention aligned
+/// with the owning run and prevents orphaned device observations.
+model VerdictRunTelemetrySnapshot {
+  id               String   @id @default(cuid())
+  runId            String   @map("run_id")
+  sessionId        String   @map("session_id")
+  kind             String
+  capturedAt       DateTime @default(now()) @map("captured_at") @db.Timestamptz(6)
+  payload          Json
+  measurementState String   @default("MEASURED") @map("measurement_state")
+  source           String   @default("VERDICT_CONTROL")
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, capturedAt], map: "verdict_run_telemetry_snapshot_run_time_idx")
+  @@index([runId, kind, capturedAt], map: "verdict_run_telemetry_snapshot_run_kind_time_idx")
+  @@map("verdict_run_telemetry_snapshot")
 }
 
 /// Engineering tools: MongoDB Query Generator history (auto-saved on Generate)

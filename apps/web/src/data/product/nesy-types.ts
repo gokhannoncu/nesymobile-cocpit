@@ -23,8 +23,22 @@ export type DiagramNodeVariant =
   | 'error'    // Error/failed — red, X icon
   | 'external' // External system — purple, link icon
 
+export type DiagramLayerTick = {
+  layer: 'UI' | 'App' | 'Local' | 'Remote'
+  state: 'PASS' | 'FAIL' | 'NOT_APPLICABLE' | 'NOT_MEASURED' | 'REQUIRED_PENDING'
+  reason?: string
+}
+
 export type DiagramElement =
-  | { type: 'node'; id?: string; label: string; variant: DiagramNodeVariant; desc?: string }
+  | {
+      type: 'node'
+      id?: string
+      label: string
+      variant: DiagramNodeVariant
+      desc?: string
+      durationMs?: number
+      layers?: DiagramLayerTick[]
+    }
   | { type: 'arrow'; label?: string }
   | {
       type: 'branch'

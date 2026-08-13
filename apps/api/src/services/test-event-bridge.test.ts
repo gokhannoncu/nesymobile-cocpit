@@ -3,8 +3,63 @@ import {
   parseTestEventLine,
   parseGetStateOutput,
   TestEventDeduper,
+  validateHealthSnapshot,
+  validateMemorySnapshot,
   type TestBridgeEvent,
 } from "./test-event-bridge.js";
+
+describe("control telemetry snapshot validation", () => {
+  it("accepts additive health and memory records", () => {
+    expect(
+      validateHealthSnapshot({
+        pid: 123,
+        apiLevel: 36,
+        inCriticalSpan: false,
+        heapUsedMb: 40,
+        heapMaxMb: 128,
+        nativeHeapMb: 8,
+        gcCount: 2,
+        blockingGcTimeMs: 5,
+        crashedSince: false,
+        anrRisk: { blockedMs: 450, level: "HIGH" },
+        eventsEmitted: 100,
+        droppedSince: 1,
+        gapEntriesUsed: 4,
+        gapUsableEntries: 12,
+        wal: "ok",
+        gapEntries: [{ from: 3, to: 4 }],
+        wsAuth: { status: "authenticated" },
+        futureField: { retained: true },
+      }),
+    ).toBe(true);
+    expect(
+      validateMemorySnapshot({
+        pid: 123,
+        heapUsedBytes: 1_234,
+        heapCommittedBytes: 2_000,
+        heapMaxBytes: 4_000,
+        nativeAllocatedBytes: 500,
+        lowMemory: false,
+        futureCounter: 99,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects malformed known fields without rejecting unknown fields", () => {
+    expect(validateHealthSnapshot({ pid: "123", futureField: true })).toBe(false);
+    expect(validateHealthSnapshot({ wal: 42, futureField: true })).toBe(false);
+    expect(validateHealthSnapshot({ gapEntries: ["bad"], futureField: true })).toBe(false);
+    expect(
+      validateHealthSnapshot({
+        anrRisk: { blockedMs: "450", level: "HIGH" },
+        futureField: true,
+      }),
+    ).toBe(false);
+    expect(validateMemorySnapshot({ rssBytes: -1, futureField: true })).toBe(false);
+    expect(validateMemorySnapshot({ heapUsedBytes: "1", futureField: true })).toBe(false);
+    expect(validateMemorySnapshot({ futureField: true })).toBe(true);
+  });
+});
 
 function makeEvent(overrides: Partial<TestBridgeEvent> = {}): TestBridgeEvent {
   return {

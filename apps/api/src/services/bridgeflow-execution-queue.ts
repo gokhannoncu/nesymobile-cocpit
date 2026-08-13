@@ -45,9 +45,11 @@ import {
   type ScreenReadinessObserver,
 } from './screen-readiness-observer.js'
 import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
+import { publishRunLiveEvent, runLiveKeys, runLiveLevelFor } from './run-live-hub.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import { DeviceWorkerRegistry } from './device-worker.js'
 import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
+import { createRunTelemetrySampler } from './run-telemetry-sampler.js'
 import {
   broadcastSetRun,
   getDeviceBridgeState,
@@ -752,6 +754,18 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     // queries.
     const controlExecutor =
       applicationId === undefined ? undefined : createControlExecutor({ applicationId })
+    const telemetrySampler =
+      deviceState?.runId === item.runId && deviceState.sessionId.trim() !== ''
+        ? createRunTelemetrySampler({
+            prisma: this.options.prisma,
+            runId: item.runId,
+            sessionId: deviceState.sessionId,
+            deviceId: item.deviceId,
+            applicationId,
+            clock,
+            ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+          })
+        : null
 
     // The launch profile's precondition is installed BEFORE the plan runs and
     // AFTER the run session exists — the operations are scoped to this run, and a
@@ -765,6 +779,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
       })
       if (!prepared.ok) {
+        await telemetrySampler?.stop({ finalCapture: true })
         await this.blockRun(item, prepared.reason)
         return
       }
@@ -947,6 +962,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       },
     })
 
+    telemetrySampler?.start()
     try {
       const executor = new BridgeFlowExecutor({
         persistence,
@@ -1039,6 +1055,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         error: describeError(error),
       })
     } finally {
+      await telemetrySampler?.stop({ finalCapture: true })
       // The observer is process-wide, so a finished run's screen must not linger:
       // it would be a slow leak in a long-lived API and could answer a later
       // question with a retired run's screen.
@@ -1061,6 +1078,14 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
   private async recordExecutionFailure(item: QueueItem, detail: string): Promise<void> {
     const clock = this.options.clock ?? Date.now
     await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
+    publishRunLiveEvent({
+      runId: item.runId,
+      kind: 'RUN_RESULT',
+      level: 'ERROR',
+      title: `Execution crashed · ${detail}`,
+      dedupeKey: runLiveKeys.runtime('CLOSED', 'NOT_EVALUATED', 'ABORTED'),
+      detail: { failureDetail: detail, deviceId: item.deviceId },
+    })
     try {
       await Promise.all([
         this.options.prisma.verdictRunStart.updateMany({
@@ -1123,6 +1148,14 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
   ): Promise<void> {
     try {
       await this.options.prisma.workflowRun.updateMany({ where: { id: runId }, data })
+      publishRunLiveEvent({
+        runId,
+        kind: 'RUN_STATUS',
+        level: runLiveLevelFor(data.status),
+        title: `Run ${data.status}`,
+        dedupeKey: runLiveKeys.runStatus(data.status),
+        detail: { status: data.status },
+      })
     } catch (error) {
       this.options.logger?.('[BridgeFlowExecutionQueue] run row update failed', {
         runId,
@@ -1140,6 +1173,17 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
    */
   private async blockRun(item: QueueItem, reason: string): Promise<void> {
     await this.markRunRow(item.runId, { status: 'blocked', completedAt: new Date(this.options.clock?.() ?? Date.now()) })
+    // The remediation is the whole value of a blocked run, and the watcher can
+    // only report it a poll later — by which time the operator has already read
+    // "blocked" with no cause next to it.
+    publishRunLiveEvent({
+      runId: item.runId,
+      kind: 'RUN_RESULT',
+      level: 'ERROR',
+      title: `Run blocked before the workflow ran · ${reason}`,
+      dedupeKey: runLiveKeys.runtime('CLOSED', 'NOT_EVALUATED', reason),
+      detail: { reason, deviceId: item.deviceId, workflowRef: item.workflowRef },
+    })
     await Promise.all([
       this.options.prisma.verdictRunStart.updateMany({
         where: { runId: item.runId },

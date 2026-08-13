@@ -12,6 +12,7 @@ import {
   type ActionTransitionPhase,
   type StepOccurrence,
 } from '@nesy/execution-contract'
+import { publishRunLiveEvent, runLiveKeys, runLiveLevelFor } from './run-live-hub.js'
 import type { OracleRevisionRecord } from './oracle-evaluation-worker.js'
 import type {
   RecoveryExecutionCandidate,
@@ -104,6 +105,24 @@ export class PrismaExecutionPersistence
       create: { runId: record.runId, ...data },
       update: data,
     })
+    // Published only after the row exists: a live feed that announced a run
+    // start the database then rejected would be the one account of the run, and
+    // it would be wrong.
+    publishRunLiveEvent({
+      runId: record.runId,
+      kind: 'RUN_STATUS',
+      level: 'INFO',
+      title: `Execution started · ${manifest.domainPackKey}@${manifest.domainPackVersion}`,
+      // The watcher would otherwise announce the same RUNNING lifecycle from the
+      // row this call just wrote.
+      dedupeKey: runLiveKeys.runtime('RUNNING', '', ''),
+      detail: {
+        engineType: record.engineType,
+        compiledPlanHash: manifest.compiledPlanHash,
+        profileKey: profile.profileKey,
+        releaseGate: profile.releaseGate,
+      },
+    })
     return { token: fenceToken, epoch: 1 }
   }
 
@@ -140,6 +159,27 @@ export class PrismaExecutionPersistence
       },
       update: data,
       }))
+    publishRunLiveEvent({
+      runId: occurrence.runId,
+      kind: 'STEP',
+      level: terminal ? runLiveLevelFor(occurrence.outcome.actionResult) : 'INFO',
+      title: `${occurrence.planStepId} ${terminal ? 'COMPLETED' : 'RUNNING'}${
+        terminal ? ` · ${occurrence.outcome.actionResult}` : ''
+      }`,
+      dedupeKey: runLiveKeys.step(
+        occurrence.occurrenceId,
+        terminal ? 'COMPLETED' : 'RUNNING',
+        occurrence.outcome.actionResult,
+      ),
+      detail: {
+        occurrenceId: occurrence.occurrenceId,
+        planStepId: occurrence.planStepId,
+        iterationKey: occurrence.iterationKey,
+        actionResult: occurrence.outcome.actionResult,
+        continueGateResult: occurrence.outcome.continueGateResult,
+        finalOracleResult: occurrence.outcome.finalOracleResult,
+      },
+    })
   }
 
   async persistActionTransition(
@@ -170,6 +210,21 @@ export class PrismaExecutionPersistence
       },
       update: data,
       }))
+    publishRunLiveEvent({
+      runId: record.runId,
+      kind: 'ACTION',
+      level: transition.terminal === null ? 'INFO' : runLiveLevelFor(transition.terminal),
+      title: `${record.occurrenceId} · ${transition.phase}`,
+      atMs: transition.atMs,
+      dedupeKey: runLiveKeys.action(record.occurrenceId, transition.requestId, transition.phase),
+      detail: {
+        occurrenceId: record.occurrenceId,
+        requestId: transition.requestId,
+        phase: transition.phase,
+        terminal: transition.terminal,
+        evidenceRef: transition.evidenceRef,
+      },
+    })
   }
 
   async persistWaitResult(
@@ -204,7 +259,7 @@ export class PrismaExecutionPersistence
       resultKey: true,
       cancelStatus: true,
     } as const
-    return this.withFence(result.runId, result.recoveryFence, async (client) => {
+    const settlement = await this.withFence(result.runId, result.recoveryFence, async (client) => {
     const existing = await client.bridgeFlowWaitEvent.findUnique({ where, select })
     if (existing !== null) {
       return { won: false, result: waitRow(existing) }
@@ -226,6 +281,26 @@ export class PrismaExecutionPersistence
       return { won: false, result: waitRow(raced) }
     }
     })
+    // Only the writer that settled the wait announces it. A loser republishing
+    // the same terminal would show the operator two outcomes for one wait.
+    if (settlement.won) {
+      publishRunLiveEvent({
+        runId: result.runId,
+        kind: 'WAIT',
+        level: runLiveLevelFor(result.status),
+        title: `wait ${result.waitPlanId} → ${result.status}`,
+        dedupeKey: runLiveKeys.wait(result.occurrenceId, result.waitPlanId, result.status),
+        detail: {
+          occurrenceId: result.occurrenceId,
+          waitPlanId: result.waitPlanId,
+          requestId: result.requestId,
+          status: result.status,
+          resultKey: result.key,
+          cancelStatus: result.cancelStatus,
+        },
+      })
+    }
+    return settlement
   }
 
   async persistRecoveryCheckpoint(
@@ -404,6 +479,25 @@ export class PrismaExecutionPersistence
       assertSameOracleRevision(raced, data)
     }
     })
+    publishRunLiveEvent({
+      runId: record.runId,
+      kind: 'ORACLE',
+      level: runLiveLevelFor(evaluation.outcome),
+      title: `${record.evaluatorKind} rev${revision} → ${evaluation.outcome}`,
+      dedupeKey: runLiveKeys.oracle(
+        record.occurrenceId,
+        record.evaluatorKind,
+        String(revision),
+      ),
+      detail: {
+        occurrenceId: record.occurrenceId,
+        evaluatorKind: record.evaluatorKind,
+        revision,
+        outcome: evaluation.outcome,
+        productVerdict: data.productVerdict,
+        evaluationFailureClass: data.evaluationFailureClass,
+      },
+    })
   }
 
   async persistRunResult(
@@ -423,6 +517,25 @@ export class PrismaExecutionPersistence
         operationalDisposition: record.result.operationalDisposition,
       },
       }))
+    publishRunLiveEvent({
+      runId: record.runId,
+      kind: 'RUN_RESULT',
+      level: runLiveLevelFor(record.result.productVerdict),
+      title: `Run ${record.result.lifecycle} · ${record.result.productVerdict}`,
+      dedupeKey: runLiveKeys.runtime(
+        record.result.lifecycle,
+        record.result.productVerdict,
+        record.result.terminationReason,
+      ),
+      detail: {
+        lifecycle: record.result.lifecycle,
+        productVerdict: record.result.productVerdict,
+        evaluationFailureClass: record.result.evaluationFailureClass,
+        terminationReason: record.result.terminationReason,
+        cleanupResult: record.result.cleanupResult,
+        operationalDisposition: record.result.operationalDisposition,
+      },
+    })
   }
 
   async scanResumableExecutions(input: {

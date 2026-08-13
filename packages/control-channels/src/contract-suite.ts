@@ -40,6 +40,8 @@ export function sampleOperations(): ControlOperation[] {
   const env = () => ({ requestId: newRequestId("test"), scope: "run-1" });
   return [
     { ...env(), op: "get_state" },
+    { ...env(), op: "get_health" },
+    { ...env(), op: "get_memory_snapshot" },
     { ...env(), op: "get_run" },
     { ...env(), op: "get_device_id" },
     { ...env(), op: "get_request_key" },

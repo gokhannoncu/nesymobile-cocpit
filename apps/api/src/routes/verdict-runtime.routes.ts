@@ -6,6 +6,7 @@ import {
   getWorkflowCatalog,
   queryRunHistory,
 } from '../services/verdict-runtime-read-model.js'
+import { getRunTelemetry } from '../services/run-telemetry-read-model.js'
 import { __phase6ContractSingletons } from './verdict-phase6-contracts.routes.js'
 
 async function withRuntimeRead<T>(reply: FastifyReply, read: () => Promise<T>): Promise<T | undefined> {
@@ -44,6 +45,23 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
     }
     return result
   })
+
+  app.get<{ Params: { runId: string } }>(
+    '/runtime/runs/:runId/telemetry',
+    async (request, reply) => {
+      const result = await withRuntimeRead(reply, () =>
+        getRunTelemetry(request.params.runId),
+      )
+      if (result === undefined) return
+      if (result === null) {
+        return reply.code(404).send({
+          status: 'not_found',
+          detail: `run ${request.params.runId} was not found`,
+        })
+      }
+      return result
+    },
+  )
 
   app.get<{ Params: { runId: string } }>('/runtime/runs/:runId/evidence-journey', async (request, reply) => {
     const result = await withRuntimeRead(reply, () => getEvidenceJourney(request.params.runId))

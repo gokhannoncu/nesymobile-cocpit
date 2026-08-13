@@ -28,6 +28,7 @@ import type {
 import { NESY_COMPLETE_DELIVERY_MACRO } from "../macros/complete-delivery.js";
 import { NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY } from "../macros/full-courier-golden.js";
 import { NESY_LOGIN_MACRO } from "../macros/login.js";
+import { NESY_LOGIN_AND_SELECT_ROUTE_MACRO, NESY_LOGIN_AND_SELECT_ROUTE_WORKFLOW_KEY } from "../macros/login-and-select-route.js";
 import { NESY_OPEN_STOP_MACRO } from "../macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "../macros/process-parcel.js";
 import { NESY_LOAD_TO_VEHICLE_MACRO } from "../macros/load-to-vehicle.js";
@@ -42,6 +43,7 @@ export const NESY_FRAGMENTS = {
 export const NESY_WORKFLOWS = {
   login: "nesy.workflow.login",
   selectRoute: "nesy.workflow.select-route",
+  loginAndSelectRoute: NESY_LOGIN_AND_SELECT_ROUTE_WORKFLOW_KEY,
   loadToVehicle: "nesy.workflow.load-to-vehicle",
   openStop: "nesy.workflow.open-stop",
   processParcel: "nesy.workflow.process-parcel",
@@ -102,6 +104,20 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     fragmentRefs: [],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_SELECT_ROUTE_MACRO.oracleTemplate,
+    producesTerminalVerdict: true,
+  },
+  {
+    workflowKey: NESY_WORKFLOWS.loginAndSelectRoute,
+    displayName: "Login then select route",
+    businessMeaning: NESY_LOGIN_AND_SELECT_ROUTE_MACRO.businessMeaning,
+    notResponsibleFor: NESY_LOGIN_AND_SELECT_ROUTE_MACRO.notResponsibleFor,
+    // ONE composed macro. Listing login + select-route separately would be two
+    // expansion snapshots, which an empty canvas cannot auto-materialize. The
+    // composed snapshot is the stitch: PIN login continues into the route dialog.
+    macroRefs: [NESY_LOGIN_AND_SELECT_ROUTE_MACRO.macroKey],
+    fragmentRefs: [],
+    occurrenceScope: "INDEPENDENT",
+    oracleTemplate: NESY_LOGIN_AND_SELECT_ROUTE_MACRO.oracleTemplate,
     producesTerminalVerdict: true,
   },
   {

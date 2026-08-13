@@ -119,6 +119,26 @@ describe('BridgeFlow compile adapter', () => {
     expect(result.ok).toBe(true)
     expect(result.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([])
   })
+
+  it('materializes canvas IR for the login-then-select-route composition', () => {
+    const service = createBridgeFlowCompileService(new InMemoryCompiledPlanStore())
+    const result = service.compileWorkflow({
+      workflowRef: 'nesy.workflow.login-and-select-route',
+      workflowIr: {
+        nodes: [
+          { id: 'auth', type: 'AUTH_LOGIN' },
+          { id: 'route', type: 'SELECT_ROUTE' },
+        ],
+        connections: [],
+      },
+      domainPackKey: PACK.packKey,
+      domainPackVersion: PACK.packVersion,
+      domainPackDigest: PACK.packDigest,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([])
+  })
 })
 
 describe('run condition context', () => {

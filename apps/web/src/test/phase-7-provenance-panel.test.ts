@@ -7,13 +7,18 @@ import type { RunDetailResult } from '../lib/verdict-runtime/types'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PAGE = join(ROOT, 'app/(cockpit)/automation/[id]/runs/[runId]/page.tsx')
+// The page is the server shell that fetches the durable snapshot; the panels
+// live in the client body that streams run events on top of it.
+const BODY = join(ROOT, 'components/automation/run-detail/RunDetailLive.tsx')
 const PANEL = join(ROOT, 'components/automation/run-detail/ProvenancePanel.tsx')
 
 describe('Phase 7 residual — Run Detail provenance panel', () => {
   it('wires ProvenancePanel into the BridgeFlow run detail page', () => {
     const page = readFileSync(PAGE, 'utf8')
+    const body = readFileSync(BODY, 'utf8')
     const panel = readFileSync(PANEL, 'utf8')
-    expect(page).toContain('ProvenancePanel')
+    expect(page).toContain('RunDetailLive')
+    expect(body).toContain('ProvenancePanel')
     expect(panel).toContain('assertProvenanceConsistency')
     expect(panel).toContain('sourceMap')
   })

@@ -1,4 +1,4 @@
-import { prisma } from '@nesy/db'
+import { prisma, type Prisma } from '@nesy/db'
 import {
   publishBundle,
   type PublishedVersion,
@@ -84,8 +84,93 @@ async function seedPublishedBundle(store: PrismaDomainPackAdminStore, published:
   })
 }
 
+function canvasForWorkflow(workflowKey: string): {
+  nodes: Prisma.InputJsonValue
+  edges: Prisma.InputJsonValue
+} {
+  if (workflowKey !== 'nesy.workflow.login-and-select-route') {
+    return { nodes: [], edges: [] }
+  }
+
+  const launchId = 'launch-app'
+  const loginId = 'auth-login'
+  const routeId = 'select-route'
+  return {
+    nodes: [
+      {
+        id: launchId,
+        type: 'LAUNCH_APP',
+        kind: 'action',
+        position: { x: 380, y: 80 },
+        data: {
+          title: 'Launch App',
+          subtitle: 'App session start',
+          icon: 'Smartphone',
+          config: { country: 'HR', environment: 'stage', clearState: true },
+        },
+        parentId: null,
+        children: [],
+        branchType: null,
+        nextNodeId: loginId,
+        connections: [],
+      },
+      {
+        id: loginId,
+        type: 'AUTH_LOGIN',
+        kind: 'action',
+        position: { x: 380, y: 240 },
+        data: {
+          title: 'Auth / Login',
+          subtitle: 'Courier PIN login',
+          icon: 'UserRound',
+          config: { pinCode: '' },
+        },
+        parentId: null,
+        children: [],
+        branchType: null,
+        nextNodeId: routeId,
+        connections: [],
+      },
+      {
+        id: routeId,
+        type: 'SELECT_ROUTE',
+        kind: 'action',
+        position: { x: 380, y: 400 },
+        data: {
+          title: 'Select Route',
+          subtitle: 'Route selection',
+          icon: 'Route',
+          config: { routeNumber: '' },
+        },
+        parentId: null,
+        children: [],
+        branchType: null,
+        nextNodeId: null,
+        connections: [],
+      },
+    ],
+    edges: [
+      {
+        id: 'launch-to-login',
+        sourceNodeId: launchId,
+        targetNodeId: loginId,
+        sourceHandle: 'default',
+        targetHandle: 'top',
+      },
+      {
+        id: 'login-to-route',
+        sourceNodeId: loginId,
+        targetNodeId: routeId,
+        sourceHandle: 'default',
+        targetHandle: 'top',
+      },
+    ],
+  }
+}
+
 async function seedWorkflowCatalog(): Promise<void> {
   for (const workflow of NESY_COURIER_INDEPENDENT_WORKFLOWS) {
+    const canvas = canvasForWorkflow(workflow.workflowKey)
     const row = await prisma.workflow.upsert({
       where: { slug: workflow.workflowKey },
       create: {
@@ -112,8 +197,8 @@ async function seedWorkflowCatalog(): Promise<void> {
       create: {
         workflowId: row.id,
         version: 1,
-        nodes: [],
-        edges: [],
+        nodes: canvas.nodes,
+        edges: canvas.edges,
         config: {
           source: 'domain-pack-seed',
           workflowRef: workflow.workflowKey,
@@ -124,8 +209,8 @@ async function seedWorkflowCatalog(): Promise<void> {
         createdBy: PUBLISHED_BY,
       },
       update: {
-        nodes: [],
-        edges: [],
+        nodes: canvas.nodes,
+        edges: canvas.edges,
         config: {
           source: 'domain-pack-seed',
           workflowRef: workflow.workflowKey,

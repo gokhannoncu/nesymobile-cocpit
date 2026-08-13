@@ -73,6 +73,144 @@ export interface EvidenceJourneyResult {
   items: Record<string, unknown>[]
 }
 
+export type TelemetryMeasurementState = 'MEASURED' | 'PARTIAL' | 'UNAVAILABLE'
+
+export interface TelemetrySectionMeta {
+  measurementState: TelemetryMeasurementState
+  source: readonly string[]
+}
+
+export interface RunTelemetryMemorySample {
+  atMs: number | null
+  pid: number | null
+  totalBytes: number
+  peakBytes: number
+  heapUsedBytes: number | null
+  heapCommittedBytes: number | null
+  heapMaxBytes: number | null
+  nativeAllocatedBytes: number | null
+  rssBytes: number | null
+  pssBytes: number | null
+  javaHeapUsedBytes: number | null
+  javaHeapMaxBytes: number | null
+  nativeHeapAllocatedBytes: number | null
+  lowMemory: boolean | null
+  sourceEvent?: string
+}
+
+export interface RunTelemetryHttpCall {
+  atMs: number | null
+  requestId: string | null
+  method: string | null
+  host: string | null
+  path: string | null
+  code: number | null
+  status: number | null
+  success: boolean | null
+  durationMs: number | null
+  bytesIn: number | null
+  bytesOut: number | null
+}
+
+export interface RunTelemetrySpan {
+  name: string
+  startMs: number
+  durationMs: number
+  status: string | null
+}
+
+export interface RunTelemetryIncident {
+  atMs: number | null
+  event: string
+  severity: 'warning' | 'error' | 'critical'
+  screen: string | null
+  operation: string | null
+  spanId: string | null
+}
+
+export interface RunTelemetryHealth {
+  atMs: number | null
+  pid: number | null
+  apiLevel: number | null
+  profileable: boolean | null
+  inCriticalSpan: boolean | null
+  heapUsedMb: number | null
+  heapMaxMb: number | null
+  nativeHeapMb: number | null
+  gcCount: number | null
+  blockingGcTimeMs: number | null
+  crashedSince: boolean | number | string | null
+  anrRisk: boolean | null
+  anrBlockedMs: number | null
+  anrLevel: string | null
+  eventsEmitted: number | null
+  droppedSince: number | null
+  screen: string | null
+  operation: string | null
+  spanId: string | null
+  walState: string | null
+  gapEntryCount: number | null
+  gapEntriesUsed: number | null
+  gapUsableEntries: number | null
+  wsAuthState: string | null
+  gapPublishState: string | null
+}
+
+export interface RunTelemetryStreamHealth {
+  runId: string | null
+  sessionId: string | null
+  contiguousSeq: string | null
+  receiptPending: number | null
+  orderedLag: number | null
+  oldestUnprocessedAgeMs: number | null
+  lastReceiptDispatchLatencyMs: number | null
+  maxAttempt: number | null
+  deadLetteredCount: number | null
+  lateEventCount: number | null
+  closedAt: string | null
+}
+
+export interface RunTelemetryDiagnosticCapture {
+  captureId: string | null
+  level: string | null
+  triggerEvent: string | null
+  status: string | null
+  screen: string | null
+  operation: string | null
+  spanId: string | null
+  sensitive: boolean
+  skippedReason: string | null
+  createdAt: string | null
+  completedAt: string | null
+}
+
+/** Mirrors `RunTelemetryDto` from the API telemetry read model. */
+export interface RunTelemetryDto {
+  apiVersion: 'verdict-run-telemetry.v1'
+  runId: string
+  measurementState: TelemetryMeasurementState
+  summary: {
+    durationMs: number | null
+    eventCount: number | null
+    memoryPeakBytes: number | null
+    riskCounts: { warning: number; error: number; critical: number } | null
+    httpCount: number | null
+    httpErrorRate: number | null
+    httpP50Ms: number | null
+    httpP95Ms: number | null
+    spanCount: number | null
+  }
+  memorySamples: readonly RunTelemetryMemorySample[]
+  httpCalls: readonly RunTelemetryHttpCall[]
+  spans: readonly RunTelemetrySpan[]
+  incidents: readonly RunTelemetryIncident[]
+  eventBuckets: readonly { startMs: number; count: number }[]
+  latestHealth: RunTelemetryHealth | null
+  streamHealth: readonly RunTelemetryStreamHealth[]
+  diagnosticCaptures: readonly RunTelemetryDiagnosticCapture[]
+  sections: Readonly<Record<string, TelemetrySectionMeta>>
+}
+
 export interface WorkflowCompileApi {
   apiVersion: VerdictRuntimeApiVersion
   ok: boolean

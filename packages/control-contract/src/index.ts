@@ -79,6 +79,8 @@ export interface ControlEnvelope {
 export type ControlOperation = ControlEnvelope &
   (
     | { op: "get_state" }
+    | { op: "get_health" }
+    | { op: "get_memory_snapshot" }
     | {
         op: "set_run";
         runId: string;
@@ -163,9 +165,70 @@ export interface DeviceBridgeState {
   [extra: string]: unknown;
 }
 
+/**
+ * SDK process/WAL health. Known fields are typed while future SDK fields remain
+ * available to callers under the additive-wire rule.
+ */
+export interface DeviceHealthSnapshot {
+  pid?: number;
+  apiLevel?: number;
+  profileable?: boolean;
+  inCriticalSpan?: boolean;
+  heapUsedMb?: number;
+  heapMaxMb?: number;
+  nativeHeapMb?: number;
+  gcCount?: number;
+  blockingGcTimeMs?: number;
+  crashedSince?: boolean | number | string | null;
+  anrRisk?:
+    | boolean
+    | {
+        blockedMs?: number;
+        level?: string;
+        [extra: string]: unknown;
+      };
+  eventsEmitted?: number;
+  droppedSince?: number;
+  gapEntriesUsed?: number;
+  gapUsableEntries?: number;
+  screen?: string;
+  operation?: string | null;
+  spanId?: string | null;
+  wal?: string | Record<string, unknown>;
+  gaps?: readonly Record<string, unknown>[];
+  gapEntries?: readonly Record<string, unknown>[];
+  wsAuth?: string | Record<string, unknown>;
+  gapPublish?: Record<string, unknown>;
+  [extra: string]: unknown;
+}
+
+/**
+ * Read-only SDK memory observation. Mobile versions expose different subsets,
+ * so every known measurement is optional and unknown additive fields survive.
+ */
+export interface DeviceMemorySnapshot {
+  pid?: number;
+  heapUsedBytes?: number;
+  heapCommittedBytes?: number;
+  heapMaxBytes?: number;
+  nativeAllocatedBytes?: number;
+  capturedAtMs?: number;
+  rssBytes?: number;
+  pssBytes?: number;
+  usedBytes?: number;
+  javaHeapUsedBytes?: number;
+  javaHeapMaxBytes?: number;
+  nativeHeapAllocatedBytes?: number;
+  availableMemoryBytes?: number;
+  lowMemory?: boolean;
+  [extra: string]: unknown;
+}
+
 /** Operation → sonuç tipi eşlemesi. Çağıran keyfi bir `T` iddia EDEMEZ. */
 export interface ControlResultMap {
   get_state: DeviceBridgeState;
+  get_health: DeviceHealthSnapshot;
+  get_memory_snapshot: DeviceMemorySnapshot;
   set_run: Dispatched;
   end_run: Dispatched;
   get_run: { runId: string; sessionId: string; seq: number };

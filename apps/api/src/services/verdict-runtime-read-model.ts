@@ -108,14 +108,36 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
 export async function getRunDetail(runId: string): Promise<RunDetailResult | null> {
   const runRows = await prisma.$queryRaw<Row[]>`
     SELECT
+      bfr.*,
       wr.id,
       wr.status,
       wr."createdAt" AS "createdAt",
+      wr."startedAt" AS "startedAt",
+      wr."completedAt" AS "completedAt",
+      wr.duration,
+      wr.mode,
+      wr."targetStepId" AS "targetStepId",
+      wr."deviceId" AS "deviceId",
+      wr.country,
+      wr.environment,
+      wr."runInput" AS "runInput",
+      wr.spans,
+      wr."screenshotDir" AS "screenshotDir",
       wr."workflowId" AS "workflowId",
       wr."versionId" AS "versionId",
-      bfr.engine_type AS "engineType",
-      bfr.*
+      w.slug AS "workflowSlug",
+      w.name AS "workflowName",
+      w.description AS "workflowDescription",
+      w.category AS "workflowCategory",
+      wv.version AS "workflowVersion",
+      md."modelName" AS "deviceModelName",
+      md.label AS "deviceLabel",
+      bfr.engine_type AS "engineType"
     FROM workflow_runs wr
+    LEFT JOIN workflows w ON w.id = wr."workflowId"
+    LEFT JOIN workflow_versions wv ON wv.id = wr."versionId"
+    LEFT JOIN mobile_devices md
+      ON md."adbDeviceId" = wr."deviceId" OR md."deviceId" = wr."deviceId"
     LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
     WHERE wr.id = ${runId}
     LIMIT 1

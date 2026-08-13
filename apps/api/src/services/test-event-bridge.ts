@@ -18,6 +18,8 @@ import { getAdbPathHint, resolveAdbPath } from "@nesy/platform-paths";
 import {
   NO_SECRET,
   newRequestId,
+  type DeviceHealthSnapshot,
+  type DeviceMemorySnapshot,
   type Secret,
 } from "@nesy/control-contract";
 import { parseBroadcastPayload } from "@nesy/control-channels";
@@ -358,6 +360,170 @@ export async function getDeviceBridgeState(deviceId: string, appId: string): Pro
     return null;
   }
   return mapBridgeState(res.data);
+}
+
+/**
+ * Read-only Verdict health probe. Older mobile builds may not implement it;
+ * absence and malformed known fields are both represented as null, never as a
+ * synthetic healthy snapshot.
+ */
+export async function getDeviceHealth(
+  deviceId: string,
+  appId: string,
+): Promise<DeviceHealthSnapshot | null> {
+  try {
+    const res = await control(appId).run(deviceId, {
+      ...envelope(deviceId, "get-health"),
+      op: "get_health",
+    });
+    if (!res.ok) {
+      console.warn(`[TestEventBridge] GET_HEALTH unavailable: ${res.code}`, res.detail ?? "");
+      return null;
+    }
+    return validateHealthSnapshot(res.data) ? res.data : null;
+  } catch (error) {
+    console.warn(
+      "[TestEventBridge] GET_HEALTH unavailable:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+/**
+ * Read-only Verdict memory probe. The returned record preserves additive SDK
+ * fields, while every known field is validated before it can be persisted.
+ */
+export async function getDeviceMemorySnapshot(
+  deviceId: string,
+  appId: string,
+): Promise<DeviceMemorySnapshot | null> {
+  try {
+    const res = await control(appId).run(deviceId, {
+      ...envelope(deviceId, "get-memory"),
+      op: "get_memory_snapshot",
+    });
+    if (!res.ok) {
+      console.warn(
+        `[TestEventBridge] GET_MEMORY_SNAPSHOT unavailable: ${res.code}`,
+        res.detail ?? "",
+      );
+      return null;
+    }
+    return validateMemorySnapshot(res.data) ? res.data : null;
+  } catch (error) {
+    console.warn(
+      "[TestEventBridge] GET_MEMORY_SNAPSHOT unavailable:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+export function validateHealthSnapshot(value: unknown): value is DeviceHealthSnapshot {
+  if (!isObjectRecord(value)) return false;
+  return (
+    optionalPositiveInteger(value.pid) &&
+    optionalPositiveInteger(value.apiLevel) &&
+    optionalType(value.profileable, "boolean") &&
+    optionalType(value.inCriticalSpan, "boolean") &&
+    optionalNonNegativeNumber(value.heapUsedMb) &&
+    optionalNonNegativeNumber(value.heapMaxMb) &&
+    optionalNonNegativeNumber(value.nativeHeapMb) &&
+    optionalNonNegativeNumber(value.gcCount) &&
+    optionalNonNegativeNumber(value.blockingGcTimeMs) &&
+    optionalScalar(value.crashedSince) &&
+    optionalAnrRisk(value.anrRisk) &&
+    optionalNonNegativeNumber(value.eventsEmitted) &&
+    optionalNonNegativeNumber(value.droppedSince) &&
+    optionalNonNegativeNumber(value.gapEntriesUsed) &&
+    optionalNonNegativeNumber(value.gapUsableEntries) &&
+    optionalType(value.screen, "string") &&
+    optionalNullableString(value.operation) &&
+    optionalNullableString(value.spanId) &&
+    optionalStringOrRecord(value.wal) &&
+    optionalObjectArray(value.gaps) &&
+    optionalObjectArray(value.gapEntries) &&
+    optionalStringOrRecord(value.wsAuth) &&
+    optionalRecord(value.gapPublish)
+  );
+}
+
+export function validateMemorySnapshot(value: unknown): value is DeviceMemorySnapshot {
+  if (!isObjectRecord(value)) return false;
+  const numericFields = [
+    "heapUsedBytes",
+    "heapCommittedBytes",
+    "heapMaxBytes",
+    "nativeAllocatedBytes",
+    "capturedAtMs",
+    "rssBytes",
+    "pssBytes",
+    "usedBytes",
+    "javaHeapUsedBytes",
+    "javaHeapMaxBytes",
+    "nativeHeapAllocatedBytes",
+    "availableMemoryBytes",
+  ] as const;
+  return (
+    optionalPositiveInteger(value.pid) &&
+    numericFields.every((field) => optionalNonNegativeNumber(value[field])) &&
+    optionalType(value.lowMemory, "boolean")
+  );
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function optionalType(value: unknown, type: "boolean" | "string"): boolean {
+  return value === undefined || typeof value === type;
+}
+
+function optionalNullableString(value: unknown): boolean {
+  return value === undefined || value === null || typeof value === "string";
+}
+
+function optionalRecord(value: unknown): boolean {
+  return value === undefined || isObjectRecord(value);
+}
+
+function optionalStringOrRecord(value: unknown): boolean {
+  return value === undefined || typeof value === "string" || isObjectRecord(value);
+}
+
+function optionalObjectArray(value: unknown): boolean {
+  return (
+    value === undefined ||
+    (Array.isArray(value) && value.every((entry) => isObjectRecord(entry)))
+  );
+}
+
+function optionalAnrRisk(value: unknown): boolean {
+  if (value === undefined || typeof value === "boolean") return true;
+  return (
+    isObjectRecord(value) &&
+    optionalNonNegativeNumber(value.blockedMs) &&
+    optionalType(value.level, "string")
+  );
+}
+
+function optionalScalar(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  );
+}
+
+function optionalPositiveInteger(value: unknown): boolean {
+  return value === undefined || (Number.isSafeInteger(value) && Number(value) > 0);
+}
+
+function optionalNonNegativeNumber(value: unknown): boolean {
+  return value === undefined || (typeof value === "number" && Number.isFinite(value) && value >= 0);
 }
 
 /**

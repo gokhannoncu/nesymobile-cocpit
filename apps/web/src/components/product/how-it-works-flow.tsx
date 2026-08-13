@@ -8,15 +8,25 @@ type HowItWorksFlowProps = {
   tone?: Tone
   /** `grid` — compact 2-column step cards (default). `timeline` — vertical timeline. */
   variant?: 'grid' | 'timeline'
+  /** Optional localized heading; existing consumers keep the Turkish default. */
+  heading?: string
+  /** Optional localized singular/plural step label. */
+  stepLabel?: string
 }
 
-export function HowItWorksFlow({ steps, tone = 'orange', variant = 'grid' }: HowItWorksFlowProps) {
+export function HowItWorksFlow({
+  steps,
+  tone = 'orange',
+  variant = 'grid',
+  heading = 'Nasıl çalışır',
+  stepLabel = 'adım',
+}: HowItWorksFlowProps) {
   if (steps.length === 0) return null
 
   if (variant === 'timeline') {
     return (
       <div>
-        <FlowHeader stepCount={steps.length} tone={tone} />
+        <FlowHeader stepCount={steps.length} tone={tone} heading={heading} stepLabel={stepLabel} />
         <ol className="relative ms-2 mt-3 space-y-0 border-s border-border/60 ps-4">
           {steps.map((step, index) => {
             const isLast = index === steps.length - 1
@@ -34,7 +44,7 @@ export function HowItWorksFlow({ steps, tone = 'orange', variant = 'grid' }: How
 
   return (
     <div>
-      <FlowHeader stepCount={steps.length} tone={tone} />
+      <FlowHeader stepCount={steps.length} tone={tone} heading={heading} stepLabel={stepLabel} />
       <ol className="mt-3 grid gap-2 sm:grid-cols-2">
         {steps.map((step, index) => (
           <li
@@ -50,14 +60,24 @@ export function HowItWorksFlow({ steps, tone = 'orange', variant = 'grid' }: How
   )
 }
 
-function FlowHeader({ stepCount, tone }: { stepCount: number; tone: Tone }) {
+function FlowHeader({
+  stepCount,
+  tone,
+  heading,
+  stepLabel,
+}: {
+  stepCount: number
+  tone: Tone
+  heading: string
+  stepLabel: string
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
       <p className={cn('text-[11px] font-bold uppercase tracking-wide', toneText[tone])}>
-        Nasıl çalışır
+        {heading}
       </p>
       <span className="shrink-0 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-        {stepCount} adım
+        {stepCount} {stepLabel}
       </span>
     </div>
   )

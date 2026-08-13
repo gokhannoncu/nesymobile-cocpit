@@ -27,6 +27,7 @@ import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
 import { NESY_DISMISS_NOTIFICATION_LIST_MACRO, NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
 import { NESY_LOAD_TO_VEHICLE_MACRO } from "./macros/load-to-vehicle.js";
 import { NESY_LOGIN_MACRO } from "./macros/login.js";
+import { NESY_LOGIN_AND_SELECT_ROUTE_MACRO } from "./macros/login-and-select-route.js";
 import { NESY_OPEN_STOP_MACRO } from "./macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "./macros/process-parcel.js";
 import { NESY_SELECT_ROUTE_MACRO } from "./macros/select-route.js";
@@ -330,6 +331,10 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   compares, and ACTIVE_STOP_MATCHES now compares against the input the macro
   //   actually declares (`requestedItemCode`) rather than a name nothing used.
   //
+  // 1.26.0 — login-then-select-route is a composed macro (one expansion
+  //   snapshot) so a cold start can PIN-login and pick the route in one run.
+  //   The dedicated login and select-route workflows stay one-macro each.
+  //
   // 1.2.0 — every independent workflow references exactly ONE macro. Signing in
   //   is a precondition installed by a launch profile, not a leg of the test:
   //   chaining it produced two expansion snapshots, which an empty canvas cannot
@@ -356,7 +361,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 25, patch: 1 },
+  version: { major: 1, minor: 26, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
@@ -416,6 +421,7 @@ export function buildNesyCourierBundle(): DomainPackBundle {
       macros: [
         NESY_LOGIN_MACRO,
         NESY_SELECT_ROUTE_MACRO,
+        NESY_LOGIN_AND_SELECT_ROUTE_MACRO,
         NESY_LOAD_TO_VEHICLE_MACRO,
         NESY_OPEN_STOP_MACRO,
         NESY_PROCESS_PARCEL_MACRO,

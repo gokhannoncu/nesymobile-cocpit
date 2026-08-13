@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDot,
+  Clock,
   Cloud,
   Database,
   FileX2,
@@ -34,6 +35,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Tag,
   Trash2,
   Truck,
   WalletCards,
@@ -50,6 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@nesy/metronic/components/ui/alert-dialog'
+import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import {
   Select,
@@ -58,6 +61,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@nesy/metronic/components/ui/select'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@nesy/metronic/components/ui/tooltip'
 import { cn } from '@nesy/metronic/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
@@ -849,6 +857,52 @@ function WorkflowDeleteDialog({
   )
 }
 
+function formatWorkflowStatusLabel(status: string): string {
+  if (status === 'published') return 'Published'
+  if (status === 'active') return 'Active'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function workflowStatusBadgeProps(status: string): {
+  variant: 'success' | 'warning' | 'info' | 'secondary'
+  appearance: 'light'
+} {
+  switch (status) {
+    case 'published':
+      return { variant: 'info', appearance: 'light' }
+    case 'active':
+      return { variant: 'success', appearance: 'light' }
+    case 'draft':
+      return { variant: 'warning', appearance: 'light' }
+    default:
+      return { variant: 'secondary', appearance: 'light' }
+  }
+}
+
+function WorkflowMetaChip({
+  icon: Icon,
+  children,
+  tone = 'neutral',
+}: {
+  icon: LucideIcon
+  children: ReactNode
+  tone?: 'neutral' | 'success' | 'danger'
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex max-w-full items-center gap-1 rounded-md border border-border/80 bg-muted/30 px-2 py-1 text-[11px] font-medium leading-none',
+        tone === 'success' && 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400',
+        tone === 'danger' && 'border-red-200/80 bg-red-50/80 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400',
+        tone === 'neutral' && 'text-muted-foreground',
+      )}
+    >
+      <Icon className="size-3 shrink-0 opacity-70" strokeWidth={2.2} />
+      <span className="truncate">{children}</span>
+    </span>
+  )
+}
+
 function WorkflowCard({
   workflow,
   onDelete,
@@ -858,18 +912,14 @@ function WorkflowCard({
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const Icon = resolveIcon(workflow.icon)
-  const statusLabel = workflow.status.charAt(0).toUpperCase() + workflow.status.slice(1)
+  const statusLabel = formatWorkflowStatusLabel(workflow.status)
+  const statusBadge = workflowStatusBadgeProps(workflow.status)
   const editorHref = `/automation/${workflow.slug}`
-
-  const statusClasses: Record<string, string> = {
-    active: 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950 dark:text-emerald-400 dark:ring-emerald-900',
-    draft: 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-950 dark:text-amber-400 dark:ring-amber-900',
-    archived: 'bg-muted text-muted-foreground ring-border',
-  }
 
   const timeSince = useMemo(() => {
     const diff = Date.now() - new Date(workflow.updatedAt).getTime()
     const minutes = Math.floor(diff / 60000)
+    if (minutes < 1) return 'just now'
     if (minutes < 60) return `${minutes}m ago`
     const hours = Math.floor(minutes / 60)
     if (hours < 24) return `${hours}h ago`
@@ -877,26 +927,26 @@ function WorkflowCard({
     return `${days}d ago`
   }, [workflow.updatedAt])
 
-  const metaParts = [
-    `Updated ${timeSince}`,
-    workflow.latestVersion ? `v${workflow.latestVersion.version}` : null,
-    workflow.lastRun
-      ? `Last run ${workflow.lastRun.status}`
-      : 'No runs yet',
-  ].filter((part): part is string => Boolean(part))
-
   const lastRunTone =
     workflow.lastRun?.status === 'success'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'success'
       : workflow.lastRun?.status === 'failed'
-        ? 'text-red-600 dark:text-red-400'
-        : 'text-muted-foreground'
+        ? 'danger'
+        : 'neutral'
+
+  const lastRunLabel = workflow.lastRun
+    ? workflow.lastRun.status === 'success'
+      ? 'Last run passed'
+      : workflow.lastRun.status === 'failed'
+        ? 'Last run failed'
+        : `Last run ${workflow.lastRun.status}`
+    : 'No runs yet'
 
   return (
     <article
       className={cn(
-        'group flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs transition-colors',
-        'hover:border-nesy-muted/80 hover:shadow-sm',
+        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs transition-all duration-200',
+        'hover:-translate-y-0.5 hover:border-nesy-muted/70 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]',
       )}
     >
       <WorkflowDeleteDialog
@@ -909,88 +959,96 @@ function WorkflowCard({
         }}
       />
 
-      <Link
-        href={editorHref}
-        className="flex min-w-0 flex-1 gap-3 p-4 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-inset"
-      >
-        <div
-          className={cn(
-            'flex size-12 shrink-0 items-center justify-center rounded-md',
-            workflow.iconClassName ||
-              'bg-gradient-to-br from-nesy to-nesy-hover text-white',
-          )}
-        >
-          <Icon className="size-6" strokeWidth={2} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-semibold tracking-[-0.02em] text-foreground">
-              {workflow.name}
-            </h3>
-            <span
-              className={cn(
-                'inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[11px] font-semibold ring-1 ring-inset',
-                statusClasses[workflow.status] ?? 'bg-muted text-muted-foreground ring-border',
-              )}
-            >
-              {statusLabel}
-            </span>
-            {workflow.category ? (
-              <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-nesy-soft px-2 text-[11px] font-semibold text-nesy-ink">
-                {workflow.category}
-              </span>
-            ) : null}
-          </div>
-
-          {workflow.description ? (
-            <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-muted-foreground">
-              {workflow.description}
-            </p>
-          ) : (
-            <p className="mt-1.5 text-sm italic text-muted-foreground/70">
-              Add a short description in the editor
-            </p>
-          )}
-
-          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
-            {metaParts.map((part, index) => (
-              <span key={`${part}-${index}`} className="inline-flex items-center gap-1.5">
-                {index > 0 ? <span aria-hidden className="text-border">·</span> : null}
-                <span
-                  className={cn(
-                    part.startsWith('Last run') && workflow.lastRun ? lastRunTone : undefined,
-                  )}
-                >
-                  {part}
-                </span>
-              </span>
-            ))}
-          </p>
-        </div>
-      </Link>
-
-      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/20 px-3 py-2">
-        <span className="truncate text-[11px] font-medium text-muted-foreground">
-          Open to edit or run tests
-        </span>
-        <div className="flex shrink-0 items-center gap-1">
-          <Link
-            href={editorHref}
-            className="inline-flex h-8 items-center rounded-md bg-nesy px-3 text-xs font-semibold text-white shadow-xs transition hover:bg-nesy-hover"
-          >
-            Open
-          </Link>
+      <Tooltip>
+        <TooltipTrigger asChild>
           <button
             type="button"
             aria-label={`Delete ${workflow.name}`}
-            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+            className={cn(
+              'absolute right-2.5 top-2.5 z-10 inline-flex size-7 items-center justify-center rounded-md',
+              'text-muted-foreground opacity-0 transition-all duration-150',
+              'hover:bg-destructive/10 hover:text-destructive',
+              'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30',
+              'group-hover:opacity-100 group-focus-within:opacity-100',
+            )}
             onClick={() => setDeleteOpen(true)}
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
           </button>
+        </TooltipTrigger>
+        <TooltipContent variant="light">Delete workflow</TooltipContent>
+      </Tooltip>
+
+      <Link
+        href={editorHref}
+        className="flex min-w-0 flex-1 flex-col p-4 outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-inset"
+      >
+        <div className="flex gap-3 pr-7">
+          <div
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-lg border border-nesy-muted/30',
+              workflow.iconClassName ||
+                'bg-nesy-soft text-nesy-ink dark:border-nesy-muted/40 dark:bg-nesy-soft/20',
+            )}
+          >
+            <Icon className="size-[18px]" strokeWidth={2.1} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h3
+              className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground"
+              title={workflow.name}
+            >
+              {workflow.name}
+            </h3>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <Badge size="sm" appearance={statusBadge.appearance} variant={statusBadge.variant}>
+                {statusLabel}
+              </Badge>
+              {workflow.category ? (
+                <Badge size="sm" appearance="outline" variant="secondary">
+                  {workflow.category}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
+
+        {workflow.description ? (
+          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            {workflow.description}
+          </p>
+        ) : (
+          <p className="mt-3 text-sm italic leading-relaxed text-muted-foreground/70">
+            Add a short description in the editor
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <WorkflowMetaChip icon={Clock}>Updated {timeSince}</WorkflowMetaChip>
+          {workflow.latestVersion ? (
+            <WorkflowMetaChip icon={Tag}>v{workflow.latestVersion.version}</WorkflowMetaChip>
+          ) : null}
+          <WorkflowMetaChip icon={CircleDot} tone={lastRunTone}>
+            {lastRunLabel}
+          </WorkflowMetaChip>
+        </div>
+      </Link>
+
+      <Link
+        href={editorHref}
+        className={cn(
+          'flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5',
+          'bg-muted/10 text-xs font-semibold text-muted-foreground transition-colors duration-200',
+          'group-hover:bg-nesy-soft/25 group-hover:text-nesy-ink',
+        )}
+      >
+        <span>Open workflow</span>
+        <ChevronRight
+          className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-nesy"
+          strokeWidth={2.2}
+        />
+      </Link>
     </article>
   )
 }

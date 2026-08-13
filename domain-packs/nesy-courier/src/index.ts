@@ -39,6 +39,7 @@ export * from "./macros/common.js";
 export * from "./macros/ir-authoring.js";
 export * from "./macros/login.js";
 export * from "./macros/select-route.js";
+export * from "./macros/login-and-select-route.js";
 export * from "./macros/open-stop.js";
 export * from "./macros/process-parcel.js";
 export * from "./macros/complete-delivery.js";

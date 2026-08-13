@@ -1,45 +1,28 @@
 'use client'
 
-import { Badge } from '@nesy/metronic/components/ui/badge'
-import { CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { CircleDot, Gavel, Timer } from 'lucide-react'
+import { Timeline, type TimelineItem } from '@/components/product/timeline'
+import type { RunTimelineItem } from '@/lib/verdict-runtime/run-detail-view-model'
 
-export function GateOracleTimeline({ run }: { run: any }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Evaluation Timeline</h3>
-      <div className="relative border-l border-border ml-3 space-y-6">
-        
-        {/* Continue Gate */}
-        <div className="relative pl-6">
-          <div className="absolute -left-[9px] top-1 bg-background">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="font-medium">Continue Gate</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700">PASS</Badge>
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">Evaluated preconditions and setup state.</div>
-        </div>
-
-        {/* Final Oracle */}
-        <div className="relative pl-6">
-          <div className="absolute -left-[9px] top-1 bg-background">
-            {run?.run?.outcome === 'FAIL' ? (
-              <XCircle className="w-4 h-4 text-destructive" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="font-medium">Final Oracle</span>
-            <Badge variant={run?.run?.outcome === 'FAIL' ? 'destructive' : 'primary'}>
-              {run?.run?.outcome || 'PENDING'}
-            </Badge>
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">Final business rule validation.</div>
-        </div>
-
+export function GateOracleTimeline({ items }: { items: RunTimelineItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed bg-muted/20 p-5 text-sm text-muted-foreground">
+        <span className="font-mono text-xs font-semibold">NOT_MEASURED</span>
+        <p className="mt-1">No persisted steps, waits, or oracle evaluations are available.</p>
       </div>
-    </div>
-  )
+    )
+  }
+
+  const timelineItems: TimelineItem[] = items.map((item) => ({
+    period: item.period,
+    title: item.title,
+    desc: item.description,
+    icon: item.kind === 'oracle' ? Gavel : item.kind === 'wait' ? Timer : CircleDot,
+    tone: item.tone,
+    status: item.status,
+    badges: [item.kind.toUpperCase(), item.result],
+  }))
+
+  return <Timeline items={timelineItems} />
 }

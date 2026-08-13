@@ -14,6 +14,7 @@ import { EventEmitter } from "node:events";
 import { resolveEventName } from "@nesy/control-contract";
 import { parseTestEventLine, TestEventDeduper, type TestBridgeEvent } from "./test-event-bridge.js";
 import { getScreenReadinessObserver } from "./screen-readiness-observer.js";
+import { publishRunLiveEvent, runLiveKeys, runLiveLevelFor } from "./run-live-hub.js";
 
 export interface LogcatEvent {
   action: string;
@@ -224,6 +225,32 @@ export class LogcatSniffer extends EventEmitter {
     // TestEventWsServer — so this is the one place that sees every screen
     // transition exactly once (the deduper above is what makes "once" true).
     getScreenReadinessObserver().observe(event, Date.now());
+
+    // Same reason this is the right place for the readiness observer: it is the
+    // only point that sees every device event exactly once, on either transport.
+    // Without it a live run detail page shows host-side progress and nothing the
+    // device said, which is the half that explains a wait that never settles.
+    publishRunLiveEvent({
+      runId: event.runId,
+      kind: "DEVICE",
+      level: event.success === false ? "ERROR" : runLiveLevelFor(event.status),
+      title: `${event.event}${event.screen ? ` · ${event.screen}` : ""}`,
+      atMs: event.ts > 0 ? event.ts : Date.now(),
+      dedupeKey: runLiveKeys.device(event.event, String(event.seq), event.screen),
+      detail: {
+        event: event.event,
+        screen: event.screen,
+        status: event.status,
+        action: event.action,
+        taskId: event.taskId,
+        shipmentId: event.shipmentId,
+        success: event.success,
+        durationMs: event.durationMs,
+        seq: event.seq,
+        sessionId: event.sessionId,
+        data: event.data,
+      },
+    });
 
     this.emit("test_event", event);
 

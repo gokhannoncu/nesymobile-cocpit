@@ -98,6 +98,13 @@ function runPnpm(filter, script) {
   log(`${filter} build ok`)
 }
 
+function prepareWebProductionBuild() {
+  const nextDir = join(repoRoot, 'apps', 'web', '.next')
+  if (!existsSync(nextDir)) return
+  log('removing apps/web/.next before production build (dev + build share this cache)…')
+  rmSync(nextDir, { recursive: true, force: true })
+}
+
 function restartNextWeb() {
   const nextBin = require.resolve('next/dist/bin/next', {
     paths: [join(repoRoot, 'apps', 'web')],
@@ -178,7 +185,10 @@ try {
     clearState()
 
     if (state.api) runPnpm('@nesy/api', 'build')
-    if (state.web) runPnpm('@nesy/web', 'build')
+    if (state.web) {
+      prepareWebProductionBuild()
+      runPnpm('@nesy/web', 'build')
+    }
     if (state.api && apiWasUp) restartApi()
     if (state.web && webWasUp) restartNextWeb()
     log('done')

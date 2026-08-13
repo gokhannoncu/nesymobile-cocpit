@@ -1,125 +1,96 @@
 import {
   fetchVerdictRunDetail,
   fetchVerdictEvidenceJourney,
+  fetchVerdictRunTelemetry,
 } from '@/lib/verdict-runtime/client'
 import { canReadRawEvidence } from '@/lib/verdict-runtime/rbac'
 import { headers } from 'next/headers'
-import type { RunDetailResult } from '@/lib/verdict-runtime/types'
-import { deriveLayerApplicability } from '@/lib/verdict-runtime/layer-applicability'
-import { EvidenceJourneyDrawer } from '@/components/automation/run-detail/EvidenceJourneyDrawer'
-import { OccurrenceTree } from '@/components/automation/run-detail/OccurrenceTree'
-import { LayerBadges } from '@/components/automation/run-detail/LayerBadge'
-import { GateOracleTimeline } from '@/components/automation/run-detail/GateOracleTimeline'
-import { OutcomePanel } from '@/components/automation/run-detail/OutcomePanel'
-import { VerdictDisposition } from '@/components/automation/run-detail/VerdictDisposition'
-import { ReproExportPanel } from '@/components/automation/run-detail/ReproExportPanel'
-import { ProvenancePanel } from '@/components/automation/run-detail/ProvenancePanel'
-import { InteractionOriginsPanel } from '@/components/automation/run-detail/InteractionOriginsPanel'
-import { DiagnosticWaterfall } from '@/components/automation/run-detail/DiagnosticWaterfall'
-import { LiveUpdateSubscription } from '@/components/automation/run-detail/LiveUpdateSubscription'
-import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
+import type {
+  EvidenceJourneyResult,
+  RunDetailResult,
+  RunTelemetryDto,
+} from '@/lib/verdict-runtime/types'
+import { RunDetailLive } from '@/components/automation/run-detail/RunDetailLive'
+
+/**
+ * The durable snapshot, rendered on the server, handed to the live client shell.
+ *
+ * Never cached: a run that is still executing would otherwise be served from a
+ * previous request's copy, and the socket stream would then be updating panels
+ * whose baseline is minutes old.
+ */
+export const dynamic = 'force-dynamic'
 
 export default async function RunDetailPage(props: {
   params: Promise<{ id: string; runId: string }>
 }) {
   const params = await props.params
-  const { runId } = params
+  const { id, runId } = params
 
-  let runDetail: RunDetailResult | null = null
-  let evidenceJourney = null
-
-  try {
-    runDetail = await fetchVerdictRunDetail(runId)
-    evidenceJourney = await fetchVerdictEvidenceJourney(runId)
-  } catch {
-    return (
-      <div className="p-8">
-        <Alert variant="destructive">
-          <AlertTitle>Error loading run</AlertTitle>
-          <AlertDescription>Could not load details for run {runId}.</AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  if (runDetail?.partial || runDetail?.blockedReason) {
-    return (
-      <div className="p-8">
-        <Alert variant="destructive">
-          <AlertTitle>Blocked State</AlertTitle>
-          <AlertDescription>
-            Run is in a blocked state: {runDetail.blockedReason}
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  if (!runDetail) {
-    return (
-      <div className="p-8">
-        <Alert variant="destructive">
-          <AlertTitle>Error loading run</AlertTitle>
-          <AlertDescription>Could not load details for run {runId}.</AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  const layerStates = deriveLayerApplicability(runDetail)
-  const canViewRawEvidence = canReadRawEvidence(await headers())
+  const [[detailSettled, evidenceSettled, telemetrySettled], requestHeaders] = await Promise.all([
+    Promise.allSettled([
+      fetchVerdictRunDetail(runId),
+      fetchVerdictEvidenceJourney(runId),
+      fetchVerdictRunTelemetry(runId),
+    ]),
+    headers(),
+  ])
+  const detailResult = unwrapSettled<RunDetailResult>(detailSettled)
+  const evidenceResult = unwrapSettled<EvidenceJourneyResult>(evidenceSettled)
+  const telemetryResult = unwrapSettled<RunTelemetryDto>(telemetrySettled)
+  const runDetail = detailResult.data
+  const evidenceJourney = evidenceResult.data
+  const telemetry = telemetryResult.data
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">Run {runId.split('-')[0]}</h1>
-            <LiveUpdateSubscription runId={runId} />
-          </div>
-          <p className="text-muted-foreground text-sm mt-1">
-            Durable execution trace and evidence.
-          </p>
-        </div>
-        <EvidenceJourneyDrawer
-          runId={runId}
-          journey={evidenceJourney || undefined}
-          canViewRawEvidence={canViewRawEvidence}
-        />
-      </div>
-
-      <VerdictDisposition run={runDetail} />
-      <OutcomePanel run={runDetail} />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-8">
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Execution Timeline</h2>
-            <GateOracleTimeline run={runDetail} />
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Layers</h2>
-            <LayerBadges states={layerStates} />
-            <p className="text-[11px] text-muted-foreground font-mono">
-              From persisted oracleEvaluations · max revision per plane
-            </p>
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Diagnostic Waterfall</h2>
-            <DiagnosticWaterfall run={runDetail} />
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Interactions</h2>
-            <InteractionOriginsPanel runId={runId} />
-          </div>
-        </div>
-
-        <div className="space-y-8">
-          <OccurrenceTree run={runDetail} />
-          <ProvenancePanel run={runDetail} />
-          <ReproExportPanel run={runDetail} />
-        </div>
-      </div>
-    </div>
+    <RunDetailLive
+      automationId={id}
+      runId={runId}
+      initialDetail={runDetail ?? emptyRunDetail(runId)}
+      initialEvidenceJourney={evidenceJourney}
+      initialTelemetry={telemetry}
+      canViewRawEvidence={canReadRawEvidence(requestHeaders)}
+      initialSourceErrors={{
+        ...(detailResult.error ? { detail: detailResult.error } : {}),
+        ...(evidenceResult.error ? { evidence: evidenceResult.error } : {}),
+        ...(telemetryResult.error ? { telemetry: telemetryResult.error } : {}),
+      }}
+    />
   )
+}
+
+function unwrapSettled<T>(
+  result: PromiseSettledResult<unknown>,
+): { data?: T; error?: string } {
+  if (result.status === 'fulfilled') return { data: result.value as T }
+  return {
+    error:
+      result.reason instanceof Error
+        ? result.reason.message
+        : 'The data source could not be reached',
+  }
+}
+
+/**
+ * A snapshot that measured nothing, for when the read model could not answer.
+ *
+ * Every list is empty rather than absent so the panels report NOT_MEASURED —
+ * which is exactly what is true — instead of guessing a verdict from a missing
+ * field.
+ */
+function emptyRunDetail(runId: string): RunDetailResult {
+  return {
+    apiVersion: 'verdict-runtime.v1',
+    run: { id: runId },
+    runtime: null,
+    partial: false,
+    correlation: { runId, engineType: 'BRIDGEFLOW' },
+    steps: [],
+    waits: [],
+    actionTransitions: [],
+    oracleEvaluations: [],
+    testExecutions: [],
+    resourceLeases: [],
+    remoteActions: [],
+  }
 }
