@@ -2460,10 +2460,13 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           nodes,
           connections,
         },
-        profileKey:
-          workflowRef === "nesy.workflow.login" || workflowRef === "nesy.workflow.login-and-select-route"
-            ? "nesy.launch.cold-real-login"
-            : undefined,
+        // Driven by the canvas, not by a list of slugs. An Auth / Login node means
+        // the run signs in through the real screens, and only the cold-real-login
+        // profile force-stops the app so those screens are there to sign in on.
+        // Named per workflow, `nesy.workflow.full-courier-day` was left without a
+        // profile: nothing launched the app, and its first wait for the login
+        // screen timed out against whatever the device happened to be showing.
+        profileKey: authLogin ? "nesy.launch.cold-real-login" : undefined,
         inputs: {
           ...(authLogin ? { pin: pinCode, sessionCorrelationId } : {}),
           ...(routeCode ? { routeCode } : {}),

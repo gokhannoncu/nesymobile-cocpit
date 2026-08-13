@@ -151,6 +151,20 @@ export function isCourierOperationType(type: WorkflowNodeType) {
   return courierOperationTypes.has(type);
 }
 
+/**
+ * Types that prove the stop list on their own.
+ *
+ * `APP.AVAILABLE_STOPS_LOADED` is bound by the select-route and change-route
+ * macros in the Domain Pack, so a canvas that runs through route selection has
+ * already established the stop list. Demanding a separate Validate StopList
+ * node there rejects the pack's own composed workflows.
+ */
+const stopListEstablishingTypes = new Set<WorkflowNodeType>([
+  WorkflowNodeType.VALIDATE_STOPLIST,
+  WorkflowNodeType.SELECT_ROUTE,
+  WorkflowNodeType.CHANGE_ROUTE,
+]);
+
 export function validateNodeDrop({
   state,
   paletteItem,
@@ -204,8 +218,8 @@ export function validateNodeDrop({
     return {
       valid: false,
       code: "VALIDATE_STOPLIST_REQUIRED",
-      title: "Validate StopList required",
-      message: "Courier operations can only be added after Validate StopList.",
+      title: "Stop list required",
+      message: "Courier operations can only be added after Select Route or Validate StopList.",
     };
   }
 
@@ -306,12 +320,16 @@ export function validateConnection({
     }
   }
 
-  if (sourceNode.type === WorkflowNodeType.SELECT_ROUTE && targetNode.type !== WorkflowNodeType.VALIDATE_STOPLIST) {
+  if (
+    sourceNode.type === WorkflowNodeType.SELECT_ROUTE &&
+    targetNode.type !== WorkflowNodeType.VALIDATE_STOPLIST &&
+    !isCourierOperationType(targetNode.type)
+  ) {
     return {
       valid: false,
       code: "SELECT_ROUTE_REQUIRES_VALIDATE",
-      title: "Validate StopList required",
-      message: "Select Route must continue to Validate StopList.",
+      title: "Invalid step after Select Route",
+      message: "Select Route must continue to Validate StopList or a courier operation.",
     };
   }
 
@@ -323,12 +341,12 @@ export function validateConnection({
     }
   }
 
-  if (isCourierOperationType(targetNode.type) && !hasPathFromType(state, sourceNode.id, WorkflowNodeType.VALIDATE_STOPLIST)) {
+  if (isCourierOperationType(targetNode.type) && !hasStopListAncestor(state, sourceNode.id)) {
     return {
       valid: false,
       code: "VALIDATE_STOPLIST_REQUIRED",
-      title: "Validate StopList required",
-      message: "Courier operations can only be added after Validate StopList.",
+      title: "Stop list required",
+      message: "Courier operations can only be added after Select Route or Validate StopList.",
     };
   }
 
@@ -408,14 +426,14 @@ export function validateWorkflowState(state: WorkflowGraphState): RuleValidation
   }
 
   const operationBeforeValidate = state.nodes.find(
-    (node) => isCourierOperationType(node.type) && !hasPathFromType(state, node.id, WorkflowNodeType.VALIDATE_STOPLIST),
+    (node) => isCourierOperationType(node.type) && !hasStopListAncestor(state, node.id),
   );
   if (operationBeforeValidate) {
     errors.push({
       valid: false,
       code: "COURIER_OPERATION_BEFORE_VALIDATE",
-      title: "Missing Validate StopList before courier operations",
-      message: "Missing Validate StopList before courier operations.",
+      title: "Missing stop list before courier operations",
+      message: "Courier operations need Select Route or Validate StopList upstream.",
     });
   }
 
@@ -506,18 +524,18 @@ function plannedConnectionsForDrop(
 }
 
 function targetHasValidatedStopListAncestor(state: WorkflowGraphState, target?: DropTarget) {
-  if (!target) return hasNodeType(state.nodes, WorkflowNodeType.VALIDATE_STOPLIST);
+  if (!target) return state.nodes.some((node) => stopListEstablishingTypes.has(node.type));
   if (target.kind === "connection") {
     const connection = state.connections.find((candidate) => candidate.id === target.connectionId);
-    return Boolean(connection && hasPathFromType(state, connection.sourceNodeId, WorkflowNodeType.VALIDATE_STOPLIST));
+    return Boolean(connection && hasStopListAncestor(state, connection.sourceNodeId));
   }
-  if (target.kind === "node") return hasPathFromType(state, target.nodeId, WorkflowNodeType.VALIDATE_STOPLIST);
+  if (target.kind === "node") return hasStopListAncestor(state, target.nodeId);
   if (target.kind === "branch") {
     const tail = findBranchTail(state, target.nodeId, target.branchType);
-    return Boolean(tail && hasPathFromType(state, tail.nodeId, WorkflowNodeType.VALIDATE_STOPLIST));
+    return Boolean(tail && hasStopListAncestor(state, tail.nodeId));
   }
   const terminal = findTerminalNode(state.nodes, state.connections);
-  return Boolean(terminal && hasPathFromType(state, terminal.id, WorkflowNodeType.VALIDATE_STOPLIST));
+  return Boolean(terminal && hasStopListAncestor(state, terminal.id));
 }
 
 function hasConnection(state: WorkflowGraphState, sourceNodeId: string, targetNodeId: string, sourceHandle: SourceHandle) {
@@ -531,10 +549,6 @@ function hasConnection(state: WorkflowGraphState, sourceNodeId: string, targetNo
 
 function firstNodeOfType(nodes: WorkflowNode[], type: WorkflowNodeType) {
   return nodes.find((node) => node.type === type);
-}
-
-function hasNodeType(nodes: WorkflowNode[], type: WorkflowNodeType) {
-  return nodes.some((node) => node.type === type);
 }
 
 function findBranchTail(state: WorkflowGraphState, sourceNodeId: string, branchType: BranchType) {
@@ -570,7 +584,7 @@ function findBranchTail(state: WorkflowGraphState, sourceNodeId: string, branchT
   return currentNodeId ? { nodeId: currentNodeId } : null;
 }
 
-function hasPathFromType(state: WorkflowGraphState, nodeId: string, type: WorkflowNodeType) {
+function hasPathFromTypes(state: WorkflowGraphState, nodeId: string, types: ReadonlySet<WorkflowNodeType>) {
   const incomingByTarget = new Map<string, Connection[]>();
   state.connections.forEach((connection) => {
     if (!connection.targetNodeId) return;
@@ -584,10 +598,15 @@ function hasPathFromType(state: WorkflowGraphState, nodeId: string, type: Workfl
     if (!current || visited.has(current)) continue;
     visited.add(current);
     const currentNode = state.nodes.find((node) => node.id === current);
-    if (currentNode?.type === type) return true;
+    if (currentNode && types.has(currentNode.type)) return true;
     (incomingByTarget.get(current) ?? []).forEach((connection) => queue.push(connection.sourceNodeId));
   }
   return false;
+}
+
+/** True when the stop list is proven at or upstream of `nodeId`. */
+function hasStopListAncestor(state: WorkflowGraphState, nodeId: string) {
+  return hasPathFromTypes(state, nodeId, stopListEstablishingTypes);
 }
 
 function findTerminalNode(nodes: WorkflowNode[], connections: Connection[]) {

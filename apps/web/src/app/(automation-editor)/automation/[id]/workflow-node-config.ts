@@ -151,7 +151,16 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
       helperText: "Parcel tracking number to search",
     },
   ],
-  [WorkflowNodeType.OPEN_STOP]: [{ key: "stopOrder", label: "Stop Order", type: "number", required: true }],
+  // The open-stop macro addresses the stop by entityRef and resolves the row
+  // through the product's own search, so a list index is a hint, not a contract.
+  [WorkflowNodeType.OPEN_STOP]: [
+    {
+      key: "stopOrder",
+      label: "Stop Order",
+      type: "number",
+      helperText: "Optional — leave blank to let the run resolve the stop the loading created",
+    },
+  ],
   [WorkflowNodeType.SCAN_BARCODE]: [
     {
       key: "barcode",
