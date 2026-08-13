@@ -36,3 +36,9 @@ apps/api/maestro/
 
 # Automation benchmark/scratch artifacts (Claude perf session)
 apps/api/_*
+
+# Device-measurement scratch: one-off bridge probes, tree dumps, run JSON.
+# Transient by design — a finding worth keeping goes in the phase RUN_PLAY, not
+# here. RUN_PLAY once pointed at a script in this directory that had already
+# been deleted; anything a future run needs belongs in scripts/ instead.
+scratchpad/
