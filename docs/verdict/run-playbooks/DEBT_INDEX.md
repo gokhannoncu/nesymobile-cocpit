@@ -53,6 +53,9 @@ beklemez. Yalnız cihazda `performAction` ile **çalıştırma** yetenek gerekti
 `capabilityStatus` alanıyla görünür kılınır; yeteneksiz action gizlenmez,
 bloklu gösterilir.
 
+Mimari anlatım (sözleşme → API → palet → compile → cihaz):
+[`../semantic-actions/HOW_IT_WORKS.md`](../semantic-actions/HOW_IT_WORKS.md).
+
 ## Harici engeller — kimse kodla çözemez
 
 | ID | Ne gerekiyor | Bugünkü durum |

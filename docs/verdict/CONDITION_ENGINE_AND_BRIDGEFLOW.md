@@ -4,7 +4,9 @@
 **Durum:** Bağlayıcı mimari notu (Phase 8'de Maestro doğrudan kaldırılır; dual-run gate yoktur).
 **Üst plan:** [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) §9 (Maestro DELETE) · Mobile `Consultants/NesyMobile/VERDICT_START.md` İz B #9–#14  
 **Dar Faz 4 özeti:** [`FAZ4_COCKPIT_LIVE_INSPECTOR_PLAN.md`](./FAZ4_COCKPIT_LIVE_INSPECTOR_PLAN.md)  
-**Operatör anlatımı + diyagramlar:** [`SISTEM_NASIL_CALISIR.md`](./SISTEM_NASIL_CALISIR.md) (login→tur senaryosu, az teknik)
+**Operatör anlatımı + diyagramlar:** [`SISTEM_NASIL_CALISIR.md`](./SISTEM_NASIL_CALISIR.md) (login→tur senaryosu, az teknik)  
+**Beş fazlı işletim modeli (hedef vs bugün):** [`OPERATING_MODEL.md`](./OPERATING_MODEL.md)  
+**Semantic action / palet / Domain Pack:** [`semantic-actions/HOW_IT_WORKS.md`](./semantic-actions/HOW_IT_WORKS.md)
 
 ---
 

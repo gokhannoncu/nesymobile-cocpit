@@ -4,7 +4,8 @@
 **Ne anlatır:** Nesy Mobile’da login → rota → schedule → 20 barkod → tur başlat → stop’lar senaryosunun **hedef** hali.  
 **Durum:** Bu **hedef mimari**. Bugün SDK olayları ve Cockpit altyapısı büyük ölçüde var; Bridge’in **dokunma** katmanı ve Cockpit’in Maestro’suz akış motoru henüz tam değil.
 
-İlgili planlar: [`CONDITION_ENGINE_AND_BRIDGEFLOW.md`](./CONDITION_ENGINE_AND_BRIDGEFLOW.md) · [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) · Mobile `VERDICT_START.md` İz B.
+İlgili planlar: [`CONDITION_ENGINE_AND_BRIDGEFLOW.md`](./CONDITION_ENGINE_AND_BRIDGEFLOW.md) · [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) · Mobile `VERDICT_START.md` İz B.  
+**Beş fazlı dürüst işletim modeli (hedef vs bugün):** [`OPERATING_MODEL.md`](./OPERATING_MODEL.md)
 
 ---
 
