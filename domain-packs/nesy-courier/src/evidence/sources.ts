@@ -96,6 +96,29 @@ const UI_SOURCES: readonly EvidenceSourceDefinition[] = [
   uiWatch(NESY_FACTS.LOADING_BLOCKER_PRESENT, "loading-blocker-present", "Blocking loader present"),
 ];
 
+/** Builds an APP-plane SDK event that joins on barcode. */
+function appSdkEvent(
+  sourceKey: string,
+  factKey: string,
+  observationRef: string,
+  displayName: string,
+): EvidenceSourceDefinition {
+  return {
+    sourceKey,
+    plane: "APP",
+    kind: "SDK_EVENT",
+    authority: "PRIMARY",
+    displayName,
+    factKey,
+    observationRef,
+    freshness: APP_FRESHNESS,
+    correlation: ENTITY_CORRELATION,
+    redaction: { redactPaths: [], hashPaths: ["barcode"] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
+  };
+}
+
 const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
   {
     // The product's own refusal, carried by the app's `STATE_LOGIN_REJECTED` wire.
@@ -251,6 +274,78 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     preservesRawEvidence: true,
     requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
+  appSdkEvent(
+    "nesy.app.payment-completed",
+    NESY_FACTS.PAYMENT_COMPLETED,
+    "nesy.events.critical/payment-completed",
+    "Payment confirmed",
+  ),
+  appSdkEvent(
+    "nesy.app.fiscal-completed",
+    NESY_FACTS.FISCAL_COMPLETED,
+    "nesy.events.critical/fiscal-completed",
+    "Fiscal invoice available",
+  ),
+  appSdkEvent(
+    "nesy.app.delivery-parcel-scanned",
+    NESY_FACTS.DELIVERY_PARCEL_SCANNED,
+    "nesy.events.critical/delivery-parcel-scanned",
+    "Parcel scanned on the delivery screen",
+  ),
+  appSdkEvent(
+    "nesy.app.delivery-type-dialog-shown",
+    NESY_FACTS.DELIVERY_TYPE_DIALOG_SHOWN,
+    "nesy.events.critical/delivery-type-dialog-shown",
+    "Delivery type dialog shown",
+  ),
+  appSdkEvent(
+    "nesy.app.delivery-type-picked",
+    NESY_FACTS.DELIVERY_TYPE_PICKED,
+    "nesy.events.critical/delivery-type-picked",
+    "Delivery type picked",
+  ),
+  appSdkEvent(
+    "nesy.app.delivery-confirm-dialog-shown",
+    NESY_FACTS.DELIVERY_CONFIRM_DIALOG_SHOWN,
+    "nesy.events.critical/delivery-confirm-dialog-shown",
+    "Delivery confirm dialog shown",
+  ),
+  appSdkEvent(
+    "nesy.app.delivery-confirm-result",
+    NESY_FACTS.DELIVERY_CONFIRM_ACCEPTED,
+    "nesy.events.critical/delivery-confirm-result",
+    "Delivery confirm accepted or cancelled",
+  ),
+  appSdkEvent(
+    "nesy.app.unscanned-items-dialog-shown",
+    NESY_FACTS.UNSCANNED_ITEMS_DIALOG_SHOWN,
+    "nesy.events.critical/unscanned-items-dialog-shown",
+    "Unscanned items dialog shown",
+  ),
+  appSdkEvent(
+    "nesy.app.unscanned-items-result",
+    NESY_FACTS.UNSCANNED_ITEMS_CONTINUED,
+    "nesy.events.critical/unscanned-items-result",
+    "Unscanned items continued or dismissed",
+  ),
+  appSdkEvent(
+    "nesy.app.payment-dialog-shown",
+    NESY_FACTS.PAYMENT_DIALOG_SHOWN,
+    "nesy.events.critical/payment-dialog-shown",
+    "Payment dialog shown",
+  ),
+  appSdkEvent(
+    "nesy.app.skip-exw-dialog-shown",
+    NESY_FACTS.SKIP_EXW_DIALOG_SHOWN,
+    "nesy.events.critical/skip-exw-dialog-shown",
+    "Skip-EXW dialog shown",
+  ),
+  appSdkEvent(
+    "nesy.app.skip-exw-result",
+    NESY_FACTS.SKIP_EXW_ACCEPTED,
+    "nesy.events.critical/skip-exw-result",
+    "Skip-EXW accepted or cancelled",
+  ),
   {
     sourceKey: "nesy.app.approval-requested",
     plane: "APP",

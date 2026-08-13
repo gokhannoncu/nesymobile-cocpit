@@ -88,6 +88,44 @@ export const NESY_FACTS = {
    * one ran.
    */
   DELIVERY_FLOW_STARTED: "APP.DELIVERY_FLOW_STARTED",
+  /**
+   * A payment was confirmed on one of the five provider paths.
+   *
+   * Boolean on every emit (`payment_completed`). Join on `data.barcode`, not the
+   * envelope taskId — that field is a waybill on some payment paths.
+   */
+  PAYMENT_COMPLETED: "APP.PAYMENT_COMPLETED",
+  /**
+   * A fiscal invoice is available (CREATED or ALREADY_CREATED).
+   *
+   * RS Datecs only. Join on `data.barcode`, never `invoice_id` — the
+   * ALREADY_CREATED path often carries an empty invoice id.
+   */
+  FISCAL_COMPLETED: "APP.FISCAL_COMPLETED",
+  /**
+   * The parcel was scanned ON the delivery screen.
+   *
+   * This is `initiateDeliveryProcess`'s first gate: without a scanned shipment
+   * it shows a toast and returns, emitting nothing. Measured 2026-08-13 — the
+   * screen opens with the counter at `0`, and the same barcode scanned on the
+   * screen takes it to `1`.
+   *
+   * `APP.PARCEL_SCANNED` cannot stand in: it fires pre-routing on every screen,
+   * so a run resting on it goes green on branches that do nothing.
+   */
+  DELIVERY_PARCEL_SCANNED: "APP.DELIVERY_PARCEL_SCANNED",
+  DELIVERY_TYPE_DIALOG_SHOWN: "APP.DELIVERY_TYPE_DIALOG_SHOWN",
+  DELIVERY_TYPE_PICKED: "APP.DELIVERY_TYPE_PICKED",
+  DELIVERY_CONFIRM_DIALOG_SHOWN: "APP.DELIVERY_CONFIRM_DIALOG_SHOWN",
+  /** True or false: the courier confirmed or cancelled "are you sure". */
+  DELIVERY_CONFIRM_ACCEPTED: "APP.DELIVERY_CONFIRM_ACCEPTED",
+  UNSCANNED_ITEMS_DIALOG_SHOWN: "APP.UNSCANNED_ITEMS_DIALOG_SHOWN",
+  /** True or false: continue the delivery despite unscanned items. */
+  UNSCANNED_ITEMS_CONTINUED: "APP.UNSCANNED_ITEMS_CONTINUED",
+  PAYMENT_DIALOG_SHOWN: "APP.PAYMENT_DIALOG_SHOWN",
+  SKIP_EXW_DIALOG_SHOWN: "APP.SKIP_EXW_DIALOG_SHOWN",
+  /** True or false: the courier accepted skip-EXW. */
+  SKIP_EXW_ACCEPTED: "APP.SKIP_EXW_ACCEPTED",
   TOUR_APPROVAL_REQUESTED: "APP.TOUR_APPROVAL_REQUESTED",
   TOUR_APPROVAL_PUSH_RECEIVED: "APP.TOUR_APPROVAL_PUSH_RECEIVED",
   /**

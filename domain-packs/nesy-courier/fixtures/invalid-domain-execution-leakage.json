@@ -5,8 +5,8 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 21,
-      "patch": 2
+      "minor": 23,
+      "patch": 0
     },
     "trustTier": "FIRST_PARTY",
     "publicationState": "DRAFT",
@@ -1364,20 +1364,13 @@
         "targetKey": "nesy.target.delivery-complete-button",
         "applicationRef": "nesy.courier.mobile",
         "screenRef": "nesy.delivery.flow",
-        "displayName": "Complete delivery button",
+        "displayName": "Complete delivery button (btn_deliver)",
         "resolution": {
           "chain": [
             {
               "kind": "ACCESSIBILITY_ID",
               "selector": {
-                "id": "delivery_complete_button"
-              },
-              "establishesIdentity": true
-            },
-            {
-              "kind": "INSPECTOR_MAPPING",
-              "selector": {
-                "mappingRef": "nesy.inspector.delivery-complete"
+                "id": "btn_deliver"
               },
               "establishesIdentity": true
             }
@@ -2302,6 +2295,358 @@
           "redactPaths": [
             "signatureImage",
             "recipientName"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.payment-completed",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Payment confirmed",
+        "factKey": "APP.PAYMENT_COMPLETED",
+        "observationRef": "nesy.events.critical/payment-completed",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.fiscal-completed",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Fiscal invoice available",
+        "factKey": "APP.FISCAL_COMPLETED",
+        "observationRef": "nesy.events.critical/fiscal-completed",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.delivery-type-dialog-shown",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Delivery type dialog shown",
+        "factKey": "APP.DELIVERY_TYPE_DIALOG_SHOWN",
+        "observationRef": "nesy.events.critical/delivery-type-dialog-shown",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.delivery-type-picked",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Delivery type picked",
+        "factKey": "APP.DELIVERY_TYPE_PICKED",
+        "observationRef": "nesy.events.critical/delivery-type-picked",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.delivery-confirm-dialog-shown",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Delivery confirm dialog shown",
+        "factKey": "APP.DELIVERY_CONFIRM_DIALOG_SHOWN",
+        "observationRef": "nesy.events.critical/delivery-confirm-dialog-shown",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.delivery-confirm-result",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Delivery confirm accepted or cancelled",
+        "factKey": "APP.DELIVERY_CONFIRM_ACCEPTED",
+        "observationRef": "nesy.events.critical/delivery-confirm-result",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.unscanned-items-dialog-shown",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Unscanned items dialog shown",
+        "factKey": "APP.UNSCANNED_ITEMS_DIALOG_SHOWN",
+        "observationRef": "nesy.events.critical/unscanned-items-dialog-shown",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.unscanned-items-result",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Unscanned items continued or dismissed",
+        "factKey": "APP.UNSCANNED_ITEMS_CONTINUED",
+        "observationRef": "nesy.events.critical/unscanned-items-result",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.payment-dialog-shown",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Payment dialog shown",
+        "factKey": "APP.PAYMENT_DIALOG_SHOWN",
+        "observationRef": "nesy.events.critical/payment-dialog-shown",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.skip-exw-dialog-shown",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Skip-EXW dialog shown",
+        "factKey": "APP.SKIP_EXW_DIALOG_SHOWN",
+        "observationRef": "nesy.events.critical/skip-exw-dialog-shown",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.skip-exw-result",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Skip-EXW accepted or cancelled",
+        "factKey": "APP.SKIP_EXW_ACCEPTED",
+        "observationRef": "nesy.events.critical/skip-exw-result",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [],
+          "hashPaths": [
+            "barcode"
           ]
         },
         "preservesRawEvidence": true,
@@ -7024,8 +7369,11 @@
         "displayName": "Complete delivery",
         "businessMeaning": "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
         "notResponsibleFor": [
-          "payment collection and fiscal receipt printing",
-          "recipient signature quality or identity verification",
+          "payment collection and fiscal receipt printing — this slice is the unpaid DELY path; RS cash+EXW is a later slice",
+          "production RS printer hardware (tstrs has isPrinterConnectionRequired=false; productionrs does not)",
+          "the SI tax-number identity check (unconditional return outside the RS branch)",
+          "createFiscalInvoice ignoring its shipmentId (outside this unpaid path)",
+          "recipient signature quality — the pad is visible on RS but isDeliveryCodeOrSignatureNotRequired is true",
           "failure/cancel reason codes (separate slices)",
           "how long the backend takes to confirm — only that it confirms within the declared deadline"
         ],
@@ -7138,7 +7486,8 @@
             ]
           },
           "notResponsibleFor": [
-            "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+            "payment and fiscal surfaces on the unpaid DELY path, which the product skips rather than this macro ignoring",
+            "production RS printer hardware, which tstrs does not exercise"
           ]
         },
         "interruptPolicy": {
@@ -8926,8 +9275,11 @@
         "displayName": "A completed delivery is confirmed by the backend",
         "businessMeaning": "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
         "notResponsibleFor": [
-          "payment collection and fiscal receipt printing",
-          "recipient signature quality or identity verification",
+          "payment collection and fiscal receipt printing — this slice is the unpaid DELY path; RS cash+EXW is a later slice",
+          "production RS printer hardware (tstrs has isPrinterConnectionRequired=false; productionrs does not)",
+          "the SI tax-number identity check (unconditional return outside the RS branch)",
+          "createFiscalInvoice ignoring its shipmentId (outside this unpaid path)",
+          "recipient signature quality — the pad is visible on RS but isDeliveryCodeOrSignatureNotRequired is true",
           "failure/cancel reason codes (separate slices)",
           "how long the backend takes to confirm — only that it confirms within the declared deadline"
         ],
@@ -8970,7 +9322,8 @@
             ]
           },
           "notResponsibleFor": [
-            "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+            "payment and fiscal surfaces on the unpaid DELY path, which the product skips rather than this macro ignoring",
+            "production RS printer hardware, which tstrs does not exercise"
           ]
         },
         "producesTerminalVerdict": true
@@ -9091,7 +9444,8 @@
             ]
           },
           "notResponsibleFor": [
-            "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+            "payment and fiscal surfaces on the unpaid DELY path, which the product skips rather than this macro ignoring",
+            "production RS printer hardware, which tstrs does not exercise"
           ]
         },
         "producesTerminalVerdict": true

@@ -56,6 +56,20 @@ export const NESY_TARGETS = {
   scanTrigger: "nesy.target.scan-trigger",
   deliveryCompleteButton: "nesy.target.delivery-complete-button",
   /**
+   * The delivery screen carries its OWN `manuel_input` / `btn_ok` / barcode
+   * field with the same ids as the stop list's. Separate keys because the
+   * screen a target lives on is part of what it means: resolving the stop
+   * list's entry while the delivery screen is up would be a target that
+   * happened to match, not the one the run asked for.
+   */
+  deliveryManualBarcodeEntry: "nesy.target.delivery-manual-barcode-entry",
+  deliveryBarcodeInputField: "nesy.target.delivery-barcode-input-field",
+  deliveryBarcodeInputConfirm: "nesy.target.delivery-barcode-input-confirm",
+  /** DELY branch of the delivery-type chooser (DEPS is a separate slice). */
+  deliveryTypeDely: "nesy.target.delivery-type-dely",
+  /** "Are you sure" — the SHARED ArasDialog positive button. */
+  deliveryConfirmAccept: "nesy.target.delivery-confirm-accept",
+  /**
    * Requests tour start from the STOP LIST — not from end-of-day. Its label is
    * the schedule status, so the id is the only stable handle.
    */
@@ -439,15 +453,120 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
+    /**
+     * MEASURED on device 2026-08-13 (R6CW400BC8N, tstrsDebug, Delivery screen).
+     *
+     * The previous id `delivery_complete_button` exists nowhere in the app —
+     * same invention as `tour_approval_request_button` and `stop_row_*`. The
+     * real control is `btn_deliver`, a clickable LinearLayout at the bottom of
+     * `delivery_scroll`. On first paint it sits below the fold (`visible=false`,
+     * top≈2517); a scroll that starts on the parcels band (NOT the signature
+     * pad) brings it on screen. `find_id` matches it even while off-screen.
+     *
+     * ID ONLY, DELIBERATELY. The label lives on a non-clickable child `text1`
+     * and is the word "Delivery" — the same string as the action-bar title.
+     * Matching on text would bind the title, or fail closed on ambiguity, and
+     * would break the moment the locale changes. `btn_out` taught the same
+     * lesson.
+     */
+    targetKey: NESY_TARGETS.deliveryManualBarcodeEntry,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Manual barcode entry button (delivery screen)",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "manuel_input" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.deliveryBarcodeInputField,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Typed barcode field (delivery screen)",
+    resolution: {
+      // `input_text` matches BY ID ONLY on the device; a text selector writes nowhere.
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { id: "et_input_dialog_barcode_number" }, establishesIdentity: true },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.deliveryBarcodeInputConfirm,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Typed barcode OK button (delivery screen)",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btn_ok" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    /**
+     * MEASURED on device 2026-08-13. Tapping `btn_deliver` does not deliver —
+     * it opens "Choose A Delivery Option" (`showDeliveryTypeDialog`), and the
+     * backend call only happens two taps later.
+     *
+     * `btnDeps` is NOT modelled: DEPS is a different business outcome and its
+     * own slice. Measured that `btnDeps` is hidden outright on some entry paths
+     * (`hasScannedDocumentCollection`, ME/BA), so a target that assumed both
+     * buttons exist would fail on the product behaving correctly.
+     */
+    targetKey: NESY_TARGETS.deliveryTypeDely,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Delivery type: DELY",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btnDely" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    /**
+     * MEASURED on device 2026-08-13: "Attention / Are you sure that it is a
+     * customer Delivery?" with `btn_arasDg_positive_button` / `..._negative_button`.
+     *
+     * THESE IDS ARE SHARED by every `ArasDialog` in the app — the same pair
+     * names the load-to-vehicle error dialog. Only one dialog is in the active
+     * window at a time, so the id is unambiguous AT THE MOMENT OF THE TAP, but
+     * it does not by itself say WHICH dialog is open. What establishes that is
+     * `APP.DELIVERY_CONFIRM_DIALOG_SHOWN`, the dedicated wire added with the
+     * delivery-screen wire split — the run gates on the fact and taps by id,
+     * rather than reading dialog copy that changes with locale.
+     */
+    targetKey: NESY_TARGETS.deliveryConfirmAccept,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.deliveryFlow,
+    displayName: "Delivery confirmation: Yes",
+    resolution: {
+      chain: [
+        { kind: "ACCESSIBILITY_ID", selector: { id: "btn_arasDg_positive_button" }, establishesIdentity: true },
+      ],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 12_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
     targetKey: NESY_TARGETS.deliveryCompleteButton,
     applicationRef: APP,
     screenRef: NESY_SCREENS.deliveryFlow,
-    displayName: "Complete delivery button",
+    displayName: "Complete delivery button (btn_deliver)",
     resolution: {
-      chain: [
-        { kind: "ACCESSIBILITY_ID", selector: { id: "delivery_complete_button" }, establishesIdentity: true },
-        { kind: "INSPECTOR_MAPPING", selector: { mappingRef: "nesy.inspector.delivery-complete" }, establishesIdentity: true },
-      ],
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btn_deliver" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 12_000,

@@ -345,7 +345,11 @@ export class BridgeDeviceManager {
    *   3. Gönder; yanıt kaybolursa `UNKNOWN_EFFECT`.
    */
   async act(
-    command: Extract<BridgeCommand, "tap_id" | "tap_text" | "activate_id" | "input_text">,
+    // `reveal_id` KONUMLANDIRIR, kimlik KURMAZ — ama hedefi `tap_id` ile aynı
+    // fingerprint'ten alır, çünkü görünür kılınacak düğüm tam olarak birazdan
+    // tıklanacak düğümdür. Ayrı bir selector yolu açmak, iki komutun farklı
+    // node'u adreslemesine izin verirdi.
+    command: Extract<BridgeCommand, "tap_id" | "tap_text" | "activate_id" | "input_text" | "reveal_id">,
     fingerprint: TargetFingerprint,
     options: { runId?: string; text?: string; timeoutMs?: number } = {},
   ): Promise<BridgeActionRecord> {
@@ -492,10 +496,13 @@ export class BridgeDeviceManager {
     return this.submit(
       "swipe",
       {
-        fromX: from.x,
-        fromY: from.y,
-        toX: to.x,
-        toY: to.y,
+        // Measured 2026-08-13 on R6CW400BC8N: the device rejects `fromX` with
+        // `missing_startX` and accepts `startX`/`startY`/`endX`/`endY`. The
+        // host used to send names the device has never read.
+        startX: from.x,
+        startY: from.y,
+        endX: to.x,
+        endY: to.y,
         durationMs: clampSwipeDurationMs(options.durationMs),
       },
       options,

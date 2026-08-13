@@ -49,6 +49,46 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.25.0 — COMPLETE_DELIVERY runs the flow the courier actually performs.
+  //   Measured 2026-08-13 on R6CW400BC8N, and the old plan was wrong in three
+  //   independent ways, each of which alone would have stalled the run:
+  //
+  //   1. The Complete tap is not the last tap. `btn_deliver` opens "Choose A
+  //      Delivery Option"; `btnDely` opens an ArasDialog confirmation; only
+  //      its positive button delivers. Three taps, gated one at a time on the
+  //      dedicated wire each raises, so a stall names the step that stalled.
+  //   2. The scan is a precondition. `initiateDeliveryProcess` requires
+  //      `shipmentModelList.any { isScanned }` and otherwise toasts and
+  //      returns, emitting nothing. The screen opens with the counter at 0, so
+  //      the macro scans on the delivery screen and gates on
+  //      APP.DELIVERY_PARCEL_SCANNED — the gate the product itself checks.
+  //   3. `btn_deliver` starts below the fold and `tap_id` rightly refuses an
+  //      invisible node. New `reveal` action: the platform's own
+  //      ACTION_SHOW_ON_SCREEN makes the app scroll, and the tap keeps its
+  //      visibility gate. Not a pixel swipe, not a click on what nobody can see.
+  //
+  //   Also: `branch-on-queue` read `local.result` at `pendingOperation.count`,
+  //   which nothing in this macro produced, so the branch could only resolve to
+  //   unknown. It now reads `nesy.pendingOperation` (column `pending_count`).
+  //   Invisible until now because no run had ever got past the Complete tap.
+  //
+  // 1.23.0 — delivery-screen wires each have one meaning. Shared DIALOG_SHOWN /
+  //   DIALOG_DISMISSED stay uncatalogued (ArasDialog central + ScanProcessor).
+  //   Payment, fiscal, type/confirm/unscanned/skip-EXW dialogs, and the
+  //   DELIVERY_UI_COMPLETED error path now carry a boolean on every emit and
+  //   data.barcode to join. COMPLETE_DELIVERY is still the unpaid DELY path;
+  //   the new facts exist so later slices do not invent them under a shared name.
+  //
+  // 1.22.0 — COMPLETE_DELIVERY addresses the button that is actually on the
+  //   Delivery screen. Measured 2026-08-13 on R6CW400BC8N: the control is
+  //   `btn_deliver` (LinearLayout, label "Delivery" on a non-clickable child
+  //   `text1`, below the fold until `delivery_scroll` is moved). The previous
+  //   id `delivery_complete_button` exists nowhere — same invention as
+  //   `tour_approval_request_button`. ID only: the word "Delivery" is also the
+  //   action-bar title, so a text match is ambiguous. This slice remains the
+  //   unpaid DELY path; payment/fiscal wires stay uncatalogued until each has
+  //   one meaning and a boolean on every emit.
+  //
   // 1.21.1 — both scan facts are gated on the TAP that causes them instead of on
   //   separate wait steps. A device event is stamped with the occurrence the host
   //   last seeded — the tapping step — so a wait looked under its own occurrence
@@ -316,7 +356,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 21, patch: 2 },
+  version: { major: 1, minor: 25, patch: 1 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

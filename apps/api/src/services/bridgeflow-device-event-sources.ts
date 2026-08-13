@@ -39,6 +39,26 @@ const SURFACE_READY_MAX_AGE_MS = 30_000
 /** A business event happened at a moment; the window bounds how long it answers for. */
 const BUSINESS_EVENT_MAX_AGE_MS = 60_000
 
+function registerAppBarcodeFact(
+  registry: EvidenceSourceRegistry,
+  sourceEvent: string,
+  factKey: string,
+  subtype: string,
+  valueField: string,
+): void {
+  registry.register({
+    sourceEvent,
+    factKey,
+    plane: 'APP',
+    subtype,
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    valueField,
+    correlationField: 'barcode',
+  })
+}
+
 /**
  * Registers the device-event sources this host trusts.
  *
@@ -140,8 +160,106 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     authority: 'PRIMARY',
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    // The error path (`emitDeliveryError`) uses this SAME wire with
+    // `success=false` and `delivery_submitted=false`. Mapping the wire name
+    // alone would read a backend refusal as a delivery. The boolean is present
+    // on every emit; a missing field is still a blocking rejection.
     valueField: 'delivery_submitted',
+    // Join on `data.barcode`. Envelope `taskId` is a piece barcode here and a
+    // waybill on `DELIVERY_PERSISTED` — mixing them would invent a join.
+    correlationField: 'barcode',
   })
+  // Shared `DIALOG_SHOWN` / `DIALOG_DISMISSED` stay unregistered: ArasDialog
+  // (central) and ScanProcessor still emit them, and four delivery-screen
+  // meanings used to hide in the same names. The dedicated wires below each
+  // have one meaning and a boolean on every emit.
+  // The gate `initiateDeliveryProcess` checks first. `PARCEL_SCANNED` cannot
+  // stand in for it: that wire fires pre-routing on every screen, so a run
+  // resting on it reads green on branches that only raise a toast.
+  registerAppBarcodeFact(
+    registry,
+    'DELIVERY_PARCEL_SCANNED',
+    'APP.DELIVERY_PARCEL_SCANNED',
+    'delivery-parcel-scanned',
+    'delivery_parcel_scanned',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'DELIVERY_TYPE_DIALOG_SHOWN',
+    'APP.DELIVERY_TYPE_DIALOG_SHOWN',
+    'delivery-type-dialog-shown',
+    'delivery_type_dialog_shown',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'DELIVERY_TYPE_PICKED',
+    'APP.DELIVERY_TYPE_PICKED',
+    'delivery-type-picked',
+    'delivery_type_picked',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'DELIVERY_CONFIRM_DIALOG_SHOWN',
+    'APP.DELIVERY_CONFIRM_DIALOG_SHOWN',
+    'delivery-confirm-dialog-shown',
+    'delivery_confirm_dialog_shown',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'DELIVERY_CONFIRM_RESULT',
+    'APP.DELIVERY_CONFIRM_ACCEPTED',
+    'delivery-confirm-result',
+    'delivery_confirm_accepted',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'UNSCANNED_ITEMS_DIALOG_SHOWN',
+    'APP.UNSCANNED_ITEMS_DIALOG_SHOWN',
+    'unscanned-items-dialog-shown',
+    'unscanned_items_dialog_shown',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'UNSCANNED_ITEMS_RESULT',
+    'APP.UNSCANNED_ITEMS_CONTINUED',
+    'unscanned-items-result',
+    'unscanned_items_continued',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'PAYMENT_DIALOG_SHOWN',
+    'APP.PAYMENT_DIALOG_SHOWN',
+    'payment-dialog-shown',
+    'payment_dialog_shown',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'SKIP_EXW_DIALOG_SHOWN',
+    'APP.SKIP_EXW_DIALOG_SHOWN',
+    'skip-exw-dialog-shown',
+    'skip_exw_dialog_shown',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'SKIP_EXW_RESULT',
+    'APP.SKIP_EXW_ACCEPTED',
+    'skip-exw-result',
+    'skip_exw_accepted',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'PAYMENT_COMPLETED',
+    'APP.PAYMENT_COMPLETED',
+    'payment-completed',
+    'payment_completed',
+  )
+  registerAppBarcodeFact(
+    registry,
+    'FISCAL_COMPLETED',
+    'APP.FISCAL_COMPLETED',
+    'fiscal-completed',
+    'fiscal_completed',
+  )
   // WHICH flow a scan at a stop started.
   //
   // `PARCEL_SCANNED` is emitted for every accepted scan BEFORE the app routes it,

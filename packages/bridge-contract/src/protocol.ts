@@ -57,6 +57,10 @@ export const BRIDGE_COMMANDS = [
   "activate_id",
   "collection_info",
   "scroll_to_item",
+  // Bir düğümü platformun kendi `ACTION_SHOW_ON_SCREEN`'i ile görünür kılar.
+  // `scroll_to_item` yalnız KOLEKSİYONLARA çalışıyor (`collectionInfo` şart);
+  // düz bir `ScrollView`'ın altında kalan kontrol o yoldan erişilemez.
+  "reveal_id",
   "wait_node",
   "wait_any",
   "cancel_request",

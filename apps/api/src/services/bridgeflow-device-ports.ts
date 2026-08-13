@@ -346,6 +346,43 @@ export function createBridgeRuntimePort(options: {
       }
 
       const byId = fingerprint.selector.by === 'id'
+
+      // `reveal` POSITIONS, it does not address. It sits below the target lookup
+      // (unlike `scrollToItem`) because the node to bring on screen is exactly
+      // the node the next step will tap — the same fingerprint, so the two
+      // cannot drift onto different nodes.
+      //
+      // The tap that follows keeps its `not_visible` gate. That gate is the
+      // point: a run that clicks a control the courier can never see proves
+      // nothing. Revealing asks the APP to scroll — the product does the same
+      // thing to the same button when the signature pad opens — instead of
+      // replaying a pixel band that survives only until a font scale changes.
+      if (action === 'reveal' || action === 'reveal_id') {
+        if (!byId) {
+          // The device matches `reveal_id` by id only. Sending a text selector
+          // as an id would silently position some other node.
+          return {
+            terminalState: 'FAILED',
+            effectVerified: false,
+            evidenceRef: `bridgeflow:reveal-requires-id-selector:by=${fingerprint.selector.by}`,
+          }
+        }
+        const record = await manager.act('reveal_id', fingerprint, {
+          runId,
+          timeoutMs: step.timeoutMs,
+        })
+        const revealState = record.terminalState ?? 'FAILED'
+        return {
+          terminalState: revealState,
+          // Positioning claims no product effect — only that the device accepted
+          // the request and said how it acted. Whether the node is actually on
+          // screen now is the following step's question, asked by resolving it
+          // again; the scroll can still be animating when this returns.
+          effectVerified: revealState === 'SUCCEEDED' && record.method !== null,
+          evidenceRef: describeActionEvidence(record),
+        }
+      }
+
       const command =
         action === 'setText' || action === 'input_text'
           ? 'input_text'

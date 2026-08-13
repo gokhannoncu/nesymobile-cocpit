@@ -45,18 +45,113 @@ export const NESY_COMPLETE_DELIVERY_MACRO_KEY = "nesy.macro.complete-delivery";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
-    ...stepBase({ planStepId: "wait-flow", sourceMapRef: "sm-done-1", next: "resolve-complete", timeoutMs: 20_000 }),
+    ...stepBase({ planStepId: "wait-flow", sourceMapRef: "sm-done-1", next: "resolve-scan-entry", timeoutMs: 20_000 }),
     kind: "WAIT_EVENT",
     factKey: NESY_FACTS.DELIVERY_FLOW_READY,
     sourceLane: "UI",
     requireCorrelation: false,
     onTimeout: "FAIL",
   },
+  /**
+   * ===================================================================
+   *  THE SCAN IS A PRECONDITION, NOT A FORMALITY
+   *
+   *  `initiateDeliveryProcess` starts with `shipmentModelList.any { isScanned }`
+   *  and, when that is false, shows a toast and RETURNS — no event, no dialog,
+   *  no backend call. Measured 2026-08-13: the delivery screen opens with
+   *  `tv_deliver_item_size = "0"`, and scanning the same barcode on the screen
+   *  takes it to `"1"`.
+   *
+   *  A plan that tapped Complete without this would watch a run do nothing at
+   *  all and then time out its gate — the most expensive way to learn that a
+   *  precondition was missing.
+   * ===================================================================
+   */
+  {
+    ...stepBase({
+      planStepId: "resolve-scan-entry",
+      sourceMapRef: "sm-done-2a",
+      next: "tap-scan-entry",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.deliveryManualBarcodeEntry,
+    outputVariable: "scanEntryHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-scan-entry",
+      sourceMapRef: "sm-done-2b",
+      next: "resolve-scan-field",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "scanEntryHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-scan-field",
+      sourceMapRef: "sm-done-2c",
+      next: "type-barcode",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.deliveryBarcodeInputField,
+    outputVariable: "scanFieldHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "type-barcode",
+      sourceMapRef: "sm-done-2d",
+      next: "resolve-scan-confirm",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "setText",
+    targetVariable: "scanFieldHandle",
+    args: { text: "run.input.consignmentNumber" },
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-scan-confirm",
+      sourceMapRef: "sm-done-2e",
+      next: "tap-scan-confirm",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.deliveryBarcodeInputConfirm,
+    outputVariable: "scanConfirmHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-scan-confirm",
+      sourceMapRef: "sm-done-2f",
+      next: "resolve-complete",
+      timeoutMs: 20_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "scanConfirmHandle",
+    entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.consignmentNumber" },
+    // The gate is the product's own gate. `DELIVERY_PARCEL_SCANNED` carries a
+    // boolean, so a scan that matched nothing arrives as a measured `false`
+    // rather than as silence — and this step fails instead of letting the run
+    // walk into a Complete that can only toast.
+    continueGate: {
+      allOf: [NESY_FACTS.DELIVERY_PARCEL_SCANNED],
+      deadlineMs: 20_000,
+      unknownPolicy: "RETRY",
+    },
+  },
   {
     ...stepBase({
       planStepId: "resolve-complete",
       sourceMapRef: "sm-done-2",
-      next: "tap-complete",
+      next: "reveal-complete",
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
     }),
     kind: "RESOLVE_TARGET",
@@ -64,10 +159,38 @@ const STEPS: readonly WorkflowStepV2[] = [
     outputVariable: "completeHandle",
   },
   {
+    /**
+     * `btn_deliver` starts below the fold — measured 2026-08-13: `find_id`
+     * matches at `top=2517` on a 2340-tall screen while `visible=false`, and
+     * `tap_id` answers `not_visible`.
+     *
+     * Three ways out, and only one is honest. A coordinate swipe is not
+     * identity: it is a pixel band that survives until a font scale or a COD
+     * row moves it. Clicking the invisible node would let this run go green on
+     * a control the courier can never reach. This step asks the PLATFORM to
+     * bring the node on screen (`ACTION_SHOW_ON_SCREEN`), which makes the app's
+     * own `delivery_scroll` do the scrolling — the same thing the product does
+     * to the same button when the signature pad opens.
+     *
+     * POSITIONS, DOES NOT ADDRESS. The tap below still establishes identity and
+     * still refuses an invisible node.
+     */
+    ...stepBase({
+      planStepId: "reveal-complete",
+      sourceMapRef: "sm-done-2g",
+      next: "tap-complete",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "reveal",
+    targetVariable: "completeHandle",
+  },
+  {
     ...stepBase({
       planStepId: "tap-complete",
       sourceMapRef: "sm-done-3",
-      next: "branch-on-queue",
+      next: "resolve-delivery-type",
       timeoutMs: 25_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -75,11 +198,102 @@ const STEPS: readonly WorkflowStepV2[] = [
     action: "tap",
     targetVariable: "completeHandle",
     entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.consignmentNumber" },
+    // NOT `DELIVERY_SUBMITTED` — measured, this tap only opens the type
+    // chooser. Gating on submission here would wait 25s for something two taps
+    // away and report the wrong step as the failure.
     continueGate: {
-      allOf: [NESY_FACTS.DELIVERY_SUBMITTED],
+      allOf: [NESY_FACTS.DELIVERY_TYPE_DIALOG_SHOWN],
       deadlineMs: 25_000,
       unknownPolicy: "RETRY",
     },
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-delivery-type",
+      sourceMapRef: "sm-done-3a",
+      next: "tap-delivery-type",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.deliveryTypeDely,
+    outputVariable: "deliveryTypeHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-delivery-type",
+      sourceMapRef: "sm-done-3b",
+      next: "resolve-delivery-confirm",
+      timeoutMs: 25_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "deliveryTypeHandle",
+    entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.consignmentNumber" },
+    continueGate: {
+      allOf: [NESY_FACTS.DELIVERY_CONFIRM_DIALOG_SHOWN],
+      deadlineMs: 25_000,
+      unknownPolicy: "RETRY",
+    },
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-delivery-confirm",
+      sourceMapRef: "sm-done-3c",
+      next: "tap-delivery-confirm",
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.deliveryConfirmAccept,
+    outputVariable: "deliveryConfirmHandle",
+  },
+  {
+    /**
+     * The tap that actually delivers. Its gate is `DELIVERY_SUBMITTED`, whose
+     * wire carries `delivery_submitted` as a boolean — so a backend refusal
+     * arrives as a measured `false` and reads as FAIL_PRODUCT, instead of
+     * looking like a delivery because it shares the wire name with success.
+     */
+    ...stepBase({
+      planStepId: "tap-delivery-confirm",
+      sourceMapRef: "sm-done-3d",
+      next: "read-pending-queue",
+      timeoutMs: 30_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "deliveryConfirmHandle",
+    entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.consignmentNumber" },
+    continueGate: {
+      allOf: [NESY_FACTS.DELIVERY_SUBMITTED],
+      deadlineMs: 30_000,
+      unknownPolicy: "RETRY",
+    },
+  },
+  {
+    /**
+     * MEASURED 2026-08-13: the SWITCH below read `local.result` at
+     * `pendingOperation.count` and NOTHING in this macro ever produced it, so
+     * the branch could only resolve to unknown — `FAILED` under its own
+     * `unknownPolicy`. It went unnoticed because no run had ever reached this
+     * far; every earlier attempt died at the Complete tap.
+     *
+     * The projection's column is `pending_count` (one row, `maxRows: 1`), which
+     * is also not what the old path spelled. Reading the queue is what makes
+     * the offline branch a measurement rather than a declaration.
+     */
+    ...stepBase({
+      planStepId: "read-pending-queue",
+      sourceMapRef: "sm-done-3e",
+      next: "branch-on-queue",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: "nesy.pendingOperation",
+    maxRows: 1,
+    outputVariable: "queueRows",
   },
   {
     // The offline path, modelled rather than hoped away. `default: GOTO` means the
@@ -90,11 +304,22 @@ const STEPS: readonly WorkflowStepV2[] = [
     branches: [
       {
         branchId: "queued-offline",
+        /**
+         * NOT `greaterThan`. The evaluator defines ordering for NUMBERS ONLY
+         * and answers UNKNOWN otherwise — deliberately, to keep `>` away from
+         * locale-dependent string comparison. The projection emits
+         * `pending_count` as the STRING "0" (measured), and a path over a row
+         * set yields the collected column, so the old numeric form could not
+         * resolve on any device, in any state.
+         *
+         * `notIn` needs only scalar equality, which is defined here: "0" is
+         * absent from the collected counts exactly when something is queued.
+         */
         condition: {
           kind: "comparison",
-          operator: "greaterThan",
-          left: { kind: "operand", source: "local.result", path: "pendingOperation.count" },
-          right: { kind: "literal", value: 0 },
+          operator: "notIn",
+          left: { kind: "literal", value: "0" },
+          right: { kind: "operand", source: "step.output", path: "queueRows.pending_count" },
         },
         next: "await-queue-drain",
       },
@@ -177,14 +402,54 @@ const GENERIC_IR = irDocument({
   name: "Complete a delivery, online or queued",
   sourceRef: NESY_COMPLETE_DELIVERY_MACRO_KEY,
   inputs: [{ name: "consignmentNumber", type: "string", required: true }],
-  variables: [{ name: "completeHandle", type: "string" }],
+  variables: [
+    { name: "scanEntryHandle", type: "string" },
+    { name: "scanFieldHandle", type: "string" },
+    { name: "scanConfirmHandle", type: "string" },
+    { name: "completeHandle", type: "string" },
+    { name: "deliveryTypeHandle", type: "string" },
+    { name: "deliveryConfirmHandle", type: "string" },
+    { name: "queueRows", type: "string" },
+  ],
   steps: STEPS,
   entryStepId: "wait-flow",
   capabilityRequirements: [requires("verdict.core.bridge.tap"), requires("verdict.core.remote.allowlisted-operation")],
   sourceMap: [
     sourceMapEntry("sm-done-1", "wait-flow", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-2a", "resolve-scan-entry", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-2b", "tap-scan-entry", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-2c", "resolve-scan-field", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-2d", "type-barcode", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-2e", "resolve-scan-confirm", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry(
+      "sm-done-2f",
+      "tap-scan-confirm",
+      NESY_COMPLETE_DELIVERY_MACRO_KEY,
+      "the product's own gate: without a scanned shipment Complete only toasts",
+    ),
     sourceMapEntry("sm-done-2", "resolve-complete", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry(
+      "sm-done-2g",
+      "reveal-complete",
+      NESY_COMPLETE_DELIVERY_MACRO_KEY,
+      "positions the button the app itself scrolls to; identity stays with the tap",
+    ),
     sourceMapEntry("sm-done-3", "tap-complete", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-3a", "resolve-delivery-type", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-3b", "tap-delivery-type", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry("sm-done-3c", "resolve-delivery-confirm", NESY_COMPLETE_DELIVERY_MACRO_KEY),
+    sourceMapEntry(
+      "sm-done-3d",
+      "tap-delivery-confirm",
+      NESY_COMPLETE_DELIVERY_MACRO_KEY,
+      "the tap that actually delivers — three taps after Complete, not one",
+    ),
+    sourceMapEntry(
+      "sm-done-3e",
+      "read-pending-queue",
+      NESY_COMPLETE_DELIVERY_MACRO_KEY,
+      "the offline branch needs a reading, not a declaration",
+    ),
     sourceMapEntry("sm-done-4", "branch-on-queue", NESY_COMPLETE_DELIVERY_MACRO_KEY, "offline queue is a LOCAL evidence kind, not a plane"),
     sourceMapEntry("sm-done-5", "await-queue-drain", NESY_COMPLETE_DELIVERY_MACRO_KEY),
     sourceMapEntry("sm-done-6", "verify-backend-status", NESY_COMPLETE_DELIVERY_MACRO_KEY),
@@ -215,9 +480,27 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   legs: [
     { planStepId: "wait-flow", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.DELIVERY_FLOW_READY },
     {
+      planStepId: "tap-scan-confirm",
+      bridgeVerb: "tap",
+      targetRef: NESY_TARGETS.deliveryBarcodeInputConfirm,
+      awaitFactKey: NESY_FACTS.DELIVERY_PARCEL_SCANNED,
+    },
+    {
       planStepId: "tap-complete",
       bridgeVerb: "tap",
       targetRef: NESY_TARGETS.deliveryCompleteButton,
+      awaitFactKey: NESY_FACTS.DELIVERY_TYPE_DIALOG_SHOWN,
+    },
+    {
+      planStepId: "tap-delivery-type",
+      bridgeVerb: "tap",
+      targetRef: NESY_TARGETS.deliveryTypeDely,
+      awaitFactKey: NESY_FACTS.DELIVERY_CONFIRM_DIALOG_SHOWN,
+    },
+    {
+      planStepId: "tap-delivery-confirm",
+      bridgeVerb: "tap",
+      targetRef: NESY_TARGETS.deliveryConfirmAccept,
       awaitFactKey: NESY_FACTS.DELIVERY_SUBMITTED,
     },
   ],
@@ -230,8 +513,11 @@ export const NESY_COMPLETE_DELIVERY_MACRO: MacroDefinition = {
   businessMeaning:
     "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
   notResponsibleFor: [
-    "payment collection and fiscal receipt printing",
-    "recipient signature quality or identity verification",
+    "payment collection and fiscal receipt printing — this slice is the unpaid DELY path; RS cash+EXW is a later slice",
+    "production RS printer hardware (tstrs has isPrinterConnectionRequired=false; productionrs does not)",
+    "the SI tax-number identity check (unconditional return outside the RS branch)",
+    "createFiscalInvoice ignoring its shipmentId (outside this unpaid path)",
+    "recipient signature quality — the pad is visible on RS but isDeliveryCodeOrSignatureNotRequired is true",
     "failure/cancel reason codes (separate slices)",
     "how long the backend takes to confirm — only that it confirms within the declared deadline",
   ],
@@ -253,9 +539,19 @@ export const NESY_COMPLETE_DELIVERY_MACRO: MacroDefinition = {
     screenRefs: [NESY_SCREENS.deliveryFlow],
     surfaceRefs: [NESY_SURFACES.paymentSurface, NESY_SURFACES.fiscalSurface, NESY_SURFACES.networkDialog],
     entityTypeRefs: [NESY_ENTITIES.shipment, NESY_ENTITIES.pendingOperation],
-    targetRefs: [NESY_TARGETS.deliveryCompleteButton],
+    targetRefs: [
+      NESY_TARGETS.deliveryManualBarcodeEntry,
+      NESY_TARGETS.deliveryBarcodeInputField,
+      NESY_TARGETS.deliveryBarcodeInputConfirm,
+      NESY_TARGETS.deliveryCompleteButton,
+      NESY_TARGETS.deliveryTypeDely,
+      NESY_TARGETS.deliveryConfirmAccept,
+    ],
     factKeys: [
       NESY_FACTS.DELIVERY_FLOW_READY,
+      NESY_FACTS.DELIVERY_PARCEL_SCANNED,
+      NESY_FACTS.DELIVERY_TYPE_DIALOG_SHOWN,
+      NESY_FACTS.DELIVERY_CONFIRM_DIALOG_SHOWN,
       NESY_FACTS.DELIVERY_SUBMITTED,
       NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
       NESY_FACTS.OFFLINE_QUEUE_DRAINED,
@@ -291,7 +587,10 @@ export const NESY_COMPLETE_DELIVERY_MACRO: MacroDefinition = {
         },
       ],
     },
-    notResponsibleFor: ["payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"],
+    notResponsibleFor: [
+      "payment and fiscal surfaces on the unpaid DELY path, which the product skips rather than this macro ignoring",
+      "production RS printer hardware, which tstrs does not exercise",
+    ],
   },
   interruptPolicy: NESY_DEFAULT_INTERRUPT_POLICY,
   requiredCapabilityRefs: [

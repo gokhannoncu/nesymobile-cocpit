@@ -3,8 +3,11 @@
   "displayName": "Complete delivery",
   "businessMeaning": "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
   "notResponsibleFor": [
-    "payment collection and fiscal receipt printing",
-    "recipient signature quality or identity verification",
+    "payment collection and fiscal receipt printing — this slice is the unpaid DELY path; RS cash+EXW is a later slice",
+    "production RS printer hardware (tstrs has isPrinterConnectionRequired=false; productionrs does not)",
+    "the SI tax-number identity check (unconditional return outside the RS branch)",
+    "createFiscalInvoice ignoring its shipmentId (outside this unpaid path)",
+    "recipient signature quality — the pad is visible on RS but isDeliveryCodeOrSignatureNotRequired is true",
     "failure/cancel reason codes (separate slices)",
     "how long the backend takes to confirm — only that it confirms within the declared deadline"
   ],
@@ -96,7 +99,31 @@
       ],
       "variables": [
         {
+          "name": "scanEntryHandle",
+          "type": "string"
+        },
+        {
+          "name": "scanFieldHandle",
+          "type": "string"
+        },
+        {
+          "name": "scanConfirmHandle",
+          "type": "string"
+        },
+        {
           "name": "completeHandle",
+          "type": "string"
+        },
+        {
+          "name": "deliveryTypeHandle",
+          "type": "string"
+        },
+        {
+          "name": "deliveryConfirmHandle",
+          "type": "string"
+        },
+        {
+          "name": "queueRows",
           "type": "string"
         }
       ],
@@ -104,7 +131,7 @@
         {
           "planStepId": "wait-flow",
           "sourceMapRef": "sm-done-1",
-          "next": "resolve-complete",
+          "next": "resolve-scan-entry",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -118,9 +145,137 @@
           "onTimeout": "FAIL"
         },
         {
+          "planStepId": "resolve-scan-entry",
+          "sourceMapRef": "sm-done-2a",
+          "next": "tap-scan-entry",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-manual-barcode-entry",
+          "outputVariable": "scanEntryHandle"
+        },
+        {
+          "planStepId": "tap-scan-entry",
+          "sourceMapRef": "sm-done-2b",
+          "next": "resolve-scan-field",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "scanEntryHandle"
+        },
+        {
+          "planStepId": "resolve-scan-field",
+          "sourceMapRef": "sm-done-2c",
+          "next": "type-barcode",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-barcode-input-field",
+          "outputVariable": "scanFieldHandle"
+        },
+        {
+          "planStepId": "type-barcode",
+          "sourceMapRef": "sm-done-2d",
+          "next": "resolve-scan-confirm",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "setText",
+          "targetVariable": "scanFieldHandle",
+          "args": {
+            "text": "run.input.consignmentNumber"
+          }
+        },
+        {
+          "planStepId": "resolve-scan-confirm",
+          "sourceMapRef": "sm-done-2e",
+          "next": "tap-scan-confirm",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-barcode-input-confirm",
+          "outputVariable": "scanConfirmHandle"
+        },
+        {
+          "planStepId": "tap-scan-confirm",
+          "sourceMapRef": "sm-done-2f",
+          "next": "resolve-complete",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "scanConfirmHandle",
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "continueGate": {
+            "allOf": [
+              "APP.DELIVERY_PARCEL_SCANNED"
+            ],
+            "deadlineMs": 20000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
           "planStepId": "resolve-complete",
           "sourceMapRef": "sm-done-2",
-          "next": "tap-complete",
+          "next": "reveal-complete",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -137,9 +292,28 @@
           "outputVariable": "completeHandle"
         },
         {
+          "planStepId": "reveal-complete",
+          "sourceMapRef": "sm-done-2g",
+          "next": "tap-complete",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "reveal",
+          "targetVariable": "completeHandle"
+        },
+        {
           "planStepId": "tap-complete",
           "sourceMapRef": "sm-done-3",
-          "next": "branch-on-queue",
+          "next": "resolve-delivery-type",
           "timeoutMs": 25000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -160,11 +334,129 @@
           },
           "continueGate": {
             "allOf": [
-              "APP.DELIVERY_SUBMITTED"
+              "APP.DELIVERY_TYPE_DIALOG_SHOWN"
             ],
             "deadlineMs": 25000,
             "unknownPolicy": "RETRY"
           }
+        },
+        {
+          "planStepId": "resolve-delivery-type",
+          "sourceMapRef": "sm-done-3a",
+          "next": "tap-delivery-type",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-type-dely",
+          "outputVariable": "deliveryTypeHandle"
+        },
+        {
+          "planStepId": "tap-delivery-type",
+          "sourceMapRef": "sm-done-3b",
+          "next": "resolve-delivery-confirm",
+          "timeoutMs": 25000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "deliveryTypeHandle",
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "continueGate": {
+            "allOf": [
+              "APP.DELIVERY_CONFIRM_DIALOG_SHOWN"
+            ],
+            "deadlineMs": 25000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "resolve-delivery-confirm",
+          "sourceMapRef": "sm-done-3c",
+          "next": "tap-delivery-confirm",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.delivery-confirm-accept",
+          "outputVariable": "deliveryConfirmHandle"
+        },
+        {
+          "planStepId": "tap-delivery-confirm",
+          "sourceMapRef": "sm-done-3d",
+          "next": "read-pending-queue",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "deliveryConfirmHandle",
+          "entityBinding": {
+            "type": "SHIPMENT",
+            "id": "run.input.consignmentNumber"
+          },
+          "continueGate": {
+            "allOf": [
+              "APP.DELIVERY_SUBMITTED"
+            ],
+            "deadlineMs": 30000,
+            "unknownPolicy": "RETRY"
+          }
+        },
+        {
+          "planStepId": "read-pending-queue",
+          "sourceMapRef": "sm-done-3e",
+          "next": "branch-on-queue",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.pendingOperation",
+          "maxRows": 1,
+          "outputVariable": "queueRows"
         },
         {
           "planStepId": "branch-on-queue",
@@ -182,15 +474,15 @@
               "branchId": "queued-offline",
               "condition": {
                 "kind": "comparison",
-                "operator": "greaterThan",
+                "operator": "notIn",
                 "left": {
-                  "kind": "operand",
-                  "source": "local.result",
-                  "path": "pendingOperation.count"
+                  "kind": "literal",
+                  "value": "0"
                 },
                 "right": {
-                  "kind": "literal",
-                  "value": 0
+                  "kind": "operand",
+                  "source": "step.output",
+                  "path": "queueRows.pending_count"
                 }
               },
               "next": "await-queue-drain"
@@ -371,14 +663,78 @@
           "domainSourceRef": "nesy.macro.complete-delivery"
         },
         {
+          "ref": "sm-done-2a",
+          "planStepId": "resolve-scan-entry",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2b",
+          "planStepId": "tap-scan-entry",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2c",
+          "planStepId": "resolve-scan-field",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2d",
+          "planStepId": "type-barcode",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2e",
+          "planStepId": "resolve-scan-confirm",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-2f",
+          "planStepId": "tap-scan-confirm",
+          "domainSourceRef": "nesy.macro.complete-delivery",
+          "note": "the product's own gate: without a scanned shipment Complete only toasts"
+        },
+        {
           "ref": "sm-done-2",
           "planStepId": "resolve-complete",
           "domainSourceRef": "nesy.macro.complete-delivery"
         },
         {
+          "ref": "sm-done-2g",
+          "planStepId": "reveal-complete",
+          "domainSourceRef": "nesy.macro.complete-delivery",
+          "note": "positions the button the app itself scrolls to; identity stays with the tap"
+        },
+        {
           "ref": "sm-done-3",
           "planStepId": "tap-complete",
           "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-3a",
+          "planStepId": "resolve-delivery-type",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-3b",
+          "planStepId": "tap-delivery-type",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-3c",
+          "planStepId": "resolve-delivery-confirm",
+          "domainSourceRef": "nesy.macro.complete-delivery"
+        },
+        {
+          "ref": "sm-done-3d",
+          "planStepId": "tap-delivery-confirm",
+          "domainSourceRef": "nesy.macro.complete-delivery",
+          "note": "the tap that actually delivers — three taps after Complete, not one"
+        },
+        {
+          "ref": "sm-done-3e",
+          "planStepId": "read-pending-queue",
+          "domainSourceRef": "nesy.macro.complete-delivery",
+          "note": "the offline branch needs a reading, not a declaration"
         },
         {
           "ref": "sm-done-4",
@@ -410,14 +766,78 @@
         "domainSourceRef": "nesy.macro.complete-delivery"
       },
       {
+        "ref": "sm-done-2a",
+        "planStepId": "resolve-scan-entry",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2b",
+        "planStepId": "tap-scan-entry",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2c",
+        "planStepId": "resolve-scan-field",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2d",
+        "planStepId": "type-barcode",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2e",
+        "planStepId": "resolve-scan-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2f",
+        "planStepId": "tap-scan-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the product's own gate: without a scanned shipment Complete only toasts"
+      },
+      {
         "ref": "sm-done-2",
         "planStepId": "resolve-complete",
         "domainSourceRef": "nesy.macro.complete-delivery"
       },
       {
+        "ref": "sm-done-2g",
+        "planStepId": "reveal-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "positions the button the app itself scrolls to; identity stays with the tap"
+      },
+      {
         "ref": "sm-done-3",
         "planStepId": "tap-complete",
         "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3a",
+        "planStepId": "resolve-delivery-type",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3b",
+        "planStepId": "tap-delivery-type",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3c",
+        "planStepId": "resolve-delivery-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3d",
+        "planStepId": "tap-delivery-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the tap that actually delivers — three taps after Complete, not one"
+      },
+      {
+        "ref": "sm-done-3e",
+        "planStepId": "read-pending-queue",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the offline branch needs a reading, not a declaration"
       },
       {
         "ref": "sm-done-4",
@@ -447,8 +867,20 @@
         "macroRef": "nesy.macro.complete-delivery",
         "planStepIds": [
           "wait-flow",
+          "resolve-scan-entry",
+          "tap-scan-entry",
+          "resolve-scan-field",
+          "type-barcode",
+          "resolve-scan-confirm",
+          "tap-scan-confirm",
           "resolve-complete",
+          "reveal-complete",
           "tap-complete",
+          "resolve-delivery-type",
+          "tap-delivery-type",
+          "resolve-delivery-confirm",
+          "tap-delivery-confirm",
+          "read-pending-queue",
           "branch-on-queue",
           "await-queue-drain",
           "verify-backend-status",
@@ -477,7 +909,31 @@
     ],
     "variables": [
       {
+        "name": "scanEntryHandle",
+        "type": "string"
+      },
+      {
+        "name": "scanFieldHandle",
+        "type": "string"
+      },
+      {
+        "name": "scanConfirmHandle",
+        "type": "string"
+      },
+      {
         "name": "completeHandle",
+        "type": "string"
+      },
+      {
+        "name": "deliveryTypeHandle",
+        "type": "string"
+      },
+      {
+        "name": "deliveryConfirmHandle",
+        "type": "string"
+      },
+      {
+        "name": "queueRows",
         "type": "string"
       }
     ],
@@ -485,7 +941,7 @@
       {
         "planStepId": "wait-flow",
         "sourceMapRef": "sm-done-1",
-        "next": "resolve-complete",
+        "next": "resolve-scan-entry",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -499,9 +955,137 @@
         "onTimeout": "FAIL"
       },
       {
+        "planStepId": "resolve-scan-entry",
+        "sourceMapRef": "sm-done-2a",
+        "next": "tap-scan-entry",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-manual-barcode-entry",
+        "outputVariable": "scanEntryHandle"
+      },
+      {
+        "planStepId": "tap-scan-entry",
+        "sourceMapRef": "sm-done-2b",
+        "next": "resolve-scan-field",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "scanEntryHandle"
+      },
+      {
+        "planStepId": "resolve-scan-field",
+        "sourceMapRef": "sm-done-2c",
+        "next": "type-barcode",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-barcode-input-field",
+        "outputVariable": "scanFieldHandle"
+      },
+      {
+        "planStepId": "type-barcode",
+        "sourceMapRef": "sm-done-2d",
+        "next": "resolve-scan-confirm",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "setText",
+        "targetVariable": "scanFieldHandle",
+        "args": {
+          "text": "run.input.consignmentNumber"
+        }
+      },
+      {
+        "planStepId": "resolve-scan-confirm",
+        "sourceMapRef": "sm-done-2e",
+        "next": "tap-scan-confirm",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-barcode-input-confirm",
+        "outputVariable": "scanConfirmHandle"
+      },
+      {
+        "planStepId": "tap-scan-confirm",
+        "sourceMapRef": "sm-done-2f",
+        "next": "resolve-complete",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "scanConfirmHandle",
+        "entityBinding": {
+          "type": "SHIPMENT",
+          "id": "run.input.consignmentNumber"
+        },
+        "continueGate": {
+          "allOf": [
+            "APP.DELIVERY_PARCEL_SCANNED"
+          ],
+          "deadlineMs": 20000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
         "planStepId": "resolve-complete",
         "sourceMapRef": "sm-done-2",
-        "next": "tap-complete",
+        "next": "reveal-complete",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -518,9 +1102,28 @@
         "outputVariable": "completeHandle"
       },
       {
+        "planStepId": "reveal-complete",
+        "sourceMapRef": "sm-done-2g",
+        "next": "tap-complete",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "reveal",
+        "targetVariable": "completeHandle"
+      },
+      {
         "planStepId": "tap-complete",
         "sourceMapRef": "sm-done-3",
-        "next": "branch-on-queue",
+        "next": "resolve-delivery-type",
         "timeoutMs": 25000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -541,11 +1144,129 @@
         },
         "continueGate": {
           "allOf": [
-            "APP.DELIVERY_SUBMITTED"
+            "APP.DELIVERY_TYPE_DIALOG_SHOWN"
           ],
           "deadlineMs": 25000,
           "unknownPolicy": "RETRY"
         }
+      },
+      {
+        "planStepId": "resolve-delivery-type",
+        "sourceMapRef": "sm-done-3a",
+        "next": "tap-delivery-type",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-type-dely",
+        "outputVariable": "deliveryTypeHandle"
+      },
+      {
+        "planStepId": "tap-delivery-type",
+        "sourceMapRef": "sm-done-3b",
+        "next": "resolve-delivery-confirm",
+        "timeoutMs": 25000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "deliveryTypeHandle",
+        "entityBinding": {
+          "type": "SHIPMENT",
+          "id": "run.input.consignmentNumber"
+        },
+        "continueGate": {
+          "allOf": [
+            "APP.DELIVERY_CONFIRM_DIALOG_SHOWN"
+          ],
+          "deadlineMs": 25000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "resolve-delivery-confirm",
+        "sourceMapRef": "sm-done-3c",
+        "next": "tap-delivery-confirm",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.delivery-confirm-accept",
+        "outputVariable": "deliveryConfirmHandle"
+      },
+      {
+        "planStepId": "tap-delivery-confirm",
+        "sourceMapRef": "sm-done-3d",
+        "next": "read-pending-queue",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "deliveryConfirmHandle",
+        "entityBinding": {
+          "type": "SHIPMENT",
+          "id": "run.input.consignmentNumber"
+        },
+        "continueGate": {
+          "allOf": [
+            "APP.DELIVERY_SUBMITTED"
+          ],
+          "deadlineMs": 30000,
+          "unknownPolicy": "RETRY"
+        }
+      },
+      {
+        "planStepId": "read-pending-queue",
+        "sourceMapRef": "sm-done-3e",
+        "next": "branch-on-queue",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.pendingOperation",
+        "maxRows": 1,
+        "outputVariable": "queueRows"
       },
       {
         "planStepId": "branch-on-queue",
@@ -563,15 +1284,15 @@
             "branchId": "queued-offline",
             "condition": {
               "kind": "comparison",
-              "operator": "greaterThan",
+              "operator": "notIn",
               "left": {
-                "kind": "operand",
-                "source": "local.result",
-                "path": "pendingOperation.count"
+                "kind": "literal",
+                "value": "0"
               },
               "right": {
-                "kind": "literal",
-                "value": 0
+                "kind": "operand",
+                "source": "step.output",
+                "path": "queueRows.pending_count"
               }
             },
             "next": "await-queue-drain"
@@ -752,14 +1473,78 @@
         "domainSourceRef": "nesy.macro.complete-delivery"
       },
       {
+        "ref": "sm-done-2a",
+        "planStepId": "resolve-scan-entry",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2b",
+        "planStepId": "tap-scan-entry",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2c",
+        "planStepId": "resolve-scan-field",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2d",
+        "planStepId": "type-barcode",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2e",
+        "planStepId": "resolve-scan-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-2f",
+        "planStepId": "tap-scan-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the product's own gate: without a scanned shipment Complete only toasts"
+      },
+      {
         "ref": "sm-done-2",
         "planStepId": "resolve-complete",
         "domainSourceRef": "nesy.macro.complete-delivery"
       },
       {
+        "ref": "sm-done-2g",
+        "planStepId": "reveal-complete",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "positions the button the app itself scrolls to; identity stays with the tap"
+      },
+      {
         "ref": "sm-done-3",
         "planStepId": "tap-complete",
         "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3a",
+        "planStepId": "resolve-delivery-type",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3b",
+        "planStepId": "tap-delivery-type",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3c",
+        "planStepId": "resolve-delivery-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery"
+      },
+      {
+        "ref": "sm-done-3d",
+        "planStepId": "tap-delivery-confirm",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the tap that actually delivers — three taps after Complete, not one"
+      },
+      {
+        "ref": "sm-done-3e",
+        "planStepId": "read-pending-queue",
+        "domainSourceRef": "nesy.macro.complete-delivery",
+        "note": "the offline branch needs a reading, not a declaration"
       },
       {
         "ref": "sm-done-4",
@@ -798,9 +1583,27 @@
         "awaitFactKey": "UI.DELIVERY_FLOW_READY"
       },
       {
+        "planStepId": "tap-scan-confirm",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.delivery-barcode-input-confirm",
+        "awaitFactKey": "APP.DELIVERY_PARCEL_SCANNED"
+      },
+      {
         "planStepId": "tap-complete",
         "bridgeVerb": "tap",
         "targetRef": "nesy.target.delivery-complete-button",
+        "awaitFactKey": "APP.DELIVERY_TYPE_DIALOG_SHOWN"
+      },
+      {
+        "planStepId": "tap-delivery-type",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.delivery-type-dely",
+        "awaitFactKey": "APP.DELIVERY_CONFIRM_DIALOG_SHOWN"
+      },
+      {
+        "planStepId": "tap-delivery-confirm",
+        "bridgeVerb": "tap",
+        "targetRef": "nesy.target.delivery-confirm-accept",
         "awaitFactKey": "APP.DELIVERY_SUBMITTED"
       }
     ]
@@ -837,7 +1640,8 @@
       ]
     },
     "notResponsibleFor": [
-      "payment and fiscal surfaces, which are IGNORE-policy surfaces for this macro"
+      "payment and fiscal surfaces on the unpaid DELY path, which the product skips rather than this macro ignoring",
+      "production RS printer hardware, which tstrs does not exercise"
     ]
   },
   "interruptPolicy": {

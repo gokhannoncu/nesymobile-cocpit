@@ -378,6 +378,27 @@ describe("screenshot artifact", () => {
   });
 });
 
+describe("swipe", () => {
+  it("sends the coordinate names the device actually reads", async () => {
+    // Measured 2026-08-13: `fromX` → `missing_startX`; `startX` is accepted.
+    const { manager: m, server: s } = await start();
+    await m.ensureReady();
+    await m.swipe({ x: 540, y: 1250 }, { x: 540, y: 400 }, { durationMs: 450 });
+    const swipe = s.received.find((r) => r.command === "swipe");
+    const body = (
+      swipe?.params.params !== undefined && typeof swipe.params.params === "object"
+        ? swipe.params.params
+        : swipe?.params
+    ) as Record<string, unknown> | undefined;
+    expect(body?.startX).toBe(540);
+    expect(body?.startY).toBe(1250);
+    expect(body?.endX).toBe(540);
+    expect(body?.endY).toBe(400);
+    expect(body?.fromX).toBeUndefined();
+    expect(body?.toX).toBeUndefined();
+  });
+});
+
 describe("disposal", () => {
   it("releases the socket, the forward and the readiness flag", async () => {
     const { manager: m, adb } = await start();

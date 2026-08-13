@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 23:00:00 +03"
+lastUpdatedAt: "2026-08-13 08:00:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.20.0"
+domainPackVersion: "1.22.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -1282,6 +1282,262 @@ komutu olan REMOTE_ACTION adımlarını o yola bağlamak.
 **Uyarı:** bu turda eklediğim `assert-release-isolation` adımı **aynı aileden** ve
 aynı sebeple düşecek. İkisi tek düzeltmeyle açılır; ayrı ayrı kovalanmamalı.
 
+## 5.5 COMPLETE_DELIVERY planı — teslim ekranı haritalandı
+
+Teslim ekranı taramadan kayda kadar **~34 karar dalı** taşıyor ve **en az 21'i
+hiçbir şey yaymıyor**. Ama bu bölümün asıl konusu eksik teller değil: burada
+**yanıltıcı** teller var, ve plan onlarla başlamak zorunda.
+
+### 5.5.1 ÖNCE DÜZELT — yeşil yalan söyleyen tel
+
+`DELIVERY_UI_COMPLETED` **başarısızlık yolunda da yayınlanıyor**:
+`emitDeliveryError` aynı `step="COMPLETED"`i kullanıyor, `success=false` ve
+`delivery_submitted` alanı **yok**. Katalog bu teli
+`nesy.events.critical/delivery-submitted` → `APP.DELIVERY_SUBMITTED` diye
+kaydediyor.
+
+Yani tel adına bakan bir oracle, **backend reddini teslim olarak okur.** Bu,
+"kanıt yok" değil "yanlış kanıt" — ve bu fazın kovaladığı her şeyden daha
+tehlikeli. Değer alanı olarak `delivery_submitted` okunmalı ve o alanı taşımayan
+kare **reddedilmeli**, varsayılana düşülmemeli.
+
+Aynı sınıftan iki tel daha: `DIALOG_SHOWN` bu ekranda **dört**, `DIALOG_DISMISSED`
+**üç** anlam taşıyor, ayrımı boolean olmayan `data.step`/`dialogType` yapıyor —
+`VEHICLE_LOADING_STEP` hatasının birebir tekrarı. `normalizeData` `userChoice`'u
+bir dalda `"DELY"`, başka dalda `"true"` üretiyor. Hiçbirinde `data` içinde
+korelasyon yok.
+
+`PAYMENT_COMPLETED` ve `FISCAL_COMPLETED`: boolean değer alanı yok, `data` içinde
+korelasyon yok, `FISCAL_COMPLETED`'ın `invoice_id`'si `ALREADY_CREATED` dalında
+**boş dize**.
+
+**Sonuç: hiçbir dilim yazılmadan önce tel hijyeni.** Bugüne kadar bunu üç kez
+kanıtladık (`PARCEL_SCANNED`, `TOUR_STARTED`, `DELIVERY_STARTED`): boolean değer
+alanı + `data` içinde korelasyon. Aynısı burada beş tele gerekiyor.
+
+### 5.5.2 Birleştirme zinciri kopuk
+
+`DELIVERY_STARTED` `data.barcode` taşıyor, `DELIVERY_UI_COMPLETED` taşımıyor.
+`DELIVERY_UI_COMPLETED`'ın `requestId`'si yok, `DELIVERY_PERSISTED`'ın var.
+Ve `DELIVERY_PERSISTED`'ın zarf `taskId`'si **waybill**, `DELIVERY_UI_COMPLETED`'ınki
+**parça barkodu** — ikisinin farklı olduğu bir gönderide birleştirme kırılır.
+
+Uçtan uca tek anahtar yok. Plan bunu varsaymamalı; fixture üzerinde ölçmeli.
+
+### 5.5.3 Fiscal, gradle'da ve YALNIZ RS'te
+
+`isFiscailzationFeatureEnabled` (kaynakta yazım hatasıyla) tam olarak **üç**
+flavour'da açık, üçü de RS: `tstrs`, `productionrs`, `productiondexpressrs`.
+Diğer on bir flavour'da kapalı.
+
+**Bizim cihazımız `tstrs`** — yani RS'te koştuğumuz her teslim fiscal koduna
+giriyor. Bu, `open-stop`/`process-parcel`'ın tersi: orada dilim ülke-bağımsızdı,
+burada RS teslimi doğası gereği fiscal'a bağlı.
+
+Bir rahatlık: `tstrs`'te `isPrinterConnectionRequired = false`, yani yazıcı
+donanımı bağımlılığı test cihazında yok (production RS'te var). Fiscal'ı yazıcı
+olmadan koşabiliyoruz — ama bu, **production RS'i test etmediğimiz** anlamına da
+gelir ve dilimin `notResponsibleFor`'una yazılmalı.
+
+`TestEvent.FISCAL_COMPLETED` dokümantasyonu "BG/RS Datecs" diyor; **BG'de fiscal
+kapalı**. Belge yanlış.
+
+### 5.5.4 Sıra
+
+**1. Tel hijyeni** (mobil + host). Beş tele boolean değer alanı ve `data`
+korelasyonu; `DELIVERY_UI_COMPLETED`'ın hata yolunu ayrı bir tele ya da en azından
+`delivery_submitted` yokluğuyla reddedilebilir hâle getirmek. Bu bitmeden dilim
+yazmak, yanlış kanıtın üstüne oracle kurmaktır.
+
+**2. RS ödemesiz DELY** — tek parça, tek shipment, sıfır tahsilat. Ödeme
+diyaloğu, fiscal, yazıcı ve beş sağlayıcı yolu tamamen atlanır; kalan şey teslimin
+kendisidir. `isDeliveryCodeOrSignatureNotRequired()` RS'te true olduğu için imza
+ve teslim kodu da devre dışı.
+Önkoşullar arasında **durakta tek task** olması şart: `checkUnScannedShipmentItems`
+tüm durağı sayıyor, çok task'lı durak uyarı diyaloğunu tetikliyor.
+
+**3. RS nakit + EXW → fiscal fatura.** `FISCAL_COMPLETED` ve
+`PAYMENT_COMPLETED{fiscal=true}` üreten tek akış, RS'e özel, ve **regüle** — yanlış
+sonuç UX değil hukuk sorunu. Sekiz iptal dalının hepsi bugün sessiz.
+
+**4. RS nakit, yalnız COD (EXW yok).** Fiscal kapısını **negatif** kanıtlar:
+`EXW > 0` koşulu kayarsa ülkedeki her COD teslimi sessizce fiscal'lanır ya da
+fiscal'dan çıkar. En yüksek frekanslı ödemeli teslim.
+
+**5. RS skip-EXW.** `exwSkipForCurrentDelivery` bayrağı ödeme tutarını sessizce
+sıfırlıyor ve ayrı bir kalıcılık yükü yazıyor; bugünkü tek izi, ilkinden ayırt
+edilemeyen ikinci bir `DIALOG_SHOWN`.
+
+### 5.5.5 Yol boyunca bulunan iki ürün kusuru
+
+**SI kimlik kontrolü koşulsuz `return` ediyor** (`DeliveryFragment` ~726-731):
+`if (!isValidTaxNumber(...)) { toast }` ve ardından `return` — `if`'in DIŞINDA.
+Geçerli vergi numarası da olsa teslim ilerlemiyor, ve hiçbir şey yayınlanmıyor.
+Bizim RS dilimimizi etkilemiyor; SI'de teslimi durduruyor.
+
+**`createFiscalInvoice` `shipmentId` parametresini kullanmıyor** (~3440); listeyi
+`exworkWaybills`'ten yeniden kuruyor. Çağıran taraf iç içe döngüde atanan
+`selectedShipmentId`'yi geçiyor, yani taranan değil **son** teslim edilmemiş
+waybill. Ölü parametre, altında yanlış-gönderi kusuru saklıyor.
+
+İkisi de bizim koşacağımız dalın dışında; kaydedildi, uydurulmadı.
+
+### 5.5.6 ÖLÇÜLDÜ — Complete butonu `btn_deliver`, pack id'si uydurmaydı
+
+2026-08-13, R6CW400BC8N, teslim ekranı açıkken köprü `dump scope=full` (uiautomator dump görünmez düğümleri atlıyor):
+
+```text
+btn_deliver   LinearLayout  clickable  enabled
+              ilk kare: visible=false  bounds.top=2517  (katmanın altında)
+              kaydırınca: visible=true  [127,1990][953,2191]
+              find_id matched=1  her iki durumda
+çocuk text1   "Delivery"  clickable=false
+delivery_complete_button  find_id → not_found
+```
+
+Metinle bağlamak ambiguous: action-bar başlığı da `"Delivery"`. `btn_out` ile aynı kural — yalnız id.
+
+`delivery_scroll` koleksiyon değil (`collection_info_unavailable`); `scroll_to_item` bu ekranda çalışmaz. Köprü swipe, imza pad'inin ÜSTÜNDEKI parça bandından (`y=1250→400`) butonu görünür kıldı. Host `fromX` gönderiyordu, cihaz `missing_startX` dedi; `startX`/`endX` kabul edildi.
+
+`tv_deliver_item_size` hâlâ `0`; buton yine de enabled. Satır seçiminin Complete önkoşulu olup olmadığı tap edilmediği için bilinmiyor.
+
+Pack 1.22.0 hedefi `btn_deliver` yaptı. Koordinat swipe makroya yazılmadı — kimlik değil.
+
+### 5.5.7 Tel hijyeni — mobil + host
+
+Mobil (`NesyMobile`) ve host, dilim yazılmadan önce beş yanıltıcı teli ayırdı:
+
+| Tel | Önce | Sonra |
+|---|---|---|
+| `DELIVERY_UI_COMPLETED` hata yolu | `delivery_submitted` yok → host reddeder → INCONCLUSIVE | `delivery_submitted=false` + `data.barcode` → ölçülmüş ret, teslim değil |
+| `DIALOG_SHOWN` / `DIALOG_DISMISSED` (teslim ekranı) | dört / üç anlam, `data.step` ile | ayrı teller; paylaşılan isimler ArasDialog merkezi + ScanProcessor için kaldı, **katalogda yok** |
+| `PAYMENT_COMPLETED` / `FISCAL_COMPLETED` | boolean yok, korelasyon yok; `invoice_id=""` | `payment_completed` / `fiscal_completed` + `data.barcode`; join `invoice_id` değil |
+| skip-EXW | `ArasDialog` → ayırt edilemeyen `DIALOG_SHOWN` | `SKIP_EXW_DIALOG_SHOWN` / `SKIP_EXW_RESULT` (`skip_exw_accepted`) |
+
+Pack **1.23.0** katalogda (`sha256:1ade5d481b79be5b0e1153249150377cc34b785f48df8df017fe0999e261f4b9`).
+
+### 5.5.8 ÖLÇÜLDÜ — hijyen APK kuruldu; off-screen `tap_id` reddediliyor
+
+2026-08-13 08:27, `installTstrsDebug` → `nesymobile-rstest-v0.1157.apk` (`lastUpdateTime=2026-08-13 08:27:20`). Oturum ve zimmet durdu (Stop List: Loaded Parcels 1, Remaining Stops 1, KNEZA MILOSA / Zimmet Olcum 01). Teslim ekranı kısa barkod `6880051000289711` ile manuel girişten açıldı; uzun `N68801…` aynı diyalogda teslimi açmadı.
+
+```text
+find_id btn_deliver  matched=1  visible=false  enabled=true  clickable=true
+                     bounds.top=2517  (ekran 2340)
+tap_id  btn_deliver  ok=false  error=not_visible
+```
+
+Köprü `visible=false` düğüme `ACTION_CLICK` göndermiyor — `tapTargetRejection`. Kaydırmadan Complete basılamaz. `delivery_scroll` hâlâ koleksiyon değil; teslim ekranındaki `rv` `collection_info` veriyor ama `rowCount=-1`, `visibleRowCount=0`, çocukları clickable değil. `tv_deliver_item_size` hâlâ `"0"`.
+
+Makrodaki `tap-complete` bu haliyle `not_visible` ile düşer. Koordinat swipe kimlik değil; off-screen tıklamayı köprüye açmak da kuryenin kaydırmasını atlar. İkisi de ayrı karar — uydurulmadı.
+
+### 5.5.9 COMPLETE_DELIVERY cihazda KARAR ÜRETİYOR (1.25.1) — üç bağımsız hata
+
+2026-08-13. §5.5.8'in sunduğu iki seçenek (koordinat swipe / görünmez düğüme
+`ACTION_CLICK`) **ikisi de gereksizdi** ve asıl engel off-screen tap değildi.
+Ölçüm üç bağımsız hata gösterdi; her biri tek başına koşuyu durduruyordu.
+
+**1. `tap-complete` son tap değil.** `btn_deliver` → "Choose A Delivery Option"
+(`btnDely`) → ArasDialog onayı (`btn_arasDg_positive_button`) → teslim. Üç tap.
+Makro tek tap modelliyordu; buton görünür olsa bile `DELIVERY_SUBMITTED` hiç
+gelmez, kapı 25 sn dolar. **Görünürlük düzeltilse bile koşu düşerdi.**
+
+**2. Tarama bir önkoşul.** `initiateDeliveryProcess`'in ilk satırı
+`shipmentModelList.any { isScanned }`; değilse toast atıp **hiçbir şey yaymadan**
+dönüyor. Ölçüldü: teslim ekranı `tv_deliver_item_size = "0"` ile açılıyor, aynı
+barkod ekranda okutulunca `"1"`. Layout'ta `android:text` yok — yani `"0"` kodun
+yazdığı değer, sayaç gerçekten sıfırdı.
+
+Kök neden bir **ürün tutarsızlığı**: `reloadDeliveryPage` (ekranı AÇAN yol) beş
+alanı normalize etmeden eşliyor ve `legacySystemShortBarcodeTrim`'i hiç okumuyor;
+`addBarcodesFromList` (ekranda OKUTMA yolu) altı alanı `trim().uppercase()` ile
+eşliyor. Aynı barkod, iki farklı cevap. Kurye kısa barkodla sayfayı açıyor, "0
+parça" görüyor, Delivery'e basıyor ve az önce yazdığı barkod için "en az bir
+barkod okutulmalı" uyarısı alıyor. **Değiştirilmedi** — düzeltmesi ayrı bir
+karar; `DeliveryFragment` içinde yorum olarak kayıtlı.
+
+**3. Off-screen tap — üçüncü seçenek vardı.** `reveal_id` köprü komutu: düğümü id
+ile bul, **düğümün kendisine** `ACTION_SHOW_ON_SCREEN` gönder. Kaydırmayı
+uygulamanın kendi `delivery_scroll`'u yapıyor — ürünün imza pad'i açılınca aynı
+butona yaptığı şeyin aynısı (`DeliveryFragment` `smoothScrollTo(btnDeliver…)`).
+`ACTION_SHOW_ON_SCREEN` köprüde zaten vardı ama yalnız `scroll_to_item`
+üzerinden, o da `collectionInfo` şartına bağlı; `delivery_scroll` bir `ScrollView`,
+koleksiyon değil — bu yüzden yol kapalıydı.
+
+Cihazda ölçüldü:
+
+```text
+find_id  btn_deliver   visible=false  top=2517   (ekran 2340)
+tap_id   btn_deliver   not_visible                ← kapı YERİNDE kalıyor
+reveal_id btn_deliver  ok  revealAction=show_on_screen
+find_id  btn_deliver   visible=true   top=1990    ← uygulama kaydırdı
+tap_id   btn_deliver   ok → "Choose A Delivery Option"
+```
+
+`already_visible` (idempotent), `stale_tree` çiti ve `not_found` de cihazda
+doğrulandı. `tap`ın `not_visible` kapısı **bilinçli olarak duruyor**: görünmez bir
+düğüme tıklamak, kuryenin ulaşamadığı bir kontrolü yeşil yapardı.
+
+**4. `branch-on-queue` hiç çözülemezmiş.** `local.result` altında
+`pendingOperation.count` okuyordu; bu makroda onu üreten hiçbir şey yok. Üstelik
+projeksiyonun kolonu `pending_count` ve değer **String** (`"0"`), condition
+evaluator ise `greaterThan`'i **yalnız number** için tanımlıyor (dize
+karşılaştırması bilinçli olarak UNKNOWN). Yani hiçbir cihazda, hiçbir durumda
+çözülemezdi. Eklendi: `read-pending-queue` (`nesy.pendingOperation`), ve koşul
+`notIn` ile skaler eşitliğe indirildi. Bugüne kadar görünmemesinin sebebi: hiçbir
+koşu Complete tap'ini geçememişti.
+
+> Aynı bozuk operand `full-courier-golden.ts`'te de duruyor — bu dilimde
+> değiştirilmedi, kayda geçti.
+
+**Tel hijyeni tamamlandı.** Teslim dilimindeki her tel artık TEK kanonik anahtar
+taşıyor: `shipmentItemBarcode`. Ölçülen kusur — `DELIVERY_TYPE_DIALOG_SHOWN` uzun
+legacy formu, `PARCEL_SCANNED` yazılan kısa formu taşıyordu, aynı parça, iki
+anahtar, `correlationField: 'barcode'` birleşimi sessizce hiç ateşlemiyordu.
+`emitScreenLoaded` artık `canonicalBarcodeFor(initialBarcode)` alıyor;
+`selectedBarcodeList` zaten `shipmentItemBarcode` tutuyordu. Ekrandaki üç kopya
+matcher tek `matchesBarcode`'a indirildi (`reloadDeliveryPage` bilinçli istisna,
+madde 2).
+
+Yeni tel `DELIVERY_PARCEL_SCANNED` (`delivery_parcel_scanned` boolean +
+`scanned_count`/`total_count`): `PARCEL_SCANNED` bu kapıyı kanıtlamaz, çünkü o
+yönlendirmeden ÖNCE her ekranda yayınlanıyor.
+
+**Cihazda sonuç** (pack 1.25.1, `reuse-session`):
+
+```text
+15/15 aksiyon adımı SUCCEEDED
+  tap-scan-confirm      gate SATISFIED   APP.DELIVERY_PARCEL_SCANNED
+  tap-complete          gate SATISFIED   APP.DELIVERY_TYPE_DIALOG_SHOWN
+  tap-delivery-type     gate SATISFIED   APP.DELIVERY_CONFIRM_DIALOG_SHOWN
+  tap-delivery-confirm  gate SATISFIED   APP.DELIVERY_SUBMITTED   ← teslim GERÇEKTEN gitti
+  read-pending-queue    SUCCEEDED
+  branch-on-queue       SUCCEEDED
+  verify-backend-status SUCCEEDED
+assert-confirmed        VIOLATED  →  FAIL_PRODUCT, termination COMPLETED
+```
+
+`INCONCLUSIVE` değil, **karar**. Bu iş akışı için fazın çıkış ölçütü karşılandı.
+
+**AÇIK — bu `FAIL_PRODUCT` dürüst mü?** `assert-confirmed` ihlali ya gerçek bir
+ürün kusuru (backend teslimi completed olarak kaydetmedi) ya da
+`readDeliveryStatus`'un yanlış alanı okuması. §5.0d'nin dersi tam buydu:
+*kaynağı okumak, doğru kaynağı okuduğunu garanti etmiyor.* İddia edilmedi,
+ölçülmedi — sıradaki iş bu.
+
+**Ölçülmeyen iki şey daha:**
+
+- `DIRECT_STATE` launch profile **işlevsiz**. `applyLaunchPreparation`
+  `params: {}` gönderiyor, ama `nesy.setup.direct-state` `targetScreen` VE
+  `shipmentId` istiyor (cihazda doğrulandı: sırayla `MISSING_PARAM`). Koşu doğru
+  şekilde `BLOCKED` dedi — ürün hatası değil. Yani hazırlık **çağrılıyor** ama
+  **parametreleri taşınmıyor**: §2 deseninin yeni bir yüzü. Bu dilim geçici
+  olarak `reuse-session` + elle açılmış teslim ekranıyla ölçüldü; kalıcı çözüm ya
+  launch profile'ın parametre bildirmesi ya da makronun durak listesinden
+  başlaması (ölçüldü: `manuel_input` → barkod → `btnDelivery` bottom sheet →
+  teslim ekranı).
+- Durak listesindeki **`DeliveryOptionsBottomSheet`** (`btnDelivery` /
+  `btnDeliveryFailed` / `btnDeps`) hiçbir yerde modellenmemiş bir yüzey.
+
 ### 5.2 Sonra — shipment gerektiren iki iş akışı
 
 `process-parcel` ve `complete-delivery` **taranacak bir shipment istiyor**
@@ -1494,8 +1750,14 @@ sınar. Bu kalıpla 9 ardışık `PASS_ONLINE` ölçüldü, `stale_run` sıfır.
   (`scanValue` + `alternateKey`); tek anahtara güvenen bir kanıt okuması kırılgan.
 - **Zimmet koşusu için parça HER SEFERİNDE yeni olmalı.** Aynı barkod ikinci kez
   okutulduğunda `getTransaction` `FORCE_LOAD` değil `ALREADY_LOAD` döner ve makro
-  kendi yolundan çıkar. `scratchpad/create-one-loadable.mjs` tek gönderi yaratır;
-  repodaki `scripts/create-ready-rs-shipments.mjs` sekiz tip yaratıyor.
+  kendi yolundan çıkar. `scripts/create-ready-rs-shipments.mjs` sekiz tipi sekiz
+  AYRI durakta yaratıyor; tek gönderi için `TYPES`'ı `standard`'a indiren bir
+  kopya yeter — o zaman gönderi listedeki ilk durağa (KNEZA MILOSA) düşer ve
+  cihazın durak listesi yedi fazladan durakla kirlenmez. Script barkodu
+  yazdırmıyor: `barcodes` yalnız unload çağrısında kullanılıyor, yani teslim
+  koşusunun ihtiyacı olan parça barkodunu görmek için o satıra eklemek gerekiyor
+  (özet satırı **shipmentId** basıyor, barkod değil — ikisini karıştırmak
+  `PARCEL_IN_SCHEDULE` VIOLATED olarak geri döner; ölçüldü).
 - **`shipments/create` yanıtı bazen `parcels` alanını taşımıyor.** shipmentId
   dönüyor ama barkod çıkarılamıyor; o çağrı unload edilmemiş bir gönderi bırakır.
   Barkod gerektiren bir script bu durumu ele almalı, sessizce geçmemeli.

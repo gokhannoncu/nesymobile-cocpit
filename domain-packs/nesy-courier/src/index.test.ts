@@ -145,8 +145,8 @@ describe("registries", () => {
       screens: 7,
       surfaces: 10,
       entities: 7,
-      targets: 23,
-      evidenceSources: 45,
+      targets: 28,
+      evidenceSources: 57,
       derivedFacts: 6,
       semanticActions: 10,
       macros: 10,
@@ -164,7 +164,7 @@ describe("registries", () => {
     for (const source of NESY_COURIER_EVIDENCE_SOURCES) {
       byPlane[source.plane] = (byPlane[source.plane] ?? 0) + 1;
     }
-    expect(byPlane).toEqual({ UI: 17, APP: 14, LOCAL: 9, REMOTE: 5 });
+    expect(byPlane).toEqual({ UI: 17, APP: 26, LOCAL: 9, REMOTE: 5 });
   });
 
   it("declares the seven minimum screens", () => {
@@ -275,6 +275,15 @@ describe("target resolution", () => {
     for (const target of NESY_COURIER_TARGETS) {
       expect(target.resolution.ambiguityPolicy).toBe("FAIL");
     }
+  });
+
+  it("resolves complete-delivery by the measured button, not an invented id", () => {
+    const complete = NESY_COURIER_TARGETS.find((t) => t.targetKey === NESY_TARGETS.deliveryCompleteButton);
+    expect(complete?.resolution.chain).toEqual([
+      { kind: "ACCESSIBILITY_ID", selector: { id: "btn_deliver" }, establishesIdentity: true },
+    ]);
+    expect(complete?.resolution.ambiguityPolicy).toBe("FAIL");
+    expect(complete?.resolution.reverifyBeforeAction).toBe(true);
   });
 
   it("resolves the stop row by entity binding and fingerprint before any hint", () => {
