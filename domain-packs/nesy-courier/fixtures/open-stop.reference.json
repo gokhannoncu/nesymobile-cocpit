@@ -93,12 +93,33 @@
       },
       "inputs": [
         {
-          "name": "requestedItemCode",
+          "name": "searchTerm",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "rowKey",
           "type": "string",
           "required": true
         }
       ],
       "variables": [
+        {
+          "name": "searchFieldProbe",
+          "type": "string"
+        },
+        {
+          "name": "searchToggleHandle",
+          "type": "string"
+        },
+        {
+          "name": "searchFieldHandle",
+          "type": "string"
+        },
+        {
+          "name": "searchSubmitHandle",
+          "type": "string"
+        },
         {
           "name": "availableRows",
           "type": "stringList"
@@ -116,7 +137,7 @@
         {
           "planStepId": "read-available",
           "sourceMapRef": "sm-open-1",
-          "next": "check-present",
+          "next": "probe-search-field",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -142,8 +163,27 @@
           ]
         },
         {
-          "planStepId": "check-present",
-          "sourceMapRef": "sm-open-2",
+          "planStepId": "probe-search-field",
+          "sourceMapRef": "sm-open-3",
+          "next": "check-search-open",
+          "timeoutMs": 8000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.stop-search-field-probe",
+          "outputVariable": "searchFieldProbe"
+        },
+        {
+          "planStepId": "check-search-open",
+          "sourceMapRef": "sm-open-3a",
           "next": null,
           "timeoutMs": 20000,
           "retryPolicy": {
@@ -153,39 +193,138 @@
           "capabilityRequirements": [],
           "kind": "CONDITION",
           "condition": {
-            "kind": "comparison",
-            "operator": "in",
-            "left": {
-              "kind": "operand",
-              "source": "run.input",
-              "path": "requestedItemCode"
-            },
-            "right": {
+            "kind": "existence",
+            "operator": "exists",
+            "operand": {
               "kind": "operand",
               "source": "step.output",
-              "path": "read-available.stop_id"
+              "path": "searchFieldProbe.absentTarget"
             }
           },
-          "onTrue": "resolve-row",
-          "onFalse": "report-absent",
+          "onTrue": "resolve-search-toggle",
+          "onFalse": "resolve-search-field",
           "unknownPolicy": "FAIL"
         },
         {
-          "planStepId": "report-absent",
-          "sourceMapRef": "sm-open-3",
-          "next": null,
+          "planStepId": "resolve-search-toggle",
+          "sourceMapRef": "sm-open-4",
+          "next": "tap-search-toggle",
+          "timeoutMs": 10000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.stop-search-toggle",
+          "outputVariable": "searchToggleHandle"
+        },
+        {
+          "planStepId": "tap-search-toggle",
+          "sourceMapRef": "sm-open-5",
+          "next": "resolve-search-field",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "searchToggleHandle"
+        },
+        {
+          "planStepId": "resolve-search-field",
+          "sourceMapRef": "sm-open-6",
+          "next": "enter-search-term",
+          "timeoutMs": 10000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.stop-search-field",
+          "outputVariable": "searchFieldHandle"
+        },
+        {
+          "planStepId": "enter-search-term",
+          "sourceMapRef": "sm-open-7",
+          "next": "resolve-search-submit",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.set-text",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "setText",
+          "targetVariable": "searchFieldHandle",
+          "args": {
+            "valueRef": "run.input.searchTerm"
+          }
+        },
+        {
+          "planStepId": "resolve-search-submit",
+          "sourceMapRef": "sm-open-8",
+          "next": "tap-search-submit",
+          "timeoutMs": 10000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.resolve-target",
+              "optional": false
+            }
+          ],
+          "kind": "RESOLVE_TARGET",
+          "targetRef": "nesy.target.stop-search-submit",
+          "outputVariable": "searchSubmitHandle"
+        },
+        {
+          "planStepId": "tap-search-submit",
+          "sourceMapRef": "sm-open-9",
+          "next": "resolve-row",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
             "effectClass": "READ_ONLY"
           },
-          "capabilityRequirements": [],
-          "kind": "ANNOTATE",
-          "message": "The requested item is not present in the available projection; nothing on screen was touched. This is a precondition mismatch, not a UI defect."
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.tap",
+              "optional": false
+            }
+          ],
+          "kind": "BRIDGE_ACTION",
+          "action": "tap",
+          "targetVariable": "searchSubmitHandle"
         },
         {
           "planStepId": "resolve-row",
-          "sourceMapRef": "sm-open-4",
+          "sourceMapRef": "sm-open-10",
           "next": "tap-row",
           "timeoutMs": 15000,
           "retryPolicy": {
@@ -203,12 +342,12 @@
           "outputVariable": "rowHandle",
           "entityBinding": {
             "type": "STOP",
-            "id": "run.input.requestedItemCode"
+            "id": "run.input.rowKey"
           }
         },
         {
           "planStepId": "tap-row",
-          "sourceMapRef": "sm-open-5",
+          "sourceMapRef": "sm-open-11",
           "next": "await-destination",
           "timeoutMs": 20000,
           "retryPolicy": {
@@ -226,7 +365,7 @@
           "targetVariable": "rowHandle",
           "entityBinding": {
             "type": "STOP",
-            "id": "run.input.requestedItemCode"
+            "id": "run.input.rowKey"
           },
           "continueGate": {
             "anyOf": [
@@ -242,7 +381,7 @@
         },
         {
           "planStepId": "await-destination",
-          "sourceMapRef": "sm-open-6",
+          "sourceMapRef": "sm-open-12",
           "next": "read-active-stop",
           "timeoutMs": 25000,
           "retryPolicy": {
@@ -274,7 +413,7 @@
         },
         {
           "planStepId": "read-active-stop",
-          "sourceMapRef": "sm-open-6a",
+          "sourceMapRef": "sm-open-13",
           "next": "assert-correct-item",
           "timeoutMs": 15000,
           "retryPolicy": {
@@ -288,7 +427,7 @@
             }
           ],
           "kind": "SDK_QUERY",
-          "queryRef": "nesy.stopState",
+          "queryRef": "nesy.activeStop",
           "maxRows": 1,
           "outputVariable": "activeRows",
           "outputFactBindings": [
@@ -297,13 +436,13 @@
               "from": {
                 "kind": "ROWS_PRESENT"
               },
-              "correlationColumn": "stop_id"
+              "correlationColumn": "row_key"
             }
           ]
         },
         {
           "planStepId": "assert-correct-item",
-          "sourceMapRef": "sm-open-7",
+          "sourceMapRef": "sm-open-14",
           "next": null,
           "timeoutMs": 20000,
           "retryPolicy": {
@@ -317,7 +456,7 @@
           "unknownPolicy": "FAIL",
           "entityBinding": {
             "type": "STOP",
-            "id": "run.input.requestedItemCode"
+            "id": "run.input.rowKey"
           },
           "finalOraclePolicy": {
             "requirements": [
@@ -389,42 +528,73 @@
           "note": "safeguard 2: read the projection first"
         },
         {
-          "ref": "sm-open-2",
-          "planStepId": "check-present",
+          "ref": "sm-open-3",
+          "planStepId": "probe-search-field",
           "domainSourceRef": "nesy.macro.open-stop",
-          "note": "safeguard 2: verify presence before touching anything"
+          "note": "the search bar is a toggle; ask before tapping"
         },
         {
-          "ref": "sm-open-3",
-          "planStepId": "report-absent",
-          "domainSourceRef": "nesy.macro.open-stop",
-          "note": "precondition mismatch path"
+          "ref": "sm-open-3a",
+          "planStepId": "check-search-open",
+          "domainSourceRef": "nesy.macro.open-stop"
         },
         {
           "ref": "sm-open-4",
-          "planStepId": "resolve-row",
+          "planStepId": "resolve-search-toggle",
           "domainSourceRef": "nesy.macro.open-stop",
-          "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+          "note": "the product's own way of addressing one stop"
         },
         {
           "ref": "sm-open-5",
+          "planStepId": "tap-search-toggle",
+          "domainSourceRef": "nesy.macro.open-stop"
+        },
+        {
+          "ref": "sm-open-6",
+          "planStepId": "resolve-search-field",
+          "domainSourceRef": "nesy.macro.open-stop"
+        },
+        {
+          "ref": "sm-open-7",
+          "planStepId": "enter-search-term",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "filtering IS the identity"
+        },
+        {
+          "ref": "sm-open-8",
+          "planStepId": "resolve-search-submit",
+          "domainSourceRef": "nesy.macro.open-stop"
+        },
+        {
+          "ref": "sm-open-9",
+          "planStepId": "tap-search-submit",
+          "domainSourceRef": "nesy.macro.open-stop"
+        },
+        {
+          "ref": "sm-open-10",
+          "planStepId": "resolve-row",
+          "domainSourceRef": "nesy.macro.open-stop",
+          "note": "safeguard 4: ambiguity fails closed on the filtered list"
+        },
+        {
+          "ref": "sm-open-11",
           "planStepId": "tap-row",
           "domainSourceRef": "nesy.macro.open-stop"
         },
         {
-          "ref": "sm-open-6a",
+          "ref": "sm-open-13",
           "planStepId": "read-active-stop",
           "domainSourceRef": "nesy.macro.open-stop",
           "note": "active stop observed, not inferred"
         },
         {
-          "ref": "sm-open-6",
+          "ref": "sm-open-12",
           "planStepId": "await-destination",
           "domainSourceRef": "nesy.macro.open-stop",
           "note": "safeguard 5: task list OR delivery flow"
         },
         {
-          "ref": "sm-open-7",
+          "ref": "sm-open-14",
           "planStepId": "assert-correct-item",
           "domainSourceRef": "nesy.macro.open-stop",
           "note": "safeguard 6: the wrong-row guard"
@@ -439,42 +609,73 @@
         "note": "safeguard 2: read the projection first"
       },
       {
-        "ref": "sm-open-2",
-        "planStepId": "check-present",
+        "ref": "sm-open-3",
+        "planStepId": "probe-search-field",
         "domainSourceRef": "nesy.macro.open-stop",
-        "note": "safeguard 2: verify presence before touching anything"
+        "note": "the search bar is a toggle; ask before tapping"
       },
       {
-        "ref": "sm-open-3",
-        "planStepId": "report-absent",
-        "domainSourceRef": "nesy.macro.open-stop",
-        "note": "precondition mismatch path"
+        "ref": "sm-open-3a",
+        "planStepId": "check-search-open",
+        "domainSourceRef": "nesy.macro.open-stop"
       },
       {
         "ref": "sm-open-4",
-        "planStepId": "resolve-row",
+        "planStepId": "resolve-search-toggle",
         "domainSourceRef": "nesy.macro.open-stop",
-        "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+        "note": "the product's own way of addressing one stop"
       },
       {
         "ref": "sm-open-5",
+        "planStepId": "tap-search-toggle",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-6",
+        "planStepId": "resolve-search-field",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-7",
+        "planStepId": "enter-search-term",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "filtering IS the identity"
+      },
+      {
+        "ref": "sm-open-8",
+        "planStepId": "resolve-search-submit",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-9",
+        "planStepId": "tap-search-submit",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-10",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 4: ambiguity fails closed on the filtered list"
+      },
+      {
+        "ref": "sm-open-11",
         "planStepId": "tap-row",
         "domainSourceRef": "nesy.macro.open-stop"
       },
       {
-        "ref": "sm-open-6a",
+        "ref": "sm-open-13",
         "planStepId": "read-active-stop",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "active stop observed, not inferred"
       },
       {
-        "ref": "sm-open-6",
+        "ref": "sm-open-12",
         "planStepId": "await-destination",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "safeguard 5: task list OR delivery flow"
       },
       {
-        "ref": "sm-open-7",
+        "ref": "sm-open-14",
         "planStepId": "assert-correct-item",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "safeguard 6: the wrong-row guard"
@@ -486,8 +687,14 @@
         "macroRef": "nesy.macro.open-stop",
         "planStepIds": [
           "read-available",
-          "check-present",
-          "report-absent",
+          "probe-search-field",
+          "check-search-open",
+          "resolve-search-toggle",
+          "tap-search-toggle",
+          "resolve-search-field",
+          "enter-search-term",
+          "resolve-search-submit",
+          "tap-search-submit",
           "resolve-row",
           "tap-row",
           "await-destination",
@@ -510,12 +717,33 @@
     },
     "inputs": [
       {
-        "name": "requestedItemCode",
+        "name": "searchTerm",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "rowKey",
         "type": "string",
         "required": true
       }
     ],
     "variables": [
+      {
+        "name": "searchFieldProbe",
+        "type": "string"
+      },
+      {
+        "name": "searchToggleHandle",
+        "type": "string"
+      },
+      {
+        "name": "searchFieldHandle",
+        "type": "string"
+      },
+      {
+        "name": "searchSubmitHandle",
+        "type": "string"
+      },
       {
         "name": "availableRows",
         "type": "stringList"
@@ -533,7 +761,7 @@
       {
         "planStepId": "read-available",
         "sourceMapRef": "sm-open-1",
-        "next": "check-present",
+        "next": "probe-search-field",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -559,8 +787,27 @@
         ]
       },
       {
-        "planStepId": "check-present",
-        "sourceMapRef": "sm-open-2",
+        "planStepId": "probe-search-field",
+        "sourceMapRef": "sm-open-3",
+        "next": "check-search-open",
+        "timeoutMs": 8000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.stop-search-field-probe",
+        "outputVariable": "searchFieldProbe"
+      },
+      {
+        "planStepId": "check-search-open",
+        "sourceMapRef": "sm-open-3a",
         "next": null,
         "timeoutMs": 20000,
         "retryPolicy": {
@@ -570,39 +817,138 @@
         "capabilityRequirements": [],
         "kind": "CONDITION",
         "condition": {
-          "kind": "comparison",
-          "operator": "in",
-          "left": {
-            "kind": "operand",
-            "source": "run.input",
-            "path": "requestedItemCode"
-          },
-          "right": {
+          "kind": "existence",
+          "operator": "exists",
+          "operand": {
             "kind": "operand",
             "source": "step.output",
-            "path": "read-available.stop_id"
+            "path": "searchFieldProbe.absentTarget"
           }
         },
-        "onTrue": "resolve-row",
-        "onFalse": "report-absent",
+        "onTrue": "resolve-search-toggle",
+        "onFalse": "resolve-search-field",
         "unknownPolicy": "FAIL"
       },
       {
-        "planStepId": "report-absent",
-        "sourceMapRef": "sm-open-3",
-        "next": null,
+        "planStepId": "resolve-search-toggle",
+        "sourceMapRef": "sm-open-4",
+        "next": "tap-search-toggle",
+        "timeoutMs": 10000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.stop-search-toggle",
+        "outputVariable": "searchToggleHandle"
+      },
+      {
+        "planStepId": "tap-search-toggle",
+        "sourceMapRef": "sm-open-5",
+        "next": "resolve-search-field",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "searchToggleHandle"
+      },
+      {
+        "planStepId": "resolve-search-field",
+        "sourceMapRef": "sm-open-6",
+        "next": "enter-search-term",
+        "timeoutMs": 10000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.stop-search-field",
+        "outputVariable": "searchFieldHandle"
+      },
+      {
+        "planStepId": "enter-search-term",
+        "sourceMapRef": "sm-open-7",
+        "next": "resolve-search-submit",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.set-text",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "setText",
+        "targetVariable": "searchFieldHandle",
+        "args": {
+          "valueRef": "run.input.searchTerm"
+        }
+      },
+      {
+        "planStepId": "resolve-search-submit",
+        "sourceMapRef": "sm-open-8",
+        "next": "tap-search-submit",
+        "timeoutMs": 10000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.resolve-target",
+            "optional": false
+          }
+        ],
+        "kind": "RESOLVE_TARGET",
+        "targetRef": "nesy.target.stop-search-submit",
+        "outputVariable": "searchSubmitHandle"
+      },
+      {
+        "planStepId": "tap-search-submit",
+        "sourceMapRef": "sm-open-9",
+        "next": "resolve-row",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
           "effectClass": "READ_ONLY"
         },
-        "capabilityRequirements": [],
-        "kind": "ANNOTATE",
-        "message": "The requested item is not present in the available projection; nothing on screen was touched. This is a precondition mismatch, not a UI defect."
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.tap",
+            "optional": false
+          }
+        ],
+        "kind": "BRIDGE_ACTION",
+        "action": "tap",
+        "targetVariable": "searchSubmitHandle"
       },
       {
         "planStepId": "resolve-row",
-        "sourceMapRef": "sm-open-4",
+        "sourceMapRef": "sm-open-10",
         "next": "tap-row",
         "timeoutMs": 15000,
         "retryPolicy": {
@@ -620,12 +966,12 @@
         "outputVariable": "rowHandle",
         "entityBinding": {
           "type": "STOP",
-          "id": "run.input.requestedItemCode"
+          "id": "run.input.rowKey"
         }
       },
       {
         "planStepId": "tap-row",
-        "sourceMapRef": "sm-open-5",
+        "sourceMapRef": "sm-open-11",
         "next": "await-destination",
         "timeoutMs": 20000,
         "retryPolicy": {
@@ -643,7 +989,7 @@
         "targetVariable": "rowHandle",
         "entityBinding": {
           "type": "STOP",
-          "id": "run.input.requestedItemCode"
+          "id": "run.input.rowKey"
         },
         "continueGate": {
           "anyOf": [
@@ -659,7 +1005,7 @@
       },
       {
         "planStepId": "await-destination",
-        "sourceMapRef": "sm-open-6",
+        "sourceMapRef": "sm-open-12",
         "next": "read-active-stop",
         "timeoutMs": 25000,
         "retryPolicy": {
@@ -691,7 +1037,7 @@
       },
       {
         "planStepId": "read-active-stop",
-        "sourceMapRef": "sm-open-6a",
+        "sourceMapRef": "sm-open-13",
         "next": "assert-correct-item",
         "timeoutMs": 15000,
         "retryPolicy": {
@@ -705,7 +1051,7 @@
           }
         ],
         "kind": "SDK_QUERY",
-        "queryRef": "nesy.stopState",
+        "queryRef": "nesy.activeStop",
         "maxRows": 1,
         "outputVariable": "activeRows",
         "outputFactBindings": [
@@ -714,13 +1060,13 @@
             "from": {
               "kind": "ROWS_PRESENT"
             },
-            "correlationColumn": "stop_id"
+            "correlationColumn": "row_key"
           }
         ]
       },
       {
         "planStepId": "assert-correct-item",
-        "sourceMapRef": "sm-open-7",
+        "sourceMapRef": "sm-open-14",
         "next": null,
         "timeoutMs": 20000,
         "retryPolicy": {
@@ -734,7 +1080,7 @@
         "unknownPolicy": "FAIL",
         "entityBinding": {
           "type": "STOP",
-          "id": "run.input.requestedItemCode"
+          "id": "run.input.rowKey"
         },
         "finalOraclePolicy": {
           "requirements": [
@@ -806,42 +1152,73 @@
         "note": "safeguard 2: read the projection first"
       },
       {
-        "ref": "sm-open-2",
-        "planStepId": "check-present",
+        "ref": "sm-open-3",
+        "planStepId": "probe-search-field",
         "domainSourceRef": "nesy.macro.open-stop",
-        "note": "safeguard 2: verify presence before touching anything"
+        "note": "the search bar is a toggle; ask before tapping"
       },
       {
-        "ref": "sm-open-3",
-        "planStepId": "report-absent",
-        "domainSourceRef": "nesy.macro.open-stop",
-        "note": "precondition mismatch path"
+        "ref": "sm-open-3a",
+        "planStepId": "check-search-open",
+        "domainSourceRef": "nesy.macro.open-stop"
       },
       {
         "ref": "sm-open-4",
-        "planStepId": "resolve-row",
+        "planStepId": "resolve-search-toggle",
         "domainSourceRef": "nesy.macro.open-stop",
-        "note": "safeguards 3+4: provider chain, ambiguity fail-closed"
+        "note": "the product's own way of addressing one stop"
       },
       {
         "ref": "sm-open-5",
+        "planStepId": "tap-search-toggle",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-6",
+        "planStepId": "resolve-search-field",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-7",
+        "planStepId": "enter-search-term",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "filtering IS the identity"
+      },
+      {
+        "ref": "sm-open-8",
+        "planStepId": "resolve-search-submit",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-9",
+        "planStepId": "tap-search-submit",
+        "domainSourceRef": "nesy.macro.open-stop"
+      },
+      {
+        "ref": "sm-open-10",
+        "planStepId": "resolve-row",
+        "domainSourceRef": "nesy.macro.open-stop",
+        "note": "safeguard 4: ambiguity fails closed on the filtered list"
+      },
+      {
+        "ref": "sm-open-11",
         "planStepId": "tap-row",
         "domainSourceRef": "nesy.macro.open-stop"
       },
       {
-        "ref": "sm-open-6a",
+        "ref": "sm-open-13",
         "planStepId": "read-active-stop",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "active stop observed, not inferred"
       },
       {
-        "ref": "sm-open-6",
+        "ref": "sm-open-12",
         "planStepId": "await-destination",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "safeguard 5: task list OR delivery flow"
       },
       {
-        "ref": "sm-open-7",
+        "ref": "sm-open-14",
         "planStepId": "assert-correct-item",
         "domainSourceRef": "nesy.macro.open-stop",
         "note": "safeguard 6: the wrong-row guard"

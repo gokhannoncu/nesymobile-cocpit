@@ -559,6 +559,96 @@ describe("bridgeflow executor", () => {
     expect(persistence.stepOccurrences[0]?.outcome.continueGateResult).toBe("TIMED_OUT");
   });
 
+  it("takes a WAIT_ANY leg whose fact is already true instead of asking the bridge", async () => {
+    // The bridge is asked for a view whose resource id is the FACT KEY, and no
+    // such view exists — measured on device with the screen already showing.
+    // `open-stop` reached this wait having just satisfied a continue gate on the
+    // same facts and then failed waiting to arrive where it already was.
+    let bridgeAsked = 0;
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+        waitAny: async (): Promise<WaitAnyResult> => {
+          bridgeAsked += 1;
+          return { status: "TIMEOUT", elapsedMs: 1 };
+        },
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: {
+        factsForOccurrence: () => [
+          {
+            factKey: "ui.delivery",
+            occurrenceId: "run-wait-fact:wait:0",
+            iterationKey: "root",
+            observedAtMs: 10,
+            freshnessMaxAgeMs: 1_000,
+            plane: "UI" as const,
+            subtype: "screen",
+            value: true,
+            authority: "PRIMARY" as const,
+            deliveryLane: "RECEIPT_SAFE" as const,
+          },
+        ],
+      },
+      clock: () => 10,
+    });
+
+    await executor.execute({
+      runId: "run-wait-fact",
+      deviceId: "device-1",
+      plan: planFixture({
+        entryStepId: "wait",
+        steps: [
+          {
+            planStepId: "wait",
+            kind: "WAIT_ANY",
+            sourceMapRef: "src:wait",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: {
+              // Declared order decides a tie; the first leg's fact is absent, so
+              // the second wins and routes through its own branch.
+              legs: [
+                { legId: "tasks", factKey: "ui.tasks", onWin: null },
+                { legId: "delivery", factKey: "ui.delivery", onWin: null },
+              ],
+              maxLegs: 2,
+              hostOnlyCancel: true,
+            },
+          },
+        ],
+        waitPlans: [
+          {
+            waitPlanId: "wait-1",
+            planStepId: "wait",
+            sourceMapRef: "src:wait",
+            expected: [
+              { key: "tasks", predicate: { selector: { by: "id", value: "ui.tasks" }, until: "APPEAR" } },
+              { key: "delivery", predicate: { selector: { by: "id", value: "ui.delivery" }, until: "APPEAR" } },
+            ],
+            interrupts: [],
+            deadlineMs: 1_000,
+            maxLegs: 2,
+            ambiguityPolicy: "FAIL",
+            hostOnlyCancel: true,
+            capabilityFallbacks: [],
+          },
+        ],
+      }),
+    });
+
+    expect(bridgeAsked).toBe(0);
+    expect(persistence.waitResults[0]?.status).toBe("EXPECTED_MATCH");
+    expect(persistence.waitResults[0]?.key).toBe("delivery");
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("SUCCEEDED");
+  });
+
   it("routes an expected wait winner to its declared branch", async () => {
     const actedSteps: string[] = [];
     const executor = new BridgeFlowExecutor({

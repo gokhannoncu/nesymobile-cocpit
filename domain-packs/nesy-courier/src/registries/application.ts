@@ -28,6 +28,15 @@ export const NESY_COURIER_ADAPTER_REF = "nesy.courier.app-adapter";
 /** Bounded named queries the adapter exposes. Read-only projections. */
 export const NESY_ADAPTER_QUERY_REFS = {
   availableStops: "nesy.availableStops",
+  /**
+   * WHICH stop the app has open, asked without being told which.
+   *
+   * `stopState` takes a stop id, so it answers "tell me about this stop" — and a
+   * run that supplies the id it hoped for and gets a row back has confirmed
+   * nothing. The wrong-row guard needs an observation the run did not
+   * parameterise, or it validates its own assumption.
+   */
+  activeStop: "nesy.activeStop",
   stopState: "nesy.stopState",
   taskState: "nesy.taskState",
   parcelState: "nesy.parcelState",

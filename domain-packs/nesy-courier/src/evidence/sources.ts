@@ -153,7 +153,7 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     authority: "PRIMARY",
     displayName: "Active stop projection",
     factKey: NESY_FACTS.ACTIVE_STOP_OBSERVED,
-    observationRef: NESY_ADAPTER_QUERY_REFS.stopState,
+    observationRef: NESY_ADAPTER_QUERY_REFS.activeStop,
     freshness: APP_FRESHNESS,
     correlation: ENTITY_CORRELATION,
     redaction: { redactPaths: ["address", "recipientName", "recipientPhone"] },

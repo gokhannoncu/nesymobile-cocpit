@@ -145,7 +145,7 @@ describe("registries", () => {
       screens: 7,
       surfaces: 10,
       entities: 7,
-      targets: 19,
+      targets: 23,
       evidenceSources: 44,
       derivedFacts: 6,
       semanticActions: 10,
@@ -674,35 +674,57 @@ describe("OPEN_STOP canonical macro", () => {
     expect(input?.required).toBe(true);
   });
 
-  it("verifies the stop is in the available projection before touching the screen", () => {
+  it("reads the stop projection before touching the screen", () => {
     const steps = slice?.genericIrSnapshot.steps ?? [];
     const queryIndex = steps.findIndex((s) => s.kind === "SDK_QUERY");
-    const conditionIndex = steps.findIndex((s) => s.kind === "CONDITION");
     const actionIndex = steps.findIndex((s) => s.kind === "BRIDGE_ACTION");
 
     expect(queryIndex).toBeGreaterThanOrEqual(0);
-    expect(conditionIndex).toBeGreaterThan(queryIndex);
-    expect(actionIndex).toBeGreaterThan(conditionIndex);
+    expect(actionIndex).toBeGreaterThan(queryIndex);
 
     const query = steps[queryIndex];
     expect(query.kind === "SDK_QUERY" ? query.queryRef : "").toBe("nesy.availableStops");
   });
 
-  it("stops without acting when the stop is absent", () => {
+  /**
+   * The slice addresses a stop the way the PRODUCT does: type a business key into
+   * the stop list's search box, let the list filter, tap what survives.
+   *
+   * This replaced a pre-check that compared the requested code against
+   * `nesy.availableStops` — a projection carrying stop ids and no parcel key, so
+   * it could never answer the question. The safeguard moved to the point of the
+   * action instead: the row resolves by the text the ROW shows, and ambiguity
+   * fails closed if the filter left more than one candidate.
+   */
+  it("searches for the stop before tapping anything", () => {
     const steps = slice?.genericIrSnapshot.steps ?? [];
-    const condition = steps.find((s) => s.kind === "CONDITION");
-    const absentTarget = condition?.kind === "CONDITION" ? condition.onFalse : undefined;
-    const absent = steps.find((s) => s.planStepId === absentTarget);
+    const order = steps.map((s) => s.planStepId);
+    expect(order.indexOf("enter-search-term")).toBeGreaterThan(-1);
+    expect(order.indexOf("tap-search-submit")).toBeGreaterThan(order.indexOf("enter-search-term"));
+    expect(order.indexOf("tap-row")).toBeGreaterThan(order.indexOf("tap-search-submit"));
 
-    expect(absent?.kind).toBe("ANNOTATE");
-    expect(absent?.next).toBeNull();
-    // UNKNOWN must not advance either: "we could not tell" is not "go ahead".
-    expect(condition?.kind === "CONDITION" ? condition.unknownPolicy : "").toBe("FAIL");
+    const typed = steps.find((s) => s.planStepId === "enter-search-term");
+    expect(typed?.kind === "BRIDGE_ACTION" ? typed.action : "").toBe("setText");
+  });
+
+  it("recognises the row by a different key from the one it typed", () => {
+    // The search box keeps what was typed. One key for both would match twice
+    // and stop the run on ambiguity — measured on device.
+    const steps = slice?.genericIrSnapshot.steps ?? [];
+    const typed = steps.find((s) => s.planStepId === "enter-search-term");
+    const row = steps.find((s) => s.planStepId === "resolve-row");
+    const typedRef =
+      typed?.kind === "BRIDGE_ACTION" ? String(typed.args?.["valueRef"] ?? "") : "";
+    expect(typedRef).toBe("run.input.searchTerm");
+    expect(row?.entityBinding?.id).toBe("run.input.rowKey");
+    expect(typedRef).not.toBe(row?.entityBinding?.id);
   });
 
   it("uses the stop-row provider chain rather than an index", () => {
     const steps = slice?.genericIrSnapshot.steps ?? [];
-    const resolve = steps.find((s) => s.kind === "RESOLVE_TARGET");
+    const resolve = steps.find(
+      (s) => s.kind === "RESOLVE_TARGET" && s.planStepId === "resolve-row",
+    );
     expect(resolve?.kind === "RESOLVE_TARGET" ? resolve.targetRef : "").toBe(NESY_TARGETS.stopRow);
     expect(resolve?.entityBinding?.type).toBe("STOP");
   });

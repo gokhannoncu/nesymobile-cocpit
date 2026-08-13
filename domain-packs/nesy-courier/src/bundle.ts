@@ -49,6 +49,34 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.19.0 — the wrong-row guard gets an observation it did not parameterise.
+  //   `nesy.stopState` requires a stopId, so it answers 'tell me about THIS
+  //   stop' — a run that passes the id it hoped for and gets a row back has
+  //   confirmed its own assumption. OPEN_STOP now reads `nesy.activeStop`, a
+  //   parameterless projection of the stop the APP has open, added to the device
+  //   for exactly this. A guard that validates its own input is not a guard.
+  //
+  // 1.18.1 — the search-bar branch asks whether the absent marker EXISTS instead
+  //   of comparing it to true. The probe writes the marker only when the bar is
+  //   shut, so the equality form left the open case unresolvable and a run whose
+  //   screen was fine died on unknownPolicy FAIL.
+  //
+  // 1.18.0 — the stop list search bar is a TOGGLE, and the pack now says so.
+  //   Two targets for one field: a probe that answers 'is it open right now' at
+  //   once (absent-tolerant), and the field itself, mandatory, resolved after the
+  //   toggle tap so the host waits out the open animation. One target cannot be
+  //   both absent-tolerant and patient.
+  //
+  // 1.17.0 — OPEN_STOP addresses a stop the way the PRODUCT does: type a key
+  //   into the stop list search box, let the list filter, tap what survives.
+  //   Measured 2026-08-13: a bogus term empties the list, the waybill leaves one
+  //   row, and tapping the row text opens the task list. Two keys, deliberately:
+  //   the search box KEEPS what was typed, so recognising the row by the same
+  //   value matches twice and fails closed. The old projection pre-check is gone
+  //   — it compared against a projection carrying no parcel key and could never
+  //   answer the question; the guarantee now sits at the tap, where ambiguity
+  //   fails closed.
+  //
   // 1.16.0 — two surfaces the runs kept tripping over become modelled, and the
   //   device gets a fact for its OWN view of the schedule.
   //
@@ -246,7 +274,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 16, patch: 0 },
+  version: { major: 1, minor: 19, patch: 2 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

@@ -65,6 +65,23 @@ export const NESY_TARGETS = {
   tourRoutingManual: "nesy.target.tour-routing-manual",
   /** The only way to close the push notification list; BACK does not. */
   notificationListExit: "nesy.target.notification-list-exit",
+  /**
+   * The stop list's own search: the product's way of addressing one stop.
+   *
+   * A stop row carries no id, so before these existed the pack had nothing
+   * honest to resolve it with. Searching a business key FILTERS the list, and a
+   * filtered list of one is an identity the run established rather than guessed.
+   */
+  stopSearchToggle: "nesy.target.stop-search-toggle",
+  /**
+   * Two targets for one field, because they ask different questions. The probe
+   * asks "is the bar open RIGHT NOW" and must answer at once; the post-tap
+   * resolve asks "the bar was just opened, where is the field" and must wait out
+   * the animation. A single target cannot be both absent-tolerant and patient.
+   */
+  stopSearchFieldProbe: "nesy.target.stop-search-field-probe",
+  stopSearchField: "nesy.target.stop-search-field",
+  stopSearchSubmit: "nesy.target.stop-search-submit",
 } as const;
 
 export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
@@ -257,6 +274,70 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     resolution: {
       // `yesButton` on device; it renders the label "OK".
       chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "yesButton" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.stopSearchToggle,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Search bar toggle on the stop list",
+    resolution: {
+      // Named `close_search_bar` in the layout but it TOGGLES; measured, tapping
+      // it while the bar is closed opens it. The name is the product's, not ours.
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "close_search_bar" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.stopSearchFieldProbe,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Stop list search field (state probe)",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "tietSearchText" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      // ABSENT IS A STATE, NOT A FAILURE, and it is the answer this probe exists
+      // to get. The search bar is a TOGGLE: measured, tapping it while the bar is
+      // open CLOSES it, so the macro has to ask before it acts.
+      notFoundPolicy: "TREAT_AS_ABSENT",
+      // Short on purpose. "Is it open now" must not wait; an absent-tolerant
+      // target does not retry, so this is the ceiling on one look.
+      deadlineMs: 3_000,
+      reverifyBeforeAction: false,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.stopSearchField,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Stop list search field",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "tietSearchText" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      // MANDATORY here, unlike the probe above: by this point the toggle has been
+      // tapped, so the field must appear. It arrives with an animation rather
+      // than instantly — measured, a resolve issued in the same breath as the tap
+      // reported NOT_FOUND while a repeat a moment later found it every time — so
+      // the deadline is what the host now spends looking.
+      notFoundPolicy: "FAIL",
+      deadlineMs: 10_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
+    targetKey: NESY_TARGETS.stopSearchSubmit,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    displayName: "Stop list search submit",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "search_button" }, establishesIdentity: true }],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
       deadlineMs: 10_000,

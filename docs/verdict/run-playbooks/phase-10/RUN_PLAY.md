@@ -13,7 +13,7 @@ timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.16.0"
+domainPackVersion: "1.19.2"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -911,6 +911,179 @@ düzeltmesi doğru, durak projeksiyonda gerçekten bulunuyor. `resolve-row` yine
 Android view id'leri statik kaynaklar olduğu için `idPrefix + key` kuralı bu
 satır için **çalışamaz**; kimlik ya içerik açıklamasından ya da görünen bir
 metinden gelmek zorunda.
+
+### 5.0k ÇÖZÜLDÜ — durak, ürünün kendi arama kutusuyla açılıyor (1.17.0)
+
+Kullanıcının önerisi ölçüldü ve doğru çıktı: **ara kutusuna iş anahtarını yaz,
+liste filtrelensin, kalanına dokun.** Cihazda kanıtlanan dizi:
+
+```text
+close_search_bar  → çubuk açılır (TOGGLE)
+tietSearchText    ← waybill yazılır        (input_text, `id` parametresiyle)
+search_button     → liste filtrelenir
+find_text kısa barkod → matched: 1  (textViewLegacySystemId, satırın kendisi)
+tap_text          → köprü tıklanabilir ATAYA yürür → görev listesi açıldı
+```
+
+Olumsuz kontrol de yapıldı: uydurma bir terim listeyi **0 satıra** düşürüyor
+(`tv_empty`). Yani filtre gerçekten çalışıyor, tesadüf değil.
+
+**Neden bu, satır indeksinden farklı.** "İlk satıra dokun" konumu kimlik yapmaktır
+— bu paketin varlık sebebi olan hata. Burada kimliği **filtre** kuruyor: koşu
+benzersiz bir iş anahtarı yazıyor, liste ona göre daraltılıyor, ve `ambiguityPolicy:
+FAIL` birden fazla aday kalırsa koşuyu durduruyor. Kimlik koşunun KURDUĞU bir şey,
+tahmin ettiği değil.
+
+**İki anahtar, bilerek.** Arama kutusu yazılanı SAKLIYOR. Aynı değerle hem arayıp
+hem satırı tanımak iki eşleşme verir ve ambiguity'de kapanır — ölçüldü. Bu yüzden
+`searchTerm` (waybill, kutuya yazılır) ve `rowKey` (kısa barkod, satırda görünür)
+ayrı girdiler.
+
+**Kaldırılan önkoşul kontrolü.** Eski `check-present`, istenen kodu
+`nesy.availableStops` projeksiyonuna karşı sınıyordu — o projeksiyon durak id'si
+taşıyor, parça anahtarı taşımıyor; yani sorulan soruyu hiç cevaplayamazdı.
+Güvence artık aksiyonun olduğu yerde: satır, satırın GÖSTERDİĞİ metinle çözülüyor
+ve belirsizlik kapanıyor. Eylem anında kontrol etmek, anahtarı taşımayan bir
+projeksiyonu kontrol etmekten güçlüdür.
+
+**Toggle durumu da modellendi.** `close_search_bar` bir TOGGLE: açıkken basmak
+kapatıyor. Körlemesine basan makro tek bir başlangıç durumundan çalışır, diğerinden
+kırılır — bu da ölçüldü. Artık alan önce `TREAT_AS_ABSENT` ile yoklanıyor ve
+toggle yalnız çubuk kapalıysa tıklanıyor; "açık mı bilmiyorum" `FAIL`, çünkü
+tahminle basmak tam olarak kapatmakla sonuçlanır.
+
+**Cihazda:** dokuz adımın hepsi SUCCEEDED, `tap-row` continue gate'i SATISFIED,
+görev listesi açıldı.
+
+### 5.0l `await-destination` — hipotez ÖLÇÜLDÜ, doğru çıktı, düzeltildi
+
+Üç halka da doğrulandı:
+
+1. Derleyici her WAIT_ANY bacağını `{ by: "id", value: <factKey> }` yapıyor
+   (`wait-compiler.ts:70`).
+2. Executor yalnız `WAIT_EVENT`'i fact beklemesi olarak kılıflıyor
+   (`index.ts:1174`); `WAIT_ANY` köprünün UI yolundan geçiyor.
+3. Cihazda, **görev listesi ekrandayken**: `find_id UI.TASK_LIST_READY` → matched
+   0, `find_id UI.DELIVERY_FLOW_READY` → matched 0.
+
+Yani bekleme yalnızca zaman aşımına uğrayabilirdi. `open-stop` bu adıma, aynı iki
+fact'le continue gate'ini AZ ÖNCE doyurmuş ve durağı açmış olarak geliyor, sonra
+zaten bulunduğu yere varmayı bekleyip düşüyordu.
+
+**Düzeltme dar tutuldu, bilerek.** Adım başlarken fact'lerden biri ZATEN doğruysa
+o bacak kazanır ve kendi `onWin` dalına gider; değilse köprü yolu aynen çalışır.
+Fact yolunu köprünün YERİNE koymak daha temiz görünürdü ama kesme yüzeylerini
+bekleme sırasında izleyen taraf köprü — onu sessizce kapatmak, düzelttiğinden
+büyük bir delik açardı.
+
+**Bu düzeltmenin kapatMADIĞI şey:** adım başladıktan SONRA doğru olan bir bacak
+hâlâ görünmez, çünkü o noktadan sonra beklemeyi köprü yönetiyor ve köprü bir view
+arıyor. Kapatmak için ya köprünün fact bacaklarını kabul etmesi ya da host'un
+ikisini yarıştırması gerek — tahmin etmek yerine kaydedildi.
+
+### 5.0m AÇIK — arama çubuğu durumu ekran geçişine duyarlı
+
+`open-stop` bir koşuda dokuz adımı da geçti; sonraki koşuda
+`resolve-search-field` düştü. Sebep yarış: yoklama (`probe-search-field`) bir
+ekranda alınıyor, toggle başka bir ekranda tıklanıyor. Görev listesinden BACK ile
+dönerken yoklama alanı yok görüyor, "aç" dalına giriyor, ve tıklama stop list'e
+vardığında çubuk ZATEN açık olduğu için onu kapatıyor.
+
+Ayrıca `resolve-search-field`, hedef `notFoundPolicy: TREAT_AS_ABSENT` bildirmesine
+rağmen `FAILED` raporladı — `SKIPPED` bekleniyordu. Bu ikisi ayrı sorular; ikincisi
+§5.0a'daki düzeltmenin bu yolda geçerli olup olmadığını sorguluyor ve
+**ölçülmedi**.
+
+### 5.0n Üç düzeltme yapıldı — `open-stop` 4 adımdan 10 adıma çıktı
+
+**Fix 1 — hedef çözümlemesi tek atıştı.** `TargetResolutionPolicy.deadlineMs`
+sözleşmede hep vardı ve bu runtime cihaza **bir kez** soruyordu. 300 ms sonra
+beliren bir kontrol — açılan arama çubuğu, hâlâ şişirilen bir diyalog — ilk
+karede `NOT_FOUND` dönüyordu. Ölçüldü: aynı iki çağrıyı aralarında bir duraklama
+ile elle tekrarlamak her seferinde buluyordu. Artık deadline boyunca yeniden
+deneniyor.
+
+Yalnız `NOT_FOUND` bekleniyor: `AMBIGUOUS` ve `STALE_TREE` birer CEVAP ("birden
+çok buldum", "ağaç altımdan kaydı"), onları tekrarlamak aynı soruya farklı yanıt
+ummaktır.
+
+**Ve yalnız zorunlu hedefler için.** İlk hâli `TREAT_AS_ABSENT` hedefleri de
+bekletiyordu — yani var olmaması BEKLENEN bir kontrol için her koşuya tam
+deadline fatura ediliyordu. Testlerden biri anında yakaladı. Yokluk meşru bir
+cevapsa ilk `NOT_FOUND` **cevabın kendisidir**.
+
+**Fix 2 — `TREAT_AS_ABSENT` okunuyormuş.** Ölçüm hipotezimi çürüttü: kod
+`bridgeflow-device-ports.ts`'te duruyor ve çalışıyor. Gerçek sebep başkaydı: tek
+hedef iki farklı soru soruyordu. Yoklama "şu an açık mı" diye soruyor ve HEMEN
+cevap almalı; tıklama sonrası çözümleme "çubuk az önce açıldı, alan nerede" diye
+soruyor ve animasyonu BEKLEMELİ. Bir hedef hem yokluk-toleranslı hem sabırlı
+olamaz — ikiye ayrıldı (`stopSearchFieldProbe` / `stopSearchField`).
+
+Dal da düzeldi: eşitlik yerine **varlık** testi. Yoklama işaretçiyi yalnız çubuk
+kapalıyken yazıyor, yani `absentTarget == true` karşılaştırması AÇIK durumda
+operandı çözemiyor, UNKNOWN veriyor ve `unknownPolicy: FAIL` ekranı gayet iyi olan
+bir koşuyu öldürüyordu. İki durumlu soru varlık testiyle sorulur.
+
+**Fix 3 — WAIT_ANY fact ön-kontrolü** (§5.0l) cihazda doğrulandı:
+`await-destination` artık `SUCCEEDED`.
+
+**Cihazda şu an:** on adım geçiyor — yoklama, dal, arama, filtre, satır çözümleme,
+tap, ve varış beklemesi.
+
+### 5.0o AÇIK — `read-active-stop` cihazda cevaplanamıyor
+
+Son iki adım kaldı ve engel host'ta değil cihazda: `nesy.stopState`
+**`stopId` parametresi zorunlu** kılıyor
+(`NesyAppAdapterQueryCapability.kt:444`), yani "şu durak hakkında bilgi ver" diye
+soruyor. Makronun sorması gereken şey ise "**hangi** durak açık" — ve koşu artık
+mongo stop id'sini bilmiyor (girdiler `searchTerm` ve `rowKey`).
+
+Bu, `APP.ACTIVE_STOP_MATCHES` yanlış-satır muhafızının dayandığı gözlem. Parametre
+uydurmak muhafızı kendi kendini onaylar hâle getirirdi.
+
+**Gereken:** cihazda parametresiz bir "aktif durak" projeksiyonu
+(`nesy.activeStop`), açık durağın kimliğini döndüren. Sonra `read-active-stop`
+onu okur ve `assert-correct-item` gerçekten karşılaştırma yapar.
+
+### 5.0p `open-stop` PASS_ONLINE — on iki adım, yanlış-satır muhafızı dahil
+
+`run_b57445bb`, pack 1.19.2. Üç requirement de SATISFIED:
+
+```text
+APP.AVAILABLE_STOPS_LOADED  SATISFIED
+APP.ACTIVE_STOP_OBSERVED    SATISFIED
+APP.ACTIVE_STOP_MATCHES     SATISFIED   ← yanlış-satır muhafızı
+```
+
+**Cihaza `nesy.activeStop` eklendi.** Parametresiz: "hangi durak açık" diye
+soruyor. `SP.selectedStopId` görev listesi açılırken yazılıyor, uygulama o
+bağlamdan çıkarken temizleniyor — yani uygulamanın KENDİ cevabı, hangi ekranın
+açık olduğundan çıkarılmış bir tahmin değil. Boş prefs sıfır satır döndürüyor:
+"hiçbiri açık değil" kanıtı, boş kimlik değil.
+
+**Muhafız neyi neyle karşılaştırıyor — iki kez düzeltildi.**
+
+Önce `stop_id` ile karşılaştırıyordu. Ama koşu durağı arama kutusundan
+adresliyor ve mongo stop id'sini hiç öğrenmiyor: muhafıza yalnız bir tarafın
+sahip olduğu bir değer verilirdi. Daha kötüsü, koşu o id'yi bilseydi, muhafız
+koşunun kendi varsayımını doğrulamış olurdu. **Kendi girdisini doğrulayan şey
+muhafız değildir.**
+
+Bu yüzden `nesy.activeStop` artık `row_key` de yayınlıyor — açık durağın
+taşıdığı parça anahtarı. Sorulan soru artık doğru soru: *açılan durak, aradığım
+parçayı taşıyan durak mı?*
+
+İkinci düzeltme daha ince: `comparePath` parametresi **hiç okunmuyor**. Motor
+gözlemin `correlationValue`'suna bakıyor (`derived-fact-engine.ts:96`), yani
+kararı `outputFactBindings`'teki `correlationColumn` veriyor. Cihaz `row_key`'i
+yayınlıyorken bağlama hâlâ `stop_id`'yi korelasyon değeri yapıyordu — muhafız
+doğru açılmış bir durağa VIOLATED dedi. İkisi artık aynı kolonu gösteriyor ve
+yorumda niye ikisinin birlikte tutulması gerektiği yazılı; ayrışmaları bu
+muhafızı sessizleştirmenin yolu.
+
+**Yedi iş akışından beşi artık cihazda PASS_ONLINE:** login, select-route,
+load-to-vehicle, tour-approval-lifecycle, open-stop. Kalan ikisi
+(`process-parcel`, `complete-delivery`) hiç koşulmadı.
 
 ### 5.0i Bildirim listesi ve cihaz-düzlemi statü — yazıldı, cihazda doğrulanmadı
 

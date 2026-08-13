@@ -65,7 +65,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "read-available",
       sourceMapRef: "sm-open-1",
-      next: "check-present",
+      next: "probe-search-field",
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
@@ -79,40 +79,153 @@ const STEPS: readonly WorkflowStepV2[] = [
     ],
   },
   {
-    // Safeguard 2, part two. UNKNOWN is FAIL: "we could not tell whether this
-    // item is in the list" must not become "tap something and find out".
-    ...stepBase({ planStepId: "check-present", sourceMapRef: "sm-open-2", next: null }),
+    /**
+     * Is the search bar already open?
+     *
+     * The toggle is a TOGGLE — measured, tapping it on an open bar closes it —
+     * so a macro that taps it unconditionally works from one starting state and
+     * breaks from the other. The probe declares the field absent-tolerant, and
+     * the branch below decides. This is the same shape the zimmet slice uses for
+     * the RS time-range picker: a missing control can be a correct state.
+     */
+    ...stepBase({
+      planStepId: "probe-search-field",
+      sourceMapRef: "sm-open-3",
+      next: "check-search-open",
+      timeoutMs: 8_000,
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.stopSearchFieldProbe,
+    outputVariable: "searchFieldProbe",
+  },
+  {
+    ...stepBase({ planStepId: "check-search-open", sourceMapRef: "sm-open-3a", next: null }),
     kind: "CONDITION",
+    /**
+     * EXISTENCE, not equality.
+     *
+     * The probe writes `{ absentTarget: true }` when the bar is shut and a
+     * resolved fingerprint when it is open — so the marker is either there or it
+     * is not, and comparing it to `true` leaves the OPEN case with an operand
+     * that resolves to nothing. Measured 2026-08-13: the bar was already open,
+     * the comparison went UNKNOWN, and `unknownPolicy: FAIL` stopped a run whose
+     * screen was in a perfectly good state. An existence test answers in both
+     * states, which is what a two-state question needs.
+     */
     condition: {
-      kind: "comparison",
-      operator: "in",
-      left: { kind: "operand", source: "run.input", path: "requestedItemCode" },
-      // `stop_id` is the column `nesy.availableStops` actually projects. It used
-      // to read `read-available.codes`, and no such field is emitted by anything
-      // — measured on device 2026-08-12: the condition resolved against nothing,
-      // took the absent branch and reported a precondition mismatch for a stop
-      // that was on screen. The operand digger maps over rows, so this is the
-      // list of ids.
-      right: { kind: "operand", source: "step.output", path: "read-available.stop_id" },
+      kind: "existence",
+      operator: "exists",
+      operand: { kind: "operand", source: "step.output", path: "searchFieldProbe.absentTarget" },
     },
-    onTrue: "resolve-row",
-    onFalse: "report-absent",
+    // Absent → the bar is shut, so open it. Present → go straight to typing.
+    onTrue: "resolve-search-toggle",
+    onFalse: "resolve-search-field",
+    // "We could not tell whether the bar is open" must not become "tap the
+    // toggle and find out": that is exactly how it ends up closed.
     unknownPolicy: "FAIL",
   },
   {
-    ...stepBase({ planStepId: "report-absent", sourceMapRef: "sm-open-3", next: null }),
-    kind: "ANNOTATE",
-    message:
-      "The requested item is not present in the available projection; nothing on screen was touched. This is a precondition mismatch, not a UI defect.",
+    /**
+     * THE PRODUCT'S OWN WAY OF ADDRESSING ONE STOP.
+     *
+     * A stop row carries no id — measured, twice: `stop_row_*` was invented and
+     * never existed, and resolving by the stop's mongo id searched the screen for
+     * a string the row does not display. What the app DOES offer is a search box,
+     * and that is the honest answer: type a business key, the list filters, and a
+     * filtered list of one is an identity the run ESTABLISHED rather than one it
+     * guessed at by position.
+     *
+     * The old existence pre-check is gone with it, and that is a real change
+     * rather than a simplification. It compared the requested code against
+     * `nesy.availableStops`, whose projection carries stop ids and no parcel key,
+     * so it could never answer the question this slice actually asks. The
+     * safeguard now lives where the action is: the row target resolves by the
+     * text the ROW shows, and `ambiguityPolicy: FAIL` stops the run if the filter
+     * left more than one candidate. Checking at the point of the tap is stronger
+     * than checking a projection that does not carry the key.
+     */
+    ...stepBase({
+      planStepId: "resolve-search-toggle",
+      sourceMapRef: "sm-open-4",
+      next: "tap-search-toggle",
+      timeoutMs: 10_000,
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.stopSearchToggle,
+    outputVariable: "searchToggleHandle",
   },
   {
-    // Safeguards 3 and 4 live in the target's own resolution policy
-    // (`nesy.target.stop-row`): accessibility id → entity binding → structural
-    // fingerprint → index hint (non-identity, last), ambiguity FAIL,
-    // reverifyBeforeAction true.
+    ...stepBase({
+      planStepId: "tap-search-toggle",
+      sourceMapRef: "sm-open-5",
+      next: "resolve-search-field",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "searchToggleHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-search-field",
+      sourceMapRef: "sm-open-6",
+      next: "enter-search-term",
+      timeoutMs: 10_000,
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.stopSearchField,
+    outputVariable: "searchFieldHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "enter-search-term",
+      sourceMapRef: "sm-open-7",
+      next: "resolve-search-submit",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("verdict.core.bridge.set-text")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "setText",
+    targetVariable: "searchFieldHandle",
+    args: { valueRef: "run.input.searchTerm" },
+  },
+  {
+    ...stepBase({
+      planStepId: "resolve-search-submit",
+      sourceMapRef: "sm-open-8",
+      next: "tap-search-submit",
+      timeoutMs: 10_000,
+      capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
+    }),
+    kind: "RESOLVE_TARGET",
+    targetRef: NESY_TARGETS.stopSearchSubmit,
+    outputVariable: "searchSubmitHandle",
+  },
+  {
+    ...stepBase({
+      planStepId: "tap-search-submit",
+      sourceMapRef: "sm-open-9",
+      next: "resolve-row",
+      timeoutMs: 20_000,
+      capabilityRequirements: [requires("verdict.core.bridge.tap")],
+    }),
+    kind: "BRIDGE_ACTION",
+    action: "tap",
+    targetVariable: "searchSubmitHandle",
+  },
+  {
+    /**
+     * Resolve the surviving row by the text the ROW shows — deliberately a
+     * DIFFERENT key from the one typed above. The search box keeps what was
+     * typed, so one key for both would match twice and fail closed on ambiguity.
+     */
     ...stepBase({
       planStepId: "resolve-row",
-      sourceMapRef: "sm-open-4",
+      sourceMapRef: "sm-open-10",
       next: "tap-row",
       timeoutMs: 15_000,
       capabilityRequirements: [requires("verdict.core.bridge.resolve-target")],
@@ -120,12 +233,12 @@ const STEPS: readonly WorkflowStepV2[] = [
     kind: "RESOLVE_TARGET",
     targetRef: NESY_TARGETS.stopRow,
     outputVariable: "rowHandle",
-    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.requestedItemCode" },
+    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.rowKey" },
   },
   {
     ...stepBase({
       planStepId: "tap-row",
-      sourceMapRef: "sm-open-5",
+      sourceMapRef: "sm-open-11",
       next: "await-destination",
       timeoutMs: 20_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
@@ -133,7 +246,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     kind: "BRIDGE_ACTION",
     action: "tap",
     targetVariable: "rowHandle",
-    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.requestedItemCode" },
+    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.rowKey" },
     // Readiness only, and deliberately `anyOf`: see safeguard 5.
     continueGate: {
       anyOf: [NESY_FACTS.TASK_LIST_READY, NESY_FACTS.DELIVERY_FLOW_READY],
@@ -148,7 +261,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     // compiler may degrade to sequential legs rather than reject the plan.
     ...stepBase({
       planStepId: "await-destination",
-      sourceMapRef: "sm-open-6",
+      sourceMapRef: "sm-open-12",
       next: "read-active-stop",
       timeoutMs: 25_000,
       capabilityRequirements: [optionally("wait_any", "SEQUENTIAL_LEGS")],
@@ -163,17 +276,23 @@ const STEPS: readonly WorkflowStepV2[] = [
   },
   {
     // Which stop the app now considers active — OBSERVED, not inferred from the
-    // fact that a destination screen appeared. `nesy.stopState` is a maxRows: 1
+    // fact that a destination screen appeared. `nesy.activeStop` is a maxRows: 1
     // projection, so "a stop is active" is exactly whether it returned a row.
     ...stepBase({
       planStepId: "read-active-stop",
-      sourceMapRef: "sm-open-6a",
+      sourceMapRef: "sm-open-13",
       next: "assert-correct-item",
       timeoutMs: 15_000,
       capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
     }),
     kind: "SDK_QUERY",
-    queryRef: NESY_ADAPTER_QUERY_REFS.stopState,
+    // `activeStop`, not `stopState`. Measured 2026-08-13: `stopState` requires a
+    // `stopId` parameter, so it answers "tell me about THIS stop" — a run that
+    // passes the id it hoped for and gets a row back has confirmed its own
+    // assumption and nothing else. The wrong-row guard needs the app's OWN answer
+    // to "which stop is open", which is why the device grew a parameterless
+    // projection rather than this step growing a parameter.
+    queryRef: NESY_ADAPTER_QUERY_REFS.activeStop,
     maxRows: 1,
     outputVariable: "activeRows",
     outputFactBindings: [
@@ -183,18 +302,26 @@ const STEPS: readonly WorkflowStepV2[] = [
         // WHICH stop, not just that one is open. `APP.ACTIVE_STOP_MATCHES` is the
         // wrong-row guard, and it can only compare an identity the observation
         // actually carried.
-        correlationColumn: "stop_id",
+        //
+        // `row_key` rather than `stop_id`: the run addresses the stop through the
+        // app's search box and never learns the mongo id, so comparing on it
+        // would hand the guard a value only one side has. The parcel key is what
+        // both sides genuinely hold. Measured 2026-08-13: the device projected
+        // `row_key: 6880051000289711` — the run's own input — while the guard
+        // was still reading `stop_id` and reported VIOLATED against a stop that
+        // had opened correctly.
+        correlationColumn: "row_key",
       },
     ],
   },
   {
     // Safeguard 6. This is the assertion that makes the whole slice trustworthy.
-    ...stepBase({ planStepId: "assert-correct-item", sourceMapRef: "sm-open-7", next: null, timeoutMs: 20_000 }),
+    ...stepBase({ planStepId: "assert-correct-item", sourceMapRef: "sm-open-14", next: null, timeoutMs: 20_000 }),
     kind: "ASSERT_FACT",
     factKey: NESY_FACTS.ACTIVE_STOP_MATCHES,
     expected: true,
     unknownPolicy: "FAIL",
-    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.requestedItemCode" },
+    entityBinding: { type: NESY_ENTITIES.stop, id: "run.input.rowKey" },
     finalOraclePolicy: {
       requirements: [
         { factKey: NESY_FACTS.ACTIVE_STOP_MATCHES, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
@@ -209,8 +336,20 @@ const GENERIC_IR = irDocument({
   workflowId: "nesy.reference.open-stop",
   name: "Open the requested stop",
   sourceRef: NESY_OPEN_STOP_MACRO_KEY,
-  inputs: [{ name: "requestedItemCode", type: "string", required: true }],
+  inputs: [
+    // TWO keys for one parcel, and the split is load-bearing rather than
+    // ceremonial: `searchTerm` is typed into the box and stays there, so the row
+    // must be recognised by something else or the tap matches twice and fails
+    // closed on ambiguity. Measured 2026-08-13: waybill in, short barcode on the
+    // row, exactly one match, task list opened.
+    { name: "searchTerm", type: "string", required: true },
+    { name: "rowKey", type: "string", required: true },
+  ],
   variables: [
+    { name: "searchFieldProbe", type: "string" },
+    { name: "searchToggleHandle", type: "string" },
+    { name: "searchFieldHandle", type: "string" },
+    { name: "searchSubmitHandle", type: "string" },
     { name: "availableRows", type: "stringList" },
     { name: "activeRows", type: "stringList" },
     { name: "rowHandle", type: "string" },
@@ -224,13 +363,19 @@ const GENERIC_IR = irDocument({
   ],
   sourceMap: [
     sourceMapEntry("sm-open-1", "read-available", NESY_OPEN_STOP_MACRO_KEY, "safeguard 2: read the projection first"),
-    sourceMapEntry("sm-open-2", "check-present", NESY_OPEN_STOP_MACRO_KEY, "safeguard 2: verify presence before touching anything"),
-    sourceMapEntry("sm-open-3", "report-absent", NESY_OPEN_STOP_MACRO_KEY, "precondition mismatch path"),
-    sourceMapEntry("sm-open-4", "resolve-row", NESY_OPEN_STOP_MACRO_KEY, "safeguards 3+4: provider chain, ambiguity fail-closed"),
-    sourceMapEntry("sm-open-5", "tap-row", NESY_OPEN_STOP_MACRO_KEY),
-    sourceMapEntry("sm-open-6a", "read-active-stop", NESY_OPEN_STOP_MACRO_KEY, "active stop observed, not inferred"),
-    sourceMapEntry("sm-open-6", "await-destination", NESY_OPEN_STOP_MACRO_KEY, "safeguard 5: task list OR delivery flow"),
-    sourceMapEntry("sm-open-7", "assert-correct-item", NESY_OPEN_STOP_MACRO_KEY, "safeguard 6: the wrong-row guard"),
+    sourceMapEntry("sm-open-3", "probe-search-field", NESY_OPEN_STOP_MACRO_KEY, "the search bar is a toggle; ask before tapping"),
+    sourceMapEntry("sm-open-3a", "check-search-open", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-4", "resolve-search-toggle", NESY_OPEN_STOP_MACRO_KEY, "the product's own way of addressing one stop"),
+    sourceMapEntry("sm-open-5", "tap-search-toggle", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-6", "resolve-search-field", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-7", "enter-search-term", NESY_OPEN_STOP_MACRO_KEY, "filtering IS the identity"),
+    sourceMapEntry("sm-open-8", "resolve-search-submit", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-9", "tap-search-submit", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-10", "resolve-row", NESY_OPEN_STOP_MACRO_KEY, "safeguard 4: ambiguity fails closed on the filtered list"),
+    sourceMapEntry("sm-open-11", "tap-row", NESY_OPEN_STOP_MACRO_KEY),
+    sourceMapEntry("sm-open-13", "read-active-stop", NESY_OPEN_STOP_MACRO_KEY, "active stop observed, not inferred"),
+    sourceMapEntry("sm-open-12", "await-destination", NESY_OPEN_STOP_MACRO_KEY, "safeguard 5: task list OR delivery flow"),
+    sourceMapEntry("sm-open-14", "assert-correct-item", NESY_OPEN_STOP_MACRO_KEY, "safeguard 6: the wrong-row guard"),
   ],
 });
 
@@ -315,7 +460,7 @@ export const NESY_OPEN_STOP_MACRO: MacroDefinition = {
       NESY_FACTS.ACTIVE_STOP_OBSERVED,
       NESY_FACTS.ACTIVE_STOP_MATCHES,
     ],
-    queryRefs: [NESY_ADAPTER_QUERY_REFS.availableStops, NESY_ADAPTER_QUERY_REFS.stopState],
+    queryRefs: [NESY_ADAPTER_QUERY_REFS.availableStops, NESY_ADAPTER_QUERY_REFS.activeStop],
     adapterOperationRefs: [],
   },
   oracleTemplate: {

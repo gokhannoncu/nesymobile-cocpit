@@ -41,6 +41,9 @@ import { dig } from './condition-engine.js'
 
 const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
 
+/** Gap between resolution attempts while a target's own deadline still runs. */
+const TARGET_RESOLVE_POLL_MS = 250
+
 /**
  * Device rows arrive as strings — the named-query projection is a
  * `Map<String, String?>` on the Android side. `"true"`/`"false"` are the only
@@ -579,7 +582,36 @@ export function createGenericStepRuntime(options: {
         }
       }
 
-      const evidence = await manager.resolve(fingerprint, { runId })
+      // KEEP LOOKING UNTIL THE DEADLINE THE PACK DECLARED.
+      //
+      // `TargetResolutionPolicy.deadlineMs` has always been in the contract and
+      // this runtime asked the device exactly once, so the deadline bought
+      // nothing: a control that appears 300ms later — a search bar animating
+      // open, a dialog still inflating — came back NOT_FOUND on the first frame.
+      // Measured on device 2026-08-13: `open-stop` tapped the search toggle and
+      // resolved the field in the same breath; the field was reported absent and
+      // the run stopped, while a manual repeat of the same two calls with a
+      // pause between them found it every time.
+      //
+      // Only NOT_FOUND is worth waiting out. AMBIGUOUS and STALE_TREE are answers
+      // — "I found several" and "the tree moved under me" — and retrying them
+      // would be waiting for a different reply to the same question.
+      // ...but only for a target the pack says MUST be there. `TREAT_AS_ABSENT`
+      // means absence is a legitimate answer, so the first NOT_FOUND IS the
+      // answer — waiting it out would charge every run the full deadline for a
+      // control it was told might not exist, and would turn a fast "is this open
+      // right now?" probe into a ten-second stall.
+      const waitsForTarget = target.resolution.notFoundPolicy !== 'TREAT_AS_ABSENT'
+      const resolveDeadlineMs = target.resolution.deadlineMs
+      const resolveExpiresAt =
+        clock() + (waitsForTarget && typeof resolveDeadlineMs === 'number' ? resolveDeadlineMs : 0)
+      let evidence = await manager.resolve(fingerprint, { runId })
+      while (evidence.outcome === 'NOT_FOUND' && clock() < resolveExpiresAt) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.min(TARGET_RESOLVE_POLL_MS, Math.max(1, resolveExpiresAt - clock()))),
+        )
+        evidence = await manager.resolve(fingerprint, { runId })
+      }
       const evidenceRef = describeResolutionEvidence(evidence)
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
         // The pack's `notFoundPolicy`, finally read. It has always been part of

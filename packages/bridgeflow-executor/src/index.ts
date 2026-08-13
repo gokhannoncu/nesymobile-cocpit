@@ -1171,6 +1171,48 @@ export class BridgeFlowExecutor {
     }
 
     await this.assertLiveFence(input.runId, context.recoveryFence);
+    // A WAIT_ANY over FACTS asks the bridge for a view that does not exist.
+    //
+    // The compiler turns every leg into `{ by: "id", value: <factKey> }`
+    // (`wait-compiler.ts`), so the device is asked for a view whose resource id
+    // is the string "UI.TASK_LIST_READY". Measured 2026-08-13 with the task list
+    // ON SCREEN: `find_id UI.TASK_LIST_READY` → matched 0,
+    // `find_id UI.DELIVERY_FLOW_READY` → matched 0. `open-stop` reached this wait
+    // having just SATISFIED a continue gate on those same two facts, opened the
+    // stop, and then failed waiting to arrive where it already was.
+    //
+    // So the facts are consulted FIRST, and only when none of them is already
+    // true does the bridge path run. Checking first rather than replacing the
+    // bridge wait is deliberate: the bridge is what watches interrupt surfaces
+    // during a wait, and a fact-only path would silently stop watching them.
+    //
+    // What this does NOT fix: a leg whose fact becomes true AFTER the step began
+    // is still invisible, because from here on the bridge owns the wait and the
+    // bridge is looking for a view. Closing that needs the bridge to accept fact
+    // legs, or the host to race both — recorded rather than guessed at.
+    if (step.kind === "WAIT_ANY") {
+      const legs = Array.isArray(step.params["legs"]) ? step.params["legs"] : [];
+      const facts = this.correlatedFacts(context);
+      for (const leg of legs) {
+        if (!isRecord(leg)) continue;
+        const factKey = asString(leg["factKey"]);
+        const legId = asString(leg["legId"]);
+        if (factKey === undefined || legId === undefined) continue;
+        if (!facts.some((candidate) => candidate.factKey === factKey && candidate.value === true)) continue;
+        await this.options.persistence.settleWaitTerminal({
+          runId: input.runId,
+          occurrenceId: context.occurrenceId,
+          waitPlanId: compiled.waitPlanId,
+          requestId: context.requestId,
+          status: "EXPECTED_MATCH",
+          key: legId,
+          ...(context.recoveryFence === undefined ? {} : { recoveryFence: context.recoveryFence }),
+        });
+        const onWin = leg["onWin"];
+        const next = typeof onWin === "string" || onWin === null ? (onWin as string | null) : step.next;
+        return { actionResult: "SUCCEEDED", continueGateResult: "SATISFIED", next, stop: false };
+      }
+    }
     if (step.kind === "WAIT_EVENT") {
       const factKey = asString(step.params["factKey"]);
       const expectedKey = compiled.expected.find((target) => target.primary)?.key ?? compiled.expected[0]?.key;
@@ -1327,6 +1369,36 @@ export class BridgeFlowExecutor {
    * checked once, before the wait, which meant a fact that became true one
    * millisecond later was never seen.
    */
+  /**
+   * The first of several facts to arrive, or `undefined` on deadline.
+   *
+   * Legs are checked in DECLARED order on each poll, so a tie inside one polling
+   * interval resolves to the leg the pack listed first rather than to whichever
+   * the map happened to yield. A wait that raced non-deterministically would make
+   * the branch it takes unreproducible.
+   */
+  private async awaitFirstCorrelatedFact(
+    factKeys: readonly string[],
+    deadlineMs: number,
+    context: StepExecutionContext,
+    signal: AbortSignal | undefined,
+  ): Promise<string | undefined> {
+    const sleep = this.options.sleep ?? defaultSleep;
+    const expiresAt = this.options.clock() + deadlineMs;
+    for (;;) {
+      const facts = this.correlatedFacts(context);
+      for (const factKey of factKeys) {
+        if (facts.some((candidate) => candidate.factKey === factKey && candidate.value === true)) {
+          return factKey;
+        }
+      }
+      if (signal?.aborted === true) return undefined;
+      const remaining = expiresAt - this.options.clock();
+      if (remaining <= 0) return undefined;
+      await sleep(Math.min(FACT_POLL_INTERVAL_MS, remaining));
+    }
+  }
+
   private async awaitCorrelatedFact(
     factKey: string,
     deadlineMs: number,

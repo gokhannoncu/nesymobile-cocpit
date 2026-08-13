@@ -60,7 +60,22 @@ export const NESY_COURIER_DERIVED_FACTS: DerivedFactGraph = {
         // said `stopCode`, a name no macro declares, so the comparison had nothing
         // to compare against — the guard would have stayed silent even once a
         // reducer existed to run it.
-        parameters: { comparePath: "stopId", against: "macro.input.requestedItemCode" },
+        /**
+         * `rowKey`, not the stop's own id.
+         *
+         * A run cannot know the mongo stop id before it has opened the stop, so a
+         * guard comparing against it could only ever be handed the id the run
+         * already assumed — it would validate its own input. Measured 2026-08-13:
+         * with the run addressing the stop through the app's search box, the only
+         * identity both sides genuinely hold is the parcel key. So the question
+         * the guard asks is the one worth asking: is the stop that opened the one
+         * holding the parcel I searched for?
+         */
+        // NOTE: the engine compares the observation's `correlationValue`, so
+        // `comparePath` names the intent while the binding's `correlationColumn`
+        // is what actually decides. Kept in step with it deliberately; they
+        // drifting apart is how this guard went quiet before.
+        parameters: { comparePath: "row_key", against: "macro.input.rowKey" },
       },
       preserveInputs: true,
       requiresCorrelation: true,
