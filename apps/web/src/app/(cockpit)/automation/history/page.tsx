@@ -26,6 +26,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@nesy/metronic/components/ui/alert-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@nesy/metronic/components/ui/tooltip'
 import { ProductPage } from '@/components/product'
 import {
   AutomationHistoryStatCardsShimmer,
@@ -96,6 +102,31 @@ function formatDuration(ms: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60)
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`
   return `${seconds}s`
+}
+
+function formatStatusLabel(status: string): string {
+  if (status === 'success') return 'Success'
+  if (status === 'failed') return 'Failed'
+  if (status === 'running') return 'Running'
+  if (status === 'pending') return 'Pending'
+  if (status === 'cancelled') return 'Cancelled'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function formatStartedAt(value: string): { date: string; time: string } {
+  const parsed = new Date(value)
+  return {
+    date: parsed.toLocaleDateString(undefined, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+    time: parsed.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+  }
 }
 
 function runStatusClassName(status: string): string {
@@ -502,8 +533,8 @@ function RunHistoryTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[940px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-border bg-card text-xs font-bold uppercase tracking-[0.02em] text-muted-foreground">
-              <th className="w-[52px] px-4 py-5">
+            <tr className="border-b border-border bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="w-[52px] px-4 py-3">
                 <Checkbox
                   aria-label="Select all runs on this page"
                   checked={allPageSelected ? true : somePageSelected ? 'indeterminate' : false}
@@ -511,28 +542,29 @@ function RunHistoryTable({
                   disabled={paginatedRuns.length === 0 || bulkDeleting}
                 />
               </th>
-              <th className="w-[220px] px-3 py-5">Workflow</th>
-              <th className="w-[120px] px-3 py-5">Status</th>
-              <th className="w-[120px] px-3 py-5">Mode</th>
-              <th className="w-[180px] px-3 py-5">Started</th>
-              <th className="w-[100px] px-3 py-5">Duration</th>
-              <th className="w-[120px] px-5 py-5 text-right">Actions</th>
+              <th className="w-[220px] px-3 py-3">Workflow</th>
+              <th className="w-[120px] px-3 py-3">Status</th>
+              <th className="w-[100px] px-3 py-3">Mode</th>
+              <th className="w-[160px] px-3 py-3">Started</th>
+              <th className="w-[100px] px-3 py-3">Duration</th>
+              <th className="w-[100px] px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginatedRuns.map((run) => {
               const workflowSlug = run.workflow?.slug ?? run.workflowId
               const workflowName = run.workflow?.name ?? 'Unknown workflow'
+              const startedAt = formatStartedAt(run.startedAt ?? run.createdAt)
 
               return (
                 <tr
                   key={run.id}
                   className={cn(
-                    'border-b border-border bg-card text-sm last:border-b-0 hover:bg-muted/50',
-                    selectedRunIds.has(run.id) && 'bg-nesy-soft/10',
+                    'group border-b border-border bg-card text-sm transition-colors last:border-b-0 hover:bg-muted/40',
+                    selectedRunIds.has(run.id) && 'bg-nesy-soft/10 hover:bg-nesy-soft/15',
                   )}
                 >
-                  <td className="px-4 py-4 align-middle">
+                  <td className="px-4 py-3 align-middle">
                     <Checkbox
                       aria-label={`Select run ${run.id}`}
                       checked={selectedRunIds.has(run.id)}
@@ -540,61 +572,57 @@ function RunHistoryTable({
                       disabled={bulkDeleting}
                     />
                   </td>
-                  <td className="px-3 py-4 align-middle">
-                    <Link href={`/automation/${workflowSlug}`} className="block">
-                      <p className="font-semibold text-foreground">{workflowName}</p>
-                      <p className="mt-1 text-xs font-medium text-muted-foreground">
+                  <td className="px-3 py-3 align-middle">
+                    <Link
+                      href={`/automation/${workflowSlug}`}
+                      className="block rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft"
+                    >
+                      <p className="font-semibold text-foreground transition-colors group-hover:text-nesy-ink">
+                        {workflowName}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         v{run.version?.version ?? '—'} · {run.deviceId ?? 'No device'}
                       </p>
                     </Link>
                   </td>
-                  <td className="px-3 py-4 align-middle">
+                  <td className="px-3 py-3 align-middle">
                     <Badge className={runStatusClassName(run.status)}>
-                      <span className="inline-flex items-center gap-1">
-                        {run.status === 'success' ? <CheckCircle2 className="size-3.5" /> : null}
-                        {run.status === 'failed' ? <CircleX className="size-3.5" /> : null}
+                      <span className="inline-flex items-center gap-1.5">
+                        {run.status === 'success' ? <CheckCircle2 className="size-3.5 shrink-0" /> : null}
+                        {run.status === 'failed' ? <CircleX className="size-3.5 shrink-0" /> : null}
                         {run.status === 'running' || run.status === 'pending' ? (
-                          <Loader2 className="size-3.5 animate-spin" />
+                          <Loader2 className="size-3.5 shrink-0 animate-spin" />
                         ) : null}
-                        {run.status}
+                        {formatStatusLabel(run.status)}
                       </span>
                     </Badge>
                   </td>
-                  <td className="px-3 py-4 align-middle">
-                    <span className="text-sm text-muted-foreground">{run.mode}</span>
+                  <td className="px-3 py-3 align-middle">
+                    <span className="inline-flex rounded-md bg-muted/60 px-2 py-0.5 text-xs font-medium capitalize text-muted-foreground">
+                      {run.mode}
+                    </span>
                   </td>
-                  <td className="px-3 py-4 align-middle">
-                    <p className="font-semibold text-foreground">
-                      {new Date(run.startedAt ?? run.createdAt).toLocaleString()}
-                    </p>
+                  <td className="px-3 py-3 align-middle">
+                    <p className="font-medium tabular-nums text-foreground">{startedAt.date}</p>
+                    <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{startedAt.time}</p>
                   </td>
-                  <td className="px-3 py-4 align-middle">
-                    <span className="text-sm text-muted-foreground">
+                  <td className="px-3 py-3 align-middle">
+                    <span className="text-sm tabular-nums text-muted-foreground">
                       {formatDuration(run.duration)}
                     </span>
                   </td>
-                  <td className="px-5 py-4 align-middle text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/automation/${workflowSlug}/runs/${run.id}`}
-                        className="flex size-9 items-center justify-center rounded-[4px] border border-border bg-card text-foreground transition hover:border-nesy-muted hover:bg-nesy-soft hover:text-nesy-ink"
-                      >
-                        <Play className="size-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDeleteTarget({
-                            workflowId: run.workflowId,
-                            runId: run.id,
-                            label: workflowName,
-                          })
-                        }
-                        className="flex size-9 items-center justify-center rounded-[4px] border border-border bg-card text-red-500 transition hover:border-red-200 hover:bg-red-50 dark:hover:border-red-800 dark:hover:bg-red-950"
-                      >
-                        <CircleX className="size-4" />
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 align-middle text-right">
+                    <RunRowActions
+                      runHref={`/automation/${workflowSlug}/runs/${run.id}`}
+                      workflowName={workflowName}
+                      onDelete={() =>
+                        setDeleteTarget({
+                          workflowId: run.workflowId,
+                          runId: run.id,
+                          label: workflowName,
+                        })
+                      }
+                    />
                   </td>
                 </tr>
               )
@@ -666,7 +694,7 @@ function RunHistoryTable({
             <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="rounded-[4px] bg-nesy text-white hover:bg-nesy-hover"
+              className="rounded-[4px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete run
             </AlertDialogAction>
@@ -697,7 +725,7 @@ function RunHistoryTable({
                 void confirmBulkDelete()
               }}
               disabled={bulkDeleting}
-              className="rounded-[4px] bg-nesy text-white hover:bg-nesy-hover"
+              className="rounded-[4px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {bulkDeleting ? 'Deleting...' : `Delete ${selectedCount} run${selectedCount === 1 ? '' : 's'}`}
             </AlertDialogAction>
@@ -705,6 +733,57 @@ function RunHistoryTable({
         </AlertDialogContent>
       </AlertDialog>
     </section>
+  )
+}
+
+function RunRowActions({
+  runHref,
+  workflowName,
+  onDelete,
+}: {
+  runHref: string
+  workflowName: string
+  onDelete: () => void
+}) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div className="inline-flex items-center justify-end gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:bg-nesy-soft/50 hover:text-nesy-ink"
+              asChild
+            >
+              <Link href={runHref} aria-label={`View run details for ${workflowName}`}>
+                <Play className="size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            View run details
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+              onClick={onDelete}
+              aria-label={`Delete run for ${workflowName}`}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Remove from history
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
   )
 }
 
@@ -725,7 +804,7 @@ function SelectLike({
         aria-label={ariaLabel}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className="h-11 w-full appearance-none rounded-[4px] border border-border bg-card px-3.5 pr-9 text-left text-sm font-semibold text-foreground transition hover:bg-muted focus:border-nesy focus:outline-none focus:ring-4 focus:ring-nesy-soft"
+        className="h-11 w-full appearance-none rounded-md border border-border bg-card px-3.5 pr-9 text-left text-sm font-medium text-foreground transition hover:bg-muted focus:border-nesy focus:outline-none focus:ring-4 focus:ring-nesy-soft"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -741,7 +820,7 @@ function SelectLike({
 function Badge({ children, className }: { children: ReactNode; className: string }) {
   return (
     <span
-      className={`inline-flex h-7 items-center rounded-[4px] px-3 text-xs font-semibold ring-1 ring-inset ${className}`}
+      className={`inline-flex h-7 items-center rounded-full px-2.5 text-xs font-medium ring-1 ring-inset ${className}`}
     >
       {children}
     </span>

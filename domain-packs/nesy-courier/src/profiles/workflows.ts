@@ -26,6 +26,10 @@ import type {
   ReusableFlowFragmentDefinition,
 } from "@nesy/domain-pack-contracts";
 import { NESY_COMPLETE_DELIVERY_MACRO } from "../macros/complete-delivery.js";
+import {
+  NESY_FULL_COURIER_DAY_MACRO,
+  NESY_FULL_COURIER_DAY_WORKFLOW_KEY,
+} from "../macros/full-courier-day.js";
 import { NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY } from "../macros/full-courier-golden.js";
 import { NESY_LOGIN_MACRO } from "../macros/login.js";
 import { NESY_LOGIN_AND_SELECT_ROUTE_MACRO, NESY_LOGIN_AND_SELECT_ROUTE_WORKFLOW_KEY } from "../macros/login-and-select-route.js";
@@ -49,6 +53,7 @@ export const NESY_WORKFLOWS = {
   processParcel: "nesy.workflow.process-parcel",
   completeDelivery: "nesy.workflow.complete-delivery",
   tourApproval: "nesy.workflow.tour-approval-lifecycle",
+  fullCourierDay: NESY_FULL_COURIER_DAY_WORKFLOW_KEY,
   fullCourierGolden: NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY,
 } as const;
 
@@ -182,6 +187,24 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     fragmentRefs: [NESY_FRAGMENTS.reachOpenStop],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_TOUR_APPROVAL_MACRO.oracleTemplate,
+    producesTerminalVerdict: true,
+  },
+  {
+    workflowKey: NESY_WORKFLOWS.fullCourierDay,
+    displayName: "Full courier day — login through delivery",
+    businessMeaning: NESY_FULL_COURIER_DAY_MACRO.businessMeaning,
+    notResponsibleFor: NESY_FULL_COURIER_DAY_MACRO.notResponsibleFor,
+    // ONE composed macro, for the same reason as `loginAndSelectRoute`: seven
+    // macroRefs would be seven expansion snapshots and an empty canvas can only
+    // auto-materialize from one. The composed snapshot IS the stitch — see the
+    // macro header for the four decisions a concatenation would have got wrong.
+    macroRefs: [NESY_FULL_COURIER_DAY_MACRO.macroKey],
+    // No fragment. `reachOpenStop` composes login + select-route + open-stop, so
+    // reusing it here would drive login and route selection TWICE and would open
+    // a stop before anything had been loaded into the schedule.
+    fragmentRefs: [],
+    occurrenceScope: "INDEPENDENT",
+    oracleTemplate: NESY_FULL_COURIER_DAY_MACRO.oracleTemplate,
     producesTerminalVerdict: true,
   },
   {

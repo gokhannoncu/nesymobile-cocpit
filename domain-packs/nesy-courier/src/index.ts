@@ -43,6 +43,7 @@ export * from "./macros/login-and-select-route.js";
 export * from "./macros/open-stop.js";
 export * from "./macros/process-parcel.js";
 export * from "./macros/complete-delivery.js";
+export * from "./macros/full-courier-day.js";
 export * from "./macros/full-courier-golden.js";
 export * from "./macros/tour-approval-lifecycle.js";
 export * from "./macros/interrupt-handlers.js";

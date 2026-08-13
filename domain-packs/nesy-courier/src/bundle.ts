@@ -24,6 +24,7 @@ import { NESY_BACKOFFICE_ADAPTER } from "./adapters/backoffice.js";
 import { NESY_COURIER_DERIVED_FACTS } from "./evidence/derived.js";
 import { NESY_COURIER_EVIDENCE_SOURCES } from "./evidence/sources.js";
 import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
+import { NESY_FULL_COURIER_DAY_MACRO } from "./macros/full-courier-day.js";
 import { NESY_DISMISS_NOTIFICATION_LIST_MACRO, NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
 import { NESY_LOAD_TO_VEHICLE_MACRO } from "./macros/load-to-vehicle.js";
 import { NESY_LOGIN_MACRO } from "./macros/login.js";
@@ -50,6 +51,40 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.27.0 — FULL_COURIER_DAY chains all seven product legs into one run, so the
+  //   HAND-OFFS between them are finally under test: each leg now starts from the
+  //   state the previous leg actually produced instead of one a launch profile
+  //   installed. Four things had to be decided rather than concatenated, and each
+  //   was a defect in the naive version:
+  //
+  //   1. Nine plan-step ids collide across these seven macros (`tap-row`,
+  //      `tap-input-confirm`, `read-local-schedule`, …) and so do five variables.
+  //      A concatenation is not untidy, it is INVALID — the IR validator rejects
+  //      duplicate ids — and had it been accepted, `tap-row` would have meant the
+  //      route row and the stop row at once. Legs are namespaced with
+  //      domain-NEUTRAL prefixes because variable names are Core identifiers.
+  //   2. Four legs open by waiting for a screen the PREVIOUS leg's continue gate
+  //      already closed on. That is the 1.21.1 bug exactly: an event is stamped
+  //      with the occurrence the host last seeded, so the wait looks under its own
+  //      occurrence and never finds a fact that had plainly arrived. Those four
+  //      waits stay in the timeline but became confirmatory (CONTINUE, short
+  //      budget) instead of fatal.
+  //   3. The push notification list is HANDLED here and only here. It is screen-
+  //      scoped to the stop list, and the standalone tour-approval run ENDS just
+  //      after the push — but this composition's next leg searches the stop list
+  //      underneath it, which is the all-day failure 1.16.0 describes.
+  //   4. The final oracle is built from the legs' ASSERT_FACT `finalOraclePolicy`,
+  //      NOT from their macro `oracleTemplate.finalOracle`. Those two have drifted
+  //      and the step is the current one — process-parcel's template still asks
+  //      for `LOCAL.PARCEL_RECORD_PERSISTED` and `APP.SESSION_ISOLATION_ASSERTED`,
+  //      a local write its branch does not perform and an assertion 1.21.0
+  //      deliberately dropped. Merging the templates would have failed a correct
+  //      day on evidence nothing in the run can produce.
+  //
+  //   Preconditions are login's ALONE, not the union: open-stop requires stops to
+  //   be loaded and tour approval requires the approval NOT to exist yet, and both
+  //   are statements about the middle of this run rather than its start.
+  //
   // 1.25.0 — COMPLETE_DELIVERY runs the flow the courier actually performs.
   //   Measured 2026-08-13 on R6CW400BC8N, and the old plan was wrong in three
   //   independent ways, each of which alone would have stalled the run:
@@ -361,7 +396,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 26, patch: 0 },
+  version: { major: 1, minor: 27, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
@@ -427,6 +462,7 @@ export function buildNesyCourierBundle(): DomainPackBundle {
         NESY_PROCESS_PARCEL_MACRO,
         NESY_COMPLETE_DELIVERY_MACRO,
         NESY_TOUR_APPROVAL_MACRO,
+        NESY_FULL_COURIER_DAY_MACRO,
         NESY_GRANT_PERMISSION_MACRO,
         NESY_RECOVER_NETWORK_MACRO,
         NESY_DISMISS_NOTIFICATION_LIST_MACRO,

@@ -149,7 +149,7 @@ describe("registries", () => {
       evidenceSources: 57,
       derivedFacts: 6,
       semanticActions: 10,
-      macros: 11,
+      macros: 12,
       launchProfiles: 4,
       testProfiles: 16,
       campaigns: 4,

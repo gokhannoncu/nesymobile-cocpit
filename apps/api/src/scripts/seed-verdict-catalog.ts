@@ -84,88 +84,141 @@ async function seedPublishedBundle(store: PrismaDomainPackAdminStore, published:
   })
 }
 
+/**
+ * One canvas node, before it is linked into a chain.
+ *
+ * `LAUNCH_APP` leads every chain because a canvas is what an OPERATOR edits: the
+ * pack's macros assume a running app, and a canvas that opened on "Auth / Login"
+ * would give them nowhere to set country and environment.
+ */
+interface CanvasNodeSeed {
+  id: string
+  type: string
+  title: string
+  subtitle: string
+  icon: string
+  config: Record<string, unknown>
+}
+
+const LAUNCH_NODE: CanvasNodeSeed = {
+  id: 'launch-app',
+  type: 'LAUNCH_APP',
+  title: 'Launch App',
+  subtitle: 'App session start',
+  icon: 'Smartphone',
+  config: { country: 'HR', environment: 'stage', clearState: true },
+}
+
+const LOGIN_NODE: CanvasNodeSeed = {
+  id: 'auth-login',
+  type: 'AUTH_LOGIN',
+  title: 'Auth / Login',
+  subtitle: 'Courier PIN login',
+  icon: 'UserRound',
+  config: { pinCode: '' },
+}
+
+const SELECT_ROUTE_NODE: CanvasNodeSeed = {
+  id: 'select-route',
+  type: 'SELECT_ROUTE',
+  title: 'Select Route',
+  subtitle: 'Route selection',
+  icon: 'Route',
+  config: { routeNumber: '' },
+}
+
+/**
+ * Canvas chains per pack workflow, in run order.
+ *
+ * The later node ids reuse the composed macro's leg prefixes, so a canvas node
+ * and the run timeline's `<leg>-<step>` ids can be read side by side. The first
+ * three keep the ids the login-and-select-route canvas already seeded.
+ */
+const CANVAS_CHAINS: Record<string, readonly CanvasNodeSeed[]> = {
+  'nesy.workflow.login-and-select-route': [LAUNCH_NODE, LOGIN_NODE, SELECT_ROUTE_NODE],
+  'nesy.workflow.full-courier-day': [
+    LAUNCH_NODE,
+    LOGIN_NODE,
+    SELECT_ROUTE_NODE,
+    {
+      id: 'load',
+      type: 'LOAD_TO_VEHICLE',
+      title: 'Load to Vehicle',
+      subtitle: 'Zimmet — parcel onto the schedule',
+      icon: 'Truck',
+      config: { barcode: '' },
+    },
+    {
+      id: 'permit',
+      type: 'REQUEST_TOUR_START',
+      title: 'Request Tour Start',
+      subtitle: 'Courier requests, dispatcher approves',
+      icon: 'Play',
+      config: {},
+    },
+    {
+      id: 'visit',
+      type: 'OPEN_STOP',
+      title: 'Open Stop',
+      subtitle: 'Open the stop the loading created',
+      icon: 'CircleCheck',
+      config: {},
+    },
+    {
+      id: 'item',
+      type: 'SCAN_BARCODE',
+      title: 'Scan Barcode',
+      subtitle: 'Process parcel — opens the delivery flow',
+      icon: 'ScanBarcode',
+      config: { barcode: '' },
+    },
+    {
+      id: 'deliver',
+      type: 'DELIVERY_OPERATION',
+      title: 'Delivery Operation',
+      subtitle: 'Complete delivery (unpaid DELY path)',
+      icon: 'Box',
+      config: { stopId: '', taskId: '', shipmentId: '', signatureRequired: true },
+    },
+  ],
+}
+
 function canvasForWorkflow(workflowKey: string): {
   nodes: Prisma.InputJsonValue
   edges: Prisma.InputJsonValue
 } {
-  if (workflowKey !== 'nesy.workflow.login-and-select-route') {
+  const chain = CANVAS_CHAINS[workflowKey]
+  if (chain === undefined) {
     return { nodes: [], edges: [] }
   }
 
-  const launchId = 'launch-app'
-  const loginId = 'auth-login'
-  const routeId = 'select-route'
-  return {
-    nodes: [
-      {
-        id: launchId,
-        type: 'LAUNCH_APP',
-        kind: 'action',
-        position: { x: 380, y: 80 },
-        data: {
-          title: 'Launch App',
-          subtitle: 'App session start',
-          icon: 'Smartphone',
-          config: { country: 'HR', environment: 'stage', clearState: true },
-        },
-        parentId: null,
-        children: [],
-        branchType: null,
-        nextNodeId: loginId,
-        connections: [],
-      },
-      {
-        id: loginId,
-        type: 'AUTH_LOGIN',
-        kind: 'action',
-        position: { x: 380, y: 240 },
-        data: {
-          title: 'Auth / Login',
-          subtitle: 'Courier PIN login',
-          icon: 'UserRound',
-          config: { pinCode: '' },
-        },
-        parentId: null,
-        children: [],
-        branchType: null,
-        nextNodeId: routeId,
-        connections: [],
-      },
-      {
-        id: routeId,
-        type: 'SELECT_ROUTE',
-        kind: 'action',
-        position: { x: 380, y: 400 },
-        data: {
-          title: 'Select Route',
-          subtitle: 'Route selection',
-          icon: 'Route',
-          config: { routeNumber: '' },
-        },
-        parentId: null,
-        children: [],
-        branchType: null,
-        nextNodeId: null,
-        connections: [],
-      },
-    ],
-    edges: [
-      {
-        id: 'launch-to-login',
-        sourceNodeId: launchId,
-        targetNodeId: loginId,
-        sourceHandle: 'default',
-        targetHandle: 'top',
-      },
-      {
-        id: 'login-to-route',
-        sourceNodeId: loginId,
-        targetNodeId: routeId,
-        sourceHandle: 'default',
-        targetHandle: 'top',
-      },
-    ],
-  }
+  const nodes = chain.map((seed, index) => ({
+    id: seed.id,
+    type: seed.type,
+    kind: 'action',
+    position: { x: 380, y: 80 + index * 160 },
+    data: {
+      title: seed.title,
+      subtitle: seed.subtitle,
+      icon: seed.icon,
+      config: seed.config,
+    },
+    parentId: null,
+    children: [],
+    branchType: null,
+    nextNodeId: chain[index + 1]?.id ?? null,
+    connections: [],
+  }))
+
+  const edges = chain.slice(0, -1).map((seed, index) => ({
+    id: `${seed.id}-to-${chain[index + 1]!.id}`,
+    sourceNodeId: seed.id,
+    targetNodeId: chain[index + 1]!.id,
+    sourceHandle: 'default',
+    targetHandle: 'top',
+  }))
+
+  return { nodes, edges }
 }
 
 async function seedWorkflowCatalog(): Promise<void> {
