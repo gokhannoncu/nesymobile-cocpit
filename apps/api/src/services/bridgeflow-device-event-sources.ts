@@ -85,6 +85,21 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     freshnessMaxAgeMs: SURFACE_READY_MAX_AGE_MS,
     valueField: 'surface_ready',
   })
+  // The push notification list. It opens by ITSELF when a push arrives — the
+  // app navigates there — so the pack models it as a HANDLE surface with a
+  // dismiss handler. A surface the host cannot see is one it can never dismiss,
+  // which is why this registration exists alongside the app-side emit rather
+  // than the fact being declared with no producer.
+  registry.register({
+    sourceEvent: 'SURFACE_NOTIFICATION_LIST_READY',
+    factKey: 'UI.NOTIFICATION_LIST_PRESENT',
+    plane: 'UI',
+    subtype: 'surface-ready',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: SURFACE_READY_MAX_AGE_MS,
+    valueField: 'surface_ready',
+  })
 
   registry.register({
     sourceEvent: 'SURFACE_SCANNER_READY',
@@ -135,6 +150,10 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
     valueField: 'tour_requested',
+    // The schedule IS the tour approval request's identity — the product mints
+    // no other id for it — and this fact is an input to a CORRELATED_ALL_OF
+    // derivation, so without it the conclusion can never be drawn.
+    correlationField: 'schedule_id',
   })
   registry.register({
     sourceEvent: 'TOUR_APPROVAL_PUSH',
@@ -145,5 +164,27 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
     freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
     valueField: 'push_received',
+    correlationField: 'schedule_id',
+  })
+  registry.register({
+    sourceEvent: 'SCHEDULE_STATUS_APPROVED',
+    factKey: 'APP.SCHEDULE_STATUS_APPROVED',
+    plane: 'APP',
+    subtype: 'schedule-status-approved',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    // The BOOLEAN, never the numeric `schedule_status` the same frame carries.
+    // The device emits this wire on every schedule store, so the field is present
+    // on every emit — a value field that only appeared on the approved path would
+    // make the negative case a blocking rejection instead of an observed `false`,
+    // and the negative case is precisely the one worth catching.
+    valueField: 'schedule_status_approved',
+    // Same schedule identity as TOUR_STARTED / TOUR_APPROVAL_PUSH, so the three can
+    // be joined on one tour. Measured 2026-08-12: the approval push arrived at +6.3s
+    // and the device's own schedule did not change for another 28s (zero
+    // Task/GetMyScheduleByZoneCode calls), so an uncorrelated read of this fact would
+    // happily answer using the pre-approval store.
+    correlationField: 'schedule_id',
   })
 }

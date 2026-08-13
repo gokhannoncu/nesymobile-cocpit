@@ -394,6 +394,31 @@ function evaluateRequirement(
   };
 }
 
+/**
+ * The facts one requirement may be judged on.
+ *
+ * NO ROLLING FRESHNESS CHECK HERE, deliberately.
+ *
+ * A Final Oracle requirement asks a question about the RUN — did the courier
+ * request the tour, did the record reach APPROVED — and the answer to that does
+ * not decay while the run is still going. Whether an observation was too old to
+ * be admitted in the first place is a different question, asked once, by the
+ * evidence runtime at publication.
+ *
+ * This used to re-apply `nowMs - observedAtMs <= freshnessMaxAgeMs` on every
+ * evaluation, and because the oracle re-evaluates for the whole of an EVENTUAL
+ * deadline, that quietly deleted evidence the run held. Measured on device: with
+ * the runtime's own rolling filter already removed, all four facts arrived at
+ * `assert-approved` PRIMARY, ORDERED_REQUIRED and `true` — and the oracle still
+ * reported REQUIRED_TIMEOUT for every one of them, because it timed them again
+ * here. A 120s optional wait was enough to age out everything before it.
+ *
+ * The continue-gate path in `factMap` KEEPS its freshness check, and that
+ * asymmetry is the point rather than an oversight: a gate asks "is the screen
+ * ready NOW", its facts are re-observed continuously, and a stale
+ * `UI.*_READY` satisfying a gate for ever is a real hazard. "Is it true now" and
+ * "did it happen" are not the same question and must not share a rule.
+ */
 function factsForRequirement(
   facts: readonly NormalizedEvidenceFact[],
   factKey: string,
@@ -404,8 +429,7 @@ function factsForRequirement(
       fact.factKey === factKey &&
       fact.occurrenceId === input.occurrenceId &&
       fact.iterationKey === input.iterationKey &&
-      input.nowMs >= fact.observedAtMs &&
-      input.nowMs - fact.observedAtMs <= fact.freshnessMaxAgeMs,
+      input.nowMs >= fact.observedAtMs,
   );
 }
 

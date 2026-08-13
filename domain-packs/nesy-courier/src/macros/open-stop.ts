@@ -87,7 +87,13 @@ const STEPS: readonly WorkflowStepV2[] = [
       kind: "comparison",
       operator: "in",
       left: { kind: "operand", source: "run.input", path: "requestedItemCode" },
-      right: { kind: "operand", source: "step.output", path: "read-available.codes" },
+      // `stop_id` is the column `nesy.availableStops` actually projects. It used
+      // to read `read-available.codes`, and no such field is emitted by anything
+      // — measured on device 2026-08-12: the condition resolved against nothing,
+      // took the absent branch and reported a precondition mismatch for a stop
+      // that was on screen. The operand digger maps over rows, so this is the
+      // list of ids.
+      right: { kind: "operand", source: "step.output", path: "read-available.stop_id" },
     },
     onTrue: "resolve-row",
     onFalse: "report-absent",

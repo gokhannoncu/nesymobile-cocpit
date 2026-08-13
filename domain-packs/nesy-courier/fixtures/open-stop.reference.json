@@ -163,7 +163,7 @@
             "right": {
               "kind": "operand",
               "source": "step.output",
-              "path": "read-available.codes"
+              "path": "read-available.stop_id"
             }
           },
           "onTrue": "resolve-row",
@@ -580,7 +580,7 @@
           "right": {
             "kind": "operand",
             "source": "step.output",
-            "path": "read-available.codes"
+            "path": "read-available.stop_id"
           }
         },
         "onTrue": "resolve-row",

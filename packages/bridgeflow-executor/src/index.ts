@@ -913,6 +913,32 @@ export class BridgeFlowExecutor {
         // absent fact are both "nobody could tell", which is a different claim.
         const measured = fact !== undefined && typeof fact.value === "boolean";
         const satisfied = measured && typeof expected === "boolean" && fact.value === expected;
+        // NOT YET OBSERVED, and this step's own Final Oracle is the authority on
+        // that fact: defer to it instead of pre-empting it.
+        //
+        // An ASSERT_FACT is a one-shot read; a requirement declared EVENTUAL is a
+        // question with a deadline. When the same step carries both — which is
+        // the normal shape, the assert being the fast path in front of the oracle
+        // — a fact that has not landed YET is not "insufficient evidence", it is
+        // evidence that has not arrived. Measured on device: tour approval
+        // reached `assert-approved` a moment before its derived conclusion was
+        // published, the assert flagged the run evidence-insufficient and stopped
+        // it, and the Final Oracle on that very step then evaluated SATISFIED
+        // with all five requirements met. The run reported INCONCLUSIVE over an
+        // oracle that had said yes.
+        //
+        // A MEASURED contradiction still fails immediately — waiting out a
+        // deadline for an answer the run already has is how a real product
+        // failure gets reported three minutes late.
+        const oracleOwnsFact =
+          !measured &&
+          (step.finalOraclePolicy?.requirements ?? []).some(
+            (requirement) => requirement.factKey === factKey && requirement.timing === "EVENTUAL",
+          );
+        if (oracleOwnsFact) {
+          outcome.actionResult = "SKIPPED";
+          break;
+        }
         outcome.actionResult = satisfied ? "SUCCEEDED" : "FAILED";
         if (!satisfied) {
           if (measured) {

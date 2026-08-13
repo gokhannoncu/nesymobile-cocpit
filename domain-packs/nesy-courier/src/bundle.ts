@@ -24,7 +24,7 @@ import { NESY_BACKOFFICE_ADAPTER } from "./adapters/backoffice.js";
 import { NESY_COURIER_DERIVED_FACTS } from "./evidence/derived.js";
 import { NESY_COURIER_EVIDENCE_SOURCES } from "./evidence/sources.js";
 import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
-import { NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
+import { NESY_DISMISS_NOTIFICATION_LIST_MACRO, NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
 import { NESY_LOAD_TO_VEHICLE_MACRO } from "./macros/load-to-vehicle.js";
 import { NESY_LOGIN_MACRO } from "./macros/login.js";
 import { NESY_OPEN_STOP_MACRO } from "./macros/open-stop.js";
@@ -49,6 +49,47 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.16.0 — two surfaces the runs kept tripping over become modelled, and the
+  //   device gets a fact for its OWN view of the schedule.
+  //
+  //   `nesy.notification-list-dialog` is the interrupt the tour approval runs
+  //   fought all day: an FCM push does not merely arrive, the app NAVIGATES to
+  //   its notification list, and every following run failed on the screen
+  //   underneath it. HANDLE + a dismiss handler, and the app now emits the
+  //   surface visibility — a surface the host cannot see is one it can never
+  //   dismiss, so declaring the fact without an emit would have been the same
+  //   mistake this pack keeps recording.
+  //
+  //   `APP.SCHEDULE_STATUS_APPROVED` is the device's own answer to "is this tour
+  //   approved", emitted with the numeric status when the app ACCEPTS a schedule.
+  //   It is deliberately NOT in the tour approval oracle yet: backend-approved
+  //   and device-approved are two claims, and the 28-second gap between them
+  //   (measured) is the product question worth asking separately.
+  //
+  // 1.15.0 — OPEN_STOP is addressed by the column the projection really has.
+  //   Its presence check compared the requested code against
+  //   `read-available.codes`, a field `nesy.availableStops` never emits, and the
+  //   stop row bound on `stopCode`, which is the ENTITY business key and appears
+  //   in no projection. Measured: the condition resolved against nothing, took
+  //   the absent branch, and reported a precondition mismatch for a stop that was
+  //   on screen. Both now read `stop_id`.
+  //
+  // 1.14.0 — the stop row is resolved by what is on the screen. Its chain opened
+  //   with `ACCESSIBILITY_ID idPrefix: "stop_row_"` and fell back to a container
+  //   `stop_list`; dumped from the device, neither exists — a row is an id-less
+  //   clickable LinearLayout inside the RecyclerView `rv`. ENTITY_BINDING now
+  //   leads, the fingerprint and index hint point at `rv`, and the index hint
+  //   still establishes nothing. Third target in this pack written from a name
+  //   instead of from the screen, after `route_row_*` and
+  //   `tour_approval_request_button`.
+  //
+  // 1.13.0 — the tour start routing chooser becomes a real surface
+  //   (`nesy.tour.routing-dialog`) instead of two targets hung off the stop list
+  //   screen with a comment apologising for it. It is a DRIVEN surface: the slice
+  //   opens it and the slice answers it, so its policy is IGNORE and the macro
+  //   lists it as handled — HANDLE would put a dismissal handler in a race with
+  //   the tap that carries the business meaning.
+  //
   // 1.12.0 — TOUR_APPROVAL_LIFECYCLE is rebuilt around what the device and the
   //   backend actually do, after the flow was run by hand end to end on RS
   //   staging. Four things were wrong and all four were plausible:
@@ -205,7 +246,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 12, patch: 0 },
+  version: { major: 1, minor: 16, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
@@ -272,6 +313,7 @@ export function buildNesyCourierBundle(): DomainPackBundle {
         NESY_TOUR_APPROVAL_MACRO,
         NESY_GRANT_PERMISSION_MACRO,
         NESY_RECOVER_NETWORK_MACRO,
+        NESY_DISMISS_NOTIFICATION_LIST_MACRO,
       ],
       fragments: NESY_COURIER_FRAGMENTS,
       independentWorkflows: NESY_COURIER_INDEPENDENT_WORKFLOWS,

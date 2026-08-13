@@ -42,6 +42,28 @@ export const NESY_SCANNER_INTERRUPT_POLICY: InterruptPolicy = {
 };
 
 /**
+ * Interrupt policy for the slice that legitimately drives the tour-start routing
+ * chooser.
+ *
+ * The surface's own `defaultPolicy` is IGNORE, and that is not enough by itself:
+ * `unlistedSurfacePolicy` applies to anything missing from THIS policy's lists,
+ * so a registered surface the driving macro forgot to name would raise
+ * OPERATOR_ATTENTION on the happy path. Listing it as handled — with no handler
+ * macro, exactly as the scanner is listed above — says "the macro accounts for
+ * this one itself", which is the truth.
+ */
+export const NESY_TOUR_ROUTING_INTERRUPT_POLICY: InterruptPolicy = {
+  handledSurfaceRefs: [
+    NESY_SURFACES.permissionDialog,
+    NESY_SURFACES.networkDialog,
+    NESY_SURFACES.tourRoutingDialog,
+  ],
+  fatalSurfaceRefs: [NESY_SURFACES.mandatoryUpdateDialog, NESY_SURFACES.sessionExpiredDialog],
+  unlistedSurfacePolicy: "OPERATOR_ATTENTION",
+  maxHandledInterrupts: 3,
+};
+
+/**
  * Release isolation for slices that use no automation-only seam.
  *
  * `automationOnly: false` is correct here: the slice drives the product's own UI,

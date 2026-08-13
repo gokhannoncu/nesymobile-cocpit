@@ -355,7 +355,11 @@ function planeOf(factKey: string): NormalizedEvidenceFact['plane'] {
   return 'APP'
 }
 
-function publishSdkObservations(input: {
+// Exported for `bridgeflow-oracle-evidence-visibility.test.ts`. The "a fact
+// produced by one step reaches a later step's Final Oracle" invariant lives in
+// these two helpers and nowhere else, and it has broken silently twice; a test
+// that re-implemented them would keep passing through the third break.
+export function publishSdkObservations(input: {
   evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
   observations: ReturnType<typeof getSdkObservationStore>
   runId: string
@@ -414,7 +418,7 @@ function publishSdkObservations(input: {
  * `reducerTrace` travels with the fact: a conclusion without its derivation is an
  * assertion nobody can re-litigate six months later.
  */
-function publishDerivedFacts(input: {
+export function publishDerivedFacts(input: {
   evidenceRuntime: ReturnType<typeof getBridgeFlowEvidenceRuntime>
   derived: readonly NormalizedEvidenceFact[]
   runId: string
@@ -437,6 +441,16 @@ function publishDerivedFacts(input: {
         lane,
         correlationStatus: 'CORRELATED',
         trust: 'RESOLVER_ACCEPTED',
+        // A conclusion is as ADMITTED as the observations it was drawn from.
+        // Without this the derived fact was stamped with its inputs'
+        // `observedAtMs` but admitted at `now()`, so every derivation performed
+        // more than one freshness window after its inputs was published and then
+        // immediately filtered back out — the same aging-in-transit failure that
+        // `publishSdkObservations` fixes above, still live on the derived path.
+        // The oracle saw `APP.TOUR_APPROVAL_REQUESTED` and `REMOTE.TOUR_APPROVED`
+        // and not the conclusion joining them, which is the one fact the
+        // requirement names.
+        acceptedAtMs: fact.observedAtMs,
         fact: { ...fact, deliveryLane: lane },
       })
     }

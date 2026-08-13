@@ -28,6 +28,20 @@ export const NESY_SCREENS = {
 
 export const NESY_SURFACES = {
   routeSelectionDialog: "nesy.route.selection-dialog",
+  /**
+   * The routing chooser shown between the tour-start tap and the backend call.
+   * A surface rather than a screen because the courier never leaves the stop
+   * list: `btn_out` inflates `dialog_exit_request` into a `Dialog` over
+   * `StopListFragment`, which stays the screen underneath it.
+   */
+  tourRoutingDialog: "nesy.tour.routing-dialog",
+  /**
+   * The push-driven notification list. A surface for the same reason the routing
+   * chooser is one — `notification_dialog.xml` is inflated into a `Dialog` over
+   * `StopListFragment`, which stays the screen underneath — but the opposite kind
+   * of surface: nothing in the pack asks for it. See `surfaces.ts`.
+   */
+  notificationListDialog: "nesy.notification-list-dialog",
   mandatoryUpdateDialog: "nesy.mandatory-update-dialog",
   sessionExpiredDialog: "nesy.session-expired-dialog",
   permissionDialog: "nesy.permission-dialog",
@@ -47,6 +61,7 @@ export const NESY_ACTIONS = {
   tourApprovalLifecycle: "nesy.action.tour-approval-lifecycle",
   grantPermission: "nesy.action.grant-permission",
   recoverNetwork: "nesy.action.recover-network",
+  dismissNotificationList: "nesy.action.dismiss-notification-list",
 } as const;
 
 const APP = NESY_COURIER_APPLICATION_KEY;
@@ -108,7 +123,19 @@ export const NESY_COURIER_SCREENS: readonly ScreenDefinition[] = [
       deadlineMs: 25_000,
       stableForMs: 250,
     },
-    supportedSurfaceRefs: [NESY_SURFACES.routeSelectionDialog],
+    // Both of the stop list's own dialogs. A surface whose parent screen does not
+    // list it is a validation error (SURFACE_PARENT_INCOMPATIBLE), which is what
+    // keeps "this dialog can legally appear here" from being an assumption.
+    // The stop list's two own dialogs, plus the one the SERVER can put on top of
+    // it at any moment: `MainActivity`'s push receiver only calls
+    // `setAndShowNotificationsList()` when the foreground fragment IS
+    // StopListFragment, so the notification list belongs to this screen and to no
+    // other — its timing is unscheduled, its location is not.
+    supportedSurfaceRefs: [
+      NESY_SURFACES.routeSelectionDialog,
+      NESY_SURFACES.tourRoutingDialog,
+      NESY_SURFACES.notificationListDialog,
+    ],
     supportedActionRefs: [NESY_ACTIONS.selectRoute, NESY_ACTIONS.openStop],
     designRevision: "2026-06-rev3",
   },

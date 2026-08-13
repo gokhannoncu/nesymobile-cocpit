@@ -415,6 +415,38 @@ describe('remote step runtime', () => {
     expect(seenInputs?.approvalRequest).toBe('11-31-20260812-1')
   })
 
+  it("carries the operation's declared correlationPath onto the published fact", async () => {
+    // Without this the fact is true but anonymous, and a CORRELATED_ALL_OF
+    // derivation refuses anonymous inputs — measured on device as three
+    // SATISFIED requirements under a REQUIRED_TIMEOUT conclusion.
+    const evidence = new BridgeFlowEvidenceRuntime({ now: () => 1_000 })
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'SUCCEEDED' },
+          normalizedResponse: {
+            approval: { statusIsApproved: true, scheduleId: '11-31-20260812-1' },
+          },
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence,
+      runInputs: { approvalRequestCode: '11-31-20260812-1' },
+      clock: () => 1_000,
+    })
+
+    await runtime.execute(step as never, STEP_CONTEXT as never)
+
+    const [fact] = evidence.currentFacts(
+      { runId: 'run-1', occurrenceId: 'occ-1', iterationKey: '' },
+      1_000,
+      'ORDERED_REQUIRED',
+    )
+    expect(fact?.correlationValue).toBe('11-31-20260812-1')
+  })
+
   it('publishes the backend fact into the run evidence scope so the oracle can settle', async () => {
     const evidence = new BridgeFlowEvidenceRuntime({ now: () => 1_000 })
     const runtime = createPackRemoteStepRuntime({

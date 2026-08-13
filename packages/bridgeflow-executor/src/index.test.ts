@@ -982,4 +982,76 @@ describe("bridgeflow executor", () => {
     expect(acquireCount).toBe(1);
     expect(releaseCount).toBe(1);
   });
+  it("lets an EVENTUAL Final Oracle decide a fact the assert has not seen yet", async () => {
+    // Measured on device: tour approval reached its assert a moment before the
+    // derived conclusion landed, the assert declared the run
+    // evidence-insufficient and stopped it, and the Final Oracle on that very
+    // step then evaluated SATISFIED with every requirement met. The run reported
+    // INCONCLUSIVE over an oracle that had said yes.
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "TIMEOUT", elapsedMs: 1 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      // The fact simply is not there yet.
+      evidence: { factsForOccurrence: () => [] },
+      oracle: {
+        runContinueGate: async () => ({
+          status: "SATISFIED",
+          evaluation: { outcome: "SATISFIED", completedAtMs: 1_000, evidenceRefs: [], reason: "n/a" },
+        }),
+        runFinalOracle: async () => ({
+          status: "SATISFIED",
+          evaluation: {
+            outcome: "SATISFIED",
+            productVerdict: "PASS_ONLINE",
+            evaluationFailureClass: "NONE",
+            requirementsByFact: {},
+            evidenceRefs: [],
+          },
+        }),
+      },
+      clock: () => 1_000,
+    });
+
+    const result = await executor.execute({
+      runId: "run-assert-defers",
+      deviceId: "device-1",
+      plan: planFixture({
+        entryStepId: "assert",
+        steps: [
+          {
+            planStepId: "assert",
+            kind: "ASSERT_FACT",
+            sourceMapRef: "src:assert",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: { factKey: "remote.confirmed", expected: true, unknownPolicy: "INCONCLUSIVE" },
+            finalOraclePolicy: {
+              requirements: [
+                {
+                  factKey: "remote.confirmed",
+                  obligation: "REQUIRED",
+                  timing: "EVENTUAL",
+                  deadlineMs: 180_000,
+                  onTimeout: "INCONCLUSIVE",
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+
+    // The oracle had the last word, and the assert did not claim success either.
+    expect(result.productVerdict).toBe("PASS_ONLINE");
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("SKIPPED");
+  });
 });

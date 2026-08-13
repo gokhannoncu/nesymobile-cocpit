@@ -88,6 +88,11 @@ const UI_SOURCES: readonly EvidenceSourceDefinition[] = [
   uiWatch(NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT, "session-expired-present", "Session expired dialog present"),
   uiWatch(NESY_FACTS.PERMISSION_DIALOG_PRESENT, "permission-dialog-present", "Permission dialog present"),
   uiWatch(NESY_FACTS.NETWORK_DIALOG_PRESENT, "network-dialog-present", "Network dialog present"),
+  // Registered on exactly the same terms as the two presence watches above: the
+  // push-driven notification list is an interrupt, and an interrupt nothing can
+  // observe cannot be handled — only worked around by hand, which is what
+  // 2026-08-12 measured (`tap_id btn_exit` before every re-run).
+  uiWatch(NESY_FACTS.NOTIFICATION_LIST_PRESENT, "notification-list-present", "Notification list present"),
   uiWatch(NESY_FACTS.LOADING_BLOCKER_PRESENT, "loading-blocker-present", "Blocking loader present"),
 ];
 
@@ -253,6 +258,29 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     freshness: { maxAgeMs: 120_000, onStale: "TREAT_AS_UNKNOWN" },
     correlation: ENTITY_CORRELATION,
     redaction: { redactWholePayload: true, redactPaths: [] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
+  },
+  {
+    sourceKey: "nesy.app.schedule-status-approved",
+    plane: "APP",
+    kind: "SDK_EVENT",
+    // PRIMARY, unlike `nesy.app.approval-push` above: that source is CONFIRMATORY
+    // because push delivery is legitimately unreliable and proves only that a
+    // MESSAGE arrived. This one is the device stating what it stored, which is the
+    // authoritative answer to "does the device see Approved" — there is no more
+    // direct observation of it available, and the UI cannot be read for it at all
+    // (Approved(2) and EndOfDay(3) render the same "End Of Tour" label).
+    authority: "PRIMARY",
+    displayName: "Device schedule status is Approved",
+    factKey: NESY_FACTS.SCHEDULE_STATUS_APPROVED,
+    observationRef: "nesy.events.critical/schedule-status-approved",
+    freshness: APP_FRESHNESS,
+    // Entity-correlated on the schedule: the fact is about ONE tour. Measured
+    // 2026-08-12, the device kept serving the pre-approval schedule for 28s after
+    // the push, so an uncorrelated read could answer about the wrong one.
+    correlation: ENTITY_CORRELATION,
+    redaction: { redactPaths: [] },
     preservesRawEvidence: true,
     requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },

@@ -8,12 +8,12 @@ status: IN_PROGRESS
 createdAt: "2026-08-12 05:20:00 +03"
 startedAt: "2026-08-11 14:00:00 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-12 20:35:00 +03"
+lastUpdatedAt: "2026-08-12 23:00:00 +03"
 timezone: "Europe/Istanbul"
 previousPhaseResult: "docs/verdict/run-playbooks/phase-9/RESULT.md"
 resultFile: "docs/verdict/run-playbooks/phase-10/RESULT.md"
 phase10Target: "EVERY_WORKFLOW_DECIDABLE_ON_DEVICE"
-domainPackVersion: "1.12.0"
+domainPackVersion: "1.16.0"
 device: "R6CW400BC8N / com.arasdigital.nesymobile.rstest / tstrsDebug"
 ```
 
@@ -826,6 +826,144 @@ ile `BeginningOfDay`'e çekiyoruz (statüyü koşulsuz yazıyor, `RejectionReaso
 enum). Ama bu cihaza bir bildirim push'u gönderiyor ve uygulama **kendiliğinden
 bildirim listesi ekranına gidiyor** — sonraki koşu `btn_out`'u bulamıyor. Bildirim
 ekranı pack'te bir surface olarak modellenmiş değil; şimdilik elle çıkılıyor.
+
+### 5.0g TUR ONAYI CİHAZDA PASS_ONLINE — beş fact de SATISFIED
+
+`run_6cbc80f2`, pack 1.13.0, dokuz adım, final oracle SATISFIED:
+
+```text
+APP.TOUR_APPROVAL_REQUESTED           SATISFIED
+REMOTE.TOUR_APPROVAL_REQUEST_CREATED  SATISFIED
+REMOTE.TOUR_APPROVAL_STATUS_APPROVED  SATISFIED
+REMOTE.TOUR_APPROVAL_CONFIRMED        SATISFIED   ← türetilmiş
+APP.TOUR_APPROVAL_PUSH_RECEIVED       SATISFIED
+```
+
+Buraya gelmek **dokuz ayrı kusur** aldı ve hepsi aynı sınıftandı: *pack
+bildiriyor, host okumuyor.* Sırayla, hepsi ölçümle bulundu:
+
+| # | Kusur | Nerede |
+|---|---|---|
+| 1 | Hedef uydurulmuş (`tour_approval_request_button`) | `targets.ts` |
+| 2 | Yanlış ekran (`endOfDay` ↔ stop list) | makro |
+| 3 | Rota diyaloğu modellenmemiş — istek tek tap sanılıyordu | makro |
+| 4 | Adapter operasyonları yanlış kuyrukta | `nesy-backoffice-endpoints.ts` |
+| 5 | `entityBinding.id` okunmuyordu → boş dize sorgulanıyordu | `bridgeflow-remote-steps.ts` |
+| 6 | `onTimeout: CONTINUE` okunmuyordu | `bridgeflow-executor` |
+| 7 | Tazelik ikamet süresi gibi uygulanıyordu (üç ayrı yerde) | evidence runtime, oracle engine, derived publish |
+| 8 | Cihaz olayları gözlem deposuna hiç girmiyordu | `bridgeflow-durable-evidence-ingest.ts` |
+| 9 | `correlationPath` okunmuyordu → türetme hiç ateşlenemezdi | remote steps + device event sources |
+
+**En pahalı ders — teşhiste değeri yazdır.** Üç hipotez arka arkaya yanlış çıktı
+çünkü `REQUIRED_TIMEOUT` iki farklı durumu aynı gösteriyor: "oracle fact'i
+göremiyor" ve "oracle `false` diyen bir fact görüyor". Trace'e fact
+**değerlerini** eklediğim anda sebep göründü. `VERDICT_FACT_TRACE` ortam
+değişkeni bu yüzden kodda kaldı.
+
+**İkinci ders — tazelik girişi denetler, ikameti değil.** Bir koşunun kabul
+ettiği, koreleettiği ve üzerine iş yaptığı fact, yalnız okuyucu geç kaldığı için
+kaybolmamalı. Aksi hâlde ortasında uzun bir bekleme olan her dilim kendi kanıtını
+yitirir. Karşı taraf korunuyor: teklif edildiğinde zaten eski olan gözlem hâlâ
+reddediliyor, ve continue gate'in tazelik kuralı bilerek DEĞİŞMEDİ — "şu an doğru
+mu" ile "oldu mu" aynı soru değil.
+
+Mobil tarafta üç düzeltme: push iki kez yayınlanıyordu, occurrence bağlamı adım
+bitince temizlenmiyordu (kira modeli), ve tur olayları `schedule_id` taşımıyordu
+— korelasyon değeri olmadan türetme hiç ateşlenmez.
+
+### 5.0h `open-stop` ölçüldü — üç uydurma daha, biri hâlâ açık
+
+`stop_row_*` ve `stop_list` de hiç var olmamış. Cihazda bir durak satırı, `rv`
+RecyclerView'ı içinde **kimliksiz** bir `LinearLayout`; kimlik çocuklarında
+(`tv_address`, `consignee`, `textViewLegacySystemId`). `route_row_*` ve
+`tour_approval_request_button` ile birlikte bu, isimden türetilmiş üçüncü hedef.
+
+İki düzeltme yapıldı (pack 1.15.0):
+- `stopRow` zincirinden `ACCESSIBILITY_ID` çıkarıldı, konteynerler `rv` oldu,
+  `ENTITY_BINDING` başa geçti.
+- Varlık kontrolü `read-available.codes` diye bir alanı karşılaştırıyordu;
+  `nesy.availableStops` yalnız `stop_id` / `stop_order` / `task_count`
+  yayınlıyor. Artık `stop_id` okunuyor — ve `check-present` cihazda gerçekten
+  TRUE dalına giriyor.
+
+**AÇIK:** `resolve-row` hâlâ düşüyor. Host `ENTITY_BINDING`'i "kimlik, entity
+anahtarının METNİdir" diye uyguluyor (`bridgeflow-target-fingerprint.ts`), yani
+ekranda `6a7cc56a…` yazısını arıyor — durak satırı stop id'yi göstermiyor.
+`STRUCTURAL_FINGERPRINT`'in Bridge v1'de karşılığı yok, dosya bunu açıkça
+söylüyor, ve fingerprint üreteci ilk kullanılabilir stratejide `return` ediyor —
+yani zincir bir yedek denemiyor.
+
+Doğru çözüm host'ta değil üründe: satırın kararlı bir kimliği olmalı
+(`contentDescription` ya da bir view id, stop id'yi taşıyan). Ölçüm bunu söylüyor;
+uydurmadan önce app'in vermesi gerekiyor.
+
+2026-08-13'te bugünün gerçek stop id'siyle tekrar koşuldu
+(`6a7d12d83c20eeb7d96c5669`): `check-present` **geçiyor** — yani `stop_id`
+düzeltmesi doğru, durak projeksiyonda gerçekten bulunuyor. `resolve-row` yine
+`NOT_FOUND`, aynı sebeple. Kalan tek iş budur ve mobil tarafta:
+
+1. Durak satırına stop id taşıyan bir `contentDescription` ver.
+2. Bridge'in metin aramasının `contentDescription`'ı da taradığını doğrula
+   (taramıyorsa önce onu ekle — fingerprint yalnız `by: id` ve `by: text`
+   biliyor).
+3. Sonra `stopRow` zincirine `TEXT_MATCH`/`ENTITY_BINDING` olarak bağla.
+
+Android view id'leri statik kaynaklar olduğu için `idPrefix + key` kuralı bu
+satır için **çalışamaz**; kimlik ya içerik açıklamasından ya da görünen bir
+metinden gelmek zorunda.
+
+### 5.0i Bildirim listesi ve cihaz-düzlemi statü — yazıldı, cihazda doğrulanmadı
+
+**Bildirim listesi artık bir surface** (`nesy.notification-list-dialog`, HANDLE +
+`nesy.macro.dismiss-notification-list`). Gün boyu her koşuyu bozan şey buydu:
+push geldiğinde uygulama kendiliğinden bildirim ekranına gidiyor ve sonraki koşu
+altındaki ekranı bulamıyor. Elle `btn_exit` ile kurtarmak zorunda kaldığımız her
+sefer bunun kaydıydı.
+
+Kritik ayrıntı: surface'in `detection.requiredFactKeys`'i
+`UI.NOTIFICATION_LIST_PRESENT` diyordu ve **o fact'i hiçbir şey üretmiyordu** —
+bu pack'in kendi kuralının ihlali. Mobil tarafa `SURFACE_NOTIFICATION_LIST_READY`
+yayını eklendi (`emitSurfaceReady` / `markSurfaceHidden`, dismiss listener'ında)
+ve host'a kaydı yapıldı. **Göremediği bir surface'i host hiç kapatamaz.**
+
+**`APP.SCHEDULE_STATUS_APPROVED`** eklendi: uygulama bir schedule'ı KABUL ettiği
+anda sayısal statüyü ve `schedule_id` korelasyonunu yayınlıyor
+(`ScheduleRepositoryImpl`, iki nokta). Bilerek tur onayı oracle'ına
+**konulmadı** — backend'in APPROVED'ı ile cihazın APPROVED'ı iki ayrı iddia, ve
+aradaki 28 saniye asıl sorulacak soru. Onu ayrı bir dilim soracak.
+
+### 5.0j DOĞRULAMA KOŞUSU — dört iş akışı, temiz cihazdan, hepsi PASS
+
+2026-08-13, logout durumdaki cihazdan başlayarak, pack 1.16.0:
+
+```text
+login             PASS_ONLINE
+select-route      PASS_ONLINE   ← rota diyaloğu gerçekten çıktı, 12 adım
+load-to-vehicle   PASS_ONLINE
+tour-approval     PASS_ONLINE   ← beş requirement de SATISFIED
+```
+
+`run_f0acc136`. Yeni schedule `11-31-20260813-1` (gün döndü, rota seçimi bugünün
+schedule'ını yarattı).
+
+**İki yeni fact de cihazda aktı.** `SCHEDULE_STATUS_APPROVED` **canlı**
+occurrence ile geldi (`run_f0acc136…:tap-routing-choice:0`) — occurrence kirası
+çalışıyor, artık bir önceki koşunun adımını taşımıyor. O anki değeri `false`,
+doğrusu da o: schedule henüz `WaitingForApproval`'dı. `SURFACE_NOTIFICATION_LIST_READY`
+de yayınlandı ve koşu bildirim ekranına takılmadı.
+
+**Onuncu kusur, koşu sırasında bulundu ve kapatıldı.** İlk denemede beş
+requirement de SATISFIED, final oracle SATISFIED — ama `assert-approved` adımı
+FAILED ve koşu INCONCLUSIVE. Sebep: `ASSERT_FACT` tek atışlık okuyor, oysa aynı
+adımın oracle'ı o fact'i `EVENTUAL` (180 sn) olarak bekliyor. Türetilmiş sonuç
+henüz o occurrence'a yayınlanmadan assert bakıyor, `evidenceInsufficient`
+işaretleyip koşuyu durduruyor — ve `aggregateProductVerdicts` bu bayrakta kısa
+devre yaptığı için, yanı başında EVET diyen oracle hiç okunmuyor.
+
+Düzeltme: fact henüz ÖLÇÜLMEMİŞSE ve adımın kendi final oracle'ı o fact'i
+EVENTUAL olarak talep ediyorsa, assert kararı oracle'a bırakır (`SKIPPED`).
+ÖLÇÜLMÜŞ bir çelişki hâlâ anında düşürür — koşunun elindeki cevabı üç dakika
+bekletmek gerçek bir ürün hatasını geciktirmek olurdu. Test eklendi.
 
 ### 5.1 TAMAMLANDI — select-route'u cihazda tamamla (#17 + #18 ölçümü)
 

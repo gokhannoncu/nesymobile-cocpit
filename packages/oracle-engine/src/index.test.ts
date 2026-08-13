@@ -465,6 +465,62 @@ describe("oracle engine v2", () => {
     expect(result.productVerdict).toBe("PASS_ONLINE");
   });
 
+  it("judges a Final Oracle requirement on evidence older than its freshness window", () => {
+    // The device failure this locks: a workflow with a 120s optional wait in the
+    // middle reached its assert step holding four PRIMARY, ORDERED_REQUIRED,
+    // `true` facts and was told every one of them had REQUIRED_TIMEOUT. The
+    // oracle was re-timing evidence that had already been admitted. "Did the
+    // courier request the tour" does not stop being true while the run runs.
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [
+          { factKey: "app.requested", obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        ],
+      },
+      facts: [
+        {
+          ...baseFact,
+          // Observed 100ms in, window 1s, and the question is asked 5 minutes later.
+          factKey: "app.requested",
+          plane: "APP",
+          subtype: "sdk",
+          value: true,
+          deliveryLane: "ORDERED_REQUIRED",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 300_000,
+      startedAtMs: 100,
+    });
+
+    expect(result.requirementsByFact["app.requested"]?.state).toBe("SATISFIED");
+  });
+
+  it("still expires a stale fact for a Continue Gate, which asks about now", () => {
+    // The deliberate asymmetry: a gate's facts are re-observed continuously and a
+    // stale UI.*_READY satisfying one for ever is a real hazard.
+    const result = evaluateContinueGate({
+      policy: { allOf: ["ui.ready"], deadlineMs: 5_000, unknownPolicy: "RETRY" },
+      facts: [
+        {
+          ...baseFact,
+          factKey: "ui.ready",
+          plane: "UI",
+          subtype: "screen",
+          value: true,
+          deliveryLane: "RECEIPT_SAFE",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 300_000,
+      startedAtMs: 100,
+    });
+
+    expect(result.outcome).not.toBe("SATISFIED");
+  });
+
   it("replays derived facts idempotently and rejects cycles", () => {
     const graph = [
       { factKey: "b", dependsOn: ["a"] },

@@ -68,7 +68,7 @@ import { NESY_FACTS } from "../registries/facts.js";
 import { NESY_ACTIONS, NESY_SCREENS, NESY_SURFACES } from "../registries/screens.js";
 import { NESY_TARGETS } from "../registries/targets.js";
 import type { NesyReferenceSlice } from "../slice.js";
-import { NESY_DEFAULT_INTERRUPT_POLICY, NESY_UI_ONLY_RELEASE_ISOLATION } from "./common.js";
+import { NESY_TOUR_ROUTING_INTERRUPT_POLICY, NESY_UI_ONLY_RELEASE_ISOLATION } from "./common.js";
 import { KEYED_MUTATION_RETRY, irDocument, requires, sourceMapEntry, stepBase } from "./ir-authoring.js";
 
 export const NESY_TOUR_APPROVAL_MACRO_KEY = "nesy.macro.tour-approval-lifecycle";
@@ -424,7 +424,15 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
   ],
   allowedRegistryRefs: {
     screenRefs: [NESY_SCREENS.routeStopList],
-    surfaceRefs: [NESY_SURFACES.networkDialog, NESY_SURFACES.sessionExpiredDialog],
+    // The routing chooser is listed alongside the two global dialogs, but it is a
+    // different kind of entry: the others may interrupt this slice, while this one
+    // is a step of it. Without it the slice would reference a surface through its
+    // own targets that it never declared.
+    surfaceRefs: [
+      NESY_SURFACES.tourRoutingDialog,
+      NESY_SURFACES.networkDialog,
+      NESY_SURFACES.sessionExpiredDialog,
+    ],
     entityTypeRefs: [NESY_ENTITIES.route, NESY_ENTITIES.tourApprovalRequest],
     targetRefs: [
       NESY_TARGETS.tourApprovalRequestButton,
@@ -488,7 +496,9 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
       "whether the dispatcher was authorised — only that an approval was recorded against this request",
     ],
   },
-  interruptPolicy: NESY_DEFAULT_INTERRUPT_POLICY,
+  // Not the shared default: this slice is the one that opens the routing chooser,
+  // so it is the one that has to account for it. See the policy's own comment.
+  interruptPolicy: NESY_TOUR_ROUTING_INTERRUPT_POLICY,
   requiredCapabilityRefs: [
     "verdict.core.bridge.tap",
     "verdict.core.bridge.resolve-target",
@@ -510,7 +520,11 @@ export const TOUR_APPROVAL_LIFECYCLE_SLICE: NesyReferenceSlice = {
   outputSchema: NESY_TOUR_APPROVAL_MACRO.output,
   preconditions: NESY_TOUR_APPROVAL_MACRO.preconditions,
   screenRefs: [NESY_SCREENS.routeStopList],
-  surfaceRefs: [NESY_SURFACES.networkDialog, NESY_SURFACES.sessionExpiredDialog],
+  surfaceRefs: [
+    NESY_SURFACES.tourRoutingDialog,
+    NESY_SURFACES.networkDialog,
+    NESY_SURFACES.sessionExpiredDialog,
+  ],
   entityBindings: [
     { entityTypeRef: NESY_ENTITIES.route, role: "Scopes the request to the tour that was worked." },
     {

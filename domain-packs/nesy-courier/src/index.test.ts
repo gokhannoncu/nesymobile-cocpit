@@ -143,13 +143,13 @@ describe("registries", () => {
     }).toEqual({
       applications: 1,
       screens: 7,
-      surfaces: 8,
+      surfaces: 10,
       entities: 7,
-      targets: 18,
-      evidenceSources: 42,
+      targets: 19,
+      evidenceSources: 44,
       derivedFacts: 6,
-      semanticActions: 9,
-      macros: 9,
+      semanticActions: 10,
+      macros: 10,
       launchProfiles: 4,
       testProfiles: 16,
       campaigns: 4,
@@ -164,7 +164,7 @@ describe("registries", () => {
     for (const source of NESY_COURIER_EVIDENCE_SOURCES) {
       byPlane[source.plane] = (byPlane[source.plane] ?? 0) + 1;
     }
-    expect(byPlane).toEqual({ UI: 16, APP: 12, LOCAL: 9, REMOTE: 5 });
+    expect(byPlane).toEqual({ UI: 17, APP: 13, LOCAL: 9, REMOTE: 5 });
   });
 
   it("declares the seven minimum screens", () => {
@@ -182,8 +182,8 @@ describe("registries", () => {
     }
   });
 
-  it("declares the eight minimum surfaces, none of them as screens", () => {
-    expect(NESY_COURIER_SURFACES).toHaveLength(8);
+  it("declares the ten minimum surfaces, none of them as screens", () => {
+    expect(NESY_COURIER_SURFACES).toHaveLength(10);
     const screenKeys = new Set(NESY_COURIER_SCREENS.map((s) => s.screenKey));
     for (const surface of NESY_COURIER_SURFACES) {
       expect(screenKeys.has(surface.surfaceKey)).toBe(false);
@@ -277,14 +277,22 @@ describe("target resolution", () => {
     }
   });
 
-  it("resolves the stop row by accessibility id, entity binding and fingerprint before any hint", () => {
+  it("resolves the stop row by entity binding and fingerprint before any hint", () => {
     const stopRow = NESY_COURIER_TARGETS.find((t) => t.targetKey === NESY_TARGETS.stopRow);
+    // No ACCESSIBILITY_ID link: measured on device, a stop row carries no id at
+    // all. The `stop_row_*` prefix this chain used to open with never existed —
+    // the same invention as `route_row_*`. A strategy that cannot match is worse
+    // than a missing one, because it reads as coverage.
     expect(stopRow?.resolution.chain.map((s) => s.kind)).toEqual([
-      "ACCESSIBILITY_ID",
       "ENTITY_BINDING",
       "STRUCTURAL_FINGERPRINT",
       "ROW_INDEX_HINT",
     ]);
+    // Both fall back to the RecyclerView that is really on screen.
+    for (const strategy of stopRow?.resolution.chain ?? []) {
+      const selector = strategy.selector as { containerId?: string };
+      if (selector.containerId !== undefined) expect(selector.containerId).toBe("rv");
+    }
     // The list can re-sort between resolution and tap; that window is the bug.
     expect(stopRow?.resolution.reverifyBeforeAction).toBe(true);
     expect(stopRow?.entityBinding?.entityTypeRef).toBe("STOP");

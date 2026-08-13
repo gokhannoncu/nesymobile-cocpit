@@ -150,4 +150,24 @@ export const NESY_COURIER_SEMANTIC_ACTIONS: readonly SemanticActionDefinition[] 
     targetRefs: [],
     requiredCapabilityRefs: ["verdict.core.bridge.tap"],
   },
+  {
+    actionKey: NESY_ACTIONS.dismissNotificationList,
+    applicationRef: APP,
+    displayName: "Dismiss notification list",
+    businessMeaning:
+      "Closes the notification list a push put over the stop list, so the interrupted flow can carry on.",
+    notResponsibleFor: [
+      "whether the notification itself was correct, delivered on time or localized — the push is the tour-approval slice's evidence, not this action's subject",
+      "reading, acting on or navigating from a notification row, which scrolls the stop list to another stop",
+      "the unread badge and the read/unread bookkeeping the dialog's dismiss listener performs",
+    ],
+    screenRefs: [NESY_SCREENS.routeStopList],
+    surfaceRefs: [NESY_SURFACES.notificationListDialog],
+    entityTypeRefs: [],
+    // Unlike the other two interrupt handlers, this one names its target: the id
+    // is known and measured (`btn_exit`), and `setCancelable(false)` means there
+    // is no back-button alternative to fall back on.
+    targetRefs: [NESY_TARGETS.notificationListExit],
+    requiredCapabilityRefs: ["verdict.core.bridge.tap"],
+  },
 ];

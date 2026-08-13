@@ -74,6 +74,7 @@
     "nesy.route.stop-list"
   ],
   "surfaceRefs": [
+    "nesy.tour.routing-dialog",
     "nesy.network-dialog",
     "nesy.session-expired-dialog"
   ],
@@ -1220,7 +1221,8 @@
   "interruptPolicy": {
     "handledSurfaceRefs": [
       "nesy.permission-dialog",
-      "nesy.network-dialog"
+      "nesy.network-dialog",
+      "nesy.tour.routing-dialog"
     ],
     "fatalSurfaceRefs": [
       "nesy.mandatory-update-dialog",

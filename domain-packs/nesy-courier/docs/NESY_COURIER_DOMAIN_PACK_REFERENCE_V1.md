@@ -58,7 +58,7 @@ artifact tek bir yolculuk olarak okunabilir.
 |---|---|---|
 | Application | 1 | `nesy.courier.mobile` (Android, `com.nesy.courier`, minVersionCode 41200) |
 | Screen | 7 | `nesy.auth.login`, `nesy.route.stop-list`, `nesy.stop.task-list`, `nesy.delivery.flow`, `nesy.pickup.flow`, `nesy.vehicle-loading`, `nesy.end-of-day` |
-| Surface | 8 | `nesy.route.selection-dialog`, `nesy.mandatory-update-dialog`, `nesy.session-expired-dialog`, `nesy.permission-dialog`, `nesy.network-dialog`, `nesy.scanner.surface`, `nesy.payment.surface`, `nesy.fiscal.surface` |
+| Surface | 9 | `nesy.route.selection-dialog`, `nesy.tour.routing-dialog`, `nesy.mandatory-update-dialog`, `nesy.session-expired-dialog`, `nesy.permission-dialog`, `nesy.network-dialog`, `nesy.scanner.surface`, `nesy.payment.surface`, `nesy.fiscal.surface` |
 | Entity | 7 | `ROUTE`, `STOP`, `TASK`, `SHIPMENT`, `PARCEL`, `PENDING_OPERATION`, `TOUR_APPROVAL_REQUEST` |
 | Target | 18 | login alanları, `nesy.target.route-row`, `nesy.target.stop-row`, `nesy.target.task-row`, scan trigger, delivery complete, tur başlatma düğmesi + rota seçim diyaloğu |
 | Evidence source | 42 | UI 16, APP 10, LOCAL 4, REMOTE 5 (biri `transportSuccessOnly`) |

@@ -27,6 +27,18 @@ export interface EvidenceSourceDefinition {
   deliveryLanes: readonly EvidenceDeliveryLane[]
   freshnessMaxAgeMs: number
   valueField: string
+  /**
+   * Field in the event's `data` carrying WHICH entity the observation is about.
+   *
+   * Optional because most device events are about the app rather than a record —
+   * a screen became ready, a dialog appeared. But a fact that feeds a
+   * `CORRELATED_ALL_OF` derivation needs it: the derivation refuses to fire when
+   * any input carries no correlation value, on the grounds that a business
+   * conclusion about no particular entity is worth nothing. Measured on device:
+   * three inputs SATISFIED and the conclusion REQUIRED_TIMEOUT, because the two
+   * back-office reads knew their schedule and the app's event did not.
+   */
+  correlationField?: string
   confidence?: number
 }
 
@@ -233,6 +245,14 @@ export function resolveBridgeFlowDurableEvent(
     return rejected('confidence must be a finite number between 0 and 1', runId, scope)
   }
 
+  // Blank is not the same claim as absent: an empty correlation value would let a
+  // derivation match two facts that each know nothing, so it is dropped here
+  // rather than carried as a value the engine has to defend against.
+  const correlationValue =
+    definition.correlationField === undefined
+      ? undefined
+      : nonEmptyString(data[definition.correlationField])
+
   const fact: NormalizedEvidenceFact = {
     factKey: definition.factKey,
     occurrenceId,
@@ -246,6 +266,7 @@ export function resolveBridgeFlowDurableEvent(
     deliveryLane: lane,
     rawEventId: audit.rawEventRef,
     reducerTrace: [`trusted:${sourceEvent}`],
+    ...(correlationValue === undefined ? {} : { correlationValue }),
   }
   return {
     status: 'ACCEPTED',

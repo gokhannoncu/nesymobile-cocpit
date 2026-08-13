@@ -60,6 +60,23 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
   const clock = options.clock ?? Date.now
   const attemptStore = options.attemptStore ?? new InMemoryRemoteActionAttemptStore()
   const allowlist = buildAllowlist(options.bundle)
+  /**
+   * `factKey → the operation output that declares it`, so a published fact can
+   * carry the correlation value the pack says the response holds.
+   */
+  const outputsByOperation = new Map<string, Map<string, { correlationPath?: string }>>(
+    options.bundle.registries.remoteAdapters.flatMap((adapter) =>
+      adapter.operations.map((operation) => [
+        operation.operationRef,
+        new Map(
+          operation.outputs.map((output) => [
+            output.factKey,
+            { ...(output.correlationPath === undefined ? {} : { correlationPath: output.correlationPath }) },
+          ]),
+        ),
+      ]),
+    ),
+  )
   let revision = 0
 
   return {
@@ -81,13 +98,18 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
        * the Final Oracle it exists to settle. The local publish still matters for
        * a continue gate on THIS step, which reads its own scope.
        */
-      const publishFact = (factKey: string, value: boolean | 'UNKNOWN'): void => {
+      const publishFact = (
+        factKey: string,
+        value: boolean | 'UNKNOWN',
+        correlationValue?: string,
+      ): void => {
         const observedAtMs = clock()
         options.observations?.record(options.runId, {
           factKey,
           value,
           observedAtMs,
           queryRef: spec.operationRef,
+          ...(correlationValue === undefined ? {} : { correlationValue }),
         })
         revision += 1
         options.evidence.publish({
@@ -107,6 +129,7 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
             value,
             authority: 'PRIMARY',
             deliveryLane: 'ORDERED_REQUIRED',
+            ...(correlationValue === undefined ? {} : { correlationValue }),
           } satisfies NormalizedEvidenceFact,
         })
       }
@@ -196,7 +219,31 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
         const value = readPath(captured, binding.responsePath)
         // A path the response did not carry is UNKNOWN, never false: an invented
         // `false` would read as a proven negative.
-        publishFact(binding.factKey, typeof value === 'boolean' ? value : 'UNKNOWN')
+        //
+        // The correlation value comes from the OPERATION's declared
+        // `correlationPath`, read out of the same response. The pack has always
+        // declared it — `validateRemoteAdapterOperation` even refuses a VALIDATION
+        // output that omits it — and the host read the response path while
+        // ignoring the correlation path. The cost was invisible and total: a
+        // CORRELATED_ALL_OF derivation refuses to fire when any input carries no
+        // correlation value, so `REMOTE.TOUR_APPROVAL_CONFIRMED` could never be
+        // concluded no matter how many of its inputs were true. Measured on
+        // device: three inputs SATISFIED, the conclusion REQUIRED_TIMEOUT.
+        //
+        // Read from the response rather than from the run's input, deliberately:
+        // this is the id the BACK OFFICE says the record has. Echoing back what we
+        // asked for would make correlation agree with itself by construction.
+        const declared = outputsByOperation.get(spec.operationRef)?.get(binding.factKey)?.correlationPath
+        const correlation = declared === undefined ? undefined : readPath(captured, declared)
+        publishFact(
+          binding.factKey,
+          typeof value === 'boolean' ? value : 'UNKNOWN',
+          typeof correlation === 'string' && correlation.trim() !== ''
+            ? correlation
+            : typeof correlation === 'number'
+              ? String(correlation)
+              : undefined,
+        )
       }
 
       return { succeeded: true, actionResult: 'SUCCEEDED' }

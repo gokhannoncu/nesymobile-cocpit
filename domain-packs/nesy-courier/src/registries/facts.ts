@@ -32,6 +32,18 @@ export const NESY_FACTS = {
   SESSION_EXPIRED_DIALOG_PRESENT: "UI.SESSION_EXPIRED_DIALOG_PRESENT",
   PERMISSION_DIALOG_PRESENT: "UI.PERMISSION_DIALOG_PRESENT",
   NETWORK_DIALOG_PRESENT: "UI.NETWORK_DIALOG_PRESENT",
+  /**
+   * The push-driven notification list is on screen, covering the stop list.
+   *
+   * A PRESENCE fact, in the same family as the two dialog-present facts above and
+   * for the same reason: an interrupt is only handleable if its arrival can be
+   * observed. Measured on device 2026-08-12 — an FCM push
+   * ("Leaving Permission Approved by your Dispatcher") makes `MainActivity`'s
+   * LocalBroadcast receiver call `StopListFragment.setAndShowNotificationsList()`,
+   * and the run that followed reported `resolve:id=btn_out:NOT_FOUND` because the
+   * list was over the stop list the whole time.
+   */
+  NOTIFICATION_LIST_PRESENT: "UI.NOTIFICATION_LIST_PRESENT",
   LOADING_BLOCKER_PRESENT: "UI.LOADING_BLOCKER_PRESENT",
 
   // ── APP plane (SDK state / adapter projections / critical events) ───────
@@ -68,6 +80,24 @@ export const NESY_FACTS = {
   DELIVERY_SUBMITTED: "APP.DELIVERY_SUBMITTED",
   TOUR_APPROVAL_REQUESTED: "APP.TOUR_APPROVAL_REQUESTED",
   TOUR_APPROVAL_PUSH_RECEIVED: "APP.TOUR_APPROVAL_PUSH_RECEIVED",
+  /**
+   * The DEVICE's own stored schedule reads Approved — not "the backend approved it".
+   *
+   * These are two facts, and the gap between them is the defect. Measured on
+   * 2026-08-12: after a dispatcher approval the push landed on the device in 6.3s,
+   * then 28 seconds and ZERO `Task/GetMyScheduleByZoneCode` calls passed before a
+   * screen change finally made the app refetch. For that whole window the backend
+   * said Approved and the courier's device did not, and only the device's answer
+   * governs what the courier can actually do next.
+   *
+   * Sourced from an SDK event rather than the UI because the UI cannot answer it:
+   * the stop-list `btn_out` label is a function of schedule status, but
+   * ScheduleStatusType Approved(2) and EndOfDay(3) BOTH render "End Of Tour", and
+   * the only discriminator — `enabled` — is clobbered by the click handler
+   * re-enabling the view 1s after any tap. The numeric status has to come off the
+   * wire; the device emits it at schedule-store time as a boolean.
+   */
+  SCHEDULE_STATUS_APPROVED: "APP.SCHEDULE_STATUS_APPROVED",
   LOGIN_SUCCEEDED: "APP.LOGIN_SUCCEEDED",
   /**
    * The backend REFUSED the credentials.

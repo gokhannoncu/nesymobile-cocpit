@@ -63,6 +63,8 @@ export const NESY_TARGETS = {
   /** Routing chooser shown between the request tap and the backend call. */
   tourRoutingAuto: "nesy.target.tour-routing-auto",
   tourRoutingManual: "nesy.target.tour-routing-manual",
+  /** The only way to close the push notification list; BACK does not. */
+  notificationListExit: "nesy.target.notification-list-exit",
 } as const;
 
 export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
@@ -262,25 +264,44 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
-    // The canonical provider chain. See the file header.
+    /**
+     * The canonical provider chain. See the file header — and note what MEASURING
+     * it on 2026-08-12 removed from it.
+     *
+     * The chain used to open with `ACCESSIBILITY_ID idPrefix: "stop_row_"` and
+     * fall back to a container called `stop_list`. Neither exists. Dumped from
+     * the device, a stop row is an ID-LESS clickable `LinearLayout` inside the
+     * RecyclerView `rv`, and what identifies it lives on its children:
+     * `tv_address`, `consignee`, `tv_piece_info`, `textViewLegacySystemId`.
+     * `route_row_*` and `tour_approval_request_button` were invented the same way
+     * — this is the third target in this registry written from a name rather than
+     * from the screen.
+     *
+     * So ENTITY_BINDING now leads, which is also the honest order: the row has no
+     * id of its own, and "the stop for this code" is what a human means anyway.
+     * The fingerprint and the index hint keep their place behind it, pointed at
+     * the container that actually exists. The index hint still establishes
+     * nothing — the reason the file header exists.
+     */
     targetKey: NESY_TARGETS.stopRow,
     applicationRef: APP,
     screenRef: NESY_SCREENS.routeStopList,
     displayName: "Stop row in the route list",
     resolution: {
       chain: [
-        { kind: "ACCESSIBILITY_ID", selector: { idPrefix: "stop_row_" }, establishesIdentity: true },
         {
           kind: "ENTITY_BINDING",
-          selector: { keyPath: "stopCode", collectionQueryRef: "nesy.availableStops" },
+          // `stop_id`, the column the collection query projects — not `stopCode`,
+          // which is the ENTITY's business key path and appears in no projection.
+          selector: { keyPath: "stop_id", collectionQueryRef: "nesy.availableStops" },
           establishesIdentity: true,
         },
         {
           kind: "STRUCTURAL_FINGERPRINT",
-          selector: { containerId: "stop_list", rowRole: "listItem" },
+          selector: { containerId: "rv", rowRole: "listItem" },
           establishesIdentity: true,
         },
-        { kind: "ROW_INDEX_HINT", selector: { containerId: "stop_list" }, establishesIdentity: false },
+        { kind: "ROW_INDEX_HINT", selector: { containerId: "rv" }, establishesIdentity: false },
       ],
       ambiguityPolicy: "FAIL",
       notFoundPolicy: "FAIL",
@@ -392,15 +413,17 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
    * accordingly. A slice that models the request as one tap never leaves this
    * dialog.
    *
-   * Both are hung off the stop list screen rather than a surface of their own.
-   * The dialog IS a distinct surface and belongs in NESY_SURFACES with an
-   * interrupt policy; that is a registry change with its own policy test, so it
-   * is recorded here as a known gap instead of being smuggled in.
+   * Both name `nesy.tour.routing-dialog` as their surface, and the stop list only
+   * as the screen underneath it. That pairing is what a `surfaceRef` is for: the
+   * buttons do not exist on the stop list, they exist on a dialog the stop list
+   * hosts, and the registry now says so — see `surfaces.ts` for why the surface's
+   * policy is IGNORE rather than HANDLE.
    */
   {
     targetKey: NESY_TARGETS.tourRoutingAuto,
     applicationRef: APP,
     screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.tourRoutingDialog,
     displayName: "Auto routing choice on the tour start dialog",
     resolution: {
       chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "auto_route" }, establishesIdentity: true }],
@@ -411,9 +434,41 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
     },
   },
   {
+    /**
+     * The close control of the push notification list, read off
+     * `notification_dialog.xml`: an `ImageView` with
+     * `android:id="@+id/btn_exit"`, `clickable="true"`, whose listener is a bare
+     * `dismiss()` (StopListFragment ~5412).
+     *
+     * ID ONLY, and there is no second link to add: the view renders
+     * `@drawable/ic_close` and carries no text at all, so TEXT_MATCH has nothing to
+     * match and would be a strategy that reads as coverage while never firing —
+     * the mistake `stop_row_*` and `route_row_*` already cost this registry twice.
+     *
+     * `notFoundPolicy: TREAT_AS_ABSENT`, like `dialogAcknowledge` and for the same
+     * reason: this target is only ever resolved by an interrupt handler, and the
+     * dialog can legitimately be gone by the time the handler runs — the courier's
+     * own tap, or a `dismiss()` from a notification row, closes it. "It is already
+     * closed" is success for a dismissal, not a failure to find a button.
+     */
+    targetKey: NESY_TARGETS.notificationListExit,
+    applicationRef: APP,
+    screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.notificationListDialog,
+    displayName: "Close button on the push notification list",
+    resolution: {
+      chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "btn_exit" }, establishesIdentity: true }],
+      ambiguityPolicy: "FAIL",
+      notFoundPolicy: "TREAT_AS_ABSENT",
+      deadlineMs: 8_000,
+      reverifyBeforeAction: true,
+    },
+  },
+  {
     targetKey: NESY_TARGETS.tourRoutingManual,
     applicationRef: APP,
     screenRef: NESY_SCREENS.routeStopList,
+    surfaceRef: NESY_SURFACES.tourRoutingDialog,
     displayName: "Manual routing choice on the tour start dialog",
     resolution: {
       chain: [{ kind: "ACCESSIBILITY_ID", selector: { id: "manual_route" }, establishesIdentity: true }],

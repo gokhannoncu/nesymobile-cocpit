@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 11,
+      "minor": 16,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -292,7 +292,9 @@
           "stableForMs": 250
         },
         "supportedSurfaceRefs": [
-          "nesy.route.selection-dialog"
+          "nesy.route.selection-dialog",
+          "nesy.tour.routing-dialog",
+          "nesy.notification-list-dialog"
         ],
         "supportedActionRefs": [
           "nesy.action.select-route",
@@ -505,6 +507,41 @@
         "defaultPolicy": "HANDLE",
         "priority": 40,
         "handlerMacroRef": "nesy.macro.select-route",
+        "blocksProductVerdict": false
+      },
+      {
+        "surfaceKey": "nesy.tour.routing-dialog",
+        "applicationRef": "nesy.courier.mobile",
+        "kind": "DIALOG",
+        "displayName": "Tour start routing chooser",
+        "parentScreenRefs": [
+          "nesy.route.stop-list"
+        ],
+        "detection": {
+          "requiredFactKeys": [],
+          "deadlineMs": 15000
+        },
+        "defaultPolicy": "IGNORE",
+        "priority": 30,
+        "blocksProductVerdict": false
+      },
+      {
+        "surfaceKey": "nesy.notification-list-dialog",
+        "applicationRef": "nesy.courier.mobile",
+        "kind": "DIALOG",
+        "displayName": "Push notification list",
+        "parentScreenRefs": [
+          "nesy.route.stop-list"
+        ],
+        "detection": {
+          "requiredFactKeys": [
+            "UI.NOTIFICATION_LIST_PRESENT"
+          ],
+          "deadlineMs": 10000
+        },
+        "defaultPolicy": "HANDLE",
+        "priority": 45,
+        "handlerMacroRef": "nesy.macro.dismiss-notification-list",
         "blocksProductVerdict": false
       },
       {
@@ -1122,16 +1159,9 @@
         "resolution": {
           "chain": [
             {
-              "kind": "ACCESSIBILITY_ID",
-              "selector": {
-                "idPrefix": "stop_row_"
-              },
-              "establishesIdentity": true
-            },
-            {
               "kind": "ENTITY_BINDING",
               "selector": {
-                "keyPath": "stopCode",
+                "keyPath": "stop_id",
                 "collectionQueryRef": "nesy.availableStops"
               },
               "establishesIdentity": true
@@ -1139,7 +1169,7 @@
             {
               "kind": "STRUCTURAL_FINGERPRINT",
               "selector": {
-                "containerId": "stop_list",
+                "containerId": "rv",
                 "rowRole": "listItem"
               },
               "establishesIdentity": true
@@ -1147,7 +1177,7 @@
             {
               "kind": "ROW_INDEX_HINT",
               "selector": {
-                "containerId": "stop_list"
+                "containerId": "rv"
               },
               "establishesIdentity": false
             }
@@ -1294,6 +1324,7 @@
         "targetKey": "nesy.target.tour-routing-auto",
         "applicationRef": "nesy.courier.mobile",
         "screenRef": "nesy.route.stop-list",
+        "surfaceRef": "nesy.tour.routing-dialog",
         "displayName": "Auto routing choice on the tour start dialog",
         "resolution": {
           "chain": [
@@ -1312,9 +1343,32 @@
         }
       },
       {
+        "targetKey": "nesy.target.notification-list-exit",
+        "applicationRef": "nesy.courier.mobile",
+        "screenRef": "nesy.route.stop-list",
+        "surfaceRef": "nesy.notification-list-dialog",
+        "displayName": "Close button on the push notification list",
+        "resolution": {
+          "chain": [
+            {
+              "kind": "ACCESSIBILITY_ID",
+              "selector": {
+                "id": "btn_exit"
+              },
+              "establishesIdentity": true
+            }
+          ],
+          "ambiguityPolicy": "FAIL",
+          "notFoundPolicy": "TREAT_AS_ABSENT",
+          "deadlineMs": 8000,
+          "reverifyBeforeAction": true
+        }
+      },
+      {
         "targetKey": "nesy.target.tour-routing-manual",
         "applicationRef": "nesy.courier.mobile",
         "screenRef": "nesy.route.stop-list",
+        "surfaceRef": "nesy.tour.routing-dialog",
         "displayName": "Manual routing choice on the tour start dialog",
         "resolution": {
           "chain": [
@@ -1785,6 +1839,36 @@
         ]
       },
       {
+        "sourceKey": "nesy.ui.notification-list-present",
+        "plane": "UI",
+        "kind": "BRIDGE_WATCH",
+        "authority": "PRIMARY",
+        "displayName": "Notification list present",
+        "factKey": "UI.NOTIFICATION_LIST_PRESENT",
+        "observationRef": "nesy.watch.notification-list-present",
+        "freshness": {
+          "maxAgeMs": 5000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": false,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "treeGen"
+          ],
+          "crossPlane": false
+        },
+        "redaction": {
+          "redactPaths": [
+            "nodeText"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.watch-fact"
+        ]
+      },
+      {
         "sourceKey": "nesy.ui.loading-blocker-present",
         "plane": "UI",
         "kind": "BRIDGE_WATCH",
@@ -2159,6 +2243,35 @@
         },
         "redaction": {
           "redactWholePayload": true,
+          "redactPaths": []
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.event-stream"
+        ]
+      },
+      {
+        "sourceKey": "nesy.app.schedule-status-approved",
+        "plane": "APP",
+        "kind": "SDK_EVENT",
+        "authority": "PRIMARY",
+        "displayName": "Device schedule status is Approved",
+        "factKey": "APP.SCHEDULE_STATUS_APPROVED",
+        "observationRef": "nesy.events.critical/schedule-status-approved",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
           "redactPaths": []
         },
         "preservesRawEvidence": true,
@@ -3000,6 +3113,30 @@
         ],
         "entityTypeRefs": [],
         "targetRefs": [],
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap"
+        ]
+      },
+      {
+        "actionKey": "nesy.action.dismiss-notification-list",
+        "applicationRef": "nesy.courier.mobile",
+        "displayName": "Dismiss notification list",
+        "businessMeaning": "Closes the notification list a push put over the stop list, so the interrupted flow can carry on.",
+        "notResponsibleFor": [
+          "whether the notification itself was correct, delivered on time or localized — the push is the tour-approval slice's evidence, not this action's subject",
+          "reading, acting on or navigating from a notification row, which scrolls the stop list to another stop",
+          "the unread badge and the read/unread bookkeeping the dialog's dismiss listener performs"
+        ],
+        "screenRefs": [
+          "nesy.route.stop-list"
+        ],
+        "surfaceRefs": [
+          "nesy.notification-list-dialog"
+        ],
+        "entityTypeRefs": [],
+        "targetRefs": [
+          "nesy.target.notification-list-exit"
+        ],
         "requiredCapabilityRefs": [
           "verdict.core.bridge.tap"
         ]
@@ -5583,7 +5720,7 @@
                   "right": {
                     "kind": "operand",
                     "source": "step.output",
-                    "path": "read-available.codes"
+                    "path": "read-available.stop_id"
                   }
                 },
                 "onTrue": "resolve-row",
@@ -7115,6 +7252,7 @@
             "nesy.route.stop-list"
           ],
           "surfaceRefs": [
+            "nesy.tour.routing-dialog",
             "nesy.network-dialog",
             "nesy.session-expired-dialog"
           ],
@@ -7191,7 +7329,8 @@
         "interruptPolicy": {
           "handledSurfaceRefs": [
             "nesy.permission-dialog",
-            "nesy.network-dialog"
+            "nesy.network-dialog",
+            "nesy.tour.routing-dialog"
           ],
           "fatalSurfaceRefs": [
             "nesy.mandatory-update-dialog",
@@ -7983,6 +8122,93 @@
         "requiredCapabilityRefs": [
           "verdict.core.bridge.tap",
           "verdict.core.bridge.watch-fact"
+        ]
+      },
+      {
+        "macroKey": "nesy.macro.dismiss-notification-list",
+        "actionRef": "nesy.action.dismiss-notification-list",
+        "displayName": "Dismiss the push notification list",
+        "businessMeaning": "Closes the notification list a push put over the stop list, so the interrupted flow can continue on the screen it was working.",
+        "notResponsibleFor": [
+          "whether the push was correct, timely or correctly localized — that is the tour-approval slice's evidence, observed as APP.TOUR_APPROVAL_PUSH_RECEIVED",
+          "the read/unread bookkeeping and stop-list refresh the dialog's own dismiss listener performs",
+          "notification rows as navigation: tapping one scrolls the stop list elsewhere, which is a different flow and would move the run's ground"
+        ],
+        "input": {
+          "fields": []
+        },
+        "output": {
+          "fields": [
+            {
+              "name": "dialogDismissed",
+              "type": "boolean",
+              "factKey": "UI.NOTIFICATION_LIST_PRESENT"
+            }
+          ]
+        },
+        "preconditions": [
+          {
+            "kind": "FACT_TRUE",
+            "ref": "UI.NOTIFICATION_LIST_PRESENT",
+            "deadlineMs": 10000,
+            "onUnmet": "SKIP"
+          }
+        ],
+        "allowedRegistryRefs": {
+          "screenRefs": [
+            "nesy.route.stop-list"
+          ],
+          "surfaceRefs": [
+            "nesy.notification-list-dialog"
+          ],
+          "entityTypeRefs": [],
+          "targetRefs": [
+            "nesy.target.notification-list-exit"
+          ],
+          "factKeys": [
+            "UI.NOTIFICATION_LIST_PRESENT"
+          ],
+          "queryRefs": [],
+          "adapterOperationRefs": []
+        },
+        "oracleTemplate": {
+          "continueGate": {
+            "noneOf": [
+              "UI.NOTIFICATION_LIST_PRESENT"
+            ],
+            "deadlineMs": 10000,
+            "unknownPolicy": "OPERATOR_ATTENTION"
+          },
+          "finalOracle": {
+            "requirements": [
+              {
+                "factKey": "UI.NOTIFICATION_LIST_PRESENT",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL"
+              }
+            ]
+          },
+          "notResponsibleFor": [
+            "the behaviour of the flow that was interrupted"
+          ]
+        },
+        "interruptPolicy": {
+          "handledSurfaceRefs": [
+            "nesy.permission-dialog",
+            "nesy.network-dialog"
+          ],
+          "fatalSurfaceRefs": [
+            "nesy.mandatory-update-dialog",
+            "nesy.session-expired-dialog"
+          ],
+          "unlistedSurfacePolicy": "OPERATOR_ATTENTION",
+          "maxHandledInterrupts": 3
+        },
+        "requiredCapabilityRefs": [
+          "verdict.core.bridge.tap",
+          "verdict.core.bridge.watch-fact",
+          "verdict.core.bridge.resolve-target"
         ]
       }
     ],
