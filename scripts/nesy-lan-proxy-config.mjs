@@ -16,7 +16,19 @@ export const PROXY_HOST_SUFFIXES = [
   '.expressone.me',
   '.expressone.bg',
   '.starex.az',
+  '.arasdx.com',
+  '.sps-sro.sk',
+  '.mongodb.com',
+  '.mongodb.net',
 ]
+
+/** Hosts from apps/api/src/graylog-env.ts DEFAULT_BASE_URLS */
+export function readGraylogHosts() {
+  const file = join(repoRoot, 'apps/api/src/graylog-env.ts')
+  if (!existsSync(file)) return []
+  const text = readFileSync(file, 'utf8')
+  return [...text.matchAll(/https:\/\/([a-z0-9.-]+)/gi)].map((match) => match[1].toLowerCase())
+}
 
 export function readConfiguredHost() {
   const fromEnv = process.env.NESY_LAN_PROXY_HOST?.trim()
@@ -68,6 +80,7 @@ export function getPacUrl() {
 export function isAllowedHost(hostname) {
   const host = hostname.toLowerCase()
   if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true
+  if (readGraylogHosts().includes(host)) return true
   return PROXY_HOST_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix))
 }
 
@@ -83,10 +96,12 @@ export function isTrustedPac(text, proxyAddr = getProxyAddr()) {
 }
 
 export function buildPac(proxyAddr = getProxyAddr()) {
-  const checks = PROXY_HOST_SUFFIXES.flatMap((suffix) => [
+  const suffixChecks = PROXY_HOST_SUFFIXES.flatMap((suffix) => [
     `dnsDomainIs(host, "${suffix}")`,
     `shExpMatch(host, "*${suffix}")`,
-  ]).join(' ||\n    ')
+  ])
+  const hostChecks = [...new Set(readGraylogHosts())].map((host) => `host == "${host}"`)
+  const checks = [...suffixChecks, ...hostChecks].join(' ||\n    ')
 
   return `function FindProxyForURL(url, host) {
   host = host.toLowerCase();
