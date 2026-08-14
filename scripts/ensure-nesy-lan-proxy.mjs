@@ -9,19 +9,30 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getPacUrl, getProxyAddr, getProxyHost, getProxyPort } from './nesy-lan-proxy-config.mjs'
+import {
+  getPacUrl,
+  getProxyAddr,
+  getProxyHost,
+  getProxyPort,
+  isTrustedPac,
+} from './nesy-lan-proxy-config.mjs'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SKIP_SERVICE = /bluetooth|bridge|iphone|ipad/i
 
-async function pacReachable(url) {
+async function fetchPac(url) {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(2000) })
-    const text = await res.text()
-    return res.ok && text.includes('FindProxyForURL')
+    if (!res.ok) return null
+    return await res.text()
   } catch {
-    return false
+    return null
   }
+}
+
+async function pacReachable(url) {
+  const text = await fetchPac(url)
+  return text !== null && text.includes('FindProxyForURL')
 }
 
 function listMacServices() {
@@ -49,10 +60,19 @@ function applyMacPac(service, pacUrl) {
 
 async function ensureMac() {
   const pacUrl = getPacUrl()
-  if (!(await pacReachable(pacUrl))) {
+  const pac = await fetchPac(pacUrl)
+  if (pac === null) {
     console.warn(
       `[nesy-lan-proxy] PAC unreachable (${pacUrl}). Windows proxy down? Set NESY_LAN_PROXY_HOST or .nesy-lan-proxy.host`,
     )
+    return
+  }
+
+  if (!isTrustedPac(pac)) {
+    console.warn(
+      `[nesy-lan-proxy] ${pacUrl} answered but is not the Nesy PAC — leaving network settings untouched.`,
+    )
+    console.warn('[nesy-lan-proxy] wrong network, or another device owns that IP?')
     return
   }
 

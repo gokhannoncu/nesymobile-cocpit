@@ -1,10 +1,19 @@
 import 'dotenv/config'
 import { loadEnv } from './env.js'
 import { buildApp } from './app.js'
+import { installNesyProxyDispatcher } from './lib/nesy-lan-proxy.js'
 import { printStartupBanner } from './lib/startup-banner.js'
 
 async function main() {
   const env = loadEnv()
+
+  const proxy = await installNesyProxyDispatcher()
+  console.log(
+    proxy.enabled
+      ? `[nesy-lan-proxy] Nesy hosts via ${proxy.proxyAddr}${proxy.reason ? ` (${proxy.reason})` : ''}`
+      : `[nesy-lan-proxy] direct — ${proxy.reason}`,
+  )
+
   const { app } = await buildApp(env)
 
   const shutdown = async (signal: string) => {

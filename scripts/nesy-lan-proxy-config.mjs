@@ -71,6 +71,17 @@ export function isAllowedHost(hostname) {
   return PROXY_HOST_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix))
 }
 
+/**
+ * A reachable PAC is not enough to trust it — on a foreign network the
+ * configured IP may belong to an unrelated device. Require our own host list
+ * and proxy address before pointing macOS at it.
+ */
+export function isTrustedPac(text, proxyAddr = getProxyAddr()) {
+  if (typeof text !== 'string' || !text.includes('FindProxyForURL')) return false
+  if (!text.includes(`PROXY ${proxyAddr}`)) return false
+  return PROXY_HOST_SUFFIXES.every((suffix) => text.includes(suffix))
+}
+
 export function buildPac(proxyAddr = getProxyAddr()) {
   const checks = PROXY_HOST_SUFFIXES.flatMap((suffix) => [
     `dnsDomainIs(host, "${suffix}")`,
