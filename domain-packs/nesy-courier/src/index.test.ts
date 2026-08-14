@@ -30,7 +30,7 @@ import { NESY_COURIER_EVIDENCE_SOURCES } from "./evidence/sources.js";
 import { NESY_OPEN_STOP_MACRO } from "./macros/open-stop.js";
 import { NESY_LAUNCH_PROFILES, NESY_COURIER_LAUNCH_PROFILES } from "./profiles/launch.js";
 import { NESY_COURIER_TEST_PROFILES } from "./profiles/test-profiles.js";
-import { NESY_COURIER_FRAGMENTS, NESY_COURIER_INDEPENDENT_WORKFLOWS } from "./profiles/workflows.js";
+import { NESY_COURIER_FRAGMENTS, NESY_COURIER_INDEPENDENT_WORKFLOWS, NESY_WORKFLOWS } from "./profiles/workflows.js";
 import { NESY_COURIER_ENTITIES } from "./registries/entities.js";
 import { NESY_FACTS } from "./registries/facts.js";
 import { NESY_COURIER_FEATURES } from "./registries/features.js";
@@ -149,7 +149,7 @@ describe("registries", () => {
       evidenceSources: 57,
       derivedFacts: 6,
       semanticActions: 10,
-      macros: 12,
+      macros: 13,
       launchProfiles: 4,
       testProfiles: 16,
       campaigns: 4,
@@ -812,6 +812,22 @@ describe("COURIER_LOGIN setup/real separation", () => {
   it("does not require a derived fact no runtime produces", () => {
     const requirements = slice?.oracle.finalOracle.requirements ?? [];
     expect(requirements.map((r) => r.factKey)).not.toContain(NESY_FACTS.LOGIN_SUCCEEDED);
+  });
+
+  it("models expected wrong-PIN rejection as its own product-pass oracle", () => {
+    const workflow = NESY_COURIER_INDEPENDENT_WORKFLOWS.find(
+      (entry) => entry.workflowKey === NESY_WORKFLOWS.loginRejected,
+    );
+    expect(workflow?.macroRefs).toEqual(["nesy.macro.login-rejected"]);
+    expect(workflow?.oracleTemplate.continueGate.anyOf).toEqual([NESY_FACTS.LOGIN_REJECTED]);
+    expect(workflow?.oracleTemplate.finalOracle.requirements).toEqual([
+      {
+        factKey: NESY_FACTS.LOGIN_REJECTED,
+        obligation: "REQUIRED",
+        timing: "IMMEDIATE",
+        onTimeout: "FAIL",
+      },
+    ]);
   });
 
   it("derives APP.LOGIN_SUCCEEDED from backend, app and local facts together", () => {

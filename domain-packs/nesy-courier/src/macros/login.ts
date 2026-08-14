@@ -56,6 +56,7 @@ import { NESY_DEFAULT_INTERRUPT_POLICY, NESY_UI_ONLY_RELEASE_ISOLATION } from ".
 import { irDocument, requires, sourceMapEntry, stepBase } from "./ir-authoring.js";
 
 export const NESY_LOGIN_MACRO_KEY = "nesy.macro.login";
+export const NESY_LOGIN_REJECTED_MACRO_KEY = "nesy.macro.login-rejected";
 
 const STEPS: readonly WorkflowStepV2[] = [
   // G90.2b owns pre-action readiness. The queue proves PROCESS_TERMINATED →
@@ -354,6 +355,85 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   ],
 };
 
+const LOGIN_REJECTED_STEPS: readonly WorkflowStepV2[] = STEPS.map((step) => {
+  if (step.planStepId === "tap-submit") {
+    return {
+      ...step,
+      next: "assert-login-rejected",
+    };
+  }
+  if (step.planStepId === "assert-login") {
+    return {
+      ...stepBase({ planStepId: "assert-login-rejected", sourceMapRef: "sm-login-rejected-9", next: null }),
+      kind: "ASSERT_FACT",
+      factKey: NESY_FACTS.LOGIN_REJECTED,
+      expected: true,
+      unknownPolicy: "FAIL",
+      finalOraclePolicy: {
+        requirements: [
+          {
+            factKey: NESY_FACTS.LOGIN_REJECTED,
+            obligation: "REQUIRED",
+            timing: "IMMEDIATE",
+            onTimeout: "FAIL",
+          },
+        ],
+      },
+    } satisfies WorkflowStepV2;
+  }
+  return step;
+}).filter((step) => !["read-app-session", "read-local-session", "verify-backend-session"].includes(step.planStepId));
+
+const LOGIN_REJECTED_GENERIC_IR = irDocument({
+  workflowId: "nesy.reference.login-rejected",
+  name: "Courier PIN login rejection through the real UI",
+  sourceRef: NESY_LOGIN_REJECTED_MACRO_KEY,
+  inputs: [{ name: "pin", type: "string", required: true, secret: true }],
+  variables: [
+    { name: "pinFieldHandle", type: "string" },
+    { name: "submitHandle", type: "string" },
+  ],
+  steps: LOGIN_REJECTED_STEPS,
+  entryStepId: "resolve-pin-field",
+  capabilityRequirements: [
+    requires("verdict.core.bridge.tap"),
+    requires("verdict.core.bridge.set-text"),
+    requires("verdict.core.bridge.watch-fact"),
+  ],
+  sourceMap: [
+    sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_REJECTED_MACRO_KEY),
+    sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_REJECTED_MACRO_KEY),
+    sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_REJECTED_MACRO_KEY),
+    sourceMapEntry("sm-login-7", "tap-submit", NESY_LOGIN_REJECTED_MACRO_KEY),
+    sourceMapEntry("sm-login-rejected-9", "assert-login-rejected", NESY_LOGIN_REJECTED_MACRO_KEY),
+    sourceMapEntry("sm-login-10", "clear-session", NESY_LOGIN_REJECTED_MACRO_KEY),
+  ],
+});
+
+const LOGIN_REJECTED_EXPANSION: MacroExpansionSnapshot = {
+  macroRef: NESY_LOGIN_REJECTED_MACRO_KEY,
+  authoredBy: "COMPILER",
+  genericIr: LOGIN_REJECTED_GENERIC_IR,
+  irSourceMap: LOGIN_REJECTED_GENERIC_IR.sourceMap,
+  domainSourceMap: [
+    {
+      ref: "ds-login-rejected-1",
+      macroRef: NESY_LOGIN_REJECTED_MACRO_KEY,
+      planStepIds: LOGIN_REJECTED_STEPS.map((step) => step.planStepId),
+      sliceRef: "COURIER_LOGIN_REJECTED",
+      note: "Same real PIN-submit path as login, but the product claim is the expected refusal of invalid credentials.",
+    },
+  ],
+};
+
+const LOGIN_REJECTED_BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
+  ...BRIDGE_PLAN,
+  macroRef: NESY_LOGIN_REJECTED_MACRO_KEY,
+  legs: BRIDGE_PLAN.legs.map((leg) =>
+    leg.planStepId === "tap-submit" ? { ...leg, awaitFactKey: NESY_FACTS.LOGIN_REJECTED } : leg,
+  ),
+};
+
 export const NESY_LOGIN_MACRO: MacroDefinition = {
   macroKey: NESY_LOGIN_MACRO_KEY,
   actionRef: NESY_ACTIONS.login,
@@ -463,6 +543,84 @@ export const NESY_LOGIN_MACRO: MacroDefinition = {
   ],
   expansionSnapshot: EXPANSION,
   bridgeFlowPlanSnapshot: BRIDGE_PLAN,
+};
+
+export const NESY_LOGIN_REJECTED_MACRO: MacroDefinition = {
+  macroKey: NESY_LOGIN_REJECTED_MACRO_KEY,
+  actionRef: NESY_ACTIONS.login,
+  displayName: "Courier PIN login is rejected",
+  businessMeaning:
+    "A courier attempts to sign in through the real PIN login path with credentials that should be refused, and the product emits its own login-rejected state.",
+  notResponsibleFor: [
+    "proving successful authentication",
+    "username/password tab login",
+    "password reset and account recovery",
+    "biometric re-authentication",
+    "classifying the rejection reason text — this workflow proves the rejected business state, not copy or localization",
+  ],
+  input: {
+    fields: [
+      {
+        name: "pin",
+        type: "string",
+        required: true,
+        secret: true,
+        description: "Courier device PIN expected to be rejected by NesyMobile PIN tab / loginDevice.",
+      },
+    ],
+  },
+  output: {
+    fields: [{ name: "loginRejected", type: "boolean", factKey: NESY_FACTS.LOGIN_REJECTED }],
+  },
+  preconditions: [
+    { kind: "SCREEN_READY", ref: NESY_SCREENS.login, deadlineMs: 30_000, onUnmet: "FAIL" },
+    { kind: "FACT_FALSE", ref: NESY_FACTS.USER_SESSION_AVAILABLE_APP, deadlineMs: 5_000, onUnmet: "FAIL" },
+  ],
+  allowedRegistryRefs: {
+    screenRefs: [NESY_SCREENS.login],
+    surfaceRefs: [],
+    entityTypeRefs: [],
+    targetRefs: [NESY_TARGETS.loginPinField, NESY_TARGETS.loginSubmit],
+    factKeys: [
+      NESY_FACTS.LOGIN_SCREEN_READY,
+      NESY_FACTS.LOGIN_REJECTED,
+      NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT,
+      NESY_FACTS.USER_SESSION_AVAILABLE_APP,
+    ],
+    queryRefs: [],
+    adapterOperationRefs: [],
+  },
+  oracleTemplate: {
+    continueGate: {
+      anyOf: [NESY_FACTS.LOGIN_REJECTED],
+      noneOf: [NESY_FACTS.SESSION_EXPIRED_DIALOG_PRESENT],
+      deadlineMs: 30_000,
+      unknownPolicy: "RETRY",
+    },
+    finalOracle: {
+      requirements: [
+        {
+          factKey: NESY_FACTS.LOGIN_REJECTED,
+          obligation: "REQUIRED",
+          timing: "IMMEDIATE",
+          onTimeout: "FAIL",
+        },
+      ],
+    },
+    notResponsibleFor: [
+      "whether a valid PIN can authenticate — that remains nesy.workflow.login",
+      "whether the rejection text is translated correctly",
+    ],
+  },
+  interruptPolicy: NESY_DEFAULT_INTERRUPT_POLICY,
+  requiredCapabilityRefs: [
+    "verdict.core.bridge.tap",
+    "verdict.core.bridge.set-text",
+    "verdict.core.bridge.resolve-target",
+    "verdict.core.bridge.watch-fact",
+  ],
+  expansionSnapshot: LOGIN_REJECTED_EXPANSION,
+  bridgeFlowPlanSnapshot: LOGIN_REJECTED_BRIDGE_PLAN,
 };
 
 export const COURIER_LOGIN_SLICE: NesyReferenceSlice = {

@@ -31,7 +31,7 @@ import {
   NESY_FULL_COURIER_DAY_WORKFLOW_KEY,
 } from "../macros/full-courier-day.js";
 import { NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY } from "../macros/full-courier-golden.js";
-import { NESY_LOGIN_MACRO } from "../macros/login.js";
+import { NESY_LOGIN_MACRO, NESY_LOGIN_REJECTED_MACRO } from "../macros/login.js";
 import { NESY_LOGIN_AND_SELECT_ROUTE_MACRO, NESY_LOGIN_AND_SELECT_ROUTE_WORKFLOW_KEY } from "../macros/login-and-select-route.js";
 import { NESY_OPEN_STOP_MACRO } from "../macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "../macros/process-parcel.js";
@@ -46,6 +46,7 @@ export const NESY_FRAGMENTS = {
 
 export const NESY_WORKFLOWS = {
   login: "nesy.workflow.login",
+  loginRejected: "nesy.workflow.login-rejected",
   selectRoute: "nesy.workflow.select-route",
   loginAndSelectRoute: NESY_LOGIN_AND_SELECT_ROUTE_WORKFLOW_KEY,
   loadToVehicle: "nesy.workflow.load-to-vehicle",
@@ -89,6 +90,17 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
     fragmentRefs: [],
     occurrenceScope: "INDEPENDENT",
     oracleTemplate: NESY_LOGIN_MACRO.oracleTemplate,
+    producesTerminalVerdict: true,
+  },
+  {
+    workflowKey: NESY_WORKFLOWS.loginRejected,
+    displayName: "Wrong PIN is rejected through the real UI",
+    businessMeaning: NESY_LOGIN_REJECTED_MACRO.businessMeaning,
+    notResponsibleFor: NESY_LOGIN_REJECTED_MACRO.notResponsibleFor,
+    macroRefs: [NESY_LOGIN_REJECTED_MACRO.macroKey],
+    fragmentRefs: [],
+    occurrenceScope: "INDEPENDENT",
+    oracleTemplate: NESY_LOGIN_REJECTED_MACRO.oracleTemplate,
     producesTerminalVerdict: true,
   },
   {
