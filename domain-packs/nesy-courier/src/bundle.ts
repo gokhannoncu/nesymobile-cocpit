@@ -51,6 +51,12 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.30.0 — G90.3 repeat runs exposed cross-run contamination: login cleanup
+  //   existed as a disconnected CLEANUP node, so successful login left a real
+  //   session behind and the next cold-real-login run opened StopListFragment.
+  //   The assert steps now continue into `clear-session`, whose host runtime
+  //   resets app state after the oracle has voted.
+  //
   // 1.29.0 — G90.3 splits expected wrong-PIN rejection into its own independent
   //   workflow (`nesy.workflow.login-rejected`). The real UI action path is the
   //   same PIN-submit path, but the final oracle now votes on
@@ -406,7 +412,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 29, patch: 0 },
+  version: { major: 1, minor: 30, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

@@ -8,7 +8,7 @@
  *
  *  - the watermark JOIN that bounds the ordered lane,
  *  - the *absence* of a watermark bound on the receipt lane,
- *  - `pg_try_advisory_lock` as a real cross-connection single-consumer lease,
+ *  - the ordered lane's persisted SQL predicates after its process-local lease,
  *  - the new dispatch columns and their CHECK constraints,
  *  - `verdict_run_closure` and its first-close-wins upsert,
  *  - the DISTINCT restart scans over the pending predicates,
@@ -172,21 +172,17 @@ describe("durable runtime against PostgreSQL", () => {
     expect((await lanes.store.getRow(SCOPE, 3n))?.processedAt).toBeNull();
   });
 
-  it("the advisory lease actually excludes a second holder on another connection", async () => {
+  it("the ordered lease excludes a second holder in this API process", async () => {
     await cleanup();
     const store = new PrismaDurableEventStore();
     expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(true);
     try {
-      // Same session re-entrancy is not what this proves; the meaningful
-      // assertion is that the lock is a real database object, which the
-      // `pg_locks` row demonstrates.
-      const held = await prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT count(*)::bigint AS count FROM pg_locks
-        WHERE locktype = 'advisory' AND granted`;
-      expect(Number(held[0]!.count)).toBeGreaterThan(0);
+      expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(false);
     } finally {
       await store.releaseOrderedLease(SCOPE);
     }
+    expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(true);
+    await store.releaseOrderedLease(SCOPE);
   });
 
   it("a failing consumer persists attempt/last_error and blocks the next seq", async () => {

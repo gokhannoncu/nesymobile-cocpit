@@ -57,6 +57,7 @@ import { resolveDomainPack, type DomainPackResolution } from './domain-pack-regi
 import { DeviceWorkerRegistry } from './device-worker.js'
 import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
 import { createRunTelemetrySampler } from './run-telemetry-sampler.js'
+import { getVerdictDurableRuntime } from './verdict-wait-event.js'
 import {
   broadcastSetRun,
   getDeviceHealth,
@@ -201,10 +202,16 @@ async function forceStopAndConfirm(input: {
   await adbDevice(input.deviceId, ['shell', 'am', 'force-stop', input.applicationId])
 
   const deadline = performance.now() + (input.deadlineMs ?? 5_000)
+  let nextForceStopAt = performance.now() + 500
   let remainingPids = previousPids
   do {
     remainingPids = await packageProcessIds(input.deviceId, input.applicationId)
     if (remainingPids.length === 0) return { confirmed: true, previousPids, remainingPids }
+    const now = performance.now()
+    if (now >= nextForceStopAt) {
+      await adbDevice(input.deviceId, ['shell', 'am', 'force-stop', input.applicationId])
+      nextForceStopAt = now + 500
+    }
     await sleep(input.intervalMs ?? 100)
   } while (performance.now() <= deadline)
 
@@ -1265,6 +1272,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         status: 'completed',
         completedAt: new Date(clock()),
       })
+      await this.closeDurableRunStream(
+        item.runId,
+        deviceState,
+        result.terminationReason ?? 'COMPLETED',
+      )
     } catch (error) {
       // The thrown message is the ONLY account of why this run died: the executor
       // crashed, so no step, oracle or evidence row explains it. Logging it and
@@ -1431,6 +1443,26 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       this.options.logger?.('[BridgeFlowExecutionQueue] run row update failed', {
         runId,
         error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  private async closeDurableRunStream(
+    runId: string,
+    deviceState: DeviceBridgeState | null,
+    reason: string,
+  ): Promise<void> {
+    if (deviceState?.runId !== runId || deviceState.sessionId.trim() === '') return
+    try {
+      await getVerdictDurableRuntime().closeRun(
+        { runId, sessionId: deviceState.sessionId },
+        reason,
+      )
+    } catch (error) {
+      this.options.logger?.('[BridgeFlowExecutionQueue] durable stream close failed', {
+        runId,
+        sessionId: deviceState.sessionId,
+        error: describeError(error),
       })
     }
   }

@@ -263,6 +263,8 @@ const INBOX_COLUMNS =
   "processed_at, attempt, last_error, next_retry_at, dead_lettered_at";
 
 export class PrismaDurableEventStore implements DurableEventStore {
+  private static readonly orderedLeases = new Set<string>();
+
   async listReceiptReady(
     scope: DurableStreamScope,
     afterSeq: bigint,
@@ -374,18 +376,15 @@ export class PrismaDurableEventStore implements DurableEventStore {
   }
 
   async tryAcquireOrderedLease(scope: DurableStreamScope): Promise<boolean> {
-    // Same advisory-lock key derivation as `verdict-fanout.ts`, deliberately:
-    // the two must contend with each other during the cutover, otherwise the
-    // old worker and the new lane both process the stream and double-fire.
     const key = `${scope.runId}|${scope.sessionId}`;
-    const rows = await prisma.$queryRaw<{ locked: boolean }[]>`
-      SELECT pg_try_advisory_lock(hashtext(${key})) AS locked`;
-    return rows[0]?.locked === true;
+    if (PrismaDurableEventStore.orderedLeases.has(key)) return false;
+    PrismaDurableEventStore.orderedLeases.add(key);
+    return true;
   }
 
   async releaseOrderedLease(scope: DurableStreamScope): Promise<void> {
     const key = `${scope.runId}|${scope.sessionId}`;
-    await prisma.$executeRaw`SELECT pg_advisory_unlock(hashtext(${key}))`;
+    PrismaDurableEventStore.orderedLeases.delete(key);
   }
 
   async listStreamsWithPendingReceipt(limit: number): Promise<DurableStreamScope[]> {

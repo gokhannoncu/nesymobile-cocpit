@@ -152,9 +152,35 @@ export class VerdictDurableRuntime {
   /** Marks a stream as no longer accepting evidence. Idempotent; first close wins. */
   async closeRun(scope: DurableStreamScope, reason: string): Promise<void> {
     await this.store.closeRun(scope, reason, new Date());
-    // Wake every waiter so each one returns CLOSED_RUN promptly instead of
-    // burning its full timeout on a run that will never produce another event.
-    this.nudges.nudge(scope);
+    // Drain the ordered lane now, then wake both durable lanes.
+    //
+    // A real-device repeat exposed the commit→close race this used to leave:
+    // `SURFACE_ROUTE_DIALOG_READY` was already below the contiguous watermark,
+    // the product verdict closed as PASS from session/local evidence, but the
+    // ordered row stayed `processed_at = NULL`, so the evidence journey missed
+    // the `ORDERED_REQUIRED/CORRELATION` record. Closing a run is the last
+    // in-process chance to drain committed evidence for that stream. The drain
+    // is awaited because the run detail endpoint can be read immediately after
+    // `CLOSED`; an async-only nudge would keep the audit journey racey.
+    let retryAsync = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const stats = await this.ordered.drainOnce(scope);
+      if (stats.skippedLocked) {
+        retryAsync = true;
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, 25);
+          if (typeof timer.unref === "function") timer.unref();
+        });
+        continue;
+      }
+      if (stats.error !== undefined || stats.retryScheduledFor !== undefined) break;
+      if (stats.processed === 0) {
+        retryAsync = false;
+        break;
+      }
+    }
+    if (retryAsync) this.ordered.nudge(scope);
+    this.nudge(scope);
   }
 
   /**

@@ -398,16 +398,24 @@ function DataGridTableRowSelect<TData>({ row, size }: { row: Row<TData>; size?: 
 
 function DataGridTableRowSelectAll({ size }: { size?: 'sm' | 'md' | 'lg' }) {
   const { table, recordCount, isLoading } = useDataGrid();
+  const disabled = isLoading || recordCount === 0;
 
   return (
-    <Checkbox
-      checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-      disabled={isLoading || recordCount === 0}
-      onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      aria-label="Select all"
-      size={size}
-      className="align-[inherit]"
-    />
+    <label
+      className={cn(
+        'absolute inset-0 z-10 flex cursor-pointer items-center ps-[inherit] pe-[inherit]',
+        disabled && 'cursor-not-allowed',
+      )}
+    >
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+        disabled={disabled}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        size={size ?? 'sm'}
+        className="align-[inherit]"
+      />
+    </label>
   );
 }
 

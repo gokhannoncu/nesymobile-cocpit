@@ -221,7 +221,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     },
   },
   {
-    ...stepBase({ planStepId: "assert-login", sourceMapRef: "sm-login-9", next: null }),
+    ...stepBase({ planStepId: "assert-login", sourceMapRef: "sm-login-9", next: "clear-session" }),
     kind: "ASSERT_FACT",
     // ── Asserts the APP plane, not APP.LOGIN_SUCCEEDED ──────────────────────
     //
@@ -364,7 +364,7 @@ const LOGIN_REJECTED_STEPS: readonly WorkflowStepV2[] = STEPS.map((step) => {
   }
   if (step.planStepId === "assert-login") {
     return {
-      ...stepBase({ planStepId: "assert-login-rejected", sourceMapRef: "sm-login-rejected-9", next: null }),
+      ...stepBase({ planStepId: "assert-login-rejected", sourceMapRef: "sm-login-rejected-9", next: "clear-session" }),
       kind: "ASSERT_FACT",
       factKey: NESY_FACTS.LOGIN_REJECTED,
       expected: true,

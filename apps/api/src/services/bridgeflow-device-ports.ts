@@ -477,6 +477,32 @@ export function createGenericStepRuntime(options: {
 
   return {
     async execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult> {
+      if (step.kind === 'CLEANUP' && step.planStepId === 'clear-session') {
+        if (controlExecutor === undefined) {
+          options.logger?.('[BridgeFlowGenericSteps] no SDK control executor for clear-session cleanup', {
+            planStepId: step.planStepId,
+          })
+          return { succeeded: false, actionResult: 'FAILED' }
+        }
+        const result = await controlExecutor.run(manager.deviceId, {
+          op: 'reset_state',
+          requestId: context.requestId,
+          scope: runId,
+        })
+        if (!result.ok) {
+          options.logger?.('[BridgeFlowGenericSteps] clear-session cleanup failed', {
+            planStepId: step.planStepId,
+            code: result.code,
+          })
+          return { succeeded: false, actionResult: 'FAILED' }
+        }
+        return {
+          succeeded: true,
+          actionResult: 'SUCCEEDED',
+          evidenceRef: 'cleanup:reset_state:accepted',
+        }
+      }
+
       if (step.kind === 'SDK_QUERY') {
         if (controlExecutor === undefined) {
           options.logger?.('[BridgeFlowGenericSteps] no SDK control executor for SDK_QUERY', {

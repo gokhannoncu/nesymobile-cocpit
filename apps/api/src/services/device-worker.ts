@@ -84,6 +84,11 @@ export class DeviceWorker {
 
   async acquireBridge(runId: string, sessionId: string, runEpoch: number): Promise<BridgeDeviceManager> {
     await this.prepare();
+    // The sniffer is persistent per device while runs are sequential. Its
+    // structured-event filter therefore has to move with the active run; otherwise
+    // the first run after process start works and later runs drop perfectly valid
+    // NESY_TEST_EVENT frames as "different run".
+    this.sniffer.setRunId(runId);
     if (this.bridge) {
       // Reuse the connection, NOT the previous run's identity. The manager is
       // cached per device, so without this every run after the first drove the
@@ -133,6 +138,7 @@ export class DeviceWorker {
 
   dispose(): void {
     TestEventWsServer.removeSink(this.sniffer);
+    this.sniffer.setRunId(undefined);
     this.sniffer.stop();
     const bridge = this.bridge;
     this.bridge = null;

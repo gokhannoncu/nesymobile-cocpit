@@ -1045,6 +1045,37 @@ describe("VerdictDurableRuntime", () => {
     expect(after.status).toBe("CLOSED_RUN");
     void pending.catch(() => undefined);
   });
+
+  it("closing a run also nudges the ordered lane for committed pending rows", async () => {
+    store.commit(SCOPE, 1n, ev(1, "SURFACE_ROUTE_DIALOG_READY"));
+    store.setContiguous(SCOPE, 1n);
+    const consumed: string[] = [];
+    runtime.registerOrderedConsumer(async (row) => {
+      consumed.push(row.seq.toString());
+    });
+
+    await runtime.closeRun(SCOPE, "run finished");
+    await new Promise((r) => setTimeout(r, FAST_POLL_MS * 3));
+
+    expect(consumed).toEqual(["1"]);
+    expect(store.snapshot(SCOPE)[0]?.processedAt).not.toBeNull();
+  });
+
+  it("closing a run retries the ordered drain when another drain holds the lease", async () => {
+    store.commit(SCOPE, 1n, ev(1, "SURFACE_ROUTE_DIALOG_READY"));
+    store.setContiguous(SCOPE, 1n);
+    store.holdLease(SCOPE);
+    const consumed: string[] = [];
+    runtime.registerOrderedConsumer(async (row) => {
+      consumed.push(row.seq.toString());
+    });
+
+    setTimeout(() => void store.releaseOrderedLease(SCOPE), FAST_POLL_MS);
+    await runtime.closeRun(SCOPE, "run finished");
+
+    expect(consumed).toEqual(["1"]);
+    expect(store.snapshot(SCOPE)[0]?.processedAt).not.toBeNull();
+  });
 });
 
 // ===========================================================================

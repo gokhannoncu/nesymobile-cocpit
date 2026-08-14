@@ -322,7 +322,7 @@
         {
           "planStepId": "assert-login",
           "sourceMapRef": "sm-login-9",
-          "next": null,
+          "next": "clear-session",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -785,7 +785,7 @@
       {
         "planStepId": "assert-login",
         "sourceMapRef": "sm-login-9",
-        "next": null,
+        "next": "clear-session",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
