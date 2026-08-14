@@ -19,6 +19,7 @@ import {
   DEFAULT_PORTS,
   formatStatusPanel,
 } from './cockpit-log.mjs'
+import { ensureNesyLanProxy } from './ensure-nesy-lan-proxy.mjs'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
@@ -122,6 +123,12 @@ async function runHealthProbes() {
     changed = true
   }
   if (changed && !verbose) scheduleRender()
+}
+
+try {
+  await ensureNesyLanProxy()
+} catch (error) {
+  console.warn('[nesy-lan-proxy]', error instanceof Error ? error.message : error)
 }
 
 renderPanel()

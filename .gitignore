@@ -25,6 +25,9 @@ __pycache__
 # graphify — local knowledge graph output (not pushed to remote)
 graphify-out/
 
+# Windows LAN IP for Mac PAC (local only)
+.nesy-lan-proxy.host
+
 # Cursor hook local state (pending prod rebuilds / logs)
 .cursor/hooks-state/
 
