@@ -17,6 +17,7 @@
 
 import { execFile } from 'node:child_process'
 import { appendFileSync } from 'node:fs'
+import { performance } from 'node:perf_hooks'
 import { promisify } from 'node:util'
 import { BridgeFlowExecutor, createInMemoryMutationAdmission } from '@nesy/bridgeflow-executor'
 import type { PrismaClient } from '@nesy/db'
@@ -44,6 +45,12 @@ import {
   getScreenReadinessObserver,
   type ScreenReadinessObserver,
 } from './screen-readiness-observer.js'
+import {
+  InteractionReadinessTracker,
+  observeInteractionReadiness,
+  type InteractionReadinessTrace,
+} from './cold-start-readiness.js'
+import { buildTargetFingerprint } from './bridgeflow-target-fingerprint.js'
 import { OracleEvaluationWorker } from './oracle-evaluation-worker.js'
 import { publishRunLiveEvent, runLiveKeys, runLiveLevelFor } from './run-live-hub.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
@@ -52,6 +59,7 @@ import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
 import { createRunTelemetrySampler } from './run-telemetry-sampler.js'
 import {
   broadcastSetRun,
+  getDeviceHealth,
   getDeviceBridgeState,
   setRunIdProperty,
   type DeviceBridgeState,
@@ -149,51 +157,115 @@ async function adbDevice(deviceId: string, args: string[], timeoutMs = 10_000): 
   return String(result.stdout).trim()
 }
 
+interface AndroidLaunchObservation {
+  processCreated: boolean
+  processId: number | null
+  processState: string | null
+  cpuTicks: number | null
+  appLifecycleReady: boolean
+  uiVisible: boolean
+  rawActivity: string
+  rawWindow: string
+}
+
+function parsePidList(stdout: string): number[] {
+  return stdout
+    .trim()
+    .split(/\s+/)
+    .map((value) => Number(value))
+    .filter((value) => Number.isSafeInteger(value) && value > 0)
+}
+
+async function packageProcessIds(deviceId: string, applicationId: string): Promise<number[]> {
+  try {
+    return parsePidList(await adbDevice(deviceId, ['shell', 'pidof', applicationId]))
+  } catch (error) {
+    const detail = `${describeError(error)} ${String((error as { stderr?: unknown }).stderr ?? '')}`
+    // `pidof` exits non-zero when the process is absent; that is the successful
+    // observation this probe is asking for. Transport/device errors are not
+    // absence and must not let a disconnected DUT "confirm" force-stop.
+    if (/device .*not found|device offline|no devices|unauthorized|cannot connect to daemon/i.test(detail)) {
+      throw error
+    }
+    return []
+  }
+}
+
+async function forceStopAndConfirm(input: {
+  deviceId: string
+  applicationId: string
+  deadlineMs?: number
+  intervalMs?: number
+}): Promise<{ confirmed: boolean; previousPids: number[]; remainingPids: number[] }> {
+  const previousPids = await packageProcessIds(input.deviceId, input.applicationId)
+  await adbDevice(input.deviceId, ['shell', 'am', 'force-stop', input.applicationId])
+
+  const deadline = performance.now() + (input.deadlineMs ?? 5_000)
+  let remainingPids = previousPids
+  do {
+    remainingPids = await packageProcessIds(input.deviceId, input.applicationId)
+    if (remainingPids.length === 0) return { confirmed: true, previousPids, remainingPids }
+    await sleep(input.intervalMs ?? 100)
+  } while (performance.now() <= deadline)
+
+  return { confirmed: false, previousPids, remainingPids }
+}
+
+async function launchApplication(deviceId: string, applicationId: string): Promise<void> {
+  await adbDevice(
+    deviceId,
+    ['shell', 'monkey', '-p', applicationId, '-c', 'android.intent.category.LAUNCHER', '1'],
+    15_000,
+  )
+}
+
+async function observeAndroidLaunch(
+  deviceId: string,
+  applicationId: string,
+): Promise<AndroidLaunchObservation> {
+  const pids = await packageProcessIds(deviceId, applicationId)
+  const processId = pids[0] ?? null
+  const [stat, activity, window] = await Promise.all([
+    processId === null
+      ? Promise.resolve('')
+      : adbDevice(deviceId, ['shell', 'cat', `/proc/${String(processId)}/stat`]).catch(() => ''),
+    adbDevice(deviceId, ['shell', 'dumpsys', 'activity', 'activities']).catch(() => ''),
+    adbDevice(deviceId, ['shell', 'dumpsys', 'window']).catch(() => ''),
+  ])
+  const statMatch = /^\d+\s+\(.+\)\s+(\S)\s+(?:\S+\s+){10}(\d+)\s+(\d+)/.exec(stat.trim())
+  const processState = statMatch?.[1] ?? null
+  const cpuTicks = statMatch === null ? null : Number(statMatch[2]) + Number(statMatch[3])
+  const activityLines = activity
+    .split('\n')
+    .filter((line) => line.includes('mResumedActivity') || line.includes('topResumedActivity'))
+    .join(' ')
+  const windowLines = window
+    .split('\n')
+    .filter(
+      (line) =>
+        line.includes('mCurrentFocus') ||
+        line.includes('mFocusedApp') ||
+        line.includes('mFocusedWindow') ||
+        (line.includes('visible windows') && line.includes(applicationId)),
+    )
+    .join(' ')
+
+  return {
+    processCreated: processId !== null,
+    processId,
+    processState,
+    cpuTicks: Number.isFinite(cpuTicks) ? cpuTicks : null,
+    appLifecycleReady: activityLines.includes(applicationId),
+    uiVisible: windowLines.includes(applicationId),
+    rawActivity: activityLines,
+    rawWindow: windowLines,
+  }
+}
+
 function findLaunchProfile(resolution: DomainPackResolution, profileKey: string | null | undefined): LaunchProfile | undefined {
   const key = profileKey?.trim()
   if (!key || !resolution.ok) return undefined
   return resolution.pack.bundle.registries.launchProfiles.find((profile) => profile.profileKey === key)
-}
-
-async function prepareApplicationLaunch(input: {
-  deviceId: string
-  applicationId: string
-  profile: LaunchProfile | undefined
-  logger?: (message: string, detail?: unknown) => void
-}): Promise<string | null> {
-  if (input.profile?.startMode !== 'COLD_START') return null
-
-  // Package names are interpolated into a single shell line below, so anything
-  // that is not a package name is refused here rather than quoted and hoped for.
-  if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(input.applicationId)) {
-    return `application id ${input.applicationId} is not a package name`
-  }
-
-  try {
-    // One `adb shell`, not two. Each invocation pays a full round trip plus a
-    // shell fork on the device — measured at ~54ms — and the stop/launch pair is
-    // sequential by nature, so there is nothing to lose by sending it as one line.
-    await adbDevice(
-      input.deviceId,
-      [
-        'shell',
-        `am force-stop ${input.applicationId}; ` +
-          `monkey -p ${input.applicationId} -c android.intent.category.LAUNCHER 1`,
-      ],
-      15_000,
-    )
-    input.logger?.('[BridgeFlowExecutionQueue] launched application for COLD_START profile', {
-      deviceId: input.deviceId,
-      applicationId: input.applicationId,
-      profileKey: input.profile.profileKey,
-    })
-    return null
-  } catch (error) {
-    return (
-      `application launch failed for ${input.applicationId} (${input.profile.profileKey}): ` +
-      (error instanceof Error ? error.message : String(error))
-    )
-  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -533,6 +605,46 @@ export interface BridgeFlowExecutionQueueOptions {
   }) => DomainPackResolution
   /** Test seam: the attached/allowlisted/not-production check that gates the launch. */
   admissionGate?: (deviceId: string) => Promise<{ ok: true } | { ok: false; reason: string }>
+  /** Test seams for the G90.2b pre-action state machine. */
+  monoClock?: () => number
+  readinessDeadlineMs?: number
+  forceStop?: typeof forceStopAndConfirm
+  launch?: typeof launchApplication
+  observeLaunch?: typeof observeAndroidLaunch
+  readDeviceState?: typeof getDeviceBridgeState
+  readDeviceHealth?: typeof getDeviceHealth
+  setRunId?: typeof setRunIdProperty
+  broadcastRun?: typeof broadcastSetRun
+}
+
+function readinessTarget(input: {
+  bundle: DomainPackBundle
+  plan: unknown
+  profile: LaunchProfile
+}) {
+  const expectedScreen = input.bundle.registries.screens.find(
+    (screen) => screen.screenKey === input.profile.entry.expectedScreenRef,
+  )
+  const steps = Array.isArray((input.plan as { steps?: unknown }).steps)
+    ? ((input.plan as { steps: readonly Record<string, unknown>[] }).steps)
+    : []
+  const firstResolve = steps.find((step) => step['kind'] === 'RESOLVE_TARGET')
+  const params = firstResolve?.['params']
+  const targetRef =
+    params !== null && typeof params === 'object' && typeof (params as Record<string, unknown>)['targetRef'] === 'string'
+      ? String((params as Record<string, unknown>)['targetRef'])
+      : null
+  const target =
+    targetRef === null
+      ? undefined
+      : input.bundle.registries.targets.find((candidate) => candidate.targetKey === targetRef)
+  const targetOnExpectedScreen =
+    target !== undefined && expectedScreen !== undefined && target.screenRef === expectedScreen.screenKey
+      ? target
+      : undefined
+  const fingerprint =
+    targetOnExpectedScreen === undefined ? undefined : buildTargetFingerprint(targetOnExpectedScreen)
+  return { expectedScreen, target: targetOnExpectedScreen, fingerprint }
 }
 
 async function acquireBridgeFromRegistry(input: {
@@ -638,17 +750,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
 
     const coldStart = launchProfile?.startMode === 'COLD_START'
 
-    // Preflight is ~950ms of adb, and a cold start leaves the host idle for ~2.6s
-    // while the app boots. Overlapping the two removes preflight from the critical
-    // path entirely. It is safe because adb stays healthy during a boot: measured,
-    // only the Bridge's own TCP service stalls (two window transitions, ~1.2s and
-    // ~1.45s) and every adb call issued inside that window returned normally.
-    //
-    // Only for COLD_START. Without a launch there is no dead time to hide anything
-    // behind, so the stricter ordering is kept: a device whose Bridge is unusable
-    // is reported before this process has touched it at all.
     const acquire = this.options.acquireBridge ?? acquireBridgeFromRegistry
-    let managerPromise: Promise<BridgeDeviceManager> | null = null
     let manager: BridgeDeviceManager | null = null
     if (!coldStart) {
       try {
@@ -663,76 +765,196 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       }
     }
     if (coldStart) {
-      // The checks that REFUSE a device — attached, allowlisted, not a production
-      // build — cannot ride along in that concurrent phase. Force-stopping and
-      // relaunching an app is already an intrusion, so they answer first, at a
-      // measured ~60ms. Everything else in preflight merely describes the device.
       const admission = await (this.options.admissionGate ?? admissionGateFromRegistry)(item.deviceId)
       if (!admission.ok) {
         await this.blockRun(item, admission.reason)
         return
       }
-      managerPromise = acquire({
-        deviceId: item.deviceId,
-        runId: item.runId,
-        executionId: item.executionId,
-      })
-      // The await is several statements below; without this the rejection would
-      // surface as an unhandled promise before it surfaces as a blocked run.
-      managerPromise.catch(() => undefined)
     }
 
     // `setprop` must land BEFORE the process starts — the app reads the run id at
     // boot and will not pick up a later write.
-    const propertySet = await setRunIdProperty(item.deviceId, item.runId)
-    const launchFailure = await prepareApplicationLaunch({
-      deviceId: item.deviceId,
-      applicationId,
-      profile: launchProfile,
-      ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
-    })
-    if (launchFailure !== null) {
-      await this.blockRun(item, launchFailure)
-      return
-    }
+    const propertySet = await (this.options.setRunId ?? setRunIdProperty)(item.deviceId, item.runId)
+    let deviceState: DeviceBridgeState | null = null
+    let sessionSet = false
 
-    const sessionSet = await broadcastSetRun(item.deviceId, applicationId, item.runId, {
-      wsEnabled: true,
-      wsPort: 8765,
-    })
-
-    // Collect the preflight that has been running alongside the launch. Awaited
-    // here rather than at first use so an unreachable Bridge is reported in about
-    // a second, and — more importantly — BEFORE the state wait below, which would
-    // otherwise spend up to 20s failing and then blame the SDK run session for
-    // what is actually a dead Bridge.
-    if (managerPromise !== null) {
-      try {
-        manager = await managerPromise
-      } catch (error) {
-        await this.blockRun(item, describeBridgeAcquisitionFailure(error))
+    if (coldStart && launchProfile !== undefined) {
+      if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(applicationId)) {
+        await this.blockRun(item, `application id ${applicationId} is not a package name`)
         return
       }
-    }
-    if (manager === null) {
-      await this.blockRun(item, 'device Bridge was never acquired for this run')
-      return
-    }
 
-    // Cold start: SCREEN_READY often fires with empty runId before set_run, and the
-    // fragment will not re-emit once LoginFragment is already resumed. The host must
-    // therefore wait for get_state(current_screen) under the new runId — 1.5s was too
-    // short (monkey returns before the login UI is up), so wait-login-ready timed out
-    // against a visible LoginFragment with zero evidence facts.
-    const stateWaitMs = coldStart ? 20_000 : 5_000
-    let deviceState: DeviceBridgeState | null = null
-    if (!propertySet || !sessionSet) {
+      const monoClock = this.options.monoClock ?? performance.now.bind(performance)
+      const deadlineMs = this.options.readinessDeadlineMs ?? 45_000
+      const tracker = new InteractionReadinessTracker(monoClock(), deadlineMs)
+      let stopped: Awaited<ReturnType<typeof forceStopAndConfirm>>
+      try {
+        stopped = await (this.options.forceStop ?? forceStopAndConfirm)({
+          deviceId: item.deviceId,
+          applicationId,
+        })
+      } catch (error) {
+        const trace = tracker.trace(monoClock(), false)
+        await this.blockRun(
+          item,
+          `FORCE_STOP_NOT_CONFIRMED · ${describeError(error)}`,
+          trace,
+        )
+        return
+      }
+      if (!stopped.confirmed) {
+        const baseTrace = tracker.trace(monoClock(), false)
+        const trace: InteractionReadinessTrace = {
+          ...baseTrace,
+          supportingEvidence: {
+            ...baseTrace.supportingEvidence,
+            previousPids: stopped.previousPids,
+            remainingPids: stopped.remainingPids,
+          },
+        }
+        await this.blockRun(item, 'FORCE_STOP_NOT_CONFIRMED · package process remained alive', trace)
+        return
+      }
+      tracker.mark('PROCESS_TERMINATED', monoClock(), {
+        previousPids: stopped.previousPids,
+        packageProcessAbsent: true,
+      })
+
+      try {
+        await (this.options.launch ?? launchApplication)(item.deviceId, applicationId)
+      } catch (error) {
+        const trace = tracker.trace(monoClock())
+        await this.blockRun(item, `PROCESS_NOT_STARTED · launch failed: ${describeError(error)}`, trace)
+        return
+      }
+
+      // Acquire only after the previous process is proven dead. Reusing a socket
+      // handshaken against the process we just killed would make SDK_READY a lie.
+      try {
+        manager = await acquire({
+          deviceId: item.deviceId,
+          runId: item.runId,
+          executionId: item.executionId,
+        })
+      } catch (error) {
+        const trace = tracker.trace(monoClock())
+        await this.blockRun(item, describeBridgeAcquisitionFailure(error), trace)
+        return
+      }
+
+      sessionSet = await (this.options.broadcastRun ?? broadcastSetRun)(item.deviceId, applicationId, item.runId, {
+        wsEnabled: true,
+        wsPort: 8765,
+      })
+
+      const target = readinessTarget({
+        bundle: resolution.pack.bundle,
+        plan,
+        profile: launchProfile,
+      })
+      if (target.expectedScreen === undefined || target.target === undefined || target.fingerprint === undefined) {
+        const baseTrace = tracker.trace(monoClock())
+        const trace: InteractionReadinessTrace = {
+          ...baseTrace,
+          failureClass: 'UNCLASSIFIED',
+          supportingEvidence: {
+            ...baseTrace.supportingEvidence,
+            configurationError:
+              'cold profile has no addressable first RESOLVE_TARGET on its expected screen',
+          },
+        }
+        await this.blockRun(item, 'UNCLASSIFIED · cold-start actionability contract is missing', trace)
+        return
+      }
+      const expectedScreen = target.expectedScreen
+      const readinessTargetDefinition = target.target
+      const readinessFingerprint = target.fingerprint
+
+      const readState = this.options.readDeviceState ?? getDeviceBridgeState
+      const readHealth = this.options.readDeviceHealth ?? getDeviceHealth
+      const observeLaunch = this.options.observeLaunch ?? observeAndroidLaunch
+      let firstCpuTicks: number | null = null
+      let lastState: DeviceBridgeState | null = null
+      const trace = await observeInteractionReadiness({
+        tracker,
+        monoClock,
+        sample: async () => {
+          const [android, state, health, targetResolution] = await Promise.all([
+            observeLaunch(item.deviceId, applicationId),
+            readState(item.deviceId, applicationId).catch(() => null),
+            readHealth(item.deviceId, applicationId).catch(() => null),
+            manager!.resolve(readinessFingerprint, { runId: item.runId }).catch(() => null),
+          ])
+          lastState = state
+          if (firstCpuTicks === null && android.cpuTicks !== null) firstCpuTicks = android.cpuTicks
+          const screenVisible =
+            state !== null && screenMatchesScreenName(expectedScreen, state.currentScreen)
+          const cpuAdvanced =
+            android.cpuTicks !== null && firstCpuTicks !== null && android.cpuTicks > firstCpuTicks
+          const osScheduled =
+            android.processCreated &&
+            (android.appLifecycleReady ||
+              android.uiVisible ||
+              cpuAdvanced ||
+              (android.processState !== null && android.processState !== 'S'))
+          const sdkReady =
+            state?.runId === item.runId &&
+            state.sessionId.trim() !== '' &&
+            health?.wal !== undefined &&
+            (health.wsAuth !== undefined || health.ws !== undefined) &&
+            manager!.getCapabilities() !== null
+          return {
+            processCreated: android.processCreated,
+            processId: android.processId,
+            processState: android.processState,
+            cpuTicks: android.cpuTicks,
+            osScheduled,
+            appLifecycleReady: android.appLifecycleReady || screenVisible,
+            uiVisible: android.uiVisible && screenVisible,
+            currentScreen: state?.currentScreen ?? null,
+            targetResolution,
+            sdkReady,
+            sessionId: state?.sessionId ?? null,
+            detail: {
+              propertySet,
+              sessionSet,
+              expectedScreenRef: launchProfile.entry.expectedScreenRef,
+              targetRef: readinessTargetDefinition.targetKey,
+              walObserved: health?.wal !== undefined,
+              wsAuthObserved: health?.wsAuth !== undefined,
+              wsObserved: health?.ws !== undefined,
+              rawActivity: android.rawActivity,
+              rawWindow: android.rawWindow,
+            },
+          }
+        },
+      })
+      deviceState = lastState
+      await this.persistReadinessTrace(item, trace)
+      this.publishReadiness(item.runId, trace)
+      if (trace.status !== 'INTERACTION_READY') {
+        await this.blockRun(
+          item,
+          `${trace.failureClass ?? 'UNCLASSIFIED'} · first unmet ${trace.firstUnmet ?? '<unknown>'}`,
+          trace,
+        )
+        return
+      }
+    } else {
+      sessionSet = await (this.options.broadcastRun ?? broadcastSetRun)(item.deviceId, applicationId, item.runId, {
+        wsEnabled: true,
+        wsPort: 8765,
+      })
       deviceState = await readDeviceStateWithRetry({
         deviceId: item.deviceId,
         applicationId,
         runId: item.runId,
-        deadlineMs: stateWaitMs,
+        deadlineMs: 5_000,
       })
+      // The observed run fence is authoritative. Either control mechanism may
+      // report a transport-level miss even though the other established the
+      // session; conversely, two accepted sends without an observed runId are
+      // not proof that the app adopted it.
       if (deviceState?.runId !== item.runId) {
         await this.blockRun(
           item,
@@ -742,12 +964,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         return
       }
     }
-    deviceState ??= await readDeviceStateWithRetry({
-      deviceId: item.deviceId,
-      applicationId,
-      runId: item.runId,
-      deadlineMs: stateWaitMs,
-    })
+
+    if (manager === null) {
+      await this.blockRun(item, 'device Bridge was never acquired for this run')
+      return
+    }
     // One control channel for the whole run: launch preparation installs the
     // profile's precondition through it, the bridge port tells the app which
     // occurrence its emits belong to, and the generic-step runtime reads named
@@ -1066,6 +1287,56 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     }
   }
 
+  private publishReadiness(runId: string, trace: InteractionReadinessTrace): void {
+    const failed = trace.status !== 'INTERACTION_READY'
+    publishRunLiveEvent({
+      runId,
+      kind: 'DEVICE',
+      level: failed ? 'ERROR' : 'SUCCESS',
+      title: failed
+        ? `Interaction readiness failed · ${trace.failureClass ?? 'UNCLASSIFIED'}`
+        : 'Interaction readiness reached',
+      dedupeKey: runLiveKeys.device(
+        trace.status,
+        String(Math.round(trace.endedMonoTs)),
+        trace.firstUnmet ?? 'INTERACTION_READY',
+      ),
+      detail: { readiness: trace },
+    })
+  }
+
+  private async persistReadinessTrace(
+    item: QueueItem,
+    trace: InteractionReadinessTrace,
+  ): Promise<void> {
+    await this.options.prisma.bridgeFlowRunRuntime.upsert({
+      where: { runId: item.runId },
+      create: {
+        runId: item.runId,
+        engineType: 'BRIDGEFLOW',
+        compiledPlanRef: item.compiledPlanRef,
+        compiledPlanHash: item.compiledPlanHash,
+        domainPackKey: item.domainPackKey,
+        domainPackVersion: item.domainPackVersion,
+        domainPackDigest: item.domainPackDigest,
+        workflowIrSchemaVersion: 1,
+        compilerVersion: 'unknown',
+        bridgeProtocolVersion: '1',
+        sdkProtocolVersion: '1',
+        runEpochMs: BigInt(this.options.clock?.() ?? Date.now()),
+        runEpochUnit: 'MONOTONIC_MS',
+        readinessStatus: trace.status,
+        readinessClass: trace.failureClass,
+        readinessTrace: trace as never,
+      },
+      update: {
+        readinessStatus: trace.status,
+        readinessClass: trace.failureClass,
+        readinessTrace: trace as never,
+      },
+    })
+  }
+
   /**
    * Persist a mid-flight execution crash.
    *
@@ -1171,7 +1442,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
    * the reason off `terminationReason`, and dropping it there would blank the
    * message for every consumer that has not moved over yet.
    */
-  private async blockRun(item: QueueItem, reason: string): Promise<void> {
+  private async blockRun(
+    item: QueueItem,
+    reason: string,
+    readinessTrace?: InteractionReadinessTrace,
+  ): Promise<void> {
     await this.markRunRow(item.runId, { status: 'blocked', completedAt: new Date(this.options.clock?.() ?? Date.now()) })
     // The remediation is the whole value of a blocked run, and the watcher can
     // only report it a poll later — by which time the operator has already read
@@ -1211,6 +1486,13 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
           failureDetail: reason,
+          ...(readinessTrace === undefined
+            ? {}
+            : {
+                readinessStatus: readinessTrace.status,
+                readinessClass: readinessTrace.failureClass,
+                readinessTrace: readinessTrace as never,
+              }),
         },
         update: {
           lifecycle: 'CLOSED',
@@ -1219,6 +1501,13 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
           failureDetail: reason,
+          ...(readinessTrace === undefined
+            ? {}
+            : {
+                readinessStatus: readinessTrace.status,
+                readinessClass: readinessTrace.failureClass,
+                readinessTrace: readinessTrace as never,
+              }),
         },
       }),
     ])

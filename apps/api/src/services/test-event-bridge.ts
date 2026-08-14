@@ -426,7 +426,7 @@ export function validateHealthSnapshot(value: unknown): value is DeviceHealthSna
     optionalPositiveInteger(value.pid) &&
     optionalPositiveInteger(value.apiLevel) &&
     optionalType(value.profileable, "boolean") &&
-    optionalType(value.inCriticalSpan, "boolean") &&
+    optionalScalar(value.inCriticalSpan) &&
     optionalNonNegativeNumber(value.heapUsedMb) &&
     optionalNonNegativeNumber(value.heapMaxMb) &&
     optionalNonNegativeNumber(value.nativeHeapMb) &&
@@ -445,6 +445,7 @@ export function validateHealthSnapshot(value: unknown): value is DeviceHealthSna
     optionalObjectArray(value.gaps) &&
     optionalObjectArray(value.gapEntries) &&
     optionalStringOrRecord(value.wsAuth) &&
+    optionalStringOrRecord(value.ws) &&
     optionalRecord(value.gapPublish)
   );
 }

@@ -58,17 +58,10 @@ import { irDocument, requires, sourceMapEntry, stepBase } from "./ir-authoring.j
 export const NESY_LOGIN_MACRO_KEY = "nesy.macro.login";
 
 const STEPS: readonly WorkflowStepV2[] = [
-  {
-    ...stepBase({ planStepId: "wait-login-ready", sourceMapRef: "sm-login-1", next: "resolve-pin-field", timeoutMs: 30_000 }),
-    kind: "WAIT_EVENT",
-    factKey: NESY_FACTS.LOGIN_SCREEN_READY,
-    sourceLane: "UI",
-    stableForMs: 300,
-    // The login screen is not entity-scoped, so requiring an entity match would
-    // leave this permanently unresolved.
-    requireCorrelation: false,
-    onTimeout: "FAIL",
-  },
+  // G90.2b owns pre-action readiness. The queue proves PROCESS_TERMINATED →
+  // INTERACTION_READY (including this PIN target's actionability) before the
+  // executor receives the plan, so a second `wait-login-ready` fact here would
+  // reintroduce the old 20s single-wait model and blur its canonical class.
   // NO "select the PIN tab" STEP, deliberately.
   //
   // There used to be a `resolve-pin-tab` + `select-pin-tab` pair whose identity was
@@ -311,14 +304,13 @@ const GENERIC_IR = irDocument({
     { name: "localSessionRows", type: "stringList" },
   ],
   steps: STEPS,
-  entryStepId: "wait-login-ready",
+  entryStepId: "resolve-pin-field",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.bridge.set-text"),
     requires("verdict.core.bridge.watch-fact"),
   ],
   sourceMap: [
-    sourceMapEntry("sm-login-1", "wait-login-ready", NESY_LOGIN_MACRO_KEY, "login screen readiness"),
     sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
@@ -352,7 +344,6 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   authoredBy: "COMPILER",
   requiredCapabilityRefs: ["verdict.core.bridge.tap", "verdict.core.bridge.set-text"],
   legs: [
-    { planStepId: "wait-login-ready", bridgeVerb: "watch", awaitFactKey: NESY_FACTS.LOGIN_SCREEN_READY },
     { planStepId: "enter-pin", bridgeVerb: "setText", targetRef: NESY_TARGETS.loginPinField },
     {
       planStepId: "tap-submit",

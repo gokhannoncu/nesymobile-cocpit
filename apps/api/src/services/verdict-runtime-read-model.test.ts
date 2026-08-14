@@ -10,6 +10,9 @@ describe('verdict runtime read model', () => {
       engineType: 'BRIDGEFLOW',
       lifecycle: 'CLOSED',
       productVerdict: 'PASS_ONLINE',
+      readinessStatus: 'INTERACTION_READY',
+      readinessClass: null,
+      readinessTrace: { version: 1, completed: [{ state: 'SDK_READY', monoTs: 42 }] },
       schedulerDisposition: 'RELEASED',
       operationalDisposition: 'OK',
     })
@@ -19,6 +22,8 @@ describe('verdict runtime read model', () => {
       engineType: 'BRIDGEFLOW',
       lifecycle: 'CLOSED',
       productVerdict: 'PASS_ONLINE',
+      readinessStatus: 'INTERACTION_READY',
+      readinessTrace: { version: 1, completed: [{ state: 'SDK_READY', monoTs: 42 }] },
       schedulerDisposition: 'RELEASED',
       operationalDisposition: 'OK',
     })

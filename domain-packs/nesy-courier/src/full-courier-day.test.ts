@@ -156,7 +156,7 @@ describe("full courier day composition", () => {
   // ── 2. stitching ────────────────────────────────────────────────────────
 
   it("continues each leg's closing assertion into the next leg's entry", () => {
-    expect(IR.entryStepId).toBe("auth-wait-login-ready");
+    expect(IR.entryStepId).toBe("auth-resolve-pin-field");
     for (const { exit, entry } of CHAIN) {
       const assertion = step(exit);
       expect(assertion.kind).toBe("ASSERT_FACT");
@@ -226,10 +226,10 @@ describe("full courier day composition", () => {
     }
   });
 
-  it("keeps the first wait of the run fatal, because nothing precedes it", () => {
-    const first = step("auth-wait-login-ready");
-    if (first.kind !== "WAIT_EVENT") throw new Error("expected WAIT_EVENT");
-    expect(first.onTimeout).toBe("FAIL");
+  it("starts with the PIN target after queue-owned interaction readiness", () => {
+    const first = step("auth-resolve-pin-field");
+    expect(first.kind).toBe("RESOLVE_TARGET");
+    expect(IR.steps.some((entry) => entry.planStepId === "auth-wait-login-ready")).toBe(false);
   });
 
   // ── 5. interrupts ───────────────────────────────────────────────────────

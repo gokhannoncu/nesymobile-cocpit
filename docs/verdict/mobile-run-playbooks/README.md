@@ -214,3 +214,9 @@ Verdict Mobile Phase N'yi uygula.
 Sonra RESULT.md dosyasını oku ve durumu güncelle.
 Owned paths dışına çıkma. Fake-pass yazma.
 ```
+
+## Zaman kutulu hedefler
+
+Faz teslimi ile canlı sınıflı soak karışmaz. Hedef izi:
+
+[`../goals/README.md`](../goals/README.md) · açık: [`../goals/G90-stabilization/RUN_PLAY.md`](../goals/G90-stabilization/RUN_PLAY.md) · G90.2b `CODE_COMPLETE` · **NEXT G90.3** · Phase 10 ≠ live golden: [`../goals/G90-stabilization/RESULT.md`](../goals/G90-stabilization/RESULT.md) §1.1

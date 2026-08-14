@@ -112,23 +112,6 @@
       ],
       "steps": [
         {
-          "planStepId": "wait-login-ready",
-          "sourceMapRef": "sm-login-1",
-          "next": "resolve-pin-field",
-          "timeoutMs": 30000,
-          "retryPolicy": {
-            "maxAttempts": 1,
-            "effectClass": "READ_ONLY"
-          },
-          "capabilityRequirements": [],
-          "kind": "WAIT_EVENT",
-          "factKey": "UI.LOGIN_SCREEN_READY",
-          "sourceLane": "UI",
-          "stableForMs": 300,
-          "requireCorrelation": false,
-          "onTimeout": "FAIL"
-        },
-        {
           "planStepId": "resolve-pin-field",
           "sourceMapRef": "sm-login-4",
           "next": "enter-pin",
@@ -392,7 +375,7 @@
           "runOnFailure": true
         }
       ],
-      "entryStepId": "wait-login-ready",
+      "entryStepId": "resolve-pin-field",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -430,12 +413,6 @@
         }
       ],
       "sourceMap": [
-        {
-          "ref": "sm-login-1",
-          "planStepId": "wait-login-ready",
-          "domainSourceRef": "nesy.macro.login",
-          "note": "login screen readiness"
-        },
         {
           "ref": "sm-login-4",
           "planStepId": "resolve-pin-field",
@@ -487,12 +464,6 @@
       ]
     },
     "irSourceMap": [
-      {
-        "ref": "sm-login-1",
-        "planStepId": "wait-login-ready",
-        "domainSourceRef": "nesy.macro.login",
-        "note": "login screen readiness"
-      },
       {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",
@@ -547,7 +518,6 @@
         "ref": "ds-login-1",
         "macroRef": "nesy.macro.login",
         "planStepIds": [
-          "wait-login-ready",
           "resolve-pin-field",
           "enter-pin",
           "resolve-submit",
@@ -604,23 +574,6 @@
       }
     ],
     "steps": [
-      {
-        "planStepId": "wait-login-ready",
-        "sourceMapRef": "sm-login-1",
-        "next": "resolve-pin-field",
-        "timeoutMs": 30000,
-        "retryPolicy": {
-          "maxAttempts": 1,
-          "effectClass": "READ_ONLY"
-        },
-        "capabilityRequirements": [],
-        "kind": "WAIT_EVENT",
-        "factKey": "UI.LOGIN_SCREEN_READY",
-        "sourceLane": "UI",
-        "stableForMs": 300,
-        "requireCorrelation": false,
-        "onTimeout": "FAIL"
-      },
       {
         "planStepId": "resolve-pin-field",
         "sourceMapRef": "sm-login-4",
@@ -885,7 +838,7 @@
         "runOnFailure": true
       }
     ],
-    "entryStepId": "wait-login-ready",
+    "entryStepId": "resolve-pin-field",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -923,12 +876,6 @@
       }
     ],
     "sourceMap": [
-      {
-        "ref": "sm-login-1",
-        "planStepId": "wait-login-ready",
-        "domainSourceRef": "nesy.macro.login",
-        "note": "login screen readiness"
-      },
       {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",
@@ -987,11 +934,6 @@
       "verdict.core.bridge.set-text"
     ],
     "legs": [
-      {
-        "planStepId": "wait-login-ready",
-        "bridgeVerb": "watch",
-        "awaitFactKey": "UI.LOGIN_SCREEN_READY"
-      },
       {
         "planStepId": "enter-pin",
         "bridgeVerb": "setText",

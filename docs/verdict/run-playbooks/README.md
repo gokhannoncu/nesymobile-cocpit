@@ -123,3 +123,13 @@ notları ilgili RESULT dosyalarında taşınır.
 
 Mobile ilerleme özeti (2026-08-06): **M0–M4A COMPLETED**, **M4B IN_PROGRESS**.
 Bu, master plan `faz-*` YAML status’unu otomatik değiştirmez.
+
+## Zaman kutulu hedefler (faz değil)
+
+Faz playbook’u “ne inşa edildi”yi kapatır. Canlı sınıflı soak ayrı izdedir:
+
+```text
+docs/verdict/goals/
+```
+
+Giriş: [`../goals/README.md`](../goals/README.md). Açık hedef: [`../goals/G90-stabilization/RUN_PLAY.md`](../goals/G90-stabilization/RUN_PLAY.md). G90.2b `CODE_COMPLETE`; **NEXT G90.3** ([`../goals/G90-stabilization/JOIN.md`](../goals/G90-stabilization/JOIN.md)). Phase 10 plumbing ≠ live golden: [`../goals/G90-stabilization/RESULT.md`](../goals/G90-stabilization/RESULT.md) §1.1. `94 PASS / 6 sınıflı failure` belirsiz timeout’tan değerli. `pilotStable` ≠ `internallyStable`.

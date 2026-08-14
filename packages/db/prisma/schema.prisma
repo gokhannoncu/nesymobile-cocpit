@@ -639,6 +639,12 @@ model BridgeFlowRunRuntime {
   /// text the reason a run failed existed only in the API process stdout, so a
   /// `failed` run was undiagnosable from the cockpit or the database.
   failureDetail          String?  @map("failure_detail")
+  /// G90 pre-action state-machine result. Kept separate from product verdict and
+  /// the broad evaluation-failure axis so a readiness boundary is never mistaken
+  /// for a product defect.
+  readinessStatus        String   @default("NOT_REQUIRED") @map("readiness_status")
+  readinessClass         String?  @map("readiness_class")
+  readinessTrace         Json?    @map("readiness_trace")
   cleanupResult          String   @default("NOT_STARTED") @map("cleanup_result")
   resourceReleaseResult  String   @default("NOT_REQUIRED") @map("resource_release_result")
   schedulerDisposition   String   @default("NOT_SCHEDULED") @map("scheduler_disposition")

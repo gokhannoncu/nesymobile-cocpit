@@ -51,6 +51,11 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.28.0 — G90.2b cold-start readiness owns the pre-action gate. The login
+  //   workflow now enters at `resolve-pin-field`; the legacy `wait-login-ready`
+  //   plan step is removed from the pack because INTERACTION_READY is enforced
+  //   by the runtime before the first Bridge action.
+  //
   // 1.27.0 — FULL_COURIER_DAY chains all seven product legs into one run, so the
   //   HAND-OFFS between them are finally under test: each leg now starts from the
   //   state the previous leg actually produced instead of one a launch profile
@@ -396,7 +401,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 27, patch: 0 },
+  version: { major: 1, minor: 28, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
