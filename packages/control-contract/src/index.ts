@@ -173,7 +173,7 @@ export interface DeviceHealthSnapshot {
   pid?: number;
   apiLevel?: number;
   profileable?: boolean;
-  inCriticalSpan?: boolean;
+  inCriticalSpan?: boolean | string;
   heapUsedMb?: number;
   heapMaxMb?: number;
   nativeHeapMb?: number;
@@ -198,6 +198,7 @@ export interface DeviceHealthSnapshot {
   gaps?: readonly Record<string, unknown>[];
   gapEntries?: readonly Record<string, unknown>[];
   wsAuth?: string | Record<string, unknown>;
+  ws?: string | Record<string, unknown>;
   gapPublish?: Record<string, unknown>;
   [extra: string]: unknown;
 }

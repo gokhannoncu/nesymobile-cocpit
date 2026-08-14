@@ -82,7 +82,12 @@ host cihaza korelasyon göndermiyordu, cihaz emit'lerine iliştirmiyordu, host't
 sözlük boştu. Sonuç: **hiçbir cihaz olayı fact'e dönüşmüyordu** — sadece login
 için değil, hiçbir iş akışı için.
 
-Üçü de kuruldu. Yol boyunca iki tıkanma daha çıktı, ikisi de aynı sınıftan —
+Üçü de kuruldu (**plumbing / `CODE_WIRED`**). Bu, login golden occurrence’da
+`ROUTE_LIST_READY` / `LOGIN_REJECTED` **live observed** demek değildir.
+G90 o iddiayı ayrı tutar: `implemented ≠ live observed ≠ golden accepted`
+([`../../goals/G90-stabilization/RESULT.md`](../../goals/G90-stabilization/RESULT.md) §1.1).
+
+Yol boyunca iki tıkanma daha çıktı, ikisi de aynı sınıftan —
 "bilmiyorum"u "hata" saymak:
 
 - Korelasyon artık her emit'te olduğu için, **kayıtlı olmayan her tel adı** sıralı

@@ -27,7 +27,7 @@ import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
 import { NESY_FULL_COURIER_DAY_MACRO } from "./macros/full-courier-day.js";
 import { NESY_DISMISS_NOTIFICATION_LIST_MACRO, NESY_GRANT_PERMISSION_MACRO, NESY_RECOVER_NETWORK_MACRO } from "./macros/interrupt-handlers.js";
 import { NESY_LOAD_TO_VEHICLE_MACRO } from "./macros/load-to-vehicle.js";
-import { NESY_LOGIN_MACRO } from "./macros/login.js";
+import { NESY_LOGIN_MACRO, NESY_LOGIN_REJECTED_MACRO } from "./macros/login.js";
 import { NESY_LOGIN_AND_SELECT_ROUTE_MACRO } from "./macros/login-and-select-route.js";
 import { NESY_OPEN_STOP_MACRO } from "./macros/open-stop.js";
 import { NESY_PROCESS_PARCEL_MACRO } from "./macros/process-parcel.js";
@@ -51,6 +51,16 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.29.0 — G90.3 splits expected wrong-PIN rejection into its own independent
+  //   workflow (`nesy.workflow.login-rejected`). The real UI action path is the
+  //   same PIN-submit path, but the final oracle now votes on
+  //   APP.LOGIN_REJECTED instead of successful session facts.
+  //
+  // 1.28.0 — G90.2b cold-start readiness owns the pre-action gate. The login
+  //   workflow now enters at `resolve-pin-field`; the legacy `wait-login-ready`
+  //   plan step is removed from the pack because INTERACTION_READY is enforced
+  //   by the runtime before the first Bridge action.
+  //
   // 1.27.0 — FULL_COURIER_DAY chains all seven product legs into one run, so the
   //   HAND-OFFS between them are finally under test: each leg now starts from the
   //   state the previous leg actually produced instead of one a launch profile
@@ -396,7 +406,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 27, patch: 0 },
+  version: { major: 1, minor: 29, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
@@ -455,6 +465,7 @@ export function buildNesyCourierBundle(): DomainPackBundle {
       semanticActions: NESY_COURIER_SEMANTIC_ACTIONS,
       macros: [
         NESY_LOGIN_MACRO,
+        NESY_LOGIN_REJECTED_MACRO,
         NESY_SELECT_ROUTE_MACRO,
         NESY_LOGIN_AND_SELECT_ROUTE_MACRO,
         NESY_LOAD_TO_VEHICLE_MACRO,

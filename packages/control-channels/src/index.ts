@@ -433,7 +433,7 @@ function decodeVerdict<Op extends ControlOperation>(
         pid: "number",
         apiLevel: "number",
         profileable: "boolean",
-        inCriticalSpan: "boolean",
+        inCriticalSpan: "scalar",
         heapUsedMb: "number",
         heapMaxMb: "number",
         nativeHeapMb: "number",
@@ -452,6 +452,7 @@ function decodeVerdict<Op extends ControlOperation>(
         gaps: "objectArray",
         gapEntries: "objectArray",
         wsAuth: "stringOrObject",
+        ws: "stringOrObject",
         gapPublish: "object",
       });
       const anrRisk = asJsonObject(data.anrRisk);

@@ -33,7 +33,8 @@ describe("login then select route composition", () => {
   });
 
   it("starts at PIN login and continues into the route dialog after assert-login", () => {
-    expect(NESY_LOGIN_AND_SELECT_ROUTE_IR.entryStepId).toBe("wait-login-ready");
+    expect(NESY_LOGIN_AND_SELECT_ROUTE_IR.entryStepId).toBe("resolve-pin-field");
+    expect(NESY_LOGIN_AND_SELECT_ROUTE_IR.steps.some((step) => step.planStepId === "wait-login-ready")).toBe(false);
     const assertLogin = NESY_LOGIN_AND_SELECT_ROUTE_IR.steps.find((step) => step.planStepId === "assert-login");
     expect(assertLogin?.next).toBe("wait-dialog");
     expect(NESY_LOGIN_AND_SELECT_ROUTE_IR.steps.some((step) => step.planStepId === "assert-selection")).toBe(true);

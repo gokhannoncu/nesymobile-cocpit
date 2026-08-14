@@ -769,7 +769,10 @@ describe('generic step runtime', () => {
 })
 
 describe('execution queue device gating', () => {
-  function queueHarness(acquireBridge: () => Promise<BridgeDeviceManager>) {
+  function queueHarness(
+    acquireBridge: () => Promise<BridgeDeviceManager>,
+    overrides: Partial<ConstructorParameters<typeof BridgeFlowExecutionQueue>[0]> = {},
+  ) {
     const statuses: string[] = []
     const runRowStatuses: string[] = []
     const runtimeWrites: Record<string, unknown>[] = []
@@ -806,7 +809,18 @@ describe('execution queue device gating', () => {
         packDigest: PACK.packDigest,
         compilerVersion: 'test',
       },
-      steps: [{ planStepId: 'step-1', sourceMapRef: 'src:1' }],
+      steps: [
+        {
+          planStepId: 'step-1',
+          sourceMapRef: 'src:1',
+          kind: 'RESOLVE_TARGET',
+          next: null,
+          params: {
+            targetRef: 'nesy.target.login-pin-field',
+            outputVariable: 'target',
+          },
+        },
+      ],
     })
 
     const queue = new BridgeFlowExecutionQueue({
@@ -815,6 +829,7 @@ describe('execution queue device gating', () => {
       acquireBridge,
       resolvePack: resolveDomainPack,
       clock: () => 1_000,
+      ...overrides,
     })
 
     return { queue, statuses, runRowStatuses, runtimeWrites }
@@ -866,6 +881,128 @@ describe('execution queue device gating', () => {
     await new Promise((resolve) => setImmediate(resolve))
 
     expect(statuses).toContain('BLOCKED')
+  })
+
+  it('does not launch when force-stop cannot be confirmed and persists the canonical class', async () => {
+    let launched = false
+    const { queue, statuses, runtimeWrites } = queueHarness(
+      async () => {
+        throw new Error('bridge acquisition must not begin before force-stop confirmation')
+      },
+      {
+        admissionGate: async () => ({ ok: true }),
+        setRunId: async () => true,
+        forceStop: async () => ({
+          confirmed: false,
+          previousPids: [101],
+          remainingPids: [101],
+        }),
+        launch: async () => {
+          launched = true
+        },
+      },
+    )
+
+    queue.enqueue({ ...item, profileKey: 'nesy.launch.cold-real-login' })
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(launched).toBe(false)
+    expect(statuses).toContain('BLOCKED')
+    expect(runtimeWrites[0]).toMatchObject({
+      productVerdict: 'NOT_EVALUATED',
+      readinessStatus: 'NOT_EVALUATED',
+      readinessClass: 'FORCE_STOP_NOT_CONFIRMED',
+      readinessTrace: expect.objectContaining({
+        firstUnmet: 'PROCESS_TERMINATED',
+        pending: expect.arrayContaining(['PROCESS_TERMINATED']),
+      }),
+    })
+  })
+
+  it('gates the executor on SDK_READY and persists the completed pre-action boundaries', async () => {
+    let mono = 0
+    let launched = false
+    const actionableNode = {
+      depth: 1,
+      id: 'pinView',
+      text: null,
+      contentDescription: null,
+      className: 'android.widget.EditText',
+      packageName: 'com.arasdigital.nesymobile.rs.stage',
+      rowIndex: null,
+      columnIndex: null,
+      collectionInfo: null,
+      clickable: true,
+      enabled: true,
+      visible: true,
+      obscuredBy: [],
+      bounds: { left: 10, top: 10, right: 100, bottom: 80 },
+    }
+    const manager = fakeManager({
+      getCapabilities: () => ({ protocolVersion: 1 }),
+      resolve: async (fingerprint) => ({
+        outcome: 'RESOLVED_UNIQUE',
+        fingerprint,
+        strength: 'STRONG',
+        treeGen: 9,
+        node: actionableNode,
+      }),
+    } as never)
+    const { queue, statuses, runtimeWrites } = queueHarness(async () => manager, {
+      admissionGate: async () => ({ ok: true }),
+      setRunId: async () => true,
+      broadcastRun: async () => true,
+      forceStop: async () => ({ confirmed: true, previousPids: [100], remainingPids: [] }),
+      launch: async () => {
+        launched = true
+      },
+      observeLaunch: async () => ({
+        processCreated: true,
+        processId: 200,
+        processState: 'R',
+        cpuTicks: 1,
+        appLifecycleReady: true,
+        uiVisible: true,
+        rawActivity: 'topResumedActivity=com.arasdigital.nesymobile.rs.stage',
+        rawWindow: 'mCurrentFocus=com.arasdigital.nesymobile.rs.stage',
+      }),
+      readDeviceState: async () => ({
+        isLoggedIn: false,
+        routeSelected: false,
+        routeName: '',
+        scheduleLoaded: false,
+        scheduleId: '',
+        currentScreen: 'LoginFragment',
+        runId: 'run-1',
+        sessionId: 'session-1',
+        raw: {},
+      }),
+      // No WAL/auth evidence: all earlier states pass, SDK_READY must remain red.
+      readDeviceHealth: async () => ({}),
+      readinessDeadlineMs: 5,
+      monoClock: () => {
+        mono += 1
+        return mono
+      },
+    })
+
+    queue.enqueue({ ...item, profileKey: 'nesy.launch.cold-real-login' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(launched).toBe(true)
+    expect(statuses).toContain('BLOCKED')
+    expect(runtimeWrites).toContainEqual(
+      expect.objectContaining({
+        readinessStatus: 'INTERACTION_NOT_READY',
+        readinessClass: 'SDK_NOT_READY',
+        readinessTrace: expect.objectContaining({
+          firstUnmet: 'SDK_READY',
+          completed: expect.arrayContaining([
+            expect.objectContaining({ state: 'UI_ACTIONABLE' }),
+          ]),
+        }),
+      }),
+    )
   })
 })
 

@@ -27,6 +27,7 @@ import path from "node:path";
 
 import {
   BridgeActionLifecycle,
+  BRIDGE_NOT_MEASURED,
   admitMutationTarget,
   clampSwipeDurationMs,
   clampTapTimeoutMs,
@@ -88,6 +89,59 @@ export interface ScreenshotArtifact {
   height: number | null;
   byteLength: number;
   sha256: string;
+}
+
+function measuredBoolean(value: unknown): BridgeNode["visible"] {
+  return typeof value === "boolean" ? value : BRIDGE_NOT_MEASURED;
+}
+
+function nullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function measuredBounds(value: unknown): BridgeNode["bounds"] {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return BRIDGE_NOT_MEASURED;
+  const raw = value as Record<string, unknown>;
+  const { left, top, right, bottom } = raw;
+  if (
+    typeof left !== "number" ||
+    typeof top !== "number" ||
+    typeof right !== "number" ||
+    typeof bottom !== "number"
+  ) {
+    return BRIDGE_NOT_MEASURED;
+  }
+  return { left, top, right, bottom };
+}
+
+function nodeEvidence(envelope: BridgeResultEnvelope): { node?: BridgeNode } {
+  if (envelope.node !== undefined) return { node: envelope.node as BridgeNode };
+  if (envelope.id === undefined && envelope.bounds === undefined) return {};
+  return {
+    node: {
+      depth: nullableNumber(envelope.depth) ?? 0,
+      id: typeof envelope.id === "string" ? envelope.id : null,
+      text: typeof envelope.text === "string" ? envelope.text : null,
+      contentDescription: typeof envelope.contentDescription === "string" ? envelope.contentDescription : null,
+      className: typeof envelope.className === "string" ? envelope.className : null,
+      packageName: typeof envelope.packageName === "string" ? envelope.packageName : null,
+      rowIndex: nullableNumber(envelope.rowIndex),
+      columnIndex: nullableNumber(envelope.columnIndex),
+      collectionInfo:
+        envelope.collectionInfo !== null &&
+        typeof envelope.collectionInfo === "object" &&
+        !Array.isArray(envelope.collectionInfo)
+          ? (envelope.collectionInfo as BridgeNode["collectionInfo"])
+          : null,
+      clickable: measuredBoolean(envelope.clickable),
+      enabled: measuredBoolean(envelope.enabled),
+      visible: measuredBoolean(envelope.visible),
+      obscuredBy: Array.isArray(envelope.obscuredBy)
+        ? envelope.obscuredBy.filter((item): item is string => typeof item === "string")
+        : [],
+      bounds: measuredBounds(envelope.bounds),
+    },
+  };
 }
 
 export class BridgeDeviceManager {
@@ -313,7 +367,7 @@ export class BridgeDeviceManager {
         strength,
         ...(matched === undefined ? {} : { matchedCount: matched }),
         ...(treeGen === undefined ? {} : { treeGen }),
-        ...(envelope.node === undefined ? {} : { node: envelope.node as BridgeNode }),
+        ...nodeEvidence(envelope),
       };
     }
 

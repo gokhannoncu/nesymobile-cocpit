@@ -2,7 +2,8 @@
 
 **Tarih:** 2026-08-12  
 **Durum:** Operasyonel anlatı — **hedef mimari** ile **bugünkü teslim** ayrılmıştır.  
-**Üst plan:** [`CONDITION_ENGINE_AND_BRIDGEFLOW.md`](./CONDITION_ENGINE_AND_BRIDGEFLOW.md) · [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) · [`SISTEM_NASIL_CALISIR.md`](./SISTEM_NASIL_CALISIR.md)  
+**Üst plan:** [`CONDITION_ENGINE_AND_BRIDGEFLOW.md`](./CONDITION_ENGINE_AND_BRIDGEFLOW.md) · [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) · [`SISTEM_NASIL_CALISIR.md`](./SISTEM_NASIL_CALISIR.md)
+**90 gün hedef:** [`goals/G90-stabilization/RUN_PLAY.md`](./goals/G90-stabilization/RUN_PLAY.md) — north star beş madde. G90.2b `CODE_COMPLETE`; **NEXT = G90.3** ([`goals/G90-stabilization/JOIN.md`](./goals/G90-stabilization/JOIN.md)). Phase 10 plumbing ≠ live golden: [`goals/G90-stabilization/RESULT.md`](./goals/G90-stabilization/RESULT.md) §1.1. “Gerçekten stabil”: [`goals/G90-stabilization/ACCEPTANCE.md`](./goals/G90-stabilization/ACCEPTANCE.md) (`pilotStable` ≠ `internallyStable`). İz: [`goals/README.md`](./goals/README.md).
 **Paketleme:** [`brand/PRODUCT_PACKAGING_AND_LTV_REVISIONS.md`](./brand/PRODUCT_PACKAGING_AND_LTV_REVISIONS.md)  
 **NesyMobile kod denetimi (eski AutomationBridge analizi vs güncel SDK):** [`NESYMOBILE_CODE_AUDIT.md`](./NESYMOBILE_CODE_AUDIT.md)
 

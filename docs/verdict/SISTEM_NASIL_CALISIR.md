@@ -6,6 +6,7 @@
 
 İlgili planlar: [`CONDITION_ENGINE_AND_BRIDGEFLOW.md`](./CONDITION_ENGINE_AND_BRIDGEFLOW.md) · [`COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md`](./COCKPIT_SDK_BRIDGE_COMPAT_PLAN.md) · Mobile `VERDICT_START.md` İz B.  
 **Beş fazlı dürüst işletim modeli (hedef vs bugün):** [`OPERATING_MODEL.md`](./OPERATING_MODEL.md)
+**90 gün hedef:** [`goals/G90-stabilization/RUN_PLAY.md`](./goals/G90-stabilization/RUN_PLAY.md) — north star beş madde. G90.2b `CODE_COMPLETE`; **NEXT G90.3.** Phase 10 plumbing ≠ live golden: [`goals/G90-stabilization/RESULT.md`](./goals/G90-stabilization/RESULT.md) §1.1. “Gerçekten stabil”: [`goals/G90-stabilization/ACCEPTANCE.md`](./goals/G90-stabilization/ACCEPTANCE.md).
 
 ---
 
