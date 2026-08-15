@@ -1087,12 +1087,6 @@ export class BridgeFlowExecutor {
         const generic = this.options.genericSteps;
         if (!generic) {
           outcome.actionResult = "FAILED";
-          if (step.kind === "CLEANUP") {
-            state.cleanupResult = "FAILED";
-            state.operationalDisposition = "NEEDS_ATTENTION";
-            stop = true;
-            break;
-          }
           state.automationFailure = true;
           stop = true;
           break;
@@ -1106,16 +1100,8 @@ export class BridgeFlowExecutor {
         if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
         if (result.next !== undefined) next = result.next;
         if (!result.succeeded) {
-          if (step.kind === "CLEANUP") {
-            state.cleanupResult = "FAILED";
-            state.operationalDisposition = "NEEDS_ATTENTION";
-            stop = true;
-            break;
-          }
           state.automationFailure = true;
           stop = true;
-        } else if (step.kind === "CLEANUP") {
-          state.cleanupResult = "SUCCEEDED";
         }
       }
     }
