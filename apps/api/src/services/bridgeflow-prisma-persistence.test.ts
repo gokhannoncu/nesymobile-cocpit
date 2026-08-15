@@ -645,6 +645,10 @@ describe('PrismaExecutionPersistence', () => {
     } as never)
 
     expect(client.$transaction).toHaveBeenCalledTimes(1)
+    expect(client.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ maxWait: 10_000, timeout: 30_000 }),
+    )
     expect(client.$queryRaw).toHaveBeenCalledTimes(1)
     expect(client.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
       client.bridgeFlowRunRuntime.updateMany.mock.invocationCallOrder[0] ??

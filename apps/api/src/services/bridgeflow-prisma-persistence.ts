@@ -21,6 +21,10 @@ import type {
 } from './bridgeflow-recovery-worker.js'
 
 type RecoveryFence = { token: string; epoch: number }
+
+const FENCE_TRANSACTION_MAX_WAIT_MS = 10_000
+const FENCE_TRANSACTION_TIMEOUT_MS = 30_000
+
 type PersistedStepOccurrence = StepOccurrence & {
   startedAtMs?: number
   recoveryFence?: RecoveryFence
@@ -814,6 +818,9 @@ export class PrismaExecutionPersistence
       await this.lockFenceRow(client, runId)
       await this.assertFence(client, runId, fence)
       return operation(client)
+    }, {
+      maxWait: FENCE_TRANSACTION_MAX_WAIT_MS,
+      timeout: FENCE_TRANSACTION_TIMEOUT_MS,
     })
   }
 
