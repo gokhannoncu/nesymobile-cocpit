@@ -98,10 +98,17 @@ export type RunTerminationReason =
   | "UNKNOWN_ACTION_EFFECT"
   | "STUCK";
 
-/** Teardown result. Never overwrites {@link ProductVerdict}. */
+/**
+ * Teardown result. Never overwrites {@link ProductVerdict}.
+ *
+ * `NOT_REQUIRED` is terminal and means the executed path owed no teardown —
+ * typically a success path that ends before a `runOnFailure` CLEANUP. It is
+ * not `NOT_STARTED`, which says a teardown was owed and never began.
+ */
 export type WorkflowCleanupResult =
   | "NOT_STARTED"
   | "PENDING"
+  | "NOT_REQUIRED"
   | "SUCCEEDED"
   | "PARTIAL"
   | "FAILED";
@@ -207,7 +214,12 @@ export interface OutcomeAxesViolation {
   message: string;
 }
 
-const TERMINAL_CLEANUP: readonly WorkflowCleanupResult[] = ["SUCCEEDED", "PARTIAL", "FAILED"];
+const TERMINAL_CLEANUP: readonly WorkflowCleanupResult[] = [
+  "NOT_REQUIRED",
+  "SUCCEEDED",
+  "PARTIAL",
+  "FAILED",
+];
 
 const PASSING_VERDICTS: readonly ProductVerdict[] = ["PASS_ONLINE", "PASS_QUEUED_OFFLINE"];
 

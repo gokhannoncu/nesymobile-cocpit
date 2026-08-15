@@ -8,6 +8,7 @@ import {
   type InjectedFaultPlan,
 } from '@nesy/workflow-contract'
 
+import { assertFaultInjectionAllowed } from './fault-injection-environment.js'
 import type { WorkflowCompileResult } from './workflow-compile.service.js'
 
 export const WORKFLOW_RUN_API_VERSION = 'verdict-runtime.v1' as const
@@ -142,6 +143,7 @@ export function parseInjectedFaultBody(body: Record<string, unknown>): Pick<Work
   if (!isInjectedFaultHost(rawHost)) {
     throw new Error(`injectedFault ${rawFault} requires injectedFaultHost A|B`)
   }
+  assertFaultInjectionAllowed()
   return { injectedFault: rawFault, injectedFaultHost: rawHost }
 }
 

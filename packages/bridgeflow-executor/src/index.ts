@@ -610,6 +610,10 @@ export class BridgeFlowExecutor {
         state,
       );
     }
+    // After the checkpoint, so a resumed run still sees the teardown as owed.
+    // A plan-declared CLEANUP the executed path never reached is not a
+    // teardown that failed to start; B.8.3 needs a terminal value either way.
+    if (state.cleanupResult === "NOT_STARTED") state.cleanupResult = "NOT_REQUIRED";
     const result = this.buildRunOutcome(state);
     await this.options.persistence.persistRunResult({
       runId: input.runId,
@@ -631,7 +635,11 @@ export class BridgeFlowExecutor {
       // A continue-gate timeout on tap-submit leaves next at read-app-session.
       // The CLEANUP step is later in the plan and declared runOnFailure; walking
       // only the immediate next used to skip it and persist NOT_STARTED.
-      currentStepId = this.findRunOnFailureCleanup(stepsById, currentStepId);
+      currentStepId = this.findRunOnFailureCleanup(stepsById, currentStepId, state);
+    }
+    if (currentStepId === null) {
+      state.cleanupResult = "NOT_REQUIRED";
+      return;
     }
     let iterationKey = state.checkpointIterationKey;
     const maxCleanupTransitions = 100;
@@ -656,6 +664,7 @@ export class BridgeFlowExecutor {
   private findRunOnFailureCleanup(
     stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
     fromStepId: string | null,
+    state: ExecutionState,
   ): string | null {
     let current = fromStepId;
     const seen = new Set<string>();
@@ -663,11 +672,16 @@ export class BridgeFlowExecutor {
       seen.add(current);
       const step = stepsById.get(current);
       if (step === undefined) break;
-      if (step.kind === "CLEANUP" && step.params["runOnFailure"] === true) return current;
+      if (isRunOnFailureCleanup(step)) return current;
       current = step.next;
     }
+    // Off the reachable chain the only honest anchor is compensation: a plan
+    // can declare several teardowns and running the wrong branch's is worse
+    // than running none. A teardown whose compensated steps never executed is
+    // not owed, which is why an unmatched plan ends as NOT_REQUIRED.
     for (const step of stepsById.values()) {
-      if (step.kind === "CLEANUP" && step.params["runOnFailure"] === true) return step.planStepId;
+      if (!isRunOnFailureCleanup(step)) continue;
+      if (compensatesExecutedStep(step, state)) return step.planStepId;
     }
     return null;
   }
@@ -1862,6 +1876,18 @@ export class BridgeFlowExecutor {
     });
     return result;
   }
+}
+
+function isRunOnFailureCleanup(step: BridgeFlowPlanStep): boolean {
+  return step.kind === "CLEANUP" && step.params["runOnFailure"] === true;
+}
+
+function compensatesExecutedStep(step: BridgeFlowPlanStep, state: ExecutionState): boolean {
+  const compensates = step.params["compensatesStepIds"];
+  if (!Array.isArray(compensates)) return false;
+  return compensates.some(
+    (planStepId) => typeof planStepId === "string" && state.occurrenceCounts.has(planStepId),
+  );
 }
 
 function aggregateProductVerdicts(verdicts: readonly ProductVerdict[], state: ExecutionState): ProductVerdict {

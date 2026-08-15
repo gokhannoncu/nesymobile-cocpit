@@ -1244,6 +1244,7 @@ function isProductVerdict(value: unknown): boolean {
 function isCleanupResult(value: unknown): value is RecoverySnapshot['outcomeState']['cleanupResult'] {
   return value === 'NOT_STARTED' ||
     value === 'PENDING' ||
+    value === 'NOT_REQUIRED' ||
     value === 'SUCCEEDED' ||
     value === 'PARTIAL' ||
     value === 'FAILED'

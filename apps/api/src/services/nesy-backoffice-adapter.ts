@@ -28,6 +28,12 @@ export interface BackofficeCallInput {
   timeoutMs: number
   /** Idempotency key, forwarded so the backend can de-duplicate keyed mutations. */
   idempotencyKey?: string
+  /**
+   * Which plan step is making the call. An injector arms one step, and the
+   * same `operationRef` can appear at several — without this the effect could
+   * land on a step nobody armed.
+   */
+  planStepId?: string
 }
 
 export interface BackofficeCallResult {
@@ -255,19 +261,20 @@ export function createNesyBackofficeAdapter(
         const response = await (injection === null ? doFetch : hangUntilAbort)(
           `${credentials.baseUrl.replace(/\/$/, '')}/${endpoint.path}`,
           {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: `Bearer ${credentials.token}`,
-            'X-Channel': 'Portal',
-            'X-Client-Request-Time': new Date(startedAtMs).toISOString(),
-            'X-Error-Handling': 'inactive',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              Authorization: `Bearer ${credentials.token}`,
+              'X-Channel': 'Portal',
+              'X-Client-Request-Time': new Date(startedAtMs).toISOString(),
+              'X-Error-Handling': 'inactive',
               ...(input.idempotencyKey === undefined ? {} : { 'X-Idempotency-Key': input.idempotencyKey }),
-          },
-          body: JSON.stringify(body ?? {}),
-          signal: controller.signal,
-        } as RequestInit)
+            },
+            body: JSON.stringify(body ?? {}),
+            signal: controller.signal,
+          } as RequestInit,
+        )
 
         const text = await response.text()
         let envelope: Record<string, unknown> = {}

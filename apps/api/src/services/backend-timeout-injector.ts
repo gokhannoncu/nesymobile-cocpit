@@ -11,9 +11,12 @@ import {
   advanceFaultInjectionPhase,
   emptyFaultInjectionProvenance,
   isBackendTimeoutInjectionTarget,
+  matchesArmedTarget,
   type ExternalActionSpec,
   type FaultInjectionProvenance,
 } from '@nesy/workflow-contract'
+
+import { isFaultInjectionAllowedEnvironment } from './fault-injection-environment.js'
 
 export const BACKEND_TIMEOUT_LAB_DEADLINE_MS = 80
 
@@ -27,7 +30,7 @@ export interface BackendTimeoutSession {
   snapshot(): FaultInjectionProvenance
   request(): FaultInjectionProvenance
   tryArm(target: BackendTimeoutArmTarget): boolean
-  injectionForCall(operationRef: string): { timeoutMs: number } | null
+  injectionForCall(call: { operationRef: string; planStepId?: string }): { timeoutMs: number } | null
   markTriggered(operationRef: string, timeoutMs: number): void
   markDeadlineObserved(): void
 }
@@ -38,7 +41,11 @@ export function createBackendTimeoutSession(input: {
 }): BackendTimeoutSession {
   const clock = input.clock ?? Date.now
   const provenance = emptyFaultInjectionProvenance()
-  const enabled = input.injectedFault === 'BACKEND_TIMEOUT'
+  // Second gate. The route already refuses an injected run outside the lab
+  // environments; a session that somehow reaches a live host stays inert
+  // rather than aborting a real dispatcher mutation.
+  const enabled = input.injectedFault === 'BACKEND_TIMEOUT' && isFaultInjectionAllowedEnvironment()
+  let armed: { operationRef: string; planStepId: string } | null = null
 
   const setPhase = (phase: NonNullable<FaultInjectionProvenance['phase']>) => {
     provenance.phase = advanceFaultInjectionPhase(provenance.phase, phase)
@@ -60,6 +67,7 @@ export function createBackendTimeoutSession(input: {
       if (!enabled) return false
       if (!isBackendTimeoutInjectionTarget(target.spec)) return false
       setPhase('ARMED')
+      armed = { operationRef: target.spec.operationRef, planStepId: target.planStepId }
       provenance.armedAtMs = provenance.armedAtMs ?? clock()
       provenance.triggerPoint = `REMOTE_ACTION:${target.spec.operationRef}@${target.planStepId}`
       provenance.occurrenceId = target.occurrenceId
@@ -68,14 +76,12 @@ export function createBackendTimeoutSession(input: {
       return true
     },
 
-    injectionForCall(operationRef) {
+    injectionForCall(call) {
       if (!enabled) return null
       if (provenance.phase !== 'ARMED' && provenance.phase !== 'TRIGGERED' && provenance.phase !== 'EFFECT_OBSERVED') {
         return null
       }
-      if (provenance.triggerPoint !== null && !provenance.triggerPoint.includes(`:${operationRef}@`)) {
-        return null
-      }
+      if (!matchesArmedTarget(armed, call)) return null
       return { timeoutMs: BACKEND_TIMEOUT_LAB_DEADLINE_MS }
     },
 

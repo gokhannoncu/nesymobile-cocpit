@@ -8,6 +8,7 @@ import {
 } from "./index.js";
 import type { BridgeFlowPlan } from "@nesy/bridgeflow-compiler";
 import type { WaitAnyResult } from "@nesy/bridge-contract";
+import { validateRunOutcomeAxes } from "@nesy/workflow-contract";
 
 function planFixture(overrides: Partial<BridgeFlowPlan> = {}): BridgeFlowPlan {
   return {
@@ -192,6 +193,55 @@ describe("bridgeflow executor", () => {
       } as Partial<BridgeFlowPlan>);
     }
 
+    /** A `runOnFailure` teardown that no `next` edge reaches, as tour-approval declares it. */
+    function detachedCleanupPlan(compensatedStepId: string): BridgeFlowPlan {
+      return planFixture({
+        entryStepId: "assert-1",
+        steps: [
+          {
+            planStepId: "assert-1",
+            kind: "ASSERT_FACT",
+            sourceMapRef: "src:assert",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            params: { factKey: "app.session", expected: true },
+          },
+          {
+            planStepId: "release-fixture",
+            kind: "CLEANUP",
+            sourceMapRef: "src:cleanup",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            params: { runOnFailure: true, compensatesStepIds: [compensatedStepId] },
+          },
+        ],
+      } as Partial<BridgeFlowPlan>);
+    }
+
+    /** Stops on the assert: no fact is delivered, so the run ends evidence-insufficient. */
+    function stoppedRunExecutor(genericSteps: string[]): BridgeFlowExecutor {
+      return new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [] },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED" };
+          },
+        },
+        clock: () => 10,
+      });
+    }
+
     function fact(value: boolean | "UNKNOWN") {
       return {
         factKey: "app.session",
@@ -231,6 +281,63 @@ describe("bridgeflow executor", () => {
     it("keeps cleanup SUCCEEDED by default for workflows without a cleanup step", async () => {
       const result = await runWith([fact(true)]);
       expect(result.cleanupResult).toBe("SUCCEEDED");
+    });
+
+    it("closes a success path that never owed teardown as NOT_REQUIRED, not NOT_STARTED", async () => {
+      const genericSteps: string[] = [];
+      const result = await new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [fact(true)] },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED" };
+          },
+        },
+        clock: () => 10,
+      }).execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: detachedCleanupPlan("assert-1"),
+      });
+
+      expect(result.cleanupResult).toBe("NOT_REQUIRED");
+      expect(genericSteps).toEqual([]);
+      expect(
+        validateRunOutcomeAxes({ ...result, lifecycle: "CLOSED" }).map((violation) => violation.invariant),
+      ).not.toContain("B.8.3");
+    });
+
+    it("does not run a teardown for a branch the run never executed", async () => {
+      const genericSteps: string[] = [];
+      const result = await stoppedRunExecutor(genericSteps).execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: detachedCleanupPlan("a-step-that-never-ran"),
+      });
+
+      expect(result.productVerdict).toBe("INCONCLUSIVE");
+      expect(result.cleanupResult).toBe("NOT_REQUIRED");
+      expect(genericSteps).toEqual([]);
+    });
+
+    it("still reaches a detached teardown that compensates a step the run executed", async () => {
+      const genericSteps: string[] = [];
+      const result = await stoppedRunExecutor(genericSteps).execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: detachedCleanupPlan("assert-1"),
+      });
+
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+      expect(genericSteps).toEqual(["release-fixture"]);
     });
 
     it("reports an UNKNOWN value as evidence-insufficient, not as a product failure", async () => {

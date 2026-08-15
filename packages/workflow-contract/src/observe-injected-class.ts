@@ -19,6 +19,23 @@ export function isNetworkDisconnectInjectionTarget(spec: { effectClass: EffectCl
 }
 
 /**
+ * Does this call belong to the step the injector armed?
+ *
+ * `operationRef` alone is not identity: the same back-office operation can be
+ * declared at several plan steps, and firing at an unarmed one would put an
+ * effect where no provenance says it belongs. A call that cannot name its
+ * step is not matched — the injector stays inert rather than guessing.
+ */
+export function matchesArmedTarget(
+  armed: { operationRef: string; planStepId: string } | null,
+  call: { operationRef: string; planStepId?: string | undefined },
+): boolean {
+  if (armed === null) return false;
+  if (armed.operationRef !== call.operationRef) return false;
+  return armed.planStepId === call.planStepId;
+}
+
+/**
  * Classify an injected-fault observation.
  *
  * This function must not accept `injectedFault` or `expectedClass`. The two

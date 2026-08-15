@@ -24,7 +24,11 @@ import type { PrismaClient } from '@nesy/db'
 import type { DomainPackBundle, LaunchProfile } from '@nesy/domain-pack-contracts'
 import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
-import { observeInjectedClass, selectObservedFaultProvenance } from '@nesy/workflow-contract'
+import {
+  observeInjectedClass,
+  selectObservedFaultProvenance,
+  type WorkflowCleanupResult,
+} from '@nesy/workflow-contract'
 
 import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
@@ -107,7 +111,11 @@ function createEnvBackofficeAdapter(sessions?: {
     ...(backendTimeout === undefined
       ? {}
       : {
-          timeoutInjection: (input) => backendTimeout.injectionForCall(input.operationRef),
+          timeoutInjection: (input) =>
+            backendTimeout.injectionForCall({
+              operationRef: input.operationRef,
+              ...(input.planStepId === undefined ? {} : { planStepId: input.planStepId }),
+            }),
           onTimeoutInjected: (event) => {
             if (event.kind === 'TRIGGERED') backendTimeout.markTriggered(event.operationRef, event.timeoutMs)
             if (event.kind === 'EFFECT_OBSERVED') backendTimeout.markDeadlineObserved()
@@ -116,7 +124,11 @@ function createEnvBackofficeAdapter(sessions?: {
     ...(networkDisconnect === undefined
       ? {}
       : {
-          transportInjection: (input) => networkDisconnect.injectionForCall(input.operationRef),
+          transportInjection: (input) =>
+            networkDisconnect.injectionForCall({
+              operationRef: input.operationRef,
+              ...(input.planStepId === undefined ? {} : { planStepId: input.planStepId }),
+            }),
           onTransportInjected: (event) => {
             if (event.kind === 'TRIGGERED') networkDisconnect.markTriggered(event.operationRef)
             if (event.kind === 'EFFECT_OBSERVED') networkDisconnect.markTransportObserved()
@@ -984,7 +996,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       } catch (error) {
         // Readiness already happened on the device. Losing the row must not
         // skip isolation the way a later persistStepOccurrence crash used to.
-        await this.failClosed(item, applicationId, error)
+        await this.failClosed(item, applicationId, error, deviceState)
         return
       }
       this.publishReadiness(item.runId, trace)
@@ -1129,7 +1141,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         provenance: faultProvenance(),
       })
     } catch (error) {
-      await this.failClosed(item, applicationId, error)
+      await this.failClosed(item, applicationId, error, deviceState)
       screenObserver.forget(item.runId)
       sdkObservations.clear(item.runId)
       return
@@ -1368,7 +1380,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         result.terminationReason ?? 'COMPLETED',
       )
     } catch (error) {
-      await this.failClosed(item, applicationId, error)
+      await this.failClosed(item, applicationId, error, deviceState)
     } finally {
       await telemetrySampler?.stop({ finalCapture: true })
       // The observer is process-wide, so a finished run's screen must not linger:
@@ -1447,6 +1459,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     item: QueueItem,
     applicationId: string,
     error: unknown,
+    deviceState?: DeviceBridgeState | null,
   ): Promise<void> {
     const classified = classifyExecutionFailure(error)
     this.options.logger?.('[BridgeFlowExecutionQueue] execution failed', {
@@ -1461,6 +1474,9 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       evaluationFailureClass: classified.evaluationFailureClass,
       cleanupResult: cleanup.result,
     })
+    // A crashed run leaves the same durable stream behind as a finished one.
+    // Not closing it here is how a dead run kept an ordered lane open.
+    await this.closeDurableRunStream(item.runId, deviceState ?? null, 'ABORTED')
   }
 
   /**
@@ -1521,12 +1537,14 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     detail: string,
     extras?: {
       evaluationFailureClass?: 'NONE' | 'AUTOMATION_FAILURE' | 'ENVIRONMENT_FAILURE' | 'EVIDENCE_INSUFFICIENT'
-      cleanupResult?: 'NOT_STARTED' | 'PENDING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
+      cleanupResult?: WorkflowCleanupResult
     },
   ): Promise<void> {
     const clock = this.options.clock ?? Date.now
     const evaluationFailureClass = extras?.evaluationFailureClass ?? 'AUTOMATION_FAILURE'
-    const cleanupResult = extras?.cleanupResult ?? 'NOT_STARTED'
+    // Fail closed: a crashed run whose teardown was never accounted for is a
+    // dirty device, and `lifecycle: CLOSED` needs a terminal value (B.8.3).
+    const cleanupResult = extras?.cleanupResult ?? 'FAILED'
     await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
     publishRunLiveEvent({
       runId: item.runId,

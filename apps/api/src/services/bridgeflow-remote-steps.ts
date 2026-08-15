@@ -174,6 +174,7 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
                 operationRef: request.operationRef,
                 inputs,
                 timeoutMs: request.timeoutMs,
+                planStepId: step.planStepId,
                 ...(request.idempotencyKey === '' ? {} : { idempotencyKey: request.idempotencyKey }),
               },
               auditPolicy,

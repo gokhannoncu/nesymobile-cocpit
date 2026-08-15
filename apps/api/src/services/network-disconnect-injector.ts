@@ -11,9 +11,12 @@ import {
   advanceFaultInjectionPhase,
   emptyFaultInjectionProvenance,
   isNetworkDisconnectInjectionTarget,
+  matchesArmedTarget,
   type ExternalActionSpec,
   type FaultInjectionProvenance,
 } from '@nesy/workflow-contract'
+
+import { isFaultInjectionAllowedEnvironment } from './fault-injection-environment.js'
 
 export interface NetworkDisconnectArmTarget {
   planStepId: string
@@ -25,7 +28,7 @@ export interface NetworkDisconnectSession {
   snapshot(): FaultInjectionProvenance
   request(): FaultInjectionProvenance
   tryArm(target: NetworkDisconnectArmTarget): boolean
-  injectionForCall(operationRef: string): { cut: true } | null
+  injectionForCall(call: { operationRef: string; planStepId?: string }): { cut: true } | null
   markTriggered(operationRef: string): void
   markTransportObserved(): void
 }
@@ -36,7 +39,11 @@ export function createNetworkDisconnectSession(input: {
 }): NetworkDisconnectSession {
   const clock = input.clock ?? Date.now
   const provenance = emptyFaultInjectionProvenance()
-  const enabled = input.injectedFault === 'NETWORK_DISCONNECT'
+  // Second gate. The route already refuses an injected run outside the lab
+  // environments; a session that somehow reaches a live host stays inert
+  // rather than withholding a real dispatcher mutation.
+  const enabled = input.injectedFault === 'NETWORK_DISCONNECT' && isFaultInjectionAllowedEnvironment()
+  let armed: { operationRef: string; planStepId: string } | null = null
 
   const setPhase = (phase: NonNullable<FaultInjectionProvenance['phase']>) => {
     provenance.phase = advanceFaultInjectionPhase(provenance.phase, phase)
@@ -58,6 +65,7 @@ export function createNetworkDisconnectSession(input: {
       if (!enabled) return false
       if (!isNetworkDisconnectInjectionTarget(target.spec)) return false
       setPhase('ARMED')
+      armed = { operationRef: target.spec.operationRef, planStepId: target.planStepId }
       provenance.armedAtMs = provenance.armedAtMs ?? clock()
       provenance.triggerPoint = `REMOTE_ACTION:${target.spec.operationRef}@${target.planStepId}`
       provenance.occurrenceId = target.occurrenceId
@@ -65,14 +73,12 @@ export function createNetworkDisconnectSession(input: {
       return true
     },
 
-    injectionForCall(operationRef) {
+    injectionForCall(call) {
       if (!enabled) return null
       if (provenance.phase !== 'ARMED' && provenance.phase !== 'TRIGGERED' && provenance.phase !== 'EFFECT_OBSERVED') {
         return null
       }
-      if (provenance.triggerPoint !== null && !provenance.triggerPoint.includes(`:${operationRef}@`)) {
-        return null
-      }
+      if (!matchesArmedTarget(armed, call)) return null
       return { cut: true }
     },
 

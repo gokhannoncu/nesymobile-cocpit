@@ -21,8 +21,40 @@ describe('network disconnect session', () => {
     const session = createNetworkDisconnectSession({ injectedFault: null, clock: () => 1 })
     session.request()
     expect(session.tryArm({ planStepId: 'approve', occurrenceId: 'occ-1', spec: mutation })).toBe(false)
-    expect(session.injectionForCall(mutation.operationRef)).toBeNull()
+    expect(session.injectionForCall({ operationRef: mutation.operationRef, planStepId: 'approve' })).toBeNull()
     expect(session.snapshot().phase).toBeNull()
+  })
+
+  it('cuts only the armed plan step, not every call with the same operationRef', () => {
+    const session = createNetworkDisconnectSession({
+      injectedFault: 'NETWORK_DISCONNECT',
+      clock: () => 1,
+    })
+    session.request()
+    session.tryArm({ planStepId: 'dispatcher-approves', occurrenceId: 'occ-1', spec: mutation })
+
+    expect(
+      session.injectionForCall({ operationRef: mutation.operationRef, planStepId: 'dispatcher-approves' }),
+    ).toEqual({ cut: true })
+    expect(
+      session.injectionForCall({ operationRef: mutation.operationRef, planStepId: 'retry-approve' }),
+    ).toBeNull()
+    expect(session.injectionForCall({ operationRef: mutation.operationRef })).toBeNull()
+  })
+
+  it('stays inert outside the lab environments', () => {
+    const previous = process.env.NESY_REMOTE_ACTION_ENV
+    process.env.NESY_REMOTE_ACTION_ENV = 'prod'
+    try {
+      const session = createNetworkDisconnectSession({ injectedFault: 'NETWORK_DISCONNECT', clock: () => 1 })
+      session.request()
+      expect(session.tryArm({ planStepId: 'approve', occurrenceId: 'occ-1', spec: mutation })).toBe(false)
+      expect(session.injectionForCall({ operationRef: mutation.operationRef, planStepId: 'approve' })).toBeNull()
+      expect(session.snapshot().phase).toBeNull()
+    } finally {
+      if (previous === undefined) delete process.env.NESY_REMOTE_ACTION_ENV
+      else process.env.NESY_REMOTE_ACTION_ENV = previous
+    }
   })
 
   it('records requested → armed → triggered → effect observed without writing a class', () => {
@@ -55,7 +87,7 @@ describe('network disconnect session', () => {
     })
     session.request()
     expect(session.tryArm({ planStepId: 'read-session', occurrenceId: 'occ-1', spec: readOnly })).toBe(false)
-    expect(session.injectionForCall(readOnly.operationRef)).toBeNull()
+    expect(session.injectionForCall({ operationRef: readOnly.operationRef, planStepId: 'read-session' })).toBeNull()
     expect(
       observeInjectedClass({
         actionResult: 'UNKNOWN_EFFECT',
