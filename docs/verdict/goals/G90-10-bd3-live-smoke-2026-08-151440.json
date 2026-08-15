@@ -1,0 +1,61 @@
+{
+  "status": "HOST_B_BLOCKED",
+  "closedAt": "2026-08-15T14:41:00.000Z",
+  "injectionModel": "controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT",
+  "identity": {
+    "gitCommit": "0465ecaf6fee23e1d7e92b50c17de9d07c619bc0",
+    "gitCommitShort": "0465eca",
+    "workingTreeClean": true,
+    "g90_10ImplementationClean": true,
+    "runnerDirty": false,
+    "apiCommand": "node dist/server.js",
+    "apiPid": "21508",
+    "apiStartedAt": "Sat Aug 15 17:32:37 2026",
+    "webCommand": "next-server (v15.5.20)",
+    "webPid": "21911",
+    "dbSchema": "up-to-date",
+    "deviceId": "R6CW400BC8N",
+    "host": "B",
+    "workflowRef": "nesy.workflow.tour-approval-lifecycle",
+    "profileKey": "nesy.launch.reuse-session",
+    "packVersion": "1.30.0",
+    "routeCode": "31",
+    "scheduleId": "11-31-20260815-1",
+    "scheduleIdSource": "VERDICT_SCHEDULE_ID",
+    "g90_9LineageClosed": {
+      "gitCommit": "3770d2af4eca0cc170560562130b6632d635ad2a",
+      "apiPid": 55798
+    }
+  },
+  "setup": {
+    "staleQueuedCancelled": "run_5795314b-8cb0-4aaa-baa0-7599a53b55f6",
+    "login": "run_51654cc1-ce24-4dd5-9d7c-50277563a006",
+    "loginAndSelectRoute": "run_44445691-88df-438a-af67-cb56bb692889",
+    "note": "Fresh empty BeginningOfDay schedule. Not a completed tour waiting for leaving-permission approval."
+  },
+  "baseline": {
+    "runId": "run_fce2dee9-db03-4bb5-ae42-8c54fb2de453",
+    "injectedFault": null,
+    "observedClass": null,
+    "productVerdict": "INCONCLUSIVE",
+    "evaluationFailureClass": "AUTOMATION_FAILURE",
+    "terminationReason": "ABORTED",
+    "cleanupResult": "FAILED",
+    "steps": [
+      "resolve-request-button SUCCEEDED (btn_out)",
+      "tap-request SUCCEEDED",
+      "resolve-routing-choice FAILED auto_route NOT_FOUND",
+      "release-approval-fixture FAILED"
+    ],
+    "screenAfter": {
+      "fragment": "StopListFragment",
+      "overlay": null,
+      "visibleInsteadOfAutoRoute": ["ll_manuel_routing", "tv_manuel_routing", "tv_save_routing"]
+    }
+  },
+  "bd3": {
+    "started": false,
+    "reason": "Uninjected Host B baseline did not reach dispatcher-approves. Injector never armed."
+  },
+  "note": "Not LIVE_QUALIFIED. Not an in-flight backend receive. D60 campaign NOT_STARTED. BD.2 not started."
+}

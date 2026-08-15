@@ -13,7 +13,7 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 16:50:00 +03"
+lastUpdatedAt: "2026-08-15 17:41:00 +03"
 timezone: "Europe/Istanbul"
 runPlayFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
 readinessFile: "docs/verdict/goals/G90-stabilization/READINESS.md"
@@ -172,6 +172,20 @@ injector wire’a gitmediğini bilse bile runtime `NO_EFFECT`e çevrilmez.
 `PRODUCT_FAIL` yok; executor `UNKNOWN_ACTION_EFFECT` → `INCONCLUSIVE`.
 Formal D60 kampanyası başlamadı.
 
+Live qual attempt 2026-08-15 17:40 +03, fresh prod `0465eca` /
+`node dist/server.js` PID 21508
+([`G90-10-bd3-live-smoke-2026-08-151440.json`](../G90-10-bd3-live-smoke-2026-08-151440.json)):
+
+```text
+Host B uninjected = INCONCLUSIVE / AUTOMATION_FAILURE / cleanup FAILED
+resolve-routing-choice: auto_route NOT_FOUND
+schedule 11-31-20260815-1 is BeginningOfDay + 0 stops
+dispatcher-approves never reached — injector not armed
+BD.3 not started
+```
+
+`LIVE_QUALIFIED` yazılmaz. BD.2 başlamaz.
+
 ## 1.2 Phase 10 plumbing + G90 live golden
 
 | İz | İddia | Durum |
@@ -193,9 +207,9 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current step | `G90.10` BD.3 live qual |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.9` LIVE_QUALIFIED; `G90.10` BD.3 implemented (not live-qualified) |
-| Last attempted step | D30 100-run `D30-100-rerun-2026-08-151127` |
-| Last update | `2026-08-15 16:50:00 +03` |
-| Recovery instruction | `NEXT = G90.10 BD.3 live qual on fresh prod (not PID 55798). Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last attempted step | G90.10 Host B uninjected `run_fce2dee9-db03-4bb5-ae42-8c54fb2de453` |
+| Last update | `2026-08-15 17:41:00 +03` |
+| Recovery instruction | `NEXT = Host B that can reach dispatcher-approves (leaving-permission pending, not empty BeginningOfDay). Then BD.3 on PID 21508 / 0465eca. Formal D60 kampanyası 13 Eylül’e kadar açılmaz. BD.2 yok.` |
 
 ## 2.1 North star (beş madde)
 

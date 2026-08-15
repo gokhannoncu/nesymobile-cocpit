@@ -11,7 +11,7 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 16:50:00 +03"
+lastUpdatedAt: "2026-08-15 17:41:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
@@ -492,7 +492,7 @@ G90.2b READINESS_LIVE_QUALIFIED. G90.3 DONE.
 G90.9 LIVE_QUALIFIED: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
 G90.10 BD.3 implemented (observeInjectedClass does not take injectedFault).
 Injection model: controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT.
-NEXT = BD.3 Host B live qual on fresh prod; then BD.2 → BD.6 → BD.5 → BD.4 → BD.1.
+NEXT = Host B that can reach dispatcher-approves, then BD.3 on PID 21508 / 0465eca. BD.2 yok.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 J0–J5 ladder değil. İkinci 100-run login yok.
 pilotStable D90 öncesi freeze ister. Önce READINESS.md, JOIN.md, RESULT.md oku.

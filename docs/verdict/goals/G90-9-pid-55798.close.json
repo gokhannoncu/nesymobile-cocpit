@@ -1,0 +1,19 @@
+{
+  "status": "LINEAGE_CLOSED",
+  "closedAt": "2026-08-15T14:25:00.000Z",
+  "reason": "G90.9 qualification lineage. Process already gone before G90.10 fresh prod.",
+  "identity": {
+    "gitCommit": "3770d2af4eca0cc170560562130b6632d635ad2a",
+    "gitCommitShort": "3770d2a",
+    "apiPid": 55798,
+    "apiCommand": "node dist/server.js",
+    "apiStartedAt": "Sat Aug 15 16:27:28 2026",
+    "artifact": "docs/verdict/goals/G90-9-live-smoke-2026-08-151329.json"
+  },
+  "lastKnownPreserve": {
+    "reason": "G90.9 LIVE_QUALIFIED — do not replace this binary with G90.10",
+    "doNotRestartApi": true,
+    "note": "Preserve file is obsolete after this close. Fresh G90.10 prod may occupy :4001."
+  },
+  "note": "Historical evidence only. Not a G90.10 source identity."
+}
