@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isProxiedHost, isTrustedPac, PROXY_HOST_SUFFIXES } from './nesy-lan-proxy.js'
 
@@ -11,6 +11,8 @@ describe('isProxiedHost', () => {
     expect(isProxiedHost('nesy-staging-api.cityexpress.rs')).toBe(true)
     expect(isProxiedHost('NESY-GRAYLOG.OVERSEAS.HR')).toBe(true)
     expect(isProxiedHost('overseas.hr')).toBe(true)
+    expect(isProxiedHost('api.arasdx.com')).toBe(true)
+    expect(isProxiedHost('cluster.mongodb.net')).toBe(true)
     expect(isProxiedHost('10.1.2.3')).toBe(true)
 
     expect(isProxiedHost('www.google.com')).toBe(false)
@@ -51,4 +53,18 @@ it('host list stays in sync with scripts/nesy-lan-proxy-config.mjs', () => {
   const fromScript = [...block.matchAll(/'([^']+)'/g)].map((match) => match[1])
 
   expect(fromScript).toEqual([...PROXY_HOST_SUFFIXES])
+})
+
+it('accepts only integer CONNECT ports in the TCP range', async () => {
+  const config = await import(
+    pathToFileURL(join(repoRoot, 'scripts/nesy-lan-proxy-config.mjs')).href
+  )
+
+  expect(config.isAllowedConnectPort(443)).toBe(true)
+  expect(config.isAllowedConnectPort(1)).toBe(true)
+  expect(config.isAllowedConnectPort(65_535)).toBe(true)
+  expect(config.isAllowedConnectPort(0)).toBe(false)
+  expect(config.isAllowedConnectPort(-1)).toBe(false)
+  expect(config.isAllowedConnectPort(1.5)).toBe(false)
+  expect(config.isAllowedConnectPort(999_999)).toBe(false)
 })

@@ -153,7 +153,10 @@ async function verifyStartState() {
     commandAdmission: commandAdmission?.status ?? null,
   }
   const ok =
-    snapshot.adb === 'UP' && snapshot.bridge !== 'DOWN' && snapshot.commandAdmission !== 'BLOCKED'
+    snapshot.adb === 'UP' &&
+    snapshot.bridge !== 'DOWN' &&
+    snapshot.activeRun === 'UP' &&
+    snapshot.commandAdmission !== 'BLOCKED'
   return { ok, ...snapshot }
 }
 

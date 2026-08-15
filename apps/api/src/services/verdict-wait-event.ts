@@ -199,15 +199,18 @@ export class VerdictDurableRuntime {
       this.store.listStreamsWithPendingOrdered(BOOTSTRAP_STREAM_LIMIT),
     ]);
 
-    // De-duplicated: a stream pending in both lanes must be nudged once, not
-    // twice — the nudge is idempotent, but double-counting it in the log would
-    // misreport how much work the restart actually found.
+    // Wake only the lane whose durable predicate reported work. Sending every
+    // receipt-only stream through `this.nudge()` also starts an ordered lease
+    // transaction; a large restart scan can then exhaust the Prisma pool before
+    // useful ordered work gets a connection.
+    for (const scope of receiptStreams) this.receipts.nudge(scope);
+    for (const scope of orderedStreams) this.ordered.nudge(scope);
+
+    // De-duplicated only for reporting: one stream may be pending in both lanes.
     const seen = new Set<string>();
     for (const scope of [...receiptStreams, ...orderedStreams]) {
       const key = `${scope.runId} ${scope.sessionId}`;
-      if (seen.has(key)) continue;
       seen.add(key);
-      this.nudge(scope);
     }
 
     if (seen.size > 0) {

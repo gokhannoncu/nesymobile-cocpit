@@ -8,7 +8,7 @@
  *
  *  - the watermark JOIN that bounds the ordered lane,
  *  - the *absence* of a watermark bound on the receipt lane,
- *  - the ordered lane's persisted SQL predicates after its process-local lease,
+ *  - the ordered lane's persisted SQL predicates under its DB-backed lease,
  *  - the new dispatch columns and their CHECK constraints,
  *  - `verdict_run_closure` and its first-close-wins upsert,
  *  - the DISTINCT restart scans over the pending predicates,
@@ -172,17 +172,36 @@ describe("durable runtime against PostgreSQL", () => {
     expect((await lanes.store.getRow(SCOPE, 3n))?.processedAt).toBeNull();
   });
 
-  it("the ordered lease excludes a second holder in this API process", async () => {
+  it("the ordered lease excludes a second store through PostgreSQL", async () => {
     await cleanup();
-    const store = new PrismaDurableEventStore();
-    expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(true);
-    try {
-      expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(false);
-    } finally {
-      await store.releaseOrderedLease(SCOPE);
-    }
-    expect(await store.tryAcquireOrderedLease(SCOPE)).toBe(true);
-    await store.releaseOrderedLease(SCOPE);
+    const firstStore = new PrismaDurableEventStore();
+    const secondStore = new PrismaDurableEventStore();
+    let signalAcquired!: () => void;
+    let releaseFirst!: () => void;
+    const acquired = new Promise<void>((resolve) => {
+      signalAcquired = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const first = firstStore.withOrderedLease(SCOPE, async () => {
+      signalAcquired();
+      await held;
+      return "first";
+    });
+    await acquired;
+
+    expect(await secondStore.withOrderedLease(SCOPE, async () => "second")).toEqual({
+      acquired: false,
+    });
+
+    releaseFirst();
+    expect(await first).toEqual({ acquired: true, value: "first" });
+    expect(await secondStore.withOrderedLease(SCOPE, async () => "second")).toEqual({
+      acquired: true,
+      value: "second",
+    });
   });
 
   it("a failing consumer persists attempt/last_error and blocks the next seq", async () => {

@@ -12,6 +12,7 @@ import {
   getPacUrl,
   getProxyAddr,
   getProxyPort,
+  isAllowedConnectPort,
   isAllowedHost,
 } from './nesy-lan-proxy-config.mjs'
 
@@ -48,7 +49,7 @@ server.on('connect', (req, clientSocket, head) => {
   const [hostname, portText] = (req.url ?? '').split(':')
   const port = Number(portText || 443)
 
-  if (!hostname || !Number.isFinite(port) || !isAllowedHost(hostname)) {
+  if (!hostname || !isAllowedConnectPort(port) || !isAllowedHost(hostname)) {
     console.error(`[proxy] blocked ${req.url}`)
     clientSocket.end('HTTP/1.1 403 Forbidden\r\n\r\n')
     return

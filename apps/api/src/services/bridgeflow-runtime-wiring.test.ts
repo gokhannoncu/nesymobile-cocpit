@@ -801,6 +801,7 @@ describe('execution queue device gating', () => {
         },
         findUnique: async () => null,
         update: async () => ({}),
+        updateMany: async () => ({ count: 1 }),
       },
       bridgeFlowStepOccurrence: {
         upsert: async (input: { create?: Record<string, unknown> }) => input.create ?? {},

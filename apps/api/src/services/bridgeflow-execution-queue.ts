@@ -1101,10 +1101,17 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       clock,
     })
     backendTimeout.request()
-    await persistence.persistFaultProvenance({
-      runId: item.runId,
-      provenance: backendTimeout.snapshot(),
-    })
+    try {
+      await persistence.persistFaultProvenance({
+        runId: item.runId,
+        provenance: backendTimeout.snapshot(),
+      })
+    } catch (error) {
+      await this.failClosed(item, applicationId, error)
+      screenObserver.forget(item.runId)
+      sdkObservations.clear(item.runId)
+      return
+    }
     const runInputs = item.inputs ?? {}
     // What an `ENTITY_STATUS_EQUALS` derivation compares the OBSERVED entity
     // against. The pack names the source (`macro.input.stopCode`); the value can

@@ -84,6 +84,10 @@ export function isAllowedHost(hostname) {
   return PROXY_HOST_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix))
 }
 
+export function isAllowedConnectPort(port) {
+  return Number.isSafeInteger(port) && port >= 1 && port <= 65_535
+}
+
 /**
  * A reachable PAC is not enough to trust it — on a foreign network the
  * configured IP may belong to an unrelated device. Require our own host list

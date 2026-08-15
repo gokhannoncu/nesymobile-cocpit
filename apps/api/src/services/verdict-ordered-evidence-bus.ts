@@ -117,6 +117,7 @@ export interface OrderedEvidenceBusOptions {
   subscribers: DurableSubscriberRegistry;
   retryPolicy?: OrderedRetryPolicy;
   pollIntervalMs?: number;
+  maxConcurrentDrains?: number;
   now?: () => Date;
 }
 
@@ -134,11 +135,13 @@ export class OrderedEvidenceBus {
   private readonly subscribers: DurableSubscriberRegistry;
   private readonly retryPolicy: OrderedRetryPolicy;
   private readonly pollIntervalMs: number;
+  private readonly maxConcurrentDrains: number;
   private readonly now: () => Date;
   private readonly consumers = new Set<OrderedConsumer>();
   /** Coalesces concurrent drains per stream so a burst tail is never dropped. */
   private readonly drainPending = new Set<string>();
   private readonly drainRunning = new Set<string>();
+  private readonly drainScopes = new Map<string, DurableStreamScope>();
   /** At most one pending backoff wake-up per stream. */
   private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -148,6 +151,7 @@ export class OrderedEvidenceBus {
     this.subscribers = options.subscribers;
     this.retryPolicy = options.retryPolicy ?? DEFAULT_ORDERED_RETRY_POLICY;
     this.pollIntervalMs = options.pollIntervalMs ?? ORDERED_POLL_INTERVAL_MS;
+    this.maxConcurrentDrains = Math.max(1, options.maxConcurrentDrains ?? 4);
     this.now = options.now ?? (() => new Date());
   }
 
@@ -177,13 +181,10 @@ export class OrderedEvidenceBus {
    * processed, or the consumer that never saw it never will.
    */
   async drainOnce(scope: DurableStreamScope): Promise<OrderedDrainStats> {
-    if (!(await this.store.tryAcquireOrderedLease(scope))) {
-      return { processed: 0, skippedLocked: true };
-    }
-    const stats: OrderedDrainStats = { processed: 0, skippedLocked: false };
-    try {
+    const leased = await this.store.withOrderedLease(scope, async (store) => {
+      const stats: OrderedDrainStats = { processed: 0, skippedLocked: false };
       for (;;) {
-        const rows = await this.store.listOrderedReady(scope, ORDERED_BATCH_SIZE);
+        const rows = await store.listOrderedReady(scope, ORDERED_BATCH_SIZE);
         if (rows.length === 0) return stats;
 
         for (const row of rows) {
@@ -211,7 +212,7 @@ export class OrderedEvidenceBus {
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             const plan = planOrderedFailure(row.attempt, this.retryPolicy, this.now());
-            await this.store.recordOrderedFailure({
+            await store.recordOrderedFailure({
               scope,
               seq: row.seq,
               attempt: plan.attempt,
@@ -224,15 +225,16 @@ export class OrderedEvidenceBus {
             stats.deadLettered = plan.deadLetteredAt !== null;
             return stats;
           }
-          await this.store.markProcessed(scope, row.seq, this.now());
+          await store.markProcessed(scope, row.seq, this.now());
           stats.processed += 1;
         }
 
         if (rows.length < ORDERED_BATCH_SIZE) return stats;
       }
-    } finally {
-      await this.store.releaseOrderedLease(scope);
-    }
+    });
+    return leased.acquired
+      ? leased.value
+      : { processed: 0, skippedLocked: true };
   }
 
   /**
@@ -246,9 +248,25 @@ export class OrderedEvidenceBus {
   nudge(scope: DurableStreamScope): void {
     const key = streamKeyOf(scope);
     this.drainPending.add(key);
-    if (this.drainRunning.has(key)) return;
-    this.drainRunning.add(key);
+    this.drainScopes.set(key, scope);
+    this.startPendingDrains();
+  }
 
+  private startPendingDrains(): void {
+    while (this.drainRunning.size < this.maxConcurrentDrains) {
+      const key = [...this.drainPending].find((candidate) => !this.drainRunning.has(candidate));
+      if (key === undefined) return;
+      const scope = this.drainScopes.get(key);
+      if (scope === undefined) {
+        this.drainPending.delete(key);
+        continue;
+      }
+      this.drainRunning.add(key);
+      this.startDrainLoop(key, scope);
+    }
+  }
+
+  private startDrainLoop(key: string, scope: DurableStreamScope): void {
     void (async () => {
       try {
         while (this.drainPending.delete(key)) {
@@ -282,7 +300,8 @@ export class OrderedEvidenceBus {
         );
       } finally {
         this.drainRunning.delete(key);
-        if (this.drainPending.has(key)) this.nudge(scope);
+        if (!this.drainPending.has(key)) this.drainScopes.delete(key);
+        this.startPendingDrains();
       }
     })();
   }

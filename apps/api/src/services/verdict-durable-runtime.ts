@@ -30,7 +30,7 @@
  *  can do to this system, because it destroys evidence with no error anywhere.
  * ===========================================================================
  */
-import { prisma } from "@nesy/db";
+import { Prisma, prisma } from "@nesy/db";
 import { resolveEventName } from "@nesy/control-contract";
 import type {
   DurableEventFilter,
@@ -77,6 +77,10 @@ export interface DurableRunClosure {
   reason: string;
   lateEventCount: number;
 }
+
+export type OrderedLeaseResult<T> =
+  | { acquired: false }
+  | { acquired: true; value: T };
 
 /**
  * The persistence surface both lanes run on.
@@ -150,11 +154,15 @@ export interface DurableEventStore {
   getContiguousSeq(scope: DurableStreamScope): Promise<bigint>;
 
   /**
-   * Single-consumer lease for the ordered lane. `false` means another process
-   * owns the stream; the caller must return rather than proceed.
+   * Runs ordered work while one DB-backed stream lease is held. The callback
+   * receives the store bound to the same transaction/connection as the
+   * advisory lock, so acquire and release cannot land on different pool
+   * connections. `acquired: false` means another process owns the stream.
    */
-  tryAcquireOrderedLease(scope: DurableStreamScope): Promise<boolean>;
-  releaseOrderedLease(scope: DurableStreamScope): Promise<void>;
+  withOrderedLease<T>(
+    scope: DurableStreamScope,
+    work: (store: DurableEventStore) => Promise<T>,
+  ): Promise<OrderedLeaseResult<T>>;
 
   /** Streams with committed-but-undispatched receipt rows. The restart scan's input. */
   listStreamsWithPendingReceipt(limit: number): Promise<DurableStreamScope[]>;
@@ -262,15 +270,23 @@ const INBOX_COLUMNS =
   "run_id, session_id, seq, payload, received_at, receipt_dispatched_at, " +
   "processed_at, attempt, last_error, next_retry_at, dead_lettered_at";
 
+type DurablePrismaClient = Pick<
+  Prisma.TransactionClient,
+  "$queryRaw" | "$queryRawUnsafe" | "$executeRaw"
+>;
+
+const ORDERED_LEASE_TRANSACTION_MAX_WAIT_MS = 10_000;
+const ORDERED_LEASE_TRANSACTION_TIMEOUT_MS = 10 * 60_000;
+
 export class PrismaDurableEventStore implements DurableEventStore {
-  private static readonly orderedLeases = new Set<string>();
+  constructor(private readonly client: DurablePrismaClient = prisma) {}
 
   async listReceiptReady(
     scope: DurableStreamScope,
     afterSeq: bigint,
     limit: number,
   ): Promise<DurableInboxRow[]> {
-    const rows = await prisma.$queryRawUnsafe<InboxSqlRow[]>(
+    const rows = await this.client.$queryRawUnsafe<InboxSqlRow[]>(
       `SELECT ${INBOX_COLUMNS} FROM verdict_inbox
        WHERE run_id = $1 AND session_id = $2 AND seq > $3
        ORDER BY seq LIMIT $4`,
@@ -285,14 +301,14 @@ export class PrismaDurableEventStore implements DurableEventStore {
   async markReceiptDispatched(scope: DurableStreamScope, seq: bigint, at: Date): Promise<void> {
     // Idempotent: the FIRST dispatch time is the one latency is measured from,
     // so a replay after a restart must not overwrite it with a later clock.
-    await prisma.$executeRaw`
+    await this.client.$executeRaw`
       UPDATE verdict_inbox SET receipt_dispatched_at = ${at}
       WHERE run_id = ${scope.runId} AND session_id = ${scope.sessionId} AND seq = ${seq}
         AND receipt_dispatched_at IS NULL`;
   }
 
   async listOrderedReady(scope: DurableStreamScope, limit: number): Promise<DurableInboxRow[]> {
-    const rows = await prisma.$queryRawUnsafe<InboxSqlRow[]>(
+    const rows = await this.client.$queryRawUnsafe<InboxSqlRow[]>(
       `SELECT ${INBOX_COLUMNS.split(", ").map((c) => `i.${c}`).join(", ")}
        FROM verdict_inbox i
        JOIN verdict_stream s ON s.run_id = i.run_id AND s.session_id = i.session_id
@@ -312,7 +328,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
     afterSeq: bigint,
     limit: number,
   ): Promise<DurableInboxRow[]> {
-    const rows = await prisma.$queryRawUnsafe<InboxSqlRow[]>(
+    const rows = await this.client.$queryRawUnsafe<InboxSqlRow[]>(
       `SELECT ${INBOX_COLUMNS.split(", ").map((c) => `i.${c}`).join(", ")}
        FROM verdict_inbox i
        JOIN verdict_stream s ON s.run_id = i.run_id AND s.session_id = i.session_id
@@ -332,7 +348,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
     // Clearing the failure state on success is deliberate: a row that recovered
     // after two transient errors is healthy, and leaving `last_error` set would
     // make the health read model permanently report a problem that is over.
-    await prisma.$executeRaw`
+    await this.client.$executeRaw`
       UPDATE verdict_inbox
       SET processed_at = ${at}, next_retry_at = NULL, last_error = NULL
       WHERE run_id = ${scope.runId} AND session_id = ${scope.sessionId} AND seq = ${seq}`;
@@ -346,7 +362,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
     nextRetryAt: Date | null;
     deadLetteredAt: Date | null;
   }): Promise<void> {
-    await prisma.$executeRaw`
+    await this.client.$executeRaw`
       UPDATE verdict_inbox
       SET attempt = ${input.attempt},
           last_error = ${input.error},
@@ -357,7 +373,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
   }
 
   async getRow(scope: DurableStreamScope, seq: bigint): Promise<DurableInboxRow | null> {
-    const rows = await prisma.$queryRawUnsafe<InboxSqlRow[]>(
+    const rows = await this.client.$queryRawUnsafe<InboxSqlRow[]>(
       `SELECT ${INBOX_COLUMNS} FROM verdict_inbox
        WHERE run_id = $1 AND session_id = $2 AND seq = $3`,
       scope.runId,
@@ -369,28 +385,36 @@ export class PrismaDurableEventStore implements DurableEventStore {
   }
 
   async getContiguousSeq(scope: DurableStreamScope): Promise<bigint> {
-    const rows = await prisma.$queryRaw<{ contiguous_seq: bigint }[]>`
+    const rows = await this.client.$queryRaw<{ contiguous_seq: bigint }[]>`
       SELECT contiguous_seq FROM verdict_stream
       WHERE run_id = ${scope.runId} AND session_id = ${scope.sessionId}`;
     return rows[0]?.contiguous_seq ?? 0n;
   }
 
-  async tryAcquireOrderedLease(scope: DurableStreamScope): Promise<boolean> {
+  async withOrderedLease<T>(
+    scope: DurableStreamScope,
+    work: (store: DurableEventStore) => Promise<T>,
+  ): Promise<OrderedLeaseResult<T>> {
     const key = `${scope.runId}|${scope.sessionId}`;
-    if (PrismaDurableEventStore.orderedLeases.has(key)) return false;
-    PrismaDurableEventStore.orderedLeases.add(key);
-    return true;
-  }
-
-  async releaseOrderedLease(scope: DurableStreamScope): Promise<void> {
-    const key = `${scope.runId}|${scope.sessionId}`;
-    PrismaDurableEventStore.orderedLeases.delete(key);
+    return prisma.$transaction(
+      async (transaction) => {
+        const rows = await transaction.$queryRaw<{ locked: boolean }[]>`
+          SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS locked`;
+        if (rows[0]?.locked !== true) return { acquired: false };
+        const leasedStore = new PrismaDurableEventStore(transaction);
+        return { acquired: true, value: await work(leasedStore) };
+      },
+      {
+        maxWait: ORDERED_LEASE_TRANSACTION_MAX_WAIT_MS,
+        timeout: ORDERED_LEASE_TRANSACTION_TIMEOUT_MS,
+      },
+    );
   }
 
   async listStreamsWithPendingReceipt(limit: number): Promise<DurableStreamScope[]> {
     // DISTINCT over the partial predicate, not a per-row scan: the restart scan
     // is required to be linear in the number of PENDING rows, not in inbox size.
-    const rows = await prisma.$queryRaw<{ run_id: string; session_id: string }[]>`
+    const rows = await this.client.$queryRaw<{ run_id: string; session_id: string }[]>`
       SELECT DISTINCT run_id, session_id FROM verdict_inbox
       WHERE receipt_dispatched_at IS NULL
       LIMIT ${limit}`;
@@ -398,7 +422,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
   }
 
   async listStreamsWithPendingOrdered(limit: number): Promise<DurableStreamScope[]> {
-    const rows = await prisma.$queryRaw<{ run_id: string; session_id: string }[]>`
+    const rows = await this.client.$queryRaw<{ run_id: string; session_id: string }[]>`
       SELECT DISTINCT i.run_id, i.session_id
       FROM verdict_inbox i
       JOIN verdict_stream s ON s.run_id = i.run_id AND s.session_id = i.session_id
@@ -410,7 +434,7 @@ export class PrismaDurableEventStore implements DurableEventStore {
   }
 
   async getClosure(scope: DurableStreamScope): Promise<DurableRunClosure | null> {
-    const rows = await prisma.$queryRaw<
+    const rows = await this.client.$queryRaw<
       { closed_at: Date; reason: string; late_event_count: number }[]
     >`
       SELECT closed_at, reason, late_event_count FROM verdict_run_closure
@@ -424,28 +448,28 @@ export class PrismaDurableEventStore implements DurableEventStore {
   async closeRun(scope: DurableStreamScope, reason: string, at: Date): Promise<void> {
     // First closure wins. Re-closing must not reset `late_event_count`, which is
     // the whole record of what arrived afterwards.
-    await prisma.$executeRaw`
+    await this.client.$executeRaw`
       INSERT INTO verdict_run_closure (run_id, session_id, closed_at, reason)
       VALUES (${scope.runId}, ${scope.sessionId}, ${at}, ${reason})
       ON CONFLICT (run_id, session_id) DO NOTHING`;
   }
 
   async countLateEvent(scope: DurableStreamScope): Promise<void> {
-    await prisma.$executeRaw`
+    await this.client.$executeRaw`
       UPDATE verdict_run_closure SET late_event_count = late_event_count + 1
       WHERE run_id = ${scope.runId} AND session_id = ${scope.sessionId}`;
   }
 
   async listStreamHealth(scope?: DurableStreamScope): Promise<DurableStreamHealthRow[]> {
     const rows = scope
-      ? await prisma.$queryRawUnsafe<StreamHealthSqlRow[]>(
+      ? await this.client.$queryRawUnsafe<StreamHealthSqlRow[]>(
           `${STREAM_HEALTH_SELECT}
            WHERE s.run_id = $1 AND s.session_id = $2
            ${STREAM_HEALTH_GROUP_BY}`,
           scope.runId,
           scope.sessionId,
         )
-      : await prisma.$queryRawUnsafe<StreamHealthSqlRow[]>(
+      : await this.client.$queryRawUnsafe<StreamHealthSqlRow[]>(
           `${STREAM_HEALTH_SELECT}
            ${STREAM_HEALTH_GROUP_BY}
            ${STREAM_HEALTH_UNHEALTHY_HAVING}`,

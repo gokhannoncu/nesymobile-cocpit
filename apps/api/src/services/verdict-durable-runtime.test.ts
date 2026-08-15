@@ -175,20 +175,27 @@ class InMemoryDurableEventStore implements DurableEventStore {
     return this.contiguous.get(streamKeyOf(scope)) ?? 0n;
   }
 
-  async tryAcquireOrderedLease(scope: DurableStreamScope): Promise<boolean> {
+  async withOrderedLease<T>(
+    scope: DurableStreamScope,
+    work: (store: DurableEventStore) => Promise<T>,
+  ): Promise<{ acquired: false } | { acquired: true; value: T }> {
     const key = streamKeyOf(scope);
-    if (this.leases.has(key)) return false;
+    if (this.leases.has(key)) return { acquired: false };
     this.leases.add(key);
-    return true;
-  }
-
-  async releaseOrderedLease(scope: DurableStreamScope): Promise<void> {
-    this.leases.delete(streamKeyOf(scope));
+    try {
+      return { acquired: true, value: await work(this) };
+    } finally {
+      this.leases.delete(key);
+    }
   }
 
   /** Forces the "another process owns this stream" branch. */
   holdLease(scope: DurableStreamScope): void {
     this.leases.add(streamKeyOf(scope));
+  }
+
+  releaseHeldLease(scope: DurableStreamScope): void {
+    this.leases.delete(streamKeyOf(scope));
   }
 
   async listStreamsWithPendingReceipt(limit: number): Promise<DurableStreamScope[]> {
@@ -1070,7 +1077,7 @@ describe("VerdictDurableRuntime", () => {
       consumed.push(row.seq.toString());
     });
 
-    setTimeout(() => void store.releaseOrderedLease(SCOPE), FAST_POLL_MS);
+    setTimeout(() => store.releaseHeldLease(SCOPE), FAST_POLL_MS);
     await runtime.closeRun(SCOPE, "run finished");
 
     expect(consumed).toEqual(["1"]);

@@ -26,6 +26,10 @@ export const PROXY_HOST_SUFFIXES = [
   '.expressone.me',
   '.expressone.bg',
   '.starex.az',
+  '.arasdx.com',
+  '.sps-sro.sk',
+  '.mongodb.com',
+  '.mongodb.net',
 ] as const
 
 export const DEFAULT_PROXY_PORT = 8888
