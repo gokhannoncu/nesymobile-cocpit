@@ -637,6 +637,12 @@ export class BridgeFlowExecutor {
     if (state.cleanupResult !== "NOT_STARTED" && state.cleanupResult !== "PENDING") return;
 
     let currentStepId = state.checkpointNextStepId;
+    if (stepsById.get(currentStepId ?? "")?.kind !== "CLEANUP") {
+      // A continue-gate timeout on tap-submit leaves next at read-app-session.
+      // The CLEANUP step is later in the plan and declared runOnFailure; walking
+      // only the immediate next used to skip it and persist NOT_STARTED.
+      currentStepId = this.findRunOnFailureCleanup(stepsById, currentStepId);
+    }
     let iterationKey = state.checkpointIterationKey;
     const maxCleanupTransitions = 100;
 
@@ -655,6 +661,25 @@ export class BridgeFlowExecutor {
       state.cleanupResult = "FAILED";
       state.operationalDisposition = "NEEDS_ATTENTION";
     }
+  }
+
+  private findRunOnFailureCleanup(
+    stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
+    fromStepId: string | null,
+  ): string | null {
+    let current = fromStepId;
+    const seen = new Set<string>();
+    while (current !== null && !seen.has(current)) {
+      seen.add(current);
+      const step = stepsById.get(current);
+      if (step === undefined) break;
+      if (step.kind === "CLEANUP" && step.params["runOnFailure"] === true) return current;
+      current = step.next;
+    }
+    for (const step of stepsById.values()) {
+      if (step.kind === "CLEANUP" && step.params["runOnFailure"] === true) return step.planStepId;
+    }
+    return null;
   }
 
   private async executeFlow(

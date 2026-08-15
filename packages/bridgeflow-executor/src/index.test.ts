@@ -317,6 +317,97 @@ describe("bridgeflow executor", () => {
       ]);
     });
 
+    it("still runs a later runOnFailure CLEANUP after a continue-gate timeout", async () => {
+      const persistence = new InMemoryExecutionPersistence();
+      const genericSteps: string[] = [];
+      const executor = new BridgeFlowExecutor({
+        persistence,
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [] },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED", evidenceRef: "cleanup:done" };
+          },
+        },
+        oracle: {
+          runContinueGate: async () => ({
+            status: "TIMED_OUT",
+            evaluation: {
+              outcome: "TIMED_OUT",
+              completedAtMs: 10,
+              evidenceRefs: [],
+              reason: "continue gate deadline elapsed without required facts",
+            },
+          }),
+          runFinalOracle: async () => {
+            throw new Error("final oracle must not run after a timed-out continue gate");
+          },
+        },
+        clock: () => 10,
+      });
+
+      const result = await executor.execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: planFixture({
+          entryStepId: "tap-submit",
+          steps: [
+            {
+              planStepId: "tap-submit",
+              kind: "BRIDGE_ACTION",
+              sourceMapRef: "src:tap",
+              timeoutMs: 1_000,
+              next: "read-app-session",
+              capabilityRequirements: [],
+              evidenceRequirements: [],
+              continueGate: {
+                anyOf: ["UI.ROUTE_LIST_READY"],
+                deadlineMs: 30_000,
+                unknownPolicy: "RETRY",
+              },
+              params: { action: "tap" },
+            },
+            {
+              planStepId: "read-app-session",
+              kind: "SDK_QUERY",
+              sourceMapRef: "src:read",
+              timeoutMs: 1_000,
+              next: "clear-session",
+              capabilityRequirements: [],
+              evidenceRequirements: [],
+              params: { queryRef: "session" },
+            },
+            {
+              planStepId: "clear-session",
+              kind: "CLEANUP",
+              sourceMapRef: "src:cleanup",
+              timeoutMs: 1_000,
+              next: null,
+              capabilityRequirements: [],
+              evidenceRequirements: [],
+              params: { runOnFailure: true },
+            },
+          ],
+        }),
+      });
+
+      expect(result.productVerdict).toBe("INCONCLUSIVE");
+      expect(result.evaluationFailureClass).toBe("EVIDENCE_INSUFFICIENT");
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+      expect(genericSteps).toEqual(["clear-session"]);
+      expect(persistence.stepOccurrences.map((occurrence) => occurrence.planStepId)).toEqual([
+        "tap-submit",
+        "clear-session",
+      ]);
+    });
+
     it("keeps the product verdict when cleanup fails and raises operational attention", async () => {
       const executor = new BridgeFlowExecutor({
         persistence: new InMemoryExecutionPersistence(),
