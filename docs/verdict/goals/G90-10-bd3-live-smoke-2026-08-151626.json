@@ -1,0 +1,156 @@
+{
+  "status": "LIVE_QUALIFIED",
+  "closedAt": "2026-08-15T16:26:53.359Z",
+  "injectionModel": "controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT",
+  "identity": {
+    "gitCommit": "291553bc7440f66629adbf3e5dbbc03f1a7431f5",
+    "gitCommitShort": "291553b",
+    "workingTreeClean": true,
+    "g90_10ImplementationClean": true,
+    "runnerDirty": false,
+    "apiCommand": "node dist/server.js",
+    "apiPid": "29171",
+    "apiStartedAt": "Sat Aug 15 19:20:29 2026",
+    "webCommand": "next-server (v15.5.20)",
+    "webPid": "28993",
+    "dbSchema": "up-to-date",
+    "deviceId": "R6CW400BC8N",
+    "host": "B",
+    "workflowRef": "nesy.workflow.tour-approval-lifecycle",
+    "profileKey": "nesy.launch.reuse-session",
+    "injectionModel": "controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT",
+    "g90_9LineageClosed": {
+      "gitCommit": "3770d2af4eca0cc170560562130b6632d635ad2a",
+      "apiPid": 55798,
+      "note": "G90.9 qualification evidence only. Process was stopped before this lineage."
+    },
+    "packVersion": "1.31.0",
+    "packKey": "nesy.courier",
+    "packDigest": "sha256:c10adf189ed92666f4fa4c25e7ec37b557170ec5d550fa134fd105036c2292db",
+    "compiledPlanRef": "bfp-nesy.reference.tour-approval-lifecycle-1",
+    "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+    "routeCode": "31",
+    "scheduleId": "11-31-20260815-1",
+    "scheduleIdSource": "VERDICT_SCHEDULE_ID"
+  },
+  "baseline": {
+    "axes": {
+      "runId": "run_63a9a223-6f3a-4807-b78c-eb97096aa55a",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "NOT_STARTED",
+      "injectedFault": null,
+      "expectedClass": null,
+      "observedClass": null,
+      "injectedFaultHost": null,
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "COMPLETED",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": null,
+        "abortKind": "NONE",
+        "armedAtMs": null,
+        "effectKind": null,
+        "occurrenceId": null,
+        "triggerPoint": null,
+        "actuallyFired": false,
+        "requestedAtMs": null,
+        "triggeredAtMs": null,
+        "declaredTimeoutMs": null,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": null
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_63a9a223-6f3a-4807-b78c-eb97096aa55a",
+      "executionId": "exec_21fd23d4-4bb6-4274-a945-6f9a6df979ce",
+      "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": null,
+      "expectedClass": null,
+      "injectedFaultHost": null
+    },
+    "judge": {
+      "ok": true,
+      "failures": [],
+      "expectedBusiness": "PASS_ONLINE",
+      "isolation": {
+        "clean": true,
+        "failures": []
+      }
+    }
+  },
+  "bd3": {
+    "axes": {
+      "runId": "run_4c8bed03-ffb4-4fec-9f87-7a34c0485e69",
+      "productVerdict": "INCONCLUSIVE",
+      "cleanupResult": "SUCCEEDED",
+      "injectedFault": "BACKEND_TIMEOUT",
+      "expectedClass": "BACKEND_TIMEOUT",
+      "observedClass": "BACKEND_TIMEOUT",
+      "injectedFaultHost": "B",
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "UNKNOWN_ACTION_EFFECT",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": "EFFECT_OBSERVED",
+        "abortKind": "DEADLINE",
+        "armedAtMs": 1786811165743,
+        "effectKind": "ADAPTER_DEADLINE_ABORT",
+        "occurrenceId": "run_4c8bed03-ffb4-4fec-9f87-7a34c0485e69:dispatcher-approves:0",
+        "triggerPoint": "REMOTE_ACTION:nesy.backoffice.approve-tour-request@dispatcher-approves",
+        "actuallyFired": true,
+        "requestedAtMs": 1786811115157,
+        "triggeredAtMs": 1786811167057,
+        "declaredTimeoutMs": 30000,
+        "injectedTimeoutMs": 80,
+        "effectObservedAtMs": 1786811167138
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_4c8bed03-ffb4-4fec-9f87-7a34c0485e69",
+      "executionId": "exec_161b0a1d-3f7f-41ec-9f49-2d6295c2c3ea",
+      "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": "BACKEND_TIMEOUT",
+      "expectedClass": "BACKEND_TIMEOUT",
+      "injectedFaultHost": "B"
+    },
+    "judge": {
+      "ok": true,
+      "failures": [],
+      "provenance": {
+        "phase": "EFFECT_OBSERVED",
+        "abortKind": "DEADLINE",
+        "armedAtMs": 1786811165743,
+        "effectKind": "ADAPTER_DEADLINE_ABORT",
+        "occurrenceId": "run_4c8bed03-ffb4-4fec-9f87-7a34c0485e69:dispatcher-approves:0",
+        "triggerPoint": "REMOTE_ACTION:nesy.backoffice.approve-tour-request@dispatcher-approves",
+        "actuallyFired": true,
+        "requestedAtMs": 1786811115157,
+        "triggeredAtMs": 1786811167057,
+        "declaredTimeoutMs": 30000,
+        "injectedTimeoutMs": 80,
+        "effectObservedAtMs": 1786811167138
+      },
+      "isolation": {
+        "clean": true,
+        "failures": []
+      }
+    },
+    "independence": {
+      "ok": true,
+      "failures": [],
+      "recomputed": "BACKEND_TIMEOUT",
+      "usedInjectedFault": false
+    }
+  },
+  "note": "controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT. Not an in-flight backend receive. D60 campaign NOT_STARTED. NEXT = BD.2."
+}
