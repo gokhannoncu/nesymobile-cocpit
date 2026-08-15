@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { restoreFixture, snapshotFixture } from './g90-10-host-b-fixture.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
@@ -45,7 +46,7 @@ async function req(method, path, body) {
 }
 
 function sh(cmd, args) {
-  return spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout.trim()
+  return String(spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout ?? '').trim()
 }
 
 function listenPids(port) {
@@ -241,16 +242,31 @@ function judgeBaseline(row) {
   const failures = []
   if (row.axes.injectedFault != null) failures.push(`injectedFault=${row.axes.injectedFault}`)
   if (row.axes.observedClass != null) failures.push(`observedClass filled on uninjected (${row.axes.observedClass})`)
-  if (row.axes.cleanupResult !== 'SUCCEEDED') failures.push(`cleanup=${row.axes.cleanupResult}`)
   const verdict = row.axes.productVerdict
   if (verdict !== 'PASS_ONLINE') failures.push(`expected business result PASS_ONLINE, got ${verdict}`)
+  // Success path ends at assert-approved (next=null). CLEANUP is runOnFailure
+  // only, so PASS_ONLINE correctly leaves cleanup NOT_STARTED. Treat that as
+  // isolation-clean when the run closed and released resources.
+  const cleanupOk =
+    row.axes.cleanupResult === 'SUCCEEDED' ||
+    (row.axes.cleanupResult === 'NOT_STARTED' &&
+      verdict === 'PASS_ONLINE' &&
+      row.axes.lifecycle === 'CLOSED' &&
+      row.axes.resourceReleaseResult === 'RELEASED')
+  if (!cleanupOk) failures.push(`cleanup=${row.axes.cleanupResult}`)
   if (!isolation.clean) failures.push(`isolation dirty: ${isolation.failures.join(', ')}`)
   return { ok: failures.length === 0, failures, expectedBusiness: verdict, isolation }
 }
 
 function isolationOf(row) {
   const failures = []
-  if (row.axes.cleanupResult !== 'SUCCEEDED') failures.push(`cleanup=${row.axes.cleanupResult}`)
+  const successPathCleanup =
+    row.axes.cleanupResult === 'NOT_STARTED' &&
+    row.axes.productVerdict === 'PASS_ONLINE' &&
+    row.axes.resourceReleaseResult === 'RELEASED'
+  if (row.axes.cleanupResult !== 'SUCCEEDED' && !successPathCleanup) {
+    failures.push(`cleanup=${row.axes.cleanupResult}`)
+  }
   if (row.axes.lifecycle !== 'CLOSED' && row.axes.status !== 'completed') {
     failures.push(`not closed (${row.axes.lifecycle}/${row.axes.status})`)
   }
@@ -368,6 +384,14 @@ identity.scheduleId = resolvedSchedule.scheduleId
 identity.scheduleIdSource = resolvedSchedule.source
 const scheduleId = resolvedSchedule.scheduleId
 
+console.log('\n=== Host B fixture gates ===')
+const fixtureBefore = await snapshotFixture()
+console.log(JSON.stringify({ ready: fixtureBefore.ready, gates: fixtureBefore.gates, schedule: fixtureBefore.schedule, ui: fixtureBefore.ui }, null, 2))
+if (!fixtureBefore.ready) {
+  console.error('Host B fixture not ready — refusing to start the workflow. Provision with scripts/g90-10-host-b-fixture.mjs')
+  process.exit(5)
+}
+
 console.log('\n=== Host B uninjected baseline ===')
 const baseline = await runHostB('baseline', pack, compiled, scheduleId, null)
 const baselineJudge = judgeBaseline(baseline)
@@ -375,6 +399,14 @@ console.log(JSON.stringify({ start: baseline.start, axes: baseline.axes, judge: 
 if (!baselineJudge.ok) {
   console.error('Host B uninjected baseline FAILED')
   process.exit(3)
+}
+
+console.log('\n=== Restore Host B starting state (RejectLeavingPermission if needed) ===')
+const restored = await restoreFixture()
+console.log(JSON.stringify({ ok: restored.ok, failures: restored.failures, after: restored.after?.gates ?? restored.after, rejectStatus: restored.reject?.status ?? null }, null, 2))
+if (!restored.ok) {
+  console.error('Host B fixture restore failed — BD.3 not started. Same starting state is required for the injected run.')
+  process.exit(5)
 }
 
 console.log('\n=== Host B BD.3 controlled adapter-deadline injection ===')
@@ -388,6 +420,22 @@ console.log(JSON.stringify({ start: injected.start, axes: injected.axes, judge: 
 if (!injectedJudge.ok || !independence.ok) {
   console.error('Host B BD.3 FAILED')
   process.exit(4)
+}
+
+console.log('\n=== Post-cleanup fixture ===')
+const afterCleanup = await snapshotFixture()
+console.log(JSON.stringify({ ready: afterCleanup.ready, gates: afterCleanup.gates, schedule: afterCleanup.schedule, ui: afterCleanup.ui }, null, 2))
+if (!afterCleanup.gates.beginningOfDay || !afterCleanup.gates.hasWork) {
+  console.error('Post-cleanup fixture contaminated — LIVE_QUALIFIED not claimed')
+  process.exit(4)
+}
+if (!afterCleanup.ready) {
+  const restoredAfter = await restoreFixture()
+  console.log(JSON.stringify({ restored: restoredAfter.ok, gates: restoredAfter.after?.gates }, null, 2))
+  if (!restoredAfter.ok) {
+    console.error('Post-cleanup notification/UI settle failed — LIVE_QUALIFIED not claimed')
+    process.exit(4)
+  }
 }
 
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')

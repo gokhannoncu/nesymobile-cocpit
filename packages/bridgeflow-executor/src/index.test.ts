@@ -436,6 +436,77 @@ describe("bridgeflow executor", () => {
       expect(result.cleanupResult).toBe("FAILED");
       expect(result.operationalDisposition).toBe("NEEDS_ATTENTION");
     });
+
+    it("executes a CLEANUP spec through remoteRuntime without turning teardown into UNKNOWN_ACTION_EFFECT", async () => {
+      const remoteSteps: string[] = [];
+      const genericSteps: string[] = [];
+      const executor = new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [] },
+        remoteRuntime: {
+          execute: async (step) => {
+            remoteSteps.push(step.planStepId);
+            if (step.kind === "REMOTE_ACTION") {
+              return { succeeded: false, actionResult: "UNKNOWN_EFFECT" };
+            }
+            return { succeeded: true, actionResult: "SUCCEEDED", evidenceRef: "cleanup:reject" };
+          },
+        },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED" };
+          },
+        },
+        clock: () => 10,
+      });
+
+      const result = await executor.execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: planFixture({
+          entryStepId: "dispatcher-approves",
+          steps: [
+            {
+              planStepId: "dispatcher-approves",
+              kind: "REMOTE_ACTION",
+              sourceMapRef: "src:approve",
+              timeoutMs: 1_000,
+              next: "release-approval-fixture",
+              capabilityRequirements: [],
+              evidenceRequirements: [],
+              params: { spec: { operationRef: "approve" } },
+            },
+            {
+              planStepId: "release-approval-fixture",
+              kind: "CLEANUP",
+              sourceMapRef: "src:cleanup",
+              timeoutMs: 1_000,
+              next: null,
+              capabilityRequirements: [],
+              evidenceRequirements: [],
+              params: {
+                runOnFailure: true,
+                spec: { operationRef: "reject", role: "TEARDOWN" },
+              },
+            },
+          ],
+        }),
+      });
+
+      expect(result.terminationReason).toBe("UNKNOWN_ACTION_EFFECT");
+      expect(result.productVerdict).toBe("INCONCLUSIVE");
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+      expect(remoteSteps).toEqual(["dispatcher-approves", "release-approval-fixture"]);
+      expect(genericSteps).toEqual([]);
+    });
   });
 
   it("requires effect verification before a step can succeed", async () => {

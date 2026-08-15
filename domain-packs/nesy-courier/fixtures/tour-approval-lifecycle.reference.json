@@ -76,7 +76,8 @@
   "surfaceRefs": [
     "nesy.tour.routing-dialog",
     "nesy.network-dialog",
-    "nesy.session-expired-dialog"
+    "nesy.session-expired-dialog",
+    "nesy.notification-list-dialog"
   ],
   "entityBindings": [
     {
@@ -91,7 +92,8 @@
   "targetResolutionRefs": [
     "nesy.target.tour-approval-request-button",
     "nesy.target.tour-routing-auto",
-    "nesy.target.tour-routing-manual"
+    "nesy.target.tour-routing-manual",
+    "nesy.target.notification-list-exit"
   ],
   "semanticMacroRef": "nesy.macro.tour-approval-lifecycle",
   "macroExpansion": {
@@ -484,7 +486,43 @@
           "compensatesStepIds": [
             "dispatcher-approves"
           ],
-          "runOnFailure": true
+          "runOnFailure": true,
+          "spec": {
+            "adapterRef": "nesy.backoffice",
+            "operationRef": "nesy.backoffice.reject-tour-request",
+            "role": "TEARDOWN",
+            "effectClass": "IDEMPOTENT_MUTATION",
+            "idempotencyClass": "KEYED",
+            "idempotencyKey": "run.input.scheduleId",
+            "inputBindings": [
+              {
+                "name": "approvalRequest",
+                "source": {
+                  "kind": "entityRef"
+                }
+              }
+            ],
+            "outputFactBindings": [],
+            "timeoutPolicy": {
+              "timeoutMs": 30000,
+              "maxAttempts": 2,
+              "backoffMs": 3000
+            },
+            "entityBinding": {
+              "type": "TOUR_APPROVAL_REQUEST",
+              "id": "run.input.scheduleId"
+            },
+            "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+            "auditPolicy": {
+              "recordRequest": true,
+              "recordResponse": true,
+              "redactFields": []
+            },
+            "allowedEnvironments": [
+              "qa",
+              "staging"
+            ]
+          }
         }
       ],
       "entryStepId": "resolve-request-button",
@@ -1049,7 +1087,43 @@
         "compensatesStepIds": [
           "dispatcher-approves"
         ],
-        "runOnFailure": true
+        "runOnFailure": true,
+        "spec": {
+          "adapterRef": "nesy.backoffice",
+          "operationRef": "nesy.backoffice.reject-tour-request",
+          "role": "TEARDOWN",
+          "effectClass": "IDEMPOTENT_MUTATION",
+          "idempotencyClass": "KEYED",
+          "idempotencyKey": "run.input.scheduleId",
+          "inputBindings": [
+            {
+              "name": "approvalRequest",
+              "source": {
+                "kind": "entityRef"
+              }
+            }
+          ],
+          "outputFactBindings": [],
+          "timeoutPolicy": {
+            "timeoutMs": 30000,
+            "maxAttempts": 2,
+            "backoffMs": 3000
+          },
+          "entityBinding": {
+            "type": "TOUR_APPROVAL_REQUEST",
+            "id": "run.input.scheduleId"
+          },
+          "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
+          "auditPolicy": {
+            "recordRequest": true,
+            "recordResponse": true,
+            "redactFields": []
+          },
+          "allowedEnvironments": [
+            "qa",
+            "staging"
+          ]
+        }
       }
     ],
     "entryStepId": "resolve-request-button",
@@ -1222,7 +1296,8 @@
     "handledSurfaceRefs": [
       "nesy.permission-dialog",
       "nesy.network-dialog",
-      "nesy.tour.routing-dialog"
+      "nesy.tour.routing-dialog",
+      "nesy.notification-list-dialog"
     ],
     "fatalSurfaceRefs": [
       "nesy.mandatory-update-dialog",

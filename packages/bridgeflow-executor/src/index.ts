@@ -1036,6 +1036,53 @@ export class BridgeFlowExecutor {
         }
         break;
       }
+      case "CLEANUP": {
+        const spec = step.params["spec"];
+        if (spec !== undefined && spec !== null && this.options.remoteRuntime) {
+          await this.assertLiveFence(input.runId, context.recoveryFence);
+          const result = await this.options.remoteRuntime.execute(step, context);
+          const actionResult = result.actionResult ?? (result.succeeded ? "SUCCEEDED" : "FAILED");
+          // A lost teardown must not become the product UNKNOWN_ACTION_EFFECT
+          // path. Cleanup cannot touch the verdict (B.8.1).
+          outcome.actionResult = actionResult === "UNKNOWN_EFFECT" ? "FAILED" : actionResult;
+          if (result.evidenceRef !== undefined) {
+            await this.recordGenericStepEvidence(input.runId, context, result.evidenceRef);
+          }
+          if (result.next !== undefined) next = result.next;
+          if (result.succeeded && actionResult !== "UNKNOWN_EFFECT") {
+            state.cleanupResult = "SUCCEEDED";
+          } else {
+            state.cleanupResult = "FAILED";
+            state.operationalDisposition = "NEEDS_ATTENTION";
+            stop = true;
+          }
+          break;
+        }
+        const genericCleanup = this.options.genericSteps;
+        if (!genericCleanup) {
+          outcome.actionResult = "FAILED";
+          state.cleanupResult = "FAILED";
+          state.operationalDisposition = "NEEDS_ATTENTION";
+          stop = true;
+          break;
+        }
+        await this.assertLiveFence(input.runId, context.recoveryFence);
+        const genericResult = await genericCleanup.execute(step, context);
+        outcome.actionResult = genericResult.actionResult ?? (genericResult.succeeded ? "SUCCEEDED" : "FAILED");
+        if (genericResult.evidenceRef !== undefined) {
+          await this.recordGenericStepEvidence(input.runId, context, genericResult.evidenceRef);
+        }
+        if (genericResult.outputVariable) this.options.variables?.set(genericResult.outputVariable, genericResult.output);
+        if (genericResult.next !== undefined) next = genericResult.next;
+        if (!genericResult.succeeded) {
+          state.cleanupResult = "FAILED";
+          state.operationalDisposition = "NEEDS_ATTENTION";
+          stop = true;
+        } else {
+          state.cleanupResult = "SUCCEEDED";
+        }
+        break;
+      }
       default: {
         const generic = this.options.genericSteps;
         if (!generic) {

@@ -150,6 +150,19 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     },
   },
 
+  'nesy.backoffice.reject-tour-request': {
+    path: 'Task/RejectLeavingPermission',
+    confidence: 'SOURCE_VERIFIED',
+    rationale:
+      'TaskOperation.RejectLeavingPermission writes ScheduleStatus = BeginningOfDay unconditionally. Measured 2026-08-15 on RS staging: the topic deserializes List<RejectLeavingPermissionRequest>, not the ApproveLeavingPermission object shape. Body is [{ ScheduleId, RejectionReason }]. RejectionReason is an enum; 0 is the lab reset used to repeat tour-approval. This is TEARDOWN, not a product-success path.',
+    body: (inputs) => [
+      {
+        ScheduleId: str(inputs['approvalRequest']),
+        RejectionReason: 0,
+      },
+    ],
+  },
+
   'nesy.backoffice.read-tour-approval-status': {
     path: 'Task/GetWaitingLeavingRequests',
     confidence: 'SOURCE_VERIFIED',

@@ -51,6 +51,11 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.31.0 — G90.10 BD.3 live isolation: `release-approval-fixture` now carries
+  //   a TEARDOWN spec (`reject-tour-request` → RejectLeavingPermission). The
+  //   success path still ends at assert-approved; the failure path finally has
+  //   an executable cleanup instead of a spec-less FAILED.
+  //
   // 1.30.0 — G90.3 repeat runs exposed cross-run contamination: login cleanup
   //   existed as a disconnected CLEANUP node, so successful login left a real
   //   session behind and the next cold-real-login run opened StopListFragment.
@@ -412,7 +417,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 30, patch: 0 },
+  version: { major: 1, minor: 31, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

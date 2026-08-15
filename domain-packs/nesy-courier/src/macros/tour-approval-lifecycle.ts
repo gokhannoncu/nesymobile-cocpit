@@ -312,6 +312,21 @@ const STEPS: readonly WorkflowStepV2[] = [
     kind: "CLEANUP",
     compensatesStepIds: ["dispatcher-approves"],
     runOnFailure: true,
+    spec: {
+      adapterRef: NESY_BACKOFFICE_ADAPTER_REF,
+      operationRef: NESY_BACKOFFICE_OPERATIONS.rejectTourRequest,
+      role: "TEARDOWN",
+      effectClass: "IDEMPOTENT_MUTATION",
+      idempotencyClass: "KEYED",
+      idempotencyKey: "run.input.scheduleId",
+      inputBindings: [{ name: "approvalRequest", source: { kind: "entityRef" } }],
+      outputFactBindings: [],
+      timeoutPolicy: { timeoutMs: 30_000, maxAttempts: 2, backoffMs: 3_000 },
+      entityBinding: REQUEST_ENTITY,
+      reconciliationPolicy: "RECONCILE_BEFORE_RELEASE",
+      auditPolicy: { recordRequest: true, recordResponse: true, redactFields: [] },
+      allowedEnvironments: ["qa", "staging"],
+    },
   },
 ];
 
@@ -432,12 +447,14 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
       NESY_SURFACES.tourRoutingDialog,
       NESY_SURFACES.networkDialog,
       NESY_SURFACES.sessionExpiredDialog,
+      NESY_SURFACES.notificationListDialog,
     ],
     entityTypeRefs: [NESY_ENTITIES.route, NESY_ENTITIES.tourApprovalRequest],
     targetRefs: [
       NESY_TARGETS.tourApprovalRequestButton,
       NESY_TARGETS.tourRoutingAuto,
       NESY_TARGETS.tourRoutingManual,
+      NESY_TARGETS.notificationListExit,
     ],
     factKeys: [
       NESY_FACTS.SELECTED_ROUTE_OBSERVED,
@@ -452,6 +469,7 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
       NESY_BACKOFFICE_OPERATIONS.approveTourRequest,
       NESY_BACKOFFICE_OPERATIONS.readTourApprovalRequest,
       NESY_BACKOFFICE_OPERATIONS.readTourApprovalStatus,
+      NESY_BACKOFFICE_OPERATIONS.rejectTourRequest,
     ],
   },
   oracleTemplate: {
@@ -524,6 +542,7 @@ export const TOUR_APPROVAL_LIFECYCLE_SLICE: NesyReferenceSlice = {
     NESY_SURFACES.tourRoutingDialog,
     NESY_SURFACES.networkDialog,
     NESY_SURFACES.sessionExpiredDialog,
+    NESY_SURFACES.notificationListDialog,
   ],
   entityBindings: [
     { entityTypeRef: NESY_ENTITIES.route, role: "Scopes the request to the tour that was worked." },
@@ -536,6 +555,7 @@ export const TOUR_APPROVAL_LIFECYCLE_SLICE: NesyReferenceSlice = {
     NESY_TARGETS.tourApprovalRequestButton,
     NESY_TARGETS.tourRoutingAuto,
     NESY_TARGETS.tourRoutingManual,
+    NESY_TARGETS.notificationListExit,
   ],
   semanticMacroRef: NESY_TOUR_APPROVAL_MACRO_KEY,
   macroExpansion: EXPANSION,

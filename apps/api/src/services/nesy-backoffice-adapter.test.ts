@@ -111,6 +111,14 @@ describe('back-office endpoint map', () => {
     expect(missing).toEqual([])
   })
 
+  it('rejects a leaving-permission request as a JSON array, not the approve object shape', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.reject-tour-request']!
+    expect(endpoint.path).toBe('Task/RejectLeavingPermission')
+    expect(endpoint.body({ approvalRequest: '11-31-20260815-1' })).toEqual([
+      { ScheduleId: '11-31-20260815-1', RejectionReason: 0 },
+    ])
+  })
+
   it('approves the tour through the leaving-permission flow, not the mobile approval queue', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.approve-tour-request']!
     expect(endpoint.path).toBe('Task/ApproveLeavingPermission')
@@ -695,5 +703,77 @@ describe('remote step runtime', () => {
     expect(result).toMatchObject({ succeeded: false, actionResult: 'UNKNOWN_EFFECT' })
     expect(session.snapshot().phase).toBe('ARMED')
     expect(session.snapshot().actuallyFired).toBe(false)
+  })
+
+  it('does not re-arm BD.3 on a TEARDOWN cleanup', async () => {
+    const { createBackendTimeoutSession } = await import('./backend-timeout-injector.js')
+    const session = createBackendTimeoutSession({
+      injectedFault: 'BACKEND_TIMEOUT',
+      clock: () => 1_000,
+    })
+    session.request()
+    session.tryArm({
+      planStepId: 'dispatcher-approves',
+      occurrenceId: 'occ-approve',
+      spec: {
+        effectClass: 'IDEMPOTENT_MUTATION',
+        operationRef: 'nesy.backoffice.approve-tour-request',
+        timeoutPolicy: { timeoutMs: 30_000, maxAttempts: 1 },
+      },
+    })
+    session.markTriggered('nesy.backoffice.approve-tour-request', 80)
+    session.markDeadlineObserved()
+    const armedPoint = session.snapshot().triggerPoint
+
+    let called = false
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      backendTimeout: session,
+      adapter: {
+        call: async (input) => {
+          called = true
+          expect(input.operationRef).toBe('nesy.backoffice.reject-tour-request')
+          return { terminal: { status: 'SUCCEEDED' }, normalizedResponse: {} }
+        },
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      runInputs: { scheduleId: '11-31-20260815-1' },
+      clock: () => 2_000,
+    })
+
+    const cleanupStep = {
+      planStepId: 'release-approval-fixture',
+      kind: 'CLEANUP' as const,
+      sourceMapRef: 'src:cleanup',
+      timeoutMs: 40_000,
+      next: null,
+      capabilityRequirements: [],
+      evidenceRequirements: [],
+      params: {
+        spec: {
+          adapterRef: 'nesy.backoffice',
+          operationRef: 'nesy.backoffice.reject-tour-request',
+          role: 'TEARDOWN',
+          effectClass: 'IDEMPOTENT_MUTATION',
+          idempotencyClass: 'KEYED',
+          idempotencyKey: 'run.input.scheduleId',
+          inputBindings: [{ name: 'approvalRequest', source: { kind: 'entityRef' } }],
+          outputFactBindings: [],
+          timeoutPolicy: { timeoutMs: 30_000, maxAttempts: 1 },
+          entityBinding: { type: 'TOUR_APPROVAL_REQUEST', id: 'run.input.scheduleId' },
+          reconciliationPolicy: 'RECONCILE_BEFORE_RELEASE',
+          auditPolicy: { recordRequest: true, recordResponse: true, redactFields: [] },
+        },
+      },
+    }
+
+    const result = await runtime.execute(cleanupStep as never, STEP_CONTEXT as never)
+    expect(result).toMatchObject({ succeeded: true, actionResult: 'SUCCEEDED' })
+    expect(called).toBe(true)
+    expect(session.snapshot().triggerPoint).toBe(armedPoint)
+    expect(session.snapshot().phase).toBe('EFFECT_OBSERVED')
+    expect(session.injectionForCall('nesy.backoffice.reject-tour-request')).toBeNull()
   })
 })

@@ -45,6 +45,7 @@ export const NESY_BACKOFFICE_OPERATIONS = {
   readRouteAssignment: "nesy.backoffice.read-route-assignment",
   seedRouteAssignment: "nesy.backoffice.seed-route-assignment",
   releaseRouteAssignment: "nesy.backoffice.release-route-assignment",
+  rejectTourRequest: "nesy.backoffice.reject-tour-request",
 } as const;
 
 export const NESY_BACKOFFICE_ADAPTER: RemoteAdapterDefinition = {
@@ -225,6 +226,26 @@ export const NESY_BACKOFFICE_ADAPTER: RemoteAdapterDefinition = {
       effectClass: "IDEMPOTENT_MUTATION",
       idempotencyClass: "KEYED",
       inputs: [{ name: "route", type: "entityRef", required: true, entityTypeRef: NESY_ENTITIES.route }],
+      outputs: [],
+      audit: { recordRequest: true, recordResponse: true, redactFields: [] },
+      allowedEnvironments: ["qa", "staging"],
+    },
+    {
+      // Failure-path fixture release for tour-approval. The courier half of a
+      // BD.3 run still writes WaitingForApproval; this is the real product
+      // reset (RejectLeavingPermission), not a fake-success seam. Empty
+      // outputs: teardown must not produce business evidence.
+      operationRef: NESY_BACKOFFICE_OPERATIONS.rejectTourRequest,
+      displayName: "Reject a tour leaving-permission request",
+      businessMeaning:
+        "Returns the schedule to BeginningOfDay so the next tour-approval occurrence starts clean. Acknowledgement is not a product verdict.",
+      role: "TEARDOWN",
+      actorRole: "SERVICE_ACCOUNT",
+      effectClass: "IDEMPOTENT_MUTATION",
+      idempotencyClass: "KEYED",
+      inputs: [
+        { name: "approvalRequest", type: "entityRef", required: true, entityTypeRef: NESY_ENTITIES.tourApprovalRequest },
+      ],
       outputs: [],
       audit: { recordRequest: true, recordResponse: true, redactFields: [] },
       allowedEnvironments: ["qa", "staging"],

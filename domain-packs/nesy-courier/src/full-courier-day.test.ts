@@ -151,6 +151,11 @@ describe("full courier day composition", () => {
       for (const id of cleanup.compensatesStepIds) expect(step(id).planStepId).toBe(id);
       expect(cleanup.runOnFailure).toBe(true);
     }
+    const permitCleanup = cleanups.find((entry) => entry.planStepId === "permit-release-approval-fixture");
+    if (permitCleanup?.kind !== "CLEANUP") throw new Error("expected CLEANUP");
+    expect(permitCleanup.spec?.operationRef).toBe("nesy.backoffice.reject-tour-request");
+    expect(permitCleanup.spec?.role).toBe("TEARDOWN");
+    expect(permitCleanup.spec?.idempotencyKey).toBe("run.input.scheduleId");
   });
 
   // ── 2. stitching ────────────────────────────────────────────────────────

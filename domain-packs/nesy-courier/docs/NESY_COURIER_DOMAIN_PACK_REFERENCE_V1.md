@@ -70,7 +70,7 @@ artifact tek bir yolculuk olarak okunabilir.
 | Campaign | 4 | `nesy.campaign.pr`, `nightly`, `weekly`, `release` |
 | Feature blueprint | 3 | stop-handling, delivery-completion, tour-approval |
 | Capability | 16 | `verdict.core` + `domain.nesy` |
-| Remote adapter | 1 | `nesy.backoffice`, 9 allowlisted operation |
+| Remote adapter | 1 | `nesy.backoffice`, 10 allowlisted operation |
 
 ### 2.1 Screen / Surface ayrımı neden zorunlu
 

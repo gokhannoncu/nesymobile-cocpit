@@ -1,0 +1,167 @@
+{
+  "command": "provision",
+  "closedAt": "2026-08-15T14:51:07.841Z",
+  "preservedApiPid": "21508",
+  "identity": {
+    "apiPid": "21508",
+    "apiCommand": "node dist/server.js",
+    "apiStartedAt": "Sat Aug 15 17:32:37 2026"
+  },
+  "routeCode": "31",
+  "before": {
+    "ready": false,
+    "schedule": {
+      "scheduleId": "11-31-20260815-1",
+      "status": 0,
+      "stopCount": 0,
+      "stopChunkCount": 0,
+      "courierName": "GOKHAN ONCU",
+      "courierId": "6889e5bdf06d7b29960cfa23",
+      "branchCode": "11"
+    },
+    "screen": {
+      "fragment": "StopListFragment",
+      "overlay": null,
+      "appForeground": true
+    },
+    "ui": {
+      "btnOutPresent": true,
+      "btnOutLabel": "Request Tour Start",
+      "autoRoutePresent": false,
+      "manualRoutePresent": false,
+      "notificationExitPresent": false,
+      "requestTour": true
+    },
+    "gates": {
+      "schedulePresent": true,
+      "beginningOfDay": true,
+      "hasWork": false,
+      "onStopList": true,
+      "requestReady": true,
+      "routingDialogAbsent": true
+    }
+  },
+  "shipment": {
+    "dbId": "d30277fc-7137-4c42-9aef-56e3cde44b73",
+    "shipmentId": "80542975390576",
+    "scanValue": "6880051000291615",
+    "fullBarcode": "N6880110004100000010006880110006300110001000180542975390576XT11941",
+    "unloadStatus": 200
+  },
+  "loadToVehicle": {
+    "runId": "run_3dc5c70a-f795-4947-8a47-31ea15048e23",
+    "productVerdict": "PASS_ONLINE",
+    "status": "completed",
+    "cleanupResult": "SUCCEEDED"
+  },
+  "restore": {
+    "before": {
+      "ready": true,
+      "schedule": {
+        "scheduleId": "11-31-20260815-1",
+        "status": 0,
+        "stopCount": 1,
+        "stopChunkCount": 1,
+        "courierName": "GOKHAN ONCU",
+        "courierId": "6889e5bdf06d7b29960cfa23",
+        "branchCode": "11"
+      },
+      "screen": {
+        "fragment": "StopListFragment",
+        "overlay": null,
+        "appForeground": true
+      },
+      "ui": {
+        "btnOutPresent": true,
+        "btnOutLabel": "Request Tour Start",
+        "autoRoutePresent": false,
+        "manualRoutePresent": false,
+        "notificationExitPresent": false,
+        "requestTour": true
+      },
+      "gates": {
+        "schedulePresent": true,
+        "beginningOfDay": true,
+        "hasWork": true,
+        "onStopList": true,
+        "requestReady": true,
+        "routingDialogAbsent": true
+      }
+    },
+    "reject": null,
+    "settle": null,
+    "after": {
+      "ready": true,
+      "schedule": {
+        "scheduleId": "11-31-20260815-1",
+        "status": 0,
+        "stopCount": 1,
+        "stopChunkCount": 1,
+        "courierName": "GOKHAN ONCU",
+        "courierId": "6889e5bdf06d7b29960cfa23",
+        "branchCode": "11"
+      },
+      "screen": {
+        "fragment": "StopListFragment",
+        "overlay": null,
+        "appForeground": true
+      },
+      "ui": {
+        "btnOutPresent": true,
+        "btnOutLabel": "Request Tour Start",
+        "autoRoutePresent": false,
+        "manualRoutePresent": false,
+        "notificationExitPresent": false,
+        "requestTour": true
+      },
+      "gates": {
+        "schedulePresent": true,
+        "beginningOfDay": true,
+        "hasWork": true,
+        "onStopList": true,
+        "requestReady": true,
+        "routingDialogAbsent": true
+      }
+    },
+    "usedFakeSuccess": false,
+    "ok": true,
+    "reason": "already at Host B starting state"
+  },
+  "after": {
+    "ready": true,
+    "schedule": {
+      "scheduleId": "11-31-20260815-1",
+      "status": 0,
+      "stopCount": 1,
+      "stopChunkCount": 1,
+      "courierName": "GOKHAN ONCU",
+      "courierId": "6889e5bdf06d7b29960cfa23",
+      "branchCode": "11"
+    },
+    "screen": {
+      "fragment": "StopListFragment",
+      "overlay": null,
+      "appForeground": true
+    },
+    "ui": {
+      "btnOutPresent": true,
+      "btnOutLabel": "Request Tour Start",
+      "autoRoutePresent": false,
+      "manualRoutePresent": false,
+      "notificationExitPresent": false,
+      "requestTour": true
+    },
+    "gates": {
+      "schedulePresent": true,
+      "beginningOfDay": true,
+      "hasWork": true,
+      "onStopList": true,
+      "requestReady": true,
+      "routingDialogAbsent": true
+    }
+  },
+  "usedFakeSuccess": false,
+  "note": "Fixture sets starting business state only. Tour-approval workflow is not skipped.",
+  "ok": true,
+  "failures": []
+}

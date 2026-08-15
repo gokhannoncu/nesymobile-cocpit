@@ -155,7 +155,7 @@ describe("registries", () => {
       campaigns: 4,
       features: 3,
       capabilities: 16,
-      adapterOperations: 9,
+      adapterOperations: 10,
     });
   });
 

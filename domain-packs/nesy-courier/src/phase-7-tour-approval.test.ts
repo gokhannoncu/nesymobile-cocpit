@@ -12,6 +12,17 @@ import { NESY_FACTS } from "./registries/facts.js";
 describe("Phase 7.12 Tour Approval Lifecycle", () => {
   const slice = findReferenceSlice("TOUR_APPROVAL_LIFECYCLE");
 
+  it("gives release-approval-fixture a TEARDOWN spec so failure-path cleanup can execute", () => {
+    const cleanup = slice?.genericIrSnapshot.steps.find((s) => s.planStepId === "release-approval-fixture");
+    expect(cleanup?.kind).toBe("CLEANUP");
+    if (cleanup?.kind !== "CLEANUP") throw new Error("expected CLEANUP");
+    expect(cleanup.runOnFailure).toBe(true);
+    expect(cleanup.spec?.operationRef).toBe(NESY_BACKOFFICE_OPERATIONS.rejectTourRequest);
+    expect(cleanup.spec?.role).toBe("TEARDOWN");
+    expect(cleanup.spec?.outputFactBindings).toEqual([]);
+    expect(cleanup.spec?.reconciliationPolicy).toBe("RECONCILE_BEFORE_RELEASE");
+  });
+
   it("keeps dispatcher approve as SETUP with empty output facts (transport ≠ approval)", () => {
     const approve = slice?.genericIrSnapshot.steps.find((s) => s.planStepId === "dispatcher-approves");
     expect(approve?.kind).toBe("REMOTE_ACTION");

@@ -1,0 +1,138 @@
+{
+  "command": "restore",
+  "closedAt": "2026-08-15T14:59:51.688Z",
+  "preservedApiPid": "21508",
+  "before": {
+    "ready": false,
+    "schedule": {
+      "scheduleId": "11-31-20260815-1",
+      "status": 2,
+      "stopCount": 1,
+      "stopChunkCount": 1,
+      "courierName": "GOKHAN ONCU",
+      "courierId": "6889e5bdf06d7b29960cfa23",
+      "branchCode": "11"
+    },
+    "screen": {
+      "fragment": "StopListFragment",
+      "overlay": null,
+      "appForeground": true
+    },
+    "ui": {
+      "btnOutPresent": true,
+      "btnOutLabel": "End Of Tour",
+      "autoRoutePresent": false,
+      "manualRoutePresent": false,
+      "notificationExitPresent": false,
+      "requestTour": false
+    },
+    "gates": {
+      "schedulePresent": true,
+      "beginningOfDay": false,
+      "hasWork": true,
+      "onStopList": true,
+      "requestReady": false,
+      "routingDialogAbsent": true
+    }
+  },
+  "reject": {
+    "status": 200,
+    "body": {
+      "resultCode": 200,
+      "resultMessage": "OK",
+      "payload": "Request(s) are rejected"
+    },
+    "attempts": [
+      {
+        "body": {
+          "resultCode": 200,
+          "resultMessage": "OK",
+          "payload": "Request(s) are rejected"
+        },
+        "status": 200
+      }
+    ]
+  },
+  "settle": {
+    "label": "restore",
+    "actions": [
+      {
+        "op": "dismiss-notification-list",
+        "dismissed": true,
+        "at": {
+          "x": 968,
+          "y": 1054
+        }
+      }
+    ],
+    "snapshot": {
+      "ready": true,
+      "schedule": {
+        "scheduleId": "11-31-20260815-1",
+        "status": 0,
+        "stopCount": 1,
+        "stopChunkCount": 1,
+        "courierName": "GOKHAN ONCU",
+        "courierId": "6889e5bdf06d7b29960cfa23",
+        "branchCode": "11"
+      },
+      "screen": {
+        "fragment": "StopListFragment",
+        "overlay": null,
+        "appForeground": true
+      },
+      "ui": {
+        "btnOutPresent": true,
+        "btnOutLabel": "Request Tour Start",
+        "autoRoutePresent": false,
+        "manualRoutePresent": false,
+        "notificationExitPresent": false,
+        "requestTour": true
+      },
+      "gates": {
+        "schedulePresent": true,
+        "beginningOfDay": true,
+        "hasWork": true,
+        "onStopList": true,
+        "requestReady": true,
+        "routingDialogAbsent": true
+      }
+    }
+  },
+  "after": {
+    "ready": true,
+    "schedule": {
+      "scheduleId": "11-31-20260815-1",
+      "status": 0,
+      "stopCount": 1,
+      "stopChunkCount": 1,
+      "courierName": "GOKHAN ONCU",
+      "courierId": "6889e5bdf06d7b29960cfa23",
+      "branchCode": "11"
+    },
+    "screen": {
+      "fragment": "StopListFragment",
+      "overlay": null,
+      "appForeground": true
+    },
+    "ui": {
+      "btnOutPresent": true,
+      "btnOutLabel": "Request Tour Start",
+      "autoRoutePresent": false,
+      "manualRoutePresent": false,
+      "notificationExitPresent": false,
+      "requestTour": true
+    },
+    "gates": {
+      "schedulePresent": true,
+      "beginningOfDay": true,
+      "hasWork": true,
+      "onStopList": true,
+      "requestReady": true,
+      "routingDialogAbsent": true
+    }
+  },
+  "usedFakeSuccess": false,
+  "ok": true,
+  "failures": []
+}

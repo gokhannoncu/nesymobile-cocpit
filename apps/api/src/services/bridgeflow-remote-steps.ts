@@ -136,11 +136,16 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
         })
       }
 
-      options.backendTimeout?.tryArm({
-        planStepId: step.planStepId,
-        occurrenceId: context.occurrenceId,
-        spec,
-      })
+      // TEARDOWN / CLEANUP must not re-arm BD.3. The injector is one-shot on
+      // the host mutation; offering the fixture release as a second arm target
+      // would overwrite triggerPoint and hang the cleanup that isolation needs.
+      if (spec.role !== 'TEARDOWN' && step.kind !== 'CLEANUP') {
+        options.backendTimeout?.tryArm({
+          planStepId: step.planStepId,
+          occurrenceId: context.occurrenceId,
+          spec,
+        })
+      }
 
       const inputs = resolveInputs(spec, options.variables, options.runInputs ?? {})
       const auditPolicy = {

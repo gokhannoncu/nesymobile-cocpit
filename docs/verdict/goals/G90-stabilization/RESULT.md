@@ -154,7 +154,7 @@ Live qualification 2026-08-15 16:29 +03, fresh prod `3770d2a` /
 `injectedFault` test girdisi; `observedClass` ölçüm çıktısı. Smoke B BD.3
 enjektör kalifikasyonu değildir.
 
-### 1.1c G90.10 BD.3 injector (implemented, not live-qualified)
+### 1.1c G90.10 BD.3 injector (live injection observed, not LIVE_QUALIFIED)
 
 `observeInjectedClass` `injectedFault` kabul etmez. `BACKEND_TIMEOUT` yalnız
 şunlar birlikte doğruysa yazılır: `UNKNOWN_EFFECT` + injector
@@ -172,19 +172,39 @@ injector wire’a gitmediğini bilse bile runtime `NO_EFFECT`e çevrilmez.
 `PRODUCT_FAIL` yok; executor `UNKNOWN_ACTION_EFFECT` → `INCONCLUSIVE`.
 Formal D60 kampanyası başlamadı.
 
-Live qual attempt 2026-08-15 17:40 +03, fresh prod `0465eca` /
-`node dist/server.js` PID 21508
-([`G90-10-bd3-live-smoke-2026-08-151440.json`](../G90-10-bd3-live-smoke-2026-08-151440.json)):
+Host B fixture (product path, no fake-success seam) 2026-08-15 17:51 +03
+([`G90-10-host-b-fixture-2026-08-151451.json`](../G90-10-host-b-fixture-2026-08-151451.json)):
 
 ```text
-Host B uninjected = INCONCLUSIVE / AUTOMATION_FAILURE / cleanup FAILED
-resolve-routing-choice: auto_route NOT_FOUND
-schedule 11-31-20260815-1 is BeginningOfDay + 0 stops
-dispatcher-approves never reached — injector not armed
-BD.3 not started
+create+unload shipment 80542975390576 / scan 6880051000291615
+load-to-vehicle run_3dc5c70a PASS_ONLINE
+schedule 11-31-20260815-1 = BeginningOfDay + 1 stop
+btn_out = Request Tour Start
 ```
 
-`LIVE_QUALIFIED` yazılmaz. BD.2 başlamaz.
+Live attempt on PID 21508 / `0465eca` binary 2026-08-15 18:00 +03:
+
+```text
+uninjected Host B  run_ba55354b  PASS_ONLINE
+  injectedFault=null  observedClass=null
+  dispatcher-approves reached
+  cleanup NOT_STARTED (success path ends at assert-approved)
+
+BD.3              run_1a7f59cd  INCONCLUSIVE / UNKNOWN_ACTION_EFFECT
+  injectedFault=expectedClass=observedClass=BACKEND_TIMEOUT
+  provenance REQUESTED→ARMED→TRIGGERED→EFFECT_OBSERVED
+  actuallyFired=true  abortKind=DEADLINE
+  triggerPoint=REMOTE_ACTION:approve-tour-request@dispatcher-approves
+  classifier independence OK (no injectedFault)
+  cleanup FAILED — release-approval-fixture has no spec
+```
+
+`LIVE_QUALIFIED` yazılmaz: injection gözlendi, isolation bar (`cleanup=SUCCEEDED`) tutulmadı.
+BD.2 başlamaz. PID 21508 = LIVE_INJECTION lineage; yeni cleanup contract’ı
+çalıştıramaz. `release-approval-fixture` artık TEARDOWN spec taşır
+(`nesy.courier@1.31.0` → `reject-tour-request` / RejectLeavingPermission).
+Aynı BD.3 live run yeni prod PID’de tekrarlanır; cleanup/isolation clean
+olmadan `LIVE_QUALIFIED` yazılmaz.
 
 ## 1.2 Phase 10 plumbing + G90 live golden
 
@@ -206,10 +226,10 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current window | `D60` |
 | Current step | `G90.10` BD.3 live qual |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
-| Last successful step | `G90.9` LIVE_QUALIFIED; `G90.10` BD.3 implemented (not live-qualified) |
-| Last attempted step | G90.10 Host B uninjected `run_fce2dee9-db03-4bb5-ae42-8c54fb2de453` |
-| Last update | `2026-08-15 17:41:00 +03` |
-| Recovery instruction | `NEXT = Host B that can reach dispatcher-approves (leaving-permission pending, not empty BeginningOfDay). Then BD.3 on PID 21508 / 0465eca. Formal D60 kampanyası 13 Eylül’e kadar açılmaz. BD.2 yok.` |
+| Last successful step | `G90.9` LIVE_QUALIFIED; Host B uninjected PASS_ONLINE; BD.3 injection observed |
+| Last attempted step | G90.10 BD.3 `run_1a7f59cd` — observedClass=BACKEND_TIMEOUT, cleanup FAILED |
+| Last update | `2026-08-15 18:18:00 +03` |
+| Recovery instruction | `NEXT = BD.3 live re-run on a new prod PID after nesy.courier@1.31.0 cleanup contract. PID 21508 closed for this lineage. cleanup=SUCCEEDED + post-cleanup fixture clean olmadan LIVE_QUALIFIED yok. BD.2 yok. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -459,7 +479,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | G90.7 D30 kapanış | `DONE` | bu dosya; 2026-08-15 |
 | G90.8 D60 spec kilidi | `DONE` | `RUN_PLAY.md` §15–18 |
 | G90.9 injectedFault alanı | `LIVE_QUALIFIED` | 2026-08-15 fresh prod `3770d2a`; Smoke A/B; formal kampanya değil |
-| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3 implemented; live qual + BD.2/6/5/4/1 yok |
+| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3 LIVE_INJECTION; cleanup contract 1.31.0; LIVE_QUALIFIED + BD.2/6/5/4/1 yok |
 | G90.11 D60 matrisi | `NOT_STARTED` | |
 | G90.12 D60 kapanış | `NOT_STARTED` | |
 | G90.13 D90 spec kilidi | `DONE` | `RUN_PLAY.md` §19–22 |
@@ -501,7 +521,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | D30_ENV_PRISMA_DISCONNECT | LOW | `BACKLOG` | #9; sınıflı; cleanup+isolation OK; 100/100 PASS peşinde değil |
 | CP3-DUT | EXT | `DEFERRED` | Track B |
 | KILL_RECOVERY | EXT | `SPEC_LOCKED` | D60 BD.1; kampanya artık ungated |
-| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3 code; live qual Host B + fresh prod; formal kampanya 13 Eylül |
+| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3 LIVE_INJECTION; cleanup contract in 1.31.0; live re-qual + BD.2 yok; formal kampanya 13 Eylül |
 | SECOND_DUT | MEDIUM | `OPEN` | D90 `pilotStable=YES` için ≥2 serial |
 
 ## 9. Next window handoff
@@ -510,7 +530,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 D30 COMPLETED. 100 classified. 99 PRODUCT_PASS. 1 ENV_FAILURE. UNCLASSIFIED=0.
 D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
-G90.9 LIVE_QUALIFIED. G90.10 BD.3 implemented, not live-qualified.
+G90.9 LIVE_QUALIFIED. G90.10 BD.3 LIVE_INJECTION, not LIVE_QUALIFIED.
 injectedFault ≠ observedClass. Uninjected null.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
 NEXT: G90.10 six semantic injectors. Not G90.4 / 3c / 3e. No second login soak.

@@ -57,6 +57,7 @@ export const NESY_TOUR_ROUTING_INTERRUPT_POLICY: InterruptPolicy = {
     NESY_SURFACES.permissionDialog,
     NESY_SURFACES.networkDialog,
     NESY_SURFACES.tourRoutingDialog,
+    NESY_SURFACES.notificationListDialog,
   ],
   fatalSurfaceRefs: [NESY_SURFACES.mandatoryUpdateDialog, NESY_SURFACES.sessionExpiredDialog],
   unlistedSurfacePolicy: "OPERATOR_ATTENTION",
