@@ -16,6 +16,7 @@ import { listDomainPacks, resolveDomainPack } from './domain-pack-registry.js'
 import { InMemoryCompiledPlanStore } from './workflow-compile.service.js'
 import type { BridgeDeviceManager } from './bridge-device-manager.js'
 import { BridgeUnavailableError } from './bridge-device-manager.js'
+import { Prisma } from '@nesy/db'
 
 const PACK = listDomainPacks()[0]!
 
@@ -776,6 +777,7 @@ describe('execution queue device gating', () => {
     const statuses: string[] = []
     const runRowStatuses: string[] = []
     const runtimeWrites: Record<string, unknown>[] = []
+    const { prisma: prismaOverride, ...queueOverrides } = overrides
     const prisma = {
       workflowRun: {
         updateMany: async (input: { data: { status: string } }) => {
@@ -789,17 +791,30 @@ describe('execution queue device gating', () => {
           return { count: 1 }
         },
       },
+      verdictRunTelemetrySnapshot: {
+        create: async () => ({}),
+      },
       bridgeFlowRunRuntime: {
         upsert: async (input: { create: Record<string, unknown> }) => {
           runtimeWrites.push(input.create)
           return input.create
         },
+        findUnique: async () => null,
+        update: async () => ({}),
       },
+      bridgeFlowStepOccurrence: {
+        upsert: async (input: { create?: Record<string, unknown> }) => input.create ?? {},
+      },
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+      ...(prismaOverride ?? {}),
     }
 
     const planStore = new InMemoryCompiledPlanStore()
     planStore.put({
       planId: 'plan-1',
+      schemaVersion: 1,
+      workflowRef: 'workflow/demo',
+      workflowVersion: 1,
       entryStepId: 'step-1',
       packDigest: PACK.packDigest,
       hash: { algorithm: 'sha256', digest: 'sha256:plan-1' },
@@ -821,6 +836,12 @@ describe('execution queue device gating', () => {
           },
         },
       ],
+      evidenceManifest: {
+        continueGateRequirements: [],
+        finalOracleRequirements: [],
+        derivedGraphDigest: 'sha256:graph',
+        factDeliveryLanes: [],
+      },
     })
 
     const queue = new BridgeFlowExecutionQueue({
@@ -829,7 +850,7 @@ describe('execution queue device gating', () => {
       acquireBridge,
       resolvePack: resolveDomainPack,
       clock: () => 1_000,
-      ...overrides,
+      ...queueOverrides,
     })
 
     return { queue, statuses, runRowStatuses, runtimeWrites }
@@ -910,6 +931,7 @@ describe('execution queue device gating', () => {
     expect(statuses).toContain('BLOCKED')
     expect(runtimeWrites[0]).toMatchObject({
       productVerdict: 'NOT_EVALUATED',
+      evaluationFailureClass: 'AUTOMATION_FAILURE',
       readinessStatus: 'NOT_EVALUATED',
       readinessClass: 'FORCE_STOP_NOT_CONFIRMED',
       readinessTrace: expect.objectContaining({
@@ -993,6 +1015,7 @@ describe('execution queue device gating', () => {
     expect(statuses).toContain('BLOCKED')
     expect(runtimeWrites).toContainEqual(
       expect.objectContaining({
+        evaluationFailureClass: 'AUTOMATION_FAILURE',
         readinessStatus: 'INTERACTION_NOT_READY',
         readinessClass: 'SDK_NOT_READY',
         readinessTrace: expect.objectContaining({
@@ -1001,6 +1024,116 @@ describe('execution queue device gating', () => {
             expect.objectContaining({ state: 'UI_ACTIONABLE' }),
           ]),
         }),
+      }),
+    )
+  })
+
+  it('classifies a mid-run Prisma disconnect as ENVIRONMENT_FAILURE and still resets the device', async () => {
+    const closed = new Prisma.PrismaClientKnownRequestError('Server has closed the connection.', {
+      code: 'P1017',
+      clientVersion: 'test',
+      meta: { modelName: 'BridgeFlowStepOccurrence' },
+    })
+    const emergencyResets: { deviceId: string; runId: string; applicationId: string }[] = []
+    const manager = fakeManager({
+      getCapabilities: () => ({ protocolVersion: 1 }),
+      resolve: async (fingerprint) => ({
+        outcome: 'RESOLVED_UNIQUE',
+        fingerprint,
+        strength: 'STRONG',
+        treeGen: 9,
+        node: {
+          depth: 1,
+          id: 'pinView',
+          text: null,
+          contentDescription: null,
+          className: 'android.widget.EditText',
+          packageName: 'com.arasdigital.nesymobile.rs.stage',
+          rowIndex: null,
+          columnIndex: null,
+          collectionInfo: null,
+          clickable: true,
+          enabled: true,
+          visible: true,
+          obscuredBy: [],
+          bounds: { left: 10, top: 10, right: 100, bottom: 80 },
+        },
+      }),
+    } as never)
+    const { queue, statuses, runRowStatuses, runtimeWrites } = queueHarness(async () => manager, {
+      prisma: {
+        $transaction: async () => {
+          throw closed
+        },
+        bridgeFlowStepOccurrence: {
+          upsert: async () => {
+            throw closed
+          },
+        },
+      } as never,
+      admissionGate: async () => ({ ok: true }),
+      setRunId: async () => true,
+      broadcastRun: async () => true,
+      forceStop: async () => ({ confirmed: true, previousPids: [100], remainingPids: [] }),
+      launch: async () => undefined,
+      observeLaunch: async () => ({
+        processCreated: true,
+        processId: 200,
+        processState: 'R',
+        cpuTicks: 2,
+        appLifecycleReady: true,
+        uiVisible: true,
+        rawActivity: 'topResumedActivity=com.arasdigital.nesymobile.rs.stage',
+        rawWindow: 'mCurrentFocus=com.arasdigital.nesymobile.rs.stage',
+      }),
+      readDeviceState: async () => ({
+        isLoggedIn: false,
+        routeSelected: false,
+        routeName: '',
+        scheduleLoaded: false,
+        scheduleId: '',
+        currentScreen: 'LoginFragment',
+        runId: 'run-1',
+        sessionId: 'session-1',
+        raw: {},
+      }),
+      readDeviceHealth: async () => ({
+        wal: { generation: 1 },
+        wsAuth: { ok: true },
+        ws: { connected: true },
+      }),
+      readinessDeadlineMs: 50,
+      monoClock: (() => {
+        let mono = 0
+        return () => {
+          mono += 1
+          return mono
+        }
+      })(),
+      emergencyReset: async (input) => {
+        emergencyResets.push(input)
+        return { ok: true }
+      },
+    })
+
+    queue.enqueue({ ...item, profileKey: 'nesy.launch.cold-real-login' })
+    const deadline = Date.now() + 2_000
+    while (Date.now() < deadline && !runtimeWrites.some((row) => row.evaluationFailureClass === 'ENVIRONMENT_FAILURE')) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+
+    expect(emergencyResets).toEqual([
+      expect.objectContaining({ deviceId: 'device-1', runId: 'run-1' }),
+    ])
+    expect(statuses).toContain('FAILED')
+    expect(runRowStatuses).toContain('failed')
+    expect(runtimeWrites).toContainEqual(
+      expect.objectContaining({
+        productVerdict: 'NOT_EVALUATED',
+        evaluationFailureClass: 'ENVIRONMENT_FAILURE',
+        cleanupResult: 'SUCCEEDED',
+        terminationReason: 'ABORTED',
+        failureDetail: expect.stringContaining('Server has closed the connection'),
       }),
     )
   })

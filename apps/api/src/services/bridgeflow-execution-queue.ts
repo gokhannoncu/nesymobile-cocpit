@@ -59,6 +59,11 @@ import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
 import { createRunTelemetrySampler } from './run-telemetry-sampler.js'
 import { getVerdictDurableRuntime } from './verdict-wait-event.js'
 import {
+  classifyExecutionFailure,
+  describePrismaFailure,
+  evaluationFailureClassForBlockedRun,
+} from './execution-failure-class.js'
+import {
   broadcastSetRun,
   getDeviceHealth,
   getDeviceBridgeState,
@@ -622,6 +627,16 @@ export interface BridgeFlowExecutionQueueOptions {
   readDeviceHealth?: typeof getDeviceHealth
   setRunId?: typeof setRunIdProperty
   broadcastRun?: typeof broadcastSetRun
+  /**
+   * Test seam / emergency isolation: after an infrastructure crash the device
+   * must still be returned to a startable state even if Prisma can no longer
+   * persist the plan's CLEANUP step.
+   */
+  emergencyReset?: (input: {
+    deviceId: string
+    runId: string
+    applicationId: string
+  }) => Promise<{ ok: boolean; detail?: string }>
 }
 
 function readinessTarget(input: {
@@ -937,7 +952,14 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         },
       })
       deviceState = lastState
-      await this.persistReadinessTrace(item, trace)
+      try {
+        await this.persistReadinessTrace(item, trace)
+      } catch (error) {
+        // Readiness already happened on the device. Losing the row must not
+        // skip isolation the way a later persistStepOccurrence crash used to.
+        await this.failClosed(item, applicationId, error)
+        return
+      }
       this.publishReadiness(item.runId, trace)
       if (trace.status !== 'INTERACTION_READY') {
         await this.blockRun(
@@ -1278,15 +1300,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         result.terminationReason ?? 'COMPLETED',
       )
     } catch (error) {
-      // The thrown message is the ONLY account of why this run died: the executor
-      // crashed, so no step, oracle or evidence row explains it. Logging it and
-      // nothing else left `failed` runs diagnosable only from API stdout — which
-      // is not where anyone reads run history from.
-      await this.recordExecutionFailure(item, describeError(error))
-      this.options.logger?.('[BridgeFlowExecutionQueue] execution failed', {
-        runId: item.runId,
-        error: describeError(error),
-      })
+      await this.failClosed(item, applicationId, error)
     } finally {
       await telemetrySampler?.stop({ finalCapture: true })
       // The observer is process-wide, so a finished run's screen must not linger:
@@ -1350,6 +1364,74 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
   }
 
   /**
+   * Classify, isolate the device, persist the crash. Product verdict stays
+   * `NOT_EVALUATED` — this is not a product defect.
+   */
+  private async failClosed(
+    item: QueueItem,
+    applicationId: string,
+    error: unknown,
+  ): Promise<void> {
+    const classified = classifyExecutionFailure(error)
+    this.options.logger?.('[BridgeFlowExecutionQueue] execution failed', {
+      runId: item.runId,
+      error: describeError(error),
+      evaluationFailureClass: classified.evaluationFailureClass,
+      kind: classified.kind,
+      prisma: describePrismaFailure(error),
+    })
+    const cleanup = await this.attemptEmergencyDeviceCleanup(item, applicationId)
+    await this.recordExecutionFailure(item, describeError(error), {
+      evaluationFailureClass: classified.evaluationFailureClass,
+      cleanupResult: cleanup.result,
+    })
+  }
+
+  /**
+   * Device isolation after an infrastructure crash.
+   *
+   * The plan's CLEANUP step cannot run when Prisma is the thing that died.
+   * `reset_state` goes through the control channel and does not need the same
+   * transaction. Failure here is recorded, not swallowed: the next run must
+   * know the device was left dirty.
+   */
+  private async attemptEmergencyDeviceCleanup(
+    item: QueueItem,
+    applicationId: string,
+  ): Promise<{ result: 'SUCCEEDED' | 'FAILED'; detail?: string }> {
+    try {
+      const reset =
+        this.options.emergencyReset ??
+        (async (input) => {
+          const executor = createControlExecutor({ applicationId: input.applicationId })
+          const res = await executor.run(input.deviceId, {
+            op: 'reset_state',
+            requestId: `${input.runId}-emergency-reset`,
+            scope: 'probe',
+          })
+          return { ok: res.ok, detail: res.ok ? undefined : `${res.code} ${res.detail ?? ''}` }
+        })
+      const outcome = await reset({
+        deviceId: item.deviceId,
+        runId: item.runId,
+        applicationId,
+      })
+      if (outcome.ok) return { result: 'SUCCEEDED' }
+      this.options.logger?.('[BridgeFlowExecutionQueue] emergency reset failed', {
+        runId: item.runId,
+        detail: outcome.detail,
+      })
+      return { result: 'FAILED', detail: outcome.detail }
+    } catch (error) {
+      this.options.logger?.('[BridgeFlowExecutionQueue] emergency reset threw', {
+        runId: item.runId,
+        error: describeError(error),
+      })
+      return { result: 'FAILED', detail: describeError(error) }
+    }
+  }
+
+  /**
    * Persist a mid-flight execution crash.
    *
    * `ABORTED` on the closed termination axis, and the real message in
@@ -1358,8 +1440,17 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
    * it. `NEEDS_ATTENTION` because a crashed executor is infrastructure news, and
    * the product verdict stays `NOT_EVALUATED` — the workflow never reached one.
    */
-  private async recordExecutionFailure(item: QueueItem, detail: string): Promise<void> {
+  private async recordExecutionFailure(
+    item: QueueItem,
+    detail: string,
+    extras?: {
+      evaluationFailureClass?: 'NONE' | 'AUTOMATION_FAILURE' | 'ENVIRONMENT_FAILURE' | 'EVIDENCE_INSUFFICIENT'
+      cleanupResult?: 'NOT_STARTED' | 'PENDING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
+    },
+  ): Promise<void> {
     const clock = this.options.clock ?? Date.now
+    const evaluationFailureClass = extras?.evaluationFailureClass ?? 'AUTOMATION_FAILURE'
+    const cleanupResult = extras?.cleanupResult ?? 'NOT_STARTED'
     await this.markRunRow(item.runId, { status: 'failed', completedAt: new Date(clock()) })
     publishRunLiveEvent({
       runId: item.runId,
@@ -1367,7 +1458,12 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       level: 'ERROR',
       title: `Execution crashed · ${detail}`,
       dedupeKey: runLiveKeys.runtime('CLOSED', 'NOT_EVALUATED', 'ABORTED'),
-      detail: { failureDetail: detail, deviceId: item.deviceId },
+      detail: {
+        failureDetail: detail,
+        deviceId: item.deviceId,
+        evaluationFailureClass,
+        cleanupResult,
+      },
     })
     try {
       await Promise.all([
@@ -1393,6 +1489,8 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             runEpochUnit: 'MONOTONIC_MS',
             lifecycle: 'CLOSED',
             productVerdict: 'NOT_EVALUATED',
+            evaluationFailureClass,
+            cleanupResult,
             schedulerDisposition: 'RELEASED',
             operationalDisposition: 'NEEDS_ATTENTION',
             terminationReason: 'ABORTED',
@@ -1401,6 +1499,8 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           update: {
             lifecycle: 'CLOSED',
             productVerdict: 'NOT_EVALUATED',
+            evaluationFailureClass,
+            cleanupResult,
             schedulerDisposition: 'RELEASED',
             operationalDisposition: 'NEEDS_ATTENTION',
             terminationReason: 'ABORTED',
@@ -1518,6 +1618,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
           failureDetail: reason,
+          evaluationFailureClass: evaluationFailureClassForBlockedRun(readinessTrace?.failureClass),
           ...(readinessTrace === undefined
             ? {}
             : {
@@ -1533,6 +1634,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           operationalDisposition: 'BLOCKED',
           terminationReason: reason,
           failureDetail: reason,
+          evaluationFailureClass: evaluationFailureClassForBlockedRun(readinessTrace?.failureClass),
           ...(readinessTrace === undefined
             ? {}
             : {

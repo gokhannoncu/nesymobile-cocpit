@@ -45,9 +45,22 @@ function resolvePrismaClient(): PrismaClient {
     ) {
       return cached;
     }
+    // Hot-reload in `pnpm dev` used to silently $disconnect the live client
+    // mid-run. That is the "Server has closed the connection" class: the
+    // backend is gone because this process retired it. Log the close so a
+    // campaign can tell restart from a pool/server drop.
+    const createdAt = (cached as { __createdAtMs?: number }).__createdAtMs;
+    console.warn("[prisma] replacing stale client (schema delegates changed)", {
+      pid: process.pid,
+      uptimeSec: Math.round(process.uptime()),
+      nodeEnv: process.env.NODE_ENV ?? null,
+      replacedClientAgeSec:
+        typeof createdAt === "number" ? Math.round((Date.now() - createdAt) / 1000) : null,
+    });
     void cached.$disconnect().catch(() => undefined);
   }
   const client = createPrismaClient();
+  (client as { __createdAtMs?: number }).__createdAtMs = Date.now();
   if (process.env.NODE_ENV !== "production") {
     globalThis.__prisma__ = client;
   }

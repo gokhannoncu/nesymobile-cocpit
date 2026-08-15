@@ -61,6 +61,7 @@ const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
 /** Her iş akışının hangi önkoşulu kurduğunu bilen tek yer (RUN_PLAY §6.2). */
 const DEFAULT_PROFILE = {
   'nesy.workflow.login': 'nesy.launch.cold-real-login',
+  'nesy.workflow.login-rejected': 'nesy.launch.cold-real-login',
   'nesy.workflow.select-route': 'nesy.launch.reuse-session',
   // Zimmet: a route must already be selected, which is exactly what a
   // reuse-session profile installs. Loading into no schedule makes
@@ -307,7 +308,7 @@ if (!runId) {
 
 step('6. YOKLA')
 const deadline = Date.now() + opts.timeoutSec * 1000
-const terminal = new Set(['completed', 'failed', 'cancelled', 'error'])
+const terminal = new Set(['completed', 'failed', 'cancelled', 'error', 'blocked'])
 let detail = {}
 let lastLine = ''
 while (Date.now() < deadline) {
