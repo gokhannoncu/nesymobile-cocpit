@@ -13,7 +13,7 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 20:59:00 +03"
+lastUpdatedAt: "2026-08-15 21:15:00 +03"
 timezone: "Europe/Istanbul"
 runPlayFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
 readinessFile: "docs/verdict/goals/G90-stabilization/READINESS.md"
@@ -282,6 +282,42 @@ BD.2 LIVE_QUALIFIED   ✅
 
 PID 64978 / 38870 / 29171 this claim’e bağlanmaz. NEXT = BD.6.
 
+### 1.1d G90.10 BD.6 — design locked, not LIVE_QUALIFIED
+
+BD.2/BD.3 remote-mutation `UNKNOWN_EFFECT` ailesinde kalır. BD.6 o köşegeni
+tekrar etmez. İlk host `process-parcel` / `tap-input-confirm`. tour-approval
+yeniden kullanılmaz.
+
+```text
+injectedFault = OFFLINE_QUEUE          ← input
+observedClass = OFFLINE_QUEUED         ← measurement
+
+OFFLINE_QUEUED IFF
+  productVerdict      = PASS_QUEUED_OFFLINE
+  localQueueObserved  = true
+  phase               = EFFECT_OBSERVED
+  actuallyFired       = true
+  abortKind           = NONE
+  effectKind          = LOCAL_QUEUE_PERSIST
+
+Authoritative fact = LOCAL.OFFLINE_QUEUE_ITEM_WAITING
+  via nesy.pendingOperation
+  plane=LOCAL  subtype=queue  value=true
+REMOTE fact absent
+```
+
+Ağ kapalı + kuyruk yazılmadı → `OFFLINE_QUEUED` değil.
+`observeInjectedClass` `OFFLINE_QUEUE` input’una bakarak sınıf yazmaz.
+`HOST_TRANSPORT_CUT` kullanılmaz — o BD.2’dir.
+
+Enjeksiyon modeli: **controlled device WAN cut representing BD.6
+OFFLINE_QUEUE** (`svc wifi disable` + `svc data disable`; USB ADB kalır).
+Airplane / USB first qual kapalı.
+
+process-parcel kuyruğu yazamaz veya gözleyemezse host
+`complete-delivery`e **LIVE_QUALIFIED öncesi** amend edilir.
+Formal D60 kampanyası `NOT_STARTED`.
+
 ## 1.2 Phase 10 plumbing + G90 live golden
 
 | İz | İddia | Durum |
@@ -304,8 +340,8 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.10` BD.2 LIVE_QUALIFIED (`94a9acf` / PID 95043 / `run_0c1a0dd2`) |
 | Last attempted step | G90.10 BD.2 live qual — passed |
-| Last update | `2026-08-15 20:59:00 +03` |
-| Recovery instruction | `NEXT = BD.6. Do not re-qualify BD.2 because PID 64978 is dead. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last update | `2026-08-15 21:15:00 +03` |
+| Recovery instruction | `NEXT = BD.6. Spec locked on process-parcel LOCAL queue. Do not re-qualify BD.2/BD.3. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -555,7 +591,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | G90.7 D30 kapanış | `DONE` | bu dosya; 2026-08-15 |
 | G90.8 D60 spec kilidi | `DONE` | `RUN_PLAY.md` §15–18 |
 | G90.9 injectedFault alanı | `LIVE_QUALIFIED` | 2026-08-15 fresh prod `3770d2a`; Smoke A/B; formal kampanya değil |
-| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; NEXT=BD.6; BD.5/4/1 yok |
+| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 spec+injector locked, not LIVE_QUALIFIED; BD.5/4/1 yok |
 | G90.11 D60 matrisi | `NOT_STARTED` | |
 | G90.12 D60 kapanış | `NOT_STARTED` | |
 | G90.13 D90 spec kilidi | `DONE` | `RUN_PLAY.md` §19–22 |
@@ -597,7 +633,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | D30_ENV_PRISMA_DISCONNECT | LOW | `BACKLOG` | #9; sınıflı; cleanup+isolation OK; 100/100 PASS peşinde değil |
 | CP3-DUT | EXT | `DEFERRED` | Track B |
 | KILL_RECOVERY | EXT | `SPEC_LOCKED` | D60 BD.1; kampanya artık ungated |
-| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; NEXT=BD.6; formal kampanya 13 Eylül |
+| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 design locked; formal kampanya 13 Eylül |
 | SECOND_DUT | MEDIUM | `OPEN` | D90 `pilotStable=YES` için ≥2 serial |
 
 ## 9. Next window handoff
@@ -606,10 +642,11 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 D30 COMPLETED. 100 classified. 99 PRODUCT_PASS. 1 ENV_FAILURE. UNCLASSIFIED=0.
 D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
-G90.9 LIVE_QUALIFIED. G90.10 BD.3+BD.2 LIVE_QUALIFIED. NEXT=BD.6.
+G90.9 LIVE_QUALIFIED. G90.10 BD.3+BD.2 LIVE_QUALIFIED.
+BD.6 spec+injector locked on process-parcel LOCAL queue; not LIVE_QUALIFIED.
 injectedFault ≠ observedClass. Uninjected null.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
-NEXT: G90.10 BD.6. Not G90.4 / 3c / 3e. No second login soak.
+NEXT: G90.10 BD.6 live qual after fresh prod/PID. Not G90.4 / 3c / 3e.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 Aynı login’i 100 kez daha koşturma.
 ```

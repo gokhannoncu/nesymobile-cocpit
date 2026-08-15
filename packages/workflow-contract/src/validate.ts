@@ -354,8 +354,18 @@ function validateStep(ctx: Ctx, step: Record<string, unknown>, path: string): vo
             const from = entry?.from as Record<string, unknown> | undefined;
             if (from?.kind === "COLUMN") {
               requireString(ctx, from.column, `${at}.from.column`);
+            } else if (from?.kind === "COLUMN_NOT_IN") {
+              requireString(ctx, from.column, `${at}.from.column`);
+              if (!Array.isArray(from.values) || from.values.length === 0 || from.values.some((value) => typeof value !== "string")) {
+                push(ctx, `${at}.from.values`, "INVALID_TYPE", "from.values must be a non-empty string array");
+              }
             } else if (from?.kind !== "ROWS_PRESENT") {
-              push(ctx, `${at}.from`, "INVALID_TYPE", "from must be { kind: 'COLUMN', column } or { kind: 'ROWS_PRESENT' }");
+              push(
+                ctx,
+                `${at}.from`,
+                "INVALID_TYPE",
+                "from must be { kind: 'COLUMN', column }, { kind: 'ROWS_PRESENT' }, or { kind: 'COLUMN_NOT_IN', column, values }",
+              );
             }
           });
         }

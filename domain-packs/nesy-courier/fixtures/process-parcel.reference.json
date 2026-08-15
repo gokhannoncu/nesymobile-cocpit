@@ -116,6 +116,10 @@
         {
           "name": "confirmHandle",
           "type": "string"
+        },
+        {
+          "name": "queueRows",
+          "type": "string"
         }
       ],
       "steps": [
@@ -237,7 +241,7 @@
         {
           "planStepId": "tap-input-confirm",
           "sourceMapRef": "sm-scan-3d",
-          "next": "assert-delivery-started",
+          "next": "read-pending-queue",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -264,6 +268,38 @@
             "deadlineMs": 30000,
             "unknownPolicy": "RETRY"
           }
+        },
+        {
+          "planStepId": "read-pending-queue",
+          "sourceMapRef": "sm-scan-5",
+          "next": "assert-delivery-started",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.pendingOperation",
+          "maxRows": 1,
+          "outputVariable": "queueRows",
+          "outputFactBindings": [
+            {
+              "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "from": {
+                "kind": "COLUMN_NOT_IN",
+                "column": "pending_count",
+                "values": [
+                  "0"
+                ]
+              }
+            }
+          ]
         },
         {
           "planStepId": "assert-delivery-started",
@@ -303,6 +339,12 @@
                 "obligation": "WARNING",
                 "timing": "EVENTUAL",
                 "deadlineMs": 20000,
+                "onTimeout": "WARNING"
+              },
+              {
+                "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+                "obligation": "OPTIONAL",
+                "timing": "IMMEDIATE",
                 "onTimeout": "WARNING"
               }
             ]
@@ -405,6 +447,12 @@
           "domainSourceRef": "nesy.macro.process-parcel"
         },
         {
+          "ref": "sm-scan-5",
+          "planStepId": "read-pending-queue",
+          "domainSourceRef": "nesy.macro.process-parcel",
+          "note": "LOCAL queue measurement"
+        },
+        {
           "ref": "sm-scan-4",
           "planStepId": "assert-delivery-started",
           "domainSourceRef": "nesy.macro.process-parcel",
@@ -461,6 +509,12 @@
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
+        "ref": "sm-scan-5",
+        "planStepId": "read-pending-queue",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "LOCAL queue measurement"
+      },
+      {
         "ref": "sm-scan-4",
         "planStepId": "assert-delivery-started",
         "domainSourceRef": "nesy.macro.process-parcel",
@@ -489,6 +543,7 @@
           "enter-scan-value",
           "resolve-input-confirm",
           "tap-input-confirm",
+          "read-pending-queue",
           "assert-delivery-started",
           "close-input"
         ],
@@ -530,6 +585,10 @@
       },
       {
         "name": "confirmHandle",
+        "type": "string"
+      },
+      {
+        "name": "queueRows",
         "type": "string"
       }
     ],
@@ -652,7 +711,7 @@
       {
         "planStepId": "tap-input-confirm",
         "sourceMapRef": "sm-scan-3d",
-        "next": "assert-delivery-started",
+        "next": "read-pending-queue",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -679,6 +738,38 @@
           "deadlineMs": 30000,
           "unknownPolicy": "RETRY"
         }
+      },
+      {
+        "planStepId": "read-pending-queue",
+        "sourceMapRef": "sm-scan-5",
+        "next": "assert-delivery-started",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.pendingOperation",
+        "maxRows": 1,
+        "outputVariable": "queueRows",
+        "outputFactBindings": [
+          {
+            "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+            "from": {
+              "kind": "COLUMN_NOT_IN",
+              "column": "pending_count",
+              "values": [
+                "0"
+              ]
+            }
+          }
+        ]
       },
       {
         "planStepId": "assert-delivery-started",
@@ -718,6 +809,12 @@
               "obligation": "WARNING",
               "timing": "EVENTUAL",
               "deadlineMs": 20000,
+              "onTimeout": "WARNING"
+            },
+            {
+              "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+              "obligation": "OPTIONAL",
+              "timing": "IMMEDIATE",
               "onTimeout": "WARNING"
             }
           ]
@@ -820,6 +917,12 @@
         "domainSourceRef": "nesy.macro.process-parcel"
       },
       {
+        "ref": "sm-scan-5",
+        "planStepId": "read-pending-queue",
+        "domainSourceRef": "nesy.macro.process-parcel",
+        "note": "LOCAL queue measurement"
+      },
+      {
         "ref": "sm-scan-4",
         "planStepId": "assert-delivery-started",
         "domainSourceRef": "nesy.macro.process-parcel",
@@ -900,6 +1003,12 @@
           "obligation": "REQUIRED",
           "timing": "IMMEDIATE",
           "onTimeout": "FAIL"
+        },
+        {
+          "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+          "obligation": "OPTIONAL",
+          "timing": "IMMEDIATE",
+          "onTimeout": "WARNING"
         }
       ]
     },

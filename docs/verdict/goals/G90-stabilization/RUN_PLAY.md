@@ -11,7 +11,7 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 20:59:00 +03"
+lastUpdatedAt: "2026-08-15 21:15:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
@@ -430,7 +430,7 @@ NesyMobile/verdict-bridge/**
 | G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
 | G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `LIVE_QUALIFIED` (2026-08-15) — fresh prod `3770d2a` Smoke A/B; kampanya `NOT_STARTED` |
-| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3+BD.2 LIVE_QUALIFIED; NEXT=BD.6; BD.5/4/1 yok |
+| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3+BD.2 LIVE_QUALIFIED; BD.6 spec+injector locked, not LIVE_QUALIFIED; BD.5/4/1 yok |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
 | G90.13 | D90 spec kilidi (workflow set + altı metric family + M2b companion + pilot-stable) | `DONE` (bu dosya, 2026-08-13) |
@@ -549,7 +549,7 @@ kopması `ENV_FAILURE` kalır, `NETWORK_PARTITION` olmaz).
 | `BACKEND_TIMEOUT` | backend timeout | adapter deadline / `UNKNOWN_EFFECT` / EVENTUAL remote onTimeout | `PENDING_REMOTE` / `INCONCLUSIVE` remote; HTTP 2xx PASS değil |
 | `DIALOG_INTERRUPT` | dialog / overlay | `wait_any` interrupt key veya beklenen surface | Jest hedefe gitmedi; overlay’i “buton” sanmadı |
 | `DUPLICATE_SUPPRESSED` | duplicate callback | aynı seq/idempotency ikinci kez düştü; tek occurrence | Çift `PRODUCT_PASS` yok |
-| `OFFLINE_QUEUED` | offline queue | LOCAL persist fact var; remote yok; oracle `PASS_QUEUED_OFFLINE` | Remote yok = `PRODUCT_FAIL` değil |
+| `OFFLINE_QUEUED` | offline queue | LOCAL persist fact var (`LOCAL.OFFLINE_QUEUE_ITEM_WAITING`); remote yok; oracle `PASS_QUEUED_OFFLINE` | Remote yok = `PRODUCT_FAIL` değil; ağ kapalı + kuyruk yazılmadı = `OFFLINE_QUEUED` değil |
 
 Oracle terminalleri sınıf **değildir**; eşleme:
 
@@ -558,7 +558,7 @@ Oracle terminalleri sınıf **değildir**; eşleme:
 | `UNKNOWN_EFFECT` + kill enjeksiyonu | `PROCESS_DEATH` + `deathProvenance` |
 | `UNKNOWN_EFFECT` + backend enjeksiyonu | `BACKEND_TIMEOUT` |
 | `UNKNOWN_EFFECT` + transport-cut observation | `NETWORK_PARTITION` |
-| `PASS_QUEUED_OFFLINE` + offline enjeksiyonu | `OFFLINE_QUEUED` |
+| `PASS_QUEUED_OFFLINE` + LOCAL queue fact + `LOCAL_QUEUE_PERSIST` observation | `OFFLINE_QUEUED` |
 | `INTERRUPT_MATCH` + dialog enjeksiyonu | `DIALOG_INTERRUPT` |
 | receipt-safe duplicate drop | `DUPLICATE_SUPPRESSED` |
 
@@ -577,7 +577,7 @@ golden soak değil, fault’un yaşayabileceği tek yer.
 | BD.3 | Backend timeout | B — mutation remote (`tour-approval` `approve-tour-request`). `complete-delivery` remotes `READ_ONLY`; arm olmaz. | **controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT** — wire dispatch tutulur, mevcut `AbortController` yolu `UNKNOWN_EFFECT` üretir. “Backend isteği aldı ve timeout oldu” iddiası değildir. | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL`; injector bilgisinden `NO_EFFECT` remap |
 | BD.4 | Dialog / overlay | A — launch `permissionDialog` veya koşu içi overlay | Sistem dialog / pack interrupt surface | `DIALOG_INTERRUPT` | Overlay’e tap; interrupt key varken `UI_NOT_ACTIONABLE`; 30s timeout |
 | BD.5 | Duplicate callback | A — login fact **veya** B — delivery fact | Aynı WS event / seq tekrar; veya çift emit | `DUPLICATE_SUPPRESSED` | İki verdict; `TEST_DATA_CONTAMINATION` (bu o değil) |
-| BD.6 | Offline queue | B — process-parcel / complete-delivery LOCAL queue | Ağ yok + kuyruk yazımı; `nesy.recovery.queue` okunabilir | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` |
+| BD.6 | Offline queue | B — LOCAL durable queue. İlk live qual: `process-parcel` / `tap-input-confirm`. tour-approval first qual kapalı. | **controlled device WAN cut representing BD.6 OFFLINE_QUEUE** — `svc wifi disable` + `svc data disable`; USB ADB kalır. `abortKind=NONE` + `LOCAL_QUEUE_PERSIST`. `HOST_TRANSPORT_CUT` değildir. Airplane / USB first qual kapalı. “Ağ kapalı” tek başına BD.6 değildir. | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` / `PASS_ONLINE`; `NETWORK_PARTITION`; `injectedFault`ten `OFFLINE_QUEUED` |
 
 **Host A:** `nesy.macro.login` / `cold-real-login` (D30 slice).  
 **Host B:** mutation-capable remote host, veya prepared-session queue/remote macro. `producesProductVerdict: false` kalır. B, D30’u genişletmez; D60 fault hedefidir.
@@ -597,6 +597,44 @@ and does not start the formal D60 campaign.
 ```
 
 `process-parcel` / `complete-delivery` Host B queue macros olarak durur — BD.6 LOCAL queue içindir. Airplane / USB ve Host A PIN, BD.2 first qualification için açılmaz.
+
+BD.6 Host B (initial live qualification):
+
+```text
+LOCAL durable queue host.
+Initial live qualification host:
+  process-parcel / tap-input-confirm.
+Authoritative fact:
+  LOCAL.OFFLINE_QUEUE_ITEM_WAITING via nesy.pendingOperation
+  (plane=LOCAL, subtype=queue, value=true)
+REMOTE fact absent
+ProductVerdict / policy = PASS_QUEUED_OFFLINE
+observedClass = OFFLINE_QUEUED
+  IFF
+    productVerdict      = PASS_QUEUED_OFFLINE
+    localQueueObserved  = true
+    phase               = EFFECT_OBSERVED
+    actuallyFired       = true
+    abortKind           = NONE
+    effectKind          = LOCAL_QUEUE_PERSIST
+
+Anti-cheat:
+  observeInjectedClass must not emit OFFLINE_QUEUED
+  from OFFLINE_QUEUE input alone.
+  Network unavailable without a LOCAL queue write
+  is not OFFLINE_QUEUED.
+
+Reason:
+  BD.2/BD.3 are remote-mutation UNKNOWN_EFFECT.
+  BD.6 is LOCAL durable queue.
+  tour-approval stays in the remote-mutation family.
+  complete-delivery remotes are READ_ONLY; reserved
+  only if process-parcel cannot persist/observe the queue.
+
+If process-parcel cannot write or observe the queue,
+amend the host to complete-delivery BEFORE LIVE_QUALIFIED.
+This does not start the formal D60 campaign.
+```
 
 Her satır: `injectedFault`, `host`, `expectedClass`, `observedClass`, `rootCondition`, `runId`.
 
@@ -628,7 +666,7 @@ onları iptal etmez; onları **sınar**.
 | BD.3 | Controlled adapter-deadline = remote yok, iş fail değil. `UNKNOWN_EFFECT` muhafazakâr kalır. | Tek retry yok (`UNKNOWN_EFFECT` çift onay riski) | HTTP 2xx’i iş sanmak; injector wire’a gitmedi diye `NO_EFFECT` |
 | BD.4 | Beklenen interrupt, beklenen hedefi ezmez | Interrupt key ile dur; pack politikası | Overlay merkezine tap |
 | BD.5 | Aynı occurrence’a ikinci fact oy vermez | Drop + sayaç | Yeni reducer / yeni event adı |
-| BD.6 | LOCAL queue fact varsa remote yokken `OFFLINE_QUEUED` | Yok; kuyruk zaten politika | Remote gelene kadar wait şişirme |
+| BD.6 | LOCAL queue fact varsa remote yokken `OFFLINE_QUEUED`. Kuyruk yazılmadıysa sınıf yok. | Yok; kuyruk zaten politika. Cleanup = radyoları geri aç + leftover queue isolate. | Remote gelene kadar wait şişirme; `HOST_TRANSPORT_CUT` ile `NETWORK_PARTITION` çalmak |
 
 Metrik: D30 satırına ek `injectedFault` (`null` \| `PROCESS_KILL` \|
 `NETWORK_DISCONNECT` \| `BACKEND_TIMEOUT` \| `DIALOG_OVERLAY` \|

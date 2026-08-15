@@ -51,6 +51,11 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.32.0 — G90.10 BD.6: process-parcel reads `nesy.pendingOperation` after
+  //   the scan confirm and carries LOCAL.OFFLINE_QUEUE_ITEM_WAITING as an
+  //   OPTIONAL oracle fact. Online uninjected stays PASS_ONLINE; a real queue
+  //   row is what can produce PASS_QUEUED_OFFLINE. Not a remote-mutation host.
+  //
   // 1.31.0 — G90.10 BD.3 live isolation: `release-approval-fixture` now carries
   //   a TEARDOWN spec (`reject-tour-request` → RejectLeavingPermission). The
   //   success path still ends at assert-approved; the failure path finally has
@@ -417,7 +422,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 31, patch: 0 },
+  version: { major: 1, minor: 32, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

@@ -42,6 +42,12 @@ import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import { createBackendTimeoutSession, type BackendTimeoutSession } from './backend-timeout-injector.js'
 import { createNetworkDisconnectSession, type NetworkDisconnectSession } from './network-disconnect-injector.js'
+import { createOfflineQueueSession } from './offline-queue-injector.js'
+import { createAdbDeviceWanCutter } from './device-wan-cutter.js'
+import {
+  evidenceSubtypeForFact,
+  isLocalQueueItemWaitingObservation,
+} from './local-queue-evidence.js'
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
@@ -519,7 +525,7 @@ export function publishSdkObservations(input: {
         // what carries it. All three planes travel this path: `nesy.db.session`
         // is LOCAL, `nesy.sessionState` is APP, and a back-office read is REMOTE.
         plane: planeOf(observation.factKey),
-        subtype: observation.queryRef,
+        subtype: evidenceSubtypeForFact(observation.factKey, observation.queryRef),
         value: observation.value,
         authority: 'PRIMARY',
         deliveryLane: 'ORDERED_REQUIRED',
@@ -1131,10 +1137,22 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       injectedFault: item.injectedFault ?? null,
       clock,
     })
+    const offlineQueue = createOfflineQueueSession({
+      injectedFault: item.injectedFault ?? null,
+      clock,
+      wan: createAdbDeviceWanCutter({
+        shell: (args) => adbDevice(item.deviceId, [...args]),
+      }),
+    })
     backendTimeout.request()
     networkDisconnect.request()
+    offlineQueue.request()
     const faultProvenance = () =>
-      selectObservedFaultProvenance(backendTimeout.snapshot(), networkDisconnect.snapshot())
+      selectObservedFaultProvenance(
+        backendTimeout.snapshot(),
+        networkDisconnect.snapshot(),
+        offlineQueue.snapshot(),
+      )
     try {
       await persistence.persistFaultProvenance({
         runId: item.runId,
@@ -1288,6 +1306,12 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           // over ONE control channel rather than each opening its own.
           ...(controlExecutor === undefined ? {} : { controlExecutor }),
           ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
+          beforeAct: async (step, context) => {
+            if (!offlineQueue.tryArm({ planStepId: step.planStepId, occurrenceId: context.occurrenceId })) {
+              return
+            }
+            await offlineQueue.applyCut()
+          },
         }),
         evidence: {
           factsForOccurrence: (occurrenceId: string, iterationKey: string) => {
@@ -1347,12 +1371,18 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           injectedFaultHost: item.injectedFaultHost ?? null,
         },
       })
+      const localQueueObserved = sdkObservations
+        .current(item.runId)
+        .some((observation) => isLocalQueueItemWaitingObservation(observation))
+      offlineQueue.markQueueObserved(localQueueObserved)
       await persistence.persistFaultProvenance({
         runId: item.runId,
         provenance: faultProvenance(),
       })
       const observedClass = observeInjectedClass({
         actionResult: result.terminationReason === 'UNKNOWN_ACTION_EFFECT' ? 'UNKNOWN_EFFECT' : null,
+        productVerdict: result.productVerdict,
+        localQueueObserved,
         provenance: faultProvenance(),
       })
       if (observedClass !== null) {
@@ -1382,6 +1412,12 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     } catch (error) {
       await this.failClosed(item, applicationId, error, deviceState)
     } finally {
+      await offlineQueue.restore().catch((restoreError) => {
+        this.options.logger?.('[BridgeFlowExecutionQueue] offline-queue WAN restore failed', {
+          runId: item.runId,
+          error: describeError(restoreError),
+        })
+      })
       await telemetrySampler?.stop({ finalCapture: true })
       // The observer is process-wide, so a finished run's screen must not linger:
       // it would be a slow leak in a long-lived API and could answer a later

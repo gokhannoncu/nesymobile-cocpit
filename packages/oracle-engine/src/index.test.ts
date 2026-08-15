@@ -465,6 +465,52 @@ describe("oracle engine v2", () => {
     expect(result.productVerdict).toBe("PASS_ONLINE");
   });
 
+  it("maps a satisfied OPTIONAL LOCAL queue fact to PASS_QUEUED_OFFLINE", () => {
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [
+          {
+            factKey: "APP.PARCEL_SCANNED",
+            obligation: "REQUIRED",
+            timing: "IMMEDIATE",
+            onTimeout: "FAIL",
+          },
+          {
+            factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+            obligation: "OPTIONAL",
+            timing: "IMMEDIATE",
+            onTimeout: "WARNING",
+          },
+        ],
+      },
+      facts: [
+        {
+          ...baseFact,
+          factKey: "APP.PARCEL_SCANNED",
+          plane: "APP",
+          subtype: "scan-accepted",
+          value: true,
+          deliveryLane: "ORDERED_REQUIRED",
+        },
+        {
+          ...baseFact,
+          factKey: "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+          plane: "LOCAL",
+          subtype: "queue",
+          value: true,
+          deliveryLane: "ORDERED_REQUIRED",
+        },
+      ],
+      occurrenceId: "occ-1",
+      iterationKey: "iteration-1",
+      nowMs: 120,
+      startedAtMs: 100,
+    });
+
+    expect(result.outcome).toBe("SATISFIED");
+    expect(result.productVerdict).toBe("PASS_QUEUED_OFFLINE");
+  });
+
   it("judges a Final Oracle requirement on evidence older than its freshness window", () => {
     // The device failure this locks: a workflow with a 120s optional wait in the
     // middle reached its assert step holding four PRIMARY, ORDERED_REQUIRED,

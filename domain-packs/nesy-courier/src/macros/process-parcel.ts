@@ -139,7 +139,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-input-confirm",
       sourceMapRef: "sm-scan-3d",
-      next: "assert-delivery-started",
+      next: "read-pending-queue",
       timeoutMs: 20_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -163,6 +163,35 @@ const STEPS: readonly WorkflowStepV2[] = [
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",
     },
+  },
+  {
+    /**
+     * G90.10 BD.6 — LOCAL durable queue is a measurement, not a declaration.
+     *
+     * The scan accept is what may write `RequestSenderService`. Without this
+     * read the oracle cannot see `LOCAL.OFFLINE_QUEUE_ITEM_WAITING`, and
+     * `PASS_QUEUED_OFFLINE` would be unreachable. `pending_count` is the
+     * string `"0"` when empty; `COLUMN_NOT_IN` is that measurement.
+     *
+     * OPTIONAL on the oracle: online uninjected stays `PASS_ONLINE`.
+     */
+    ...stepBase({
+      planStepId: "read-pending-queue",
+      sourceMapRef: "sm-scan-5",
+      next: "assert-delivery-started",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.pendingOperation,
+    maxRows: 1,
+    outputVariable: "queueRows",
+    outputFactBindings: [
+      {
+        factKey: NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
+        from: { kind: "COLUMN_NOT_IN", column: "pending_count", values: ["0"] },
+      },
+    ],
   },
   {
     ...stepBase({ planStepId: "assert-delivery-started", sourceMapRef: "sm-scan-6", next: null }),
@@ -207,6 +236,17 @@ const STEPS: readonly WorkflowStepV2[] = [
           deadlineMs: 20_000,
           onTimeout: "WARNING",
         },
+        /**
+         * Diagnostic, not a pass condition. Present + subtype=queue is what
+         * lets the oracle emit PASS_QUEUED_OFFLINE. Absent keeps PASS_ONLINE.
+         * PARCEL_RECORD_PERSISTED is not this fact — that exists online too.
+         */
+        {
+          factKey: NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
+          obligation: "OPTIONAL",
+          timing: "IMMEDIATE",
+          onTimeout: "WARNING",
+        },
       ],
     },
   },
@@ -232,6 +272,7 @@ const GENERIC_IR = irDocument({
     { name: "manualEntryHandle", type: "string" },
     { name: "scanFieldHandle", type: "string" },
     { name: "confirmHandle", type: "string" },
+    { name: "queueRows", type: "string" },
   ],
   steps: STEPS,
   entryStepId: "wait-task-list",
@@ -249,6 +290,7 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-scan-3b", "enter-scan-value", NESY_PROCESS_PARCEL_MACRO_KEY),
     sourceMapEntry("sm-scan-3c", "resolve-input-confirm", NESY_PROCESS_PARCEL_MACRO_KEY),
     sourceMapEntry("sm-scan-3d", "tap-input-confirm", NESY_PROCESS_PARCEL_MACRO_KEY),
+    sourceMapEntry("sm-scan-5", "read-pending-queue", NESY_PROCESS_PARCEL_MACRO_KEY, "LOCAL queue measurement"),
     sourceMapEntry("sm-scan-4", "assert-delivery-started", NESY_PROCESS_PARCEL_MACRO_KEY, "WHICH branch ran"),
     sourceMapEntry("sm-scan-6", "assert-delivery-started", NESY_PROCESS_PARCEL_MACRO_KEY),
     sourceMapEntry("sm-scan-7", "close-input", NESY_PROCESS_PARCEL_MACRO_KEY),
@@ -316,17 +358,18 @@ export const NESY_PROCESS_PARCEL_MACRO: MacroDefinition = {
   allowedRegistryRefs: {
     screenRefs: [NESY_SCREENS.deliveryFlow, NESY_SCREENS.stopTaskList, NESY_SCREENS.pickupFlow, NESY_SCREENS.vehicleLoading],
     surfaceRefs: [NESY_SURFACES.scannerSurface],
-    entityTypeRefs: [NESY_ENTITIES.parcel, NESY_ENTITIES.task, NESY_ENTITIES.shipment],
+    entityTypeRefs: [NESY_ENTITIES.parcel, NESY_ENTITIES.task, NESY_ENTITIES.shipment, NESY_ENTITIES.pendingOperation],
     targetRefs: [NESY_TARGETS.scanTrigger],
     factKeys: [
       NESY_FACTS.SCANNER_SURFACE_READY,
       NESY_FACTS.PARCEL_SCANNED,
       NESY_FACTS.PARCEL_STATE_PROCESSED,
       NESY_FACTS.PARCEL_RECORD_PERSISTED,
+      NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
       NESY_FACTS.SESSION_ISOLATION_ASSERTED,
       NESY_FACTS.ACTIVE_STOP_MATCHES,
     ],
-    queryRefs: [NESY_ADAPTER_QUERY_REFS.parcelState],
+    queryRefs: [NESY_ADAPTER_QUERY_REFS.parcelState, NESY_ADAPTER_QUERY_REFS.pendingOperation],
     adapterOperationRefs: [NESY_ADAPTER_SETUP_REFS.scannerInject, NESY_ADAPTER_SETUP_REFS.scannerManualEntry],
   },
   oracleTemplate: {
@@ -346,6 +389,12 @@ export const NESY_PROCESS_PARCEL_MACRO: MacroDefinition = {
           onTimeout: "INCONCLUSIVE",
         },
         { factKey: NESY_FACTS.SESSION_ISOLATION_ASSERTED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+        {
+          factKey: NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
+          obligation: "OPTIONAL",
+          timing: "IMMEDIATE",
+          onTimeout: "WARNING",
+        },
       ],
     },
     notResponsibleFor: ["whether the backend later accepts the scan — that belongs to COMPLETE_DELIVERY"],

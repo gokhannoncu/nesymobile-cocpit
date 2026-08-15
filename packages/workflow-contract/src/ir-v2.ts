@@ -203,7 +203,17 @@ export interface SdkQueryOutputFactBinding {
    */
   from:
     | { kind: "COLUMN"; column: string }
-    | { kind: "ROWS_PRESENT" };
+    | { kind: "ROWS_PRESENT" }
+    | {
+        /**
+         * True when the named column of the first row is present and is not
+         * one of the listed values. Used for count-style projections that
+         * emit `"0"` rather than a boolean (`pending_count`).
+         */
+        kind: "COLUMN_NOT_IN";
+        column: string;
+        values: readonly string[];
+      };
   /**
    * Column carrying the business identity this observation is about.
    *

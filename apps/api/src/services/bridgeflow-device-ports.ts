@@ -66,6 +66,11 @@ function asFactValue(raw: unknown): boolean | 'UNKNOWN' {
   return 'UNKNOWN'
 }
 
+function asColumnNotInValue(raw: unknown, values: readonly string[]): boolean | 'UNKNOWN' {
+  if (raw === undefined || raw === null) return 'UNKNOWN'
+  return !values.includes(String(raw))
+}
+
 /**
  * `evidenceRef` for one bridge action, carrying WHY when the device refused.
  *
@@ -184,6 +189,11 @@ export function createBridgeRuntimePort(options: {
   controlExecutor?: ControlExecutor
   /** Injectable so a test can prove the scroll wait is bounded, not slept. */
   clock?: () => number
+  /**
+   * G90.10 BD.6 — fire the device WAN cut immediately before the armed
+   * confirm tap. Absent on every uninjected run.
+   */
+  beforeAct?: (step: BridgeFlowPlanStep, context: StepExecutionContext) => Promise<void>
   logger?: (message: string, detail?: unknown) => void
 }): BridgeRuntimePort {
   const { manager, variables, runId } = options
@@ -234,6 +244,9 @@ export function createBridgeRuntimePort(options: {
 
   return {
     async act(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<BridgeActionResult> {
+      if (options.beforeAct !== undefined) {
+        await options.beforeAct(step, context)
+      }
       await pushCorrelation(context)
       const action = asString(step.params['action']) ?? ''
       const rawArgs = (step.params['args'] ?? {}) as Record<string, unknown>
@@ -571,7 +584,10 @@ export function createGenericStepRuntime(options: {
           const firstRow = (rows[0] ?? {}) as Record<string, unknown>
           type Binding = {
             factKey: string
-            from: { kind: 'COLUMN'; column: string } | { kind: 'ROWS_PRESENT' }
+            from:
+              | { kind: 'COLUMN'; column: string }
+              | { kind: 'ROWS_PRESENT' }
+              | { kind: 'COLUMN_NOT_IN'; column: string; values: readonly string[] }
             correlationColumn?: string
           }
           for (const binding of bindings as readonly Binding[]) {
@@ -581,7 +597,9 @@ export function createGenericStepRuntime(options: {
             const value =
               binding.from.kind === 'ROWS_PRESENT'
                 ? rows.length > 0
-                : asFactValue(firstRow[binding.from.column])
+                : binding.from.kind === 'COLUMN_NOT_IN'
+                  ? asColumnNotInValue(firstRow[binding.from.column], binding.from.values)
+                  : asFactValue(firstRow[binding.from.column])
             // WHICH entity this observation is about, when the pack asked for it.
             // A derivation that has to prove the observed stop is the requested
             // one needs the identity, not only that some stop was observed.

@@ -155,6 +155,29 @@ describe('evidence produced by one step reaches a later step’s oracle', () => 
     expect(carried?.observedAtMs).toBe(OBSERVED_AT)
   })
 
+  it('publishes the offline-queue fact as subtype queue, not the query name', () => {
+    const runtime = new BridgeFlowEvidenceRuntime({ now: () => OBSERVED_AT })
+    const observations = new SdkObservationStore()
+    observations.record(RUN_ID, {
+      factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
+      value: true,
+      observedAtMs: OBSERVED_AT,
+      queryRef: 'nesy.pendingOperation',
+    })
+    publishSdkObservations({
+      evidenceRuntime: runtime,
+      observations,
+      runId: RUN_ID,
+      ...CONSUMING,
+    })
+    const fact = runtime
+      .currentFacts(scopeOf(CONSUMING), OBSERVED_AT + 1)
+      .find((entry) => entry.factKey === 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING')
+    expect(fact?.subtype).toBe('queue')
+    expect(fact?.plane).toBe('LOCAL')
+    expect(fact?.value).toBe(true)
+  })
+
   it('keeps it visible when the oracle asks later than the fact’s freshness window', () => {
     const runtime = new BridgeFlowEvidenceRuntime({ now: () => ORACLE_ASKS_AT })
     const observations = new SdkObservationStore()

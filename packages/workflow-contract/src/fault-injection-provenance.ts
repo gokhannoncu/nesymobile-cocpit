@@ -26,7 +26,11 @@ export const OBSERVED_ABORT_KINDS = ["DEADLINE", "TRANSPORT", "NONE"] as const;
 
 export type ObservedAbortKind = (typeof OBSERVED_ABORT_KINDS)[number];
 
-export const FAULT_EFFECT_KINDS = ["ADAPTER_DEADLINE_ABORT", "HOST_TRANSPORT_CUT"] as const;
+export const FAULT_EFFECT_KINDS = [
+  "ADAPTER_DEADLINE_ABORT",
+  "HOST_TRANSPORT_CUT",
+  "LOCAL_QUEUE_PERSIST",
+] as const;
 
 export type FaultEffectKind = (typeof FAULT_EFFECT_KINDS)[number];
 
