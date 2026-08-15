@@ -68,7 +68,8 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.expected_class AS "expectedClass",
           bfr.observed_class AS "observedClass",
           bfr.injected_fault_host AS "injectedFaultHost",
-          bfr.death_provenance AS "deathProvenance"
+          bfr.death_provenance AS "deathProvenance",
+          bfr.fault_provenance AS "faultProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
@@ -98,7 +99,8 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.expected_class AS "expectedClass",
           bfr.observed_class AS "observedClass",
           bfr.injected_fault_host AS "injectedFaultHost",
-          bfr.death_provenance AS "deathProvenance"
+          bfr.death_provenance AS "deathProvenance",
+          bfr.fault_provenance AS "faultProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
@@ -361,6 +363,7 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
     observedClass: ['observedClass', 'observed_class'],
     injectedFaultHost: ['injectedFaultHost', 'injected_fault_host'],
     deathProvenance: ['deathProvenance', 'death_provenance'],
+    faultProvenance: ['faultProvenance', 'fault_provenance'],
     terminationReason: ['terminationReason', 'termination_reason'],
     failureDetail: ['failureDetail', 'failure_detail'],
     readinessStatus: ['readinessStatus', 'readiness_status'],

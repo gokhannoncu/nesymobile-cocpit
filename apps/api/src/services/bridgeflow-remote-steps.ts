@@ -27,6 +27,7 @@ import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import type { ExternalActionSpec } from '@nesy/workflow-contract'
 
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
+import type { BackendTimeoutSession } from './backend-timeout-injector.js'
 import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 import {
@@ -52,6 +53,7 @@ export interface RemoteStepRuntimeOptions {
   attemptStore?: RemoteActionAttemptStore
   clock?: () => number
   logger?: (message: string, detail?: unknown) => void
+  backendTimeout?: BackendTimeoutSession
 }
 
 export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): {
@@ -133,6 +135,12 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
           } satisfies NormalizedEvidenceFact,
         })
       }
+
+      options.backendTimeout?.tryArm({
+        planStepId: step.planStepId,
+        occurrenceId: context.occurrenceId,
+        spec,
+      })
 
       const inputs = resolveInputs(spec, options.variables, options.runInputs ?? {})
       const auditPolicy = {

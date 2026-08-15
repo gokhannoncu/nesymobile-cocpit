@@ -633,6 +633,8 @@ model BridgeFlowRunRuntime {
   observedClass          String?  @map("observed_class")
   injectedFaultHost      String?  @map("injected_fault_host")
   deathProvenance        String?  @map("death_provenance")
+  /// G90.10 injector lifecycle. Independent of observedClass.
+  faultProvenance        Json?    @map("fault_provenance")
   telemetryPolicyRef     String?  @map("telemetry_policy_ref")
   releaseGate            Boolean  @default(false) @map("release_gate")
   lifecycle              String   @default("PENDING")

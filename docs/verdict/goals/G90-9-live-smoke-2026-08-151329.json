@@ -1,0 +1,83 @@
+{
+  "status": "LIVE_QUALIFIED",
+  "closedAt": "2026-08-15T13:29:41.682Z",
+  "identity": {
+    "gitCommit": "3770d2af4eca0cc170560562130b6632d635ad2a",
+    "gitCommitShort": "3770d2a",
+    "workingTreeClean": false,
+    "g90_9ImplementationClean": true,
+    "apiCommand": "node dist/server.js",
+    "apiPid": "55798",
+    "apiStartedAt": "Sat Aug 15 16:27:28 2026",
+    "webCommand": "next-server (v15.5.20)",
+    "webPid": "56237",
+    "dbSchema": "up-to-date",
+    "deviceId": "R6CW400BC8N",
+    "packVersion": "1.30.0",
+    "packKey": "nesy.courier",
+    "packDigest": "sha256:81b241227d3b9c720d97540e4820f0c21683142082d7b6e64ee3efd795a57ebb",
+    "compiledPlanRef": "bfp-nesy.reference.login-1",
+    "compiledPlanHash": "sha256:0ee8c6f9339eb9374eafe0d1c04040fd5d480892479f9d5e1374ac0b72a950a1"
+  },
+  "smokeA": {
+    "axes": {
+      "runId": "run_c0f74f73-a919-40ce-83ac-7e8f2281701c",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "injectedFault": null,
+      "expectedClass": null,
+      "observedClass": null,
+      "injectedFaultHost": null,
+      "evaluationFailureClass": "NONE",
+      "failureDetail": null,
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_c0f74f73-a919-40ce-83ac-7e8f2281701c",
+      "executionId": "exec_ac18bb68-be59-4007-8871-d6174270ab02",
+      "compiledPlanHash": "sha256:0ee8c6f9339eb9374eafe0d1c04040fd5d480892479f9d5e1374ac0b72a950a1",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": null,
+      "expectedClass": null,
+      "injectedFaultHost": null
+    },
+    "judge": {
+      "ok": true,
+      "failures": []
+    }
+  },
+  "smokeB": {
+    "axes": {
+      "runId": "run_5a503b8d-88a5-4fc3-a9e1-33508fc85be4",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "injectedFault": "BACKEND_TIMEOUT",
+      "expectedClass": "BACKEND_TIMEOUT",
+      "observedClass": null,
+      "injectedFaultHost": "A",
+      "evaluationFailureClass": "NONE",
+      "failureDetail": null,
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_5a503b8d-88a5-4fc3-a9e1-33508fc85be4",
+      "executionId": "exec_887b94fa-aa4e-46b9-b500-0b53161c6404",
+      "compiledPlanHash": "sha256:0ee8c6f9339eb9374eafe0d1c04040fd5d480892479f9d5e1374ac0b72a950a1",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": "BACKEND_TIMEOUT",
+      "expectedClass": "BACKEND_TIMEOUT",
+      "injectedFaultHost": "A"
+    },
+    "judge": {
+      "ok": true,
+      "failures": []
+    }
+  },
+  "note": "Metadata contract only. Not BD.3 injector qualification. D60 campaign NOT_STARTED."
+}

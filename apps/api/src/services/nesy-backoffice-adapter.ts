@@ -37,6 +37,10 @@ export interface BackofficeCredentials {
   token: string
 }
 
+export interface BackofficeTimeoutInjection {
+  timeoutMs: number
+}
+
 export interface NesyBackofficeAdapterOptions {
   /**
    * Resolve base URL + bearer token for the run. Absent or throwing means the
@@ -49,6 +53,19 @@ export interface NesyBackofficeAdapterOptions {
   /** Audit sink. Redaction is applied before anything reaches it. */
   audit?: (record: BackofficeAuditRecord) => void
   clock?: () => number
+  /**
+   * G90.10 BD.3. When this returns a plan, the adapter still resolves the
+   * operation and credentials, then hangs until the existing AbortController
+   * deadline fires. The mutation is not sent — a lost in-flight write would
+   * invite a second approval. The observed terminal is still `UNKNOWN_EFFECT`
+   * from `AbortError`, not a synthesized class.
+   */
+  timeoutInjection?: (input: BackofficeCallInput) => BackofficeTimeoutInjection | null
+  onTimeoutInjected?: (event: {
+    kind: 'TRIGGERED' | 'EFFECT_OBSERVED'
+    operationRef: string
+    timeoutMs: number
+  }) => void
 }
 
 export interface BackofficeAuditRecord {
@@ -78,6 +95,23 @@ function failed(error: string): BackofficeCallResult {
   return { terminal: { status: 'FAILED', error }, normalizedResponse: {} }
 }
 
+function abortError(): Error {
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
+}
+
+function hangUntilAbort(_url: string, init?: RequestInit): Promise<Response> {
+  return new Promise((_, reject) => {
+    const signal = init?.signal
+    if (signal?.aborted) {
+      reject(abortError())
+      return
+    }
+    signal?.addEventListener('abort', () => reject(abortError()), { once: true })
+  })
+}
+
 export function createNesyBackofficeAdapter(
   options: NesyBackofficeAdapterOptions,
 ): BackofficeAdapter {
@@ -105,11 +139,22 @@ export function createNesyBackofficeAdapter(
 
       const body = endpoint.body(input.inputs)
       const startedAtMs = clock()
+      const injection = options.timeoutInjection?.(input) ?? null
+      const timeoutMs = injection?.timeoutMs ?? input.timeoutMs
       const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), input.timeoutMs)
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      if (injection !== null) {
+        options.onTimeoutInjected?.({
+          kind: 'TRIGGERED',
+          operationRef: input.operationRef,
+          timeoutMs,
+        })
+      }
 
       try {
-        const response = await doFetch(`${credentials.baseUrl.replace(/\/$/, '')}/${endpoint.path}`, {
+        const response = await (injection === null ? doFetch : hangUntilAbort)(
+          `${credentials.baseUrl.replace(/\/$/, '')}/${endpoint.path}`,
+          {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -118,11 +163,11 @@ export function createNesyBackofficeAdapter(
             'X-Channel': 'Portal',
             'X-Client-Request-Time': new Date(startedAtMs).toISOString(),
             'X-Error-Handling': 'inactive',
-            ...(input.idempotencyKey === undefined ? {} : { 'X-Idempotency-Key': input.idempotencyKey }),
+              ...(input.idempotencyKey === undefined ? {} : { 'X-Idempotency-Key': input.idempotencyKey }),
           },
           body: JSON.stringify(body ?? {}),
           signal: controller.signal,
-        })
+        } as RequestInit)
 
         const text = await response.text()
         let envelope: Record<string, unknown> = {}
@@ -193,6 +238,13 @@ export function createNesyBackofficeAdapter(
         )
       } catch (error) {
         const aborted = error instanceof Error && error.name === 'AbortError'
+        if (aborted && injection !== null) {
+          options.onTimeoutInjected?.({
+            kind: 'EFFECT_OBSERVED',
+            operationRef: input.operationRef,
+            timeoutMs,
+          })
+        }
         // Timed out or transport-lost: the call may have been applied. Saying
         // FAILED here would license a retry of a mutation that already ran.
         return record(
@@ -200,7 +252,9 @@ export function createNesyBackofficeAdapter(
             terminal: {
               status: 'UNKNOWN_EFFECT',
               error: aborted
-                ? `back-office call timed out after ${input.timeoutMs}ms; effect unknown`
+                ? injection !== null
+                  ? `injected adapter deadline fired after ${timeoutMs}ms; effect unknown`
+                  : `back-office call timed out after ${timeoutMs}ms; effect unknown`
                 : `back-office transport error: ${error instanceof Error ? error.message : String(error)}`,
             },
             normalizedResponse: {},

@@ -1023,7 +1023,14 @@ export class BridgeFlowExecutor {
         outcome.actionResult = result.actionResult ?? (result.succeeded ? "SUCCEEDED" : "FAILED");
         if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
         if (result.next !== undefined) next = result.next;
-        if (!result.succeeded) {
+        if (outcome.actionResult === "UNKNOWN_EFFECT") {
+          // A lost remote mutation is not an automation defect and not a
+          // product fail. Final Oracle must not wait out an EVENTUAL deadline
+          // for a call whose effect is unknown — that is how BD.3 became a
+          // minutes-long INCONCLUSIVE instead of a classified timeout.
+          state.unknownEffect = true;
+          stop = true;
+        } else if (!result.succeeded) {
           state.automationFailure = true;
           stop = true;
         }
@@ -1110,7 +1117,7 @@ export class BridgeFlowExecutor {
       }
     }
 
-    if (step.finalOraclePolicy) {
+    if (step.finalOraclePolicy && outcome.actionResult !== "UNKNOWN_EFFECT") {
       const oracleResult = this.options.oracle === undefined
         ? undefined
         : await this.options.oracle.runFinalOracle({

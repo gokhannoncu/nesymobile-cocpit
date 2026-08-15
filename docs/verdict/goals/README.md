@@ -28,7 +28,8 @@ invariant’a çevirmek — yeni mekanizma yığmak değil. Ayrıntı:
 ([`READINESS.md`](./G90-stabilization/READINESS.md)).
 **G90.2b READINESS_LIVE_QUALIFIED.** **G90.3 DONE** (3a ∧ 3b, 2026-08-15).
 **D30 COMPLETED** — 100 classified, 99 `PRODUCT_PASS`, 1 `ENV_FAILURE`,
-`UNCLASSIFIED=0`. **NEXT = G90.10** six semantic injectors. G90.9 `DONE`. Formal D60 campaign
+`UNCLASSIFIED=0`. G90.9 `LIVE_QUALIFIED`. G90.10 BD.3 **implemented**, not
+live-qualified. **NEXT = Host B live qual on fresh prod** (not PID 55798). Formal D60 campaign
 window remains 13 Sep–12 Oct; implementation ≠ campaign start.
 `RELIABILITY_PROVEN` değil.
 
@@ -53,7 +54,7 @@ State dili run playbook ile aynıdır: `NOT_STARTED` · `READY` · `IN_PROGRESS`
 
 | ID | Ad | Pencere | Durum | Dosya |
 |---|---|---|---|---|
-| `G90-stabilization` | Bilinen failure modes, ölçülmüş reliability, bounded recovery, açıklanabilir unknown, repeatable verification | 2026-08-13 → 2026-11-11 | `IN_PROGRESS` — D30 COMPLETED; G90.9 DONE; **NEXT G90.10**; D60 campaign NOT_STARTED | [`G90-stabilization/RUN_PLAY.md`](./G90-stabilization/RUN_PLAY.md) |
+| `G90-stabilization` | Bilinen failure modes, ölçülmüş reliability, bounded recovery, açıklanabilir unknown, repeatable verification | 2026-08-13 → 2026-11-11 | `IN_PROGRESS` — D30 COMPLETED; G90.9 LIVE_QUALIFIED; G90.10 BD.3 implemented; D60 campaign NOT_STARTED | [`G90-stabilization/RUN_PLAY.md`](./G90-stabilization/RUN_PLAY.md) |
 
 ## Kapanış kuralı
 

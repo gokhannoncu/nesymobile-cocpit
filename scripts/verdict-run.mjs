@@ -46,6 +46,8 @@
  *      --timeout <sn>        yoklama bütçesi, varsayılan 180
  *      --json                ham koşu detayını da yaz
  *      --no-logcat           sonda logcat özetini atla
+ *      --injected-fault ID   G90.9 input axis (omit = uninjected null)
+ *      --injected-fault-host A|B   required when --injected-fault is set
  * ===========================================================================
  */
 import { spawnSync } from 'node:child_process'
@@ -88,6 +90,8 @@ function parseArgs(argv) {
     timeoutSec: 180,
     json: false,
     logcat: true,
+    injectedFault: null,
+    injectedFaultHost: null,
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -104,6 +108,8 @@ function parseArgs(argv) {
       case '--json': opts.json = true; break
       case '--no-logcat': opts.logcat = false; break
       case '--timeout': opts.timeoutSec = Number(next()); break
+      case '--injected-fault': opts.injectedFault = next(); break
+      case '--injected-fault-host': opts.injectedFaultHost = next(); break
       case '--input': {
         const pair = next()
         const at = pair.indexOf('=')
@@ -118,6 +124,9 @@ function parseArgs(argv) {
     }
   }
   if (!opts.workflowRef) throw new Error('workflowRef zorunlu')
+  if (opts.injectedFault && !opts.injectedFaultHost) {
+    throw new Error('--injected-fault requires --injected-fault-host A|B')
+  }
   return opts
 }
 
@@ -297,6 +306,9 @@ const started = await req('POST', '/verdict/runtime/runs', {
   domainPackDigest: pack.bundleDigest,
   profileKey,
   inputs,
+  ...(opts.injectedFault
+    ? { injectedFault: opts.injectedFault, injectedFaultHost: opts.injectedFaultHost }
+    : {}),
 })
 const runId = started.body?.run?.runId ?? started.body?.runId
 console.log(`HTTP ${started.status} runId=${runId ?? '-'}`)
@@ -332,6 +344,11 @@ console.log(`failureClass     = ${run.evaluation_failure_class ?? '-'}`)
 console.log(`termination      = ${run.termination_reason ?? '-'}`)
 console.log(`lifecycle        = ${run.lifecycle ?? '-'}`)
 if (run.failure_detail) console.log(`failureDetail    = ${JSON.stringify(run.failure_detail).slice(0, 500)}`)
+const runtime = detail.runtime ?? {}
+console.log(`injectedFault    = ${runtime.injectedFault ?? started.body?.injectedFault ?? 'null'}`)
+console.log(`expectedClass    = ${runtime.expectedClass ?? started.body?.expectedClass ?? 'null'}`)
+console.log(`observedClass    = ${runtime.observedClass ?? 'null'}`)
+console.log(`cleanup          = ${runtime.cleanupResult ?? run.cleanup_result ?? '-'}`)
 
 const steps = detail.steps ?? []
 console.log(`\nADIMLAR (${steps.length})`)

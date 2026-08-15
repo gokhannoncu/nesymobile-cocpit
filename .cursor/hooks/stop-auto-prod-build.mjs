@@ -56,6 +56,28 @@ function log(line) {
   }
 }
 
+function loadPreserveLineage() {
+  try {
+    return JSON.parse(readFileSync(join(stateDir, 'preserve-prod-lineage.json'), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+function shouldPreserveApi() {
+  const preserve = loadPreserveLineage()
+  if (!preserve || preserve.doNotRestartApi !== true) return false
+  if (!portInUse(4001)) return false
+  if (preserve.apiPid) {
+    const listening = spawnSync('lsof', ['-nP', '-iTCP:4001', '-sTCP:LISTEN', '-t'], {
+      encoding: 'utf8',
+    })
+    const pids = (listening.stdout || '').trim().split(/\s+/).filter(Boolean)
+    if (!pids.includes(String(preserve.apiPid))) return false
+  }
+  return true
+}
+
 function portInUse(port) {
   const result = spawnSync(
     process.platform === 'win32' ? 'powershell.exe' : 'lsof',
@@ -189,7 +211,13 @@ try {
       prepareWebProductionBuild()
       runPnpm('@nesy/web', 'build')
     }
-    if (state.api && apiWasUp) restartApi()
+    if (state.api && apiWasUp) {
+      if (shouldPreserveApi()) {
+        log('preserving recorded prod lineage — skip api restart (G90.9 qualification PID stays)')
+      } else {
+        restartApi()
+      }
+    }
     if (state.web && webWasUp) restartNextWeb()
     log('done')
     process.stdout.write('{}\n')

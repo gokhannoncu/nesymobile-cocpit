@@ -24,6 +24,7 @@ import type { PrismaClient } from '@nesy/db'
 import type { DomainPackBundle, LaunchProfile } from '@nesy/domain-pack-contracts'
 import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
+import { observeInjectedClass } from '@nesy/workflow-contract'
 
 import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
@@ -35,6 +36,7 @@ import { BridgeFlowRunContext } from './bridgeflow-run-context.js'
 import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-device-ports.js'
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
+import { createBackendTimeoutSession, type BackendTimeoutSession } from './backend-timeout-injector.js'
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
@@ -94,8 +96,17 @@ const SDK_FACT_MAX_AGE_MS = 30_000
  * that — which is the correct outcome. Inventing a host would send a dispatcher
  * mutation somewhere nobody chose.
  */
-function createEnvBackofficeAdapter(): BackofficeAdapter {
+function createEnvBackofficeAdapter(session?: BackendTimeoutSession): BackofficeAdapter {
   return createNesyBackofficeAdapter({
+    ...(session === undefined
+      ? {}
+      : {
+          timeoutInjection: (input) => session.injectionForCall(input.operationRef),
+          onTimeoutInjected: (event) => {
+            if (event.kind === 'TRIGGERED') session.markTriggered(event.operationRef, event.timeoutMs)
+            if (event.kind === 'EFFECT_OBSERVED') session.markDeadlineObserved()
+          },
+        }),
     credentials: async () => {
       const configuredCountry = process.env.NESY_REMOTE_ACTION_COUNTRY?.trim() ?? 'RS'
       const configuredEnv = process.env.NESY_REMOTE_ACTION_ENV?.trim() ?? 'stage'
@@ -1085,6 +1096,15 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     await this.markRunRow(item.runId, { status: 'running', startedAt: new Date(clock()) })
 
     const persistence = new PrismaExecutionPersistence(this.options.prisma)
+    const backendTimeout = createBackendTimeoutSession({
+      injectedFault: item.injectedFault ?? null,
+      clock,
+    })
+    backendTimeout.request()
+    await persistence.persistFaultProvenance({
+      runId: item.runId,
+      provenance: backendTimeout.snapshot(),
+    })
     const runInputs = item.inputs ?? {}
     // What an `ENTITY_STATUS_EQUALS` derivation compares the OBSERVED entity
     // against. The pack names the source (`macro.input.stopCode`); the value can
@@ -1245,13 +1265,14 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           createPackRemoteStepRuntime({
             runId: item.runId,
             bundle: resolution.pack.bundle,
-            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(),
+            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(backendTimeout),
             variables: runContext,
             runInputs,
             evidence: evidenceRuntime,
             observations: sdkObservations,
             attemptStore: new PrismaRemoteActionAttemptStore(this.options.prisma),
             clock,
+            backendTimeout,
             ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
           }),
         genericSteps: createGenericStepRuntime({
@@ -1284,6 +1305,20 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           injectedFaultHost: item.injectedFaultHost ?? null,
         },
       })
+      await persistence.persistFaultProvenance({
+        runId: item.runId,
+        provenance: backendTimeout.snapshot(),
+      })
+      const observedClass = observeInjectedClass({
+        actionResult: result.terminationReason === 'UNKNOWN_ACTION_EFFECT' ? 'UNKNOWN_EFFECT' : null,
+        provenance: backendTimeout.snapshot(),
+      })
+      if (observedClass !== null) {
+        await persistence.persistObservedClass({
+          runId: item.runId,
+          observedClass,
+        })
+      }
 
       await this.options.prisma.verdictRunStart.updateMany({
         where: { runId: item.runId },

@@ -3,6 +3,7 @@ import {
   assertInjectedFaultRecord,
   planInjectedFault,
   type DeathProvenance,
+  type FaultInjectionProvenance,
   type ObservedClass,
 } from '@nesy/workflow-contract'
 import type {
@@ -544,6 +545,18 @@ export class PrismaExecutionPersistence
       data: {
         observedClass: record.observedClass,
         deathProvenance: record.deathProvenance,
+      },
+    })
+  }
+
+  async persistFaultProvenance(input: {
+    runId: string
+    provenance: FaultInjectionProvenance
+  }): Promise<void> {
+    await this.client.bridgeFlowRunRuntime.updateMany({
+      where: { runId: input.runId },
+      data: {
+        faultProvenance: input.provenance as unknown as Prisma.InputJsonValue,
       },
     })
   }

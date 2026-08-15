@@ -197,6 +197,30 @@ describe('nesy back-office adapter', () => {
     expect(result.terminal.status).toBe('FAILED')
   })
 
+  it('forces the adapter deadline when a timeout injection is armed', async () => {
+    const events: string[] = []
+    let fetchCalls = 0
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () => {
+        fetchCalls += 1
+        throw new Error('must not reach the network when the injector is armed')
+      },
+      timeoutInjection: () => ({ timeoutMs: 20 }),
+      onTimeoutInjected: (event) => events.push(event.kind),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.approve-tour-request', inputs: { approvalRequest: 's1' }, timeoutMs: 20_000 },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('UNKNOWN_EFFECT')
+    expect(result.terminal.error).toMatch(/injected adapter deadline/)
+    expect(fetchCalls).toBe(0)
+    expect(events).toEqual(['TRIGGERED', 'EFFECT_OBSERVED'])
+  })
+
   it('reports a lost call as UNKNOWN_EFFECT so the mutation is not retried blind', async () => {
     const adapter = createNesyBackofficeAdapter({
       credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
@@ -597,5 +621,79 @@ describe('remote step runtime', () => {
 
     const result = await runtime.execute(step as never, STEP_CONTEXT as never)
     expect(result).toMatchObject({ succeeded: false, actionResult: 'UNKNOWN_EFFECT' })
+  })
+
+  it('does not arm BD.3 on a READ_ONLY validation', async () => {
+    const { createBackendTimeoutSession } = await import('./backend-timeout-injector.js')
+    const session = createBackendTimeoutSession({
+      injectedFault: 'BACKEND_TIMEOUT',
+      clock: () => 1_000,
+    })
+    session.request()
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      backendTimeout: session,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'SUCCEEDED' },
+          normalizedResponse: { approval: { statusIsApproved: true } },
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      clock: () => 1_000,
+    })
+
+    await runtime.execute(step as never, STEP_CONTEXT as never)
+    expect(session.snapshot().phase).toBe('REQUESTED')
+    expect(session.snapshot().actuallyFired).toBe(false)
+  })
+
+  it('arms BD.3 on a mutation remote and leaves observedClass to the classifier', async () => {
+    const { createBackendTimeoutSession } = await import('./backend-timeout-injector.js')
+    const session = createBackendTimeoutSession({
+      injectedFault: 'BACKEND_TIMEOUT',
+      clock: () => 1_000,
+    })
+    session.request()
+    const mutationStep = {
+      ...step,
+      planStepId: 'approve',
+      params: {
+        spec: {
+          adapterRef: 'nesy.backoffice',
+          operationRef: 'nesy.backoffice.approve-tour-request',
+          role: 'SETUP',
+          effectClass: 'IDEMPOTENT_MUTATION',
+          idempotencyClass: 'KEYED',
+          idempotencyKey: 'approvalRequest',
+          inputBindings: [{ name: 'approvalRequest', source: { kind: 'runInput', path: 'approvalRequestCode' } }],
+          outputFactBindings: [],
+          timeoutPolicy: { timeoutMs: 20_000, maxAttempts: 1 },
+          reconciliationPolicy: 'RECONCILE_ON_UNKNOWN',
+          auditPolicy: { recordRequest: true, recordResponse: true, redactFields: [] },
+        },
+      },
+    }
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      backendTimeout: session,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'UNKNOWN_EFFECT', error: 'injected adapter deadline fired after 80ms; effect unknown' },
+          normalizedResponse: {},
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      clock: () => 1_000,
+    })
+
+    const result = await runtime.execute(mutationStep as never, STEP_CONTEXT as never)
+    expect(result).toMatchObject({ succeeded: false, actionResult: 'UNKNOWN_EFFECT' })
+    expect(session.snapshot().phase).toBe('ARMED')
+    expect(session.snapshot().actuallyFired).toBe(false)
   })
 })

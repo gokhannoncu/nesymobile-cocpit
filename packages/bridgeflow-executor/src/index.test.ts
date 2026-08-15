@@ -492,6 +492,76 @@ describe("bridgeflow executor", () => {
     expect(result.terminationReason).toBe("UNKNOWN_ACTION_EFFECT");
   });
 
+  it("treats a remote UNKNOWN_EFFECT as unknown effect, not a product or automation fail", async () => {
+    let oracleCalls = 0;
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: { factsForOccurrence: () => [] },
+      remoteRuntime: {
+        execute: async () => ({ succeeded: false, actionResult: "UNKNOWN_EFFECT" }),
+      },
+      oracle: {
+        runContinueGate: async () => {
+          oracleCalls += 1;
+          return { status: "SATISFIED", evaluation: { outcome: "SATISFIED" } as never };
+        },
+        runFinalOracle: async () => {
+          oracleCalls += 1;
+          return {
+            status: "VIOLATED",
+            evaluation: { outcome: "VIOLATED", productVerdict: "FAIL_PRODUCT", evaluationFailureClass: "NONE" },
+          } as never;
+        },
+      },
+      clock: () => 10,
+    });
+
+    const result = await executor.execute({
+      runId: "run-remote-timeout",
+      deviceId: "device-1",
+      plan: planFixture({
+        steps: [
+          {
+            planStepId: "step-1",
+            kind: "REMOTE_ACTION",
+            sourceMapRef: "src:1",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            evidenceRequirements: [],
+            params: { spec: { operationRef: "remote.mutation" } },
+            finalOraclePolicy: {
+              mode: "ALL_OF",
+              onTimeout: "INCONCLUSIVE",
+              requirements: [
+                {
+                  factKey: "REMOTE.CONFIRMED",
+                  obligation: "REQUIRED",
+                  timing: "EVENTUAL",
+                  onTimeout: "INCONCLUSIVE",
+                },
+              ],
+            } as never,
+          },
+        ],
+      }),
+    });
+
+    expect(result.productVerdict).toBe("INCONCLUSIVE");
+    expect(result.evaluationFailureClass).toBe("NONE");
+    expect(result.terminationReason).toBe("UNKNOWN_ACTION_EFFECT");
+    expect(oracleCalls).toBe(0);
+    expect(persistence.stepOccurrences[0]?.outcome.actionResult).toBe("UNKNOWN_EFFECT");
+  });
+
   it("routes wait results once and cancels in-flight wait on run finish", async () => {
     let cancelCount = 0;
     const persistence = new InMemoryExecutionPersistence();

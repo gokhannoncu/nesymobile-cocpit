@@ -13,13 +13,14 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 16:40:00 +03"
+lastUpdatedAt: "2026-08-15 16:50:00 +03"
 timezone: "Europe/Istanbul"
 runPlayFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
 readinessFile: "docs/verdict/goals/G90-stabilization/READINESS.md"
 joinFile: "docs/verdict/goals/G90-stabilization/JOIN.md"
-nextStep: G90.10
-d60Implementation: G90.9_DONE
+nextStep: G90.10_BD3_LIVE_QUAL
+d60Implementation: G90.10_BD3_IMPLEMENTED
+g90_9LiveSmoke: "docs/verdict/goals/G90-9-live-smoke-2026-08-151329.json"
 d60CampaignStatus: NOT_STARTED
 d14Gate: "G90.2b + G90.3 closed 2026-08-15 (ahead of 2026-08-27)"
 joinBoundaries: "J0✅ J1✅ J2✅ J3✅ J4 N/A J5✅"
@@ -97,10 +98,10 @@ sınıflı + `UNCLASSIFIED=0`. 99 PASS + 1 sınıflı ENV, açıklamasız timeou
 daha değerlidir.
 
 ```text
-G90: IN_PROGRESS — D30 COMPLETED; G90.9 DONE; NEXT = G90.10
+G90: IN_PROGRESS — D30 COMPLETED; G90.9 LIVE_QUALIFIED; G90.10 BD.3 IMPLEMENTED
 Formal D60 campaign window unchanged: 2026-09-13 → 2026-10-12
 D30 window: 2026-08-13 → 2026-09-12  — COMPLETED 2026-08-15
-D60 window: 2026-09-13 → 2026-10-12  — SPEC_LOCKED; G90.9 implemented; campaign NOT_STARTED
+D60 window: 2026-09-13 → 2026-10-12  — SPEC_LOCKED; BD.3 code only; campaign NOT_STARTED
 D90 window: 2026-10-13 → 2026-11-11  — SPEC_LOCKED, gated on D60 COMPLETED
 Observed product/test success   99%
 Classification coverage        100%
@@ -141,6 +142,31 @@ expectedClass   derived  locked map from injectedFault
 Uninjected D30/D90 satırları `injectedFault = null` kalır ve karışıklık
 matrisine girmez. Formal D60 kampanyası bu implementasyonla **başlamadı**.
 
+Live qualification 2026-08-15 16:29 +03, fresh prod `3770d2a` /
+`node dist/server.js` PID 55798
+([`G90-9-live-smoke-2026-08-151329.json`](../G90-9-live-smoke-2026-08-151329.json)):
+
+| Smoke | injectedFault | observedClass | productVerdict | cleanup |
+|---|---|---|---|---|
+| A uninjected | `null` | `null` | `PASS_ONLINE` | `SUCCEEDED` |
+| B metadata | persist/readback `BACKEND_TIMEOUT` | `null` (not copied from input) | `PASS_ONLINE` | `SUCCEEDED` |
+
+`injectedFault` test girdisi; `observedClass` ölçüm çıktısı. Smoke B BD.3
+enjektör kalifikasyonu değildir.
+
+### 1.1c G90.10 BD.3 injector (implemented, not live-qualified)
+
+`observeInjectedClass` `injectedFault` kabul etmez. `BACKEND_TIMEOUT` yalnız
+şunlar birlikte doğruysa yazılır: `UNKNOWN_EFFECT` + injector
+`EFFECT_OBSERVED` + `abortKind=DEADLINE` + `ADAPTER_DEADLINE_ABORT`.
+
+READ_ONLY / login remote arm olmaz — G90.9 Smoke B davranışı korunur.
+Host B mutation remote arm olur; adapter deadline asıl `AbortError` yolundan
+geçer. `PRODUCT_FAIL` yok; executor `UNKNOWN_ACTION_EFFECT` → `INCONCLUSIVE`.
+
+Live qual: G90.10 commit → fresh build → fresh `pnpm prod` (PID 55798 değil)
+→ Host B. Formal D60 kampanyası başlamadı.
+
 ## 1.2 Phase 10 plumbing + G90 live golden
 
 | İz | İddia | Durum |
@@ -159,12 +185,12 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Alan | Değer |
 |---|---|
 | Current window | `D60` |
-| Current step | `G90.10` |
+| Current step | `G90.10` BD.3 live qual |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
-| Last successful step | `G90.9` injectedFault / observedClass axes |
+| Last successful step | `G90.9` LIVE_QUALIFIED; `G90.10` BD.3 implemented (not live-qualified) |
 | Last attempted step | D30 100-run `D30-100-rerun-2026-08-151127` |
-| Last update | `2026-08-15 16:15:00 +03` |
-| Recovery instruction | `NEXT = G90.10 altı semantik enjektör. Formal D60 kampanyası 13 Eylül’e kadar açılmaz. Aynı login’i 100 kez daha koşturma.` |
+| Last update | `2026-08-15 16:50:00 +03` |
+| Recovery instruction | `NEXT = G90.10 BD.3 live qual on fresh prod (not PID 55798). Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -413,8 +439,8 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | G90.6 Sınıf regresyonları | `DONE` | görülen: `PRODUCT_PASS` (live + pack oracle), `ENV_FAILURE` (`execution-failure-class.test.ts`, wiring) |
 | G90.7 D30 kapanış | `DONE` | bu dosya; 2026-08-15 |
 | G90.8 D60 spec kilidi | `DONE` | `RUN_PLAY.md` §15–18 |
-| G90.9 injectedFault alanı | `DONE` | input `injectedFault` ≠ output `observedClass`; uninjected `null`; formal kampanya değil |
-| G90.10 Altı enjektör | `NOT_STARTED` | |
+| G90.9 injectedFault alanı | `LIVE_QUALIFIED` | 2026-08-15 fresh prod `3770d2a`; Smoke A/B; formal kampanya değil |
+| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3 implemented; live qual + BD.2/6/5/4/1 yok |
 | G90.11 D60 matrisi | `NOT_STARTED` | |
 | G90.12 D60 kapanış | `NOT_STARTED` | |
 | G90.13 D90 spec kilidi | `DONE` | `RUN_PLAY.md` §19–22 |
@@ -456,7 +482,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | D30_ENV_PRISMA_DISCONNECT | LOW | `BACKLOG` | #9; sınıflı; cleanup+isolation OK; 100/100 PASS peşinde değil |
 | CP3-DUT | EXT | `DEFERRED` | Track B |
 | KILL_RECOVERY | EXT | `SPEC_LOCKED` | D60 BD.1; kampanya artık ungated |
-| BAD_DAY_INJECTORS | HIGH | `SPEC_LOCKED` | G90.10 **NEXT**; G90.9 alanı duruyor; formal kampanya 13 Eylül |
+| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3 code; live qual Host B + fresh prod; formal kampanya 13 Eylül |
 | SECOND_DUT | MEDIUM | `OPEN` | D90 `pilotStable=YES` için ≥2 serial |
 
 ## 9. Next window handoff
@@ -465,7 +491,8 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 D30 COMPLETED. 100 classified. 99 PRODUCT_PASS. 1 ENV_FAILURE. UNCLASSIFIED=0.
 D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
-G90.9 DONE. injectedFault ≠ observedClass. Uninjected null.
+G90.9 LIVE_QUALIFIED. G90.10 BD.3 implemented, not live-qualified.
+injectedFault ≠ observedClass. Uninjected null.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
 NEXT: G90.10 six semantic injectors. Not G90.4 / 3c / 3e. No second login soak.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.

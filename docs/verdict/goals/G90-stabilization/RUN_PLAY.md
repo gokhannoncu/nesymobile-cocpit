@@ -11,16 +11,16 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 16:40:00 +03"
+lastUpdatedAt: "2026-08-15 16:50:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
 d30End: "2026-09-12"
 d60End: "2026-10-12"
 d90End: "2026-11-11"
-nextStep: G90.10
+nextStep: G90.10_BD3_LIVE_QUAL
 nextStepFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
-d60Implementation: G90.9_DONE
+d60Implementation: G90.10_BD3_IMPLEMENTED
 d60CampaignStatus: NOT_STARTED
 d60CampaignWindow: "2026-09-13 → 2026-10-12 — formal matrix not opened early"
 d14Gate: "G90.2b + G90.3 closed 2026-08-15"
@@ -168,8 +168,10 @@ Phase 10 fact plumbing `CODE_WIRED` ≠ G90 live golden fact
 Cold start tek adım değil: [`READINESS.md`](./READINESS.md) — pre-action
 yedili, `INTERACTION_READY`; AUTH/bootstrap action **sonrası**. G90.2b
 `READINESS_LIVE_QUALIFIED`; G90.3 = 3a ∧ 3b `DONE` (2026-08-15).
-D30 `COMPLETED`. G90.9 `DONE`. **NEXT = G90.10** enjektörler (formal D60
-kampanyası 13 Eylül’e kadar açılmaz). İkinci workflow D30’a girmez.
+D30 `COMPLETED`. G90.9 `LIVE_QUALIFIED` (fresh prod `3770d2a`, Smoke A/B).
+G90.10 BD.3 **implemented**, not live-qualified. **NEXT = Host B live qual
+on a new prod PID** (55798 G90.9 lineage). Formal D60 kampanyası 13 Eylül’e
+kadar açılmaz. İkinci workflow D30’a girmez.
 
 ## 2. Neden bu iz ayrı?
 
@@ -424,8 +426,8 @@ NesyMobile/verdict-bridge/**
 | G90.6 | Her görülen sınıfa bir regresyon (bağımsız kırılabilir) | `DONE` — `PRODUCT_PASS` + `ENV_FAILURE` |
 | G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
-| G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `DONE` (2026-08-15) — input/output ayrı; kampanya `NOT_STARTED` |
-| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `NOT_STARTED` |
+| G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `LIVE_QUALIFIED` (2026-08-15) — fresh prod `3770d2a` Smoke A/B; kampanya `NOT_STARTED` |
+| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3 code; live qual + diğer beş yok |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
 | G90.13 | D90 spec kilidi (workflow set + altı metric family + M2b companion + pilot-stable) | `DONE` (bu dosya, 2026-08-13) |
@@ -487,8 +489,9 @@ D30 COMPLETED 2026-08-15: 100 classified, 99 PRODUCT_PASS, 1 ENV_FAILURE,
 UNCLASSIFIED=0. 94 PASS / 6 sınıflı failure, belirsiz timeout’tan değerli.
 Timeout/sleep/jest yok. RELIABILITY_PROVEN değil.
 G90.2b READINESS_LIVE_QUALIFIED. G90.3 DONE.
-G90.9 DONE: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
-NEXT = G90.10 altı semantik enjektör; 13 Eylül öncesi resmi matris yok.
+G90.9 LIVE_QUALIFIED: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
+G90.10 BD.3 implemented (observeInjectedClass does not take injectedFault).
+NEXT = BD.3 Host B live qual on fresh prod; then BD.2 → BD.6 → BD.5 → BD.4 → BD.1.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 J0–J5 ladder değil. İkinci 100-run login yok.
 pilotStable D90 öncesi freeze ister. Önce READINESS.md, JOIN.md, RESULT.md oku.
@@ -609,8 +612,10 @@ Metrik: D30 satırına ek `injectedFault` (`null` \| `PROCESS_KILL` \|
 (satır = enjekte, sütun = gözlenen sınıf). Köşegen dışı hücre kapanışı
 reddeder. `injectedFault = null` satırlar matrise girmez.
 
-G90.9 kodu 15 Aug 2026’da yazıldı. Formal D60 kampanya penceresi
-**13 Eylül–12 Ekim 2026** duruyor — implementation ≠ campaign start.
+G90.9 kodu 15 Aug 2026’da yazıldı ve aynı gün fresh prod’da
+`LIVE_QUALIFIED` oldu (`3770d2a`, Smoke A null + Smoke B metadata).
+Formal D60 kampanya penceresi **13 Eylül–12 Ekim 2026** duruyor —
+implementation ≠ campaign start.
 
 Regresyon: altı senaryonun her biri için tekrarlanabilir enjektör + beklenen
 `class` assert. Enjektör yoksa “bir gün USB çıktı” D60 kanıtı değildir.

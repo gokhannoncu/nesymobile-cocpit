@@ -196,6 +196,36 @@ describe('PrismaExecutionPersistence', () => {
     )
   })
 
+  it('persists injector provenance without writing observedClass', async () => {
+    const client = clientFixture()
+    const persistence = new PrismaExecutionPersistence(client)
+    await persistence.persistFaultProvenance({
+      runId: 'run-1',
+      provenance: {
+        phase: 'TRIGGERED',
+        requestedAtMs: 1,
+        armedAtMs: 2,
+        triggeredAtMs: 3,
+        effectObservedAtMs: null,
+        triggerPoint: 'REMOTE_ACTION:remote.mutation@approve',
+        occurrenceId: 'occ-1',
+        actuallyFired: false,
+        abortKind: 'NONE',
+        effectKind: 'ADAPTER_DEADLINE_ABORT',
+        declaredTimeoutMs: 20_000,
+        injectedTimeoutMs: 80,
+      },
+    })
+    expect(client.bridgeFlowRunRuntime.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          faultProvenance: expect.objectContaining({ phase: 'TRIGGERED', actuallyFired: false }),
+        }),
+      }),
+    )
+    expect(client.bridgeFlowRunRuntime.update).not.toHaveBeenCalled()
+  })
+
   it('upserts repeated Oracle revision one with one deterministic replay key', async () => {
     const client = clientFixture()
     const persistence = new PrismaExecutionPersistence(client)
