@@ -1,0 +1,27 @@
+{
+  "label": "rerun100",
+  "finishedAt": "2026-08-15T05:24:20+00:00",
+  "completed": 5,
+  "total": 100,
+  "clean": false,
+  "aborted": true,
+  "abortReason": "Prisma connection closed on #3, then readiness contamination cascade (#4-#6 blocked APP_NOT_READY / UI_VISIBLE). Campaign stopped; reset_state applied.",
+  "counters": {
+    "transactionTimeout": 0,
+    "blockedTerminalPollingBug": 0,
+    "cleanupMissing": 0,
+    "orderedMissing": 0,
+    "failureClassNoneOnNonPass": 3,
+    "pass": 2,
+    "fail": 3,
+    "blocked": 2,
+    "pollTimeout": 0
+  },
+  "index3": {
+    "runId": "run_7e0617d8-b6f3-4190-806a-4738baebfd14",
+    "failureDetail": "PrismaClientKnownRequestError: Server has closed the connection.",
+    "readiness": "INTERACTION_READY",
+    "lastStep": "read-local-session RUNNING",
+    "tapSubmit": "SUCCEEDED / continueGate SATISFIED"
+  }
+}

@@ -1,0 +1,292 @@
+{
+  "label": "prod-valid5",
+  "startedAt": "2026-08-15T05:42:09.903Z",
+  "api": "http://127.0.0.1:4001/api",
+  "device": "R6CW400BC8N",
+  "appId": "com.arasdigital.nesymobile.rstest",
+  "profile": "nesy.launch.cold-real-login",
+  "head": "6e76ee6dc636ba912e95986877a6755c0bb56216",
+  "dirty": "M apps/api/src/services/bridgeflow-execution-queue.ts\n M apps/api/src/services/bridgeflow-runtime-wiring.test.ts\n M packages/db/src/index.ts\n M scripts/verdict-run.mjs\n?? apps/api/src/services/execution-failure-class.test.ts\n?? apps/api/src/services/execution-failure-class.ts\n?? docs/verdict/goals/D30-100-rerun-2026-08-150520.jsonl\n?? docs/verdict/goals/D30-100-rerun-2026-08-150520.summary.json\n?? docs/verdict/goals/D30-20-gate-2026-08-150505.jsonl\n?? docs/verdict/goals/D30-20-gate-2026-08-150505.summary.json\n?? docs/verdict/goals/D30-5-valid-prod-2026-08-150542.jsonl\n?? scripts/d30-campaign-run.mjs",
+  "baselineProcess": {
+    "apiPid": "7188",
+    "webPid": "7974",
+    "api": "7188  7140 Sat Aug 15 08:39:57 2026     02:05 node dist/server.js",
+    "web": "7974  7949 Sat Aug 15 08:40:44 2026     01:18 next-server (v15.5.20)"
+  },
+  "preReset": {
+    "ok": true
+  },
+  "preStartState": {
+    "ok": true,
+    "overall": "DEGRADED",
+    "adb": "UP",
+    "bridge": "UP",
+    "activeRun": "DEGRADED",
+    "commandAdmission": "UP"
+  },
+  "pack": {
+    "packKey": "nesy.courier",
+    "version": "1.30.0",
+    "digest": "sha256:81b241227d3b9c720d97540e4820f0c21683142082d7b6e64ee3efd795a57ebb"
+  },
+  "compiled": {
+    "compiledPlanRef": "bfp-nesy.reference.login-1",
+    "compiledPlanHash": "sha256:0ee8c6f9339eb9374eafe0d1c04040fd5d480892479f9d5e1374ac0b72a950a1"
+  },
+  "outJsonl": "/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/docs/verdict/goals/D30-5-valid-prod-2026-08-150542.jsonl",
+  "finishedAt": "2026-08-15T05:46:14.238Z",
+  "completed": 5,
+  "clean": true,
+  "stopped": null,
+  "counters": {
+    "passOnline": 5,
+    "interactionReady": 5,
+    "closed": 5,
+    "completed": 5,
+    "cleanupSucceeded": 5,
+    "transactionDisconnect": 0,
+    "failureClassNone": 0,
+    "emergencyReset": 0,
+    "orderedMissing": 0,
+    "receiptMissing": 0,
+    "crossRunContamination": 0,
+    "manualIntervention": 0
+  },
+  "rows": [
+    {
+      "runId": "run_118d1703-3878-40a3-ba53-0574a6449351",
+      "status": "completed",
+      "lifecycle": "CLOSED",
+      "productVerdict": "PASS_ONLINE",
+      "readinessStatus": "INTERACTION_READY",
+      "readinessClass": null,
+      "cleanupResult": "SUCCEEDED",
+      "failureClass": "NONE",
+      "failureDetail": "",
+      "termination": "COMPLETED",
+      "transactionOrDisconnect": false,
+      "dbErrorCode": null,
+      "receiptMissing": false,
+      "orderedMissing": false,
+      "failureClassNone": false,
+      "pollTimedOut": false,
+      "evidence": {
+        "oracleEvaluations": 10,
+        "receiptHint": 1,
+        "orderedHint": 0
+      },
+      "processBefore": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     02:13 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     01:26 next-server (v15.5.20)"
+      },
+      "processAfter": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     03:02 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     02:15 next-server (v15.5.20)"
+      },
+      "apiPidStable": true,
+      "startStateAfter": {
+        "ok": true,
+        "overall": "DEGRADED",
+        "adb": "UP",
+        "bridge": "UP",
+        "activeRun": "DEGRADED",
+        "commandAdmission": "UP"
+      },
+      "ok": true,
+      "index": 1,
+      "wallMs": 51318
+    },
+    {
+      "runId": "run_0a7823b5-2e0a-4332-bb82-60c2af82b146",
+      "status": "completed",
+      "lifecycle": "CLOSED",
+      "productVerdict": "PASS_ONLINE",
+      "readinessStatus": "INTERACTION_READY",
+      "readinessClass": null,
+      "cleanupResult": "SUCCEEDED",
+      "failureClass": "NONE",
+      "failureDetail": "",
+      "termination": "COMPLETED",
+      "transactionOrDisconnect": false,
+      "dbErrorCode": null,
+      "receiptMissing": false,
+      "orderedMissing": false,
+      "failureClassNone": false,
+      "pollTimedOut": false,
+      "evidence": {
+        "oracleEvaluations": 5,
+        "receiptHint": 1,
+        "orderedHint": 0
+      },
+      "processBefore": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     03:04 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     02:17 next-server (v15.5.20)"
+      },
+      "processAfter": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     03:50 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     03:03 next-server (v15.5.20)"
+      },
+      "apiPidStable": true,
+      "startStateAfter": {
+        "ok": true,
+        "overall": "DEGRADED",
+        "adb": "UP",
+        "bridge": "UP",
+        "activeRun": "DEGRADED",
+        "commandAdmission": "UP"
+      },
+      "ok": true,
+      "index": 2,
+      "wallMs": 47344
+    },
+    {
+      "runId": "run_cf6bed3c-f20d-4ef1-8119-4e4f6ac09831",
+      "status": "completed",
+      "lifecycle": "CLOSED",
+      "productVerdict": "PASS_ONLINE",
+      "readinessStatus": "INTERACTION_READY",
+      "readinessClass": null,
+      "cleanupResult": "SUCCEEDED",
+      "failureClass": "NONE",
+      "failureDetail": "",
+      "termination": "COMPLETED",
+      "transactionOrDisconnect": false,
+      "dbErrorCode": null,
+      "receiptMissing": false,
+      "orderedMissing": false,
+      "failureClassNone": false,
+      "pollTimedOut": false,
+      "evidence": {
+        "oracleEvaluations": 5,
+        "receiptHint": 1,
+        "orderedHint": 0
+      },
+      "processBefore": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     03:51 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     03:04 next-server (v15.5.20)"
+      },
+      "processAfter": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     04:37 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     03:50 next-server (v15.5.20)"
+      },
+      "apiPidStable": true,
+      "startStateAfter": {
+        "ok": true,
+        "overall": "DEGRADED",
+        "adb": "UP",
+        "bridge": "UP",
+        "activeRun": "DEGRADED",
+        "commandAdmission": "UP"
+      },
+      "ok": true,
+      "index": 3,
+      "wallMs": 47112
+    },
+    {
+      "runId": "run_1b101d07-609a-4da3-8780-1e9053cc2e42",
+      "status": "completed",
+      "lifecycle": "CLOSED",
+      "productVerdict": "PASS_ONLINE",
+      "readinessStatus": "INTERACTION_READY",
+      "readinessClass": null,
+      "cleanupResult": "SUCCEEDED",
+      "failureClass": "NONE",
+      "failureDetail": "",
+      "termination": "COMPLETED",
+      "transactionOrDisconnect": false,
+      "dbErrorCode": null,
+      "receiptMissing": false,
+      "orderedMissing": false,
+      "failureClassNone": false,
+      "pollTimedOut": false,
+      "evidence": {
+        "oracleEvaluations": 6,
+        "receiptHint": 1,
+        "orderedHint": 0
+      },
+      "processBefore": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     04:39 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     03:52 next-server (v15.5.20)"
+      },
+      "processAfter": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     05:24 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     04:37 next-server (v15.5.20)"
+      },
+      "apiPidStable": true,
+      "startStateAfter": {
+        "ok": true,
+        "overall": "DEGRADED",
+        "adb": "UP",
+        "bridge": "UP",
+        "activeRun": "DEGRADED",
+        "commandAdmission": "UP"
+      },
+      "ok": true,
+      "index": 4,
+      "wallMs": 46322
+    },
+    {
+      "runId": "run_4a094956-48eb-4b13-a2c2-944beae6da61",
+      "status": "completed",
+      "lifecycle": "CLOSED",
+      "productVerdict": "PASS_ONLINE",
+      "readinessStatus": "INTERACTION_READY",
+      "readinessClass": null,
+      "cleanupResult": "SUCCEEDED",
+      "failureClass": "NONE",
+      "failureDetail": "",
+      "termination": "COMPLETED",
+      "transactionOrDisconnect": false,
+      "dbErrorCode": null,
+      "receiptMissing": false,
+      "orderedMissing": false,
+      "failureClassNone": false,
+      "pollTimedOut": false,
+      "evidence": {
+        "oracleEvaluations": 6,
+        "receiptHint": 1,
+        "orderedHint": 0
+      },
+      "processBefore": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     05:25 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     04:38 next-server (v15.5.20)"
+      },
+      "processAfter": {
+        "apiPid": "7188",
+        "webPid": "7974",
+        "api": "7188  7140 Sat Aug 15 08:39:57 2026     06:14 node dist/server.js",
+        "web": "7974  7949 Sat Aug 15 08:40:44 2026     05:27 next-server (v15.5.20)"
+      },
+      "apiPidStable": true,
+      "startStateAfter": {
+        "ok": true,
+        "overall": "DEGRADED",
+        "adb": "UP",
+        "bridge": "UP",
+        "activeRun": "DEGRADED",
+        "commandAdmission": "UP"
+      },
+      "ok": true,
+      "index": 5,
+      "wallMs": 51536
+    }
+  ]
+}

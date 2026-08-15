@@ -1,0 +1,200 @@
+{
+  "label": "gate20",
+  "finishedAt": "2026-08-15T05:20:15.837Z",
+  "completed": 20,
+  "total": 20,
+  "clean": true,
+  "counters": {
+    "transactionTimeout": 0,
+    "blockedTerminalPollingBug": 0,
+    "cleanupMissing": 0,
+    "orderedMissing": 0,
+    "failureClassNoneOnNonPass": 0,
+    "pass": 20,
+    "fail": 0,
+    "blocked": 0,
+    "pollTimeout": 0
+  },
+  "rows": [
+    {
+      "index": 1,
+      "scenario": "valid",
+      "runId": "run_6bc0ddc7-83c6-4e79-bcca-321ba8eddd6b",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 2,
+      "scenario": "invalid",
+      "runId": "run_feca95da-bfb4-4982-830a-cd820de8206a",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 3,
+      "scenario": "valid",
+      "runId": "run_d245e7a6-2180-4081-9e43-ced6891a44cc",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 4,
+      "scenario": "invalid",
+      "runId": "run_91b9598f-c8ae-48f4-8625-07ffbf223b22",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 5,
+      "scenario": "valid",
+      "runId": "run_8ca0715c-1ad9-4ee1-8379-dd4f2ba24313",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 6,
+      "scenario": "invalid",
+      "runId": "run_ed56ef71-2ade-452a-93c8-5e5bacbfd976",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 7,
+      "scenario": "valid",
+      "runId": "run_701f269a-04a0-4e3f-8630-751c35a14108",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 8,
+      "scenario": "invalid",
+      "runId": "run_3ae2b05a-a457-4cb5-a516-8312e019ef0c",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 9,
+      "scenario": "valid",
+      "runId": "run_47527f4c-c074-4445-99d4-188e5b370750",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 10,
+      "scenario": "invalid",
+      "runId": "run_e771481a-1495-4c23-9957-b8d6ee40a34b",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 11,
+      "scenario": "valid",
+      "runId": "run_cf820810-3129-4ec9-95b3-ee34191bb9b7",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 12,
+      "scenario": "invalid",
+      "runId": "run_7c63f1de-263a-45f8-9905-35f4faa6290a",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 13,
+      "scenario": "valid",
+      "runId": "run_9dc1ac52-8a54-40e8-b1e8-7828d1f5c4d8",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 14,
+      "scenario": "invalid",
+      "runId": "run_a14095f7-126a-4424-ab5a-d2559405ff6c",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 15,
+      "scenario": "valid",
+      "runId": "run_67524633-da64-4cd4-9786-291a911c3c3c",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 16,
+      "scenario": "invalid",
+      "runId": "run_b4642a2f-cd8a-41d1-953f-d55a69bb81a7",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 17,
+      "scenario": "valid",
+      "runId": "run_2f6ceeef-32b1-44a8-b8e4-e8ab920160ab",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 18,
+      "scenario": "invalid",
+      "runId": "run_b0394c0a-fa8c-4179-9934-ef14fc634d43",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 19,
+      "scenario": "valid",
+      "runId": "run_de05e549-442c-4614-8ed9-87db52c919bb",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    },
+    {
+      "index": 20,
+      "scenario": "invalid",
+      "runId": "run_a4385852-8fcd-4789-88d5-04e1e3c2b4d2",
+      "ok": true,
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "SUCCEEDED",
+      "status": "completed"
+    }
+  ]
+}
