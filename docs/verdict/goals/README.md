@@ -29,7 +29,9 @@ invariant’a çevirmek — yeni mekanizma yığmak değil. Ayrıntı:
 **G90.2b READINESS_LIVE_QUALIFIED.** **G90.3 DONE** (3a ∧ 3b, 2026-08-15).
 **D30 COMPLETED** — 100 classified, 99 `PRODUCT_PASS`, 1 `ENV_FAILURE`,
 `UNCLASSIFIED=0`. G90.9 `LIVE_QUALIFIED`. G90.10 BD.3 **implemented**, not
-live-qualified. **NEXT = Host B live qual on fresh prod** (not PID 55798). Formal D60 campaign
+live-qualified. **NEXT = Host B live qual on fresh prod** (not PID 55798).
+BD.3 is controlled adapter-deadline injection representing BACKEND_TIMEOUT —
+not an in-flight backend receive. Formal D60 campaign
 window remains 13 Sep–12 Oct; implementation ≠ campaign start.
 `RELIABILITY_PROVEN` değil.
 

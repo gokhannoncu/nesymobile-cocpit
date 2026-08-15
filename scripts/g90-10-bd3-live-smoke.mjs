@@ -1,53 +1,405 @@
 #!/usr/bin/env node
 /**
- * G90.10 BD.3 live qualification — Host B only.
+ * G90.10 BD.3 live qualification — Host B tour-approval.
  *
- * Refuses the G90.9 qualification lineage (PID 55798 / commit 3770d2a).
- * This is not a D60 campaign and not a login Host A run.
+ * complete-delivery remotes are READ_ONLY, so they cannot arm BD.3.
+ * tour-approval-lifecycle owns the mutation (`approve-tour-request`).
  *
- * Required after: G90.10 commit → fresh build → fresh pnpm prod → new PID.
+ *   0  refuse G90.9 PID / tsx / dirty apps+packages
+ *   1  uninjected Host B baseline
+ *   2  injected Host B BD.3 (controlled adapter-deadline injection)
+ *
+ * Not a D60 campaign. Not an in-flight “backend received the request” claim.
  */
 import { spawnSync } from 'node:child_process'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
+const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
+const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
+const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
+const WORKFLOW = 'nesy.workflow.tour-approval-lifecycle'
+const PROFILE = 'nesy.launch.reuse-session'
+const ROUTE = process.env.VERDICT_ROUTE_CODE ?? '31'
+const SCHEDULE = process.env.VERDICT_SCHEDULE_ID ?? ''
+const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
 const G90_9_PID = '55798'
 const G90_9_COMMIT = '3770d2a'
 
+async function req(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+  const text = await res.text()
+  let json
+  try {
+    json = text ? JSON.parse(text) : {}
+  } catch {
+    json = { raw: text.slice(0, 2000) }
+  }
+  return { status: res.status, body: json }
+}
+
 function sh(cmd, args) {
   return spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout.trim()
+}
+
+function listenPids(port) {
+  return sh('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'])
+    .split(/\s+/)
+    .filter(Boolean)
 }
 
 function commandOf(pid) {
   return sh('ps', ['-p', String(pid), '-o', 'command=']).replace(/\s+/g, ' ')
 }
 
-const apiPid = sh('lsof', ['-nP', '-iTCP:4001', '-sTCP:LISTEN', '-t']).split(/\s+/).filter(Boolean)[0]
-const apiCommand = apiPid ? commandOf(apiPid) : null
-const head = sh('git', ['rev-parse', '--short', 'HEAD'])
-const issues = []
+function processSnapshot() {
+  const apiPid = listenPids(4001)[0] ?? null
+  const webPid = listenPids(4002)[0] ?? null
+  return {
+    apiPid,
+    webPid,
+    apiCommand: apiPid ? commandOf(apiPid) : null,
+    webCommand: webPid ? commandOf(webPid) : null,
+    apiStartedAt: apiPid ? sh('ps', ['-p', apiPid, '-o', 'lstart=']).trim() : null,
+  }
+}
 
-if (!apiCommand || !/dist\/server\.js/.test(apiCommand)) {
-  issues.push(`:4001 is not node dist/server.js (${apiCommand ?? 'none'})`)
+function sourceDirty(paths) {
+  return sh('git', ['status', '--porcelain', '--', ...paths])
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 }
-if (apiPid === G90_9_PID) {
-  issues.push(`PID ${G90_9_PID} is the G90.9 qualification lineage — open a fresh prod after the G90.10 commit`)
+
+function loadApiEnv() {
+  try {
+    const raw = readFileSync(join(REPO, 'apps/api/.env'), 'utf8').replace(/^\uFEFF/, '')
+    for (const line of raw.split('\n')) {
+      const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim())
+      if (match && !process.env[match[1]]) {
+        process.env[match[1]] = match[2].replace(/^["']|["']$/g, '')
+      }
+    }
+  } catch {
+    // schemaStatus reports missing DATABASE_URL
+  }
 }
-if (head === G90_9_COMMIT) {
-  issues.push(`HEAD ${head} is still the G90.9 reference commit — commit BD.3 first`)
+
+function schemaStatus() {
+  loadApiEnv()
+  const res = spawnSync(
+    'pnpm',
+    ['--filter', '@nesy/db', 'exec', 'prisma', 'migrate', 'status', '--schema', 'prisma/schema.prisma'],
+    { cwd: REPO, encoding: 'utf8', env: process.env },
+  )
+  const text = `${res.stdout}\n${res.stderr}`
+  return {
+    ok: res.status === 0 && /Database schema is up to date/i.test(text),
+    text: text.slice(0, 800),
+  }
 }
-if (/tsx watch|src\/server\.ts/.test(apiCommand ?? '')) {
+
+function axesOf(detail, started) {
+  const runtime = detail.runtime ?? {}
+  const run = detail.run ?? {}
+  const provenance = runtime.faultProvenance ?? runtime.fault_provenance ?? null
+  return {
+    runId: run.id ?? run.runId ?? started?.runId ?? null,
+    productVerdict: run.productVerdict ?? run.product_verdict ?? null,
+    cleanupResult: runtime.cleanupResult ?? run.cleanupResult ?? run.cleanup_result ?? null,
+    injectedFault: runtime.injectedFault ?? started?.injectedFault ?? null,
+    expectedClass: runtime.expectedClass ?? started?.expectedClass ?? null,
+    observedClass: runtime.observedClass ?? null,
+    injectedFaultHost: runtime.injectedFaultHost ?? started?.injectedFaultHost ?? null,
+    evaluationFailureClass: runtime.evaluationFailureClass ?? run.evaluationFailureClass ?? null,
+    terminationReason: runtime.terminationReason ?? run.terminationReason ?? run.termination_reason ?? null,
+    resourceReleaseResult: runtime.resourceReleaseResult ?? run.resourceReleaseResult ?? null,
+    faultProvenance: provenance,
+    status: run.status ?? null,
+    lifecycle: runtime.lifecycle ?? run.lifecycle ?? null,
+  }
+}
+
+async function pinPack() {
+  const packs = await req('GET', '/verdict/runtime/domain-packs')
+  const published = (packs.body.items ?? []).filter(
+    (item) => item.publicationState === 'PUBLISHED' && /^sha256:[a-f0-9]{64}$/i.test(String(item.bundleDigest ?? '')),
+  )
+  const preferred = published.filter((item) => item.packKey === 'nesy.courier')
+  const pool = preferred.length > 0 ? preferred : published
+  let pack = null
+  for (const candidate of pool) {
+    if (pack === null || String(candidate.version).localeCompare(String(pack.version), undefined, { numeric: true }) > 0) {
+      pack = candidate
+    }
+  }
+  if (!pack) throw new Error('no pinable published pack')
+  return pack
+}
+
+async function compileWorkflow(pack, workflowRef) {
+  const wf = await req('GET', `/workflows/${encodeURIComponent(workflowRef)}`)
+  const currentVersion = wf.body?.data?.currentVersion ?? {}
+  const compiled = await req('POST', '/verdict/runtime/compile', {
+    workflowRef,
+    workflowIr: { nodes: currentVersion.nodes ?? [], connections: currentVersion.connections ?? [] },
+    domainPackKey: pack.packKey,
+    domainPackVersion: pack.version,
+    domainPackDigest: pack.bundleDigest,
+  })
+  if (!compiled.body.ok) throw new Error(`compile failed ${JSON.stringify(compiled.body.issues ?? compiled.body)}`)
+  return compiled.body
+}
+
+async function pollRun(runId) {
+  const deadline = Date.now() + TIMEOUT_SEC * 1000
+  const terminal = new Set(['completed', 'failed', 'cancelled', 'error', 'blocked'])
+  let detail = {}
+  while (Date.now() < deadline) {
+    const polled = await req('GET', `/verdict/runtime/runs/${encodeURIComponent(runId)}`)
+    detail = polled.body
+    if (terminal.has(String(detail.run?.status))) return detail
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+  }
+  return detail
+}
+
+function pickScheduleId(input) {
+  const scheduleId = input?.scheduleId ?? input?.schedule_id
+  const routeCode = input?.routeCode ?? input?.route_code
+  if (typeof scheduleId !== 'string' || scheduleId.trim() === '') return null
+  if (routeCode !== undefined && String(routeCode) !== ROUTE) return null
+  return scheduleId.trim()
+}
+
+async function resolveScheduleId() {
+  if (SCHEDULE.trim() !== '') return { scheduleId: SCHEDULE.trim(), source: 'VERDICT_SCHEDULE_ID' }
+
+  const web = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
+  try {
+    const snapshot = await fetch(`${web}/api/adb/schedule?serial=${encodeURIComponent(DEVICE)}`)
+    if (snapshot.ok) {
+      const body = await snapshot.json()
+      const fromDevice = body?.schedule?.scheduleId
+      if (typeof fromDevice === 'string' && fromDevice.trim() !== '') {
+        return { scheduleId: fromDevice.trim(), source: 'device-room' }
+      }
+    }
+  } catch {
+    // fall through to run history
+  }
+
+  const history = await req('GET', '/verdict/runtime/runs?limit=40')
+  for (const item of history.body.items ?? []) {
+    const runId = item.correlation?.runId ?? item.run?.id ?? item.run?.runId
+    if (!runId) continue
+    const detail = await req('GET', `/verdict/runtime/runs/${encodeURIComponent(runId)}`)
+    const found = pickScheduleId(detail.body.run?.runInput ?? detail.body.run?.run_input ?? {})
+    if (found) return { scheduleId: found, source: `run-history:${runId}` }
+  }
+  throw new Error(
+    'Host B tour-approval needs scheduleId. Set VERDICT_SCHEDULE_ID, select route 31, or leave a schedule on the DUT. complete-delivery remotes are READ_ONLY and cannot arm BD.3.',
+  )
+}
+
+async function runHostB(label, pack, compiled, scheduleId, fault) {
+  const startBody = {
+    workflowRef: WORKFLOW,
+    deviceId: DEVICE,
+    appId: APP_ID,
+    compiledPlanRef: compiled.compiledPlanRef,
+    compiledPlanHash: compiled.compiledPlanHash,
+    domainPackKey: pack.packKey,
+    domainPackVersion: pack.version,
+    domainPackDigest: pack.bundleDigest,
+    profileKey: PROFILE,
+    inputs: {
+      routeCode: ROUTE,
+      scheduleId,
+      sessionCorrelationId: `g90-10-bd3-${label}-${Date.now()}`,
+    },
+    ...(fault === null
+      ? {}
+      : { injectedFault: fault.injectedFault, injectedFaultHost: fault.injectedFaultHost }),
+  }
+  const started = await req('POST', '/verdict/runtime/runs', startBody)
+  const start = started.body
+  const runId = start.run?.runId ?? start.runId
+  if (!runId) throw new Error(`${label} start returned no runId ${JSON.stringify(start).slice(0, 800)}`)
+  const detail = await pollRun(runId)
+  return { start, axes: axesOf(detail, start) }
+}
+
+function judgeBaseline(row) {
+  const isolation = isolationOf(row)
+  const failures = []
+  if (row.axes.injectedFault != null) failures.push(`injectedFault=${row.axes.injectedFault}`)
+  if (row.axes.observedClass != null) failures.push(`observedClass filled on uninjected (${row.axes.observedClass})`)
+  if (row.axes.cleanupResult !== 'SUCCEEDED') failures.push(`cleanup=${row.axes.cleanupResult}`)
+  const verdict = row.axes.productVerdict
+  if (verdict !== 'PASS_ONLINE') failures.push(`expected business result PASS_ONLINE, got ${verdict}`)
+  if (!isolation.clean) failures.push(`isolation dirty: ${isolation.failures.join(', ')}`)
+  return { ok: failures.length === 0, failures, expectedBusiness: verdict, isolation }
+}
+
+function isolationOf(row) {
+  const failures = []
+  if (row.axes.cleanupResult !== 'SUCCEEDED') failures.push(`cleanup=${row.axes.cleanupResult}`)
+  if (row.axes.lifecycle !== 'CLOSED' && row.axes.status !== 'completed') {
+    failures.push(`not closed (${row.axes.lifecycle}/${row.axes.status})`)
+  }
+  return { clean: failures.length === 0, failures }
+}
+
+function judgeBd3(row) {
+  const isolation = isolationOf(row)
+  const failures = []
+  const provenance = row.axes.faultProvenance ?? {}
+  if (row.start.injectedFault !== 'BACKEND_TIMEOUT') failures.push(`start.injectedFault=${row.start.injectedFault}`)
+  if (row.axes.injectedFault !== 'BACKEND_TIMEOUT') failures.push(`readback.injectedFault=${row.axes.injectedFault}`)
+  if (row.axes.expectedClass !== 'BACKEND_TIMEOUT') failures.push(`expectedClass=${row.axes.expectedClass}`)
+  if (row.axes.observedClass !== 'BACKEND_TIMEOUT') failures.push(`observedClass=${row.axes.observedClass}`)
+  if (row.axes.productVerdict === 'FAIL_PRODUCT' || String(row.axes.productVerdict ?? '').startsWith('FAIL_')) {
+    failures.push(`PRODUCT_FAIL ${row.axes.productVerdict}`)
+  }
+  if (row.axes.cleanupResult !== 'SUCCEEDED') failures.push(`cleanup=${row.axes.cleanupResult}`)
+  if (provenance.phase !== 'EFFECT_OBSERVED') failures.push(`provenance.phase=${provenance.phase}`)
+  if (provenance.actuallyFired !== true) failures.push(`actuallyFired=${provenance.actuallyFired}`)
+  if (provenance.abortKind !== 'DEADLINE') failures.push(`abortKind=${provenance.abortKind}`)
+  const chain = [provenance.requestedAtMs, provenance.armedAtMs, provenance.triggeredAtMs, provenance.effectObservedAtMs]
+  if (chain.some((item) => item == null)) failures.push(`provenance timestamps incomplete ${JSON.stringify(chain)}`)
+  if (!isolation.clean) failures.push(`isolation dirty: ${isolation.failures.join(', ')}`)
+  return { ok: failures.length === 0, failures, provenance, isolation }
+}
+
+async function classifierIndependence(row) {
+  const { observeInjectedClass } = await import(
+    new URL('../packages/workflow-contract/dist/index.js', import.meta.url).href
+  )
+  const actionResult =
+    row.axes.terminationReason === 'UNKNOWN_ACTION_EFFECT' || row.axes.productVerdict === 'INCONCLUSIVE'
+      ? 'UNKNOWN_EFFECT'
+      : null
+  const recomputed = observeInjectedClass({
+    actionResult,
+    provenance: row.axes.faultProvenance ?? {},
+  })
+  const failures = []
+  if (recomputed !== 'BACKEND_TIMEOUT') {
+    failures.push(`classifier without injectedFault returned ${recomputed}`)
+  }
+  if (recomputed !== row.axes.observedClass) {
+    failures.push(`recomputed ${recomputed} != persisted observedClass ${row.axes.observedClass}`)
+  }
+  return { ok: failures.length === 0, failures, recomputed, usedInjectedFault: false }
+}
+
+const processSnap = processSnapshot()
+const issues = []
+if (!processSnap.apiCommand || !/dist\/server\.js/.test(processSnap.apiCommand)) {
+  issues.push(`:4001 is not node dist/server.js (${processSnap.apiCommand ?? 'none'})`)
+}
+if (processSnap.apiPid === G90_9_PID) {
+  issues.push(`PID ${G90_9_PID} is the closed G90.9 lineage`)
+}
+if (/tsx watch|src\/server\.ts/.test(processSnap.apiCommand ?? '')) {
   issues.push(':4001 is tsx/dev')
 }
-
-console.log(JSON.stringify({ apiPid, apiCommand, head, host: 'B', injectedFault: 'BACKEND_TIMEOUT' }, null, 2))
+if (!processSnap.webCommand || /next dev/.test(processSnap.webCommand)) {
+  issues.push(`:4002 is not next start (${processSnap.webCommand ?? 'none'})`)
+}
+const codeDirty = sourceDirty(['apps', 'packages', 'domain-packs'])
+if (codeDirty.length > 0) issues.push(`G90.10 code dirty: ${codeDirty.join(' | ')}`)
+const head = sh('git', ['rev-parse', 'HEAD'])
+const headShort = sh('git', ['rev-parse', '--short', 'HEAD'])
+if (headShort === G90_9_COMMIT || head.startsWith(G90_9_COMMIT)) {
+  issues.push(`HEAD ${headShort} is still the G90.9 reference commit`)
+}
 if (issues.length > 0) {
-  console.error('BD.3 live smoke preflight failed:')
+  console.error('G90.10 BD.3 preflight failed:')
   for (const issue of issues) console.error(`  ${issue}`)
   process.exit(2)
 }
 
-console.error('BD.3 live smoke is ready for Host B (complete-delivery / tour-approval).')
-console.error('Prepared-session Host B run is not started by this preflight.')
-process.exit(3)
+const schema = schemaStatus()
+const identity = {
+  gitCommit: head,
+  gitCommitShort: headShort,
+  workingTreeClean: sourceDirty(['apps', 'packages', 'scripts', 'domain-packs']).length === 0,
+  g90_10ImplementationClean: codeDirty.length === 0,
+  runnerDirty: sourceDirty(['scripts/g90-10-bd3-live-smoke.mjs']).length > 0,
+  apiCommand: processSnap.apiCommand,
+  apiPid: processSnap.apiPid,
+  apiStartedAt: processSnap.apiStartedAt,
+  webCommand: processSnap.webCommand,
+  webPid: processSnap.webPid,
+  dbSchema: schema.ok ? 'up-to-date' : `unknown: ${schema.text}`,
+  deviceId: DEVICE,
+  host: 'B',
+  workflowRef: WORKFLOW,
+  profileKey: PROFILE,
+  injectionModel: 'controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT',
+  g90_9LineageClosed: {
+    gitCommit: '3770d2af4eca0cc170560562130b6632d635ad2a',
+    apiPid: 55798,
+    note: 'G90.9 qualification evidence only. Process was stopped before this lineage.',
+  },
+}
+
+console.log('G90.10 BD.3 identity')
+console.log(JSON.stringify(identity, null, 2))
+
+const pack = await pinPack()
+identity.packVersion = pack.version
+identity.packKey = pack.packKey
+identity.packDigest = pack.bundleDigest
+const compiled = await compileWorkflow(pack, WORKFLOW)
+identity.compiledPlanRef = compiled.compiledPlanRef
+identity.compiledPlanHash = compiled.compiledPlanHash
+const resolvedSchedule = await resolveScheduleId()
+identity.routeCode = ROUTE
+identity.scheduleId = resolvedSchedule.scheduleId
+identity.scheduleIdSource = resolvedSchedule.source
+const scheduleId = resolvedSchedule.scheduleId
+
+console.log('\n=== Host B uninjected baseline ===')
+const baseline = await runHostB('baseline', pack, compiled, scheduleId, null)
+const baselineJudge = judgeBaseline(baseline)
+console.log(JSON.stringify({ start: baseline.start, axes: baseline.axes, judge: baselineJudge }, null, 2))
+if (!baselineJudge.ok) {
+  console.error('Host B uninjected baseline FAILED')
+  process.exit(3)
+}
+
+console.log('\n=== Host B BD.3 controlled adapter-deadline injection ===')
+const injected = await runHostB('bd3', pack, compiled, scheduleId, {
+  injectedFault: 'BACKEND_TIMEOUT',
+  injectedFaultHost: 'B',
+})
+const injectedJudge = judgeBd3(injected)
+const independence = await classifierIndependence(injected)
+console.log(JSON.stringify({ start: injected.start, axes: injected.axes, judge: injectedJudge, independence }, null, 2))
+if (!injectedJudge.ok || !independence.ok) {
+  console.error('Host B BD.3 FAILED')
+  process.exit(4)
+}
+
+const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')
+const out = join(REPO, 'docs/verdict/goals', `G90-10-bd3-live-smoke-${stamp}.json`)
+const report = {
+  status: 'LIVE_QUALIFIED',
+  closedAt: new Date().toISOString(),
+  injectionModel: identity.injectionModel,
+  identity,
+  baseline: { axes: baseline.axes, start: baseline.start, judge: baselineJudge },
+  bd3: { axes: injected.axes, start: injected.start, judge: injectedJudge, independence },
+  note: 'controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT. Not an in-flight backend receive. D60 campaign NOT_STARTED. NEXT = BD.2.',
+}
+writeFileSync(out, JSON.stringify(report, null, 2) + '\n')
+console.log(`\nG90.10 BD.3 LIVE_QUALIFIED  ${out}`)

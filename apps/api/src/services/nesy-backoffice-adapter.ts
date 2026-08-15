@@ -54,11 +54,13 @@ export interface NesyBackofficeAdapterOptions {
   audit?: (record: BackofficeAuditRecord) => void
   clock?: () => number
   /**
-   * G90.10 BD.3. When this returns a plan, the adapter still resolves the
+   * G90.10 BD.3 — controlled adapter-deadline injection representing
+   * BACKEND_TIMEOUT. When this returns a plan, the adapter still resolves the
    * operation and credentials, then hangs until the existing AbortController
-   * deadline fires. The mutation is not sent — a lost in-flight write would
-   * invite a second approval. The observed terminal is still `UNKNOWN_EFFECT`
-   * from `AbortError`, not a synthesized class.
+   * deadline fires. The mutation is not dispatched: this is not an in-flight
+   * “backend received the request and timed out” claim. The observed terminal
+   * is still `UNKNOWN_EFFECT` from `AbortError`, not a synthesized class, and
+   * is not remapped to NO_EFFECT just because the injector withheld the wire.
    */
   timeoutInjection?: (input: BackofficeCallInput) => BackofficeTimeoutInjection | null
   onTimeoutInjected?: (event: {

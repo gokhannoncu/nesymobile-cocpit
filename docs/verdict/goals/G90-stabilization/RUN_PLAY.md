@@ -491,6 +491,7 @@ Timeout/sleep/jest yok. RELIABILITY_PROVEN değil.
 G90.2b READINESS_LIVE_QUALIFIED. G90.3 DONE.
 G90.9 LIVE_QUALIFIED: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
 G90.10 BD.3 implemented (observeInjectedClass does not take injectedFault).
+Injection model: controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT.
 NEXT = BD.3 Host B live qual on fresh prod; then BD.2 → BD.6 → BD.5 → BD.4 → BD.1.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 J0–J5 ladder değil. İkinci 100-run login yok.
@@ -565,7 +566,7 @@ golden soak değil, fault’un yaşayabileceği tek yer.
 |---|---|---|---|---|---|
 | BD.1 | Process kill | A — D30 login, jestten sonra / continue gate öncesi | `am force-stop <pkg>` (user). pid + `deathProvenance=PROCESS_DEATH_FORCE_STOP` zorunlu. | `PROCESS_DEATH` | Gesture auto-retry; sessiz `PRODUCT_PASS`; provenance’siz “process death test edildi” |
 | BD.2 | Network disconnect | A — PIN submit civarı **veya** B — teslimat submit | Airplane / USB net / kayıtlı lab kesici; enjektör `injectedFault=NETWORK_DISCONNECT` | `NETWORK_PARTITION` | `PRODUCT_FAIL`; `ENV_FAILURE` torbası (enjeksiyon kaydı varken) |
-| BD.3 | Backend timeout | B — remote REQUIRED veya EVENTUAL oy kullanan adım (complete-delivery / tour-approval) | Backoffice’i düşür veya adapter deadline’ı zorla | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL` |
+| BD.3 | Backend timeout | B — mutation remote (`tour-approval` `approve-tour-request`). `complete-delivery` remotes `READ_ONLY`; arm olmaz. | **controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT** — wire dispatch tutulur, mevcut `AbortController` yolu `UNKNOWN_EFFECT` üretir. “Backend isteği aldı ve timeout oldu” iddiası değildir. | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL`; injector bilgisinden `NO_EFFECT` remap |
 | BD.4 | Dialog / overlay | A — launch `permissionDialog` veya koşu içi overlay | Sistem dialog / pack interrupt surface | `DIALOG_INTERRUPT` | Overlay’e tap; interrupt key varken `UI_NOT_ACTIONABLE`; 30s timeout |
 | BD.5 | Duplicate callback | A — login fact **veya** B — delivery fact | Aynı WS event / seq tekrar; veya çift emit | `DUPLICATE_SUPPRESSED` | İki verdict; `TEST_DATA_CONTAMINATION` (bu o değil) |
 | BD.6 | Offline queue | B — process-parcel / complete-delivery LOCAL queue | Ağ yok + kuyruk yazımı; `nesy.recovery.queue` okunabilir | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` |
@@ -600,7 +601,7 @@ onları iptal etmez; onları **sınar**.
 |---|---|---|---|
 | BD.1 | Jest sırasında pid kararlı değilse mutation tamamlanmış sayılmaz | Yok. `UNKNOWN_EFFECT`. Restart sonrası start invariant yeniden. | Otomatik ikinci gesture |
 | BD.2 | Remote fact yokken Final PASS yok | Politika `PENDING_REMOTE` / queue; tek deadline | Sleep + tekrar tap |
-| BD.3 | Adapter timeout = remote yok, iş fail değil | Tek retry yok (`UNKNOWN_EFFECT` çift onay riski) | HTTP 2xx’i iş sanmak |
+| BD.3 | Controlled adapter-deadline = remote yok, iş fail değil. `UNKNOWN_EFFECT` muhafazakâr kalır. | Tek retry yok (`UNKNOWN_EFFECT` çift onay riski) | HTTP 2xx’i iş sanmak; injector wire’a gitmedi diye `NO_EFFECT` |
 | BD.4 | Beklenen interrupt, beklenen hedefi ezmez | Interrupt key ile dur; pack politikası | Overlay merkezine tap |
 | BD.5 | Aynı occurrence’a ikinci fact oy vermez | Drop + sayaç | Yeni reducer / yeni event adı |
 | BD.6 | LOCAL queue fact varsa remote yokken `OFFLINE_QUEUED` | Yok; kuyruk zaten politika | Remote gelene kadar wait şişirme |

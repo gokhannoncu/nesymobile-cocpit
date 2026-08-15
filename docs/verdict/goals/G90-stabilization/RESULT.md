@@ -161,11 +161,16 @@ enjektör kalifikasyonu değildir.
 `EFFECT_OBSERVED` + `abortKind=DEADLINE` + `ADAPTER_DEADLINE_ABORT`.
 
 READ_ONLY / login remote arm olmaz — G90.9 Smoke B davranışı korunur.
-Host B mutation remote arm olur; adapter deadline asıl `AbortError` yolundan
-geçer. `PRODUCT_FAIL` yok; executor `UNKNOWN_ACTION_EFFECT` → `INCONCLUSIVE`.
+Host B mutation remote arm olur.
 
-Live qual: G90.10 commit → fresh build → fresh `pnpm prod` (PID 55798 değil)
-→ Host B. Formal D60 kampanyası başlamadı.
+BD.3 tanımı: **controlled adapter-deadline injection representing BD.3
+BACKEND_TIMEOUT**. Wire dispatch bilinçli olarak tutulur; mevcut
+`AbortController` yolu `UNKNOWN_EFFECT` üretir. “Backend isteği aldı ve
+timeout oldu” iddiası değildir. `UNKNOWN_EFFECT` muhafazakâr kalır —
+injector wire’a gitmediğini bilse bile runtime `NO_EFFECT`e çevrilmez.
+
+`PRODUCT_FAIL` yok; executor `UNKNOWN_ACTION_EFFECT` → `INCONCLUSIVE`.
+Formal D60 kampanyası başlamadı.
 
 ## 1.2 Phase 10 plumbing + G90 live golden
 

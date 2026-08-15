@@ -17,9 +17,12 @@ export function isBackendTimeoutInjectionTarget(spec: { effectClass: EffectClass
 /**
  * Classify a backend-timeout observation.
  *
- * `BACKEND_TIMEOUT` is returned only when a deadline abort was actually
- * observed after the injector triggered. A planned fault with no effect,
- * or a transport loss that was not the injector, stays unclassified here.
+ * G90.10 BD.3 is controlled adapter-deadline injection representing
+ * BACKEND_TIMEOUT. It does not claim the backend received a request and
+ * timed out in flight. `BACKEND_TIMEOUT` is returned only when a deadline
+ * abort was actually observed after the injector triggered. A planned fault
+ * with no effect, or a transport loss that was not the injector, stays
+ * unclassified here.
  */
 export function observeInjectedClass(input: {
   actionResult: string | null | undefined;
