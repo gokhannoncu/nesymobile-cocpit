@@ -26,7 +26,7 @@ export const OBSERVED_ABORT_KINDS = ["DEADLINE", "TRANSPORT", "NONE"] as const;
 
 export type ObservedAbortKind = (typeof OBSERVED_ABORT_KINDS)[number];
 
-export const FAULT_EFFECT_KINDS = ["ADAPTER_DEADLINE_ABORT"] as const;
+export const FAULT_EFFECT_KINDS = ["ADAPTER_DEADLINE_ABORT", "HOST_TRANSPORT_CUT"] as const;
 
 export type FaultEffectKind = (typeof FAULT_EFFECT_KINDS)[number];
 
@@ -79,4 +79,22 @@ export function advanceFaultInjectionPhase(
 
 export function isFaultInjectionPhase(value: unknown): value is FaultInjectionPhase {
   return typeof value === "string" && (FAULT_INJECTION_PHASES as readonly string[]).includes(value);
+}
+
+/**
+ * Pick the provenance that actually advanced. Classification still reads the
+ * observation, not `injectedFault` — this only chooses which recorded effect
+ * to show the observer when a run owns more than one inert session.
+ */
+export function selectObservedFaultProvenance(
+  ...candidates: readonly FaultInjectionProvenance[]
+): FaultInjectionProvenance {
+  if (candidates.length === 0) return emptyFaultInjectionProvenance();
+  return candidates.reduce((best, next) => {
+    const bestRank = best.phase === null ? 0 : PHASE_RANK[best.phase];
+    const nextRank = next.phase === null ? 0 : PHASE_RANK[next.phase];
+    if (nextRank > bestRank) return next;
+    if (nextRank === bestRank && next.actuallyFired && !best.actuallyFired) return next;
+    return best;
+  });
 }

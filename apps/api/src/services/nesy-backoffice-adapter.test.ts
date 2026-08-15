@@ -296,6 +296,49 @@ describe('nesy back-office adapter', () => {
     expect(events).toEqual(['TRIGGERED', 'EFFECT_OBSERVED'])
   })
 
+  it('cuts host transport immediately when a network-disconnect injection is armed', async () => {
+    const events: string[] = []
+    let fetchCalls = 0
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () => {
+        fetchCalls += 1
+        throw new Error('must not reach the network when the transport injector is armed')
+      },
+      transportInjection: () => ({ cut: true }),
+      onTransportInjected: (event) => events.push(event.kind),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.approve-tour-request', inputs: { approvalRequest: 's1' }, timeoutMs: 20_000 },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('UNKNOWN_EFFECT')
+    expect(result.terminal.error).toMatch(/injected host transport cut/)
+    expect(fetchCalls).toBe(0)
+    expect(events).toEqual(['TRIGGERED', 'EFFECT_OBSERVED'])
+  })
+
+  it('refuses to arm timeout and transport injectors on the same call', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () => {
+        throw new Error('must not fetch')
+      },
+      timeoutInjection: () => ({ timeoutMs: 20 }),
+      transportInjection: () => ({ cut: true }),
+    })
+
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.approve-tour-request', inputs: { approvalRequest: 's1' }, timeoutMs: 20_000 },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('FAILED')
+    expect(result.terminal.error).toMatch(/conflicting timeout and transport/)
+  })
+
   it('reports a lost call as UNKNOWN_EFFECT so the mutation is not retried blind', async () => {
     const adapter = createNesyBackofficeAdapter({
       credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
@@ -797,6 +840,152 @@ describe('remote step runtime', () => {
       runId: 'run-1',
       bundle,
       backendTimeout: session,
+      adapter: {
+        call: async (input) => {
+          called = true
+          expect(input.operationRef).toBe('nesy.backoffice.reject-tour-request')
+          return { terminal: { status: 'SUCCEEDED' }, normalizedResponse: {} }
+        },
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      runInputs: { scheduleId: '11-31-20260815-1' },
+      clock: () => 2_000,
+    })
+
+    const cleanupStep = {
+      planStepId: 'release-approval-fixture',
+      kind: 'CLEANUP' as const,
+      sourceMapRef: 'src:cleanup',
+      timeoutMs: 40_000,
+      next: null,
+      capabilityRequirements: [],
+      evidenceRequirements: [],
+      params: {
+        spec: {
+          adapterRef: 'nesy.backoffice',
+          operationRef: 'nesy.backoffice.reject-tour-request',
+          role: 'TEARDOWN',
+          effectClass: 'IDEMPOTENT_MUTATION',
+          idempotencyClass: 'KEYED',
+          idempotencyKey: 'run.input.scheduleId',
+          inputBindings: [{ name: 'approvalRequest', source: { kind: 'entityRef' } }],
+          outputFactBindings: [],
+          timeoutPolicy: { timeoutMs: 30_000, maxAttempts: 1 },
+          entityBinding: { type: 'TOUR_APPROVAL_REQUEST', id: 'run.input.scheduleId' },
+          reconciliationPolicy: 'RECONCILE_BEFORE_RELEASE',
+          auditPolicy: { recordRequest: true, recordResponse: true, redactFields: [] },
+        },
+      },
+    }
+
+    const result = await runtime.execute(cleanupStep as never, STEP_CONTEXT as never)
+    expect(result).toMatchObject({ succeeded: true, actionResult: 'SUCCEEDED' })
+    expect(called).toBe(true)
+    expect(session.snapshot().triggerPoint).toBe(armedPoint)
+    expect(session.snapshot().phase).toBe('EFFECT_OBSERVED')
+    expect(session.injectionForCall('nesy.backoffice.reject-tour-request')).toBeNull()
+  })
+
+  it('does not arm BD.2 on a READ_ONLY validation', async () => {
+    const { createNetworkDisconnectSession } = await import('./network-disconnect-injector.js')
+    const session = createNetworkDisconnectSession({
+      injectedFault: 'NETWORK_DISCONNECT',
+      clock: () => 1_000,
+    })
+    session.request()
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      networkDisconnect: session,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'SUCCEEDED' },
+          normalizedResponse: { approval: { statusIsApproved: true } },
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      clock: () => 1_000,
+    })
+
+    await runtime.execute(step as never, STEP_CONTEXT as never)
+    expect(session.snapshot().phase).toBe('REQUESTED')
+    expect(session.snapshot().actuallyFired).toBe(false)
+  })
+
+  it('arms BD.2 on a mutation remote and leaves observedClass to the classifier', async () => {
+    const { createNetworkDisconnectSession } = await import('./network-disconnect-injector.js')
+    const session = createNetworkDisconnectSession({
+      injectedFault: 'NETWORK_DISCONNECT',
+      clock: () => 1_000,
+    })
+    session.request()
+    const mutationStep = {
+      ...step,
+      planStepId: 'approve',
+      params: {
+        spec: {
+          adapterRef: 'nesy.backoffice',
+          operationRef: 'nesy.backoffice.approve-tour-request',
+          role: 'SETUP',
+          effectClass: 'IDEMPOTENT_MUTATION',
+          idempotencyClass: 'KEYED',
+          idempotencyKey: 'approvalRequest',
+          inputBindings: [{ name: 'approvalRequest', source: { kind: 'runInput', path: 'approvalRequestCode' } }],
+          outputFactBindings: [],
+          timeoutPolicy: { timeoutMs: 20_000, maxAttempts: 1 },
+          reconciliationPolicy: 'RECONCILE_ON_UNKNOWN',
+          auditPolicy: { recordRequest: true, recordResponse: true, redactFields: [] },
+        },
+      },
+    }
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      networkDisconnect: session,
+      adapter: {
+        call: async () => ({
+          terminal: { status: 'UNKNOWN_EFFECT', error: 'injected host transport cut; effect unknown' },
+          normalizedResponse: {},
+        }),
+      },
+      variables: new BridgeFlowRunContext(),
+      evidence: new BridgeFlowEvidenceRuntime(),
+      clock: () => 1_000,
+    })
+
+    const result = await runtime.execute(mutationStep as never, STEP_CONTEXT as never)
+    expect(result).toMatchObject({ succeeded: false, actionResult: 'UNKNOWN_EFFECT' })
+    expect(session.snapshot().phase).toBe('ARMED')
+    expect(session.snapshot().actuallyFired).toBe(false)
+  })
+
+  it('does not re-arm BD.2 on a TEARDOWN cleanup', async () => {
+    const { createNetworkDisconnectSession } = await import('./network-disconnect-injector.js')
+    const session = createNetworkDisconnectSession({
+      injectedFault: 'NETWORK_DISCONNECT',
+      clock: () => 1_000,
+    })
+    session.request()
+    session.tryArm({
+      planStepId: 'dispatcher-approves',
+      occurrenceId: 'occ-approve',
+      spec: {
+        effectClass: 'IDEMPOTENT_MUTATION',
+        operationRef: 'nesy.backoffice.approve-tour-request',
+        timeoutPolicy: { timeoutMs: 30_000, maxAttempts: 1 },
+      },
+    })
+    session.markTriggered('nesy.backoffice.approve-tour-request')
+    session.markTransportObserved()
+    const armedPoint = session.snapshot().triggerPoint
+
+    let called = false
+    const runtime = createPackRemoteStepRuntime({
+      runId: 'run-1',
+      bundle,
+      networkDisconnect: session,
       adapter: {
         call: async (input) => {
           called = true

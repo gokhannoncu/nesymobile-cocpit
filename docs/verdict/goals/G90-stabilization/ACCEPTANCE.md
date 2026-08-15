@@ -4,7 +4,7 @@
 gateId: verdict-internal-stable
 status: SPEC_LOCKED
 createdAt: "2026-08-13 15:34:00 +03"
-lastUpdatedAt: "2026-08-14 17:04:00 +03"
+lastUpdatedAt: "2026-08-15 19:48:00 +03"
 parentGoal: G90-stabilization
 resultField: internallyStable
 values: "YES | NO | PILOT_ONLY"
@@ -133,6 +133,12 @@ Sınıf doğru, iş durumu yanlışsa kapı fail (D60 köşegeni yetmez).
 
 Reconnect D60 `NETWORK_PARTITION`’ın dönüş bacağıdır. STABLE’da ayrıca
 koşulur; D60 kampanyasını genişletmez.
+
+G90.10 BD.2 `LIVE_QUALIFIED` (implementation qualification, G4 değil):
+`LIVE_INJECTION` ∧ `CLEANUP` ∧ `ISOLATION`. İlk qual reconnect business
+recovery istemez. Ek barlar: `PRODUCT_FAIL=false`; automatic second
+gesture=false; armed injector leak=false; next-run contamination=false.
+Formal D60 kampanyası `NOT_STARTED`.
 
 Her senaryo: ≥5 eşleşen koşu, `UNCLASSIFIED=0`, beklenen state assertion
 (SDK query / Room / isolation fact).

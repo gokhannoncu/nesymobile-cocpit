@@ -14,15 +14,21 @@ export function isBackendTimeoutInjectionTarget(spec: { effectClass: EffectClass
   return spec.effectClass !== "READ_ONLY";
 }
 
+export function isNetworkDisconnectInjectionTarget(spec: { effectClass: EffectClass }): boolean {
+  return spec.effectClass !== "READ_ONLY";
+}
+
 /**
- * Classify a backend-timeout observation.
+ * Classify an injected-fault observation.
  *
- * G90.10 BD.3 is controlled adapter-deadline injection representing
- * BACKEND_TIMEOUT. It does not claim the backend received a request and
- * timed out in flight. `BACKEND_TIMEOUT` is returned only when a deadline
- * abort was actually observed after the injector triggered. A planned fault
- * with no effect, or a transport loss that was not the injector, stays
- * unclassified here.
+ * This function must not accept `injectedFault` or `expectedClass`. The two
+ * orthogonal signatures are:
+ *
+ *   DEADLINE + ADAPTER_DEADLINE_ABORT → BACKEND_TIMEOUT
+ *   TRANSPORT + HOST_TRANSPORT_CUT    → NETWORK_PARTITION
+ *
+ * A planned fault with no effect, a mixed signature, or a transport loss
+ * that was not the injector stays unclassified here.
  */
 export function observeInjectedClass(input: {
   actionResult: string | null | undefined;
@@ -32,7 +38,11 @@ export function observeInjectedClass(input: {
   if (actionResult !== "UNKNOWN_EFFECT") return null;
   if (provenance.phase !== "EFFECT_OBSERVED") return null;
   if (!provenance.actuallyFired) return null;
-  if (provenance.abortKind !== "DEADLINE") return null;
-  if (provenance.effectKind !== "ADAPTER_DEADLINE_ABORT") return null;
-  return "BACKEND_TIMEOUT";
+  if (provenance.abortKind === "DEADLINE" && provenance.effectKind === "ADAPTER_DEADLINE_ABORT") {
+    return "BACKEND_TIMEOUT";
+  }
+  if (provenance.abortKind === "TRANSPORT" && provenance.effectKind === "HOST_TRANSPORT_CUT") {
+    return "NETWORK_PARTITION";
+  }
+  return null;
 }

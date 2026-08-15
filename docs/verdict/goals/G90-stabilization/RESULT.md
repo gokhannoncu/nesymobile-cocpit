@@ -13,13 +13,14 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 17:41:00 +03"
+lastUpdatedAt: "2026-08-15 19:48:00 +03"
 timezone: "Europe/Istanbul"
 runPlayFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
 readinessFile: "docs/verdict/goals/G90-stabilization/READINESS.md"
 joinFile: "docs/verdict/goals/G90-stabilization/JOIN.md"
-nextStep: G90.10_BD3_LIVE_QUAL
-d60Implementation: G90.10_BD3_IMPLEMENTED
+nextStep: G90.10_BD2
+d60Implementation: G90.10_BD3_LIVE_QUALIFIED
+g90_10Bd3LiveSmoke: "docs/verdict/goals/G90-10-bd3-live-smoke-2026-08-151626.json"
 g90_9LiveSmoke: "docs/verdict/goals/G90-9-live-smoke-2026-08-151329.json"
 d60CampaignStatus: NOT_STARTED
 d14Gate: "G90.2b + G90.3 closed 2026-08-15 (ahead of 2026-08-27)"
@@ -234,8 +235,38 @@ BD.3 ISOLATION        ✅
 BD.3 LIVE_QUALIFIED   ✅
 ```
 
-Injector kodu değişmedi. Formal D60 kampanyası başlamadı. BD.2 başlamadı.
+Injector kodu değişmedi. Formal D60 kampanyası başlamadı.
 PID 29171’e bu binary için ekstra kanıt için dokunulmaz.
+
+### 1.1d G90.10 BD.2 injector (implemented, not live-qualified)
+
+Spec amendment first (RUN_PLAY §16–17, 2026-08-15 19:48): Host B is a
+mutation-capable remote host. Initial live qualification host is
+`tour-approval` / `approve-tour-request@dispatcher-approves`. Login remote
+OPTIONAL; `complete-delivery` remotes READ_ONLY; `process-parcel` reserved
+for BD.6. tour-approval is not a D30 slice. Formal D60 campaign
+`NOT_STARTED`.
+
+Injection model: **controlled host-side transport cut representing BD.2
+NETWORK_DISCONNECT**. Airplane / USB and Host A PIN first qualification
+are closed. `observeInjectedClass` still does not accept `injectedFault`
+or `expectedClass`.
+
+```text
+NETWORK_PARTITION IFF
+  actionResult  = UNKNOWN_EFFECT
+  phase         = EFFECT_OBSERVED
+  actuallyFired = true
+  abortKind     = TRANSPORT
+  effectKind    = HOST_TRANSPORT_CUT
+```
+
+Orthogonal to BD.3: `DEADLINE + ADAPTER_DEADLINE_ABORT` stays
+`BACKEND_TIMEOUT`. LIVE_QUALIFIED still requires LIVE_INJECTION ∧ CLEANUP
+∧ ISOLATION. G4 reconnect is not a BD.2 LIVE_QUALIFIED bar.
+
+PID 38870 is the pre-implementation design runtime. BD.2 live qualification
+must use a new commit and a new PID after this binary.
 
 ## 1.2 Phase 10 plumbing + G90 live golden
 
@@ -259,8 +290,8 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.10` BD.3 LIVE_QUALIFIED (`291553b` / PID 29171 / `run_4c8bed03`) |
 | Last attempted step | G90.10 BD.3 live qual — passed |
-| Last update | `2026-08-15 19:27:00 +03` |
-| Recovery instruction | `NEXT = BD.2. Do not restart PID 29171 for extra evidence of this binary. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last update | `2026-08-15 19:48:00 +03` |
+| Recovery instruction | `NEXT = BD.2 live qual on a fresh PID. Do not bind qualification to PID 38870 or 29171. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -510,7 +541,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | G90.7 D30 kapanış | `DONE` | bu dosya; 2026-08-15 |
 | G90.8 D60 spec kilidi | `DONE` | `RUN_PLAY.md` §15–18 |
 | G90.9 injectedFault alanı | `LIVE_QUALIFIED` | 2026-08-15 fresh prod `3770d2a`; Smoke A/B; formal kampanya değil |
-| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3 LIVE_QUALIFIED; BD.2/6/5/4/1 yok |
+| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3 LIVE_QUALIFIED; BD.2 implemented, not live-qualified; BD.6/5/4/1 yok |
 | G90.11 D60 matrisi | `NOT_STARTED` | |
 | G90.12 D60 kapanış | `NOT_STARTED` | |
 | G90.13 D90 spec kilidi | `DONE` | `RUN_PLAY.md` §19–22 |
@@ -552,7 +583,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | D30_ENV_PRISMA_DISCONNECT | LOW | `BACKLOG` | #9; sınıflı; cleanup+isolation OK; 100/100 PASS peşinde değil |
 | CP3-DUT | EXT | `DEFERRED` | Track B |
 | KILL_RECOVERY | EXT | `SPEC_LOCKED` | D60 BD.1; kampanya artık ungated |
-| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3 LIVE_QUALIFIED; NEXT=BD.2; formal kampanya 13 Eylül |
+| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3 LIVE_QUALIFIED; BD.2 implemented, not live-qualified; formal kampanya 13 Eylül |
 | SECOND_DUT | MEDIUM | `OPEN` | D90 `pilotStable=YES` için ≥2 serial |
 
 ## 9. Next window handoff
@@ -561,7 +592,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 D30 COMPLETED. 100 classified. 99 PRODUCT_PASS. 1 ENV_FAILURE. UNCLASSIFIED=0.
 D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
-G90.9 LIVE_QUALIFIED. G90.10 BD.3 LIVE_QUALIFIED. NEXT=BD.2.
+G90.9 LIVE_QUALIFIED. G90.10 BD.3 LIVE_QUALIFIED. BD.2 implemented, not live-qualified.
 injectedFault ≠ observedClass. Uninjected null.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
 NEXT: G90.10 BD.2. Not G90.4 / 3c / 3e. No second login soak.

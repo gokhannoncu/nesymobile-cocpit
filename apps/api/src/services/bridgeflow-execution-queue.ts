@@ -24,7 +24,7 @@ import type { PrismaClient } from '@nesy/db'
 import type { DomainPackBundle, LaunchProfile } from '@nesy/domain-pack-contracts'
 import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 import { getAdbPathHint, resolveAdbPath } from '@nesy/platform-paths'
-import { observeInjectedClass } from '@nesy/workflow-contract'
+import { observeInjectedClass, selectObservedFaultProvenance } from '@nesy/workflow-contract'
 
 import type { WorkflowRunExecutionQueue } from './workflow-run.service.js'
 import type { CompiledPlanStore } from './workflow-compile.service.js'
@@ -37,6 +37,7 @@ import { createBridgeRuntimePort, createGenericStepRuntime } from './bridgeflow-
 import { createPackRemoteStepRuntime } from './bridgeflow-remote-steps.js'
 import { createNesyBackofficeAdapter, type BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import { createBackendTimeoutSession, type BackendTimeoutSession } from './backend-timeout-injector.js'
+import { createNetworkDisconnectSession, type NetworkDisconnectSession } from './network-disconnect-injector.js'
 import { getDashboardAdminToken } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
@@ -96,15 +97,29 @@ const SDK_FACT_MAX_AGE_MS = 30_000
  * that — which is the correct outcome. Inventing a host would send a dispatcher
  * mutation somewhere nobody chose.
  */
-function createEnvBackofficeAdapter(session?: BackendTimeoutSession): BackofficeAdapter {
+function createEnvBackofficeAdapter(sessions?: {
+  backendTimeout?: BackendTimeoutSession
+  networkDisconnect?: NetworkDisconnectSession
+}): BackofficeAdapter {
+  const backendTimeout = sessions?.backendTimeout
+  const networkDisconnect = sessions?.networkDisconnect
   return createNesyBackofficeAdapter({
-    ...(session === undefined
+    ...(backendTimeout === undefined
       ? {}
       : {
-          timeoutInjection: (input) => session.injectionForCall(input.operationRef),
+          timeoutInjection: (input) => backendTimeout.injectionForCall(input.operationRef),
           onTimeoutInjected: (event) => {
-            if (event.kind === 'TRIGGERED') session.markTriggered(event.operationRef, event.timeoutMs)
-            if (event.kind === 'EFFECT_OBSERVED') session.markDeadlineObserved()
+            if (event.kind === 'TRIGGERED') backendTimeout.markTriggered(event.operationRef, event.timeoutMs)
+            if (event.kind === 'EFFECT_OBSERVED') backendTimeout.markDeadlineObserved()
+          },
+        }),
+    ...(networkDisconnect === undefined
+      ? {}
+      : {
+          transportInjection: (input) => networkDisconnect.injectionForCall(input.operationRef),
+          onTransportInjected: (event) => {
+            if (event.kind === 'TRIGGERED') networkDisconnect.markTriggered(event.operationRef)
+            if (event.kind === 'EFFECT_OBSERVED') networkDisconnect.markTransportObserved()
           },
         }),
     credentials: async () => {
@@ -1100,11 +1115,18 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       injectedFault: item.injectedFault ?? null,
       clock,
     })
+    const networkDisconnect = createNetworkDisconnectSession({
+      injectedFault: item.injectedFault ?? null,
+      clock,
+    })
     backendTimeout.request()
+    networkDisconnect.request()
+    const faultProvenance = () =>
+      selectObservedFaultProvenance(backendTimeout.snapshot(), networkDisconnect.snapshot())
     try {
       await persistence.persistFaultProvenance({
         runId: item.runId,
-        provenance: backendTimeout.snapshot(),
+        provenance: faultProvenance(),
       })
     } catch (error) {
       await this.failClosed(item, applicationId, error)
@@ -1272,7 +1294,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           createPackRemoteStepRuntime({
             runId: item.runId,
             bundle: resolution.pack.bundle,
-            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter(backendTimeout),
+            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter({ backendTimeout, networkDisconnect }),
             variables: runContext,
             runInputs,
             evidence: evidenceRuntime,
@@ -1280,6 +1302,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             attemptStore: new PrismaRemoteActionAttemptStore(this.options.prisma),
             clock,
             backendTimeout,
+            networkDisconnect,
             ...(this.options.logger === undefined ? {} : { logger: this.options.logger }),
           }),
         genericSteps: createGenericStepRuntime({
@@ -1314,11 +1337,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       })
       await persistence.persistFaultProvenance({
         runId: item.runId,
-        provenance: backendTimeout.snapshot(),
+        provenance: faultProvenance(),
       })
       const observedClass = observeInjectedClass({
         actionResult: result.terminationReason === 'UNKNOWN_ACTION_EFFECT' ? 'UNKNOWN_EFFECT' : null,
-        provenance: backendTimeout.snapshot(),
+        provenance: faultProvenance(),
       })
       if (observedClass !== null) {
         await persistence.persistObservedClass({

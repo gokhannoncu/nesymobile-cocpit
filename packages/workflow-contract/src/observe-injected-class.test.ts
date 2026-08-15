@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { emptyFaultInjectionProvenance } from "./fault-injection-provenance.js";
-import { isBackendTimeoutInjectionTarget, observeInjectedClass } from "./observe-injected-class.js";
+import {
+  isBackendTimeoutInjectionTarget,
+  isNetworkDisconnectInjectionTarget,
+  observeInjectedClass,
+} from "./observe-injected-class.js";
 
 function firedDeadline() {
   return {
@@ -61,9 +65,50 @@ describe("observeInjectedClass", () => {
     ).toBeNull();
   });
 
+  it("returns NETWORK_PARTITION only from a fired host transport cut", () => {
+    expect(
+      observeInjectedClass({
+        actionResult: "UNKNOWN_EFFECT",
+        provenance: {
+          ...emptyFaultInjectionProvenance(),
+          phase: "EFFECT_OBSERVED",
+          actuallyFired: true,
+          abortKind: "TRANSPORT",
+          effectKind: "HOST_TRANSPORT_CUT",
+        },
+      }),
+    ).toBe("NETWORK_PARTITION");
+  });
+
+  it("refuses mixed deadline/transport signatures", () => {
+    expect(
+      observeInjectedClass({
+        actionResult: "UNKNOWN_EFFECT",
+        provenance: {
+          ...firedDeadline(),
+          effectKind: "HOST_TRANSPORT_CUT",
+        },
+      }),
+    ).toBeNull();
+    expect(
+      observeInjectedClass({
+        actionResult: "UNKNOWN_EFFECT",
+        provenance: {
+          ...emptyFaultInjectionProvenance(),
+          phase: "EFFECT_OBSERVED",
+          actuallyFired: true,
+          abortKind: "TRANSPORT",
+          effectKind: "ADAPTER_DEADLINE_ABORT",
+        },
+      }),
+    ).toBeNull();
+  });
+
   it("arms only mutation remotes — READ_ONLY probes stay uninjected at the wire", () => {
     expect(isBackendTimeoutInjectionTarget({ effectClass: "NON_IDEMPOTENT_MUTATION" })).toBe(true);
     expect(isBackendTimeoutInjectionTarget({ effectClass: "IDEMPOTENT_MUTATION" })).toBe(true);
     expect(isBackendTimeoutInjectionTarget({ effectClass: "READ_ONLY" })).toBe(false);
+    expect(isNetworkDisconnectInjectionTarget({ effectClass: "IDEMPOTENT_MUTATION" })).toBe(true);
+    expect(isNetworkDisconnectInjectionTarget({ effectClass: "READ_ONLY" })).toBe(false);
   });
 });

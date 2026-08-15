@@ -72,6 +72,18 @@ export interface NesyBackofficeAdapterOptions {
     operationRef: string
     timeoutMs: number
   }) => void
+  /**
+   * G90.10 BD.2 — controlled host-side transport cut representing
+   * NETWORK_DISCONNECT. When this returns a cut, the adapter still resolves
+   * the operation and credentials, then withholds the wire and returns
+   * `UNKNOWN_EFFECT`. This is not an airplane/USB claim and is not remapped
+   * to NO_EFFECT or PRODUCT_FAIL just because the injector withheld the call.
+   */
+  transportInjection?: (input: BackofficeCallInput) => { cut: true } | null
+  onTransportInjected?: (event: {
+    kind: 'TRIGGERED' | 'EFFECT_OBSERVED'
+    operationRef: string
+  }) => void
   /** Delay between reject and the waiting-list re-read. Tests set 0. */
   reconcileDelayMs?: number
 }
@@ -202,7 +214,32 @@ export function createNesyBackofficeAdapter(
 
       const body = endpoint.body(input.inputs)
       const startedAtMs = clock()
+      const transport = options.transportInjection?.(input) ?? null
       const injection = options.timeoutInjection?.(input) ?? null
+      if (transport !== null && injection !== null) {
+        return failed('conflicting timeout and transport injectors armed for the same call')
+      }
+      if (transport !== null) {
+        options.onTransportInjected?.({ kind: 'TRIGGERED', operationRef: input.operationRef })
+        options.onTransportInjected?.({ kind: 'EFFECT_OBSERVED', operationRef: input.operationRef })
+        const cut: BackofficeCallResult = {
+          terminal: {
+            status: 'UNKNOWN_EFFECT',
+            error: 'injected host transport cut; effect unknown',
+          },
+          normalizedResponse: {},
+        }
+        options.audit?.({
+          operationRef: input.operationRef,
+          path: endpoint.path,
+          atMs: startedAtMs,
+          durationMs: clock() - startedAtMs,
+          resultCode: null,
+          status: cut.terminal.status,
+          ...(auditPolicy.recordRequest ? { request: redact(body, auditPolicy.redactFields) } : {}),
+        })
+        return cut
+      }
       const timeoutMs = injection?.timeoutMs ?? input.timeoutMs
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), timeoutMs)

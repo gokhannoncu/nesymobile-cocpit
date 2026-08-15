@@ -28,6 +28,7 @@ import type { ExternalActionSpec } from '@nesy/workflow-contract'
 
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import type { BackendTimeoutSession } from './backend-timeout-injector.js'
+import type { NetworkDisconnectSession } from './network-disconnect-injector.js'
 import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 import {
@@ -54,6 +55,7 @@ export interface RemoteStepRuntimeOptions {
   clock?: () => number
   logger?: (message: string, detail?: unknown) => void
   backendTimeout?: BackendTimeoutSession
+  networkDisconnect?: NetworkDisconnectSession
 }
 
 export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): {
@@ -136,11 +138,16 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
         })
       }
 
-      // TEARDOWN / CLEANUP must not re-arm BD.3. The injector is one-shot on
-      // the host mutation; offering the fixture release as a second arm target
-      // would overwrite triggerPoint and hang the cleanup that isolation needs.
+      // TEARDOWN / CLEANUP must not re-arm BD.3 or BD.2. The injector is
+      // one-shot on the host mutation; offering the fixture release as a
+      // second arm target would overwrite triggerPoint and break cleanup.
       if (spec.role !== 'TEARDOWN' && step.kind !== 'CLEANUP') {
         options.backendTimeout?.tryArm({
+          planStepId: step.planStepId,
+          occurrenceId: context.occurrenceId,
+          spec,
+        })
+        options.networkDisconnect?.tryArm({
           planStepId: step.planStepId,
           occurrenceId: context.occurrenceId,
           spec,

@@ -11,16 +11,16 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 17:41:00 +03"
+lastUpdatedAt: "2026-08-15 19:48:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
 d30End: "2026-09-12"
 d60End: "2026-10-12"
 d90End: "2026-11-11"
-nextStep: G90.10_BD3_LIVE_QUAL
+nextStep: G90.10_BD2
 nextStepFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
-d60Implementation: G90.10_BD3_IMPLEMENTED
+d60Implementation: G90.10_BD3_LIVE_QUALIFIED
 d60CampaignStatus: NOT_STARTED
 d60CampaignWindow: "2026-09-13 → 2026-10-12 — formal matrix not opened early"
 d14Gate: "G90.2b + G90.3 closed 2026-08-15"
@@ -169,8 +169,11 @@ Cold start tek adım değil: [`READINESS.md`](./READINESS.md) — pre-action
 yedili, `INTERACTION_READY`; AUTH/bootstrap action **sonrası**. G90.2b
 `READINESS_LIVE_QUALIFIED`; G90.3 = 3a ∧ 3b `DONE` (2026-08-15).
 D30 `COMPLETED`. G90.9 `LIVE_QUALIFIED` (fresh prod `3770d2a`, Smoke A/B).
-G90.10 BD.3 **implemented**, not live-qualified. **NEXT = Host B live qual
-on a new prod PID** (55798 G90.9 lineage). Formal D60 kampanyası 13 Eylül’e
+G90.10 BD.3 `LIVE_QUALIFIED` (fresh prod `291553b` / PID 29171 /
+`run_4c8bed03`). Capability qualification kalıcıdır; process
+devredilmez. G90.10 BD.2 implemented, not live-qualified. PID 38870
+design runtime’dır; BD.2 qual yeni commit + yeni PID ister.
+**NEXT = BD.2 live qual.** Formal D60 kampanyası 13 Eylül’e
 kadar açılmaz. İkinci workflow D30’a girmez.
 
 ## 2. Neden bu iz ayrı?
@@ -427,7 +430,7 @@ NesyMobile/verdict-bridge/**
 | G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
 | G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `LIVE_QUALIFIED` (2026-08-15) — fresh prod `3770d2a` Smoke A/B; kampanya `NOT_STARTED` |
-| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3 code; live qual + diğer beş yok |
+| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3 LIVE_QUALIFIED; BD.2 implemented, not live-qualified; NEXT=BD.2 live qual; BD.6/5/4/1 yok |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
 | G90.13 | D90 spec kilidi (workflow set + altı metric family + M2b companion + pilot-stable) | `DONE` (bu dosya, 2026-08-13) |
@@ -490,9 +493,13 @@ UNCLASSIFIED=0. 94 PASS / 6 sınıflı failure, belirsiz timeout’tan değerli.
 Timeout/sleep/jest yok. RELIABILITY_PROVEN değil.
 G90.2b READINESS_LIVE_QUALIFIED. G90.3 DONE.
 G90.9 LIVE_QUALIFIED: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
-G90.10 BD.3 implemented (observeInjectedClass does not take injectedFault).
+G90.10 BD.3 LIVE_QUALIFIED (291553b / PID 29171 / run_4c8bed03).
+CODE_QUALIFIED + LIVE_INJECTION + CLEANUP + ISOLATION + LIVE_QUALIFIED.
+observeInjectedClass does not take injectedFault.
 Injection model: controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT.
-NEXT = Host B that can reach dispatcher-approves, then BD.3 on PID 21508 / 0465eca. BD.2 yok.
+PID 29171 = historical BD.3 evidence. Current runtime ≠ that continuation.
+BD.2 implemented, not live-qualified. Qual wants a fresh PID, not 38870.
+NEXT = BD.2 live qual. Formal D60 campaign NOT_STARTED.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 J0–J5 ladder değil. İkinci 100-run login yok.
 pilotStable D90 öncesi freeze ister. Önce READINESS.md, JOIN.md, RESULT.md oku.
@@ -550,6 +557,7 @@ Oracle terminalleri sınıf **değildir**; eşleme:
 |---|---|
 | `UNKNOWN_EFFECT` + kill enjeksiyonu | `PROCESS_DEATH` + `deathProvenance` |
 | `UNKNOWN_EFFECT` + backend enjeksiyonu | `BACKEND_TIMEOUT` |
+| `UNKNOWN_EFFECT` + transport-cut observation | `NETWORK_PARTITION` |
 | `PASS_QUEUED_OFFLINE` + offline enjeksiyonu | `OFFLINE_QUEUED` |
 | `INTERRUPT_MATCH` + dialog enjeksiyonu | `DIALOG_INTERRUPT` |
 | receipt-safe duplicate drop | `DUPLICATE_SUPPRESSED` |
@@ -565,14 +573,30 @@ golden soak değil, fault’un yaşayabileceği tek yer.
 | ID | Fault | Host slice | Enjeksiyon (lab) | Beklenen `class` | Bu olmamalı |
 |---|---|---|---|---|---|
 | BD.1 | Process kill | A — D30 login, jestten sonra / continue gate öncesi | `am force-stop <pkg>` (user). pid + `deathProvenance=PROCESS_DEATH_FORCE_STOP` zorunlu. | `PROCESS_DEATH` | Gesture auto-retry; sessiz `PRODUCT_PASS`; provenance’siz “process death test edildi” |
-| BD.2 | Network disconnect | A — PIN submit civarı **veya** B — teslimat submit | Airplane / USB net / kayıtlı lab kesici; enjektör `injectedFault=NETWORK_DISCONNECT` | `NETWORK_PARTITION` | `PRODUCT_FAIL`; `ENV_FAILURE` torbası (enjeksiyon kaydı varken) |
+| BD.2 | Network disconnect | B — mutation-capable remote. İlk live qual: `tour-approval` / `approve-tour-request@dispatcher-approves`. Host A PIN first qual kapalı. | **controlled host-side transport cut representing BD.2 NETWORK_DISCONNECT** — kayıtlı lab kesici; `abortKind=TRANSPORT` + `HOST_TRANSPORT_CUT`. Airplane / USB first qual kapalı. “Cihaz radyosu kapandı” iddiası değildir. | `NETWORK_PARTITION` | `PRODUCT_FAIL`; `ENV_FAILURE` torbası (enjeksiyon kaydı varken); `BACKEND_TIMEOUT`; `OFFLINE_QUEUED` |
 | BD.3 | Backend timeout | B — mutation remote (`tour-approval` `approve-tour-request`). `complete-delivery` remotes `READ_ONLY`; arm olmaz. | **controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT** — wire dispatch tutulur, mevcut `AbortController` yolu `UNKNOWN_EFFECT` üretir. “Backend isteği aldı ve timeout oldu” iddiası değildir. | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL`; injector bilgisinden `NO_EFFECT` remap |
 | BD.4 | Dialog / overlay | A — launch `permissionDialog` veya koşu içi overlay | Sistem dialog / pack interrupt surface | `DIALOG_INTERRUPT` | Overlay’e tap; interrupt key varken `UI_NOT_ACTIONABLE`; 30s timeout |
 | BD.5 | Duplicate callback | A — login fact **veya** B — delivery fact | Aynı WS event / seq tekrar; veya çift emit | `DUPLICATE_SUPPRESSED` | İki verdict; `TEST_DATA_CONTAMINATION` (bu o değil) |
 | BD.6 | Offline queue | B — process-parcel / complete-delivery LOCAL queue | Ağ yok + kuyruk yazımı; `nesy.recovery.queue` okunabilir | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` |
 
 **Host A:** `nesy.macro.login` / `cold-real-login` (D30 slice).  
-**Host B:** prepared-session ile kuyruk/remote taşıyan **tek** macro (`process-parcel` veya `complete-delivery`). `producesProductVerdict: false` kalır. B, D30’u genişletmez; D60 fault hedefidir.
+**Host B:** mutation-capable remote host, veya prepared-session queue/remote macro. `producesProductVerdict: false` kalır. B, D30’u genişletmez; D60 fault hedefidir.
+
+BD.2 Host B (initial live qualification):
+
+```text
+mutation-capable remote host.
+Initial live qualification host:
+  tour-approval / approve-tour-request@dispatcher-approves.
+Reason:
+  login remote OPTIONAL;
+  complete-delivery remotes READ_ONLY;
+  process-parcel reserved for offline-queue semantics (BD.6).
+This does not make tour-approval a D30 slice
+and does not start the formal D60 campaign.
+```
+
+`process-parcel` / `complete-delivery` Host B queue macros olarak durur — BD.6 LOCAL queue içindir. Airplane / USB ve Host A PIN, BD.2 first qualification için açılmaz.
 
 Her satır: `injectedFault`, `host`, `expectedClass`, `observedClass`, `rootCondition`, `runId`.
 
