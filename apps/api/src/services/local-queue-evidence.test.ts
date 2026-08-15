@@ -31,11 +31,19 @@ describe('local queue evidence', () => {
       isLocalQueueItemWaitingObservation({
         factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
         value: false,
+        queryRef: 'nesy.pendingOperation',
       }),
     ).toBe(false)
     expect(
       isLocalQueueItemWaitingObservation({
         factKey: 'LOCAL.PARCEL_RECORD_PERSISTED',
+        value: true,
+        queryRef: 'nesy.pendingOperation',
+      }),
+    ).toBe(false)
+    expect(
+      isLocalQueueItemWaitingObservation({
+        factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
         value: true,
       }),
     ).toBe(false)
@@ -43,6 +51,28 @@ describe('local queue evidence', () => {
       isLocalQueueItemWaitingObservation({
         factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
         value: true,
+        queryRef: 'nesy.pendingOperation',
+      }),
+    ).toBe(true)
+  })
+
+  it('refuses a queue fact from another occurrence', () => {
+    expect(
+      isLocalQueueItemWaitingObservation({
+        factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
+        value: true,
+        subtype: 'queue',
+        occurrenceId: 'run_old:read-pending-queue:0',
+        expectedOccurrenceId: 'run_now:read-pending-queue:0',
+      }),
+    ).toBe(false)
+    expect(
+      isLocalQueueItemWaitingObservation({
+        factKey: 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING',
+        value: true,
+        subtype: 'queue',
+        occurrenceId: 'run_now:read-pending-queue:0',
+        expectedOccurrenceId: 'run_now:read-pending-queue:0',
       }),
     ).toBe(true)
   })

@@ -34,6 +34,23 @@ export function localQueueItemWaitingFromPendingCount(raw: unknown): boolean {
 export function isLocalQueueItemWaitingObservation(observation: {
   factKey: string
   value: unknown
+  queryRef?: string
+  subtype?: string
+  occurrenceId?: string
+  expectedOccurrenceId?: string
 }): boolean {
-  return observation.factKey === LOCAL_QUEUE_ITEM_WAITING_FACT && observation.value === true
+  if (observation.factKey !== LOCAL_QUEUE_ITEM_WAITING_FACT || observation.value !== true) {
+    return false
+  }
+  const subtype =
+    observation.subtype ??
+    (observation.queryRef !== undefined ? evidenceSubtypeForFact(observation.factKey, observation.queryRef) : null)
+  if (subtype !== 'queue') return false
+  if (
+    observation.expectedOccurrenceId !== undefined &&
+    observation.occurrenceId !== observation.expectedOccurrenceId
+  ) {
+    return false
+  }
+  return true
 }

@@ -33,6 +33,7 @@
 import type { BridgeFlowPlanSnapshot, MacroDefinition, MacroExpansionSnapshot } from "@nesy/domain-pack-contracts";
 import type { WorkflowStepV2 } from "@nesy/workflow-contract";
 import { NESY_BACKOFFICE_ADAPTER_REF, NESY_BACKOFFICE_OPERATIONS } from "../adapters/backoffice.js";
+import { NESY_ADAPTER_QUERY_REFS } from "../registries/application.js";
 import { NESY_ENTITIES } from "../registries/entities.js";
 import { NESY_FACTS } from "../registries/facts.js";
 import { NESY_ACTIONS, NESY_SCREENS, NESY_SURFACES } from "../registries/screens.js";
@@ -291,9 +292,22 @@ const STEPS: readonly WorkflowStepV2[] = [
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
-    queryRef: "nesy.pendingOperation",
+    queryRef: NESY_ADAPTER_QUERY_REFS.pendingOperation,
     maxRows: 1,
     outputVariable: "queueRows",
+    /**
+     * G90.10 BD.6 — LOCAL durable queue is a measurement, not a declaration.
+     * process-parcel / tap-input-confirm was HOST_NOT_CAPABLE. This read is
+     * what can publish LOCAL.OFFLINE_QUEUE_ITEM_WAITING after
+     * tap-delivery-confirm. OPTIONAL on the oracle: online uninjected stays
+     * PASS_ONLINE. Classifier is unchanged.
+     */
+    outputFactBindings: [
+      {
+        factKey: NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
+        from: { kind: "COLUMN_NOT_IN", column: "pending_count", values: ["0"] },
+      },
+    ],
   },
   {
     // The offline path, modelled rather than hoped away. `default: GOTO` means the

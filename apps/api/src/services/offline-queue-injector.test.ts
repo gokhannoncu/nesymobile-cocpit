@@ -24,7 +24,7 @@ describe('offline queue session', () => {
     const wan = fakeWan()
     const session = createOfflineQueueSession({ injectedFault: null, clock: () => 1, wan: wan.cutter })
     session.request()
-    expect(session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })).toBe(false)
+    expect(session.tryArm({ planStepId: 'tap-delivery-confirm', occurrenceId: 'occ-1' })).toBe(false)
     expect(await session.applyCut()).toBe(false)
     expect(wan.calls).toEqual([])
     expect(session.snapshot().phase).toBeNull()
@@ -41,7 +41,7 @@ describe('offline queue session', () => {
         wan: wan.cutter,
       })
       session.request()
-      expect(session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })).toBe(false)
+      expect(session.tryArm({ planStepId: 'tap-delivery-confirm', occurrenceId: 'occ-1' })).toBe(false)
       expect(await session.applyCut()).toBe(false)
       expect(session.snapshot().phase).toBeNull()
     } finally {
@@ -50,10 +50,11 @@ describe('offline queue session', () => {
     }
   })
 
-  it('does not arm tour-approval or other remote-mutation steps', () => {
+  it('does not arm tour-approval or the process-parcel confirm', () => {
     const session = createOfflineQueueSession({ injectedFault: 'OFFLINE_QUEUE', clock: () => 1 })
     session.request()
     expect(session.tryArm({ planStepId: 'dispatcher-approves', occurrenceId: 'occ-1' })).toBe(false)
+    expect(session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })).toBe(false)
     expect(session.snapshot().phase).toBe('REQUESTED')
   })
 
@@ -65,10 +66,10 @@ describe('offline queue session', () => {
       wan: wan.cutter,
     })
     expect(session.request().phase).toBe('REQUESTED')
-    expect(session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })).toBe(true)
+    expect(session.tryArm({ planStepId: 'tap-delivery-confirm', occurrenceId: 'occ-1' })).toBe(true)
     expect(session.snapshot()).toMatchObject({
       phase: 'ARMED',
-      triggerPoint: 'LOCAL_QUEUE:tap-input-confirm',
+      triggerPoint: 'LOCAL_QUEUE:tap-delivery-confirm',
       occurrenceId: 'occ-1',
       actuallyFired: false,
       abortKind: 'NONE',
@@ -95,7 +96,7 @@ describe('offline queue session', () => {
       wan: wan.cutter,
     })
     session.request()
-    session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })
+    session.tryArm({ planStepId: 'tap-delivery-confirm', occurrenceId: 'occ-1' })
     await session.applyCut()
     session.markQueueObserved(false)
     expect(session.snapshot().phase).toBe('TRIGGERED')
@@ -126,7 +127,7 @@ describe('offline queue session', () => {
       wan: wan.cutter,
     })
     session.request()
-    session.tryArm({ planStepId: 'tap-input-confirm', occurrenceId: 'occ-1' })
+    session.tryArm({ planStepId: 'tap-delivery-confirm', occurrenceId: 'occ-1' })
     await session.applyCut()
     session.markQueueObserved(true)
     expect(session.snapshot().abortKind).toBe('NONE')

@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 32,
+      "minor": 33,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -9885,7 +9885,19 @@
                 "kind": "SDK_QUERY",
                 "queryRef": "nesy.pendingOperation",
                 "maxRows": 1,
-                "outputVariable": "queueRows"
+                "outputVariable": "queueRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+                    "from": {
+                      "kind": "COLUMN_NOT_IN",
+                      "column": "pending_count",
+                      "values": [
+                        "0"
+                      ]
+                    }
+                  }
+                ]
               },
               {
                 "planStepId": "branch-on-queue",
@@ -14266,7 +14278,19 @@
                 "kind": "SDK_QUERY",
                 "queryRef": "nesy.pendingOperation",
                 "maxRows": 1,
-                "outputVariable": "deliverQueueRows"
+                "outputVariable": "deliverQueueRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.OFFLINE_QUEUE_ITEM_WAITING",
+                    "from": {
+                      "kind": "COLUMN_NOT_IN",
+                      "column": "pending_count",
+                      "values": [
+                        "0"
+                      ]
+                    }
+                  }
+                ]
               },
               {
                 "planStepId": "deliver-branch-on-queue",

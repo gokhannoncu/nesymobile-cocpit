@@ -113,10 +113,10 @@ describe("observeInjectedClass", () => {
     expect(isNetworkDisconnectInjectionTarget({ effectClass: "READ_ONLY" })).toBe(false);
   });
 
-  it("arms only the process-parcel confirm tap — tour-approval stays remote-mutation", () => {
-    expect(isOfflineQueueInjectionTarget({ planStepId: "tap-input-confirm" })).toBe(true);
+  it("arms only complete-delivery confirm — process-parcel and tour-approval stay inert", () => {
+    expect(isOfflineQueueInjectionTarget({ planStepId: "tap-delivery-confirm" })).toBe(true);
+    expect(isOfflineQueueInjectionTarget({ planStepId: "tap-input-confirm" })).toBe(false);
     expect(isOfflineQueueInjectionTarget({ planStepId: "dispatcher-approves" })).toBe(false);
-    expect(isOfflineQueueInjectionTarget({ planStepId: "tap-delivery-confirm" })).toBe(false);
   });
 
   it("returns OFFLINE_QUEUED only from a fired local-queue persist plus product evidence", () => {

@@ -36,11 +36,12 @@ export function matchesArmedTarget(
 }
 
 /**
- * First BD.6 live-qual arm point. This is a LOCAL durable-queue step, not a
- * remote mutation. tour-approval stays in the BD.2/BD.3 family.
+ * BD.6 live-qual arm point. LOCAL durable-queue step, not a remote mutation.
+ * process-parcel / tap-input-confirm was measured HOST_NOT_CAPABLE
+ * (WAN cut, no nesy.pendingOperation row). tour-approval stays BD.2/BD.3.
  */
 export function isOfflineQueueInjectionTarget(target: { planStepId: string }): boolean {
-  return target.planStepId === "tap-input-confirm";
+  return target.planStepId === "tap-delivery-confirm";
 }
 
 /**

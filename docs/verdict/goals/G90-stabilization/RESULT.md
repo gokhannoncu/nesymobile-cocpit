@@ -283,7 +283,7 @@ BD.2 LIVE_QUALIFIED   ✅
 
 PID 64978 / 38870 / 29171 this claim’e bağlanmaz. NEXT = BD.6.
 
-### 1.1d G90.10 BD.6 — process-parcel live attempt, not LIVE_QUALIFIED
+### 1.1d G90.10 BD.6 — process-parcel HOST_NOT_CAPABLE, not LIVE_QUALIFIED
 
 BD.2/BD.3 remote-mutation `UNKNOWN_EFFECT` ailesinde kalır. Classifier
 gevşetilmedi. Fresh prod lineage:
@@ -328,9 +328,13 @@ process-parcel / `tap-input-confirm` WAN kesilince bile delivery’yi açtı ve
 `nesy.pendingOperation` satırı yazmadı. Ağ kapalı + kuyruk yok =
 `OFFLINE_QUEUED` değil. `observeInjectedClass` input’tan sınıf yazmadı.
 
-**Host amend (LIVE_QUALIFIED öncesi):** ilk LIVE_QUALIFIED host artık
-`complete-delivery` / `tap-delivery-confirm`. Classifier değişmez.
+process-parcel = `HOST_NOT_CAPABLE` / negative live evidence. Classifier
+gevşetilmedi. `observeInjectedClass` aynı.
+
+**Host amend:** ilk LIVE_QUALIFIED host `complete-delivery` /
+`tap-delivery-confirm`. Arm boundary oraya bağlanır; dört eksen aynı.
 G4 flush / reconnect BD.6 barı değildir. Formal D60 `NOT_STARTED`.
+Yeni qual PID `25062` / `eb48304` üzerine bağlanmaz.
 
 ## 1.2 Phase 10 plumbing + G90 live golden
 
@@ -353,9 +357,9 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current step | `G90.10` BD.6 |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.10` BD.2 LIVE_QUALIFIED (`94a9acf` / PID 95043 / `run_0c1a0dd2`) |
-| Last attempted step | G90.10 BD.6 process-parcel live smoke — uninjected passed; injected no queue persist |
-| Last update | `2026-08-15 21:40:00 +03` |
-| Recovery instruction | `NEXT = BD.6 host amend to complete-delivery / tap-delivery-confirm. Do not loosen observeInjectedClass. Do not re-qualify BD.2/BD.3. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last attempted step | G90.10 BD.6 process-parcel HOST_NOT_CAPABLE (`run_578dcc5d`); NEXT complete-delivery arm |
+| Last update | `2026-08-15 21:54:00 +03` |
+| Recovery instruction | `NEXT = BD.6 complete-delivery / tap-delivery-confirm arm. process-parcel HOST_NOT_CAPABLE. Do not loosen observeInjectedClass. Do not bind qual to PID 25062. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -605,7 +609,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | G90.7 D30 kapanış | `DONE` | bu dosya; 2026-08-15 |
 | G90.8 D60 spec kilidi | `DONE` | `RUN_PLAY.md` §15–18 |
 | G90.9 injectedFault alanı | `LIVE_QUALIFIED` | 2026-08-15 fresh prod `3770d2a`; Smoke A/B; formal kampanya değil |
-| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 process-parcel live failed (no queue persist); host amend complete-delivery; BD.5/4/1 yok |
+| G90.10 Altı enjektör | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 process-parcel HOST_NOT_CAPABLE; host amend complete-delivery / tap-delivery-confirm; BD.5/4/1 yok |
 | G90.11 D60 matrisi | `NOT_STARTED` | |
 | G90.12 D60 kapanış | `NOT_STARTED` | |
 | G90.13 D90 spec kilidi | `DONE` | `RUN_PLAY.md` §19–22 |
@@ -647,7 +651,7 @@ SSOT: [`ACCEPTANCE.md`](./ACCEPTANCE.md). `internallyStable`: `—`
 | D30_ENV_PRISMA_DISCONNECT | LOW | `BACKLOG` | #9; sınıflı; cleanup+isolation OK; 100/100 PASS peşinde değil |
 | CP3-DUT | EXT | `DEFERRED` | Track B |
 | KILL_RECOVERY | EXT | `SPEC_LOCKED` | D60 BD.1; kampanya artık ungated |
-| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 host amend complete-delivery; formal kampanya 13 Eylül |
+| BAD_DAY_INJECTORS | HIGH | `IN_PROGRESS` | BD.3+BD.2 LIVE_QUALIFIED; BD.6 process-parcel HOST_NOT_CAPABLE; complete-delivery arm; formal kampanya 13 Eylül |
 | SECOND_DUT | MEDIUM | `OPEN` | D90 `pilotStable=YES` için ≥2 serial |
 
 ## 9. Next window handoff
@@ -657,11 +661,11 @@ D30 COMPLETED. 100 classified. 99 PRODUCT_PASS. 1 ENV_FAILURE. UNCLASSIFIED=0.
 D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
 G90.9 LIVE_QUALIFIED. G90.10 BD.3+BD.2 LIVE_QUALIFIED.
-BD.6 process-parcel live attempt: uninjected PASS_ONLINE; injected no LOCAL queue.
-Classifier held. LIVE_QUALIFIED değil. Host amend = complete-delivery / tap-delivery-confirm.
-injectedFault ≠ observedClass. Uninjected null.
+BD.6 process-parcel HOST_NOT_CAPABLE (run_578dcc5d negative live). Classifier held.
+LIVE_QUALIFIED değil. NEXT = complete-delivery / tap-delivery-confirm arm.
+injectedFault ≠ observedClass. Uninjected null. Do not bind qual to PID 25062.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
-NEXT: G90.10 BD.6 complete-delivery host. Do not loosen observeInjectedClass. Not G90.4 / 3c / 3e.
+Not G90.4 / 3c / 3e.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 Aynı login’i 100 kez daha koşturma.
 ```

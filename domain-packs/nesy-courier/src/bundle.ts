@@ -51,6 +51,12 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.33.0 — G90.10 BD.6 host amend: complete-delivery binds
+  //   LOCAL.OFFLINE_QUEUE_ITEM_WAITING from nesy.pendingOperation after
+  //   tap-delivery-confirm. process-parcel / tap-input-confirm is
+  //   HOST_NOT_CAPABLE (negative live: WAN cut, no queue row). Classifier
+  //   unchanged.
+  //
   // 1.32.0 — G90.10 BD.6: process-parcel reads `nesy.pendingOperation` after
   //   the scan confirm and carries LOCAL.OFFLINE_QUEUE_ITEM_WAITING as an
   //   OPTIONAL oracle fact. Online uninjected stays PASS_ONLINE; a real queue
@@ -422,7 +428,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 32, patch: 0 },
+  version: { major: 1, minor: 33, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",
