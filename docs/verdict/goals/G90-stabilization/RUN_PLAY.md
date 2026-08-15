@@ -11,16 +11,16 @@ createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
 startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-15 19:48:00 +03"
+lastUpdatedAt: "2026-08-15 20:59:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
 d30End: "2026-09-12"
 d60End: "2026-10-12"
 d90End: "2026-11-11"
-nextStep: G90.10_BD2
+nextStep: G90.10_BD6
 nextStepFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
-d60Implementation: G90.10_BD3_LIVE_QUALIFIED
+d60Implementation: G90.10_BD2_LIVE_QUALIFIED
 d60CampaignStatus: NOT_STARTED
 d60CampaignWindow: "2026-09-13 → 2026-10-12 — formal matrix not opened early"
 d14Gate: "G90.2b + G90.3 closed 2026-08-15"
@@ -171,9 +171,9 @@ yedili, `INTERACTION_READY`; AUTH/bootstrap action **sonrası**. G90.2b
 D30 `COMPLETED`. G90.9 `LIVE_QUALIFIED` (fresh prod `3770d2a`, Smoke A/B).
 G90.10 BD.3 `LIVE_QUALIFIED` (fresh prod `291553b` / PID 29171 /
 `run_4c8bed03`). Capability qualification kalıcıdır; process
-devredilmez. G90.10 BD.2 implemented, not live-qualified. PID 38870
-design runtime’dır; BD.2 qual yeni commit + yeni PID ister.
-**NEXT = BD.2 live qual.** Formal D60 kampanyası 13 Eylül’e
+devredilmez. G90.10 BD.2 `LIVE_QUALIFIED` (fresh prod `94a9acf` / PID 95043 /
+`run_0c1a0dd2`). PID 64978 ölüydü; qual o PID’e bağlanmaz.
+**NEXT = BD.6.** Formal D60 kampanyası 13 Eylül’e
 kadar açılmaz. İkinci workflow D30’a girmez.
 
 ## 2. Neden bu iz ayrı?
@@ -430,7 +430,7 @@ NesyMobile/verdict-bridge/**
 | G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
 | G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `LIVE_QUALIFIED` (2026-08-15) — fresh prod `3770d2a` Smoke A/B; kampanya `NOT_STARTED` |
-| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3 LIVE_QUALIFIED; BD.2 implemented, not live-qualified; NEXT=BD.2 live qual; BD.6/5/4/1 yok |
+| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3+BD.2 LIVE_QUALIFIED; NEXT=BD.6; BD.5/4/1 yok |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
 | G90.13 | D90 spec kilidi (workflow set + altı metric family + M2b companion + pilot-stable) | `DONE` (bu dosya, 2026-08-13) |
@@ -498,8 +498,8 @@ CODE_QUALIFIED + LIVE_INJECTION + CLEANUP + ISOLATION + LIVE_QUALIFIED.
 observeInjectedClass does not take injectedFault.
 Injection model: controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT.
 PID 29171 = historical BD.3 evidence. Current runtime ≠ that continuation.
-BD.2 implemented, not live-qualified. Qual wants a fresh PID, not 38870.
-NEXT = BD.2 live qual. Formal D60 campaign NOT_STARTED.
+BD.2 LIVE_QUALIFIED (94a9acf / PID 95043 / run_0c1a0dd2).
+NEXT = BD.6. Formal D60 campaign NOT_STARTED.
 Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
 J0–J5 ladder değil. İkinci 100-run login yok.
 pilotStable D90 öncesi freeze ister. Önce READINESS.md, JOIN.md, RESULT.md oku.

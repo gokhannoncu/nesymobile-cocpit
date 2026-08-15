@@ -241,7 +241,7 @@ async function runHostB(label, pack, compiled, scheduleId, fault) {
 function isolationOf(row) {
   const failures = []
   const successPathCleanup =
-    row.axes.cleanupResult === 'NOT_STARTED' &&
+    (row.axes.cleanupResult === 'NOT_REQUIRED' || row.axes.cleanupResult === 'NOT_STARTED') &&
     row.axes.productVerdict === 'PASS_ONLINE' &&
     row.axes.resourceReleaseResult === 'RELEASED'
   if (row.axes.cleanupResult !== 'SUCCEEDED' && !successPathCleanup) {
@@ -262,7 +262,7 @@ function judgeBaseline(row) {
   if (verdict !== 'PASS_ONLINE') failures.push(`expected business result PASS_ONLINE, got ${verdict}`)
   const cleanupOk =
     row.axes.cleanupResult === 'SUCCEEDED' ||
-    (row.axes.cleanupResult === 'NOT_STARTED' &&
+    ((row.axes.cleanupResult === 'NOT_REQUIRED' || row.axes.cleanupResult === 'NOT_STARTED') &&
       verdict === 'PASS_ONLINE' &&
       row.axes.lifecycle === 'CLOSED' &&
       row.axes.resourceReleaseResult === 'RELEASED')

@@ -1,0 +1,166 @@
+{
+  "status": "LIVE_QUALIFIED",
+  "closedAt": "2026-08-15T17:59:27.221Z",
+  "injectionModel": "controlled host-side transport cut representing BD.2 NETWORK_DISCONNECT",
+  "identity": {
+    "gitCommit": "94a9acfb55f5f535c698d28d94fe6659a92ae2cb",
+    "gitCommitShort": "94a9acf",
+    "workingTreeClean": false,
+    "g90_10ImplementationClean": true,
+    "runnerDirty": true,
+    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "apiPid": "95043",
+    "apiStartedAt": "Sat Aug 15 20:23:29 2026",
+    "webCommand": "next-server (v15.5.20)",
+    "webPid": "28993",
+    "dbSchema": "up-to-date",
+    "deviceId": "R6CW400BC8N",
+    "host": "B",
+    "workflowRef": "nesy.workflow.tour-approval-lifecycle",
+    "profileKey": "nesy.launch.reuse-session",
+    "injectionModel": "controlled host-side transport cut representing BD.2 NETWORK_DISCONNECT",
+    "closedLineages": {
+      "g90_9": {
+        "gitCommit": "3770d2a",
+        "apiPid": 55798
+      },
+      "bd3": {
+        "gitCommit": "291553b",
+        "apiPid": 29171,
+        "note": "BD.3 LIVE_QUALIFIED historical proof"
+      },
+      "designRuntime": {
+        "apiPid": 38870,
+        "note": "pre-BD.2 design runtime; not a qualification PID"
+      }
+    },
+    "packVersion": "1.31.0",
+    "packKey": "nesy.courier",
+    "packDigest": "sha256:c10adf189ed92666f4fa4c25e7ec37b557170ec5d550fa134fd105036c2292db",
+    "compiledPlanRef": "bfp-nesy.reference.tour-approval-lifecycle-1",
+    "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+    "routeCode": "31",
+    "scheduleId": "11-31-20260815-1",
+    "scheduleIdSource": "VERDICT_SCHEDULE_ID"
+  },
+  "baseline": {
+    "axes": {
+      "runId": "run_bf130541-2410-4997-9c5b-867d355b5633",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "NOT_REQUIRED",
+      "injectedFault": null,
+      "expectedClass": null,
+      "observedClass": null,
+      "injectedFaultHost": null,
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "COMPLETED",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": null,
+        "abortKind": "NONE",
+        "armedAtMs": null,
+        "effectKind": null,
+        "occurrenceId": null,
+        "triggerPoint": null,
+        "actuallyFired": false,
+        "requestedAtMs": null,
+        "triggeredAtMs": null,
+        "declaredTimeoutMs": null,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": null
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_bf130541-2410-4997-9c5b-867d355b5633",
+      "executionId": "exec_8b3ee2e3-cfb1-499f-b2d9-e80b397a6019",
+      "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": null,
+      "expectedClass": null,
+      "injectedFaultHost": null
+    },
+    "judge": {
+      "ok": true,
+      "failures": [],
+      "expectedBusiness": "PASS_ONLINE",
+      "isolation": {
+        "clean": true,
+        "failures": []
+      }
+    }
+  },
+  "bd2": {
+    "axes": {
+      "runId": "run_0c1a0dd2-4376-4fe2-8969-840dd5c450fa",
+      "productVerdict": "INCONCLUSIVE",
+      "cleanupResult": "SUCCEEDED",
+      "injectedFault": "NETWORK_DISCONNECT",
+      "expectedClass": "NETWORK_PARTITION",
+      "observedClass": "NETWORK_PARTITION",
+      "injectedFaultHost": "B",
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "UNKNOWN_ACTION_EFFECT",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": "EFFECT_OBSERVED",
+        "abortKind": "TRANSPORT",
+        "armedAtMs": 1786816740227,
+        "effectKind": "HOST_TRANSPORT_CUT",
+        "occurrenceId": "run_0c1a0dd2-4376-4fe2-8969-840dd5c450fa:dispatcher-approves:0",
+        "triggerPoint": "REMOTE_ACTION:nesy.backoffice.approve-tour-request@dispatcher-approves",
+        "actuallyFired": true,
+        "requestedAtMs": 1786816713620,
+        "triggeredAtMs": 1786816740447,
+        "declaredTimeoutMs": 30000,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": 1786816740447
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_0c1a0dd2-4376-4fe2-8969-840dd5c450fa",
+      "executionId": "exec_7ed4dc76-1e7b-4e68-8599-729672cc8ba1",
+      "compiledPlanHash": "sha256:e210782cbc3cb16dfdbe52d790ea4f01bb14cfd6a0e923b0e6308298faa3652f",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": "NETWORK_DISCONNECT",
+      "expectedClass": "NETWORK_PARTITION",
+      "injectedFaultHost": "B"
+    },
+    "judge": {
+      "ok": true,
+      "failures": [],
+      "provenance": {
+        "phase": "EFFECT_OBSERVED",
+        "abortKind": "TRANSPORT",
+        "armedAtMs": 1786816740227,
+        "effectKind": "HOST_TRANSPORT_CUT",
+        "occurrenceId": "run_0c1a0dd2-4376-4fe2-8969-840dd5c450fa:dispatcher-approves:0",
+        "triggerPoint": "REMOTE_ACTION:nesy.backoffice.approve-tour-request@dispatcher-approves",
+        "actuallyFired": true,
+        "requestedAtMs": 1786816713620,
+        "triggeredAtMs": 1786816740447,
+        "declaredTimeoutMs": 30000,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": 1786816740447
+      },
+      "isolation": {
+        "clean": true,
+        "failures": []
+      }
+    },
+    "independence": {
+      "ok": true,
+      "failures": [],
+      "recomputed": "NETWORK_PARTITION",
+      "usedInjectedFault": false
+    }
+  },
+  "note": "controlled host-side transport cut representing BD.2 NETWORK_DISCONNECT. Not airplane/USB. G4 reconnect is not a bar. D60 campaign NOT_STARTED."
+}
