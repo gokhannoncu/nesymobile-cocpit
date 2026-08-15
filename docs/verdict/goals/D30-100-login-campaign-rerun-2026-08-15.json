@@ -2,10 +2,10 @@
   "campaign": "D30-100-login-valid-invalid-rerun-after-cleanup-fix",
   "createdAt": "2026-08-15T06:10:00+03:00",
   "purpose": "Re-run the 100-run login reliability campaign after persistence isolation and classification fixes.",
-  "codeCommit": "5b0bc50a778fe4eac66ff4c7c2278d5a8d3c8392",
-  "fixCommit": "5b0bc50a778fe4eac66ff4c7c2278d5a8d3c8392",
+  "codeCommit": "15a731f0c52114619254f3079de79599f9e3f8b6",
+  "fixCommit": "15a731f0c52114619254f3079de79599f9e3f8b6",
   "sourceIdentity": {
-    "gitCommit": "5b0bc50a778fe4eac66ff4c7c2278d5a8d3c8392",
+    "gitCommit": "15a731f0c52114619254f3079de79599f9e3f8b6",
     "workingTreeClean": true,
     "packVersion": "1.30.0",
     "compiledPlanId": {
