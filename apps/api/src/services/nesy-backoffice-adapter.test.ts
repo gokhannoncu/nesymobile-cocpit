@@ -119,6 +119,73 @@ describe('back-office endpoint map', () => {
     ])
   })
 
+  it('refuses reject-tour-request without a schedule id', async () => {
+    let fetchCalls = 0
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      fetchImpl: async () => {
+        fetchCalls += 1
+        return envelope('Request(s) are rejected')
+      },
+    })
+    const result = await adapter.call(
+      { operationRef: 'nesy.backoffice.reject-tour-request', inputs: {}, timeoutMs: 5_000 },
+      AUDIT,
+    )
+    expect(result.terminal.status).toBe('FAILED')
+    expect((result.terminal as { error: string }).error).toMatch(/approvalRequest/)
+    expect(fetchCalls).toBe(0)
+  })
+
+  it('does not treat reject transport success as cleanup if the schedule is still waiting', async () => {
+    const paths: string[] = []
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      reconcileDelayMs: 0,
+      fetchImpl: async (url) => {
+        paths.push(String(url))
+        if (String(url).includes('RejectLeavingPermission')) {
+          return envelope('Request(s) are rejected')
+        }
+        return envelope([{ scheduleId: '11-31-20260815-1', scheduleStatus: SCHEDULE_STATUS.waitingForApproval }])
+      },
+    })
+    const result = await adapter.call(
+      {
+        operationRef: 'nesy.backoffice.reject-tour-request',
+        inputs: { approvalRequest: '11-31-20260815-1' },
+        timeoutMs: 5_000,
+      },
+      AUDIT,
+    )
+    expect(result.terminal.status).toBe('FAILED')
+    expect((result.terminal as { error: string }).error).toMatch(/WaitingForApproval/)
+    expect(paths.some((path) => path.includes('RejectLeavingPermission'))).toBe(true)
+    expect(paths.some((path) => path.includes('GetWaitingLeavingRequests'))).toBe(true)
+  })
+
+  it('accepts reject only after the waiting list no longer holds the schedule', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      reconcileDelayMs: 0,
+      fetchImpl: async (url) => {
+        if (String(url).includes('RejectLeavingPermission')) {
+          return envelope('Request(s) are rejected')
+        }
+        return envelope([])
+      },
+    })
+    const result = await adapter.call(
+      {
+        operationRef: 'nesy.backoffice.reject-tour-request',
+        inputs: { approvalRequest: '11-31-20260815-1' },
+        timeoutMs: 5_000,
+      },
+      AUDIT,
+    )
+    expect(result.terminal.status).toBe('SUCCEEDED')
+  })
+
   it('approves the tour through the leaving-permission flow, not the mobile approval queue', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.approve-tour-request']!
     expect(endpoint.path).toBe('Task/ApproveLeavingPermission')

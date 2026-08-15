@@ -24,10 +24,11 @@ const WEB = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
 const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
 const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
 const ROUTE = process.env.VERDICT_ROUTE_CODE ?? '31'
-const PRESERVED_API_PID = process.env.VERDICT_PRESERVED_API_PID ?? '21508'
+const CLOSED_API_PIDS = new Set(['55798', '21508'])
+const PRESERVED_API_PID = process.env.VERDICT_PRESERVED_API_PID ?? ''
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
 
-export { PRESERVED_API_PID }
+export { PRESERVED_API_PID, CLOSED_API_PIDS }
 
 function sh(cmd, args, opts = {}) {
   return String(spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8', ...opts }).stdout ?? '').trim()
@@ -57,9 +58,17 @@ function adb(args, timeoutMs = 20_000) {
 export function assertPreservedPid() {
   const apiPid = listenPids(4001)[0] ?? null
   const apiCommand = apiPid ? commandOf(apiPid) : null
-  if (apiPid !== PRESERVED_API_PID) {
+  if (!apiPid) {
+    throw new Error('refusing to proceed: :4001 is not listening')
+  }
+  if (CLOSED_API_PIDS.has(apiPid)) {
     throw new Error(
-      `refusing to proceed: :4001 PID is ${apiPid ?? 'none'}, preserved lineage is ${PRESERVED_API_PID}. Do not restart.`,
+      `refusing to proceed: PID ${apiPid} is a closed lineage (G90.9=55798, BD.3 LIVE_INJECTION=21508)`,
+    )
+  }
+  if (PRESERVED_API_PID && apiPid !== PRESERVED_API_PID) {
+    throw new Error(
+      `refusing to proceed: :4001 PID is ${apiPid}, pinned lineage is ${PRESERVED_API_PID}.`,
     )
   }
   if (!apiCommand || !/dist\/server\.js/.test(apiCommand)) {
@@ -496,7 +505,7 @@ function tapRefresh() {
   return { refreshed: true, at: center }
 }
 
-async function settleDevice(label) {
+export async function settleDevice(label) {
   const actions = []
   await new Promise((resolve) => setTimeout(resolve, 2500))
   const first = readUi()

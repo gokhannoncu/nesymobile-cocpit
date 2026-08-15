@@ -92,8 +92,13 @@ function scheduleStatusOf(row: Record<string, unknown> | undefined): number | nu
   return typeof raw === 'number' ? raw : null
 }
 
+/** True when GetWaitingLeavingRequests still lists this schedule as WaitingForApproval. */
+export function isWaitingForApproval(payload: unknown, scheduleId: string): boolean {
+  return scheduleStatusOf(leavingRequestFor(payload, scheduleId)) === SCHEDULE_STATUS.waitingForApproval
+}
+
 /**
- * The nine allowlisted operations of `nesy.backoffice`.
+ * The ten allowlisted operations of `nesy.backoffice`.
  *
  * Keys are the pack's `operationRef` values verbatim; an operation absent from
  * this map fails closed rather than falling back to a guessed path.
@@ -154,7 +159,7 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
     path: 'Task/RejectLeavingPermission',
     confidence: 'SOURCE_VERIFIED',
     rationale:
-      'TaskOperation.RejectLeavingPermission writes ScheduleStatus = BeginningOfDay unconditionally. Measured 2026-08-15 on RS staging: the topic deserializes List<RejectLeavingPermissionRequest>, not the ApproveLeavingPermission object shape. Body is [{ ScheduleId, RejectionReason }]. RejectionReason is an enum; 0 is the lab reset used to repeat tour-approval. This is TEARDOWN, not a product-success path.',
+      'TaskOperation.RejectLeavingPermission writes ScheduleStatus = BeginningOfDay unconditionally. Measured 2026-08-15 on RS staging: the topic deserializes List<RejectLeavingPermissionRequest>, not the ApproveLeavingPermission object shape. Body is [{ ScheduleId, RejectionReason }]. RejectionReason is an enum; 0 is the lab reset used to repeat tour-approval. This is TEARDOWN, not a product-success path. Transport "Request(s) are rejected" is not enough: the adapter must re-read GetWaitingLeavingRequests and fail if this schedule is still WaitingForApproval.',
     body: (inputs) => [
       {
         ScheduleId: str(inputs['approvalRequest']),

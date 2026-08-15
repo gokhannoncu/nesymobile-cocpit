@@ -16,7 +16,11 @@
 
 import type { RemoteActionTerminalResult } from '@nesy/execution-contract'
 
-import { resolveBackofficeEndpoint, type BackofficeEndpoint } from './nesy-backoffice-endpoints.js'
+import {
+  isWaitingForApproval,
+  resolveBackofficeEndpoint,
+  type BackofficeEndpoint,
+} from './nesy-backoffice-endpoints.js'
 
 export interface BackofficeCallInput {
   operationRef: string
@@ -68,6 +72,8 @@ export interface NesyBackofficeAdapterOptions {
     operationRef: string
     timeoutMs: number
   }) => void
+  /** Delay between reject and the waiting-list re-read. Tests set 0. */
+  reconcileDelayMs?: number
 }
 
 export interface BackofficeAuditRecord {
@@ -114,6 +120,54 @@ function hangUntilAbort(_url: string, init?: RequestInit): Promise<Response> {
   })
 }
 
+async function confirmRejectReleased(input: {
+  scheduleId: string
+  credentials: BackofficeCredentials
+  doFetch: typeof fetch
+  delayMs: number
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const read = resolveBackofficeEndpoint('nesy.backoffice.read-tour-approval-request')
+  if (read === undefined) {
+    return { ok: false, error: 'reject-tour-request cannot reconcile: waiting-list read is not mapped' }
+  }
+  const url = `${input.credentials.baseUrl.replace(/\/$/, '')}/${read.path}`
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0 && input.delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, input.delayMs))
+    }
+    try {
+      const response = await input.doFetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${input.credentials.token}`,
+          'X-Channel': 'Portal',
+          'X-Error-Handling': 'inactive',
+        },
+        body: JSON.stringify(read.body({})),
+      } as RequestInit)
+      const text = await response.text()
+      const envelope = text === '' ? {} : (JSON.parse(text) as Record<string, unknown>)
+      const outerPayload = envelope['payload'] ?? envelope['Payload'] ?? null
+      const nested = isEnvelope(outerPayload)
+      const payload = nested === undefined ? outerPayload : (nested['payload'] ?? nested['Payload'] ?? null)
+      if (!isWaitingForApproval(payload, input.scheduleId)) return { ok: true }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `reject-tour-request could not re-read waiting list: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      }
+    }
+  }
+  return {
+    ok: false,
+    error: `reject-tour-request left ${input.scheduleId} WaitingForApproval`,
+  }
+}
+
 export function createNesyBackofficeAdapter(
   options: NesyBackofficeAdapterOptions,
 ): BackofficeAdapter {
@@ -125,6 +179,13 @@ export function createNesyBackofficeAdapter(
       const endpoint = resolveBackofficeEndpoint(input.operationRef)
       if (endpoint === undefined) {
         return failed(`no back-office endpoint is mapped for operation "${input.operationRef}"`)
+      }
+      if (input.operationRef === 'nesy.backoffice.reject-tour-request') {
+        const scheduleId =
+          typeof input.inputs['approvalRequest'] === 'string' ? input.inputs['approvalRequest'].trim() : ''
+        if (scheduleId === '') {
+          return failed('reject-tour-request requires approvalRequest (scheduleId); refusing empty teardown')
+        }
       }
 
       let credentials: BackofficeCredentials
@@ -221,6 +282,19 @@ export function createNesyBackofficeAdapter(
           endpoint.normalize === undefined
             ? { payload }
             : endpoint.normalize(payload, input.inputs)
+
+        if (input.operationRef === 'nesy.backoffice.reject-tour-request') {
+          const scheduleId = String(input.inputs['approvalRequest'] ?? '').trim()
+          const confirmed = await confirmRejectReleased({
+            scheduleId,
+            credentials,
+            doFetch,
+            delayMs: options.reconcileDelayMs ?? 1_000,
+          })
+          if (!confirmed.ok) {
+            return record(failed(confirmed.error), resultCode, payload)
+          }
+        }
 
         // `responseRef` is what reaches `verdict_remote_action_attempt.responsePayload`.
         // Leaving it unset is why a remote step that succeeded but published

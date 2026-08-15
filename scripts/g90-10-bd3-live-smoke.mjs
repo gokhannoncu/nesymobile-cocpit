@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { restoreFixture, snapshotFixture } from './g90-10-host-b-fixture.mjs'
+import { restoreFixture, settleDevice, snapshotFixture } from './g90-10-host-b-fixture.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
@@ -423,19 +423,24 @@ if (!injectedJudge.ok || !independence.ok) {
 }
 
 console.log('\n=== Post-cleanup fixture ===')
-const afterCleanup = await snapshotFixture()
-console.log(JSON.stringify({ ready: afterCleanup.ready, gates: afterCleanup.gates, schedule: afterCleanup.schedule, ui: afterCleanup.ui }, null, 2))
-if (!afterCleanup.gates.beginningOfDay || !afterCleanup.gates.hasWork) {
-  console.error('Post-cleanup fixture contaminated — LIVE_QUALIFIED not claimed')
+const immediate = await snapshotFixture()
+console.log(JSON.stringify({ phase: 'immediate', ready: immediate.ready, gates: immediate.gates, schedule: immediate.schedule, ui: immediate.ui }, null, 2))
+const settled = await settleDevice('post-cleanup')
+console.log(JSON.stringify({
+  phase: 'settled',
+  actions: settled.actions,
+  ready: settled.snapshot.ready,
+  gates: settled.snapshot.gates,
+  schedule: settled.snapshot.schedule,
+  ui: settled.snapshot.ui,
+}, null, 2))
+if (
+  !settled.snapshot.gates.beginningOfDay ||
+  !settled.snapshot.gates.hasWork ||
+  !settled.snapshot.ready
+) {
+  console.error('Post-cleanup fixture contaminated after settle — LIVE_QUALIFIED not claimed')
   process.exit(4)
-}
-if (!afterCleanup.ready) {
-  const restoredAfter = await restoreFixture()
-  console.log(JSON.stringify({ restored: restoredAfter.ok, gates: restoredAfter.after?.gates }, null, 2))
-  if (!restoredAfter.ok) {
-    console.error('Post-cleanup notification/UI settle failed — LIVE_QUALIFIED not claimed')
-    process.exit(4)
-  }
 }
 
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')
