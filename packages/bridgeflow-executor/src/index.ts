@@ -541,13 +541,14 @@ export class BridgeFlowExecutor {
       );
     }
 
+    const planHasCleanup = input.plan.steps.some((step) => step.kind === "CLEANUP");
     const state: ExecutionState = {
       stopped: input.recovery?.outcomeState?.stopped ?? false,
       unknownEffect: input.recovery?.outcomeState?.unknownEffect ?? false,
       automationFailure: input.recovery?.outcomeState?.automationFailure ?? false,
       evidenceInsufficient: input.recovery?.outcomeState?.evidenceInsufficient ?? false,
       productVerdicts: [...(input.recovery?.outcomeState?.productVerdicts ?? [])],
-      cleanupResult: input.recovery?.outcomeState?.cleanupResult ?? "SUCCEEDED",
+      cleanupResult: input.recovery?.outcomeState?.cleanupResult ?? (planHasCleanup ? "NOT_STARTED" : "SUCCEEDED"),
       resourceReleaseResult: input.recovery?.outcomeState?.resourceReleaseResult ?? "RELEASED",
       schedulerDisposition: input.recovery?.outcomeState?.schedulerDisposition ?? "RELEASED",
       operationalDisposition: input.recovery?.outcomeState?.operationalDisposition ?? "OK",
@@ -607,6 +608,10 @@ export class BridgeFlowExecutor {
       if (leaseHeld) await this.options.mutationAdmission.release(input.deviceId, input.runId);
     }
 
+    if (state.stopped) {
+      await this.executePostStopCleanup(input, stepsById, state);
+    }
+
     if (state.stopped && !state.checkpointedStopped) {
       await this.persistRecoveryCheckpoint(
         input.runId,
@@ -622,6 +627,34 @@ export class BridgeFlowExecutor {
       ...this.fenceRecord(state),
     });
     return result;
+  }
+
+  private async executePostStopCleanup(
+    input: ExecuteBridgeFlowInput,
+    stepsById: ReadonlyMap<string, BridgeFlowPlanStep>,
+    state: ExecutionState,
+  ): Promise<void> {
+    if (state.cleanupResult !== "NOT_STARTED" && state.cleanupResult !== "PENDING") return;
+
+    let currentStepId = state.checkpointNextStepId;
+    let iterationKey = state.checkpointIterationKey;
+    const maxCleanupTransitions = 100;
+
+    for (let transition = 0; currentStepId !== null && transition < maxCleanupTransitions; transition += 1) {
+      const step = stepsById.get(currentStepId);
+      if (step?.kind !== "CLEANUP") return;
+
+      state.cleanupResult = "PENDING";
+      const result = await this.executeStep(input, step, iterationKey, state);
+      currentStepId = result.next;
+      iterationKey = state.checkpointIterationKey;
+      if (result.stop) return;
+    }
+
+    if (currentStepId !== null) {
+      state.cleanupResult = "FAILED";
+      state.operationalDisposition = "NEEDS_ATTENTION";
+    }
   }
 
   private async executeFlow(
@@ -985,6 +1018,12 @@ export class BridgeFlowExecutor {
         const generic = this.options.genericSteps;
         if (!generic) {
           outcome.actionResult = "FAILED";
+          if (step.kind === "CLEANUP") {
+            state.cleanupResult = "FAILED";
+            state.operationalDisposition = "NEEDS_ATTENTION";
+            stop = true;
+            break;
+          }
           state.automationFailure = true;
           stop = true;
           break;
@@ -998,8 +1037,16 @@ export class BridgeFlowExecutor {
         if (result.outputVariable) this.options.variables?.set(result.outputVariable, result.output);
         if (result.next !== undefined) next = result.next;
         if (!result.succeeded) {
+          if (step.kind === "CLEANUP") {
+            state.cleanupResult = "FAILED";
+            state.operationalDisposition = "NEEDS_ATTENTION";
+            stop = true;
+            break;
+          }
           state.automationFailure = true;
           stop = true;
+        } else if (step.kind === "CLEANUP") {
+          state.cleanupResult = "SUCCEEDED";
         }
       }
     }

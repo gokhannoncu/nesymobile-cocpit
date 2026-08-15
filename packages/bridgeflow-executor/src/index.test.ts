@@ -166,6 +166,32 @@ describe("bridgeflow executor", () => {
       } as Partial<BridgeFlowPlan>);
     }
 
+    function assertPlanWithCleanup(): BridgeFlowPlan {
+      return planFixture({
+        entryStepId: "assert-1",
+        steps: [
+          {
+            planStepId: "assert-1",
+            kind: "ASSERT_FACT",
+            sourceMapRef: "src:assert",
+            timeoutMs: 1_000,
+            next: "clear-session",
+            capabilityRequirements: [],
+            params: { factKey: "app.session", expected: true },
+          },
+          {
+            planStepId: "clear-session",
+            kind: "CLEANUP",
+            sourceMapRef: "src:cleanup",
+            timeoutMs: 1_000,
+            next: null,
+            capabilityRequirements: [],
+            params: {},
+          },
+        ],
+      } as Partial<BridgeFlowPlan>);
+    }
+
     function fact(value: boolean | "UNKNOWN") {
       return {
         factKey: "app.session",
@@ -202,6 +228,11 @@ describe("bridgeflow executor", () => {
       expect(result.evaluationFailureClass).not.toBe("EVIDENCE_INSUFFICIENT");
     });
 
+    it("keeps cleanup SUCCEEDED by default for workflows without a cleanup step", async () => {
+      const result = await runWith([fact(true)]);
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+    });
+
     it("reports an UNKNOWN value as evidence-insufficient, not as a product failure", async () => {
       const result = await runWith([fact("UNKNOWN")]);
       expect(result.productVerdict).toBe("INCONCLUSIVE");
@@ -210,6 +241,109 @@ describe("bridgeflow executor", () => {
     it("reports an absent fact as evidence-insufficient", async () => {
       const result = await runWith([]);
       expect(result.productVerdict).toBe("INCONCLUSIVE");
+    });
+
+    it("executes cleanup exactly once after a normal path", async () => {
+      const persistence = new InMemoryExecutionPersistence();
+      const genericSteps: string[] = [];
+      const executor = new BridgeFlowExecutor({
+        persistence,
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [fact(false)] },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED", evidenceRef: "cleanup:done" };
+          },
+        },
+        clock: () => 10,
+      });
+
+      const result = await executor.execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: assertPlanWithCleanup(),
+      });
+
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+      expect(genericSteps).toEqual(["clear-session"]);
+      expect(persistence.stepOccurrences.map((occurrence) => occurrence.planStepId)).toEqual([
+        "assert-1",
+        "clear-session",
+      ]);
+    });
+
+    it("executes cleanup exactly once after a measured product failure", async () => {
+      const persistence = new InMemoryExecutionPersistence();
+      const genericSteps: string[] = [];
+      const executor = new BridgeFlowExecutor({
+        persistence,
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [fact(false)] },
+        genericSteps: {
+          execute: async (step) => {
+            genericSteps.push(step.planStepId);
+            return { succeeded: true, actionResult: "SUCCEEDED", evidenceRef: "cleanup:done" };
+          },
+        },
+        clock: () => 10,
+      });
+
+      const result = await executor.execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: assertPlanWithCleanup(),
+      });
+
+      expect(result.productVerdict).toBe("FAIL_PRODUCT");
+      expect(result.evaluationFailureClass).toBe("NONE");
+      expect(result.cleanupResult).toBe("SUCCEEDED");
+      expect(genericSteps).toEqual(["clear-session"]);
+      expect(persistence.stepOccurrences.map((occurrence) => occurrence.planStepId)).toEqual([
+        "assert-1",
+        "clear-session",
+      ]);
+    });
+
+    it("keeps the product verdict when cleanup fails and raises operational attention", async () => {
+      const executor = new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: createInMemoryMutationAdmission(),
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [fact(false)] },
+        genericSteps: {
+          execute: async () => ({ succeeded: false, actionResult: "FAILED", evidenceRef: "cleanup:failed" }),
+        },
+        clock: () => 10,
+      });
+
+      const result = await executor.execute({
+        runId: "run-1",
+        deviceId: "device-1",
+        plan: assertPlanWithCleanup(),
+      });
+
+      expect(result.productVerdict).toBe("FAIL_PRODUCT");
+      expect(result.evaluationFailureClass).toBe("NONE");
+      expect(result.cleanupResult).toBe("FAILED");
+      expect(result.operationalDisposition).toBe("NEEDS_ATTENTION");
     });
   });
 
