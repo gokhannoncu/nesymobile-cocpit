@@ -1,0 +1,882 @@
+#!/usr/bin/env node
+/**
+ * G90.10 BD.6 live qualification — Host B process-parcel LOCAL queue.
+ *
+ * Initial host is process-parcel / tap-input-confirm (RUN_PLAY §17).
+ * tour-approval stays in the BD.2/BD.3 remote-mutation family.
+ * complete-delivery remotes are READ_ONLY; amend host BEFORE LIVE_QUALIFIED
+ * if this path cannot persist or observe the queue. Do not loosen the classifier.
+ *
+ *   0  refuse closed PIDs / tsx / dirty apps+packages / pack != 1.32.0
+ *   1  uninjected process-parcel twin
+ *   2  BD.6-specific restore (not Host B RejectLeavingPermission)
+ *   3  injected OFFLINE_QUEUE (controlled device WAN cut)
+ *   4  cleanup = radios restored; G4 flush is not a bar
+ *
+ * Not a D60 campaign. Not airplane/USB. Not HOST_TRANSPORT_CUT.
+ */
+import { spawnSync } from 'node:child_process'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createUnloadableShipment, dismissNotificationList, runWorkflow } from './g90-10-host-b-fixture.mjs'
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
+const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
+const WEB = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
+const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
+const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
+const WORKFLOW = 'nesy.workflow.process-parcel'
+const PROFILE = 'nesy.launch.reuse-session'
+const REQUIRED_PACK = '1.32.0'
+const REQUIRED_HEAD = 'eb48304'
+const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
+const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043'])
+const CLOSED_COMMITS = new Set(['3770d2a', '291553b', '94a9acf', '413485a'])
+const REMOTE_SUCCESS_FACTS = new Set([
+  'REMOTE.DELIVERY_STATUS_COMPLETED',
+  'REMOTE.DELIVERY_CONFIRMED',
+  'REMOTE.TOUR_APPROVAL_REQUEST_CREATED',
+  'REMOTE.TOUR_APPROVAL_STATUS_APPROVED',
+  'REMOTE.TOUR_APPROVAL_CONFIRMED',
+])
+
+async function req(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+  const text = await res.text()
+  let json
+  try {
+    json = text ? JSON.parse(text) : {}
+  } catch {
+    json = { raw: text.slice(0, 2000) }
+  }
+  return { status: res.status, body: json }
+}
+
+function sh(cmd, args) {
+  return String(spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout ?? '').trim()
+}
+
+function adbPath() {
+  if (process.env.ADB_PATH) return process.env.ADB_PATH
+  const which = sh('which', ['adb'])
+  if (which) return which
+  return `${process.env.HOME}/Library/Android/sdk/platform-tools/adb`
+}
+
+function adb(args, timeoutMs = 20_000) {
+  return spawnSync(adbPath(), ['-s', DEVICE, ...args], { encoding: 'utf8', timeout: timeoutMs })
+}
+
+function listenPids(port) {
+  return sh('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'])
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+function commandOf(pid) {
+  return sh('ps', ['-p', String(pid), '-o', 'command=']).replace(/\s+/g, ' ')
+}
+
+function processSnapshot() {
+  const apiPid = listenPids(4001)[0] ?? null
+  const webPid = listenPids(4002)[0] ?? null
+  return {
+    apiPid,
+    webPid,
+    apiCommand: apiPid ? commandOf(apiPid) : null,
+    webCommand: webPid ? commandOf(webPid) : null,
+    apiStartedAt: apiPid ? sh('ps', ['-p', apiPid, '-o', 'lstart=']).trim() : null,
+  }
+}
+
+function sourceDirty(paths) {
+  return sh('git', ['status', '--porcelain', '--', ...paths])
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
+function loadApiEnv() {
+  try {
+    const raw = readFileSync(join(REPO, 'apps/api/.env'), 'utf8').replace(/^\uFEFF/, '')
+    for (const line of raw.split('\n')) {
+      const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim())
+      if (match && !process.env[match[1]]) {
+        process.env[match[1]] = match[2].replace(/^["']|["']$/g, '')
+      }
+    }
+  } catch {
+    // schemaStatus reports missing DATABASE_URL
+  }
+}
+
+function schemaStatus() {
+  loadApiEnv()
+  const res = spawnSync(
+    'pnpm',
+    ['--filter', '@nesy/db', 'exec', 'prisma', 'migrate', 'status', '--schema', 'prisma/schema.prisma'],
+    { cwd: REPO, encoding: 'utf8', env: process.env },
+  )
+  const text = `${res.stdout}\n${res.stderr}`
+  return {
+    ok: res.status === 0 && /Database schema is up to date/i.test(text),
+    text: text.slice(0, 800),
+  }
+}
+
+function dumpUiXml() {
+  adb(['shell', 'uiautomator', 'dump', '/sdcard/uidump.xml'])
+  return adb(['shell', 'cat', '/sdcard/uidump.xml']).stdout ?? ''
+}
+
+function nodeAttr(xml, resourceId) {
+  const escaped = resourceId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = xml.match(new RegExp(`<node[^>]*resource-id="[^"]*${escaped}"[^>]*>`))
+  return match ? match[0] : null
+}
+
+function boundsCenter(nodeXml) {
+  const match = /bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(nodeXml ?? '')
+  if (!match) return null
+  return {
+    x: Math.round((Number(match[1]) + Number(match[3])) / 2),
+    y: Math.round((Number(match[2]) + Number(match[4])) / 2),
+  }
+}
+
+function tapResource(resourceId) {
+  const center = boundsCenter(nodeAttr(dumpUiXml(), resourceId))
+  if (!center) return { tapped: false, resourceId }
+  adb(['shell', 'input', 'tap', String(center.x), String(center.y)])
+  return { tapped: true, resourceId, at: center }
+}
+
+function pressBack() {
+  adb(['shell', 'input', 'keyevent', '4'])
+  return { op: 'BACK' }
+}
+
+async function fetchJson(url, attempts = 3) {
+  let lastError
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const res = await fetch(url)
+      return await res.json()
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 750 * (i + 1)))
+    }
+  }
+  throw lastError
+}
+
+async function readScreen() {
+  try {
+    const body = await fetchJson(`${WEB}/api/adb/screen?serial=${encodeURIComponent(DEVICE)}`)
+    const current = body.current ?? {}
+    const overlay = body.overlay ?? {}
+    return {
+      fragment: current.className ?? current.name ?? null,
+      overlay: overlay.className ?? overlay.name ?? null,
+      appForeground: body.appForeground ?? null,
+    }
+  } catch (error) {
+    return { fragment: null, overlay: null, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+async function readSchedule() {
+  const body = await fetchJson(`${WEB}/api/adb/schedule?serial=${encodeURIComponent(DEVICE)}`)
+  const schedule = body.schedule ?? {}
+  const parcels = []
+  for (const stop of schedule.stops ?? []) {
+    for (const task of stop.taskList ?? []) {
+      for (const shipment of task.shipmentList ?? []) {
+        for (const item of shipment.shipmentItemList ?? []) {
+          parcels.push({
+            stopId: stop.stopId,
+            taskId: task.taskId,
+            taskParty: task.taskParty,
+            shipmentId: shipment.waybillNumber ?? shipment.trackingNumber,
+            shipmentStatus: shipment.shipmentStatus,
+            scanPayload: item.legacySystemShortBarcode,
+            fullBarcode: item.barcode,
+            itemStatus: item.shipmentItemStatus,
+            itemLocation: item.itemCurrentLocation,
+          })
+        }
+      }
+    }
+  }
+  return {
+    scheduleId: schedule.scheduleId ?? null,
+    status: schedule.status ?? null,
+    stopCount: (schedule.stops ?? []).length,
+    parcels,
+  }
+}
+
+function radioState() {
+  const wifi = String(adb(['shell', 'settings', 'get', 'global', 'wifi_on']).stdout ?? '').trim()
+  const data = String(adb(['shell', 'settings', 'get', 'global', 'mobile_data']).stdout ?? '').trim()
+  const adbState = String(adb(['get-state']).stdout ?? '').trim()
+  return {
+    wifiOn: wifi,
+    mobileData: data,
+    adbState,
+    radiosRestored: (wifi === '1' || wifi === 'true') && adbState === 'device',
+  }
+}
+
+function restoreRadios() {
+  adb(['shell', 'svc', 'wifi', 'enable'])
+  adb(['shell', 'svc', 'data', 'enable'])
+  return radioState()
+}
+
+function axesOf(detail, started) {
+  const runtime = detail.runtime ?? {}
+  const run = detail.run ?? {}
+  const provenance = runtime.faultProvenance ?? runtime.fault_provenance ?? null
+  return {
+    runId: run.id ?? run.runId ?? started?.runId ?? null,
+    productVerdict: run.productVerdict ?? run.product_verdict ?? null,
+    cleanupResult: runtime.cleanupResult ?? run.cleanupResult ?? run.cleanup_result ?? null,
+    injectedFault: runtime.injectedFault ?? started?.injectedFault ?? null,
+    expectedClass: runtime.expectedClass ?? started?.expectedClass ?? null,
+    observedClass: runtime.observedClass ?? null,
+    injectedFaultHost: runtime.injectedFaultHost ?? started?.injectedFaultHost ?? null,
+    evaluationFailureClass: runtime.evaluationFailureClass ?? run.evaluationFailureClass ?? null,
+    terminationReason: runtime.terminationReason ?? run.terminationReason ?? run.termination_reason ?? null,
+    resourceReleaseResult: runtime.resourceReleaseResult ?? run.resourceReleaseResult ?? null,
+    faultProvenance: provenance,
+    status: run.status ?? null,
+    lifecycle: runtime.lifecycle ?? run.lifecycle ?? null,
+  }
+}
+
+function factsOf(detail) {
+  const evaluations = detail.oracleEvaluations ?? detail.oracle_evaluations ?? []
+  const rows = []
+  for (const item of evaluations) {
+    const reqs = item.requirements
+    if (!reqs || typeof reqs !== 'object') continue
+    for (const [key, value] of Object.entries(reqs)) {
+      if (key.startsWith('__') || value == null || typeof value !== 'object') continue
+      rows.push({
+        factKey: value.factKey ?? value.fact_key ?? key,
+        status: value.state ?? null,
+        value: value.state === 'SATISFIED' || value.state === 'MET' ? true : false,
+        obligation: value.requirement?.obligation ?? null,
+        subtype: null,
+        source: item.evaluator_kind ?? item.evaluatorKind ?? null,
+        occurrenceId: item.occurrence_id ?? item.occurrenceId ?? null,
+      })
+    }
+  }
+  return rows
+}
+
+function queueFact(facts) {
+  return facts.find(
+    (row) =>
+      row.factKey === 'LOCAL.OFFLINE_QUEUE_ITEM_WAITING' &&
+      (row.value === true || row.status === 'SATISFIED' || row.status === 'MET'),
+  ) ?? null
+}
+
+function remoteSuccessFacts(facts) {
+  return facts.filter(
+    (row) =>
+      REMOTE_SUCCESS_FACTS.has(String(row.factKey)) &&
+      (row.value === true || row.status === 'SATISFIED' || row.status === 'MET'),
+  )
+}
+
+async function pinPack() {
+  const packs = await req('GET', '/verdict/runtime/domain-packs')
+  const published = (packs.body.items ?? []).filter(
+    (item) => item.publicationState === 'PUBLISHED' && /^sha256:[a-f0-9]{64}$/i.test(String(item.bundleDigest ?? '')),
+  )
+  const preferred = published.filter((item) => item.packKey === 'nesy.courier')
+  const pool = preferred.length > 0 ? preferred : published
+  let pack = null
+  for (const candidate of pool) {
+    if (pack === null || String(candidate.version).localeCompare(String(pack.version), undefined, { numeric: true }) > 0) {
+      pack = candidate
+    }
+  }
+  if (!pack) throw new Error('no pinable published pack')
+  return pack
+}
+
+async function compileWorkflow(pack, workflowRef) {
+  const wf = await req('GET', `/workflows/${encodeURIComponent(workflowRef)}`)
+  const currentVersion = wf.body?.data?.currentVersion ?? {}
+  const compiled = await req('POST', '/verdict/runtime/compile', {
+    workflowRef,
+    workflowIr: { nodes: currentVersion.nodes ?? [], connections: currentVersion.connections ?? [] },
+    domainPackKey: pack.packKey,
+    domainPackVersion: pack.version,
+    domainPackDigest: pack.bundleDigest,
+  })
+  if (!compiled.body.ok) throw new Error(`compile failed ${JSON.stringify(compiled.body.issues ?? compiled.body)}`)
+  return compiled.body
+}
+
+async function pollRun(runId) {
+  const deadline = Date.now() + TIMEOUT_SEC * 1000
+  const terminal = new Set(['completed', 'failed', 'cancelled', 'error', 'blocked'])
+  let detail = {}
+  while (Date.now() < deadline) {
+    const polled = await req('GET', `/verdict/runtime/runs/${encodeURIComponent(runId)}`)
+    detail = polled.body
+    if (terminal.has(String(detail.run?.status))) return detail
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+  }
+  return detail
+}
+
+async function runProcessParcel(label, pack, compiled, parcel, fault) {
+  const startBody = {
+    workflowRef: WORKFLOW,
+    deviceId: DEVICE,
+    appId: APP_ID,
+    compiledPlanRef: compiled.compiledPlanRef,
+    compiledPlanHash: compiled.compiledPlanHash,
+    domainPackKey: pack.packKey,
+    domainPackVersion: pack.version,
+    domainPackDigest: pack.bundleDigest,
+    profileKey: PROFILE,
+    inputs: {
+      scanPayload: parcel.scanPayload,
+      taskCode: parcel.taskId,
+      sessionCorrelationId: `g90-10-bd6-${label}-${Date.now()}`,
+    },
+    ...(fault === null
+      ? {}
+      : { injectedFault: fault.injectedFault, injectedFaultHost: fault.injectedFaultHost }),
+  }
+  const started = await req('POST', '/verdict/runtime/runs', startBody)
+  const start = started.body
+  const runId = start.run?.runId ?? start.runId
+  if (!runId) throw new Error(`${label} start returned no runId ${JSON.stringify(start).slice(0, 800)}`)
+  const detail = await pollRun(runId)
+  const facts = factsOf(detail)
+  return {
+    start,
+    axes: axesOf(detail, start),
+    facts,
+    queueFact: queueFact(facts),
+    remoteSuccess: remoteSuccessFacts(facts),
+    steps: (detail.steps ?? []).map((step) => ({
+      planStepId: step.plan_step_id ?? step.planStepId ?? null,
+      actionResult: step.action_result ?? step.actionResult ?? null,
+      continueGate: step.continue_gate_result ?? step.continueGateResult ?? null,
+      oracle: step.final_oracle_result ?? step.finalOracleResult ?? null,
+    })),
+  }
+}
+
+function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
+  const loaded = schedule.parcels.filter((parcel) => parcel.scanPayload)
+  const approved = schedule.status === 2
+  return {
+    scheduleId: schedule.scheduleId,
+    status: schedule.status,
+    fragment: screen.fragment,
+    overlay: screen.overlay,
+    appForeground: screen.appForeground,
+    parcelCount: loaded.length,
+    parcels: loaded,
+    manuelInput: /resource-id="[^"]*manuel_input"/.test(xml),
+    barcodeField: /resource-id="[^"]*et_input_dialog_barcode_number"/.test(xml),
+    radios: radioState(),
+    approved,
+    ready:
+      approved &&
+      screen.fragment === 'TaskListFragment' &&
+      loaded.length > 0 &&
+      /resource-id="[^"]*manuel_input"/.test(xml),
+  }
+}
+
+async function prepareApprovedTaskList(scheduleId) {
+  const log = []
+  let screen = await readScreen()
+  if (screen.fragment === 'TaskListFragment') {
+    const current = snapshotProcessParcel(await readSchedule(), screen)
+    if (current.ready) return { ok: true, log, fixture: current }
+    log.push({ op: 'BACK-from-task-list', ...pressBack() })
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    screen = await readScreen()
+  }
+
+  const dismissed = dismissNotificationList()
+  if (dismissed.dismissed) {
+    log.push({ op: 'dismiss-notification-list', ...dismissed })
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    screen = await readScreen()
+  }
+
+  let schedule = await readSchedule()
+  const xml = dumpUiXml()
+  const requestReady = /text="Request Tour Start"/.test(xml)
+  log.push({ screen, requestReady, status: schedule.status })
+
+  if (screen.fragment === 'StopListFragment' && requestReady && schedule.status === 0) {
+    const tour = await runWorkflow('nesy.workflow.tour-approval-lifecycle', 'nesy.launch.reuse-session', {
+      routeCode: '31',
+      scheduleId,
+      sessionCorrelationId: `g90-10-bd6-fixture-tour-${Date.now()}`,
+    })
+    log.push({ op: 'tour-approval-fixture', ...tour })
+    if (tour.productVerdict !== 'PASS_ONLINE') {
+      return { ok: false, reason: `tour-approval fixture ${tour.productVerdict}`, log }
+    }
+    const afterPush = dismissNotificationList()
+    log.push({ op: 'dismiss-approval-push', ...afterPush })
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    schedule = await readSchedule()
+    screen = await readScreen()
+  }
+
+  if (screen.fragment !== 'StopListFragment') {
+    return { ok: false, reason: `need StopListFragment to open-stop, got ${screen.fragment}`, log }
+  }
+
+  const parcel = schedule.parcels[0]
+  if (!parcel) return { ok: false, reason: 'no parcel to open', log }
+  const opened = await runWorkflow('nesy.workflow.open-stop', 'nesy.launch.reuse-session', {
+    searchTerm: parcel.shipmentId,
+    rowKey: parcel.scanPayload,
+    sessionCorrelationId: `g90-10-bd6-fixture-open-${Date.now()}`,
+  })
+  log.push({ op: 'open-stop-fixture', ...opened })
+  screen = await readScreen()
+  const fixture = snapshotProcessParcel(await readSchedule(), screen)
+  return { ok: fixture.ready, reason: fixture.ready ? undefined : `after open-stop ${screen.fragment} status=${fixture.status} verdict=${opened.productVerdict}`, log, fixture }
+}
+
+async function restoreToTaskList(maxBacks = 4) {
+  const actions = []
+  const xml = dumpUiXml()
+  if (/resource-id="[^"]*btn_exit"/.test(xml)) {
+    actions.push({ op: 'dismiss-notification-list', ...tapResource('btn_exit') })
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+  }
+  for (let i = 0; i < maxBacks; i += 1) {
+    const screen = await readScreen()
+    if (screen.fragment === 'TaskListFragment') {
+      return { ok: true, actions, screen, schedule: await readSchedule() }
+    }
+    if (screen.fragment === 'StopListFragment') {
+      return { ok: false, reason: 'landed on StopListFragment', actions, screen, schedule: await readSchedule() }
+    }
+    actions.push(pressBack())
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+  }
+  const screen = await readScreen()
+  return {
+    ok: screen.fragment === 'TaskListFragment',
+    reason: screen.fragment === 'TaskListFragment' ? undefined : `still on ${screen.fragment}`,
+    actions,
+    screen,
+    schedule: await readSchedule(),
+  }
+}
+
+async function provisionSecondParcel() {
+  const shipment = await createUnloadableShipment()
+  const loaded = await runWorkflow('nesy.workflow.load-to-vehicle', 'nesy.launch.reuse-session', {
+    scanValue: shipment.scanValue,
+    alternateKey: shipment.shipmentId,
+  })
+  return { shipment, loaded }
+}
+
+function isolationOf(row, radios) {
+  const failures = []
+  if (row.axes.lifecycle !== 'CLOSED' && row.axes.status !== 'completed') {
+    failures.push(`not closed (${row.axes.lifecycle}/${row.axes.status})`)
+  }
+  if (!radios.radiosRestored) {
+    failures.push(`radios not restored wifi=${radios.wifiOn} adb=${radios.adbState}`)
+  }
+  if (radios.adbState !== 'device') failures.push(`adb=${radios.adbState}`)
+  return { clean: failures.length === 0, failures, radios }
+}
+
+function judgeBaseline(row, radios) {
+  const isolation = isolationOf(row, radios)
+  const failures = []
+  if (row.axes.injectedFault != null) failures.push(`injectedFault=${row.axes.injectedFault}`)
+  if (row.axes.observedClass != null) failures.push(`observedClass filled on uninjected (${row.axes.observedClass})`)
+  if (row.axes.productVerdict !== 'PASS_ONLINE') {
+    failures.push(`expected business result PASS_ONLINE, got ${row.axes.productVerdict}`)
+  }
+  if (row.queueFact) {
+    failures.push('LOCAL.OFFLINE_QUEUE_ITEM_WAITING present on uninjected twin')
+  }
+  const cleanupOk =
+    row.axes.cleanupResult === 'SUCCEEDED' ||
+    ((row.axes.cleanupResult === 'NOT_REQUIRED' || row.axes.cleanupResult === 'NOT_STARTED') &&
+      row.axes.productVerdict === 'PASS_ONLINE' &&
+      row.axes.lifecycle === 'CLOSED' &&
+      row.axes.resourceReleaseResult === 'RELEASED')
+  if (!cleanupOk) failures.push(`cleanup=${row.axes.cleanupResult}`)
+  if (!isolation.clean) failures.push(`isolation dirty: ${isolation.failures.join(', ')}`)
+  return { ok: failures.length === 0, failures, isolation }
+}
+
+function judgeBd6(row, radios) {
+  const isolation = isolationOf(row, radios)
+  const failures = []
+  const provenance = row.axes.faultProvenance ?? {}
+  if (row.start.injectedFault !== 'OFFLINE_QUEUE') failures.push(`start.injectedFault=${row.start.injectedFault}`)
+  if (row.axes.injectedFault !== 'OFFLINE_QUEUE') failures.push(`readback.injectedFault=${row.axes.injectedFault}`)
+  if (row.axes.expectedClass !== 'OFFLINE_QUEUED') failures.push(`expectedClass=${row.axes.expectedClass}`)
+  if (row.axes.observedClass !== 'OFFLINE_QUEUED') failures.push(`observedClass=${row.axes.observedClass}`)
+  if (row.axes.productVerdict !== 'PASS_QUEUED_OFFLINE') {
+    failures.push(`productVerdict=${row.axes.productVerdict} (need PASS_QUEUED_OFFLINE)`)
+  }
+  if (row.axes.productVerdict === 'FAIL_PRODUCT' || String(row.axes.productVerdict ?? '').startsWith('FAIL_')) {
+    failures.push(`PRODUCT_FAIL ${row.axes.productVerdict}`)
+  }
+  if (provenance.phase !== 'EFFECT_OBSERVED') failures.push(`provenance.phase=${provenance.phase}`)
+  if (provenance.actuallyFired !== true) failures.push(`actuallyFired=${provenance.actuallyFired}`)
+  if (provenance.abortKind !== 'NONE') failures.push(`abortKind=${provenance.abortKind}`)
+  if (provenance.effectKind !== 'LOCAL_QUEUE_PERSIST') failures.push(`effectKind=${provenance.effectKind}`)
+  if (provenance.effectKind === 'HOST_TRANSPORT_CUT') failures.push('HOST_TRANSPORT_CUT present — BD.6 stole BD.2 path')
+  const chain = [provenance.requestedAtMs, provenance.armedAtMs, provenance.triggeredAtMs, provenance.effectObservedAtMs]
+  if (chain.some((item) => item == null)) failures.push(`provenance timestamps incomplete ${JSON.stringify(chain)}`)
+  if (!row.queueFact) failures.push('LOCAL.OFFLINE_QUEUE_ITEM_WAITING absent')
+  if (row.remoteSuccess.length > 0) {
+    failures.push(`remote-success fact present ${row.remoteSuccess.map((item) => item.factKey).join(',')}`)
+  }
+  if (!isolation.clean) failures.push(`isolation dirty: ${isolation.failures.join(', ')}`)
+  return {
+    ok: failures.length === 0,
+    failures,
+    provenance,
+    isolation,
+    note: 'WAN restore is cleanup. Queue flush / G4 reconnect is not a LIVE_QUALIFIED bar.',
+  }
+}
+
+async function classifierIndependence(row) {
+  const { observeInjectedClass } = await import(
+    new URL('../packages/workflow-contract/dist/index.js', import.meta.url).href
+  )
+  const recomputed = observeInjectedClass({
+    actionResult: null,
+    productVerdict: row.axes.productVerdict,
+    localQueueObserved: Boolean(row.queueFact),
+    provenance: row.axes.faultProvenance ?? {},
+  })
+  const withoutEvidence = observeInjectedClass({
+    actionResult: null,
+    productVerdict: row.axes.productVerdict,
+    localQueueObserved: false,
+    provenance: row.axes.faultProvenance ?? {},
+  })
+  const failures = []
+  if (recomputed !== 'OFFLINE_QUEUED') {
+    failures.push(`classifier without injectedFault returned ${recomputed}`)
+  }
+  if (recomputed !== row.axes.observedClass) {
+    failures.push(`recomputed ${recomputed} != persisted observedClass ${row.axes.observedClass}`)
+  }
+  if (withoutEvidence === 'OFFLINE_QUEUED') {
+    failures.push('classifier emitted OFFLINE_QUEUED without localQueueObserved — input/measurement collapsed')
+  }
+  return { ok: failures.length === 0, failures, recomputed, withoutEvidence, usedInjectedFault: false }
+}
+
+const processSnap = processSnapshot()
+const issues = []
+if (!processSnap.apiCommand || !/dist\/server\.js/.test(processSnap.apiCommand)) {
+  issues.push(`:4001 is not node dist/server.js (${processSnap.apiCommand ?? 'none'})`)
+}
+if (CLOSED_PIDS.has(String(processSnap.apiPid))) {
+  issues.push(`PID ${processSnap.apiPid} is a closed lineage, not a BD.6 qualification PID`)
+}
+if (/tsx watch|src\/server\.ts/.test(processSnap.apiCommand ?? '')) {
+  issues.push(':4001 is tsx/dev')
+}
+if (!processSnap.webCommand || /next dev/.test(processSnap.webCommand)) {
+  issues.push(`:4002 is not next start (${processSnap.webCommand ?? 'none'})`)
+}
+const codeDirty = sourceDirty(['apps', 'packages', 'domain-packs'])
+if (codeDirty.length > 0) issues.push(`G90.10 code dirty: ${codeDirty.join(' | ')}`)
+const head = sh('git', ['rev-parse', 'HEAD'])
+const headShort = sh('git', ['rev-parse', '--short', 'HEAD'])
+if (!head.startsWith(REQUIRED_HEAD) && headShort !== REQUIRED_HEAD) {
+  issues.push(`HEAD ${headShort} is not ${REQUIRED_HEAD}`)
+}
+if ([...CLOSED_COMMITS].some((commit) => headShort === commit || head.startsWith(commit))) {
+  issues.push(`HEAD ${headShort} is a closed G90.9/BD.2/BD.3 reference commit`)
+}
+if (issues.length > 0) {
+  console.error('G90.10 BD.6 preflight failed:')
+  for (const issue of issues) console.error(`  ${issue}`)
+  process.exit(2)
+}
+
+const schema = schemaStatus()
+const identity = {
+  gitCommit: head,
+  gitCommitShort: headShort,
+  workingTreeClean: sourceDirty(['apps', 'packages', 'scripts', 'domain-packs']).length === 0,
+  g90_10ImplementationClean: codeDirty.length === 0,
+  runnerDirty: sourceDirty(['scripts/g90-10-bd6-live-smoke.mjs', 'scripts/g90-10-host-b-fixture.mjs']).length > 0,
+  apiCommand: processSnap.apiCommand,
+  apiPid: processSnap.apiPid,
+  apiStartedAt: processSnap.apiStartedAt,
+  webCommand: processSnap.webCommand,
+  webPid: processSnap.webPid,
+  dbSchema: schema.ok ? 'up-to-date' : `unknown: ${schema.text}`,
+  deviceId: DEVICE,
+  host: 'B',
+  workflowRef: WORKFLOW,
+  profileKey: PROFILE,
+  injectionModel: 'controlled device WAN cut representing BD.6 OFFLINE_QUEUE',
+  closedLineages: {
+    g90_9: { gitCommit: '3770d2a', apiPid: 55798 },
+    bd3: { gitCommit: '291553b', apiPid: 29171, note: 'BD.3 LIVE_QUALIFIED historical proof' },
+    bd2: { gitCommit: '94a9acf', apiPid: 95043, note: 'BD.2 LIVE_QUALIFIED historical proof; do not re-qualify' },
+    designRuntime: { apiPid: 38870, note: 'pre-BD.2 design runtime; not a qualification PID' },
+  },
+}
+
+console.log('G90.10 BD.6 identity')
+console.log(JSON.stringify(identity, null, 2))
+
+const pack = await pinPack()
+identity.packVersion = pack.version
+identity.packKey = pack.packKey
+identity.packDigest = pack.bundleDigest
+if (pack.version !== REQUIRED_PACK) {
+  console.error(`pack pin ${pack.packKey}@${pack.version} is not ${REQUIRED_PACK} — refusing live smoke`)
+  process.exit(2)
+}
+const compiled = await compileWorkflow(pack, WORKFLOW)
+identity.compiledPlanRef = compiled.compiledPlanRef
+identity.compiledPlanHash = compiled.compiledPlanHash
+identity.sourceMap = compiled.sourceMap ?? null
+if (compiled.sourceMap && !Object.values(compiled.sourceMap).some((value) => String(value).includes('sm-scan-5'))) {
+  console.error('compiled plan has no read-pending-queue source map (sm-scan-5) — pack IR is not 1.32.0 process-parcel')
+  process.exit(2)
+}
+
+console.log('\n=== process-parcel fixture snapshot ===')
+let schedule = await readSchedule()
+let screen = await readScreen()
+let fixture = snapshotProcessParcel(schedule, screen)
+console.log(JSON.stringify(fixture, null, 2))
+
+const provisionLog = []
+if (screen.fragment === 'TaskListFragment' && schedule.status === 0) {
+  console.log('\n=== BeginningOfDay on task list — BACK to stop list (measured) ===')
+  pressBack()
+  await new Promise((resolve) => setTimeout(resolve, 1500))
+  schedule = await readSchedule()
+  screen = await readScreen()
+  fixture = snapshotProcessParcel(schedule, screen)
+  console.log(JSON.stringify({ screen, status: schedule.status, parcelCount: fixture.parcelCount }, null, 2))
+}
+
+if (fixture.parcels.length < 2 && screen.fragment === 'StopListFragment') {
+  console.log('\n=== provision second parcel before tour-approval ===')
+  try {
+    const second = await provisionSecondParcel()
+    provisionLog.push(second)
+    console.log(JSON.stringify(second, null, 2))
+    schedule = await readSchedule()
+    screen = await readScreen()
+    fixture = snapshotProcessParcel(schedule, screen)
+  } catch (error) {
+    provisionLog.push({ error: error instanceof Error ? error.message : String(error) })
+    console.log(JSON.stringify(provisionLog.at(-1), null, 2))
+  }
+}
+
+if (!fixture.ready && schedule.status === 2 && screen.fragment && screen.fragment !== 'StopListFragment') {
+  console.log('\n=== restore to task list after prior online scan ===')
+  const restored = await restoreToTaskList()
+  console.log(JSON.stringify({ ok: restored.ok, reason: restored.reason, screen: restored.screen }, null, 2))
+  schedule = restored.schedule ?? (await readSchedule())
+  screen = restored.screen ?? (await readScreen())
+  fixture = snapshotProcessParcel(schedule, screen)
+}
+
+if (!fixture.ready) {
+  console.log('\n=== approve tour + open-stop (fixture only; not BD.6 measurement) ===')
+  const prepared = await prepareApprovedTaskList(schedule.scheduleId)
+  provisionLog.push(prepared)
+  console.log(JSON.stringify(prepared, null, 2))
+  if (!prepared.ok) {
+    console.error('process-parcel fixture not ready — Approved + TaskListFragment required. BeginningOfDay scan opens stop-order dialog, not delivery.')
+    process.exit(5)
+  }
+  fixture = prepared.fixture ?? snapshotProcessParcel(await readSchedule(), await readScreen())
+}
+
+if (!fixture.ready) {
+  console.error('process-parcel fixture not ready — Approved tour + TaskListFragment + manuel_input + loaded parcel required')
+  process.exit(5)
+}
+
+const resumeBaseline = process.env.VERDICT_BD6_BASELINE_RUN?.trim() || ''
+const consumedScan = process.env.VERDICT_BD6_BASELINE_SCAN?.trim() || ''
+const baselineParcel = fixture.parcels.find((parcel) => parcel.scanPayload === consumedScan) ?? fixture.parcels[0]
+const injectedParcel =
+  fixture.parcels.find((parcel) => parcel.scanPayload && parcel.scanPayload !== (consumedScan || baselineParcel?.scanPayload)) ??
+  null
+
+console.log('\n=== process-parcel uninjected twin ===')
+const baseline = resumeBaseline
+  ? await (async () => {
+      const detail = (await req('GET', `/verdict/runtime/runs/${encodeURIComponent(resumeBaseline)}`)).body
+      const facts = factsOf(detail)
+      return {
+        start: {
+          runId: resumeBaseline,
+          injectedFault: detail.runtime?.injectedFault ?? null,
+          expectedClass: detail.runtime?.expectedClass ?? null,
+        },
+        axes: axesOf(detail, { runId: resumeBaseline }),
+        facts,
+        queueFact: queueFact(facts),
+        remoteSuccess: remoteSuccessFacts(facts),
+        steps: (detail.steps ?? []).map((step) => ({
+          planStepId: step.plan_step_id ?? step.planStepId ?? null,
+          actionResult: step.action_result ?? step.actionResult ?? null,
+          continueGate: step.continue_gate_result ?? step.continueGateResult ?? null,
+          oracle: step.final_oracle_result ?? step.finalOracleResult ?? null,
+        })),
+        resumed: true,
+      }
+    })()
+  : await runProcessParcel('baseline', pack, compiled, baselineParcel, null)
+const baselineRadios = restoreRadios()
+const baselineJudge = judgeBaseline(baseline, baselineRadios)
+console.log(JSON.stringify({ start: baseline.start, axes: baseline.axes, queueFact: baseline.queueFact, remoteSuccess: baseline.remoteSuccess, steps: baseline.steps, judge: baselineJudge }, null, 2))
+if (!baselineJudge.ok) {
+  console.error('process-parcel uninjected twin FAILED')
+  process.exit(3)
+}
+
+console.log('\n=== BD.6 restore (BACK to task list; not Host B reject) ===')
+const restored = await restoreToTaskList()
+console.log(JSON.stringify({ ok: restored.ok, reason: restored.reason, actions: restored.actions, screen: restored.screen }, null, 2))
+
+let injectedTarget = injectedParcel
+if (!injectedTarget) {
+  console.log('\n=== provision injected parcel after uninjected consume ===')
+  try {
+    const second = await provisionSecondParcel()
+    provisionLog.push(second)
+    console.log(JSON.stringify(second, null, 2))
+    if (second.loaded.productVerdict !== 'PASS_ONLINE') {
+      console.error('second load-to-vehicle did not PASS_ONLINE — cannot start injected run on a consumed barcode')
+      process.exit(5)
+    }
+  } catch (error) {
+    console.error(`second parcel provision failed: ${error instanceof Error ? error.message : String(error)}`)
+    process.exit(5)
+  }
+  const afterLoad = await restoreToTaskList()
+  schedule = afterLoad.schedule ?? (await readSchedule())
+  injectedTarget =
+    (schedule.parcels ?? []).find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
+    null
+}
+
+const afterRestore = await restoreToTaskList()
+schedule = afterRestore.schedule ?? (await readSchedule())
+screen = afterRestore.screen ?? (await readScreen())
+fixture = snapshotProcessParcel(schedule, screen)
+if (!injectedTarget) {
+  injectedTarget =
+    fixture.parcels.find((parcel) => parcel.scanPayload !== baselineParcel.scanPayload) ?? null
+}
+if (!injectedTarget) {
+  console.error('no distinct injected barcode after restore — refusing to rescan the uninjected parcel')
+  process.exit(5)
+}
+if (screen.fragment !== 'TaskListFragment') {
+  console.error(`restore left device on ${screen.fragment} — not inventing navigation. Host amend may be required.`)
+  process.exit(5)
+}
+
+console.log('\n=== process-parcel BD.6 controlled device WAN cut ===')
+const injected = await runProcessParcel('bd6', pack, compiled, injectedTarget, {
+  injectedFault: 'OFFLINE_QUEUE',
+  injectedFaultHost: 'B',
+})
+const injectedRadios = restoreRadios()
+const injectedJudge = judgeBd6(injected, injectedRadios)
+const independence = await classifierIndependence(injected)
+console.log(JSON.stringify({
+  start: injected.start,
+  axes: injected.axes,
+  queueFact: injected.queueFact,
+  remoteSuccess: injected.remoteSuccess,
+  steps: injected.steps,
+  judge: injectedJudge,
+  independence,
+  radios: injectedRadios,
+}, null, 2))
+
+const hostAmendNeeded =
+  !injected.queueFact ||
+  injected.axes.observedClass !== 'OFFLINE_QUEUED' ||
+  injected.axes.productVerdict !== 'PASS_QUEUED_OFFLINE'
+
+if (!injectedJudge.ok || !independence.ok) {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')
+  const out = join(REPO, 'docs/verdict/goals', `G90-10-bd6-live-smoke-${stamp}.json`)
+  writeFileSync(
+    out,
+    JSON.stringify(
+      {
+        status: hostAmendNeeded ? 'LIVE_INJECTION_FAILED_HOST_AMEND_CANDIDATE' : 'LIVE_INJECTION_FAILED',
+        closedAt: new Date().toISOString(),
+        injectionModel: identity.injectionModel,
+        identity,
+        provisionLog,
+        baseline: { axes: baseline.axes, start: baseline.start, judge: baselineJudge, queueFact: baseline.queueFact },
+        bd6: { axes: injected.axes, start: injected.start, judge: injectedJudge, independence, queueFact: injected.queueFact },
+        note:
+          hostAmendNeeded
+            ? 'process-parcel did not persist/observe LOCAL.OFFLINE_QUEUE_ITEM_WAITING. Do not loosen observeInjectedClass. Amend host to complete-delivery BEFORE LIVE_QUALIFIED.'
+            : 'controlled device WAN cut representing BD.6 OFFLINE_QUEUE. G4 reconnect is not a bar. D60 campaign NOT_STARTED.',
+      },
+      null,
+      2,
+    ) + '\n',
+  )
+  console.error(`Host B BD.6 FAILED  ${out}`)
+  process.exit(4)
+}
+
+const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')
+const out = join(REPO, 'docs/verdict/goals', `G90-10-bd6-live-smoke-${stamp}.json`)
+const report = {
+  status: 'LIVE_QUALIFIED',
+  closedAt: new Date().toISOString(),
+  injectionModel: identity.injectionModel,
+  identity,
+  provisionLog,
+  baseline: { axes: baseline.axes, start: baseline.start, judge: baselineJudge, queueFact: baseline.queueFact },
+  bd6: { axes: injected.axes, start: injected.start, judge: injectedJudge, independence, queueFact: injected.queueFact },
+  note: 'controlled device WAN cut representing BD.6 OFFLINE_QUEUE. Not airplane/USB. Not HOST_TRANSPORT_CUT. WAN restore is cleanup; G4 reconnect/flush is not a bar. D60 campaign NOT_STARTED.',
+}
+writeFileSync(out, JSON.stringify(report, null, 2) + '\n')
+console.log(`\nG90.10 BD.6 LIVE_QUALIFIED  ${out}`)

@@ -430,7 +430,7 @@ NesyMobile/verdict-bridge/**
 | G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
 | G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `LIVE_QUALIFIED` (2026-08-15) — fresh prod `3770d2a` Smoke A/B; kampanya `NOT_STARTED` |
-| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3+BD.2 LIVE_QUALIFIED; BD.6 spec+injector locked, not LIVE_QUALIFIED; BD.5/4/1 yok |
+| G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `IN_PROGRESS` — BD.3+BD.2 LIVE_QUALIFIED; BD.6 process-parcel live failed (no queue); host amend complete-delivery; BD.5/4/1 yok |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
 | G90.13 | D90 spec kilidi (workflow set + altı metric family + M2b companion + pilot-stable) | `DONE` (bu dosya, 2026-08-13) |
@@ -577,7 +577,7 @@ golden soak değil, fault’un yaşayabileceği tek yer.
 | BD.3 | Backend timeout | B — mutation remote (`tour-approval` `approve-tour-request`). `complete-delivery` remotes `READ_ONLY`; arm olmaz. | **controlled adapter-deadline injection representing BD.3 BACKEND_TIMEOUT** — wire dispatch tutulur, mevcut `AbortController` yolu `UNKNOWN_EFFECT` üretir. “Backend isteği aldı ve timeout oldu” iddiası değildir. | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL`; injector bilgisinden `NO_EFFECT` remap |
 | BD.4 | Dialog / overlay | A — launch `permissionDialog` veya koşu içi overlay | Sistem dialog / pack interrupt surface | `DIALOG_INTERRUPT` | Overlay’e tap; interrupt key varken `UI_NOT_ACTIONABLE`; 30s timeout |
 | BD.5 | Duplicate callback | A — login fact **veya** B — delivery fact | Aynı WS event / seq tekrar; veya çift emit | `DUPLICATE_SUPPRESSED` | İki verdict; `TEST_DATA_CONTAMINATION` (bu o değil) |
-| BD.6 | Offline queue | B — LOCAL durable queue. İlk live qual: `process-parcel` / `tap-input-confirm`. tour-approval first qual kapalı. | **controlled device WAN cut representing BD.6 OFFLINE_QUEUE** — `svc wifi disable` + `svc data disable`; USB ADB kalır. `abortKind=NONE` + `LOCAL_QUEUE_PERSIST`. `HOST_TRANSPORT_CUT` değildir. Airplane / USB first qual kapalı. “Ağ kapalı” tek başına BD.6 değildir. | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` / `PASS_ONLINE`; `NETWORK_PARTITION`; `injectedFault`ten `OFFLINE_QUEUED` |
+| BD.6 | Offline queue | B — LOCAL durable queue. process-parcel / `tap-input-confirm` first live attempt failed (WAN TRIGGERED, queue absent, `PASS_ONLINE`). İlk LIVE_QUALIFIED host: `complete-delivery` / `tap-delivery-confirm`. tour-approval first qual kapalı. | **controlled device WAN cut representing BD.6 OFFLINE_QUEUE** — `svc wifi disable` + `svc data disable`; USB ADB kalır. `abortKind=NONE` + `LOCAL_QUEUE_PERSIST`. `HOST_TRANSPORT_CUT` değildir. Airplane / USB first qual kapalı. “Ağ kapalı” tek başına BD.6 değildir. | `OFFLINE_QUEUED` | Remote yok diye `PRODUCT_FAIL`; kuyruk yokken `PRODUCT_PASS` / `PASS_ONLINE`; `NETWORK_PARTITION`; `injectedFault`ten `OFFLINE_QUEUED` |
 
 **Host A:** `nesy.macro.login` / `cold-real-login` (D30 slice).  
 **Host B:** mutation-capable remote host, veya prepared-session queue/remote macro. `producesProductVerdict: false` kalır. B, D30’u genişletmez; D60 fault hedefidir.
@@ -602,8 +602,17 @@ BD.6 Host B (initial live qualification):
 
 ```text
 LOCAL durable queue host.
-Initial live qualification host:
-  process-parcel / tap-input-confirm.
+process-parcel / tap-input-confirm first live attempt:
+  2026-08-15  eb48304 / PID 25062 / pack 1.32.0
+  uninjected run_dfc36c82  PASS_ONLINE  queue absent
+  injected   run_578dcc5d  TRIGGERED, actuallyFired=false,
+                           PASS_ONLINE, queue VIOLATED,
+                           observedClass=null
+  artifact   G90-10-bd6-live-smoke-2026-08-151836.json
+  Classifier held. LIVE_QUALIFIED not claimed.
+
+Initial LIVE_QUALIFIED host (amended):
+  complete-delivery / tap-delivery-confirm.
 Authoritative fact:
   LOCAL.OFFLINE_QUEUE_ITEM_WAITING via nesy.pendingOperation
   (plane=LOCAL, subtype=queue, value=true)
@@ -628,11 +637,12 @@ Reason:
   BD.2/BD.3 are remote-mutation UNKNOWN_EFFECT.
   BD.6 is LOCAL durable queue.
   tour-approval stays in the remote-mutation family.
-  complete-delivery remotes are READ_ONLY; reserved
-  only if process-parcel cannot persist/observe the queue.
+  process-parcel confirm starts delivery locally and did
+  not write nesy.pendingOperation under WAN cut.
+  complete-delivery remotes stay READ_ONLY for BD.2/BD.3;
+  tap-delivery-confirm is the LOCAL queue arm point.
 
-If process-parcel cannot write or observe the queue,
-amend the host to complete-delivery BEFORE LIVE_QUALIFIED.
+Do not loosen observeInjectedClass.
 This does not start the formal D60 campaign.
 ```
 

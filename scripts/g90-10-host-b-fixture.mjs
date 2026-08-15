@@ -258,7 +258,7 @@ async function pollRun(runId) {
   return detail
 }
 
-async function runWorkflow(workflowRef, profileKey, inputs) {
+export async function runWorkflow(workflowRef, profileKey, inputs) {
   const pack = await pinPack()
   const compiled = await compileWorkflow(pack, workflowRef)
   const started = await req('POST', '/verdict/runtime/runs', {
@@ -308,7 +308,7 @@ function legacyShortOf(parcel) {
   return match ? match[0] : null
 }
 
-async function createUnloadableShipment() {
+export async function createUnloadableShipment() {
   const login = await req('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
   const token = login.body.result?.payload?.token
   if (!token) throw new Error('no admin token from /nesy/auth/login')
@@ -405,10 +405,15 @@ async function createUnloadableShipment() {
   if (created.status >= 400) {
     throw new Error(`shipments/create ${created.status}: ${JSON.stringify(created.body).slice(0, 400)}`)
   }
-  const record = created.body.data
-  const shipmentId = record.data?.shipmentId ?? record.data?.ShipmentId
-  const parcels = extractParcels(record.data)
-  if (!shipmentId || parcels.length === 0) throw new Error('create returned no shipmentId/parcels')
+  const record = created.body.data ?? created.body
+  const inner = record?.data && typeof record.data === 'object' ? record.data : record
+  const shipmentId = inner?.shipmentId ?? inner?.ShipmentId ?? inner?.waybillNumber ?? inner?.WaybillNumber
+  const parcels = extractParcels(inner)
+  if (!shipmentId || parcels.length === 0) {
+    throw new Error(
+      `create returned no shipmentId/parcels status=${created.status} keys=${Object.keys(record ?? {}).join(',')} inner=${Object.keys(inner ?? {}).join(',')}`,
+    )
+  }
 
   const unload = await req('POST', `/shipments/${record.id}/unload`, {
     token,
@@ -486,7 +491,7 @@ async function rejectLeavingPermission(schedule) {
   return { status: attempts.at(-1)?.status ?? 0, body: attempts.at(-1)?.body ?? {}, attempts }
 }
 
-function dismissNotificationList() {
+export function dismissNotificationList() {
   const xml = dumpUiXml()
   const exit = nodeAttr(xml, 'btn_exit')
   if (!exit) return { dismissed: false, reason: 'btn_exit absent' }

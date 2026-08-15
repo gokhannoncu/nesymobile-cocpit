@@ -1,0 +1,199 @@
+{
+  "status": "LIVE_INJECTION_FAILED_HOST_AMEND_CANDIDATE",
+  "closedAt": "2026-08-15T18:36:36.864Z",
+  "injectionModel": "controlled device WAN cut representing BD.6 OFFLINE_QUEUE",
+  "identity": {
+    "gitCommit": "eb48304ea4c9dc9f74244ebf7d34f1205ab160f5",
+    "gitCommitShort": "eb48304",
+    "workingTreeClean": false,
+    "g90_10ImplementationClean": true,
+    "runnerDirty": true,
+    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "apiPid": "25062",
+    "apiStartedAt": "Sat Aug 15 21:14:48 2026",
+    "webCommand": "next-server (v15.5.20)",
+    "webPid": "28993",
+    "dbSchema": "up-to-date",
+    "deviceId": "R6CW400BC8N",
+    "host": "B",
+    "workflowRef": "nesy.workflow.process-parcel",
+    "profileKey": "nesy.launch.reuse-session",
+    "injectionModel": "controlled device WAN cut representing BD.6 OFFLINE_QUEUE",
+    "closedLineages": {
+      "g90_9": {
+        "gitCommit": "3770d2a",
+        "apiPid": 55798
+      },
+      "bd3": {
+        "gitCommit": "291553b",
+        "apiPid": 29171,
+        "note": "BD.3 LIVE_QUALIFIED historical proof"
+      },
+      "bd2": {
+        "gitCommit": "94a9acf",
+        "apiPid": 95043,
+        "note": "BD.2 LIVE_QUALIFIED historical proof; do not re-qualify"
+      },
+      "designRuntime": {
+        "apiPid": 38870,
+        "note": "pre-BD.2 design runtime; not a qualification PID"
+      }
+    },
+    "packVersion": "1.32.0",
+    "packKey": "nesy.courier",
+    "packDigest": "sha256:e227bcf1599f45aedaf912b551f80493fb795936907783852b038cfa76aeae02",
+    "compiledPlanRef": "bfp-nesy.reference.process-parcel-1",
+    "compiledPlanHash": "sha256:64119aaa841ed0072772f06b5989ddd65f0317b54531521f1821b7dd9f7768ce",
+    "sourceMap": {
+      "wait-task-list": "sm-scan-1",
+      "resolve-manual-entry": "sm-scan-2",
+      "tap-manual-entry": "sm-scan-3",
+      "resolve-scan-field": "sm-scan-3a",
+      "enter-scan-value": "sm-scan-3b",
+      "resolve-input-confirm": "sm-scan-3c",
+      "tap-input-confirm": "sm-scan-3d",
+      "read-pending-queue": "sm-scan-5",
+      "assert-delivery-started": "sm-scan-6",
+      "close-input": "sm-scan-7"
+    }
+  },
+  "provisionLog": [],
+  "baseline": {
+    "axes": {
+      "runId": "run_dfc36c82-6752-4af3-b039-47598864b6d4",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "NOT_REQUIRED",
+      "injectedFault": null,
+      "expectedClass": null,
+      "observedClass": null,
+      "injectedFaultHost": null,
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "COMPLETED",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": null,
+        "abortKind": "NONE",
+        "armedAtMs": null,
+        "effectKind": null,
+        "occurrenceId": null,
+        "triggerPoint": null,
+        "actuallyFired": false,
+        "requestedAtMs": null,
+        "triggeredAtMs": null,
+        "declaredTimeoutMs": null,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": null
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "runId": "run_dfc36c82-6752-4af3-b039-47598864b6d4",
+      "injectedFault": null,
+      "expectedClass": null
+    },
+    "judge": {
+      "ok": true,
+      "failures": [],
+      "isolation": {
+        "clean": true,
+        "failures": [],
+        "radios": {
+          "wifiOn": "1",
+          "mobileData": "0",
+          "adbState": "device",
+          "radiosRestored": true
+        }
+      }
+    },
+    "queueFact": null
+  },
+  "bd6": {
+    "axes": {
+      "runId": "run_578dcc5d-9824-4e21-8661-63745f6bb385",
+      "productVerdict": "PASS_ONLINE",
+      "cleanupResult": "NOT_REQUIRED",
+      "injectedFault": "OFFLINE_QUEUE",
+      "expectedClass": "OFFLINE_QUEUED",
+      "observedClass": null,
+      "injectedFaultHost": "B",
+      "evaluationFailureClass": "NONE",
+      "terminationReason": "COMPLETED",
+      "resourceReleaseResult": "RELEASED",
+      "faultProvenance": {
+        "phase": "TRIGGERED",
+        "abortKind": "NONE",
+        "armedAtMs": 1786818961209,
+        "effectKind": "LOCAL_QUEUE_PERSIST",
+        "occurrenceId": "run_578dcc5d-9824-4e21-8661-63745f6bb385:tap-input-confirm:0",
+        "triggerPoint": "LOCAL_QUEUE:tap-input-confirm",
+        "actuallyFired": false,
+        "requestedAtMs": 1786818931949,
+        "triggeredAtMs": 1786818961392,
+        "declaredTimeoutMs": null,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": null
+      },
+      "status": "completed",
+      "lifecycle": "CLOSED"
+    },
+    "start": {
+      "apiVersion": "verdict-runtime.v1",
+      "runId": "run_578dcc5d-9824-4e21-8661-63745f6bb385",
+      "executionId": "exec_d4416251-3706-4c47-9433-a8a290ac2dbf",
+      "compiledPlanHash": "sha256:64119aaa841ed0072772f06b5989ddd65f0317b54531521f1821b7dd9f7768ce",
+      "status": "QUEUED",
+      "engineType": "BRIDGEFLOW",
+      "injectedFault": "OFFLINE_QUEUE",
+      "expectedClass": "OFFLINE_QUEUED",
+      "injectedFaultHost": "B"
+    },
+    "judge": {
+      "ok": false,
+      "failures": [
+        "observedClass=null",
+        "productVerdict=PASS_ONLINE (need PASS_QUEUED_OFFLINE)",
+        "provenance.phase=TRIGGERED",
+        "actuallyFired=false",
+        "provenance timestamps incomplete [1786818931949,1786818961209,1786818961392,null]",
+        "LOCAL.OFFLINE_QUEUE_ITEM_WAITING absent"
+      ],
+      "provenance": {
+        "phase": "TRIGGERED",
+        "abortKind": "NONE",
+        "armedAtMs": 1786818961209,
+        "effectKind": "LOCAL_QUEUE_PERSIST",
+        "occurrenceId": "run_578dcc5d-9824-4e21-8661-63745f6bb385:tap-input-confirm:0",
+        "triggerPoint": "LOCAL_QUEUE:tap-input-confirm",
+        "actuallyFired": false,
+        "requestedAtMs": 1786818931949,
+        "triggeredAtMs": 1786818961392,
+        "declaredTimeoutMs": null,
+        "injectedTimeoutMs": null,
+        "effectObservedAtMs": null
+      },
+      "isolation": {
+        "clean": true,
+        "failures": [],
+        "radios": {
+          "wifiOn": "1",
+          "mobileData": "0",
+          "adbState": "device",
+          "radiosRestored": true
+        }
+      },
+      "note": "WAN restore is cleanup. Queue flush / G4 reconnect is not a LIVE_QUALIFIED bar."
+    },
+    "independence": {
+      "ok": false,
+      "failures": [
+        "classifier without injectedFault returned null"
+      ],
+      "recomputed": null,
+      "withoutEvidence": null,
+      "usedInjectedFault": false
+    },
+    "queueFact": null
+  },
+  "note": "process-parcel did not persist/observe LOCAL.OFFLINE_QUEUE_ITEM_WAITING. Do not loosen observeInjectedClass. Amend host to complete-delivery BEFORE LIVE_QUALIFIED."
+}
