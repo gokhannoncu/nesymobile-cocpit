@@ -6,6 +6,7 @@ import {
   describePrismaFailure,
   evaluationFailureClassForBlockedRun,
   isPersistenceUnavailable,
+  toD30HistogramClass,
 } from './execution-failure-class.js'
 
 function known(message: string, code: string): Prisma.PrismaClientKnownRequestError {
@@ -65,5 +66,47 @@ describe('evaluationFailureClassForBlockedRun', () => {
 
   it('keeps OS-park on the environment axis', () => {
     expect(evaluationFailureClassForBlockedRun('COLD_START_OS_SUSPEND')).toBe('ENVIRONMENT_FAILURE')
+  })
+})
+
+describe('toD30HistogramClass', () => {
+  it('keeps a passing product verdict on PRODUCT_PASS even when eval class is NONE', () => {
+    expect(
+      toD30HistogramClass({
+        productVerdict: 'PASS_ONLINE',
+        evaluationFailureClass: 'NONE',
+        readinessClass: null,
+      }),
+    ).toBe('PRODUCT_PASS')
+  })
+
+  it('normalizes persisted ENVIRONMENT_FAILURE to histogram ENV_FAILURE', () => {
+    expect(
+      toD30HistogramClass({
+        productVerdict: 'NOT_EVALUATED',
+        evaluationFailureClass: 'ENVIRONMENT_FAILURE',
+        readinessClass: null,
+      }),
+    ).toBe('ENV_FAILURE')
+  })
+
+  it('does not invent a histogram class for an unexplained non-pass', () => {
+    expect(
+      toD30HistogramClass({
+        productVerdict: 'NOT_EVALUATED',
+        evaluationFailureClass: 'NONE',
+        readinessClass: null,
+      }),
+    ).toBe('UNCLASSIFIED')
+  })
+
+  it('uses the readiness class when that is why the product was not evaluated', () => {
+    expect(
+      toD30HistogramClass({
+        productVerdict: 'NOT_EVALUATED',
+        evaluationFailureClass: 'AUTOMATION_FAILURE',
+        readinessClass: 'APP_NOT_READY',
+      }),
+    ).toBe('APP_NOT_READY')
   })
 })

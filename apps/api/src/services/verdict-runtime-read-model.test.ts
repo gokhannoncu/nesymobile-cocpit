@@ -15,6 +15,10 @@ describe('verdict runtime read model', () => {
       readinessTrace: { version: 1, completed: [{ state: 'SDK_READY', monoTs: 42 }] },
       schedulerDisposition: 'RELEASED',
       operationalDisposition: 'OK',
+      injectedFault: 'PROCESS_KILL',
+      expectedClass: 'PROCESS_DEATH',
+      observedClass: null,
+      injectedFaultHost: 'A',
     })
 
     expect(result.partial).toBe(false)
@@ -26,7 +30,11 @@ describe('verdict runtime read model', () => {
       readinessTrace: { version: 1, completed: [{ state: 'SDK_READY', monoTs: 42 }] },
       schedulerDisposition: 'RELEASED',
       operationalDisposition: 'OK',
+      injectedFault: 'PROCESS_KILL',
+      expectedClass: 'PROCESS_DEATH',
+      injectedFaultHost: 'A',
     })
+    expect(result.runtime).not.toHaveProperty('observedClass')
   })
 
   it('keeps route correlation on the workflow run id when runtime row id is also selected', () => {

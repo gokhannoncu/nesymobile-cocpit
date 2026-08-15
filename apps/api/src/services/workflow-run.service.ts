@@ -1,4 +1,13 @@
 import { randomUUID } from 'node:crypto'
+import {
+  isInjectedFaultHost,
+  isInjectedFaultId,
+  planInjectedFault,
+  type InjectedFaultHost,
+  type InjectedFaultId,
+  type InjectedFaultPlan,
+} from '@nesy/workflow-contract'
+
 import type { WorkflowCompileResult } from './workflow-compile.service.js'
 
 export const WORKFLOW_RUN_API_VERSION = 'verdict-runtime.v1' as const
@@ -18,6 +27,9 @@ export interface WorkflowRunStartRequest {
   profileVersion?: string
   /** Business inputs addressed by `run.input.<path>` (e.g. pin, sessionCorrelationId). */
   inputs?: Readonly<Record<string, unknown>>
+  /** G90.9 input axis. Omit or null on every uninjected run. */
+  injectedFault?: InjectedFaultId | null
+  injectedFaultHost?: InjectedFaultHost | null
 }
 
 export interface WorkflowRunStartResult {
@@ -27,6 +39,9 @@ export interface WorkflowRunStartResult {
   compiledPlanHash: string
   status: 'QUEUED'
   engineType: 'BRIDGEFLOW'
+  injectedFault: InjectedFaultId | null
+  expectedClass: InjectedFaultPlan['expectedClass']
+  injectedFaultHost: InjectedFaultHost | null
 }
 
 export interface WorkflowRunExecutionQueue {
@@ -45,6 +60,8 @@ export interface WorkflowRunExecutionQueue {
     releaseGate?: boolean
     appId?: string
     inputs?: Readonly<Record<string, unknown>>
+    injectedFault?: InjectedFaultId | null
+    injectedFaultHost?: InjectedFaultHost | null
     dependencyKind: 'SETUP' | 'DEPENDENT' | 'INDEPENDENT'
   }): Promise<unknown> | unknown
 }
@@ -88,7 +105,44 @@ export function runStartIdempotencyKey(request: WorkflowRunStartRequest): string
     request.profileKey ?? 'default',
     request.profileVersion ?? 'unversioned',
     inputFingerprint,
+    request.injectedFault ?? 'null',
+    request.injectedFaultHost ?? 'none',
   ].join('|')
+}
+
+export function resolveStartInjectedFault(request: Pick<WorkflowRunStartRequest, 'injectedFault' | 'injectedFaultHost'>): InjectedFaultPlan {
+  return planInjectedFault({
+    injectedFault: request.injectedFault ?? null,
+    injectedFaultHost: request.injectedFaultHost ?? null,
+  })
+}
+
+export function parseInjectedFaultBody(body: Record<string, unknown>): Pick<WorkflowRunStartRequest, 'injectedFault' | 'injectedFaultHost'> {
+  if (body.observedClass !== undefined && body.observedClass !== null) {
+    throw new Error('observedClass is an output axis and cannot be set at run start')
+  }
+  if (body.expectedClass !== undefined && body.expectedClass !== null) {
+    throw new Error('expectedClass is derived from injectedFault and cannot be set at run start')
+  }
+  if (body.deathProvenance !== undefined && body.deathProvenance !== null) {
+    throw new Error('deathProvenance is an observation and cannot be set at run start')
+  }
+
+  const rawFault = body.injectedFault
+  if (rawFault === undefined || rawFault === null || rawFault === '') {
+    if (body.injectedFaultHost !== undefined && body.injectedFaultHost !== null && body.injectedFaultHost !== '') {
+      throw new Error('injectedFaultHost requires injectedFault')
+    }
+    return { injectedFault: null, injectedFaultHost: null }
+  }
+  if (!isInjectedFaultId(rawFault)) {
+    throw new Error(`unknown injectedFault "${String(rawFault)}"`)
+  }
+  const rawHost = body.injectedFaultHost
+  if (!isInjectedFaultHost(rawHost)) {
+    throw new Error(`injectedFault ${rawFault} requires injectedFaultHost A|B`)
+  }
+  return { injectedFault: rawFault, injectedFaultHost: rawHost }
 }
 
 export class WorkflowRunService {
@@ -134,6 +188,7 @@ export class WorkflowRunService {
     const existing = await this.store.findByIdempotencyKey(idempotencyKey)
     if (existing) return existing
 
+    const faultPlan = resolveStartInjectedFault(request)
     const runId = `run_${randomUUID()}`
     const executionId = `exec_${randomUUID()}`
     const result: WorkflowRunStartResult = {
@@ -143,6 +198,9 @@ export class WorkflowRunService {
       compiledPlanHash: request.compiledPlanHash,
       status: 'QUEUED',
       engineType: 'BRIDGEFLOW',
+      injectedFault: faultPlan.injectedFault,
+      expectedClass: faultPlan.expectedClass,
+      injectedFaultHost: faultPlan.injectedFaultHost,
     }
     await this.store.insert({ idempotencyKey, request, result })
     void this.queue?.enqueue({
@@ -160,6 +218,8 @@ export class WorkflowRunService {
       ...(request.profileVersion === undefined ? {} : { profileVersion: request.profileVersion }),
       ...(request.releaseGate === undefined ? {} : { releaseGate: request.releaseGate }),
       ...(request.inputs === undefined ? {} : { inputs: request.inputs }),
+      injectedFault: faultPlan.injectedFault,
+      injectedFaultHost: faultPlan.injectedFaultHost,
       dependencyKind: 'INDEPENDENT',
     })
     return result

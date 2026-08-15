@@ -1,4 +1,10 @@
 import { Prisma, prisma, type PrismaClient } from '@nesy/db'
+import {
+  assertInjectedFaultRecord,
+  planInjectedFault,
+  type DeathProvenance,
+  type ObservedClass,
+} from '@nesy/workflow-contract'
 import type {
   ExecutionPersistencePort,
   PersistedActionTransition,
@@ -94,6 +100,10 @@ export class PrismaExecutionPersistence
       deviceCell: profile.deviceCell,
       repetitionIndex: profile.repetitionIndex,
       faultPlanRef: profile.faultPlanRef,
+      ...planInjectedFault({
+        injectedFault: profile.injectedFault ?? null,
+        injectedFaultHost: profile.injectedFaultHost ?? null,
+      }),
       telemetryPolicyRef: profile.telemetryPolicyRef,
       releaseGate: profile.releaseGate,
       lifecycle: 'RUNNING',
@@ -500,6 +510,40 @@ export class PrismaExecutionPersistence
         outcome: evaluation.outcome,
         productVerdict: data.productVerdict,
         evaluationFailureClass: data.evaluationFailureClass,
+      },
+    })
+  }
+
+  async persistObservedClass(input: {
+    runId: string
+    observedClass: ObservedClass
+    deathProvenance?: DeathProvenance | null
+  }): Promise<void> {
+    const row = await this.client.bridgeFlowRunRuntime.findUnique({
+      where: { runId: input.runId },
+      select: {
+        injectedFault: true,
+        expectedClass: true,
+        injectedFaultHost: true,
+        deathProvenance: true,
+      },
+    })
+    if (row === null) {
+      throw new Error(`cannot persist observedClass: runtime row ${input.runId} is missing`)
+    }
+    const record = {
+      injectedFault: row.injectedFault,
+      expectedClass: row.expectedClass,
+      observedClass: input.observedClass,
+      injectedFaultHost: row.injectedFaultHost,
+      deathProvenance: input.deathProvenance ?? row.deathProvenance,
+    }
+    assertInjectedFaultRecord(record as Parameters<typeof assertInjectedFaultRecord>[0])
+    await this.client.bridgeFlowRunRuntime.update({
+      where: { runId: input.runId },
+      data: {
+        observedClass: record.observedClass,
+        deathProvenance: record.deathProvenance,
       },
     })
   }

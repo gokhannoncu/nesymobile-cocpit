@@ -58,6 +58,7 @@ import { DeviceWorkerRegistry } from './device-worker.js'
 import { PrismaRemoteActionAttemptStore } from './phase6-prisma-stores.js'
 import { createRunTelemetrySampler } from './run-telemetry-sampler.js'
 import { getVerdictDurableRuntime } from './verdict-wait-event.js'
+import { planInjectedFault } from '@nesy/workflow-contract'
 import {
   classifyExecutionFailure,
   describePrismaFailure,
@@ -1279,6 +1280,8 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           profileKey: item.profileKey ?? 'default',
           profileVersion: item.profileVersion ?? 'unversioned',
           releaseGate: item.releaseGate === true,
+          injectedFault: item.injectedFault ?? null,
+          injectedFaultHost: item.injectedFaultHost ?? null,
         },
       })
 
@@ -1351,6 +1354,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         sdkProtocolVersion: '1',
         runEpochMs: BigInt(this.options.clock?.() ?? Date.now()),
         runEpochUnit: 'MONOTONIC_MS',
+        ...planInjectedFault({
+          injectedFault: item.injectedFault ?? null,
+          injectedFaultHost: item.injectedFaultHost ?? null,
+        }),
         readinessStatus: trace.status,
         readinessClass: trace.failureClass,
         readinessTrace: trace as never,
@@ -1359,6 +1366,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         readinessStatus: trace.status,
         readinessClass: trace.failureClass,
         readinessTrace: trace as never,
+        ...planInjectedFault({
+          injectedFault: item.injectedFault ?? null,
+          injectedFaultHost: item.injectedFaultHost ?? null,
+        }),
       },
     })
   }
@@ -1487,6 +1498,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             sdkProtocolVersion: '1',
             runEpochMs: BigInt(clock()),
             runEpochUnit: 'MONOTONIC_MS',
+            ...planInjectedFault({
+              injectedFault: item.injectedFault ?? null,
+              injectedFaultHost: item.injectedFaultHost ?? null,
+            }),
             lifecycle: 'CLOSED',
             productVerdict: 'NOT_EVALUATED',
             evaluationFailureClass,
@@ -1505,6 +1520,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
             operationalDisposition: 'NEEDS_ATTENTION',
             terminationReason: 'ABORTED',
             failureDetail: detail,
+            ...planInjectedFault({
+              injectedFault: item.injectedFault ?? null,
+              injectedFaultHost: item.injectedFaultHost ?? null,
+            }),
           },
         }),
       ])
@@ -1612,6 +1631,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           sdkProtocolVersion: '1',
           runEpochMs: BigInt(this.options.clock?.() ?? Date.now()),
           runEpochUnit: 'MONOTONIC_MS',
+          ...planInjectedFault({
+            injectedFault: item.injectedFault ?? null,
+            injectedFaultHost: item.injectedFaultHost ?? null,
+          }),
           lifecycle: 'CLOSED',
           productVerdict: 'NOT_EVALUATED',
           schedulerDisposition: 'RELEASED',
@@ -1635,6 +1658,10 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           terminationReason: reason,
           failureDetail: reason,
           evaluationFailureClass: evaluationFailureClassForBlockedRun(readinessTrace?.failureClass),
+          ...planInjectedFault({
+            injectedFault: item.injectedFault ?? null,
+            injectedFaultHost: item.injectedFaultHost ?? null,
+          }),
           ...(readinessTrace === undefined
             ? {}
             : {

@@ -4,11 +4,11 @@
 specId: verdict-readiness-core
 status: SPEC_LOCKED
 createdAt: "2026-08-13 15:37:00 +03"
-lastUpdatedAt: "2026-08-14 18:27:00 +03"
+lastUpdatedAt: "2026-08-15 16:15:00 +03"
 parentGoal: G90-stabilization
-nextStep: G90.3
+nextStep: G90.10
 implementationStep: G90.2b
-implementationStatus: CODE_COMPLETE
+implementationStatus: READINESS_LIVE_QUALIFIED
 implementationPriority: P0
 d14Gate: "G90.2b + G90.3 by 2026-08-27"
 circularDepFix: "AUTH / BUSINESS_BOOTSTRAP are post-action workflow facts, not pre-action SM"
@@ -300,5 +300,6 @@ G90.2b bu dosyadaki **yedili + INTERACTION_READY**’i uygular.
 7. SDK_READY p50/p95/p99 cihaz/profil/build
 8. Her pre-action sınıf bağımsız üretilebilir; hata kodu o class, `TIMEOUT` değil
 
-Kampanya SM’siz başlamaz. Warm-in-cold yok. Timeout G90.3’te uzatılmaz.
+Kampanya SM’siz başlamaz. Warm-in-cold yok. Timeout G90.3’te uzatılmadı.
+Live qualification: `INTERACTION_READY` 100/100 (2026-08-15).
 Readiness Journey (Cockpit) madde 6 izinden; 2b’yi bloklamaz.

@@ -1,6 +1,8 @@
 {
   "campaign": "D30-100-login-valid-invalid",
-  "status": "READY_TO_RUN",
+  "status": "SUPERSEDED_BY_RERUN_COMPLETED",
+  "supersededBy": "docs/verdict/goals/D30-100-login-campaign-rerun-2026-08-15.json",
+  "closeArtifact": "docs/verdict/goals/D30-100-rerun-2026-08-151127.close.json",
   "createdAt": "2026-08-15T00:29:31+03:00",
   "seed": 90320260815,
   "deviceId": "R6CW400BC8N",

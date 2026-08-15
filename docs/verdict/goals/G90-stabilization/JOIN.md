@@ -4,10 +4,10 @@
 specId: verdict-join-closure
 status: LOCKED
 createdAt: "2026-08-13 15:45:00 +03"
-lastUpdatedAt: "2026-08-14 18:27:00 +03"
+lastUpdatedAt: "2026-08-15 16:15:00 +03"
 parentGoal: G90-stabilization
-nextStep: G90.3
-g90_3: "parent = 3a + 3b; after G90.2b"
+nextStep: G90.10
+g90_3: "COMPLETED 2026-08-15 = 3a ∧ 3b"
 baselineRun: run_c5b41c62-0b3b-4e1a-a7ac-f5b7e7f09c14
 relatedReadiness: "docs/verdict/goals/G90-stabilization/READINESS.md"
 namingNote: "J0–J5 independent evidence boundaries ≠ ACCEPTANCE.md G1–G7; not a cumulative ladder"
@@ -71,14 +71,14 @@ G0→G7 cumulative ladder **değil**. Remote OPTIONAL iken `J5 ✅` ve `J4 N/A`
 aynı anda olabilir. Oracle, o workflow’da **REQUIRED** işaretli düzlemleri
 ister; numarayı değil.
 
-| ID | Boundary | Ne | 14 Aug |
+| ID | Boundary | Ne | 15 Aug |
 |---|---|---|---|
 | **J0** | Transport | Bridge + SDK + host | ✅ lab |
-| **J1** | Interaction | Canonical `INTERACTION_READY` ([`READINESS.md`](./READINESS.md)) | 🟡 code-wired; live DUT qualification G90.3'te |
-| **J2** | App fact | `ROUTE_LIST_READY` / `LOGIN_REJECTED` | 🟡 live observed değil |
-| **J3** | Local | Room / `nesy.db.session` | — exercised değil |
+| **J1** | Interaction | Canonical `INTERACTION_READY` ([`READINESS.md`](./READINESS.md)) | ✅ live 100/100 |
+| **J2** | App fact | `ROUTE_LIST_READY` / `LOGIN_REJECTED` | ✅ live both paths |
+| **J3** | Local | Room / `nesy.db.session` | ✅ positive-path `PRODUCT_PASS` |
 | **J4** | Remote | Backend fact | N/A login (OPTIONAL) |
-| **J5** | Oracle | REQUIRED planes → PASS / FAIL; INCONCLUSIVE değil | — |
+| **J5** | Oracle | REQUIRED planes → PASS / FAIL; INCONCLUSIVE değil | ✅ 99 `PRODUCT_PASS`; 0 INCONCLUSIVE |
 
 `ACCEPTANCE.md` G1–G7 `internallyStable` kapılarıdır. Karıştırılmaz.
 Recovery / full courier D60 / D90; J-ladder’a eklenmez.
@@ -102,11 +102,11 @@ Login kapanışı: `J2 ✅  J3 ✅  J4 N/A  J5 ✅`.
 
 ```text
 J0 ✅
-J1 🟡  canonical code-wired / live DUT qualification pending
-J2 🟡
-J3 —
+J1 ✅  INTERACTION_READY 100/100 (D30-100-rerun-2026-08-151127)
+J2 ✅  UI.ROUTE_LIST_READY + APP.LOGIN_REJECTED live
+J3 ✅  LOCAL REQUIRED carried by positive-path PRODUCT_PASS
 J4 N/A
-J5 —
+J5 ✅  1× valid + 1× expected-rejection PRODUCT_PASS
 ```
 
 `wait-login-ready` historical evidence. Canonical J1 qualification değil.
@@ -206,8 +206,9 @@ Cockpit **Readiness Journey**. G90.2b izi üretir; görsel G90.2b’yi bloklamaz
 
 ### 4.2 Phase 10 ≠ G90.3
 
-Phase 10 üç halkayı **kurdu** (`CODE_WIRED`). G90.3 `OPEN` çünkü login
-occurrence’da `ROUTE_LIST_READY` / `LOGIN_REJECTED` **live observed değil**.
+Phase 10 üç halkayı **kurdu** (`CODE_WIRED`). G90.3 `DONE` (2026-08-15):
+login occurrence’da `ROUTE_LIST_READY` / `LOGIN_REJECTED` **live observed**
+ve Continue Gate her iki path’te kapandı.
 
 ```text
 implemented  ≠  live observed  ≠  golden accepted
@@ -240,9 +241,9 @@ G90.4   Isolation / contamination
 login fact pipeline hâlâ açıksa D30 100-run sıkışır.
 
 Legacy `wait-login-ready` geçti: J2 düşüşü a11y **değil**. J1 canonical SM
-G90.2b'de code-wired; live DUT qualification olmadan hâlâ 🟡. Kampanya SM'siz
+G90.2b'de code-wired; 15 Aug live DUT qualification `✅`. Kampanya SM'siz
 başlamaz. READINESS split 14 Aug 17:04'te kilitlendi, implementasyon 18:27'de
-code-complete oldu.
+code-complete oldu; live 15 Aug.
 
 ### 5.1 Bunun önüne konmaz
 
@@ -272,8 +273,8 @@ negatif path ile 3b kapanmaz.
 `automationRelease` golden 3 sonrası P1. Remote authoritative login P2
 (OPTIONAL; `HTTP 2xx ≠ business success`).
 
-Local için doğru cümle: **“Local DB çalışmıyor” değil** — henüz exercised
-değil; 3b positive PASS onu ister.
+Local 3b positive PASS ile exercised (`run_7d3a7139`). Fixture determinism
+hâlâ G90.4 P1.
 
 ---
 
@@ -356,7 +357,7 @@ neden kapanmadı?** Bu integration. Yanlış PASS mimari olurdu.
 
 ## 11. G90.3 kapanış
 
-`G90.3 COMPLETED` = 3a ∧ 3b. RESULT’a:
+`G90.3 COMPLETED` = 3a ∧ 3b. 2026-08-15 kapanış; RESULT’ta:
 
 **3a**
 
@@ -373,3 +374,17 @@ neden kapanmadı?** Bu integration. Yanlış PASS mimari olurdu.
 7. Boundaries: `J2 ✅  J3 ✅  J4 N/A  J5 ✅`
 
 Yalnız FAIL / REJECTED ile parent kapanmaz. G90.2b önce; kampanya ikisi olmadan yok.
+
+15 Aug kanıt (D30-100-rerun-2026-08-151127):
+
+```text
+3a  Continue Gate closed on both paths (99 PRODUCT_PASS; timeout unchanged)
+3b+ run_7d3a7139-7f2a-40c0-a3cd-32e6d5c21864  valid   PRODUCT_PASS
+3b- run_96e6ad43-82d9-4752-820c-c41e73f7aed2  invalid PRODUCT_PASS + LOGIN_REJECTED
+INCONCLUSIVE 0
+J2✅ J3✅ J4 N/A J5✅
+```
+
+12-basamak first-red worksheet artık açık değil: her iki path’te gate kapandı,
+ürün hükmü `PRODUCT_PASS`. Ayrı 12-kutu diyagram üretilmedi; kapanış live
+oracle + receipt’tir, spekülatif kutu doldurma değil.

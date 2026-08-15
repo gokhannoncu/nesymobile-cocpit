@@ -10,6 +10,10 @@
  * verify). Recovery failure, or APP_NOT_READY after an infra primary, stops
  * the campaign so later rows are not counted as independent failures.
  *
+ * Class axes (do not collapse):
+ *   evaluationFailureClass  persisted eval axis (ENVIRONMENT_FAILURE, …)
+ *   d30Class                RUN_PLAY §5 histogram (ENV_FAILURE, …)
+ *
  * Preflight refuses next-dev / tsx-watch / dirty source / pack drift.
  *
  * Usage:
@@ -369,6 +373,31 @@ function countReceiptOrdered(detail) {
   }
 }
 
+const D30_READINESS_CLASSES = new Set([
+  'FORCE_STOP_NOT_CONFIRMED',
+  'PROCESS_NOT_STARTED',
+  'COLD_START_OS_SUSPEND',
+  'APP_NOT_READY',
+  'A11Y_SYNC_PENDING',
+  'UI_NOT_ACTIONABLE',
+  'SDK_NOT_READY',
+  'AUTH_PENDING',
+  'BACKEND_BOOTSTRAP_PENDING',
+])
+
+function toD30HistogramClass({ productVerdict, evaluationFailureClass, readinessClass }) {
+  if (productVerdict === 'PASS_ONLINE' || productVerdict === 'PASS_QUEUED_OFFLINE') return 'PRODUCT_PASS'
+  if (String(productVerdict ?? '').startsWith('FAIL_')) return 'PRODUCT_FAIL'
+  if (evaluationFailureClass === 'ENVIRONMENT_FAILURE' || evaluationFailureClass === 'ENV_FAILURE') {
+    return 'ENV_FAILURE'
+  }
+  if (evaluationFailureClass === 'EVIDENCE_INSUFFICIENT' || evaluationFailureClass === 'EVIDENCE_TIMEOUT') {
+    return 'EVIDENCE_TIMEOUT'
+  }
+  if (readinessClass && D30_READINESS_CLASSES.has(readinessClass)) return readinessClass
+  return 'UNCLASSIFIED'
+}
+
 function classify(scenario, detail, poll) {
   const run = detail.run ?? {}
   const verdict = run.product_verdict ?? run.productVerdict ?? null
@@ -427,6 +456,12 @@ function classify(scenario, detail, poll) {
     status,
     lifecycle,
     productVerdict: verdict,
+    evaluationFailureClass: failureClass,
+    d30Class: toD30HistogramClass({
+      productVerdict: verdict,
+      evaluationFailureClass: failureClass,
+      readinessClass,
+    }),
     failureClass,
     termination: run.termination_reason ?? run.terminationReason ?? null,
     readinessStatus,
@@ -604,6 +639,10 @@ async function runSequence(label, sequence, pack, compiled, outJsonl, outSummary
           scenario,
           runId: null,
           status: 'unexpected_initial_state',
+          productVerdict: null,
+          evaluationFailureClass: null,
+          d30Class: 'UNCLASSIFIED',
+          failureClass: null,
           ok: false,
           unexpectedInitialState: true,
           harnessAnomaly: true,
@@ -614,6 +653,10 @@ async function runSequence(label, sequence, pack, compiled, outJsonl, outSummary
           scenario,
           runId: null,
           status: 'api_pid_changed',
+          productVerdict: null,
+          evaluationFailureClass: 'ENVIRONMENT_FAILURE',
+          d30Class: 'ENV_FAILURE',
+          failureClass: 'ENVIRONMENT_FAILURE',
           ok: false,
           harnessAnomaly: true,
           unexpectedInitialState: true,
@@ -632,6 +675,8 @@ async function runSequence(label, sequence, pack, compiled, outJsonl, outSummary
         runId: null,
         status: 'runner_error',
         productVerdict: null,
+        evaluationFailureClass: null,
+        d30Class: 'UNCLASSIFIED',
         failureClass: null,
         ok: false,
         transactionTimeout: /transaction/i.test(String(err)),
@@ -709,6 +754,8 @@ async function runSequence(label, sequence, pack, compiled, outJsonl, outSummary
       ? {
           index: primaryFailure.index,
           runId: primaryFailure.runId,
+          evaluationFailureClass: primaryFailure.evaluationFailureClass ?? primaryFailure.failureClass,
+          d30Class: primaryFailure.d30Class ?? null,
           failureClass: primaryFailure.failureClass,
           persistenceUnavailable: primaryFailure.persistenceUnavailable ?? false,
           isolationRecovered: primaryFailure.isolationRecovered ?? null,
@@ -723,6 +770,8 @@ async function runSequence(label, sequence, pack, compiled, outJsonl, outSummary
       role: r.role ?? null,
       blastRadiusOf: r.blastRadiusOf ?? null,
       productVerdict: r.productVerdict,
+      evaluationFailureClass: r.evaluationFailureClass ?? r.failureClass,
+      d30Class: r.d30Class ?? null,
       failureClass: r.failureClass,
       cleanupResult: r.cleanupResult,
       status: r.status,

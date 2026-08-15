@@ -456,6 +456,9 @@ export interface WorkflowRunStartApi {
   compiledPlanHash: string
   status: 'QUEUED'
   engineType: 'BRIDGEFLOW'
+  injectedFault: string | null
+  expectedClass: string | null
+  injectedFaultHost: 'A' | 'B' | null
 }
 
 export interface DeviceReadinessApi {

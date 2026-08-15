@@ -462,6 +462,9 @@ export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
       compiledPlanHash: row.compiledPlanHash,
       status: row.status as 'QUEUED',
       engineType: row.engineType as 'BRIDGEFLOW',
+      injectedFault: (row.injectedFault ?? null) as WorkflowRunStartResult['injectedFault'],
+      expectedClass: (row.expectedClass ?? null) as WorkflowRunStartResult['expectedClass'],
+      injectedFaultHost: (row.injectedFaultHost ?? null) as WorkflowRunStartResult['injectedFaultHost'],
     }
   }
 
@@ -498,6 +501,9 @@ export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
         profileVersion: request.profileVersion ?? null,
         status: result.status,
         engineType: result.engineType,
+        injectedFault: result.injectedFault,
+        expectedClass: result.expectedClass,
+        injectedFaultHost: result.injectedFaultHost,
       },
     })
   }

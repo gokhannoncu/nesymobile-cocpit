@@ -74,6 +74,12 @@ export const PRODUCT_VERDICTS: readonly ProductVerdict[] = [
  *
  * This axis exists so that a broken emulator or a missing fact never gets
  * reported to the product team as a defect.
+ *
+ * `ENVIRONMENT_FAILURE` is the persisted name. The D30 histogram reports the
+ * same family as `ENV_FAILURE` via `toD30HistogramClass`.
+ *
+ * D60 adds a separate pair of axes (`injectedFault` / `observedClass`) in
+ * `injected-fault.ts`. Do not fold those into this enum.
  */
 export type EvaluationFailureClass =
   | "NONE"

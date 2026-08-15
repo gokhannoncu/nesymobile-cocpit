@@ -47,7 +47,7 @@ import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { BridgeFlowExecutionQueue } from '../services/bridgeflow-execution-queue.js'
 import { createBridgeFlowCompileService } from '../services/bridgeflow-compile-adapter.js'
-import { WorkflowRunService } from '../services/workflow-run.service.js'
+import { parseInjectedFaultBody, WorkflowRunService } from '../services/workflow-run.service.js'
 import {
   PrismaCompiledPlanStore,
   PrismaDeviceMutationLeaseStore,
@@ -510,6 +510,7 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
         profileKey: body.profileKey === undefined ? undefined : String(body.profileKey),
         profileVersion: body.profileVersion === undefined ? undefined : String(body.profileVersion),
         ...(inputs === undefined ? {} : { inputs }),
+        ...parseInjectedFaultBody(body),
       })
       return reply.code(202).send(result)
     } catch (error) {

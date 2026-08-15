@@ -2,13 +2,48 @@
  * Map a thrown execution error onto the evaluation-failure axis.
  *
  * A Prisma disconnect mid-run is not a product defect and must not persist as
- * `NONE`. The D30 histogram name is `ENV_FAILURE`; the persisted evaluation
- * axis already has `ENVIRONMENT_FAILURE` for that family. Specific Prisma
- * codes/messages stay on `failureDetail` and the diagnostic payload — they are
- * not new histogram classes.
+ * `NONE`. Two vocabularies stay distinct:
+ *
+ *   evaluationFailureClass  ENVIRONMENT_FAILURE   persisted eval axis
+ *   d30Class                ENV_FAILURE           RUN_PLAY §5 histogram
+ *
+ * Specific Prisma codes/messages stay on `failureDetail` — they are not new
+ * histogram classes. `toD30HistogramClass` is the only allowed remap.
  */
 import { Prisma } from '@nesy/db'
 import type { EvaluationFailureClass } from '@nesy/workflow-contract'
+
+export const D30_HISTOGRAM_CLASSES = [
+  'PRODUCT_PASS',
+  'PRODUCT_FAIL',
+  'ENV_FAILURE',
+  'FORCE_STOP_NOT_CONFIRMED',
+  'PROCESS_NOT_STARTED',
+  'COLD_START_OS_SUSPEND',
+  'APP_NOT_READY',
+  'A11Y_SYNC_PENDING',
+  'UI_NOT_ACTIONABLE',
+  'SDK_NOT_READY',
+  'AUTH_PENDING',
+  'BACKEND_BOOTSTRAP_PENDING',
+  'EVIDENCE_TIMEOUT',
+  'TEST_DATA_CONTAMINATION',
+  'UNCLASSIFIED',
+] as const
+
+export type D30HistogramClass = (typeof D30_HISTOGRAM_CLASSES)[number]
+
+const D30_READINESS_CLASSES = new Set<D30HistogramClass>([
+  'FORCE_STOP_NOT_CONFIRMED',
+  'PROCESS_NOT_STARTED',
+  'COLD_START_OS_SUSPEND',
+  'APP_NOT_READY',
+  'A11Y_SYNC_PENDING',
+  'UI_NOT_ACTIONABLE',
+  'SDK_NOT_READY',
+  'AUTH_PENDING',
+  'BACKEND_BOOTSTRAP_PENDING',
+])
 
 const PERSISTENCE_CODES = new Set([
   'P1001', // can't reach database server
@@ -44,6 +79,39 @@ export function evaluationFailureClassForBlockedRun(
 ): EvaluationFailureClass {
   if (readinessClass === 'COLD_START_OS_SUSPEND') return 'ENVIRONMENT_FAILURE'
   return 'AUTOMATION_FAILURE'
+}
+
+/**
+ * Project persisted run fields onto the locked D30 histogram vocabulary.
+ * Product verdict wins. Eval-axis `ENVIRONMENT_FAILURE` becomes `ENV_FAILURE`.
+ * A readiness class is the histogram class only when the product was not
+ * evaluated. Unknown leftovers are `UNCLASSIFIED`.
+ */
+export function toD30HistogramClass(input: {
+  productVerdict?: string | null
+  evaluationFailureClass?: string | null
+  readinessClass?: string | null
+}): D30HistogramClass {
+  const verdict = input.productVerdict ?? null
+  const evaluationFailureClass = input.evaluationFailureClass ?? null
+  const readinessClass = input.readinessClass ?? null
+
+  if (verdict === 'PASS_ONLINE' || verdict === 'PASS_QUEUED_OFFLINE') {
+    return 'PRODUCT_PASS'
+  }
+  if (typeof verdict === 'string' && verdict.startsWith('FAIL_')) {
+    return 'PRODUCT_FAIL'
+  }
+  if (evaluationFailureClass === 'ENVIRONMENT_FAILURE' || evaluationFailureClass === 'ENV_FAILURE') {
+    return 'ENV_FAILURE'
+  }
+  if (evaluationFailureClass === 'EVIDENCE_INSUFFICIENT' || evaluationFailureClass === 'EVIDENCE_TIMEOUT') {
+    return 'EVIDENCE_TIMEOUT'
+  }
+  if (readinessClass && D30_READINESS_CLASSES.has(readinessClass as D30HistogramClass)) {
+    return readinessClass as D30HistogramClass
+  }
+  return 'UNCLASSIFIED'
 }
 
 export function isPersistenceUnavailable(error: unknown): boolean {

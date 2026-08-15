@@ -626,6 +626,13 @@ model BridgeFlowRunRuntime {
   deviceCell             String?  @map("device_cell")
   repetitionIndex        Int?     @map("repetition_index")
   faultPlanRef           String?  @map("fault_plan_ref")
+  /// G90.9 input axis. Null on every uninjected D30/D90 run. Not observedClass.
+  injectedFault          String?  @map("injected_fault")
+  expectedClass          String?  @map("expected_class")
+  /// G90.9 output axis. Null while uninjected. D60 codes forbidden when injectedFault is null.
+  observedClass          String?  @map("observed_class")
+  injectedFaultHost      String?  @map("injected_fault_host")
+  deathProvenance        String?  @map("death_provenance")
   telemetryPolicyRef     String?  @map("telemetry_policy_ref")
   releaseGate            Boolean  @default(false) @map("release_gate")
   lifecycle              String   @default("PENDING")
@@ -902,6 +909,9 @@ model VerdictRunStart {
   profileVersion    String?  @map("profile_version")
   status            String   @default("QUEUED")
   engineType        String   @default("BRIDGEFLOW") @map("engine_type")
+  injectedFault     String?  @map("injected_fault")
+  expectedClass     String?  @map("expected_class")
+  injectedFaultHost String?  @map("injected_fault_host")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([workflowRef, deviceId], map: "verdict_run_start_workflow_device_idx")

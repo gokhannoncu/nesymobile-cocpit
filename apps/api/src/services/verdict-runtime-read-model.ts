@@ -63,7 +63,12 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
           bfr.scheduler_disposition AS "schedulerDisposition",
-          bfr.operational_disposition AS "operationalDisposition"
+          bfr.operational_disposition AS "operationalDisposition",
+          bfr.injected_fault AS "injectedFault",
+          bfr.expected_class AS "expectedClass",
+          bfr.observed_class AS "observedClass",
+          bfr.injected_fault_host AS "injectedFaultHost",
+          bfr.death_provenance AS "deathProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
@@ -88,7 +93,12 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
           bfr.scheduler_disposition AS "schedulerDisposition",
-          bfr.operational_disposition AS "operationalDisposition"
+          bfr.operational_disposition AS "operationalDisposition",
+          bfr.injected_fault AS "injectedFault",
+          bfr.expected_class AS "expectedClass",
+          bfr.observed_class AS "observedClass",
+          bfr.injected_fault_host AS "injectedFaultHost",
+          bfr.death_provenance AS "deathProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
@@ -346,6 +356,11 @@ export function toWorkflowRunApi(row: Row): WorkflowRunApi {
     lifecycle: ['lifecycle'],
     productVerdict: ['productVerdict', 'product_verdict'],
     evaluationFailureClass: ['evaluationFailureClass', 'evaluation_failure_class'],
+    injectedFault: ['injectedFault', 'injected_fault'],
+    expectedClass: ['expectedClass', 'expected_class'],
+    observedClass: ['observedClass', 'observed_class'],
+    injectedFaultHost: ['injectedFaultHost', 'injected_fault_host'],
+    deathProvenance: ['deathProvenance', 'death_provenance'],
     terminationReason: ['terminationReason', 'termination_reason'],
     failureDetail: ['failureDetail', 'failure_detail'],
     readinessStatus: ['readinessStatus', 'readiness_status'],

@@ -143,6 +143,57 @@ describe('PrismaExecutionPersistence', () => {
         data: expect.objectContaining({ productVerdict: 'PASS_ONLINE' }),
       }),
     )
+    expect(client.bridgeFlowRunRuntime.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          injectedFault: null,
+          expectedClass: null,
+          observedClass: null,
+        }),
+      }),
+    )
+  })
+
+  it('refuses to persist a D60 observed class on an uninjected run', async () => {
+    const client = clientFixture()
+    client.bridgeFlowRunRuntime.findUnique = vi.fn(async () => ({
+      injectedFault: null,
+      expectedClass: null,
+      injectedFaultHost: null,
+      deathProvenance: null,
+    }))
+    const persistence = new PrismaExecutionPersistence(client)
+    await expect(
+      persistence.persistObservedClass({
+        runId: 'run-1',
+        observedClass: 'NETWORK_PARTITION',
+      }),
+    ).rejects.toThrow(/uninjected/)
+    expect(client.bridgeFlowRunRuntime.update).not.toHaveBeenCalled()
+  })
+
+  it('persists PROCESS_DEATH only with deathProvenance on a PROCESS_KILL row', async () => {
+    const client = clientFixture()
+    client.bridgeFlowRunRuntime.findUnique = vi.fn(async () => ({
+      injectedFault: 'PROCESS_KILL',
+      expectedClass: 'PROCESS_DEATH',
+      injectedFaultHost: 'A',
+      deathProvenance: null,
+    }))
+    const persistence = new PrismaExecutionPersistence(client)
+    await persistence.persistObservedClass({
+      runId: 'run-1',
+      observedClass: 'PROCESS_DEATH',
+      deathProvenance: 'PROCESS_DEATH_FORCE_STOP',
+    })
+    expect(client.bridgeFlowRunRuntime.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          observedClass: 'PROCESS_DEATH',
+          deathProvenance: 'PROCESS_DEATH_FORCE_STOP',
+        },
+      }),
+    )
   })
 
   it('upserts repeated Oracle revision one with one deterministic replay key', async () => {

@@ -18,6 +18,7 @@
  * ===========================================================================
  */
 export * from "./outcome-axes.js";
+export * from "./injected-fault.js";
 export * from "./correlation.js";
 export * from "./condition.js";
 export * from "./condition-evaluator.js";

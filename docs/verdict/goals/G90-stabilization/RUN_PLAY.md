@@ -5,27 +5,31 @@ goalId: G90-stabilization
 runPlayId: verdict-goal-g90-stabilization
 goalName: "90-day classified stabilization"
 northStar: "known failure modes, measured reliability, bounded recovery, explainable unknown states, repeatable business verification"
-status: READY
-recoveryState: D30_SLICE_OPEN
+status: IN_PROGRESS
+recoveryState: D30_COMPLETED
 createdAt: "2026-08-13 15:25:00 +03"
 openedAt: "2026-08-13 15:25:00 +03"
-startedAt: null
+startedAt: "2026-08-15 14:27:28 +03"
 completedAt: null
-lastUpdatedAt: "2026-08-14 18:27:00 +03"
+lastUpdatedAt: "2026-08-15 16:40:00 +03"
 timezone: "Europe/Istanbul"
 windowStart: "2026-08-13"
 windowEnd: "2026-11-11"
 d30End: "2026-09-12"
 d60End: "2026-10-12"
 d90End: "2026-11-11"
-nextStep: G90.3
-nextStepFile: "docs/verdict/goals/G90-stabilization/JOIN.md"
-d14Gate: "G90.2b + G90.3 by 2026-08-27"
+nextStep: G90.10
+nextStepFile: "docs/verdict/goals/G90-stabilization/RUN_PLAY.md"
+d60Implementation: G90.9_DONE
+d60CampaignStatus: NOT_STARTED
+d60CampaignWindow: "2026-09-13 → 2026-10-12 — formal matrix not opened early"
+d14Gate: "G90.2b + G90.3 closed 2026-08-15"
 resultFile: "docs/verdict/goals/G90-stabilization/RESULT.md"
 acceptanceFile: "docs/verdict/goals/G90-stabilization/ACCEPTANCE.md"
 readinessFile: "docs/verdict/goals/G90-stabilization/READINESS.md"
 joinFile: "docs/verdict/goals/G90-stabilization/JOIN.md"
-criticalPath: G90.2b_THEN_G90.3
+criticalPath: D60_BAD_DAY
+d30Status: COMPLETED
 internallyStable: SPEC_LOCKED
 masterPlanPath: "docs/verdict/VERDICT_COCKPIT_SDK_BRIDGE_PLAN_V1_FULL.md"
 operatingModel: "docs/verdict/OPERATING_MODEL.md"
@@ -163,9 +167,9 @@ Phase 10 fact plumbing `CODE_WIRED` ≠ G90 live golden fact
 
 Cold start tek adım değil: [`READINESS.md`](./READINESS.md) — pre-action
 yedili, `INTERACTION_READY`; AUTH/bootstrap action **sonrası**. G90.2b
-`CODE_COMPLETE`; **NEXT = G90.3**
-(eski 9-state kodlanmaz). Sonra G90.3 = 3a ∧ 3b. İkisi ≤ 2026-08-27.
-Timeout uzatılmaz. İkinci workflow D30’a girmez.
+`READINESS_LIVE_QUALIFIED`; G90.3 = 3a ∧ 3b `DONE` (2026-08-15).
+D30 `COMPLETED`. G90.9 `DONE`. **NEXT = G90.10** enjektörler (formal D60
+kampanyası 13 Eylül’e kadar açılmaz). İkinci workflow D30’a girmez.
 
 ## 2. Neden bu iz ayrı?
 
@@ -256,6 +260,14 @@ Remap tablosu yok. `STALE_TREE` observation, class değil.
 | `UNCLASSIFIED` | Sözlükte yok / yıksız. D30’u `FAILED` yapar | Hayır |
 
 Her `class` tam **bir** satır. Duplicate satır spec fail’dir; metric pipeline bu tabloyu 1:1 okur. D60 kodları (§16) bu tabloya eklenmez.
+
+İki eksen bilinçli ayrı durur. Persisted eval axis
+(`evaluationFailureClass`): `NONE` | `AUTOMATION_FAILURE` |
+`ENVIRONMENT_FAILURE` | `EVIDENCE_INSUFFICIENT`. Histogram `class`
+(`d30Class`) bu tablodur. Tek izinli remap `toD30HistogramClass`:
+`ENVIRONMENT_FAILURE` → `ENV_FAILURE`; `EVIDENCE_INSUFFICIENT` →
+`EVIDENCE_TIMEOUT`; readiness class, ürün değerlendirilmediyse histogram
+sınıfıdır. Prisma kodları `failureDetail` üzerindedir.
 
 `LOGIN_REJECTED` bir **business fact**'tir; ProductVerdict değildir. Kontrollü
 wrong-PIN testinde beklenti `LOGIN_REJECTED=true` olur. Final Oracle bu fact'i
@@ -401,18 +413,18 @@ NesyMobile/verdict-bridge/**
 | G90.0 | Hedef izi aç, D30 slice kilitle | `DONE` (bu dosya) |
 | G90.1 | Sınıf + readiness izi run kaydında (READINESS çıktı formatı) | `MERGED_INTO_G90.2b` |
 | G90.2 | Readiness Core spec (yedili + pre/post split) | `DONE` — [`READINESS.md`](./READINESS.md) 14 Aug 17:04 |
-| G90.2b | SM koda — `INTERACTION_READY`; AUTH/bootstrap pre-action **yok**. Kalıcı trace + canonical class. | `DONE` (code + tests, 2026-08-14 18:27; live qualification J1/G90.3) |
-| G90.3 | **Parent** login evidence closure = 3a ∧ 3b | `NOT_STARTED` |
-| G90.3a | Continue Gate fact journey (12 basamak, her iki path) | `NOT_STARTED` |
-| G90.3b | Final Oracle: **1× positive-path PRODUCT_PASS + 1× expected-rejection PRODUCT_PASS** carrying `LOGIN_REJECTED` (LOCAL REQUIRED) | `NOT_STARTED` |
+| G90.2b | SM koda — `INTERACTION_READY`; AUTH/bootstrap pre-action **yok**. Kalıcı trace + canonical class. | `DONE` — live `READINESS_LIVE_QUALIFIED` 2026-08-15 |
+| G90.3 | **Parent** login evidence closure = 3a ∧ 3b | `DONE` (2026-08-15) |
+| G90.3a | Continue Gate fact journey (12 basamak, her iki path) | `DONE` — her iki path `PRODUCT_PASS` (gate kapandı) |
+| G90.3b | Final Oracle: **1× positive-path PRODUCT_PASS + 1× expected-rejection PRODUCT_PASS** carrying `LOGIN_REJECTED` (LOCAL REQUIRED) | `DONE` — `run_7d3a7139` + `run_96e6ad43` |
 | G90.3c | `tstrsAutomationRelease` golden | `NOT_STARTED` (3 sonrası P1) |
 | G90.3e | Remote login evidence | `NOT_STARTED` (J4 N/A / P2) |
-| G90.4 | Isolation reset / fixture determinism (`TEST_DATA_CONTAMINATION`) | `NOT_STARTED` (G5 sonrası P1) |
-| G90.5 | 100 koşu: ancak 3–5 ardışık PASS + 20 sınıflı sonra; histogram + `UNCLASSIFIED=0` | `NOT_STARTED` |
-| G90.6 | Her görülen sınıfa bir regresyon (bağımsız kırılabilir) | `NOT_STARTED` |
-| G90.7 | D30 RESULT kapat | `NOT_STARTED` |
+| G90.4 | Isolation reset / fixture determinism (`TEST_DATA_CONTAMINATION`) | `NOT_STARTED` (P1; D30 campaign isolation 0 contamination bunu kapatmaz) |
+| G90.5 | 100 koşu: ancak 3–5 ardışık PASS + 20 sınıflı sonra; histogram + `UNCLASSIFIED=0` | `DONE` — 99 `PRODUCT_PASS` / 1 `ENV_FAILURE` / `UNCLASSIFIED=0` |
+| G90.6 | Her görülen sınıfa bir regresyon (bağımsız kırılabilir) | `DONE` — `PRODUCT_PASS` + `ENV_FAILURE` |
+| G90.7 | D30 RESULT kapat | `DONE` (2026-08-15) |
 | G90.8 | D60 spec kilidi (bad-day matrisi) | `DONE` (bu dosya, 2026-08-13) |
-| G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `NOT_STARTED` |
+| G90.9 | `injectedFault` alanı + D60 sınıf kodları run kaydında | `DONE` (2026-08-15) — input/output ayrı; kampanya `NOT_STARTED` |
 | G90.10 | Altı senaryo enjektörü (bölüm 16); yeni waiter yok | `NOT_STARTED` |
 | G90.11 | D60 kampanyası: senaryo başına ≥5 eşleşen sınıf; karışıklık matrisi | `NOT_STARTED` |
 | G90.12 | D60 RESULT kapat | `NOT_STARTED` |
@@ -425,10 +437,11 @@ NesyMobile/verdict-bridge/**
 ## 12. Verification
 
 G90.2b kapanışı: yedili SM kodda; `INTERACTION_READY` ilk action kapısı;
-`AUTH_*` pre-action yok; `wait-login-ready` torbası yok.
+`AUTH_*` pre-action yok; `wait-login-ready` torbası yok. Live 100/100
+`INTERACTION_READY` (2026-08-15).
 G90.3 kapanışı = 3a ∧ 3b ([`JOIN.md`](./JOIN.md) §11): 1× positive-path
 PASS + 1× expected-rejection PASS;
-`J2✅ J3✅ J4 N/A J5✅`. Yalnız FAIL ile parent kapanmaz. İkisi ≤ 2026-08-27.
+`J2✅ J3✅ J4 N/A J5✅`. 2026-08-15 `DONE`.
 
 D30 kapanışı için RESULT’ta bulunacak:
 
@@ -470,12 +483,14 @@ G90 north star: bilinen failure modes, ölçülmüş reliability, bounded recove
 açıklanabilir unknown states, repeatable business verification. Ana risk join.
 Ölçü: Readiness / Evidence / Oracle / Recovery / Reliability boundary.
 Phase 10 plumbing ≠ live golden fact. D30 yalnız courier PIN login.
-100 koşu: 3–5 PASS → 20 → 100. 94 PASS / 6 sınıflı failure, belirsiz
-timeout’tan değerli. UNCLASSIFIED tek koşu D30 fail. Timeout/sleep/jest yok.
-G90.2b CODE_COMPLETE: INTERACTION_READY yedili; AUTH/bootstrap pre-action yok.
-NEXT = G90.3 = 3a ∧ 3b (1× positive-path PASS + 1× expected-rejection PASS).
-İkisi ≤ 2026-08-27.
-J0–J5 ladder değil. İkinci workflow / AI / kill 2b+3 önüne geçmez.
+D30 COMPLETED 2026-08-15: 100 classified, 99 PRODUCT_PASS, 1 ENV_FAILURE,
+UNCLASSIFIED=0. 94 PASS / 6 sınıflı failure, belirsiz timeout’tan değerli.
+Timeout/sleep/jest yok. RELIABILITY_PROVEN değil.
+G90.2b READINESS_LIVE_QUALIFIED. G90.3 DONE.
+G90.9 DONE: injectedFault ≠ observedClass. Formal D60 kampanya NOT_STARTED.
+NEXT = G90.10 altı semantik enjektör; 13 Eylül öncesi resmi matris yok.
+Amaç her şeyi yeşil yapmak değil: enjekte edilen kırılım beklenen sınıfı üretmeli.
+J0–J5 ladder değil. İkinci 100-run login yok.
 pilotStable D90 öncesi freeze ister. Önce READINESS.md, JOIN.md, RESULT.md oku.
 ```
 
@@ -546,7 +561,7 @@ golden soak değil, fault’un yaşayabileceği tek yer.
 | ID | Fault | Host slice | Enjeksiyon (lab) | Beklenen `class` | Bu olmamalı |
 |---|---|---|---|---|---|
 | BD.1 | Process kill | A — D30 login, jestten sonra / continue gate öncesi | `am force-stop <pkg>` (user). pid + `deathProvenance=PROCESS_DEATH_FORCE_STOP` zorunlu. | `PROCESS_DEATH` | Gesture auto-retry; sessiz `PRODUCT_PASS`; provenance’siz “process death test edildi” |
-| BD.2 | Network disconnect | A — PIN submit civarı **veya** B — teslimat submit | Airplane / USB net / kayıtlı lab kesici; enjektör `injectedFault=NETWORK_PARTITION` | `NETWORK_PARTITION` | `PRODUCT_FAIL`; `ENV_FAILURE` torbası (enjeksiyon kaydı varken) |
+| BD.2 | Network disconnect | A — PIN submit civarı **veya** B — teslimat submit | Airplane / USB net / kayıtlı lab kesici; enjektör `injectedFault=NETWORK_DISCONNECT` | `NETWORK_PARTITION` | `PRODUCT_FAIL`; `ENV_FAILURE` torbası (enjeksiyon kaydı varken) |
 | BD.3 | Backend timeout | B — remote REQUIRED veya EVENTUAL oy kullanan adım (complete-delivery / tour-approval) | Backoffice’i düşür veya adapter deadline’ı zorla | `BACKEND_TIMEOUT` | HTTP 2xx `PRODUCT_PASS`; iş yanlışmış gibi `PRODUCT_FAIL` |
 | BD.4 | Dialog / overlay | A — launch `permissionDialog` veya koşu içi overlay | Sistem dialog / pack interrupt surface | `DIALOG_INTERRUPT` | Overlay’e tap; interrupt key varken `UI_NOT_ACTIONABLE`; 30s timeout |
 | BD.5 | Duplicate callback | A — login fact **veya** B — delivery fact | Aynı WS event / seq tekrar; veya çift emit | `DUPLICATE_SUPPRESSED` | İki verdict; `TEST_DATA_CONTAMINATION` (bu o değil) |
@@ -587,9 +602,15 @@ onları iptal etmez; onları **sınar**.
 | BD.5 | Aynı occurrence’a ikinci fact oy vermez | Drop + sayaç | Yeni reducer / yeni event adı |
 | BD.6 | LOCAL queue fact varsa remote yokken `OFFLINE_QUEUED` | Yok; kuyruk zaten politika | Remote gelene kadar wait şişirme |
 
-Metrik: D30 satırına ek `injectedFault` (`null` \| altı ID). D60 özeti bir
-**karışıklık matrisi**dir (satır = enjekte, sütun = gözlenen sınıf). Köşegen
-dışı hücre kapanışı reddeder.
+Metrik: D30 satırına ek `injectedFault` (`null` \| `PROCESS_KILL` \|
+`NETWORK_DISCONNECT` \| `BACKEND_TIMEOUT` \| `DIALOG_OVERLAY` \|
+`DUPLICATE_CALLBACK` \| `OFFLINE_QUEUE`). `observedClass` ayrı alandır
+(altı D60 kodu + D30 histogram). D60 özeti bir **karışıklık matrisi**dir
+(satır = enjekte, sütun = gözlenen sınıf). Köşegen dışı hücre kapanışı
+reddeder. `injectedFault = null` satırlar matrise girmez.
+
+G90.9 kodu 15 Aug 2026’da yazıldı. Formal D60 kampanya penceresi
+**13 Eylül–12 Ekim 2026** duruyor — implementation ≠ campaign start.
 
 Regresyon: altı senaryonun her biri için tekrarlanabilir enjektör + beklenen
 `class` assert. Enjektör yoksa “bir gün USB çıktı” D60 kanıtı değildir.

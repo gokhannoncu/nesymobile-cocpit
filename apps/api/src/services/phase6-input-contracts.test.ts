@@ -21,6 +21,7 @@ import {
 } from './workflow-compile.service.js'
 import {
   InMemoryWorkflowRunStartStore,
+  parseInjectedFaultBody,
   WorkflowRunService,
 } from './workflow-run.service.js'
 
@@ -249,6 +250,31 @@ describe('workflow run start pinning', () => {
     const second = await service.start(pinned)
     expect(first.runId).toBe(second.runId)
     expect(first.compiledPlanHash).toBe('sha256:abc')
+    expect(first.injectedFault).toBeNull()
+    expect(first.expectedClass).toBeNull()
+    expect(first.injectedFaultHost).toBeNull()
+  })
+
+  it('treats injectedFault as a distinct start identity from the uninjected twin', async () => {
+    const service = new WorkflowRunService()
+    const uninjected = await service.start(pinned)
+    const injected = await service.start({
+      ...pinned,
+      injectedFault: 'PROCESS_KILL',
+      injectedFaultHost: 'A',
+    })
+    expect(injected.runId).not.toBe(uninjected.runId)
+    expect(injected.injectedFault).toBe('PROCESS_KILL')
+    expect(injected.expectedClass).toBe('PROCESS_DEATH')
+    expect(injected.injectedFaultHost).toBe('A')
+    expect('observedClass' in injected).toBe(false)
+  })
+
+  it('refuses to pre-write observedClass at start', () => {
+    expect(() => parseInjectedFaultBody({ observedClass: 'PROCESS_DEATH' })).toThrow(/output axis/)
+    expect(() => parseInjectedFaultBody({ injectedFault: 'PROCESS_DEATH', injectedFaultHost: 'A' })).toThrow(
+      /unknown injectedFault/,
+    )
   })
 
   it('passes pinned execution metadata to the BridgeFlow queue', async () => {

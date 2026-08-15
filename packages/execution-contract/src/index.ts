@@ -1,6 +1,8 @@
 import type { BridgeActionTerminalState, WaitAnyResult } from "@nesy/bridge-contract";
 import type {
   EvaluationFailureClass,
+  InjectedFaultHost,
+  InjectedFaultId,
   OperationalDisposition,
   ProductVerdict,
   ResourceReleaseResult,
@@ -24,6 +26,8 @@ export interface TestProfileRunPin {
   deviceCell?: string;
   repetitionIndex?: number;
   faultPlanRef?: string;
+  injectedFault?: InjectedFaultId | null;
+  injectedFaultHost?: InjectedFaultHost | null;
   telemetryPolicyRef?: string;
   releaseGate: boolean;
 }

@@ -6,6 +6,7 @@ import type {
   RunManifest,
   RunOutcomeAxes,
   StepOccurrence,
+  TestProfileRunPin,
 } from "@nesy/execution-contract";
 import {
   appendActionTransition,
@@ -77,18 +78,7 @@ export interface ExecuteBridgeFlowInput {
   runId: string;
   deviceId: string;
   plan: BridgeFlowPlan;
-  profile?: {
-    profileKey: string;
-    profileVersion: string;
-    campaignId?: string;
-    buildRef?: string;
-    datasetRef?: string;
-    deviceCell?: string;
-    repetitionIndex?: number;
-    faultPlanRef?: string;
-    telemetryPolicyRef?: string;
-    releaseGate: boolean;
-  };
+  profile?: TestProfileRunPin;
   signal?: AbortSignal;
   recovery?: RecoveryResumeState;
 }
