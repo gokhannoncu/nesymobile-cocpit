@@ -48,9 +48,10 @@ import {
   evidenceSubtypeForFact,
   isLocalQueueItemWaitingObservation,
 } from './local-queue-evidence.js'
-import { getDashboardAdminToken } from './nesy-admin-token.js'
+import { resolveBackofficeAdminCredentials } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
+import { createPendingDeliveryStatusRefresher } from './pending-delivery-status-refresh.js'
 import { deriveFacts } from './derived-fact-engine.js'
 import { createControlExecutor } from '@nesy/control-channels/node'
 import type { ControlExecutor } from '@nesy/control-contract'
@@ -84,14 +85,6 @@ import {
   setRunIdProperty,
   type DeviceBridgeState,
 } from './test-event-bridge.js'
-import {
-  isNesyDashboardCountry,
-  isNesyEnvironment,
-  resolveBaseUrl,
-  type NesyDashboardCountry,
-  type NesyEnvironment,
-} from '../nesy-env.js'
-
 type QueueItem = Parameters<WorkflowRunExecutionQueue['enqueue']>[0]
 type RemoteStepRuntime = ReturnType<typeof createPackRemoteStepRuntime>
 
@@ -141,18 +134,10 @@ function createEnvBackofficeAdapter(sessions?: {
           },
         }),
     credentials: async () => {
-      const configuredCountry = process.env.NESY_REMOTE_ACTION_COUNTRY?.trim() ?? 'RS'
-      const configuredEnv = process.env.NESY_REMOTE_ACTION_ENV?.trim() ?? 'stage'
-      const country: NesyDashboardCountry = isNesyDashboardCountry(configuredCountry)
-        ? configuredCountry
-        : 'RS'
-      const environment: NesyEnvironment = isNesyEnvironment(configuredEnv)
-        ? configuredEnv
-        : 'stage'
-      const token = process.env.NESY_BACKOFFICE_TOKEN?.trim() || await getDashboardAdminToken(country, environment)
+      const resolved = await resolveBackofficeAdminCredentials()
       return {
-        baseUrl: process.env.NESY_BACKOFFICE_BASE_URL?.trim() || resolveBaseUrl(country, environment),
-        token: token ?? '',
+        baseUrl: resolved.baseUrl,
+        token: resolved.token,
       }
     },
     // Without this the only trace of a back-office call was the attempt row's
@@ -1165,6 +1150,15 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
     const runInputs = item.inputs ?? {}
+    const backofficeAdapter =
+      this.options.backofficeAdapter ?? createEnvBackofficeAdapter({ backendTimeout, networkDisconnect })
+    const refreshPendingDeliveryStatus = createPendingDeliveryStatusRefresher({
+      adapter: backofficeAdapter,
+      observations: sdkObservations,
+      runId: item.runId,
+      runInputs,
+      clock,
+    })
     // What an `ENTITY_STATUS_EQUALS` derivation compares the OBSERVED entity
     // against. The pack names the source (`macro.input.stopCode`); the value can
     // only come from this run, because it is what THIS run asked for.
@@ -1207,6 +1201,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       occurrenceId: string,
       iterationKey: string,
     ): readonly NormalizedEvidenceFact[] => {
+      refreshPendingDeliveryStatus()
       publishLiveScreenReadiness({
         bundle: resolution.pack.bundle,
         evidenceRuntime,
@@ -1330,7 +1325,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
           createPackRemoteStepRuntime({
             runId: item.runId,
             bundle: resolution.pack.bundle,
-            adapter: this.options.backofficeAdapter ?? createEnvBackofficeAdapter({ backendTimeout, networkDisconnect }),
+            adapter: backofficeAdapter,
             variables: runContext,
             runInputs,
             evidence: evidenceRuntime,

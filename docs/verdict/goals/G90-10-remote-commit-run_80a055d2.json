@@ -1,0 +1,80 @@
+{
+  "kind": "uninjected-complete-delivery-remote-commit",
+  "notBd6Proof": true,
+  "reconstructed": true,
+  "lineage": {
+    "head": "06786f0",
+    "apiPid": "76781",
+    "pack": "nesy.courier@1.34.0",
+    "device": "R6CW400BC8N",
+    "schedule": "11-31-20260816-1"
+  },
+  "runId": "run_80a055d2-84e0-4622-bc43-bb1cad487640",
+  "occurrenceId": null,
+  "barcode": "6880051000293916",
+  "waybill": "40515485408297",
+  "shipmentId": "40515485408297",
+  "APP.DELIVERY_SUBMITTED": {
+    "monoTs": null,
+    "wallClock": "2026-08-16T05:01:16.000Z",
+    "source": "CompletedRequest.id=7 createdAt=1786856476 (unix s)"
+  },
+  "deliverParcels": {
+    "requestStarted": "2026-08-16T05:03:18.947Z",
+    "endpoint": "POST Task/DeliverParcels/",
+    "requestId": "CompletedRequest.id=7",
+    "correlationId": "40515485408297",
+    "HTTP status": "archived success (requestTrace=null, tryCount=0)",
+    "responseBodySemantic": "TaskService.SetSuccessResponse({}) after DeliverParcelsV2",
+    "requestCompletedMonoTs": null,
+    "requestCompletedWall": "2026-08-16T05:03:18.947Z",
+    "source": "CompletedRequest.processTime=1786856598947 (unix ms)"
+  },
+  "REMOTE": {
+    "t+0": {
+      "at": "2026-08-16T05:01:16.000Z",
+      "note": "confirm / local queue insert; not polled live",
+      "shipmentStatus": "expected Loaded (inside 120s wait)",
+      "deliveryProof": "expected []"
+    },
+    "t+14s": {
+      "at": "2026-08-16T05:01:30.564Z",
+      "source": "verify-backend-status",
+      "shipmentStatus": "Loaded",
+      "deliveryProof": []
+    },
+    "t+2s": { "note": "inside 120s wait; would still be Loaded + []" },
+    "t+5s": { "note": "inside 120s wait; would still be Loaded + []" },
+    "t+10s": { "note": "inside 120s wait; would still be Loaded + []" },
+    "t+30s": { "note": "inside 120s wait; would still be Loaded + []" },
+    "t+122s": {
+      "at": "2026-08-16T05:03:18.947Z",
+      "shipmentStatus": "mutation in flight",
+      "deliveryProof": "not yet"
+    },
+    "t+123s": {
+      "at": "2026-08-16T05:03:19.351Z",
+      "shipmentStatus": "Delivered (actualDeliveryDate 2026-08-16T05:03:19.866Z)",
+      "deliveryProof": {
+        "count": 1,
+        "eventType": "Delivered",
+        "eventDate": "2026-08-16T05:03:19.351Z",
+        "createdAt": "2026-08-16T05:03:19.939Z",
+        "observedAt": "hours later; row exists now"
+      }
+    }
+  },
+  "hypotheses": {
+    "1_requestNeverOnWireAtMeasureTime": true,
+    "2_technicalSuccessNoMutation": false,
+    "3_staleOrDifferentReadModelAtMeasureTime": true
+  },
+  "oracle": {
+    "APP.DELIVERY_SUBMITTED": "SATISFIED",
+    "localItemStatus": 6,
+    "LOCAL.offlineQueue": "absent",
+    "finalOracle": "FAIL_PRODUCT",
+    "observedClass": null,
+    "doNotTreatAsPass": ["APP.DELIVERY_SUBMITTED", "itemStatus=6", "HTTP 2xx"]
+  }
+}

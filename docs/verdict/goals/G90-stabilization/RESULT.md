@@ -357,9 +357,9 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current step | `G90.10` BD.6 |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.10` BD.2 LIVE_QUALIFIED (`94a9acf` / PID 95043 / `run_0c1a0dd2`) |
-| Last attempted step | G90.10 BD.6 complete-delivery uninjected `run_80a055d2` FAIL_PRODUCT — local deliverParcels + Room delivered, GetShipmentDeliveryProof `[]`, SearchShipment still Loaded; classifier held |
-| Last update | `2026-08-16 08:02:00 +03` |
-| Recovery instruction | `NEXT = why RS staging does not persist deliverParcels (not observeInjectedClass). proofLookupId=waybill already used. Invoice customer 10330 still no remote proof. Do not bind qual to PID 25062. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last attempted step | Uninjected `run_7b037ebe` on fresh `72564226961796` (PID 91738) — confirm SATISFIED, local itemStatus=6, verify-backend-status FAILED again, probe login captcha. Not PASS_ONLINE. Not BD.6. |
+| Last update | `2026-08-16 08:42:00 +03` |
+| Recovery instruction | `NEXT = new invoice singleton (do not reuse 53940270186302 or 72564226961796) after adapter token is cached on the live PID. PID 84598→91738 is operational replacement only, not ENV_FAILURE. Do not inject OFFLINE_QUEUE. Formal D60 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
@@ -662,10 +662,13 @@ D30 measured reliability established for the login slice.
 RELIABILITY_PROVEN değil. G90 COMPLETED değil.
 G90.9 LIVE_QUALIFIED. G90.10 BD.3+BD.2 LIVE_QUALIFIED.
 BD.6 process-parcel HOST_NOT_CAPABLE (run_578dcc5d negative live). Classifier held.
-complete-delivery uninjected `run_80a055d2` (PID 76781 / `06786f0` / pack 1.34.0):
-APP.DELIVERY_SUBMITTED SATISFIED, queue absent, observedClass=null,
-REMOTE proof [] while device itemStatus=6. LIVE_QUALIFIED değil.
-NEXT = persist/observe deliverParcels on RS staging; do not loosen classifier.
+PID 84598 / 91738 / 19017 closed (operational replacement only; not ENV_FAILURE).
+Current runtime PID 20130 — investigation only, not a qual lineage.
+ADMIN_AUTH_READY on 20130: LoginDashboard=1, cache fingerprint sha256:d6122ba8ba780d31, verify adapter readback match, GetMyInfo 200, probe used cached-token.
+run_7b037ebe leftover 72564226961796 — do not reuse (auth INCONCLUSIVE).
+run_e68ca3ae leftover 69369275241949 — do not reuse. Auth held; confirm SATISFIED; APP.DELIVERY_SUBMITTED SATISFIED; proof Delivered at t+120 waybill-matched; ProductVerdict INCONCLUSIVE (REMOTE EVENTUAL REQUIRED_TIMEOUT at 06:02:38 while proof eventDate 06:02:26). observedClass=null. Not BD.6.
+NEXT = deploy Final Oracle nextWake (250ms host poll; same as Continue Gate) on a fresh PID, then new uninjected singleton. run_e68ca3ae first red box = A (EVENTUAL slept to deadline). Do not bump 120s. Do not inject OFFLINE_QUEUE until PASS_ONLINE.
+Do not loosen classifier. See G90-10-bd6-remote-commit-investigation-2026-08-16.md.
 injectedFault ≠ observedClass. Uninjected null. Do not bind qual to PID 25062.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
 Not G90.4 / 3c / 3e.

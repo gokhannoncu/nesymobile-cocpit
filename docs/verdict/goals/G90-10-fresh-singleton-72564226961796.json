@@ -1,0 +1,23 @@
+{
+  "kind": "uninjected-complete-delivery-fixture",
+  "notBd6Proof": true,
+  "doNotReuse": ["53940270186302"],
+  "runtime": {
+    "apiPid": "91738",
+    "apiCommand": "node dist/server.js",
+    "qualificationLineage": false,
+    "replaced": { "apiPid": "84598", "exit": 137, "note": "operational replacement only; not ENV_FAILURE" }
+  },
+  "shipment": {
+    "waybill": "72564226961796",
+    "barcode": "6880051000294012",
+    "billingOption": "CPP on invoice",
+    "remoteStatusAtCreate": "Loaded",
+    "consumedBy": "run_7b037ebe-fd4b-434e-a839-1dbad44dad65",
+    "deviceShipmentStatusAfterConfirm": 2,
+    "deviceItemStatusAfterConfirm": 6,
+    "singletonStop": true,
+    "stopId": "6a814c82463db188091be92f",
+    "loadToVehicleRunId": "run_27ac3397-dfb1-4945-9c3f-483081dba53f"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "kind": "g90-10-eventual-refresh-trace",
+  "runId": "run_e68ca3ae-1159-4a5c-ad2b-12c830d67e43",
+  "notBd6Proof": true,
+  "firstRedBox": "A",
+  "firstRedBoxDetail": "Final Oracle EVENTUAL slept from the first PENDING pass to deadlineAtMs. refreshFacts (and the 5s GetShipmentDeliveryProof re-read) ran once at window open, when proof was still []. Continue Gate already had a 250ms nextWake; Final Oracle used only nextPendingRequirementBoundary (= deadline).",
+  "hypotheses": {
+    "A": "CONFIRMED — EVENTUAL did not re-call the adapter after the first tick",
+    "B": "NOT_THE_FIRST_BOX — first []/UNKNOWN is a correct t+0 observation; it was never replaced because A never re-polled",
+    "C": "UNTESTED_LIVE — adapter was not invoked while proof n=1 existed",
+    "D": "CONSEQUENCE_OF_A — evaluator woke at deadline with lastEvidenceRevision still 22"
+  },
+  "timestamps": {
+    "confirmObservedAt": "2026-08-16T06:00:32.953Z",
+    "verifyStartedAt": "2026-08-16T06:00:35.069Z",
+    "adapterRequestAt": ["2026-08-16T06:00:36.431Z"],
+    "adapterResponseAt": ["2026-08-16T06:00:36.864Z"],
+    "verifyCompletedAt": "2026-08-16T06:00:37.590Z",
+    "eventualStartedAt": "2026-08-16T06:00:38.115Z",
+    "eachRefreshAt": ["2026-08-16T06:00:38.115Z"],
+    "oracleWakeAt": ["2026-08-16T06:00:40.594Z", "2026-08-16T06:02:38.872Z"],
+    "proofObservedAt": "2026-08-16T06:02:26.623Z",
+    "probeSawProofAt": "2026-08-16T06:02:32.953Z",
+    "factSatisfiedAt": null,
+    "deadlineAt": "2026-08-16T06:02:38.115Z",
+    "assertCompletedAt": "2026-08-16T06:02:40.116Z"
+  },
+  "evidence": {
+    "remoteActionsPersisted": 1,
+    "firstProofPayload": "[]",
+    "lastEvidenceRevisionBothEvals": 22,
+    "finalOracleRows": 2,
+    "APP.DELIVERY_SUBMITTED": "SATISFIED",
+    "REMOTE.DELIVERY_STATUS_COMPLETED": "REQUIRED_TIMEOUT",
+    "productVerdict": "INCONCLUSIVE",
+    "evaluationFailureClass": "EVIDENCE_INSUFFICIENT",
+    "proofLeadTimeBeforeDeadlineMs": 11492
+  }
+}

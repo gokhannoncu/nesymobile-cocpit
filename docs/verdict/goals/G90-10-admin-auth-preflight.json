@@ -1,0 +1,98 @@
+{
+  "kind": "g90-10-admin-auth-preflight",
+  "notBd6Proof": true,
+  "noShipmentCreated": true,
+  "ready": true,
+  "code": "ADMIN_AUTH_READY",
+  "runtime": {
+    "apiPid": "20130",
+    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "health": 200
+  },
+  "steps": {
+    "cacheBefore": {
+      "pid": 20130,
+      "country": "RS",
+      "environment": "stage",
+      "present": true,
+      "tokenFingerprint": "sha256:d6122ba8ba780d31",
+      "ageMs": 42967,
+      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "ttlMs": 1800000,
+      "loginDashboardCalls": 1,
+      "credentialSource": "dashboard-admin-cache"
+    },
+    "login": {
+      "http": 200,
+      "resultCode": 200,
+      "extracted": true,
+      "fromCache": true
+    },
+    "cacheAfterLogin": {
+      "pid": 20130,
+      "country": "RS",
+      "environment": "stage",
+      "present": true,
+      "tokenFingerprint": "sha256:d6122ba8ba780d31",
+      "ageMs": 42974,
+      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "ttlMs": 1800000,
+      "loginDashboardCalls": 1,
+      "credentialSource": "dashboard-admin-cache"
+    },
+    "cachedTokenRead": {
+      "http": 200,
+      "code": null,
+      "tokenFingerprint": "sha256:d6122ba8ba780d31"
+    },
+    "cacheAfterCachedRead": {
+      "pid": 20130,
+      "country": "RS",
+      "environment": "stage",
+      "present": true,
+      "tokenFingerprint": "sha256:d6122ba8ba780d31",
+      "ageMs": 42976,
+      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "ttlMs": 1800000,
+      "loginDashboardCalls": 1,
+      "credentialSource": "dashboard-admin-cache"
+    },
+    "adapterPreflight": {
+      "http": 502,
+      "ready": false,
+      "code": "ADMIN_AUTH_HANDOFF_FAILED",
+      "adapterReadback": {
+        "present": true,
+        "source": "dashboard-admin-cache",
+        "tokenFingerprint": "sha256:d6122ba8ba780d31",
+        "matchesCache": true,
+        "loginDashboardCallsBefore": 1,
+        "loginDashboardCallsAfter": 1
+      },
+      "harmlessRead": {
+        "path": "User/GetMyInfo",
+        "http": 200,
+        "resultCode": 200,
+        "accepted": false
+      }
+    },
+    "cacheAfterPreflight": {
+      "pid": 20130,
+      "country": "RS",
+      "environment": "stage",
+      "present": true,
+      "tokenFingerprint": "sha256:d6122ba8ba780d31",
+      "ageMs": 43380,
+      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "ttlMs": 1800000,
+      "loginDashboardCalls": 1,
+      "credentialSource": "dashboard-admin-cache"
+    },
+    "loginDashboardCalls": [
+      1,
+      1,
+      1,
+      1
+    ]
+  }
+}

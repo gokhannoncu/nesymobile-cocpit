@@ -96,14 +96,21 @@ describe('back-office endpoint map', () => {
           if (!hasPath(normalized, path)) missing.push(`${operation.operationRef}: ${path}`)
         }
 
-        // A `responsePath` that resolves to a non-boolean publishes as UNKNOWN by
-        // design (`bridgeflow-remote-steps` refuses to invent a `false`), so a
-        // non-boolean here is a fact that can never settle a requirement.
+        // A `responsePath` that resolves to a non-boolean publishes as UNKNOWN.
+        // For most operations that is a broken empty-path. Delivery proof is
+        // the exception: an empty list is the product's 120s TwoDelayFlow
+        // pending interval, and inventing `false` skips the pack EVENTUAL.
         for (const output of operation.outputs) {
           const value = readTestPath(normalized, output.responsePath)
-          if (hasPath(normalized, output.responsePath) && typeof value !== 'boolean') {
-            missing.push(`${operation.operationRef}: ${output.responsePath} is ${typeof value}, not boolean`)
+          if (!hasPath(normalized, output.responsePath) || typeof value === 'boolean') continue
+          if (
+            operation.operationRef === 'nesy.backoffice.read-delivery-status' &&
+            output.responsePath === 'delivery.completed' &&
+            value === null
+          ) {
+            continue
           }
+          missing.push(`${operation.operationRef}: ${output.responsePath} is ${typeof value}, not boolean`)
         }
       }
     }
@@ -233,6 +240,33 @@ describe('back-office endpoint map', () => {
     expect(endpoint.body({ shipment: 'shipment-1' })).toEqual({ ShipmentIdList: ['shipment-1'] })
     expect(endpoint.normalize!([{ ShipmentId: 'shipment-1' }], { shipment: 'shipment-1' })).toMatchObject({
       delivery: { completed: true, status: 'PROOF_AVAILABLE', shipmentId: 'shipment-1' },
+    })
+  })
+
+  it('matches RS staging proof rows by camelCase waybillNumber', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-delivery-status']!
+    const liveRow = {
+      waybillNumber: '40515485408297',
+      shipmentStatus: 'Delivered',
+      eventType: 'Delivered',
+    }
+    expect(endpoint.normalize!([liveRow], { shipment: '40515485408297' })).toMatchObject({
+      delivery: {
+        completed: true,
+        status: 'PROOF_AVAILABLE',
+        correlationId: '40515485408297',
+        shipmentId: '40515485408297',
+      },
+    })
+    expect(endpoint.normalize!([liveRow], { shipment: '32566991114744' })).toMatchObject({
+      delivery: { completed: null, status: 'REMOTE_PENDING' },
+    })
+  })
+
+  it('does not invent completed=false from an empty proof list', () => {
+    const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-delivery-status']!
+    expect(endpoint.normalize!([], { shipment: '40515485408297' })).toMatchObject({
+      delivery: { completed: null, status: 'REMOTE_PENDING', shipmentId: '40515485408297' },
     })
   })
 

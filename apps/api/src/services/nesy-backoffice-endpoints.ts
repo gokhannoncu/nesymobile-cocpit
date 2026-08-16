@@ -69,6 +69,22 @@ function asArray(payload: unknown): unknown[] {
 }
 
 /**
+ * RS staging `GetShipmentDeliveryProof` rows use camelCase `waybillNumber`.
+ * The older PascalCase `ShipmentId` / `Barcode` aliases are kept so a
+ * serializer flip does not silently un-match a real Delivered row.
+ */
+function proofRowId(row: Record<string, unknown>): string {
+  return str(
+    row['waybillNumber'] ??
+      row['WaybillNumber'] ??
+      row['ShipmentId'] ??
+      row['shipmentId'] ??
+      row['Barcode'] ??
+      row['barcode'],
+  )
+}
+
+/**
  * Find the leaving-permission row for one schedule.
  *
  * `GetWaitingLeavingRequests` returns every WaitingForApproval and Approved
@@ -281,17 +297,22 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
         (candidate) =>
           candidate !== null &&
           typeof candidate === 'object' &&
-          (str((candidate as Record<string, unknown>)['ShipmentId']) === shipmentId ||
-            str((candidate as Record<string, unknown>)['Barcode']) === shipmentId),
+          proofRowId(candidate as Record<string, unknown>) === shipmentId,
       ) as Record<string, unknown> | undefined
+      const matchedId = row === undefined ? '' : proofRowId(row)
       return {
         delivery: {
-          completed: row !== undefined,
-          status: row === undefined ? null : 'PROOF_AVAILABLE',
-          // The matched row's own ShipmentId, not the requested one: an echo of
+          // Empty / unmatched is REMOTE_PENDING, not a proven negative.
+          // `completed: false` is a MEASURED contradiction: ASSERT_FACT and
+          // the Final Oracle then skip the pack's EVENTUAL 120s window.
+          // That window is the product's TwoDelayFlow (`createdAt + 120`),
+          // not a timeout invented to green one run.
+          completed: row === undefined ? null : true,
+          status: row === undefined ? 'REMOTE_PENDING' : 'PROOF_AVAILABLE',
+          // The matched row's own waybill, not the requested one: an echo of
           // the input would correlate the observation with itself.
-          correlationId: row?.['ShipmentId'] ?? null,
-          shipmentId: row?.['ShipmentId'] ?? shipmentId,
+          correlationId: matchedId || null,
+          shipmentId: matchedId || shipmentId,
         },
       }
     },

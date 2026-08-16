@@ -340,11 +340,20 @@ export class OracleEvaluationWorker {
         scope: work,
         afterRevision: afterEvidenceRevision,
         deadlineAtMs,
-        wakeAtMs: nextPendingRequirementBoundary(
-          work.policy,
-          evaluation,
-          work.startedAtMs,
+        // Same host-state poll as Continue Gate. EVENTUAL used to sleep from
+        // the first PENDING pass straight to deadlineAtMs, so refreshFacts
+        // (and the 5s delivery-proof re-read) ran once. Measured on
+        // run_e68ca3ae: two Final Oracle rows 120s apart, lastEvidenceRevision
+        // stuck at 22, proof Delivered 12s before timeout, still INCONCLUSIVE.
+        wakeAtMs: this.nextWake(
+          nextPendingRequirementBoundary(
+            work.policy,
+            evaluation,
+            work.startedAtMs,
+            nowMs,
+          ),
           nowMs,
+          deadlineAtMs,
         ),
         lane: 'ORDERED_REQUIRED',
         signal: work.signal,
@@ -443,6 +452,7 @@ export class OracleEvaluationWorker {
     if (work.signal?.aborted) return { status: 'CANCELLED' }
     const blocked = this.runtime.blockedState(work)
     if (blocked !== undefined) return blockedResult(blocked)
+    this.refreshFacts(work)
     const evaluation = evaluateFinalOracle({
       policy: work.policy,
       facts: this.runtime.currentFacts(
