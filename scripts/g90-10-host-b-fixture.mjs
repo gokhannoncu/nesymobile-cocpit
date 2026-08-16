@@ -288,8 +288,10 @@ export async function runWorkflow(workflowRef, profileKey, inputs) {
 }
 
 function extractParcels(data) {
-  const parcels = data?.parcels ?? data?.Parcels ?? []
-  return parcels
+  if (Array.isArray(data)) return data.flatMap((item) => extractParcels(item))
+  if (data == null || typeof data !== 'object') return []
+  const parcels = data.parcels ?? data.Parcels ?? data.parcelList ?? data.ParcelList ?? data.items ?? []
+  const mapped = (Array.isArray(parcels) ? parcels : [])
     .map((parcel) => ({
       barcode: parcel.barcode ?? parcel.Barcode,
       legacy: parcel.legacySystemBarcode ?? parcel.LegacySystemBarcode,
@@ -300,6 +302,9 @@ function extractParcels(data) {
         parcel.ShortBarcode,
     }))
     .filter((parcel) => parcel.barcode)
+  if (mapped.length > 0) return mapped
+  if (data.data && data.data !== data) return extractParcels(data.data)
+  return []
 }
 
 function legacyShortOf(parcel) {
@@ -309,15 +314,17 @@ function legacyShortOf(parcel) {
 }
 
 export async function createUnloadableShipment() {
+  const stamp = Date.now()
   const login = await req('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
   const token = login.body.result?.payload?.token
   if (!token) throw new Error('no admin token from /nesy/auth/login')
 
+  const customerId = process.env.VERDICT_FIXTURE_CUSTOMER_ID ?? '10330'
   const detailsRes = await req('POST', '/customers/details', {
     token,
     country: 'RS',
     environment: 'stage',
-    customerId: '1000',
+    customerId,
     customerCenter: '1',
   })
   const details = detailsRes.body.data
@@ -332,6 +339,9 @@ export async function createUnloadableShipment() {
     environment: 'stage',
     parcelCount: 1,
     shipmentType: 'standard',
+    // complete-delivery is the unpaid DELY path. CPP in cash leaves a 650 RSD
+    // collection; the app archives deliverParcels locally and the backend stays Loaded.
+    billingOption: 'CPP on invoice',
     parties: {
       customer: {
         customerId: details.customerId,
@@ -384,17 +394,17 @@ export async function createUnloadableShipment() {
         saveAddress: false,
         address: {
           addressType: 0,
-          name: 'HostB Fixture Consignee',
+          name: `HostB Fixture Consignee ${stamp}`,
           street: 'TERAZIJE',
           city: 'BEOGRAD',
           zipCode: '11000',
           countryCode: 'RS',
-          houseNumber: '1',
-          latitude: 44.8125,
-          longitude: 20.4612,
+          houseNumber: String(1 + (stamp % 80)),
+          latitude: 44.8125 + (stamp % 17) * 0.0008,
+          longitude: 20.4612 + (stamp % 13) * 0.0008,
         },
         contact: {
-          name: 'HostB Fixture Consignee',
+          name: `HostB Fixture Consignee ${stamp}`,
           phone: '067000099',
           gsm: '067000099',
           email: 'hostb-fixture@test.nesy.local',
@@ -407,11 +417,56 @@ export async function createUnloadableShipment() {
   }
   const record = created.body.data ?? created.body
   const inner = record?.data && typeof record.data === 'object' ? record.data : record
-  const shipmentId = inner?.shipmentId ?? inner?.ShipmentId ?? inner?.waybillNumber ?? inner?.WaybillNumber
-  const parcels = extractParcels(inner)
+  let shipmentId = inner?.shipmentId ?? inner?.ShipmentId ?? inner?.waybillNumber ?? inner?.WaybillNumber ?? record?.shipmentId
+  let parcels = extractParcels(created.body)
+  if (parcels.length === 0) parcels = extractParcels(record)
+  if (parcels.length === 0 && record?.id) {
+    const fetched = await req('GET', `/shipments/${record.id}`)
+    parcels = extractParcels(fetched.body)
+    shipmentId =
+      shipmentId ??
+      fetched.body?.data?.shipmentId ??
+      fetched.body?.shipmentId ??
+      fetched.body?.data?.data?.shipmentId
+  }
+  // SearchShipment is often empty in the create response. Re-query Nesy.
+  if (parcels.length === 0 && shipmentId) {
+    for (let attempt = 0; attempt < 5 && parcels.length === 0; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 800 * attempt))
+      const details = await req('POST', '/shipments/details', {
+        token,
+        country: 'RS',
+        environment: 'stage',
+        shipmentId,
+      })
+      parcels = extractParcels(details.body)
+      if (parcels.length === 0) parcels = extractParcels(details.body?.data)
+    }
+  }
   if (!shipmentId || parcels.length === 0) {
     throw new Error(
       `create returned no shipmentId/parcels status=${created.status} keys=${Object.keys(record ?? {}).join(',')} inner=${Object.keys(inner ?? {}).join(',')}`,
+    )
+  }
+
+  const priced = await req('POST', '/shipments/details', {
+    token,
+    country: 'RS',
+    environment: 'stage',
+    shipmentId,
+  })
+  const pricedData = priced.body?.data ?? {}
+  const collections = Array.isArray(pricedData.collections) ? pricedData.collections : []
+  const cashCollect = collections.find(
+    (row) => Number(row?.collectionAmount ?? 0) > 0 || Number(row?.serviceType) === 39,
+  )
+  if (cashCollect) {
+    throw new Error(
+      `fixture ${shipmentId} still has cash collection ${JSON.stringify({
+        billingOption: pricedData.billingOption,
+        serviceType: cashCollect.serviceType,
+        amount: cashCollect.collectionAmount,
+      })} — refusing CPP-in-cash host for unpaid DELY`,
     )
   }
 
@@ -466,7 +521,16 @@ async function postNesy(base, token, path, body) {
   return { status: res.status, body: json }
 }
 
-async function rejectLeavingPermission(schedule) {
+export async function approveLeavingPermission(schedule) {
+  const { token, base } = await nesyTokenAndBase()
+  return postNesy(base, token, 'Task/ApproveLeavingPermission', {
+    ScheduleIds: [schedule.scheduleId],
+    EventLocation: { Lat: 0, Lon: 0 },
+    CourierUserNames: [],
+  })
+}
+
+export async function rejectLeavingPermission(schedule) {
   const { token, base } = await nesyTokenAndBase()
   const candidates = [
     [{ ScheduleId: schedule.scheduleId, RejectionReason: 0 }],

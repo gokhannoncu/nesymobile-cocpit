@@ -6,7 +6,7 @@
  * run_578dcc5d). Initial LIVE_QUALIFIED host is complete-delivery /
  * tap-delivery-confirm. Do not loosen observeInjectedClass.
  *
- *   0  refuse closed PIDs (incl. 25062) / tsx / dirty apps+packages / pack != 1.33.0
+ *   0  refuse closed PIDs (incl. 25062) / tsx / dirty apps+packages / pack != 1.34.0
  *   1  uninjected complete-delivery twin
  *   2  restore known delivery start (not Host B reject; not G4 flush)
  *   3  injected OFFLINE_QUEUE (controlled device WAN cut)
@@ -18,7 +18,14 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createUnloadableShipment, dismissNotificationList, runWorkflow } from './g90-10-host-b-fixture.mjs'
+import {
+  approveLeavingPermission,
+  createUnloadableShipment,
+  dismissNotificationList,
+  rejectLeavingPermission,
+  runWorkflow,
+  settleDevice,
+} from './g90-10-host-b-fixture.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
@@ -152,6 +159,24 @@ function tapResource(resourceId) {
   if (!center) return { tapped: false, resourceId }
   adb(['shell', 'input', 'tap', String(center.x), String(center.y)])
   return { tapped: true, resourceId, at: center }
+}
+
+function tapText(text) {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = dumpUiXml().match(new RegExp(`<node[^>]*text="${escaped}"[^>]*>`))
+  const center = boundsCenter(match ? match[0] : null)
+  if (!center) return { tapped: false, text }
+  adb(['shell', 'input', 'tap', String(center.x), String(center.y)])
+  return { tapped: true, text, at: center }
+}
+
+function dismissUnscannedWarning() {
+  const xml = dumpUiXml()
+  if (!/There are still some shipment items not scanned/.test(xml)) {
+    return { dismissed: false, reason: 'warning absent' }
+  }
+  const scan = tapText('Continue scanning parcel')
+  return { dismissed: scan.tapped, ...scan }
 }
 
 function pressBack() {
@@ -421,9 +446,44 @@ function isUsableParcel(parcel) {
   return Boolean(parcel?.scanPayload) && parcel.shipmentStatus === 0
 }
 
+function singletonUsable(parcels) {
+  const usable = parcels.filter(isUsableParcel)
+  const byStop = new Map()
+  for (const parcel of usable) {
+    const key = parcel.stopId ?? parcel.shipmentId
+    byStop.set(key, (byStop.get(key) ?? 0) + 1)
+  }
+  return usable.filter((parcel) => (byStop.get(parcel.stopId ?? parcel.shipmentId) ?? 0) === 1)
+}
+
+function provisionedScans(log) {
+  const fromLog = (log ?? [])
+    .map((row) => row?.shipment?.scanValue)
+    .filter((value) => typeof value === 'string' && value.length > 0)
+  const fromEnv = String(process.env.VERDICT_BD6_PREFERRED_SCANS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+  return new Set([...fromLog, ...fromEnv])
+}
+
+function pickProvisionedSingleton(singletons, log, excludeScan) {
+  const preferred = provisionedScans(log)
+  const pool =
+    preferred.size > 0 ? singletons.filter((parcel) => preferred.has(parcel.scanPayload)) : singletons
+  return pool.find((parcel) => parcel.scanPayload && parcel.scanPayload !== excludeScan) ?? null
+}
+
+function preferredSingletonCount(fixture, log) {
+  const preferred = provisionedScans(log)
+  if (preferred.size === 0) return fixture.singletonCount
+  return fixture.singleton.filter((parcel) => preferred.has(parcel.scanPayload)).length
+}
+
 function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
   const loaded = schedule.parcels.filter((parcel) => parcel.scanPayload)
   const usable = loaded.filter(isUsableParcel)
+  const singleton = singletonUsable(loaded)
   const approved = schedule.status === 2
   return {
     scheduleId: schedule.scheduleId,
@@ -433,8 +493,10 @@ function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
     appForeground: screen.appForeground,
     parcelCount: loaded.length,
     usableCount: usable.length,
+    singletonCount: singleton.length,
     parcels: loaded,
     usable,
+    singleton,
     manuelInput: /resource-id="[^"]*manuel_input"/.test(xml),
     barcodeField: /resource-id="[^"]*et_input_dialog_barcode_number"/.test(xml),
     radios: radioState(),
@@ -442,13 +504,13 @@ function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
     ready:
       approved &&
       screen.fragment === 'TaskListFragment' &&
-      usable.length > 0 &&
+      singleton.length > 0 &&
       /resource-id="[^"]*manuel_input"/.test(xml),
-    deliveryReady: approved && screen.fragment === 'DeliveryFragment' && usable.length > 0,
+    deliveryReady: approved && screen.fragment === 'DeliveryFragment' && singleton.length > 0,
   }
 }
 
-async function prepareApprovedTaskList(scheduleId) {
+async function prepareApprovedTaskList(scheduleId, provisioned = []) {
   const log = []
   let screen = await readScreen()
   if (screen.fragment === 'TaskListFragment') {
@@ -478,22 +540,41 @@ async function prepareApprovedTaskList(scheduleId) {
       sessionCorrelationId: `g90-10-bd6-fixture-tour-${Date.now()}`,
     })
     log.push({ op: 'tour-approval-fixture', ...tour })
-    if (tour.productVerdict !== 'PASS_ONLINE') {
-      return { ok: false, reason: `tour-approval fixture ${tour.productVerdict}`, log }
-    }
     const afterPush = dismissNotificationList()
     log.push({ op: 'dismiss-approval-push', ...afterPush })
     await new Promise((resolve) => setTimeout(resolve, 2000))
     schedule = await readSchedule()
     screen = await readScreen()
   }
+  if (schedule.status === 1) {
+    const approved = await approveLeavingPermission({ scheduleId })
+    log.push({
+      op: 'approve-leaving-permission',
+      status: approved.status,
+      resultCode: approved.body?.resultCode ?? approved.body?.ResultCode,
+      message: approved.body?.resultMessage ?? approved.body?.ResultMessage,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    dismissNotificationList()
+    const settled = await settleDevice('bd6-after-approve')
+    log.push({ op: 'settle-after-approve', status: settled.snapshot?.schedule?.status, fragment: settled.snapshot?.screen?.fragment })
+    schedule = await readSchedule()
+    screen = await readScreen()
+  }
 
+  if (schedule.status !== 2) {
+    return { ok: false, reason: `not approved status=${schedule.status}`, log }
+  }
   if (screen.fragment !== 'StopListFragment') {
     return { ok: false, reason: `need StopListFragment to open-stop, got ${screen.fragment}`, log }
   }
 
-  const parcel = (schedule.parcels ?? []).find(isUsableParcel) ?? schedule.parcels[0]
+  const singletons = singletonUsable(schedule.parcels ?? [])
+  const parcel = pickProvisionedSingleton(singletons, provisioned) ?? singletons[0] ?? (schedule.parcels ?? []).find(isUsableParcel)
   if (!parcel) return { ok: false, reason: 'no parcel to open', log }
+  if (singletons.length === 0) {
+    return { ok: false, reason: 'no singleton-stop parcel to open — refusing same-stop sibling host', log }
+  }
   const opened = await runWorkflow('nesy.workflow.open-stop', 'nesy.launch.reuse-session', {
     searchTerm: parcel.shipmentId,
     rowKey: parcel.scanPayload,
@@ -729,6 +810,53 @@ let fixture = snapshotProcessParcel(schedule, screen)
 console.log(JSON.stringify(fixture, null, 2))
 
 const provisionLog = []
+const warning = dismissUnscannedWarning()
+if (warning.dismissed) {
+  provisionLog.push({ op: 'dismiss-unscanned-warning', ...warning })
+  await new Promise((resolve) => setTimeout(resolve, 1200))
+  const backed = await restoreToTaskList()
+  provisionLog.push({ op: 'leave-delivery-after-warning', ...backed })
+  schedule = backed.schedule ?? (await readSchedule())
+  screen = backed.screen ?? (await readScreen())
+  fixture = snapshotProcessParcel(schedule, screen)
+}
+
+if (screen.fragment === 'LoginFragment') {
+  console.log('\n=== session expired — cold-real-login fixture (not BD.6 measurement) ===')
+  const loggedIn = await runWorkflow('nesy.workflow.login', 'nesy.launch.cold-real-login', {
+    pin: process.env.VERDICT_VALID_PIN ?? '3680',
+    sessionCorrelationId: `g90-10-bd6-fixture-login-${Date.now()}`,
+  })
+  provisionLog.push({ op: 'cold-real-login', ...loggedIn })
+  if (loggedIn.productVerdict !== 'PASS_ONLINE') {
+    console.error(`login fixture ${loggedIn.productVerdict}`)
+    process.exit(5)
+  }
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+  schedule = await readSchedule()
+  screen = await readScreen()
+  fixture = snapshotProcessParcel(schedule, screen)
+  console.log(JSON.stringify({ screen, status: fixture.status, usableCount: fixture.usableCount }, null, 2))
+}
+
+if (!fixture.deliveryReady && (!schedule.scheduleId || /Please Select Route|resource-id="[^"]*dialog_spinner"/.test(dumpUiXml()))) {
+  console.log('\n=== select-route 31 fixture (not BD.6 measurement) ===')
+  const selected = await runWorkflow('nesy.workflow.select-route', 'nesy.launch.reuse-session', {
+    routeCode: '31',
+    sessionCorrelationId: `g90-10-bd6-fixture-route-${Date.now()}`,
+  })
+  provisionLog.push({ op: 'select-route', ...selected })
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+  schedule = await readSchedule()
+  screen = await readScreen()
+  fixture = snapshotProcessParcel(schedule, screen)
+  console.log(JSON.stringify({ screen, scheduleId: fixture.scheduleId, status: fixture.status, usableCount: fixture.usableCount, selectRoute: selected.productVerdict }, null, 2))
+  if (!fixture.scheduleId) {
+    console.error(`select-route fixture ${selected.productVerdict} and no schedule on device`)
+    process.exit(5)
+  }
+}
+
 if (!fixture.deliveryReady && screen.fragment === 'TaskListFragment' && schedule.status === 0) {
   console.log('\n=== BeginningOfDay on task list — BACK to stop list (measured) ===')
   pressBack()
@@ -738,18 +866,51 @@ if (!fixture.deliveryReady && screen.fragment === 'TaskListFragment' && schedule
   fixture = snapshotProcessParcel(schedule, screen)
 }
 
-while (!fixture.deliveryReady && fixture.usableCount < 2 && (screen.fragment === 'StopListFragment' || screen.fragment === 'TaskListFragment')) {
-  console.log(`\n=== provision usable parcel (${fixture.usableCount}/2) ===`)
+if (!fixture.deliveryReady && fixture.approved && fixture.singletonCount < 2) {
+  console.log('\n=== approved tour has no singleton stop — RejectLeavingPermission teardown to BeginningOfDay ===')
+  const rejected = await rejectLeavingPermission({ scheduleId: fixture.scheduleId })
+  provisionLog.push({ op: 'reject-leaving-permission', status: rejected.status, resultCode: rejected.body?.resultCode })
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+  dismissNotificationList()
+  const settled = await settleDevice('bd6-singleton-reset')
+  provisionLog.push({ op: 'settle-after-reject', gates: settled.snapshot?.gates, status: settled.snapshot?.schedule?.status })
+  schedule = await readSchedule()
+  screen = await readScreen()
+  fixture = snapshotProcessParcel(schedule, screen)
+  console.log(JSON.stringify({ status: fixture.status, fragment: fixture.fragment, singletonCount: fixture.singletonCount }, null, 2))
+}
+
+let provisionAttempts = 0
+while (
+  !fixture.deliveryReady &&
+  preferredSingletonCount(fixture, provisionLog) < 2 &&
+  (screen.fragment === 'StopListFragment' || screen.fragment === 'TaskListFragment')
+) {
+  provisionAttempts += 1
+  if (provisionAttempts > 4) {
+    console.error(`singleton-stop provision stalled after 4 creates (singletonCount=${fixture.singletonCount})`)
+    process.exit(5)
+  }
+  console.log(`\n=== provision singleton-stop parcel (${fixture.singletonCount}/2, attempt ${provisionAttempts}) ===`)
   try {
     const extra = await provisionSecondParcel()
     provisionLog.push(extra)
-    if (extra.loaded?.productVerdict && extra.loaded.productVerdict !== 'PASS_ONLINE') {
-      console.error(`load-to-vehicle ${extra.loaded.productVerdict}`)
-      process.exit(5)
-    }
     schedule = await readSchedule()
     screen = await readScreen()
     fixture = snapshotProcessParcel(schedule, screen)
+    const landed = fixture.parcels.some((parcel) => parcel.scanPayload === extra.shipment?.scanValue)
+    if (!landed && extra.loaded?.productVerdict && extra.loaded.productVerdict !== 'PASS_ONLINE') {
+      console.error(`load-to-vehicle ${extra.loaded.productVerdict}`)
+      process.exit(5)
+    }
+    console.log(JSON.stringify({
+      shipmentId: extra.shipment?.shipmentId,
+      scanValue: extra.shipment?.scanValue,
+      load: extra.loaded?.productVerdict,
+      singletonCount: fixture.singletonCount,
+      preferredCount: preferredSingletonCount(fixture, provisionLog),
+      usableCount: fixture.usableCount,
+    }, null, 2))
   } catch (error) {
     provisionLog.push({ error: error instanceof Error ? error.message : String(error) })
     console.error(`parcel provision failed: ${error instanceof Error ? error.message : String(error)}`)
@@ -759,10 +920,10 @@ while (!fixture.deliveryReady && fixture.usableCount < 2 && (screen.fragment ===
 
 if (!fixture.deliveryReady && !fixture.ready) {
   console.log('\n=== approve tour + open-stop (fixture only) ===')
-  const prepared = await prepareApprovedTaskList(schedule.scheduleId)
+  const prepared = await prepareApprovedTaskList(schedule.scheduleId, provisionLog)
   provisionLog.push(prepared)
   if (!prepared.ok) {
-    console.error('delivery fixture not ready — Approved + TaskListFragment required before opening delivery')
+    console.error(`delivery fixture not ready — ${prepared.reason ?? 'Approved + TaskListFragment required before opening delivery'}`)
     process.exit(5)
   }
   fixture = prepared.fixture ?? snapshotProcessParcel(await readSchedule(), await readScreen())
@@ -770,7 +931,11 @@ if (!fixture.deliveryReady && !fixture.ready) {
 
 if (!fixture.deliveryReady && fixture.ready) {
   console.log('\n=== process-parcel fixture to open delivery (not BD.6 measurement) ===')
-  const opener = fixture.usable[0] ?? fixture.parcels[0]
+  const opener =
+    pickProvisionedSingleton(fixture.singleton, provisionLog) ??
+    fixture.singleton[0] ??
+    fixture.usable[0] ??
+    fixture.parcels[0]
   const opened = await runWorkflow('nesy.workflow.process-parcel', 'nesy.launch.reuse-session', {
     scanPayload: opener.scanPayload,
     taskCode: opener.taskId,
@@ -790,9 +955,14 @@ if (!fixture.deliveryReady) {
 const resumeBaseline = process.env.VERDICT_BD6_BASELINE_RUN?.trim() || ''
 const consumedScan = process.env.VERDICT_BD6_BASELINE_SCAN?.trim() || ''
 const baselineParcel =
-  fixture.usable.find((parcel) => parcel.scanPayload === consumedScan) ?? fixture.usable[0] ?? fixture.parcels[0]
+  fixture.singleton.find((parcel) => parcel.scanPayload === consumedScan) ??
+  pickProvisionedSingleton(fixture.singleton, provisionLog) ??
+  fixture.singleton[0] ??
+  fixture.usable[0] ??
+  fixture.parcels[0]
 const injectedParcel =
-  fixture.usable.find((parcel) => parcel.scanPayload && parcel.scanPayload !== (consumedScan || baselineParcel?.scanPayload)) ??
+  pickProvisionedSingleton(fixture.singleton, provisionLog, consumedScan || baselineParcel?.scanPayload) ??
+  fixture.singleton.find((parcel) => parcel.scanPayload && parcel.scanPayload !== (consumedScan || baselineParcel?.scanPayload)) ??
   null
 
 console.log('\n=== complete-delivery uninjected twin ===')
@@ -836,22 +1006,23 @@ fixture = snapshotProcessParcel(schedule, restored.screen ?? (await readScreen()
 
 let injectedTarget =
   injectedParcel ??
-  fixture.usable.find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
+  fixture.singleton.find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
   null
 if (!injectedTarget) {
   console.log('\n=== provision injected parcel after uninjected consume ===')
   try {
     const second = await provisionSecondParcel()
     provisionLog.push(second)
-    if (second.loaded.productVerdict !== 'PASS_ONLINE') {
+    schedule = await readSchedule()
+    const landed = (schedule.parcels ?? []).some((parcel) => parcel.scanPayload === second.shipment?.scanValue)
+    if (!landed && second.loaded.productVerdict !== 'PASS_ONLINE') {
       console.error('second load-to-vehicle did not PASS_ONLINE')
       process.exit(5)
     }
-    schedule = await readSchedule()
     injectedTarget =
-      (schedule.parcels ?? []).find(
-        (parcel) => isUsableParcel(parcel) && parcel.scanPayload !== baselineParcel.scanPayload,
-      ) ?? null
+      pickProvisionedSingleton(singletonUsable(schedule.parcels ?? []), provisionLog, baselineParcel.scanPayload) ??
+      singletonUsable(schedule.parcels ?? []).find((parcel) => parcel.scanPayload !== baselineParcel.scanPayload) ??
+      null
   } catch (error) {
     console.error(`second parcel provision failed: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(5)
