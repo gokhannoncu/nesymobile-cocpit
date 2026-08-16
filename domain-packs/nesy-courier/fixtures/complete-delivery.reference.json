@@ -95,6 +95,11 @@
           "name": "consignmentNumber",
           "type": "string",
           "required": true
+        },
+        {
+          "name": "proofLookupId",
+          "type": "string",
+          "required": true
         }
       ],
       "variables": [
@@ -569,7 +574,7 @@
             },
             "entityBinding": {
               "type": "SHIPMENT",
-              "id": "run.input.consignmentNumber"
+              "id": "run.input.proofLookupId"
             },
             "reconciliationPolicy": "NONE",
             "auditPolicy": {
@@ -915,6 +920,11 @@
     "inputs": [
       {
         "name": "consignmentNumber",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "proofLookupId",
         "type": "string",
         "required": true
       }
@@ -1391,7 +1401,7 @@
           },
           "entityBinding": {
             "type": "SHIPMENT",
-            "id": "run.input.consignmentNumber"
+            "id": "run.input.proofLookupId"
           },
           "reconciliationPolicy": "NONE",
           "auditPolicy": {

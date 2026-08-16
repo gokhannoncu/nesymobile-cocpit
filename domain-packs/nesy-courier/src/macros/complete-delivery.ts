@@ -369,7 +369,7 @@ const STEPS: readonly WorkflowStepV2[] = [
       inputBindings: [{ name: "shipment", source: { kind: "entityRef" } }],
       outputFactBindings: [{ factKey: NESY_FACTS.DELIVERY_STATUS_COMPLETED, responsePath: "delivery.completed" }],
       timeoutPolicy: { timeoutMs: 20_000, maxAttempts: 3, backoffMs: 2_000 },
-      entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.consignmentNumber" },
+      entityBinding: { type: NESY_ENTITIES.shipment, id: "run.input.proofLookupId" },
       reconciliationPolicy: "NONE",
       auditPolicy: { recordRequest: true, recordResponse: true, redactFields: ["delivery.recipientName"] },
       allowedEnvironments: ["qa", "staging"],
@@ -415,7 +415,10 @@ const GENERIC_IR = irDocument({
   workflowId: "nesy.reference.complete-delivery",
   name: "Complete a delivery, online or queued",
   sourceRef: NESY_COMPLETE_DELIVERY_MACRO_KEY,
-  inputs: [{ name: "consignmentNumber", type: "string", required: true }],
+  inputs: [
+    { name: "consignmentNumber", type: "string", required: true },
+    { name: "proofLookupId", type: "string", required: true },
+  ],
   variables: [
     { name: "scanEntryHandle", type: "string" },
     { name: "scanFieldHandle", type: "string" },

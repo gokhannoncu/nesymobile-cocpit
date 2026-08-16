@@ -27,7 +27,7 @@ const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
 const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
 const WORKFLOW = 'nesy.workflow.complete-delivery'
 const PROFILE = 'nesy.launch.reuse-session'
-const REQUIRED_PACK = '1.33.0'
+const REQUIRED_PACK = '1.34.0'
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 360)
 const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043', '25062'])
 const CLOSED_COMMITS = new Set(['3770d2a', '291553b', '94a9acf', '413485a', 'eb48304'])
@@ -389,6 +389,7 @@ async function runCompleteDelivery(label, pack, compiled, parcel, fault) {
     profileKey: PROFILE,
     inputs: {
       consignmentNumber: parcel.scanPayload,
+      proofLookupId: parcel.shipmentId,
       sessionCorrelationId: `g90-10-bd6-${label}-${Date.now()}`,
     },
     ...(fault === null
@@ -416,8 +417,13 @@ async function runCompleteDelivery(label, pack, compiled, parcel, fault) {
   }
 }
 
+function isUsableParcel(parcel) {
+  return Boolean(parcel?.scanPayload) && parcel.shipmentStatus === 0
+}
+
 function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
   const loaded = schedule.parcels.filter((parcel) => parcel.scanPayload)
+  const usable = loaded.filter(isUsableParcel)
   const approved = schedule.status === 2
   return {
     scheduleId: schedule.scheduleId,
@@ -426,7 +432,9 @@ function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
     overlay: screen.overlay,
     appForeground: screen.appForeground,
     parcelCount: loaded.length,
+    usableCount: usable.length,
     parcels: loaded,
+    usable,
     manuelInput: /resource-id="[^"]*manuel_input"/.test(xml),
     barcodeField: /resource-id="[^"]*et_input_dialog_barcode_number"/.test(xml),
     radios: radioState(),
@@ -434,9 +442,9 @@ function snapshotProcessParcel(schedule, screen, xml = dumpUiXml()) {
     ready:
       approved &&
       screen.fragment === 'TaskListFragment' &&
-      loaded.length > 0 &&
+      usable.length > 0 &&
       /resource-id="[^"]*manuel_input"/.test(xml),
-    deliveryReady: approved && screen.fragment === 'DeliveryFragment' && loaded.length > 0,
+    deliveryReady: approved && screen.fragment === 'DeliveryFragment' && usable.length > 0,
   }
 }
 
@@ -484,7 +492,7 @@ async function prepareApprovedTaskList(scheduleId) {
     return { ok: false, reason: `need StopListFragment to open-stop, got ${screen.fragment}`, log }
   }
 
-  const parcel = schedule.parcels[0]
+  const parcel = (schedule.parcels ?? []).find(isUsableParcel) ?? schedule.parcels[0]
   if (!parcel) return { ok: false, reason: 'no parcel to open', log }
   const opened = await runWorkflow('nesy.workflow.open-stop', 'nesy.launch.reuse-session', {
     searchTerm: parcel.shipmentId,
@@ -730,16 +738,22 @@ if (!fixture.deliveryReady && screen.fragment === 'TaskListFragment' && schedule
   fixture = snapshotProcessParcel(schedule, screen)
 }
 
-if (!fixture.deliveryReady && fixture.parcels.length < 2 && screen.fragment === 'StopListFragment') {
-  console.log('\n=== provision second parcel before opening delivery ===')
+while (!fixture.deliveryReady && fixture.usableCount < 2 && (screen.fragment === 'StopListFragment' || screen.fragment === 'TaskListFragment')) {
+  console.log(`\n=== provision usable parcel (${fixture.usableCount}/2) ===`)
   try {
-    const second = await provisionSecondParcel()
-    provisionLog.push(second)
+    const extra = await provisionSecondParcel()
+    provisionLog.push(extra)
+    if (extra.loaded?.productVerdict && extra.loaded.productVerdict !== 'PASS_ONLINE') {
+      console.error(`load-to-vehicle ${extra.loaded.productVerdict}`)
+      process.exit(5)
+    }
     schedule = await readSchedule()
     screen = await readScreen()
     fixture = snapshotProcessParcel(schedule, screen)
   } catch (error) {
     provisionLog.push({ error: error instanceof Error ? error.message : String(error) })
+    console.error(`parcel provision failed: ${error instanceof Error ? error.message : String(error)}`)
+    process.exit(5)
   }
 }
 
@@ -756,7 +770,7 @@ if (!fixture.deliveryReady && !fixture.ready) {
 
 if (!fixture.deliveryReady && fixture.ready) {
   console.log('\n=== process-parcel fixture to open delivery (not BD.6 measurement) ===')
-  const opener = fixture.parcels[0]
+  const opener = fixture.usable[0] ?? fixture.parcels[0]
   const opened = await runWorkflow('nesy.workflow.process-parcel', 'nesy.launch.reuse-session', {
     scanPayload: opener.scanPayload,
     taskCode: opener.taskId,
@@ -775,9 +789,10 @@ if (!fixture.deliveryReady) {
 
 const resumeBaseline = process.env.VERDICT_BD6_BASELINE_RUN?.trim() || ''
 const consumedScan = process.env.VERDICT_BD6_BASELINE_SCAN?.trim() || ''
-const baselineParcel = fixture.parcels.find((parcel) => parcel.scanPayload === consumedScan) ?? fixture.parcels[0]
+const baselineParcel =
+  fixture.usable.find((parcel) => parcel.scanPayload === consumedScan) ?? fixture.usable[0] ?? fixture.parcels[0]
 const injectedParcel =
-  fixture.parcels.find((parcel) => parcel.scanPayload && parcel.scanPayload !== (consumedScan || baselineParcel?.scanPayload)) ??
+  fixture.usable.find((parcel) => parcel.scanPayload && parcel.scanPayload !== (consumedScan || baselineParcel?.scanPayload)) ??
   null
 
 console.log('\n=== complete-delivery uninjected twin ===')
@@ -821,7 +836,7 @@ fixture = snapshotProcessParcel(schedule, restored.screen ?? (await readScreen()
 
 let injectedTarget =
   injectedParcel ??
-  fixture.parcels.find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
+  fixture.usable.find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
   null
 if (!injectedTarget) {
   console.log('\n=== provision injected parcel after uninjected consume ===')
@@ -834,8 +849,9 @@ if (!injectedTarget) {
     }
     schedule = await readSchedule()
     injectedTarget =
-      (schedule.parcels ?? []).find((parcel) => parcel.scanPayload && parcel.scanPayload !== baselineParcel.scanPayload) ??
-      null
+      (schedule.parcels ?? []).find(
+        (parcel) => isUsableParcel(parcel) && parcel.scanPayload !== baselineParcel.scanPayload,
+      ) ?? null
   } catch (error) {
     console.error(`second parcel provision failed: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(5)

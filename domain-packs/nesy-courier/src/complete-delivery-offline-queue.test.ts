@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { NESY_COMPLETE_DELIVERY_MACRO } from "./macros/complete-delivery.js";
 import { NESY_ADAPTER_QUERY_REFS } from "./registries/application.js";
+import { NESY_ENTITIES } from "./registries/entities.js";
 import { NESY_FACTS } from "./registries/facts.js";
 
 describe("complete-delivery LOCAL queue measurement (G90.10 BD.6 host amend)", () => {
@@ -34,6 +35,16 @@ describe("complete-delivery LOCAL queue measurement (G90.10 BD.6 host amend)", (
       (requirement) => requirement.factKey === NESY_FACTS.OFFLINE_QUEUE_ITEM_WAITING,
     );
     expect(template?.obligation).toBe("OPTIONAL");
+  });
+
+  it("asks the backend proof API with proofLookupId, not the scan barcode", () => {
+    const verify = ir.steps.find((step) => step.planStepId === "verify-backend-status");
+    if (verify?.kind !== "REMOTE_ACTION") throw new Error("expected REMOTE_ACTION");
+    expect(verify.spec.entityBinding).toEqual({
+      type: NESY_ENTITIES.shipment,
+      id: "run.input.proofLookupId",
+    });
+    expect(ir.inputs.map((input) => input.name)).toEqual(["consignmentNumber", "proofLookupId"]);
   });
 
   it("does not treat remote confirmation as the queue fact", () => {

@@ -51,6 +51,12 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.34.0 — G90.10 BD.6: complete-delivery keeps the product scan on
+  //   consignmentNumber (short barcode) and asks GetShipmentDeliveryProof
+  //   with proofLookupId (waybill). run_c96899d5 submitted locally then
+  //   FAIL_PRODUCT because the proof call used the scan barcode and
+  //   returned []. Classifier/oracle contract unchanged.
+  //
   // 1.33.0 — G90.10 BD.6 host amend: complete-delivery binds
   //   LOCAL.OFFLINE_QUEUE_ITEM_WAITING from nesy.pendingOperation after
   //   tap-delivery-confirm. process-parcel / tap-input-confirm is
@@ -428,7 +434,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 33, patch: 0 },
+  version: { major: 1, minor: 34, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

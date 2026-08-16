@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 33,
+      "minor": 34,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -9524,6 +9524,11 @@
                 "name": "consignmentNumber",
                 "type": "string",
                 "required": true
+              },
+              {
+                "name": "proofLookupId",
+                "type": "string",
+                "required": true
               }
             ],
             "variables": [
@@ -9998,7 +10003,7 @@
                   },
                   "entityBinding": {
                     "type": "SHIPMENT",
-                    "id": "run.input.consignmentNumber"
+                    "id": "run.input.proofLookupId"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -11795,6 +11800,11 @@
               },
               {
                 "name": "consignmentNumber",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "proofLookupId",
                 "type": "string",
                 "required": true
               }
@@ -14391,7 +14401,7 @@
                   },
                   "entityBinding": {
                     "type": "SHIPMENT",
-                    "id": "run.input.consignmentNumber"
+                    "id": "run.input.proofLookupId"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {

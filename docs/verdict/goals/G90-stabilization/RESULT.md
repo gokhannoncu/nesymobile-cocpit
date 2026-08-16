@@ -357,9 +357,9 @@ Phase 10 hattı vardı. G90.3 onu login golden occurrence’ında kapattı.
 | Current step | `G90.10` BD.6 |
 | Current state | `IN_PROGRESS` / D30 `COMPLETED` |
 | Last successful step | `G90.10` BD.2 LIVE_QUALIFIED (`94a9acf` / PID 95043 / `run_0c1a0dd2`) |
-| Last attempted step | G90.10 BD.6 process-parcel HOST_NOT_CAPABLE (`run_578dcc5d`); NEXT complete-delivery arm |
-| Last update | `2026-08-15 21:54:00 +03` |
-| Recovery instruction | `NEXT = BD.6 complete-delivery / tap-delivery-confirm arm. process-parcel HOST_NOT_CAPABLE. Do not loosen observeInjectedClass. Do not bind qual to PID 25062. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
+| Last attempted step | G90.10 BD.6 complete-delivery uninjected `run_c96899d5` FAIL_PRODUCT (proof id mismatch); classifier held |
+| Last update | `2026-08-16 06:56:00 +03` |
+| Recovery instruction | `NEXT = complete-delivery proofLookupId (waybill) ≠ consignmentNumber (short barcode). Do not loosen observeInjectedClass. Do not bind qual to PID 25062. Formal D60 kampanyası 13 Eylül’e kadar açılmaz.` |
 
 ## 2.1 North star (beş madde)
 
