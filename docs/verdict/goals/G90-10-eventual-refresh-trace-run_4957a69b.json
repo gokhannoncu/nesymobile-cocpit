@@ -1,0 +1,23 @@
+{
+  "kind": "g90-10-eventual-refresh-live-acceptance",
+  "runId": "run_4957a69b-282b-41ba-b847-7382a54dcec9",
+  "notBd6Proof": true,
+  "head": "d85191d",
+  "apiPid": "52815",
+  "waybill": "95906865713279",
+  "barcode": "6880051000294210",
+  "schedulingFixA": {
+    "refreshFactsGt1": true,
+    "finalOracleRows": 195,
+    "lastEvidenceRevision": { "earlyStuckWas": 22, "late": 1948 },
+    "REMOTE.DELIVERY_STATUS_COMPLETED": "SATISFIED",
+    "proofBeforeDeadline": true,
+    "probeT120": { "count": 1, "eventType": "Delivered", "at": "2026-08-16T06:42:11.942Z" },
+    "assertWindow": { "startedAt": "2026-08-16T06:40:18.685Z", "completedAt": "2026-08-16T06:42:15.070Z" }
+  },
+  "productVerdict": "FAIL_PRODUCT",
+  "observedClass": null,
+  "injectedFault": null,
+  "firstRedBoxAfterA": "REMOTE.DELIVERY_CONFIRMED derived false via CORRELATED_ALL_OF when STATUS_COMPLETED became true. APP.DELIVERY_SUBMITTED SATISFIED. Mismatched non-empty correlation values (barcode vs waybill) return false, not absent.",
+  "loginDashboardCalls": 1
+}

@@ -2,94 +2,82 @@
   "kind": "g90-10-admin-auth-preflight",
   "notBd6Proof": true,
   "noShipmentCreated": true,
-  "ready": true,
-  "code": "ADMIN_AUTH_READY",
+  "ready": false,
+  "code": "ADMIN_AUTH_NOT_READY",
   "runtime": {
-    "apiPid": "20130",
-    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "apiPid": "52134",
+    "apiCommand": "node dist/server.js",
     "health": 200
   },
   "steps": {
     "cacheBefore": {
-      "pid": 20130,
+      "pid": 52134,
       "country": "RS",
       "environment": "stage",
-      "present": true,
-      "tokenFingerprint": "sha256:d6122ba8ba780d31",
-      "ageMs": 42967,
-      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "present": false,
+      "tokenFingerprint": null,
+      "ageMs": null,
+      "expiresAt": null,
       "ttlMs": 1800000,
-      "loginDashboardCalls": 1,
-      "credentialSource": "dashboard-admin-cache"
+      "loginDashboardCalls": 0,
+      "credentialSource": "empty"
     },
     "login": {
-      "http": 200,
-      "resultCode": 200,
-      "extracted": true,
-      "fromCache": true
+      "http": 502,
+      "resultCode": 400,
+      "extracted": false,
+      "fromCache": false
     },
     "cacheAfterLogin": {
-      "pid": 20130,
+      "pid": 52134,
       "country": "RS",
       "environment": "stage",
-      "present": true,
-      "tokenFingerprint": "sha256:d6122ba8ba780d31",
-      "ageMs": 42974,
-      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "present": false,
+      "tokenFingerprint": null,
+      "ageMs": null,
+      "expiresAt": null,
       "ttlMs": 1800000,
       "loginDashboardCalls": 1,
-      "credentialSource": "dashboard-admin-cache"
+      "credentialSource": "empty"
     },
     "cachedTokenRead": {
-      "http": 200,
-      "code": null,
-      "tokenFingerprint": "sha256:d6122ba8ba780d31"
+      "http": 409,
+      "code": "ADMIN_AUTH_NOT_READY",
+      "tokenFingerprint": null
     },
     "cacheAfterCachedRead": {
-      "pid": 20130,
+      "pid": 52134,
       "country": "RS",
       "environment": "stage",
-      "present": true,
-      "tokenFingerprint": "sha256:d6122ba8ba780d31",
-      "ageMs": 42976,
-      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "present": false,
+      "tokenFingerprint": null,
+      "ageMs": null,
+      "expiresAt": null,
       "ttlMs": 1800000,
       "loginDashboardCalls": 1,
-      "credentialSource": "dashboard-admin-cache"
+      "credentialSource": "empty"
     },
     "adapterPreflight": {
-      "http": 502,
+      "http": 409,
       "ready": false,
-      "code": "ADMIN_AUTH_HANDOFF_FAILED",
-      "adapterReadback": {
-        "present": true,
-        "source": "dashboard-admin-cache",
-        "tokenFingerprint": "sha256:d6122ba8ba780d31",
-        "matchesCache": true,
-        "loginDashboardCallsBefore": 1,
-        "loginDashboardCallsAfter": 1
-      },
-      "harmlessRead": {
-        "path": "User/GetMyInfo",
-        "http": 200,
-        "resultCode": 200,
-        "accepted": false
-      }
+      "code": "ADMIN_AUTH_NOT_READY",
+      "adapterReadback": null,
+      "harmlessRead": null
     },
     "cacheAfterPreflight": {
-      "pid": 20130,
+      "pid": 52134,
       "country": "RS",
       "environment": "stage",
-      "present": true,
-      "tokenFingerprint": "sha256:d6122ba8ba780d31",
-      "ageMs": 43380,
-      "expiresAt": "2026-08-16T06:24:09.492Z",
+      "present": false,
+      "tokenFingerprint": null,
+      "ageMs": null,
+      "expiresAt": null,
       "ttlMs": 1800000,
       "loginDashboardCalls": 1,
-      "credentialSource": "dashboard-admin-cache"
+      "credentialSource": "empty"
     },
     "loginDashboardCalls": [
-      1,
+      0,
       1,
       1,
       1

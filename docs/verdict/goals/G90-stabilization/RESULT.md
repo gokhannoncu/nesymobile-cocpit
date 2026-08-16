@@ -667,7 +667,7 @@ Current runtime PID 20130 — investigation only, not a qual lineage.
 ADMIN_AUTH_READY on 20130: LoginDashboard=1, cache fingerprint sha256:d6122ba8ba780d31, verify adapter readback match, GetMyInfo 200, probe used cached-token.
 run_7b037ebe leftover 72564226961796 — do not reuse (auth INCONCLUSIVE).
 run_e68ca3ae leftover 69369275241949 — do not reuse. Auth held; confirm SATISFIED; APP.DELIVERY_SUBMITTED SATISFIED; proof Delivered at t+120 waybill-matched; ProductVerdict INCONCLUSIVE (REMOTE EVENTUAL REQUIRED_TIMEOUT at 06:02:38 while proof eventDate 06:02:26). observedClass=null. Not BD.6.
-NEXT = deploy Final Oracle nextWake (250ms host poll; same as Continue Gate) on a fresh PID, then new uninjected singleton. run_e68ca3ae first red box = A (EVENTUAL slept to deadline). Do not bump 120s. Do not inject OFFLINE_QUEUE until PASS_ONLINE.
+NEXT = host CORRELATED_ALL_OF for REMOTE.DELIVERY_CONFIRMED (barcode vs waybill → false → FAIL_PRODUCT). run_4957a69b on PID 52815 / d85191d: nextWake LIVE (195 oracle rows, revision → 1948, STATUS_COMPLETED SATISFIED, proof t+120). Do not reuse 95906865713279. Do not bump 120s. Do not inject OFFLINE_QUEUE until PASS_ONLINE.
 Do not loosen classifier. See G90-10-bd6-remote-commit-investigation-2026-08-16.md.
 injectedFault ≠ observedClass. Uninjected null. Do not bind qual to PID 25062.
 Formal D60 campaign NOT_STARTED (window 13 Sep–12 Oct).
