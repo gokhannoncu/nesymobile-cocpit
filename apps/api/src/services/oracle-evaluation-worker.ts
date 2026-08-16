@@ -340,11 +340,11 @@ export class OracleEvaluationWorker {
         scope: work,
         afterRevision: afterEvidenceRevision,
         deadlineAtMs,
-        // Same host-state poll as Continue Gate. EVENTUAL used to sleep from
-        // the first PENDING pass straight to deadlineAtMs, so refreshFacts
-        // (and the 5s delivery-proof re-read) ran once. Measured on
-        // run_e68ca3ae: two Final Oracle rows 120s apart, lastEvidenceRevision
-        // stuck at 22, proof Delivered 12s before timeout, still INCONCLUSIVE.
+        // Reuse Continue Gate nextWake. Deadline is a termination boundary,
+        // not the poll interval:
+        //   wakeAt = min(next fact refresh, next requirement boundary, deadline)
+        // Measured on run_e68ca3ae: EVENTUAL slept 120s, proof existed 12s
+        // before timeout, lastEvidenceRevision stayed 22, INCONCLUSIVE.
         wakeAtMs: this.nextWake(
           nextPendingRequirementBoundary(
             work.policy,
@@ -384,8 +384,8 @@ export class OracleEvaluationWorker {
    * never published and the gate timed out against it. Measured: two evaluations
    * 30s apart, the second at the deadline, both holding only the login screen fact.
    *
-   * The stability boundary still wins when it is sooner — a fact waiting to become
-   * stable must be re-read at its own boundary, not later.
+   * The stability / requirement boundary still wins when it is sooner. Deadline
+   * is only the last of the three: refresh wake, temporal boundary, deadline.
    */
   private nextWake(
     stabilityBoundaryMs: number | undefined,

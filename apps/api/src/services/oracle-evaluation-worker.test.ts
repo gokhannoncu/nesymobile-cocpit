@@ -198,16 +198,69 @@ describe('OracleEvaluationWorker', () => {
     ).toBe(false)
   })
 
-  it('re-reads host-held facts during Final Oracle EVENTUAL instead of sleeping to the deadline', async () => {
+  it('run_e68ca3ae: proof 12 units before EVENTUAL deadline satisfies Final Oracle', async () => {
     const runtime = new BridgeFlowEvidenceRuntime()
-    const { persistence } = persistenceFixture()
-    let refreshCount = 0
+    const { persistence, revisions } = persistenceFixture()
+    const deadlineMs = 2_000
+    const proofAtMs = deadlineMs - 500
+    let adapterCalls = 0
+    let evidenceRevision = 22
+    const startedAtMs = Date.now()
+    const worker = new OracleEvaluationWorker({
+      runtime,
+      persistence,
+      refreshFacts: (work) => {
+        adapterCalls += 1
+        if (Date.now() - startedAtMs < proofAtMs) return
+        evidenceRevision += 1
+        runtime.publish({
+          runId: work.runId,
+          fact: {
+            ...evidence('ORDERED_REQUIRED'),
+            factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+            observedAtMs: Date.now(),
+          },
+          revision: evidenceRevision,
+          lane: 'ORDERED_REQUIRED',
+          correlationStatus: 'CORRELATED',
+          trust: 'RESOLVER_ACCEPTED',
+        })
+      },
+    })
+
+    const result = await worker.runFinalOracle({
+      ...scope,
+      policy: {
+        requirements: [{
+          factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+          obligation: 'REQUIRED',
+          timing: 'EVENTUAL',
+          deadlineMs,
+          onTimeout: 'INCONCLUSIVE',
+        }],
+      },
+      startedAtMs,
+    })
+    const elapsedMs = Date.now() - startedAtMs
+    const last = revisions.at(-1)
+
+    expect(result.status).toBe('SATISFIED')
+    expect(result.evaluation.productVerdict).toBe('PASS_ONLINE')
+    expect(adapterCalls).toBeGreaterThan(1)
+    expect(last?.lastEvidenceRevision).toBeGreaterThan(22)
+    expect(elapsedMs).toBeLessThan(deadlineMs)
+  })
+
+  it('keeps EVENTUAL INCONCLUSIVE when every refresh still sees empty proof', async () => {
+    const runtime = new BridgeFlowEvidenceRuntime()
+    const { persistence, revisions } = persistenceFixture()
+    let adapterCalls = 0
     const startedAtMs = Date.now()
     const worker = new OracleEvaluationWorker({
       runtime,
       persistence,
       refreshFacts: () => {
-        refreshCount += 1
+        adapterCalls += 1
       },
     })
 
@@ -226,52 +279,11 @@ describe('OracleEvaluationWorker', () => {
     })
 
     expect(result.status).toBe('INCONCLUSIVE')
-    expect(refreshCount).toBeGreaterThan(2)
-  })
-
-  it('lets a mid-window refreshFacts observation satisfy Final Oracle before the EVENTUAL deadline', async () => {
-    const runtime = new BridgeFlowEvidenceRuntime()
-    const { persistence } = persistenceFixture()
-    let ticks = 0
-    const startedAtMs = Date.now()
-    const worker = new OracleEvaluationWorker({
-      runtime,
-      persistence,
-      refreshFacts: (work) => {
-        ticks += 1
-        if (ticks < 3) return
-        runtime.publish({
-          runId: work.runId,
-          fact: {
-            ...evidence('ORDERED_REQUIRED'),
-            factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
-            observedAtMs: Date.now(),
-          },
-          revision: ticks,
-          lane: 'ORDERED_REQUIRED',
-          correlationStatus: 'CORRELATED',
-          trust: 'RESOLVER_ACCEPTED',
-        })
-      },
-    })
-
-    const result = await worker.runFinalOracle({
-      ...scope,
-      policy: {
-        requirements: [{
-          factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
-          obligation: 'REQUIRED',
-          timing: 'EVENTUAL',
-          deadlineMs: 2_000,
-          onTimeout: 'INCONCLUSIVE',
-        }],
-      },
-      startedAtMs,
-    })
-
-    expect(result.status).toBe('SATISFIED')
-    expect(result.evaluation.productVerdict).toBe('PASS_ONLINE')
-    expect(Date.now() - startedAtMs).toBeLessThan(1_800)
+    expect(result.evaluation.productVerdict).toBe('INCONCLUSIVE')
+    expect(result.evaluation.evaluationFailureClass).toBe('EVIDENCE_INSUFFICIENT')
+    expect(adapterCalls).toBeGreaterThan(1)
+    expect(revisions.at(-1)?.lastEvidenceRevision).toBe(0)
+    expect(Date.now() - startedAtMs).toBeGreaterThanOrEqual(700)
   })
 
   it('honors cancellation while waiting', async () => {
