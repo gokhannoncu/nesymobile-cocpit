@@ -562,65 +562,79 @@ export class BridgeFlowExecutor {
       transitionCount: 0,
     };
 
-    const needsMutationLease =
-      !state.stopped &&
-      input.plan.steps.some((step) => step.kind === "BRIDGE_ACTION");
+    // CLEANUP may itself mutate the device (`reset_state`) or a remote fixture.
+    // A resumed stopped run can owe only teardown, so it needs the same
+    // admission even though no business BRIDGE_ACTION remains.
+    const needsMutationLease = input.plan.steps.some(
+      (step) => step.kind === "BRIDGE_ACTION" || step.kind === "CLEANUP",
+    );
     let leaseHeld = false;
     if (needsMutationLease) {
       leaseHeld = await this.options.mutationAdmission.acquire(input.deviceId, input.runId);
       if (!leaseHeld) {
+        const resumedCleanupWasOwed =
+          state.stopped &&
+          (state.cleanupResult === "NOT_STARTED" || state.cleanupResult === "PENDING");
         state.automationFailure = true;
         state.stopped = true;
+        // A fresh invocation executed nothing and owes no compensation. A
+        // resumed invocation that already owed cleanup must fail closed rather
+        // than falsely converting that debt to NOT_REQUIRED.
+        state.cleanupResult = resumedCleanupWasOwed ? "FAILED" : "NOT_REQUIRED";
+        if (resumedCleanupWasOwed) state.operationalDisposition = "NEEDS_ATTENTION";
       }
     }
 
     try {
-      if (!state.stopped) {
-        if (input.recovery !== undefined && state.continuationStack.length > 0) {
-          await this.resumeContinuations(input, stepsById, state);
-        } else {
-          await this.executeFlow(
-            input,
-            stepsById,
-            input.recovery?.nextStepId ?? input.plan.entryStepId,
-            null,
-            input.recovery?.runtimeIterationKey ?? "root",
-            state,
-          );
+      try {
+        if (!state.stopped) {
+          if (input.recovery !== undefined && state.continuationStack.length > 0) {
+            await this.resumeContinuations(input, stepsById, state);
+          } else {
+            await this.executeFlow(
+              input,
+              stepsById,
+              input.recovery?.nextStepId ?? input.plan.entryStepId,
+              null,
+              input.recovery?.runtimeIterationKey ?? "root",
+              state,
+            );
+          }
         }
+      } finally {
+        if (input.signal?.aborted) {
+          state.automationFailure = true;
+          state.stopped = true;
+        }
+        await this.cancelInFlight(input.runId);
       }
+
+      if (state.stopped) {
+        await this.executePostStopCleanup(input, stepsById, state);
+      }
+
+      if (state.stopped && !state.checkpointedStopped) {
+        await this.persistRecoveryCheckpoint(
+          input.runId,
+          state.checkpointNextStepId,
+          state.checkpointIterationKey,
+          state,
+        );
+      }
+      // After the checkpoint, so a resumed run still sees the teardown as owed.
+      // A plan-declared CLEANUP the executed path never reached is not a
+      // teardown that failed to start; B.8.3 needs a terminal value either way.
+      if (state.cleanupResult === "NOT_STARTED") state.cleanupResult = "NOT_REQUIRED";
+      const result = this.buildRunOutcome(state);
+      await this.options.persistence.persistRunResult({
+        runId: input.runId,
+        result,
+        ...this.fenceRecord(state),
+      });
+      return result;
     } finally {
-      if (input.signal?.aborted) {
-        state.automationFailure = true;
-        state.stopped = true;
-      }
-      await this.cancelInFlight(input.runId);
       if (leaseHeld) await this.options.mutationAdmission.release(input.deviceId, input.runId);
     }
-
-    if (state.stopped) {
-      await this.executePostStopCleanup(input, stepsById, state);
-    }
-
-    if (state.stopped && !state.checkpointedStopped) {
-      await this.persistRecoveryCheckpoint(
-        input.runId,
-        state.checkpointNextStepId,
-        state.checkpointIterationKey,
-        state,
-      );
-    }
-    // After the checkpoint, so a resumed run still sees the teardown as owed.
-    // A plan-declared CLEANUP the executed path never reached is not a
-    // teardown that failed to start; B.8.3 needs a terminal value either way.
-    if (state.cleanupResult === "NOT_STARTED") state.cleanupResult = "NOT_REQUIRED";
-    const result = this.buildRunOutcome(state);
-    await this.options.persistence.persistRunResult({
-      runId: input.runId,
-      result,
-      ...this.fenceRecord(state),
-    });
-    return result;
   }
 
   private async executePostStopCleanup(

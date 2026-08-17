@@ -1,0 +1,23 @@
+{
+  "kind": "g90-10-eventual-refresh-live-acceptance",
+  "runId": "run_86ae37d3-6fbd-44b0-96a8-590321051453",
+  "notBd6Proof": true,
+  "apiPid": "12764",
+  "waybill": "47446154448795",
+  "shortBarcode": "6880051000294319",
+  "appWireBarcode": "N6880170009900000103306880110006300110001000147446154448795QV17381",
+  "doNotReuse": true,
+  "schedulingFixA": {
+    "finalOracleRows": 175,
+    "lastEvidenceRevision": 1937,
+    "REMOTE.DELIVERY_STATUS_COMPLETED": "SATISFIED",
+    "proofBeforeDeadline": true,
+    "probeT120": { "count": 1, "eventType": "Delivered", "at": "2026-08-16T14:23:18.014Z" }
+  },
+  "productVerdict": "FAIL_PRODUCT",
+  "observedClass": null,
+  "injectedFault": null,
+  "REMOTE.DELIVERY_CONFIRMED": "VIOLATED",
+  "rootCause": "APP.DELIVERY_SUBMITTED correlation is the full piece barcode; REMOTE proof correlation is the waybill. Host alias group had only short+waybill exact strings, so CORRELATED_ALL_OF emitted false.",
+  "next": "host belongsToShipmentAliases: digit token (>=10) substring of this run's aliases. Pack/classifier/120s unchanged."
+}

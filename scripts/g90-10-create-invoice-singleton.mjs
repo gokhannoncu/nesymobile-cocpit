@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Create one unpaid invoice singleton on the current approved tour.
- * Requires ADMIN_AUTH_READY (cached-token). Does not inject OFFLINE_QUEUE.
+ * Requires ADMIN_AUTH_READY. The API performs the read with its process-local
+ * cache; the bearer token never crosses HTTP. Does not inject OFFLINE_QUEUE.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -29,22 +30,21 @@ async function req(method, path, body) {
 
 async function searchShipment(waybill) {
   const cached = await req('GET', '/nesy/auth/cached-token?country=RS&environment=stage')
-  const token = cached.body.token
-  if (cached.status === 409 || !token) throw new Error('ADMIN_AUTH_NOT_READY')
-  const details = await req('POST', '/shipments/details', {
-    token,
+  if (cached.status === 409 || cached.body.present !== true) throw new Error('ADMIN_AUTH_NOT_READY')
+  const read = await req('POST', '/nesy/auth/admin-shipment-read', {
     country: 'RS',
     environment: 'stage',
     shipmentId: waybill,
   })
+  const details = read.body.details ?? {}
   const payload =
-    details.body.data ??
-    details.body.result?.payload ??
-    details.body.data?.payload ??
-    details.body.payload
+    details.result?.data ??
+    details.result?.result?.payload ??
+    details.result?.data?.payload ??
+    details.result?.payload
   const row = Array.isArray(payload) ? payload[0] : payload
   return {
-    http: details.status,
+    http: details.http ?? read.status,
     shipmentStatus: row?.shipmentStatus ?? row?.ShipmentStatus ?? null,
     shipmentStatusName: row?.shipmentStatusName ?? row?.ShipmentStatusName ?? null,
     waybillNumber: row?.waybillNumber ?? row?.WaybillNumber ?? row?.shipmentId ?? null,

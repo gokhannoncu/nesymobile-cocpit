@@ -1,0 +1,207 @@
+{
+  "kind": "uninjected-complete-delivery-remote-commit",
+  "notBd6Proof": true,
+  "adminAuth": {
+    "source": "dashboard-admin-cache",
+    "pid": 12764,
+    "tokenFingerprint": "sha256:a446fed4942953b3",
+    "ageMs": 313301,
+    "expiresAt": "2026-08-16T14:46:04.707Z",
+    "loginDashboardCalls": 1
+  },
+  "runId": "run_86ae37d3-6fbd-44b0-96a8-590321051453",
+  "occurrenceId": null,
+  "barcode": "6880051000294319",
+  "waybill": "47446154448795",
+  "shipmentId": "47446154448795",
+  "probeStartedAt": "2026-08-16T14:21:18.013Z",
+  "offsetsMs": [
+    0,
+    2000,
+    5000,
+    10000,
+    30000,
+    120000,
+    130000
+  ],
+  "deliverParcels": {
+    "endpoint": "Task/DeliverParcels/",
+    "note": "HTTP start/complete come from device Request/CompletedRequest, not this probe. Dump is attached."
+  },
+  "remoteReads": [
+    {
+      "label": "t+0ms",
+      "offsetMs": 0,
+      "at": "2026-08-16T14:21:18.014Z",
+      "proof": {
+        "http": 200,
+        "ms": 460,
+        "resultCode": 200,
+        "count": 0,
+        "eventType": null,
+        "shipmentStatus": null,
+        "eventDate": null,
+        "waybillNumber": null
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+2000ms",
+      "offsetMs": 2000,
+      "at": "2026-08-16T14:21:20.013Z",
+      "proof": {
+        "http": 200,
+        "ms": 133,
+        "resultCode": 200,
+        "count": 0,
+        "eventType": null,
+        "shipmentStatus": null,
+        "eventDate": null,
+        "waybillNumber": null
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+5000ms",
+      "offsetMs": 5000,
+      "at": "2026-08-16T14:21:23.014Z",
+      "proof": {
+        "http": 200,
+        "ms": 111,
+        "resultCode": 200,
+        "count": 0,
+        "eventType": null,
+        "shipmentStatus": null,
+        "eventDate": null,
+        "waybillNumber": null
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+10000ms",
+      "offsetMs": 10000,
+      "at": "2026-08-16T14:21:28.013Z",
+      "proof": {
+        "http": 200,
+        "ms": 134,
+        "resultCode": 200,
+        "count": 0,
+        "eventType": null,
+        "shipmentStatus": null,
+        "eventDate": null,
+        "waybillNumber": null
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+30000ms",
+      "offsetMs": 30000,
+      "at": "2026-08-16T14:21:48.014Z",
+      "proof": {
+        "http": 200,
+        "ms": 337,
+        "resultCode": 200,
+        "count": 0,
+        "eventType": null,
+        "shipmentStatus": null,
+        "eventDate": null,
+        "waybillNumber": null
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+120000ms",
+      "offsetMs": 120000,
+      "at": "2026-08-16T14:23:18.014Z",
+      "proof": {
+        "http": 200,
+        "ms": 343,
+        "resultCode": 200,
+        "count": 1,
+        "eventType": "Delivered",
+        "shipmentStatus": 2,
+        "eventDate": "2026-08-16T14:23:13.775Z",
+        "waybillNumber": "47446154448795"
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    },
+    {
+      "label": "t+130000ms",
+      "offsetMs": 130000,
+      "at": "2026-08-16T14:23:28.015Z",
+      "proof": {
+        "http": 200,
+        "ms": 291,
+        "resultCode": 200,
+        "count": 1,
+        "eventType": "Delivered",
+        "shipmentStatus": 2,
+        "eventDate": "2026-08-16T14:23:13.775Z",
+        "waybillNumber": "47446154448795"
+      },
+      "search": {
+        "http": 200,
+        "found": true,
+        "shipmentStatus": null,
+        "shipmentStatusName": null,
+        "lastEventType": null,
+        "actualDeliveryDate": null,
+        "waybillNumber": null
+      }
+    }
+  ],
+  "deviceQueue": {
+    "completedStdout": "",
+    "completedStderr": "run-as: exec failed for sqlite3: No such file or directory",
+    "pendingStdout": "",
+    "pendingStderr": "run-as: exec failed for sqlite3: No such file or directory"
+  }
+}

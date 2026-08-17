@@ -20,18 +20,25 @@ export const DELIVERY_STATUS_COMPLETED_FACT = 'REMOTE.DELIVERY_STATUS_COMPLETED'
 export const READ_DELIVERY_STATUS_OPERATION = 'nesy.backoffice.read-delivery-status'
 export const REMOTE_EVENTUAL_POLL_MS = 5_000
 
+export type PendingDeliveryStatusRefresher = (() => void) & {
+  dispose(): void
+}
+
 export function createPendingDeliveryStatusRefresher(options: {
   adapter: BackofficeAdapter
   observations: SdkObservationStore
   runId: string
   runInputs: Readonly<Record<string, unknown>>
   clock?: () => number
-}): () => void {
+}): PendingDeliveryStatusRefresher {
   const clock = options.clock ?? Date.now
+  const controller = new AbortController()
   let lastPollMs = Number.NEGATIVE_INFINITY
   let inFlight = false
+  let active = true
 
-  return () => {
+  const refresh = (() => {
+    if (!active || controller.signal.aborted) return
     const current = options.observations
       .current(options.runId)
       .find((observation) => observation.factKey === DELIVERY_STATUS_COMPLETED_FACT)
@@ -51,10 +58,14 @@ export function createPendingDeliveryStatusRefresher(options: {
           operationRef: READ_DELIVERY_STATUS_OPERATION,
           inputs: { shipment },
           timeoutMs: 20_000,
+          signal: controller.signal,
         },
         { recordRequest: false, recordResponse: false, redactFields: [] },
       )
       .then((result) => {
+        // Cancellation is cooperative. A custom adapter may resolve after the
+        // signal, so reject the late completion again at the sink boundary.
+        if (!active || controller.signal.aborted) return
         const delivery = (result.normalizedResponse['delivery'] ?? {}) as Record<string, unknown>
         const completed = delivery['completed']
         const correlation = delivery['correlationId']
@@ -73,8 +84,24 @@ export function createPendingDeliveryStatusRefresher(options: {
             : {}),
         })
       })
+      .catch((error) => {
+        if (active && !controller.signal.aborted) {
+          console.warn(
+            `[PendingDeliveryRefresh] failed run=${options.runId}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          )
+        }
+      })
       .finally(() => {
         inFlight = false
       })
+  }) as PendingDeliveryStatusRefresher
+
+  refresh.dispose = () => {
+    if (!active) return
+    active = false
+    controller.abort()
   }
+  return refresh
 }

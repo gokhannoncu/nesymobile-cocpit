@@ -60,7 +60,7 @@ const before = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environme
 const login = await cockpit('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
 const loginResult = login.body.result ?? {}
 const loginResultCode = loginResult.resultCode ?? loginResult.ResultCode ?? null
-const extracted = Boolean(loginResult.payload?.token || loginResult.payload?.Token)
+const extracted = loginResult.tokenPresent === true
 const afterLogin = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
 const cachedToken = await cockpit('GET', '/nesy/auth/cached-token?country=RS&environment=stage')
 const afterCachedRead = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')

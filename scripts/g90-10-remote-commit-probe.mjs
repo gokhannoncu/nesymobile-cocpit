@@ -16,7 +16,7 @@
  * Writes docs/verdict/goals/G90-10-remote-commit-<runOrWaybill>.json
  */
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -37,20 +37,6 @@ function arg(name, fallback = '') {
 
 function sh(cmd, args) {
   return String(spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout ?? '').trim()
-}
-
-function loadApiEnv() {
-  const env = {}
-  try {
-    const raw = readFileSync(join(REPO, 'apps/api/.env'), 'utf8').replace(/^\uFEFF/, '')
-    for (const line of raw.split('\n')) {
-      const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim())
-      if (match) env[match[1]] = match[2].replace(/^["']|["']$/g, '')
-    }
-  } catch {
-    // caller reports missing keys
-  }
-  return env
 }
 
 function adb(args, timeoutMs = 20_000) {
@@ -79,27 +65,6 @@ async function cockpit(method, path, body) {
     json = { raw: text.slice(0, 2000) }
   }
   return { status: res.status, body: json }
-}
-
-async function nesy(base, token, path, body) {
-  const started = Date.now()
-  const res = await fetch(`${base}/${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-  const text = await res.text()
-  let json
-  try {
-    json = text ? JSON.parse(text) : {}
-  } catch {
-    json = { raw: text.slice(0, 800) }
-  }
-  return { http: res.status, ms: Date.now() - started, json }
 }
 
 function proofSummary(json) {
@@ -164,13 +129,11 @@ if (!waybill) {
   process.exit(2)
 }
 
-const env = loadApiEnv()
 const cached = await cockpit(
   'GET',
   '/nesy/auth/cached-token?country=RS&environment=stage',
 )
-const token = cached.body.token
-if (cached.status === 409 || cached.body.code === 'ADMIN_AUTH_NOT_READY' || !token) {
+if (cached.status === 409 || cached.body.code === 'ADMIN_AUTH_NOT_READY' || cached.body.present !== true) {
   console.error('FAIL_FAST: ADMIN_AUTH_NOT_READY')
   console.error(
     JSON.stringify({
@@ -181,10 +144,6 @@ if (cached.status === 409 || cached.body.code === 'ADMIN_AUTH_NOT_READY' || !tok
   )
   process.exit(1)
 }
-const base = (env.NESY_BACKOFFICE_BASE_URL || 'https://nesy-staging-mobile-api.cityexpress.rs').replace(
-  /\/$/,
-  '',
-)
 
 const t0 = Date.now()
 const t0Iso = new Date(t0).toISOString()
@@ -194,21 +153,19 @@ for (const offset of OFFSETS_MS) {
   const wait = t0 + offset - Date.now()
   if (wait > 0) await sleep(wait)
   const at = new Date().toISOString()
-  const [proof, details] = await Promise.all([
-    nesy(base, token, 'Tracking/GetShipmentDeliveryProof', { ShipmentIdList: [waybill] }),
-    cockpit('POST', '/shipments/details', {
-      token,
-      country: 'RS',
-      environment: 'stage',
-      shipmentId: waybill,
-    }),
-  ])
+  const read = await cockpit('POST', '/nesy/auth/admin-shipment-read', {
+    country: 'RS',
+    environment: 'stage',
+    shipmentId: waybill,
+  })
+  const proof = read.body.proof ?? { http: read.status, ms: 0, result: {} }
+  const details = read.body.details ?? { http: read.status, result: {} }
   remoteReads.push({
     label: `t+${offset}ms`,
     offsetMs: offset,
     at,
-    proof: { http: proof.http, ms: proof.ms, ...proofSummary(proof.json) },
-    search: { http: details.status, ...searchSummary(details.body) },
+    proof: { http: proof.http, ms: proof.ms, ...proofSummary(proof.result) },
+    search: { http: details.http, ...searchSummary(details.result) },
   })
   console.log(
     JSON.stringify({

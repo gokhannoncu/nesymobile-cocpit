@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import type { DomainPackBundle } from '@nesy/domain-pack-contracts'
 import type { NormalizedEvidenceFact } from '@nesy/oracle-engine'
 
-import { deriveFacts } from './derived-fact-engine.js'
+import { deriveFacts, shipmentCorrelationAliases } from './derived-fact-engine.js'
 
 function fact(
   factKey: string,
@@ -107,6 +107,113 @@ describe('CORRELATED_ALL_OF', () => {
     // Not `false` — an unmet requirement names the gap, where a false would blame
     // the product for the harness having no way to check.
     expect(derived).toEqual([])
+  })
+
+  it('run_86ae37d3: APP full barcode containing this run waybill concludes true', () => {
+    const shortBarcode = '6880051000294319'
+    const waybill = '47446154448795'
+    const fullBarcode = `N68801700099000001033068801100063001100010001${waybill}QV17381`
+    const derived = deriveFacts({
+      bundle: bundleWith([
+        {
+          factKey: 'REMOTE.DELIVERY_CONFIRMED',
+          plane: 'REMOTE',
+          authority: 'PRIMARY',
+          displayName: 'Delivery confirmed',
+          provenance: {
+            reducerKind: 'CORRELATED_ALL_OF',
+            reducerVersion: 1,
+            inputFactKeys: ['REMOTE.DELIVERY_STATUS_COMPLETED', 'APP.DELIVERY_SUBMITTED'],
+            parameters: { correlationPath: 'correlationId' },
+          },
+          preserveInputs: true,
+          requiresCorrelation: true,
+        },
+      ]),
+      facts: [
+        fact('APP.DELIVERY_SUBMITTED', true, fullBarcode),
+        fact('REMOTE.DELIVERY_STATUS_COMPLETED', true, waybill),
+      ],
+      correlationAliasGroups: [
+        shipmentCorrelationAliases({ consignmentNumber: shortBarcode, proofLookupId: waybill }),
+      ],
+    })
+    expect(derived.map((f) => [f.factKey, f.value])).toEqual([['REMOTE.DELIVERY_CONFIRMED', true]])
+  })
+
+  it('run_4957a69b: barcode and waybill aliases of THIS run conclude true, not FAIL_PRODUCT', () => {
+    const barcode = '6880051000294210'
+    const waybill = '95906865713279'
+    const derived = deriveFacts({
+      bundle: bundleWith([
+        {
+          factKey: 'REMOTE.DELIVERY_CONFIRMED',
+          plane: 'REMOTE',
+          authority: 'PRIMARY',
+          displayName: 'Delivery confirmed',
+          provenance: {
+            reducerKind: 'CORRELATED_ALL_OF',
+            reducerVersion: 1,
+            inputFactKeys: ['REMOTE.DELIVERY_STATUS_COMPLETED', 'APP.DELIVERY_SUBMITTED'],
+            parameters: { correlationPath: 'correlationId' },
+          },
+          preserveInputs: true,
+          requiresCorrelation: true,
+        },
+      ]),
+      facts: [
+        fact('APP.DELIVERY_SUBMITTED', true, barcode),
+        fact('REMOTE.DELIVERY_STATUS_COMPLETED', true, waybill),
+      ],
+      correlationAliasGroups: [
+        shipmentCorrelationAliases({ consignmentNumber: barcode, proofLookupId: waybill }),
+      ],
+    })
+    expect(derived.map((f) => [f.factKey, f.value])).toEqual([['REMOTE.DELIVERY_CONFIRMED', true]])
+  })
+
+  it('does not treat a full barcode embedding a different waybill as this run', () => {
+    const derived = deriveFacts({
+      bundle: bundleWith([
+        {
+          factKey: 'REMOTE.DELIVERY_CONFIRMED',
+          plane: 'REMOTE',
+          authority: 'PRIMARY',
+          displayName: 'Delivery confirmed',
+          provenance: {
+            reducerKind: 'CORRELATED_ALL_OF',
+            reducerVersion: 1,
+            inputFactKeys: ['REMOTE.DELIVERY_STATUS_COMPLETED', 'APP.DELIVERY_SUBMITTED'],
+            parameters: { correlationPath: 'correlationId' },
+          },
+          preserveInputs: true,
+          requiresCorrelation: true,
+        },
+      ]),
+      facts: [
+        fact('APP.DELIVERY_SUBMITTED', true, 'N6880170009900000103306880110006300110001000199999999999999QV17381'),
+        fact('REMOTE.DELIVERY_STATUS_COMPLETED', true, '47446154448795'),
+      ],
+      correlationAliasGroups: [
+        shipmentCorrelationAliases({
+          consignmentNumber: '6880051000294319',
+          proofLookupId: '47446154448795',
+        }),
+      ],
+    })
+    expect(derived.map((f) => f.value)).toEqual([false])
+  })
+
+  it('still concludes false when different ids are not aliases of this run', () => {
+    const derived = deriveFacts({
+      bundle: CORRELATED,
+      facts: [
+        fact('APP.TOUR_APPROVAL_REQUESTED', true, 'APR-9'),
+        fact('REMOTE.TOUR_APPROVAL_STATUS_APPROVED', true, 'APR-4'),
+      ],
+      correlationAliasGroups: [shipmentCorrelationAliases({ consignmentNumber: '6880', proofLookupId: '9590' })],
+    })
+    expect(derived.map((f) => f.value)).toEqual([false])
   })
 
   it('concludes false when an input contradicts it', () => {

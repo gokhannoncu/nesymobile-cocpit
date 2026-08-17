@@ -340,6 +340,49 @@ describe("bridgeflow executor", () => {
       expect(genericSteps).toEqual(["release-fixture"]);
     });
 
+    it("holds mutation admission until post-stop cleanup has completed", async () => {
+      let leaseHeld = false;
+      const events: string[] = [];
+      const executor = new BridgeFlowExecutor({
+        persistence: new InMemoryExecutionPersistence(),
+        mutationAdmission: {
+          acquire: () => {
+            leaseHeld = true;
+            events.push("acquire");
+            return true;
+          },
+          release: () => {
+            events.push("release");
+            leaseHeld = false;
+          },
+        },
+        bridge: {
+          act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+          waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 10 }),
+          cancelWait: async () => ({ status: "CANCELLED" }),
+          cancelAction: async () => ({ status: "CANCELLED" }),
+        },
+        evidence: { factsForOccurrence: () => [] },
+        genericSteps: {
+          execute: async () => {
+            expect(leaseHeld).toBe(true);
+            events.push("cleanup");
+            return { succeeded: true, actionResult: "SUCCEEDED" };
+          },
+        },
+        clock: () => 10,
+      });
+
+      await executor.execute({
+        runId: "run-lease-cleanup",
+        deviceId: "device-1",
+        plan: detachedCleanupPlan("assert-1"),
+      });
+
+      expect(events).toEqual(["acquire", "cleanup", "release"]);
+      expect(leaseHeld).toBe(false);
+    });
+
     it("reports an UNKNOWN value as evidence-insufficient, not as a product failure", async () => {
       const result = await runWith([fact("UNKNOWN")]);
       expect(result.productVerdict).toBe("INCONCLUSIVE");

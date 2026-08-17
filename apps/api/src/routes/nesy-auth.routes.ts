@@ -45,6 +45,12 @@ const notReadySchema = z.object({
   cache: cachePeekSchema,
 })
 
+const adminShipmentReadBodySchema = z.object({
+  country: nesyCountrySchema.default('RS'),
+  environment: nesyEnvironmentSchema.default('stage'),
+  shipmentId: z.string().trim().min(1),
+})
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
@@ -55,6 +61,44 @@ function resultCodeOf(result: unknown): number | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw
   if (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))) return Number(raw)
   return null
+}
+
+function withoutTokenFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutTokenFields)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => key.toLowerCase() !== 'token')
+      .map(([key, entry]) => [key, withoutTokenFields(entry)]),
+  )
+}
+
+function isLoopbackAddress(address: string): boolean {
+  const normalized = address.toLowerCase()
+  return normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized === '::ffff:127.0.0.1'
+}
+
+async function readAdminJson(input: {
+  baseUrl: string
+  token: string
+  path: string
+  body: unknown
+}): Promise<{ http: number; ms: number; result: unknown }> {
+  const startedAt = Date.now()
+  const response = await fetch(`${input.baseUrl.replace(/\/$/, '')}/${input.path}`, {
+    method: 'POST',
+    headers: nesyPortalHeaders(input.token),
+    body: JSON.stringify(input.body),
+    signal: AbortSignal.timeout(25_000),
+  })
+  const text = await response.text()
+  try {
+    return { http: response.status, ms: Date.now() - startedAt, result: text === '' ? null : JSON.parse(text) }
+  } catch {
+    return { http: response.status, ms: Date.now() - startedAt, result: { raw: text.slice(0, 2_000) } }
+  }
 }
 
 export async function nesyAuthRoutes(app: FastifyInstance) {
@@ -106,7 +150,7 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
             message: 'Nesy login request failed.',
             country,
             environment,
-            result: login.result,
+            result: withoutTokenFields(login.result),
           })
         }
 
@@ -114,7 +158,12 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
           message: 'Nesy login successful.',
           country,
           environment,
-          result: login.result,
+          result: {
+            ...asRecord(withoutTokenFields(login.result)),
+            tokenPresent: true,
+            tokenFingerprint: fingerprintAdminToken(login.token),
+            fromCache: login.fromCache,
+          },
         }
       } catch (error) {
         return reply.status(500).send({
@@ -151,7 +200,7 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
       schema: {
         querystring: countryEnvQuerySchema,
         response: {
-          200: cachePeekSchema.extend({ token: z.string() }),
+          200: cachePeekSchema,
           400: z.object({ message: z.string() }),
           409: notReadySchema,
         },
@@ -162,8 +211,46 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
       if (!isNesyDashboardCountry(country) || !isNesyEnvironment(environment)) {
         return reply.status(400).send({ message: 'country and environment are required.' })
       }
-      const token = getCachedDashboardAdminToken(country, environment)
       const cache = peekDashboardAdminCache(country, environment)
+      if (!getCachedDashboardAdminToken(country, environment)) {
+        return reply.status(409).send({
+          code: ADMIN_AUTH_NOT_READY,
+          message: 'Dashboard admin token cache is empty. Warm /nesy/auth/login once on this PID first.',
+          cache,
+        })
+      }
+      return cache
+    },
+  )
+
+  /**
+   * Local qualification helper. The API process performs the two allowlisted
+   * reads with its cached credential; the bearer itself never crosses HTTP.
+   */
+  typed.post(
+    '/admin-shipment-read',
+    {
+      schema: {
+        body: adminShipmentReadBodySchema,
+        response: {
+          200: z.object({
+            cache: cachePeekSchema,
+            proof: z.object({ http: z.number(), ms: z.number(), result: z.unknown() }),
+            details: z.object({ http: z.number(), ms: z.number(), result: z.unknown() }),
+          }),
+          403: z.object({ message: z.string() }),
+          409: notReadySchema,
+          502: z.object({ message: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!isLoopbackAddress(request.ip)) {
+        return reply.status(403).send({ message: 'admin shipment reads are available only from loopback.' })
+      }
+      const { country, environment, shipmentId } = request.body
+      const cache = peekDashboardAdminCache(country, environment)
+      const token = getCachedDashboardAdminToken(country, environment)
       if (!token) {
         return reply.status(409).send({
           code: ADMIN_AUTH_NOT_READY,
@@ -171,7 +258,31 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
           cache,
         })
       }
-      return { ...cache, token }
+      const baseUrl = process.env.NESY_BACKOFFICE_BASE_URL?.trim() || resolveBaseUrl(country, environment)
+      if (!baseUrl) {
+        return reply.status(502).send({ message: `Back-office URL is not configured for ${country}/${environment}.` })
+      }
+      try {
+        const [proof, details] = await Promise.all([
+          readAdminJson({
+            baseUrl,
+            token,
+            path: 'Tracking/GetShipmentDeliveryProof',
+            body: { ShipmentIdList: [shipmentId] },
+          }),
+          readAdminJson({
+            baseUrl,
+            token,
+            path: 'Shipment/SearchShipment',
+            body: { ShipmentIds: [shipmentId] },
+          }),
+        ])
+        return { cache, proof, details }
+      } catch (error) {
+        return reply.status(502).send({
+          message: error instanceof Error ? error.message : 'Admin shipment read failed.',
+        })
+      }
     },
   )
 

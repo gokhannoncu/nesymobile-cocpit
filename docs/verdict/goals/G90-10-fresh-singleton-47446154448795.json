@@ -1,0 +1,28 @@
+{
+  "kind": "g90-10-third-invoice-singleton",
+  "notBd6Proof": true,
+  "apiPid": "12764",
+  "shipment": {
+    "dbId": "811589b7-fa28-4974-8138-374789be243a",
+    "shipmentId": "47446154448795",
+    "scanValue": "6880051000294319",
+    "fullBarcode": "N6880170009900000103306880110006300110001000147446154448795QV17381",
+    "unloadStatus": 200
+  },
+  "loadToVehicle": {
+    "runId": "run_ec6d9ed1-3f26-4ae8-8281-0a043decca6b",
+    "productVerdict": "PASS_ONLINE",
+    "observedClass": null
+  },
+  "remote": {
+    "http": 200,
+    "shipmentStatus": "Loaded",
+    "shipmentStatusName": null,
+    "waybillNumber": "47446154448795"
+  },
+  "adminAuth": {
+    "present": true,
+    "tokenFingerprint": "sha256:a446fed4942953b3",
+    "loginDashboardCalls": 1
+  }
+}

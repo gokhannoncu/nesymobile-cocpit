@@ -29,6 +29,11 @@
  * non-empty value — including when they carry none at all. Refusing is the
  * conservative direction: the cost is an unmet requirement, where the alternative
  * is a business conclusion about no particular entity.
+ *
+ * One exception is this run's own shipment aliases: the scan barcode and the
+ * waybill are two identifiers of the same consignment. Treating them as
+ * different entities made `REMOTE.DELIVERY_CONFIRMED` false after a real
+ * delivery (`run_4957a69b`). Tour approval codes are not in that alias group.
  */
 
 import type { DerivedFactDefinition, DomainPackBundle } from '@nesy/domain-pack-contracts'
@@ -46,15 +51,57 @@ function observedAtFor(inputs: readonly NormalizedEvidenceFact[]): number {
 }
 
 /**
- * All inputs present, all true, and all about the same entity.
- *
- * A single `false` input makes the conclusion `false` — that is a genuine
- * negative and the run should fail on it. Anything missing or UNKNOWN produces
- * nothing.
+ * Identifiers this run already declared as the same shipment (scan barcode and
+ * waybill). Not a global synonym table: only values THIS run supplied.
  */
+export function shipmentCorrelationAliases(
+  runInputs: Readonly<Record<string, unknown>>,
+): readonly string[] {
+  const aliases = [
+    'consignmentNumber',
+    'proofLookupId',
+    'shipment',
+    'shipmentId',
+    'barcode',
+    'fullBarcode',
+  ]
+    .map((key) => {
+      const value = runInputs[key]
+      return typeof value === 'string' ? value.trim() : ''
+    })
+    .filter((value) => value !== '')
+  return [...new Set(aliases)]
+}
+
+/** Digit shipment ids only — tour codes like APR-9 must not substring-match. */
+function isShipmentToken(value: string): boolean {
+  return /^\d{10,}$/.test(value)
+}
+
+function belongsToShipmentAliases(value: string, aliases: ReadonlySet<string>): boolean {
+  if (aliases.has(value)) return true
+  for (const alias of aliases) {
+    if (isShipmentToken(alias) && value.includes(alias)) return true
+    if (isShipmentToken(value) && alias.includes(value)) return true
+  }
+  return false
+}
+
+function sameCorrelatedEntity(
+  values: readonly string[],
+  aliasGroups: readonly (readonly string[])[],
+): boolean {
+  if (new Set(values).size === 1) return true
+  return aliasGroups.some((group) => {
+    const aliases = new Set(group)
+    return values.every((value) => belongsToShipmentAliases(value, aliases))
+  })
+}
+
 function correlatedAllOf(
   definition: DerivedFactDefinition,
   byKey: ReadonlyMap<string, NormalizedEvidenceFact>,
+  aliasGroups: readonly (readonly string[])[],
 ): boolean | undefined {
   const inputs: NormalizedEvidenceFact[] = []
   for (const factKey of definition.provenance.inputFactKeys) {
@@ -67,7 +114,11 @@ function correlatedAllOf(
   if (definition.requiresCorrelation) {
     const values = inputs.map((fact) => fact.correlationValue?.trim() ?? '')
     if (values.some((value) => value === '')) return undefined
-    if (new Set(values).size !== 1) return false
+    // Different strings are a real negative UNLESS this run already said they
+    // name the same shipment. run_4957a69b: APP barcode + proof waybill both
+    // true → CORRELATED_ALL_OF emitted false → FAIL_PRODUCT. Tour approval
+    // codes are not in the shipment alias group, so APR-9 vs APR-4 stays false.
+    if (!sameCorrelatedEntity(values, aliasGroups)) return false
   }
   return true
 }
@@ -108,6 +159,11 @@ export interface DeriveFactsInput {
    * asked for, not a property of the pack.
    */
   expectations?: Readonly<Record<string, string | undefined>>
+  /**
+   * Groups of identifiers the run already treats as one entity. Used only to
+   * stop CORRELATED_ALL_OF calling a barcode/waybill pair a different shipment.
+   */
+  correlationAliasGroups?: readonly (readonly string[])[]
 }
 
 /**
@@ -137,7 +193,7 @@ export function deriveFacts(input: DeriveFactsInput): NormalizedEvidenceFact[] {
     let value: boolean | undefined
     switch (definition.provenance.reducerKind) {
       case 'CORRELATED_ALL_OF':
-        value = correlatedAllOf(definition, byKey)
+        value = correlatedAllOf(definition, byKey, input.correlationAliasGroups ?? [])
         break
       case 'ENTITY_STATUS_EQUALS': {
         const against = definition.provenance.parameters?.['against']

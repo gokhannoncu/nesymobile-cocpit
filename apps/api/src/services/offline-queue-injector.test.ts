@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { observeInjectedClass } from '@nesy/workflow-contract'
 
@@ -18,6 +18,16 @@ function fakeWan() {
     },
   }
 }
+
+beforeEach(() => {
+  vi.stubEnv('NESY_REMOTE_ACTION_ENV', 'stage')
+  vi.stubEnv('NESY_REMOTE_ACTION_COUNTRY', 'RS')
+  vi.stubEnv('NESY_RS_STAGE_BASE_URL', 'https://stage.example.test')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 describe('offline queue session', () => {
   it('stays inert when the run is uninjected', async () => {

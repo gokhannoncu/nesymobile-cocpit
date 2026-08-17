@@ -52,7 +52,7 @@ import { resolveBackofficeAdminCredentials } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
 import { createPendingDeliveryStatusRefresher } from './pending-delivery-status-refresh.js'
-import { deriveFacts } from './derived-fact-engine.js'
+import { deriveFacts, shipmentCorrelationAliases } from './derived-fact-engine.js'
 import { createControlExecutor } from '@nesy/control-channels/node'
 import type { ControlExecutor } from '@nesy/control-contract'
 import {
@@ -1067,6 +1067,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
 
     const evidenceRuntime = getBridgeFlowEvidenceRuntime()
     const sdkObservations = getSdkObservationStore()
+    sdkObservations.open(item.runId)
     const screenObserver = getScreenReadinessObserver()
     // Seed the observer from the pre-run snapshot so a screen the device settled on
     // BEFORE the first `SCREEN_READY` reached us is still known. From here on the
@@ -1146,7 +1147,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     } catch (error) {
       await this.failClosed(item, applicationId, error, deviceState)
       screenObserver.forget(item.runId)
-      sdkObservations.clear(item.runId)
+      sdkObservations.close(item.runId)
       return
     }
     const runInputs = item.inputs ?? {}
@@ -1226,6 +1227,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         bundle: resolution.pack.bundle,
         facts: observed,
         expectations: runInputExpectations,
+        correlationAliasGroups: [shipmentCorrelationAliases(runInputs)],
       })
       publishDerivedFacts({
         evidenceRuntime,
@@ -1407,6 +1409,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     } catch (error) {
       await this.failClosed(item, applicationId, error, deviceState)
     } finally {
+      refreshPendingDeliveryStatus.dispose()
       await offlineQueue.restore().catch((restoreError) => {
         this.options.logger?.('[BridgeFlowExecutionQueue] offline-queue WAN restore failed', {
           runId: item.runId,
@@ -1420,7 +1423,7 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       screenObserver.forget(item.runId)
       // Same reasoning for SDK observations: process-wide store, so a finished
       // run's session reads must not outlive it.
-      sdkObservations.clear(item.runId)
+      sdkObservations.close(item.runId)
     }
   }
 

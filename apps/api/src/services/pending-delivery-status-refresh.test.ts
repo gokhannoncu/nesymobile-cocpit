@@ -4,6 +4,7 @@ import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import {
   createPendingDeliveryStatusRefresher,
   DELIVERY_STATUS_COMPLETED_FACT,
+  READ_DELIVERY_STATUS_OPERATION,
   REMOTE_EVENTUAL_POLL_MS,
 } from './pending-delivery-status-refresh.js'
 import { SdkObservationStore } from './sdk-observation-store.js'
@@ -121,5 +122,53 @@ describe('pending delivery status refresh', () => {
     refresh()
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(calls).toBe(2)
+  })
+
+  it('does not recreate a terminal run bucket when a refresh resolves late', async () => {
+    let resolveCall!: (result: Awaited<ReturnType<BackofficeAdapter['call']>>) => void
+    const observations = new SdkObservationStore()
+    observations.open('run-1')
+    observations.record('run-1', {
+      factKey: DELIVERY_STATUS_COMPLETED_FACT,
+      value: 'UNKNOWN',
+      observedAtMs: 0,
+      queryRef: READ_DELIVERY_STATUS_OPERATION,
+    })
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        call: () =>
+          new Promise((resolve) => {
+            resolveCall = resolve
+          }),
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+    })
+
+    refresh()
+    refresh.dispose()
+    observations.close('run-1')
+    resolveCall({
+      terminal: { status: 'SUCCEEDED' },
+      normalizedResponse: {
+        delivery: {
+          completed: true,
+          status: 'PROOF_AVAILABLE',
+          correlationId: 'w1',
+        },
+      },
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(observations.current('run-1')).toEqual([])
+    expect(
+      observations.record('run-1', {
+        factKey: DELIVERY_STATUS_COMPLETED_FACT,
+        value: true,
+        observedAtMs: 1,
+        queryRef: READ_DELIVERY_STATUS_OPERATION,
+      }),
+    ).toBe(false)
   })
 })

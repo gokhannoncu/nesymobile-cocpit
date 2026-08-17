@@ -56,12 +56,16 @@ export interface SdkObservation {
 
 export class SdkObservationStore {
   private readonly byRun = new Map<string, Map<string, SdkObservation>>()
+  private readonly closedUntil = new Map<string, number>()
 
   /** Last observation wins: a re-read of the same fact supersedes the older one. */
-  record(runId: string, observation: SdkObservation): void {
+  record(runId: string, observation: SdkObservation): boolean {
+    this.pruneClosedRuns()
+    if ((this.closedUntil.get(runId) ?? 0) > Date.now()) return false
     const bucket = this.byRun.get(runId) ?? new Map<string, SdkObservation>()
     bucket.set(observation.factKey, observation)
     this.byRun.set(runId, bucket)
+    return true
   }
 
   current(runId: string): readonly SdkObservation[] {
@@ -71,6 +75,31 @@ export class SdkObservationStore {
   /** Called when a run reaches a terminal state so a long-lived process does not grow. */
   clear(runId: string): void {
     this.byRun.delete(runId)
+  }
+
+  /** Opens a fresh run id and removes any defensive late-write tombstone. */
+  open(runId: string): void {
+    this.closedUntil.delete(runId)
+    this.byRun.delete(runId)
+  }
+
+  /**
+   * Retires a run and rejects writes that race its terminal cleanup.
+   *
+   * Back-office reads are bounded to 20s. Keeping a one-minute tombstone closes
+   * that race without retaining every historical run id forever.
+   */
+  close(runId: string): void {
+    this.byRun.delete(runId)
+    this.closedUntil.set(runId, Date.now() + 60_000)
+    this.pruneClosedRuns()
+  }
+
+  private pruneClosedRuns(): void {
+    const now = Date.now()
+    for (const [runId, until] of this.closedUntil) {
+      if (until <= now) this.closedUntil.delete(runId)
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildNesyCourierBundle } from '@nesy/nesy-courier-domain-pack'
 
 import { createNesyBackofficeAdapter, redact } from './nesy-backoffice-adapter.js'
@@ -17,6 +17,16 @@ const STEP_CONTEXT = {
   requestId: 'req-1',
   startedAtMs: 0,
 }
+
+beforeAll(() => {
+  vi.stubEnv('NESY_REMOTE_ACTION_ENV', 'stage')
+  vi.stubEnv('NESY_REMOTE_ACTION_COUNTRY', 'RS')
+  vi.stubEnv('NESY_RS_STAGE_BASE_URL', 'https://stage.example.test')
+})
+
+afterAll(() => {
+  vi.unstubAllEnvs()
+})
 
 function envelope(payload: unknown, resultCode = 200) {
   return new Response(JSON.stringify({ resultCode, payload }), { status: 200 })
@@ -191,6 +201,90 @@ describe('back-office endpoint map', () => {
       AUDIT,
     )
     expect(result.terminal.status).toBe('SUCCEEDED')
+  })
+
+  it('does not turn a failed reconciliation HTTP response into cleanup success', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      reconcileDelayMs: 0,
+      fetchImpl: async (url) =>
+        String(url).includes('RejectLeavingPermission')
+          ? envelope('Request(s) are rejected')
+          : new Response('upstream unavailable', { status: 500 }),
+    })
+
+    const result = await adapter.call(
+      {
+        operationRef: 'nesy.backoffice.reject-tour-request',
+        inputs: { approvalRequest: '11-31-20260815-1' },
+        timeoutMs: 5_000,
+      },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('FAILED')
+    expect((result.terminal as { error: string }).error).toMatch(/HTTP 500/)
+  })
+
+  it('does not turn a malformed reconciliation payload into cleanup success', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      reconcileDelayMs: 0,
+      fetchImpl: async (url) =>
+        String(url).includes('RejectLeavingPermission')
+          ? envelope('Request(s) are rejected')
+          : envelope({ unexpected: 'shape' }),
+    })
+
+    const result = await adapter.call(
+      {
+        operationRef: 'nesy.backoffice.reject-tour-request',
+        inputs: { approvalRequest: '11-31-20260815-1' },
+        timeoutMs: 5_000,
+      },
+      AUDIT,
+    )
+
+    expect(result.terminal.status).toBe('FAILED')
+    expect((result.terminal as { error: string }).error).toMatch(/waiting-list collection/)
+  })
+
+  it('bounds a reconciliation fetch that never settles on its own', async () => {
+    const adapter = createNesyBackofficeAdapter({
+      credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
+      reconcileDelayMs: 0,
+      fetchImpl: async (url, init) => {
+        if (String(url).includes('RejectLeavingPermission')) {
+          return envelope('Request(s) are rejected')
+        }
+        return await new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal
+          if (signal?.aborted) {
+            reject(new DOMException('aborted', 'AbortError'))
+            return
+          }
+          signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('aborted', 'AbortError')),
+            { once: true },
+          )
+        })
+      },
+    })
+
+    const startedAt = Date.now()
+    const result = await adapter.call(
+      {
+        operationRef: 'nesy.backoffice.reject-tour-request',
+        inputs: { approvalRequest: '11-31-20260815-1' },
+        timeoutMs: 25,
+      },
+      AUDIT,
+    )
+
+    expect(Date.now() - startedAt).toBeLessThan(500)
+    expect(result.terminal.status).toBe('FAILED')
+    expect((result.terminal as { error: string }).error).toMatch(/aborted/i)
   })
 
   it('approves the tour through the leaving-permission flow, not the mobile approval queue', () => {

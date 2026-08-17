@@ -34,6 +34,12 @@ const CLOSED_PIDS = new Set([
   '20130',
   '32122',
   '52134',
+  '52815',
+  '1571',
+  '3966',
+  '10081',
+  '12764',
+  '25409',
 ])
 
 async function req(method, path, body) {
@@ -96,24 +102,23 @@ async function readSchedule() {
 
 async function searchShipment(waybill) {
   const cached = await req('GET', '/nesy/auth/cached-token?country=RS&environment=stage')
-  const token = cached.body.token
-  if (cached.status === 409 || cached.body.code === 'ADMIN_AUTH_NOT_READY' || !token) {
+  if (cached.status === 409 || cached.body.code === 'ADMIN_AUTH_NOT_READY' || cached.body.present !== true) {
     throw new Error('ADMIN_AUTH_NOT_READY')
   }
-  const details = await req('POST', '/shipments/details', {
-    token,
+  const read = await req('POST', '/nesy/auth/admin-shipment-read', {
     country: 'RS',
     environment: 'stage',
     shipmentId: waybill,
   })
+  const details = read.body.details ?? {}
   const payload =
-    details.body.data ??
-    details.body.result?.payload ??
-    details.body.data?.payload ??
-    details.body.payload
+    details.result?.data ??
+    details.result?.result?.payload ??
+    details.result?.data?.payload ??
+    details.result?.payload
   const row = Array.isArray(payload) ? payload[0] : payload
   return {
-    http: details.status,
+    http: details.http ?? read.status,
     shipmentStatus: row?.shipmentStatus ?? row?.ShipmentStatus ?? null,
     shipmentStatusName: row?.shipmentStatusName ?? row?.ShipmentStatusName ?? null,
     waybillNumber: row?.waybillNumber ?? row?.WaybillNumber ?? row?.shipmentId ?? null,
@@ -278,6 +283,8 @@ const started = await req('POST', '/verdict/runtime/runs', {
   inputs: {
     consignmentNumber: parcel.scanPayload,
     proofLookupId: parcel.shipmentId,
+    barcode: parcel.fullBarcode,
+    shipment: parcel.shipmentId,
     sessionCorrelationId: `g90-10-uninjected-${Date.now()}`,
   },
 })

@@ -26,6 +26,8 @@ export interface BackofficeCallInput {
   operationRef: string
   inputs: Readonly<Record<string, unknown>>
   timeoutMs: number
+  /** Optional run-scoped cancellation, linked to the adapter deadline. */
+  signal?: AbortSignal
   /** Idempotency key, forwarded so the backend can de-duplicate keyed mutations. */
   idempotencyKey?: string
   /**
@@ -138,11 +140,35 @@ function hangUntilAbort(_url: string, init?: RequestInit): Promise<Response> {
   })
 }
 
+function delayUntil(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.reject(abortError())
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(done, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      reject(abortError())
+    }
+    function done() {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+function hasWaitingListShape(payload: unknown): boolean {
+  if (Array.isArray(payload)) return true
+  if (payload === null || typeof payload !== 'object') return false
+  return Object.values(payload as Record<string, unknown>).some(Array.isArray)
+}
+
 async function confirmRejectReleased(input: {
   scheduleId: string
   credentials: BackofficeCredentials
   doFetch: typeof fetch
   delayMs: number
+  signal: AbortSignal
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const read = resolveBackofficeEndpoint('nesy.backoffice.read-tour-approval-request')
   if (read === undefined) {
@@ -151,7 +177,7 @@ async function confirmRejectReleased(input: {
   const url = `${input.credentials.baseUrl.replace(/\/$/, '')}/${read.path}`
   for (let attempt = 0; attempt < 2; attempt += 1) {
     if (attempt > 0 && input.delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, input.delayMs))
+      await delayUntil(input.delayMs, input.signal)
     }
     try {
       const response = await input.doFetch(url, {
@@ -164,12 +190,40 @@ async function confirmRejectReleased(input: {
           'X-Error-Handling': 'inactive',
         },
         body: JSON.stringify(read.body({})),
+        signal: input.signal,
       } as RequestInit)
       const text = await response.text()
-      const envelope = text === '' ? {} : (JSON.parse(text) as Record<string, unknown>)
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: `reject-tour-request reconciliation HTTP ${response.status}`,
+        }
+      }
+      let envelope: Record<string, unknown>
+      try {
+        const parsed = text === '' ? null : JSON.parse(text)
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return { ok: false, error: 'reject-tour-request reconciliation returned a malformed envelope' }
+        }
+        envelope = parsed as Record<string, unknown>
+      } catch {
+        return { ok: false, error: 'reject-tour-request reconciliation returned invalid JSON' }
+      }
       const outerPayload = envelope['payload'] ?? envelope['Payload'] ?? null
       const nested = isEnvelope(outerPayload)
+      const resultCode =
+        numberOrNull(nested?.['resultCode'] ?? nested?.['ResultCode']) ??
+        numberOrNull(envelope['resultCode'] ?? envelope['ResultCode'])
+      if (resultCode !== 200) {
+        return {
+          ok: false,
+          error: `reject-tour-request reconciliation resultCode ${String(resultCode)}`,
+        }
+      }
       const payload = nested === undefined ? outerPayload : (nested['payload'] ?? nested['Payload'] ?? null)
+      if (!hasWaitingListShape(payload)) {
+        return { ok: false, error: 'reject-tour-request reconciliation payload is not a waiting-list collection' }
+      }
       if (!isWaitingForApproval(payload, input.scheduleId)) return { ok: true }
     } catch (error) {
       return {
@@ -249,6 +303,9 @@ export function createNesyBackofficeAdapter(
       const timeoutMs = injection?.timeoutMs ?? input.timeoutMs
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), timeoutMs)
+      const abortFromCaller = () => controller.abort()
+      if (input.signal?.aborted) controller.abort()
+      else input.signal?.addEventListener('abort', abortFromCaller, { once: true })
       if (injection !== null) {
         options.onTimeoutInjected?.({
           kind: 'TRIGGERED',
@@ -334,6 +391,7 @@ export function createNesyBackofficeAdapter(
             credentials,
             doFetch,
             delayMs: options.reconcileDelayMs ?? 1_000,
+            signal: controller.signal,
           })
           if (!confirmed.ok) {
             return record(failed(confirmed.error), resultCode, payload)
@@ -383,6 +441,7 @@ export function createNesyBackofficeAdapter(
         )
       } finally {
         clearTimeout(timer)
+        input.signal?.removeEventListener('abort', abortFromCaller)
       }
 
       function record(

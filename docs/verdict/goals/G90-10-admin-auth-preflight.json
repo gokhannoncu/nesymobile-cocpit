@@ -5,13 +5,13 @@
   "ready": false,
   "code": "ADMIN_AUTH_NOT_READY",
   "runtime": {
-    "apiPid": "52134",
+    "apiPid": "25409",
     "apiCommand": "node dist/server.js",
     "health": 200
   },
   "steps": {
     "cacheBefore": {
-      "pid": 52134,
+      "pid": 25409,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -29,7 +29,7 @@
       "fromCache": false
     },
     "cacheAfterLogin": {
-      "pid": 52134,
+      "pid": 25409,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -46,7 +46,7 @@
       "tokenFingerprint": null
     },
     "cacheAfterCachedRead": {
-      "pid": 52134,
+      "pid": 25409,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -65,7 +65,7 @@
       "harmlessRead": null
     },
     "cacheAfterPreflight": {
-      "pid": 52134,
+      "pid": 25409,
       "country": "RS",
       "environment": "stage",
       "present": false,
