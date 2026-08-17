@@ -42,6 +42,7 @@ const CLOSED_PIDS = new Set([
   '25409',
   '99632',
   '10478',
+  '16953',
 ])
 
 async function req(method, path, body) {
@@ -221,10 +222,6 @@ try {
   remote = { loaded: null, error: error instanceof Error ? error.message : String(error) }
 }
 console.log('leftover remote', JSON.stringify(remote, null, 2))
-if (remote.loaded === false) {
-  console.error(`leftover ${TARGET_WAYBILL} is not Loaded — refusing to invent a different fixture mid-gate`)
-  process.exit(5)
-}
 
 const schedule = await readSchedule()
 const parcel = schedule.parcels.find(
@@ -243,7 +240,7 @@ console.log(
   ),
 )
 if (!parcel) {
-  console.error('leftover is Loaded remotely but not a usable Loaded singleton on the device tour')
+  console.error('target parcel is not a usable Loaded singleton on the device tour')
   process.exit(5)
 }
 

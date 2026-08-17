@@ -251,6 +251,55 @@ describe('OracleEvaluationWorker', () => {
     expect(elapsedMs).toBeLessThan(deadlineMs)
   })
 
+  it('run_4a9a7ff4: in-flight proof asked before deadline satisfies on the timeout flush', async () => {
+    const runtime = new BridgeFlowEvidenceRuntime()
+    const { persistence, revisions } = persistenceFixture()
+    const deadlineMs = 250
+    const startedAtMs = Date.now()
+    const askedAtMs = startedAtMs + 100
+    let flushed = 0
+    const worker = new OracleEvaluationWorker({
+      runtime,
+      persistence,
+      flushFacts: (work) => {
+        flushed += 1
+        runtime.publish({
+          runId: work.runId,
+          fact: {
+            ...evidence('ORDERED_REQUIRED'),
+            factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+            observedAtMs: askedAtMs,
+          },
+          revision: 23,
+          lane: 'ORDERED_REQUIRED',
+          correlationStatus: 'CORRELATED',
+          trust: 'RESOLVER_ACCEPTED',
+        })
+      },
+    })
+
+    const result = await worker.runFinalOracle({
+      ...scope,
+      policy: {
+        requirements: [{
+          factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+          obligation: 'REQUIRED',
+          timing: 'EVENTUAL',
+          deadlineMs,
+          onTimeout: 'INCONCLUSIVE',
+        }],
+      },
+      startedAtMs,
+    })
+
+    expect(result.status).toBe('SATISFIED')
+    expect(result.evaluation.productVerdict).toBe('PASS_ONLINE')
+    expect(flushed).toBe(1)
+    expect(revisions.at(-1)?.lastEvidenceRevision).toBe(23)
+    expect(Date.now() - startedAtMs).toBeGreaterThanOrEqual(deadlineMs)
+    expect(Date.now() - startedAtMs).toBeLessThan(deadlineMs + 2_000)
+  })
+
   it('keeps EVENTUAL INCONCLUSIVE when every refresh still sees empty proof', async () => {
     const runtime = new BridgeFlowEvidenceRuntime()
     const { persistence, revisions } = persistenceFixture()

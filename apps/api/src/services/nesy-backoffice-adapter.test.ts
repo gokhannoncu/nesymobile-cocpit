@@ -136,21 +136,23 @@ describe('back-office endpoint map', () => {
     ])
   })
 
-  it('refuses reject-tour-request without a schedule id', async () => {
+  it.each([
+    'nesy.backoffice.approve-tour-request',
+    'nesy.backoffice.read-tour-approval-request',
+    'nesy.backoffice.read-tour-approval-status',
+    'nesy.backoffice.reject-tour-request',
+  ] as const)('refuses %s without a pinned schedule id', async (operationRef) => {
     let fetchCalls = 0
     const adapter = createNesyBackofficeAdapter({
       credentials: () => ({ baseUrl: 'https://nesy.example', token: 't' }),
       fetchImpl: async () => {
         fetchCalls += 1
-        return envelope('Request(s) are rejected')
+        return envelope([{ scheduleId: '11-1-20260716-1', scheduleStatus: SCHEDULE_STATUS.approved }])
       },
     })
-    const result = await adapter.call(
-      { operationRef: 'nesy.backoffice.reject-tour-request', inputs: {}, timeoutMs: 5_000 },
-      AUDIT,
-    )
+    const result = await adapter.call({ operationRef, inputs: {}, timeoutMs: 5_000 }, AUDIT)
     expect(result.terminal.status).toBe('FAILED')
-    expect((result.terminal as { error: string }).error).toMatch(/approvalRequest/)
+    expect((result.terminal as { error: string }).error).toMatch(/approvalRequest \(scheduleId\)/)
     expect(fetchCalls).toBe(0)
   })
 

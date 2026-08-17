@@ -123,6 +123,22 @@ function failed(error: string): BackofficeCallResult {
   return { terminal: { status: 'FAILED', error }, normalizedResponse: {} }
 }
 
+const TOUR_APPROVAL_OPERATIONS = new Set([
+  'nesy.backoffice.approve-tour-request',
+  'nesy.backoffice.read-tour-approval-request',
+  'nesy.backoffice.read-tour-approval-status',
+  'nesy.backoffice.reject-tour-request',
+])
+
+function isTourApprovalOperation(operationRef: string): boolean {
+  return TOUR_APPROVAL_OPERATIONS.has(operationRef)
+}
+
+function pinnedApprovalScheduleId(inputs: Record<string, unknown>): string | null {
+  const scheduleId = typeof inputs['approvalRequest'] === 'string' ? inputs['approvalRequest'].trim() : ''
+  return scheduleId === '' ? null : scheduleId
+}
+
 function abortError(): Error {
   const error = new Error('The operation was aborted')
   error.name = 'AbortError'
@@ -252,11 +268,12 @@ export function createNesyBackofficeAdapter(
       if (endpoint === undefined) {
         return failed(`no back-office endpoint is mapped for operation "${input.operationRef}"`)
       }
-      if (input.operationRef === 'nesy.backoffice.reject-tour-request') {
-        const scheduleId =
-          typeof input.inputs['approvalRequest'] === 'string' ? input.inputs['approvalRequest'].trim() : ''
-        if (scheduleId === '') {
-          return failed('reject-tour-request requires approvalRequest (scheduleId); refusing empty teardown')
+      if (isTourApprovalOperation(input.operationRef)) {
+        const scheduleId = pinnedApprovalScheduleId(input.inputs)
+        if (scheduleId === null) {
+          return failed(
+            `${input.operationRef} requires approvalRequest (scheduleId); refusing unbound tour call`,
+          )
         }
       }
 

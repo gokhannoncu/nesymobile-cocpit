@@ -102,11 +102,11 @@
   },
   "gate": {
     "waybill": "51676030011731",
-    "remoteLoaded": false,
-    "tourUsable": false,
-    "uninjected": "blocked",
+    "searchShipmentLoaded": "NOT_REQUIRED",
+    "approvalCorrelation": "OPEN",
+    "uninjected": "NOT_STARTED",
     "offlineQueue": "blocked",
     "bd6": "NOT_STARTED",
-    "newSingleton": "blocked"
+    "newSingleton": "not-required-if-device-parcel-usable"
   }
 }

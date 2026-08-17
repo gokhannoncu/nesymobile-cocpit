@@ -54,8 +54,19 @@ export interface OracleWorkerOptions {
    * retries with `evidence_refs: []` and `lastEvidenceRevision: 0`.
    *
    * Called before every read so a screen that appears mid-gate is still seen.
+   * Keep this synchronous: the 250ms loop must not serialize on HTTP.
    */
   refreshFacts?: (scope: EvidenceScope) => void
+  /**
+   * Drain host-held work that `refreshFacts` only *started*.
+   *
+   * Final Oracle EVENTUAL used to call `refreshFacts` on the timeout path
+   * and immediately evaluate. GetShipmentDeliveryProof is async; the
+   * in-flight ask was still empty, so a proof that existed before the
+   * deadline (run_4a9a7ff4, eventDate 4s early) still timed out. This
+   * hook waits for that ask. It does not move `deadlineMs`.
+   */
+  flushFacts?: (scope: EvidenceScope) => void | Promise<void>
 }
 
 export interface ContinueGateWork extends EvidenceScope {
@@ -101,12 +112,14 @@ export class OracleEvaluationWorker {
   private readonly persistence: OracleRevisionPersistencePort
   private readonly clock: () => number
   private readonly refreshFacts: (scope: EvidenceScope) => void
+  private readonly flushFacts: ((scope: EvidenceScope) => void | Promise<void>) | undefined
 
   constructor(options: OracleWorkerOptions) {
     this.runtime = options.runtime
     this.persistence = options.persistence
     this.clock = options.clock ?? Date.now
     this.refreshFacts = options.refreshFacts ?? NO_REFRESH
+    this.flushFacts = options.flushFacts
   }
 
   async runContinueGate(work: ContinueGateWork): Promise<ContinueGateWorkerResult> {
@@ -452,7 +465,12 @@ export class OracleEvaluationWorker {
     if (work.signal?.aborted) return { status: 'CANCELLED' }
     const blocked = this.runtime.blockedState(work)
     if (blocked !== undefined) return blockedResult(blocked)
-    this.refreshFacts(work)
+    if (this.flushFacts !== undefined) await this.flushFacts(work)
+    else this.refreshFacts(work)
+    const afterFlushRevision = Math.max(
+      lastEvidenceRevision,
+      this.runtime.latestRevision(work, 'ORDERED_REQUIRED'),
+    )
     const evaluation = evaluateFinalOracle({
       policy: work.policy,
       facts: this.runtime.currentFacts(
@@ -470,16 +488,15 @@ export class OracleEvaluationWorker {
       work,
       'FINAL_ORACLE',
       revision,
-      lastEvidenceRevision,
+      afterFlushRevision,
       evaluation,
     )
-    const status =
-      evaluation.outcome === 'VIOLATED'
-        ? 'VIOLATED'
-        : evaluation.outcome === 'NOT_APPLICABLE'
-          ? 'NOT_APPLICABLE'
-          : 'INCONCLUSIVE'
-    return { status, evaluation }
+    if (evaluation.outcome === 'SATISFIED') return { status: 'SATISFIED', evaluation }
+    if (evaluation.outcome === 'VIOLATED') return { status: 'VIOLATED', evaluation }
+    if (evaluation.outcome === 'NOT_APPLICABLE') {
+      return { status: 'NOT_APPLICABLE', evaluation }
+    }
+    return { status: 'INCONCLUSIVE', evaluation }
   }
 
   private async persist(

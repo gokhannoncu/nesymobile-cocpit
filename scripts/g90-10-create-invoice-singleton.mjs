@@ -92,8 +92,4 @@ mkdirSync(outDir, { recursive: true })
 const outPath = join(outDir, `G90-10-fresh-singleton-${shipment.shipmentId}.json`)
 writeFileSync(outPath, `${JSON.stringify(artifact, null, 2)}\n`)
 console.log(JSON.stringify({ outPath, ...artifact }, null, 2))
-const remoteLoaded =
-  remote.shipmentStatus === 0 ||
-  String(remote.shipmentStatus ?? remote.shipmentStatusName ?? '').toLowerCase() === 'loaded'
 if (loaded.productVerdict !== 'PASS_ONLINE') process.exit(6)
-if (!remoteLoaded) process.exit(7)

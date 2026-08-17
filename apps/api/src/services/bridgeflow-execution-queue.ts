@@ -1287,6 +1287,13 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       refreshFacts: (scope) => {
         refreshOccurrenceEvidence(scope.occurrenceId, scope.iterationKey)
       },
+      // Timeout path only. The 250ms loop keeps `refreshFacts` sync so it
+      // does not serialize on GetShipmentDeliveryProof. `flush` waits for
+      // the ask that was already in flight inside the 120s window.
+      flushFacts: async (scope) => {
+        await refreshPendingDeliveryStatus.flush()
+        refreshOccurrenceEvidence(scope.occurrenceId, scope.iterationKey)
+      },
     })
 
     telemetrySampler?.start()

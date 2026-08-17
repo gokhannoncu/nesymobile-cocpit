@@ -295,6 +295,33 @@ const inputs = {
   sessionCorrelationId:
     opts.inputs.sessionCorrelationId ?? `runner-${Date.now()}-${process.pid}`,
 }
+if (opts.workflowRef === 'nesy.workflow.tour-approval-lifecycle') {
+  if (!inputs.routeCode) inputs.routeCode = process.env.VERDICT_ROUTE_CODE ?? '31'
+  if (typeof inputs.scheduleId !== 'string' || inputs.scheduleId.trim() === '') {
+    const web = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
+    let fromDevice = ''
+    try {
+      const res = await fetch(
+        `${web}/api/adb/schedule?serial=${encodeURIComponent(opts.device)}`,
+      )
+      const body = res.ok ? await res.json() : {}
+      fromDevice = typeof body?.schedule?.scheduleId === 'string' ? body.schedule.scheduleId.trim() : ''
+    } catch {
+      fromDevice = ''
+    }
+    if (fromDevice === '') {
+      console.error(
+        'HATA: tour-approval-lifecycle scheduleId pinlenemedi. Cihazda Room scheduleId yok; --input scheduleId=… ver.',
+      )
+      process.exit(64)
+    }
+    inputs.scheduleId = fromDevice
+    console.log(`scheduleId pinlendi (device-room): ${inputs.scheduleId}`)
+  } else {
+    inputs.scheduleId = inputs.scheduleId.trim()
+    console.log(`scheduleId pinlendi (input): ${inputs.scheduleId}`)
+  }
+}
 const started = await req('POST', '/verdict/runtime/runs', {
   workflowRef: opts.workflowRef,
   deviceId: opts.device,

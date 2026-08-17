@@ -24,7 +24,7 @@ const WEB = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
 const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
 const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
 const ROUTE = process.env.VERDICT_ROUTE_CODE ?? '31'
-const CLOSED_API_PIDS = new Set(['55798', '21508'])
+const CLOSED_API_PIDS = new Set(['55798', '21508', '16953'])
 const PRESERVED_API_PID = process.env.VERDICT_PRESERVED_API_PID ?? ''
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
 
@@ -261,6 +261,19 @@ async function pollRun(runId) {
 export async function runWorkflow(workflowRef, profileKey, inputs) {
   const pack = await pinPack()
   const compiled = await compileWorkflow(pack, workflowRef)
+  const pinned = { ...inputs }
+  if (workflowRef === 'nesy.workflow.tour-approval-lifecycle') {
+    if (typeof pinned.scheduleId !== 'string' || pinned.scheduleId.trim() === '') {
+      const schedule = await readSchedule()
+      if (!schedule.scheduleId) {
+        throw new Error('tour-approval-lifecycle needs a pinned scheduleId from device Room')
+      }
+      pinned.scheduleId = schedule.scheduleId
+    } else {
+      pinned.scheduleId = pinned.scheduleId.trim()
+    }
+    if (!pinned.routeCode) pinned.routeCode = ROUTE
+  }
   const started = await req('POST', '/verdict/runtime/runs', {
     workflowRef,
     deviceId: DEVICE,
@@ -272,8 +285,8 @@ export async function runWorkflow(workflowRef, profileKey, inputs) {
     domainPackDigest: pack.bundleDigest,
     profileKey,
     inputs: {
-      ...inputs,
-      sessionCorrelationId: inputs.sessionCorrelationId ?? `g90-10-fixture-${workflowRef}-${Date.now()}`,
+      ...pinned,
+      sessionCorrelationId: pinned.sessionCorrelationId ?? `g90-10-fixture-${workflowRef}-${Date.now()}`,
     },
   })
   const runId = started.body.run?.runId ?? started.body.runId
