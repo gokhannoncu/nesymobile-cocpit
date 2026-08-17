@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loginDashboardDecision } from './g90-10-admin-auth-freeze.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
@@ -24,7 +25,7 @@ const WEB = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
 const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
 const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
 const ROUTE = process.env.VERDICT_ROUTE_CODE ?? '31'
-const CLOSED_API_PIDS = new Set(['55798', '21508', '16953'])
+const CLOSED_API_PIDS = new Set(['55798', '21508', '16953', '8433', '13440', '52684', '10060', '63409', '7371'])
 const PRESERVED_API_PID = process.env.VERDICT_PRESERVED_API_PID ?? ''
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
 
@@ -329,15 +330,12 @@ export async function createUnloadableShipment() {
 }
 
 async function nesyTokenAndBase() {
-  const env = loadApiEnv()
-  const login = await req('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
-  const token = login.body.result?.payload?.token
-  if (!token) throw new Error('no admin token from /nesy/auth/login')
-  // Same host the adapter uses. NESY_RS_STAGE_BASE_URL is a different name that
-  // does not resolve on this lab network.
-  const base =
-    env.NESY_BACKOFFICE_BASE_URL || 'https://nesy-staging-mobile-api.cityexpress.rs'
-  return { token, base: base.replace(/\/$/, '') }
+  const cache = await req('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
+  const decision = loginDashboardDecision(cache.body)
+  if (cache.body.present !== true) {
+    throw new Error(`${decision.code}: ${decision.detail}`)
+  }
+  throw new Error('refusing to read bearer from HTTP login; token is not in the response')
 }
 
 async function postNesy(base, token, path, body) {

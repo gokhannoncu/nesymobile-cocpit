@@ -43,6 +43,12 @@ const CLOSED_PIDS = new Set([
   '99632',
   '10478',
   '16953',
+  '8433',
+  '13440',
+  '52684',
+  '10060',
+  '63409',
+  '7371',
 ])
 
 async function req(method, path, body) {

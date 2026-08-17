@@ -1,0 +1,26 @@
+{
+  "kind": "g90-10-admin-auth-freeze",
+  "verdict": "NO_GO",
+  "notBd6Proof": true,
+  "commit": "1caf40f",
+  "eventualContract": "LOCKED",
+  "deadlineMs": 120000,
+  "lastAuthSignal": {
+    "pid": 7371,
+    "resultCode": 400,
+    "http": 502,
+    "independentCaptchaClear": false,
+    "note": "Operator GO. One LoginDashboard on fresh PID 7371. resultCode=400. Do not fire a second login on 7371."
+  },
+  "adminAuthReady": false,
+  "singleton": {
+    "waybill": "61525961555490",
+    "scan": "6880051000294913",
+    "local": "Loaded itemStatus=4",
+    "consumed": false
+  },
+  "uninjected": "BLOCKED_AUTH_400",
+  "bd6": "CLOSED",
+  "closedPids": ["10060", "63409", "7371"],
+  "writtenAt": "2026-08-17T13:51:30.000Z"
+}

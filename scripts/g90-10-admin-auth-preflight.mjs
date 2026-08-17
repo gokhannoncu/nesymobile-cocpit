@@ -3,8 +3,14 @@
  * Prove LoginDashboard → SAME PID cache → verify adapter readback.
  *
  * Does not create a shipment. Does not inject OFFLINE_QUEUE.
- * LoginDashboard is called at most once (POST /nesy/auth/login).
- * Probe-equivalent cached-token read must not increment that count.
+ * LoginDashboard is called at most once (POST /nesy/auth/login), and only
+ * after an external captcha/400-clear signal:
+ *
+ *   VERDICT_ADMIN_AUTH_GO=1
+ *   VERDICT_ADMIN_AUTH_GO_REASON='…'
+ *
+ * Peek / cached-token / admin-preflight never increment LoginDashboardCalls.
+ * An empty cache after resultCode=400 is not GO.
  *
  *   node scripts/g90-10-admin-auth-preflight.mjs
  */
@@ -12,10 +18,15 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  AUTH_FREEZE_CODE,
+  loginDashboardDecision,
+  writeAuthFreezeArtifact,
+} from './g90-10-admin-auth-freeze.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const API = process.env.VERDICT_API ?? 'http://127.0.0.1:4001/api'
-const HEALTH = (process.env.VERDICT_API_HEALTH ?? 'http://127.0.0.1:4001/health')
+const HEALTH = process.env.VERDICT_API_HEALTH ?? 'http://127.0.0.1:4001/health'
 
 function sh(cmd, args) {
   return String(spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }).stdout ?? '').trim()
@@ -57,10 +68,60 @@ const healthRes = await fetch(HEALTH, { signal: AbortSignal.timeout(5_000) }).ca
 const healthOk = healthRes instanceof Response && healthRes.status === 200
 
 const before = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
-const login = await cockpit('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
+const decision = loginDashboardDecision(before.body)
+const freeze = writeAuthFreezeArtifact({
+  runtime: {
+    apiPid,
+    apiCommand,
+    cachePresent: before.body.present === true,
+    loginDashboardCalls: before.body.loginDashboardCalls ?? 0,
+    tokenFingerprint: before.body.tokenFingerprint ?? null,
+  },
+  loginDecision: decision,
+})
+
+if (!decision.allowed && before.body.present !== true) {
+  const artifact = {
+    kind: 'g90-10-admin-auth-preflight',
+    notBd6Proof: true,
+    noShipmentCreated: true,
+    ready: false,
+    code: decision.code,
+    detail: decision.detail,
+    freezePath: freeze.outPath,
+    runtime: { apiPid, apiCommand, health: healthOk ? 200 : String(healthRes) },
+    steps: {
+      cacheBefore: stripToken(before.body),
+      login: { skipped: true, reason: decision.code },
+    },
+  }
+  const outDir = join(REPO, 'docs/verdict/goals')
+  mkdirSync(outDir, { recursive: true })
+  const outPath = join(outDir, 'G90-10-admin-auth-preflight.json')
+  writeFileSync(outPath, `${JSON.stringify(artifact, null, 2)}\n`)
+  console.log(
+    JSON.stringify(
+      {
+        ready: false,
+        code: decision.code,
+        outPath,
+        freezePath: freeze.outPath,
+        apiPid,
+        loginDashboardCalls: before.body.loginDashboardCalls ?? 0,
+      },
+      null,
+      2,
+    ),
+  )
+  process.exit(decision.code === AUTH_FREEZE_CODE ? 3 : 1)
+}
+
+const login = decision.allowed
+  ? await cockpit('POST', '/nesy/auth/login', { country: 'RS', environment: 'stage' })
+  : { status: 200, body: { result: { resultCode: 200, tokenPresent: true, fromCache: true } } }
 const loginResult = login.body.result ?? {}
 const loginResultCode = loginResult.resultCode ?? loginResult.ResultCode ?? null
-const extracted = loginResult.tokenPresent === true
+const extracted = before.body.present === true || loginResult.tokenPresent === true
 const afterLogin = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
 const cachedToken = await cockpit('GET', '/nesy/auth/cached-token?country=RS&environment=stage')
 const afterCachedRead = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
@@ -73,6 +134,9 @@ const loginCalls = [
   afterCachedRead.body.loginDashboardCalls,
   afterPreflight.body.loginDashboardCalls,
 ]
+const expectedCallsAfterLogin = before.body.present
+  ? before.body.loginDashboardCalls
+  : (before.body.loginDashboardCalls ?? 0) + 1
 const ready =
   healthOk &&
   login.status === 200 &&
@@ -91,7 +155,7 @@ const ready =
   preflight.body.harmlessRead?.http === 200 &&
   preflight.body.harmlessRead?.resultCode === 200 &&
   afterPreflight.body.loginDashboardCalls === afterLogin.body.loginDashboardCalls &&
-  afterLogin.body.loginDashboardCalls === (before.body.present ? before.body.loginDashboardCalls : 1)
+  afterLogin.body.loginDashboardCalls === expectedCallsAfterLogin
 
 const artifact = {
   kind: 'g90-10-admin-auth-preflight',
@@ -106,12 +170,14 @@ const artifact = {
   },
   steps: {
     cacheBefore: stripToken(before.body),
-    login: {
-      http: login.status,
-      resultCode: loginResultCode,
-      extracted,
-      fromCache: Boolean(before.body.present),
-    },
+    login: decision.allowed
+      ? {
+          http: login.status,
+          resultCode: loginResultCode,
+          extracted,
+          fromCache: Boolean(before.body.present),
+        }
+      : { skipped: true, reason: decision.code },
     cacheAfterLogin: stripToken(afterLogin.body),
     cachedTokenRead: {
       http: cachedToken.status,
@@ -135,5 +201,11 @@ const outDir = join(REPO, 'docs/verdict/goals')
 mkdirSync(outDir, { recursive: true })
 const outPath = join(outDir, 'G90-10-admin-auth-preflight.json')
 writeFileSync(outPath, `${JSON.stringify(artifact, null, 2)}\n`)
-console.log(JSON.stringify({ ready, code: artifact.code, outPath, apiPid, fingerprint: afterLogin.body.tokenFingerprint ?? null }, null, 2))
+console.log(
+  JSON.stringify(
+    { ready, code: artifact.code, outPath, apiPid, fingerprint: afterLogin.body.tokenFingerprint ?? null },
+    null,
+    2,
+  ),
+)
 process.exit(ready ? 0 : 1)

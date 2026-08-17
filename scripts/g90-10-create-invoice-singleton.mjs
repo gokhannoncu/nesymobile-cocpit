@@ -7,6 +7,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { AUTH_FREEZE_CODE, loginDashboardDecision, writeAuthFreezeArtifact } from './g90-10-admin-auth-freeze.mjs'
 import { assertPreservedPid, createUnloadableShipment, runWorkflow } from './g90-10-host-b-fixture.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -59,8 +60,13 @@ async function searchShipment(waybill) {
 const identity = assertPreservedPid()
 const cache = await req('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
 if (!cache.body.present) {
-  console.error('ADMIN_AUTH_NOT_READY')
-  process.exit(1)
+  const decision = loginDashboardDecision(cache.body)
+  writeAuthFreezeArtifact({
+    runtime: { apiPid: identity.apiPid, loginDashboardCalls: cache.body.loginDashboardCalls ?? 0 },
+    loginDecision: decision,
+  })
+  console.error(decision.code === AUTH_FREEZE_CODE ? AUTH_FREEZE_CODE : 'ADMIN_AUTH_NOT_READY')
+  process.exit(decision.code === AUTH_FREEZE_CODE ? 3 : 1)
 }
 
 const shipment = await createUnloadableShipment()

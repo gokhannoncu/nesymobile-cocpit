@@ -1,0 +1,49 @@
+{
+  "kind": "g90-10-third-invoice-singleton",
+  "notBd6Proof": true,
+  "createdOnApiPid": "10060",
+  "head": "1caf40f",
+  "shipment": {
+    "dbId": "98daa82a-bfd7-4de3-8898-02e8131f562b",
+    "shipmentId": "61525961555490",
+    "scanValue": "6880051000294913",
+    "fullBarcode": "N6880170009900000103306880110006300110001000161525961555490WL41401",
+    "unloadStatus": 200
+  },
+  "loadToVehicle": {
+    "workflowAttempts": [
+      {
+        "runId": "run_bb5f92d2-844c-4b60-a8a7-f2eb3546f423",
+        "productVerdict": "NOT_EVALUATED",
+        "reason": "BridgeHost ECONNREFUSED 127.0.0.1:21876 (adb daemon/forward down)"
+      },
+      {
+        "runId": "run_2d4a40a3-916a-4a6c-afa5-3e23dfd9c0b5",
+        "productVerdict": "FAIL_PRODUCT",
+        "reason": "tap-time-slot SKIPPED; LOCAL.PARCEL_IN_SCHEDULE VIOLATED"
+      }
+    ],
+    "productPath": {
+      "method": "adb tap barcode OK + btnSave after leftover dialog",
+      "local": {
+        "scheduleId": "11-31-20260817-1",
+        "tourStatus": 2,
+        "shipmentStatus": 0,
+        "itemStatus": 4
+      },
+      "remoteAfterLoad": {
+        "shipmentStatus": "Loaded",
+        "lastEvent": "CourierLeftFromBranch"
+      }
+    }
+  },
+  "uninjected": {
+    "runId": "run_77b36fa3-7424-47bd-8a85-b90484d4baa6",
+    "productVerdict": "INCONCLUSIVE",
+    "reason": "tap-scan-confirm continueGate TIMED_OUT on APP.DELIVERY_PARCEL_SCANNED; UI still showed item size 1; parcel not consumed",
+    "APP_DELIVERY_SUBMITTED": null
+  },
+  "consumed": false,
+  "doNotReuse": false,
+  "bd6": "closed"
+}

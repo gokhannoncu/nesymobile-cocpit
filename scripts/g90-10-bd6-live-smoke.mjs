@@ -36,7 +36,7 @@ const WORKFLOW = 'nesy.workflow.complete-delivery'
 const PROFILE = 'nesy.launch.reuse-session'
 const REQUIRED_PACK = '1.34.0'
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 360)
-const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043', '25062'])
+const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043', '25062', '8433', '13440', '52684', '10060', '63409', '7371'])
 const CLOSED_COMMITS = new Set(['3770d2a', '291553b', '94a9acf', '413485a', 'eb48304'])
 const REMOTE_SUCCESS_FACTS = new Set([
   'REMOTE.DELIVERY_STATUS_COMPLETED',
@@ -723,6 +723,9 @@ async function classifierIndependence(row) {
 
 const processSnap = processSnapshot()
 const issues = []
+issues.push(
+  'BD.6 is CLOSED until uninjected complete-delivery is PASS_ONLINE with REMOTE.DELIVERY_CONFIRMED SATISFIED and observedClass=null',
+)
 if (!processSnap.apiCommand || !/dist\/server\.js/.test(processSnap.apiCommand)) {
   issues.push(`:4001 is not node dist/server.js (${processSnap.apiCommand ?? 'none'})`)
 }
