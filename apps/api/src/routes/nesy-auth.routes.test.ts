@@ -13,8 +13,11 @@ describe('Nesy admin credential routes', () => {
   beforeAll(async () => {
     process.env.NODE_ENV = 'test'
     vi.stubEnv('NESY_RS_STAGE_BASE_URL', 'https://stage.example.test')
+    vi.stubEnv('NESY_RS_PROD_BASE_URL', 'https://prod.example.test')
     vi.stubEnv('NESY_RS_STAGE_USERNAME', 'test-user')
     vi.stubEnv('NESY_RS_STAGE_PASSWORD', 'test-password')
+    vi.stubEnv('NESY_REMOTE_ACTION_ENV', 'stage')
+    vi.stubEnv('NESY_REMOTE_ACTION_COUNTRY', 'RS')
     const built = await buildApp(loadEnv())
     app = built.app
     await app.ready()
@@ -98,5 +101,28 @@ describe('Nesy admin credential routes', () => {
       proof: { http: 200 },
       details: { http: 200 },
     })
+  })
+
+  it('refuses fixture create when the cache is empty without logging in', async () => {
+    resetDashboardAdminTokenStateForTests()
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/nesy/auth/admin-fixture-create',
+      payload: { country: 'RS', environment: 'stage' },
+    })
+    expect(response.statusCode).toBe(409)
+    expect(response.json().code).toBe('ADMIN_AUTH_NOT_READY')
+    expect(response.body).not.toContain('admin-bearer-secret')
+  })
+
+  it('refuses fixture create against prod', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/nesy/auth/admin-fixture-create',
+      payload: { country: 'RS', environment: 'prod' },
+    })
+    expect(response.statusCode).toBe(400)
+    expect(response.json().code).toBe('TARGET_NOT_STAGE')
+    expect(response.body).not.toContain('admin-bearer-secret')
   })
 })

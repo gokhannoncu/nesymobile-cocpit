@@ -11,6 +11,8 @@ import {
   type NesyEnvironment,
 } from '../nesy-env.js'
 import { nesyCountrySchema, nesyEnvironmentSchema, nesyLoginBodySchema, nesyLoginResponseSchema } from '../schemas/nesy.schema.js'
+import { resolveCachedStageAdminCredentials, TARGET_NOT_STAGE } from '../services/admin-credential-provider.js'
+import { createUnloadableInvoiceShipment } from '../services/admin-fixture-create.js'
 import {
   ADMIN_AUTH_NOT_READY,
   fingerprintAdminToken,
@@ -78,6 +80,37 @@ function isLoopbackAddress(address: string): boolean {
   return normalized === '127.0.0.1' ||
     normalized === '::1' ||
     normalized === '::ffff:127.0.0.1'
+}
+
+function listenPort(app: FastifyInstance): number {
+  const address = app.server.address()
+  if (address && typeof address === 'object' && typeof address.port === 'number') return address.port
+  return Number(process.env.PORT ?? 4001)
+}
+
+function createLocalBffInvoker(
+  port: number,
+  token: string,
+  country: string,
+  environment: string,
+) {
+  return async (method: 'GET' | 'POST', path: string, body: Record<string, unknown> = {}) => {
+    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+      method,
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      ...(method === 'GET'
+        ? {}
+        : { body: JSON.stringify({ token, country, environment, ...body }) }),
+    })
+    const text = await response.text()
+    let json: Record<string, unknown> = {}
+    try {
+      json = text === '' ? {} : (JSON.parse(text) as Record<string, unknown>)
+    } catch {
+      json = { raw: text.slice(0, 400) }
+    }
+    return { status: response.status, body: json }
+  }
 }
 
 async function readAdminJson(input: {
@@ -281,6 +314,75 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
       } catch (error) {
         return reply.status(502).send({
           message: error instanceof Error ? error.message : 'Admin shipment read failed.',
+        })
+      }
+    },
+  )
+
+  /**
+   * Loopback fixture create. Uses the process cache only; the bearer never
+   * appears in this response. Stage target only — same fail-closed origin
+   * rule as fault injection.
+   */
+  typed.post(
+    '/admin-fixture-create',
+    {
+      schema: {
+        body: z.object({
+          country: nesyCountrySchema.default('RS'),
+          environment: nesyEnvironmentSchema.default('stage'),
+          customerId: z.string().trim().min(1).default('10330'),
+        }),
+        response: {
+          200: z.object({
+            cache: cachePeekSchema,
+            shipment: z.object({
+              dbId: z.string(),
+              shipmentId: z.string(),
+              scanValue: z.string(),
+              fullBarcode: z.string(),
+              unloadStatus: z.unknown(),
+            }),
+          }),
+          400: z.object({ code: z.string(), message: z.string(), cache: cachePeekSchema }),
+          403: z.object({ message: z.string() }),
+          409: notReadySchema,
+          502: z.object({ message: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!isLoopbackAddress(request.ip)) {
+        return reply.status(403).send({ message: 'admin fixture create is available only from loopback.' })
+      }
+      const { country, environment, customerId } = request.body
+      const credentials = resolveCachedStageAdminCredentials(country, environment)
+      if (!credentials.ok && credentials.code === ADMIN_AUTH_NOT_READY) {
+        return reply.status(409).send({
+          code: ADMIN_AUTH_NOT_READY,
+          message: credentials.message,
+          cache: credentials.cache,
+        })
+      }
+      if (!credentials.ok) {
+        return reply.status(400).send({
+          code: TARGET_NOT_STAGE,
+          message: credentials.message,
+          cache: credentials.cache,
+        })
+      }
+      try {
+        const shipment = await createUnloadableInvoiceShipment({
+          customerId,
+          invokeBff: createLocalBffInvoker(listenPort(app), credentials.token, country, environment),
+        })
+        return {
+          cache: peekDashboardAdminCache(country, environment),
+          shipment,
+        }
+      } catch (error) {
+        return reply.status(502).send({
+          message: error instanceof Error ? error.message : 'Admin fixture create failed.',
         })
       }
     },
