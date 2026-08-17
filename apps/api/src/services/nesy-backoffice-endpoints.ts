@@ -16,6 +16,8 @@
  * visible here rather than discovered during an incident.
  */
 
+import { parseProofEventDate } from './eventual-observation-time.js'
+
 export type EndpointConfidence = 'SOURCE_VERIFIED' | 'INFERRED'
 
 export interface BackofficeEndpoint {
@@ -313,6 +315,10 @@ export const NESY_BACKOFFICE_ENDPOINTS: Readonly<Record<string, BackofficeEndpoi
           // the input would correlate the observation with itself.
           correlationId: matchedId || null,
           shipmentId: matchedId || shipmentId,
+          // Authoritative payload time. EVENTUAL eligibility uses this
+          // when trusted; HTTP request start is never a substitute.
+          sourceEventAtMs:
+            row === undefined ? null : parseProofEventDate(row['eventDate'] ?? row['EventDate']),
         },
       }
     },

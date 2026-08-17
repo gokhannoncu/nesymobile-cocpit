@@ -345,6 +345,7 @@ describe('back-office endpoint map', () => {
       waybillNumber: '40515485408297',
       shipmentStatus: 'Delivered',
       eventType: 'Delivered',
+      eventDate: '2026-08-17T07:13:16.579Z',
     }
     expect(endpoint.normalize!([liveRow], { shipment: '40515485408297' })).toMatchObject({
       delivery: {
@@ -352,6 +353,7 @@ describe('back-office endpoint map', () => {
         status: 'PROOF_AVAILABLE',
         correlationId: '40515485408297',
         shipmentId: '40515485408297',
+        sourceEventAtMs: Date.parse('2026-08-17T07:13:16.579Z'),
       },
     })
     expect(endpoint.normalize!([liveRow], { shipment: '32566991114744' })).toMatchObject({
@@ -362,7 +364,12 @@ describe('back-office endpoint map', () => {
   it('does not invent completed=false from an empty proof list', () => {
     const endpoint = NESY_BACKOFFICE_ENDPOINTS['nesy.backoffice.read-delivery-status']!
     expect(endpoint.normalize!([], { shipment: '40515485408297' })).toMatchObject({
-      delivery: { completed: null, status: 'REMOTE_PENDING', shipmentId: '40515485408297' },
+      delivery: {
+        completed: null,
+        status: 'REMOTE_PENDING',
+        shipmentId: '40515485408297',
+        sourceEventAtMs: null,
+      },
     })
   })
 

@@ -244,12 +244,14 @@ describe('pending delivery status refresh', () => {
     await refresh.flush()
     const latest = observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)
     expect(latest?.value).toBe(true)
+    expect(latest?.requestedAtMs).toBe(116_000)
+    expect(latest?.completedAtMs).toBe(116_000)
     expect(latest?.observedAtMs).toBe(116_000)
     expect(latest?.observedAtMs).toBeLessThan(120_000)
   })
 
-  it('stamps observedAtMs at the ask, not the HTTP response', async () => {
-    let now = 5_000
+  it('uses proof eventDate when HTTP completes after the deadline', async () => {
+    let now = 119_800
     let resolveCall!: (result: Awaited<ReturnType<BackofficeAdapter['call']>>) => void
     const observations = new SdkObservationStore()
     observations.record('run-1', {
@@ -272,7 +274,96 @@ describe('pending delivery status refresh', () => {
     })
 
     refresh()
-    now = 8_000
+    now = 121_200
+    const flushed = refresh.flush()
+    resolveCall({
+      terminal: { status: 'SUCCEEDED' },
+      normalizedResponse: {
+        delivery: {
+          completed: true,
+          status: 'PROOF_AVAILABLE',
+          correlationId: 'w1',
+          sourceEventAtMs: 116_000,
+        },
+      },
+    })
+    await flushed
+    const latest = observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)
+    expect(latest?.requestedAtMs).toBe(119_800)
+    expect(latest?.completedAtMs).toBe(121_200)
+    expect(latest?.sourceEventAtMs).toBe(116_000)
+    expect(latest?.observedAtMs).toBe(116_000)
+  })
+
+  it('does not treat request-start as truth when Delivered happens after the deadline', async () => {
+    let now = 119_800
+    let resolveCall!: (result: Awaited<ReturnType<BackofficeAdapter['call']>>) => void
+    const observations = new SdkObservationStore()
+    observations.record('run-1', {
+      factKey: DELIVERY_STATUS_COMPLETED_FACT,
+      value: 'UNKNOWN',
+      observedAtMs: 0,
+      queryRef: READ_DELIVERY_STATUS_OPERATION,
+    })
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        call: () =>
+          new Promise((resolve) => {
+            resolveCall = resolve
+          }),
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+      clock: () => now,
+    })
+
+    refresh()
+    now = 121_200
+    const flushed = refresh.flush()
+    resolveCall({
+      terminal: { status: 'SUCCEEDED' },
+      normalizedResponse: {
+        delivery: {
+          completed: true,
+          status: 'PROOF_AVAILABLE',
+          correlationId: 'w1',
+          sourceEventAtMs: 121_000,
+        },
+      },
+    })
+    await flushed
+    const latest = observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)
+    expect(latest?.requestedAtMs).toBe(119_800)
+    expect(latest?.observedAtMs).toBe(121_000)
+    expect(latest?.observedAtMs).toBeGreaterThanOrEqual(120_000)
+  })
+
+  it('falls back to HTTP completion when the payload has no source event', async () => {
+    let now = 119_800
+    let resolveCall!: (result: Awaited<ReturnType<BackofficeAdapter['call']>>) => void
+    const observations = new SdkObservationStore()
+    observations.record('run-1', {
+      factKey: DELIVERY_STATUS_COMPLETED_FACT,
+      value: 'UNKNOWN',
+      observedAtMs: 0,
+      queryRef: READ_DELIVERY_STATUS_OPERATION,
+    })
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        call: () =>
+          new Promise((resolve) => {
+            resolveCall = resolve
+          }),
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+      clock: () => now,
+    })
+
+    refresh()
+    now = 121_200
     const flushed = refresh.flush()
     resolveCall({
       terminal: { status: 'SUCCEEDED' },
@@ -281,8 +372,36 @@ describe('pending delivery status refresh', () => {
       },
     })
     await flushed
+    const latest = observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)
+    expect(latest?.requestedAtMs).toBe(119_800)
+    expect(latest?.observedAtMs).toBe(121_200)
+  })
+
+  it('bounds flush so a hung proof read cannot hold the 120s decision', async () => {
+    const observations = new SdkObservationStore()
+    observations.record('run-1', {
+      factKey: DELIVERY_STATUS_COMPLETED_FACT,
+      value: 'UNKNOWN',
+      observedAtMs: 0,
+      queryRef: READ_DELIVERY_STATUS_OPERATION,
+    })
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        call: () => new Promise(() => undefined),
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+      flushGraceMs: 30,
+    })
+
+    refresh()
+    const started = Date.now()
+    await refresh.flush()
+    expect(Date.now() - started).toBeLessThan(500)
     expect(
-      observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)?.observedAtMs,
-    ).toBe(5_000)
+      observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)?.value,
+    ).toBe('UNKNOWN')
+    refresh.dispose()
   })
 })

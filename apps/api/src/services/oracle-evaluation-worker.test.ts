@@ -251,12 +251,12 @@ describe('OracleEvaluationWorker', () => {
     expect(elapsedMs).toBeLessThan(deadlineMs)
   })
 
-  it('run_4a9a7ff4: in-flight proof asked before deadline satisfies on the timeout flush', async () => {
+  it('run_4a9a7ff4: source event before deadline satisfies on the timeout flush', async () => {
     const runtime = new BridgeFlowEvidenceRuntime()
     const { persistence, revisions } = persistenceFixture()
     const deadlineMs = 250
     const startedAtMs = Date.now()
-    const askedAtMs = startedAtMs + 100
+    const sourceEventAtMs = startedAtMs + 100
     let flushed = 0
     const worker = new OracleEvaluationWorker({
       runtime,
@@ -268,7 +268,7 @@ describe('OracleEvaluationWorker', () => {
           fact: {
             ...evidence('ORDERED_REQUIRED'),
             factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
-            observedAtMs: askedAtMs,
+            observedAtMs: sourceEventAtMs,
           },
           revision: 23,
           lane: 'ORDERED_REQUIRED',
@@ -298,6 +298,48 @@ describe('OracleEvaluationWorker', () => {
     expect(revisions.at(-1)?.lastEvidenceRevision).toBe(23)
     expect(Date.now() - startedAtMs).toBeGreaterThanOrEqual(deadlineMs)
     expect(Date.now() - startedAtMs).toBeLessThan(deadlineMs + 2_000)
+  })
+
+  it('does not satisfy EVENTUAL from a request that started in-window when the source event is late', async () => {
+    const runtime = new BridgeFlowEvidenceRuntime()
+    const { persistence } = persistenceFixture()
+    const deadlineMs = 250
+    const startedAtMs = Date.now()
+    const worker = new OracleEvaluationWorker({
+      runtime,
+      persistence,
+      flushFacts: (work) => {
+        runtime.publish({
+          runId: work.runId,
+          fact: {
+            ...evidence('ORDERED_REQUIRED'),
+            factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+            observedAtMs: startedAtMs + deadlineMs + 50,
+          },
+          revision: 23,
+          lane: 'ORDERED_REQUIRED',
+          correlationStatus: 'CORRELATED',
+          trust: 'RESOLVER_ACCEPTED',
+        })
+      },
+    })
+
+    const result = await worker.runFinalOracle({
+      ...scope,
+      policy: {
+        requirements: [{
+          factKey: 'REMOTE.DELIVERY_STATUS_COMPLETED',
+          obligation: 'REQUIRED',
+          timing: 'EVENTUAL',
+          deadlineMs,
+          onTimeout: 'INCONCLUSIVE',
+        }],
+      },
+      startedAtMs,
+    })
+
+    expect(result.status).toBe('INCONCLUSIVE')
+    expect(result.evaluation.productVerdict).toBe('INCONCLUSIVE')
   })
 
   it('keeps EVENTUAL INCONCLUSIVE when every refresh still sees empty proof', async () => {

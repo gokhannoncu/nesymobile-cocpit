@@ -12,21 +12,16 @@
  * Not a 14s→130s deadline bump. Poll is 5s so the 250ms host-state loop
  * does not stampede staging.
  *
- * Measured on run_4a9a7ff4: the first verify saw `[]`, the proof row's
- * eventDate landed ~4s before timeout, and Final Oracle still wrote
- * REQUIRED_TIMEOUT. Two host holes, not a product-window miss:
- *
- *   1. `refresh()` was fire-and-forget. Timeout evaluated the previous
- *      empty read, then dispose() aborted the in-flight poll that would
- *      have carried Delivered.
- *   2. EVENTUAL only admits facts with `observedAtMs < deadline`. Stamping
- *      the HTTP *response* time put a poll asked inside the window on the
- *      wrong side of that cut when the round-trip crossed the deadline.
- *
- * `flush()` awaits that in-flight ask. `observedAtMs` is the ask time.
- * The 120s bound is unchanged.
+ * EVENTUAL eligibility is `sourceEventAtMs` when the payload carries a
+ * trusted eventDate, otherwise HTTP `completedAtMs`. `requestedAtMs` is
+ * provenance only — stamping the ask as `observedAtMs` would admit a
+ * Delivered that happened after the deadline (poll at 119.8s, event at
+ * 121s). `flush()` waits for an in-flight ask, bounded by
+ * `REMOTE_EVENTUAL_FLUSH_GRACE_MS`, so the 120s cut stays a decision
+ * deadline.
  */
 
+import { eventualObservedAtMs } from './eventual-observation-time.js'
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 
@@ -34,15 +29,29 @@ export const DELIVERY_STATUS_COMPLETED_FACT = 'REMOTE.DELIVERY_STATUS_COMPLETED'
 export const DELIVERY_SUBMITTED_FACT = 'APP.DELIVERY_SUBMITTED'
 export const READ_DELIVERY_STATUS_OPERATION = 'nesy.backoffice.read-delivery-status'
 export const REMOTE_EVENTUAL_POLL_MS = 5_000
+export const REMOTE_EVENTUAL_POLL_TIMEOUT_MS = 20_000
+/** How long the timeout path may wait past the decision deadline. */
+export const REMOTE_EVENTUAL_FLUSH_GRACE_MS = 2_000
 
 export type PendingDeliveryStatusRefresher = (() => void) & {
   dispose(): void
   /**
    * Drain the in-flight ask, and start one if the 5s cadence is already
-   * due. Final Oracle calls this on the timeout path so a proof that
-   * arrived while the last poll was on the wire is still judged.
+   * due and grace remains. Bounded: a hung GetShipmentDeliveryProof must
+   * not turn the 120s EVENTUAL cut into an open wait.
    */
   flush(): Promise<void>
+}
+
+function awaitWithGrace(work: Promise<void>, graceMs: number): Promise<void> {
+  if (graceMs <= 0) return Promise.resolve()
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, graceMs)
+    void work.finally(() => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
 }
 
 export function createPendingDeliveryStatusRefresher(options: {
@@ -51,8 +60,10 @@ export function createPendingDeliveryStatusRefresher(options: {
   runId: string
   runInputs: Readonly<Record<string, unknown>>
   clock?: () => number
+  flushGraceMs?: number
 }): PendingDeliveryStatusRefresher {
   const clock = options.clock ?? Date.now
+  const flushGraceMs = options.flushGraceMs ?? REMOTE_EVENTUAL_FLUSH_GRACE_MS
   const controller = new AbortController()
   let lastPollMs = Number.NEGATIVE_INFINITY
   let inFlight: Promise<void> | undefined
@@ -75,40 +86,44 @@ export function createPendingDeliveryStatusRefresher(options: {
       .some((observation) => observation.factKey === DELIVERY_SUBMITTED_FACT && observation.value === true)
   }
 
-  const startPoll = (): Promise<void> => {
+  const startPoll = (timeoutMs = REMOTE_EVENTUAL_POLL_TIMEOUT_MS): Promise<void> => {
     const shipment = shipmentId()
-    const askedAtMs = clock()
-    lastPollMs = askedAtMs
+    const requestedAtMs = clock()
+    lastPollMs = requestedAtMs
     console.info(
-      `[PendingDeliveryRefresh] request at=${new Date(askedAtMs).toISOString()} run=${options.runId} shipment=${shipment}`,
+      `[PendingDeliveryRefresh] request at=${new Date(requestedAtMs).toISOString()} run=${options.runId} shipment=${shipment}`,
     )
     const pending = options.adapter
       .call(
         {
           operationRef: READ_DELIVERY_STATUS_OPERATION,
           inputs: { shipment },
-          timeoutMs: 20_000,
+          timeoutMs,
           signal: controller.signal,
         },
         { recordRequest: false, recordResponse: false, redactFields: [] },
       )
       .then((result) => {
         if (!active || controller.signal.aborted) return
+        const completedAtMs = clock()
         const delivery = (result.normalizedResponse['delivery'] ?? {}) as Record<string, unknown>
         const completed = delivery['completed']
         const correlation = delivery['correlationId']
+        const sourceEventAtMs = delivery['sourceEventAtMs']
+        const observedAtMs = eventualObservedAtMs({ sourceEventAtMs, completedAtMs })
         console.info(
-          `[PendingDeliveryRefresh] response at=${new Date(clock()).toISOString()} run=${options.runId}` +
-            ` terminal=${result.terminal.status} completed=${String(completed)} status=${String(delivery['status'] ?? '')}`,
+          `[PendingDeliveryRefresh] response at=${new Date(completedAtMs).toISOString()} run=${options.runId}` +
+            ` terminal=${result.terminal.status} completed=${String(completed)} status=${String(delivery['status'] ?? '')}` +
+            ` requestedAtMs=${requestedAtMs} completedAtMs=${completedAtMs} sourceEventAtMs=${String(sourceEventAtMs)} observedAtMs=${observedAtMs}`,
         )
         if (result.terminal.status !== 'SUCCEEDED') return
         options.observations.record(options.runId, {
           factKey: DELIVERY_STATUS_COMPLETED_FACT,
           value: typeof completed === 'boolean' ? completed : 'UNKNOWN',
-          // Ask time, not HTTP completion: EVENTUAL admits
-          // `observedAtMs < deadline`. A poll started inside the window
-          // must still count when the round-trip crosses the cut.
-          observedAtMs: askedAtMs,
+          observedAtMs,
+          requestedAtMs,
+          completedAtMs,
+          ...(typeof sourceEventAtMs === 'number' ? { sourceEventAtMs } : {}),
           queryRef: READ_DELIVERY_STATUS_OPERATION,
           ...(typeof correlation === 'string' && correlation.trim() !== ''
             ? { correlationValue: correlation }
@@ -143,12 +158,16 @@ export function createPendingDeliveryStatusRefresher(options: {
     if (!active || controller.signal.aborted) return
     if (currentStatus()?.value === true) return
     if (shipmentId() === '') return
-    if (inFlight !== undefined) await inFlight
+    const graceDeadline = Date.now() + flushGraceMs
+    if (inFlight !== undefined) await awaitWithGrace(inFlight, graceDeadline - Date.now())
     if (!active || controller.signal.aborted) return
     if (currentStatus()?.value === true) return
+    if (inFlight !== undefined) return
     if (!shouldWatch() && currentStatus() === undefined) return
-    if (inFlight === undefined && clock() - lastPollMs >= REMOTE_EVENTUAL_POLL_MS) {
-      await startPoll()
+    const remainingMs = graceDeadline - Date.now()
+    if (remainingMs <= 0) return
+    if (clock() - lastPollMs >= REMOTE_EVENTUAL_POLL_MS) {
+      await awaitWithGrace(startPoll(remainingMs), remainingMs)
     }
   }
 

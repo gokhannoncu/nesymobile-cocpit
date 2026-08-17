@@ -64,7 +64,9 @@ export interface OracleWorkerOptions {
    * and immediately evaluate. GetShipmentDeliveryProof is async; the
    * in-flight ask was still empty, so a proof that existed before the
    * deadline (run_4a9a7ff4, eventDate 4s early) still timed out. This
-   * hook waits for that ask. It does not move `deadlineMs`.
+   * hook waits for that ask, bounded by the refresher's flush grace.
+   * It does not move `deadlineMs`. Eligibility is the proof eventDate
+   * (or HTTP completion if that is absent), never the request start.
    */
   flushFacts?: (scope: EvidenceScope) => void | Promise<void>
 }

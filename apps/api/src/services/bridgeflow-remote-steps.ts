@@ -30,6 +30,8 @@ import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import type { BackendTimeoutSession } from './backend-timeout-injector.js'
 import type { NetworkDisconnectSession } from './network-disconnect-injector.js'
 import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
+import { eventualObservedAtMs } from './eventual-observation-time.js'
+import { DELIVERY_STATUS_COMPLETED_FACT } from './pending-delivery-status-refresh.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 import {
   RemoteActionRuntime,
@@ -106,8 +108,8 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
         factKey: string,
         value: boolean | 'UNKNOWN',
         correlationValue?: string,
+        observedAtMs = clock(),
       ): void => {
-        const observedAtMs = clock()
         options.observations?.record(options.runId, {
           factKey,
           value,
@@ -256,6 +258,15 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
         // asked for would make correlation agree with itself by construction.
         const declared = outputsByOperation.get(spec.operationRef)?.get(binding.factKey)?.correlationPath
         const correlation = declared === undefined ? undefined : readPath(captured, declared)
+        const completedAtMs = clock()
+        const delivery = (captured['delivery'] ?? {}) as Record<string, unknown>
+        const observedAtMs =
+          binding.factKey === DELIVERY_STATUS_COMPLETED_FACT
+            ? eventualObservedAtMs({
+                sourceEventAtMs: delivery['sourceEventAtMs'],
+                completedAtMs,
+              })
+            : completedAtMs
         publishFact(
           binding.factKey,
           typeof value === 'boolean' ? value : 'UNKNOWN',
@@ -264,6 +275,7 @@ export function createPackRemoteStepRuntime(options: RemoteStepRuntimeOptions): 
             : typeof correlation === 'number'
               ? String(correlation)
               : undefined,
+          observedAtMs,
         )
       }
 

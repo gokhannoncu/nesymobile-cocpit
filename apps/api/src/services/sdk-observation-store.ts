@@ -47,11 +47,22 @@ export interface SdkObservation {
   factKey: string
   /** `'UNKNOWN'` when the column was absent or not a boolean; never invented. */
   value: boolean | 'UNKNOWN'
+  /**
+   * EVENTUAL eligibility time. For delivery proof this is trusted
+   * `sourceEventAtMs` when present, otherwise HTTP `completedAtMs`.
+   * Never the HTTP request start.
+   */
   observedAtMs: number
   /** Named query the observation came from, kept for the fact's `subtype`. */
   queryRef: string
   /** WHICH entity this observation is about, when a derivation needs to check identity. */
   correlationValue?: string
+  /** Provenance only — when the host asked. Not EVENTUAL truth. */
+  requestedAtMs?: number
+  /** When the HTTP response finished. Fallback EVENTUAL time. */
+  completedAtMs?: number
+  /** Authoritative payload event time (`eventDate` on the proof row). */
+  sourceEventAtMs?: number
 }
 
 export class SdkObservationStore {
