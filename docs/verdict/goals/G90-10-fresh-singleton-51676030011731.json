@@ -1,0 +1,67 @@
+{
+  "kind": "g90-10-third-invoice-singleton",
+  "notBd6Proof": true,
+  "apiPid": "16953",
+  "head": "f4a68e7",
+  "shipment": {
+    "dbId": "8f1182a8-3892-4b8d-8b0a-c283f8730a77",
+    "shipmentId": "51676030011731",
+    "scanValue": "6880051000294418",
+    "fullBarcode": "N6880170009900000103306880110006300110001000151676030011731GP58421",
+    "unloadStatus": 200
+  },
+  "loadToVehicle": {
+    "firstAttempt": {
+      "runId": "run_ecaa848e-f4b6-4a24-b5ab-ec9ab296d760",
+      "productVerdict": "INCONCLUSIVE",
+      "observedClass": null,
+      "reason": "LoginFragment; wait-stop-list-ready TIMEOUT; no local schedule"
+    },
+    "secondAttempt": {
+      "runId": "run_96e221c8-521c-4c23-b23c-3c2774604dfa",
+      "productVerdict": "FAIL_PRODUCT",
+      "observedClass": null,
+      "reason": "StopList without Room schedule; time-slot skipped; LOCAL.PARCEL_IN_SCHEDULE VIOLATED"
+    },
+    "thirdAttempt": {
+      "runId": "run_ced8cbd6-9670-4990-b2e6-d6cf63187cd3",
+      "productVerdict": "PASS_ONLINE",
+      "observedClass": null,
+      "precondition": "adb PIN login without login-workflow cleanup; schedule 11-31-20260817-1 status 0"
+    }
+  },
+  "localAfterLoad": {
+    "scheduleId": "11-31-20260817-1",
+    "tourStatus": 0,
+    "shipmentStatus": 0,
+    "itemStatus": 4,
+    "stopCount": 1
+  },
+  "remote": {
+    "http": 200,
+    "shipmentStatus": "Unloaded",
+    "lastEvent": "UnloadAtDeliveryHub",
+    "waybillNumber": "51676030011731",
+    "loaded": false
+  },
+  "tourApprovalAttempt": {
+    "runId": "run_fa1b44a1-0097-4143-8cee-643870c077d5",
+    "productVerdict": "FAIL_PRODUCT",
+    "deviceAfter": {
+      "fragment": "StopListFragment",
+      "tourStatus": 1,
+      "btnOut": "Waiting Approval"
+    },
+    "remoteAfter": {
+      "shipmentStatus": "Unloaded",
+      "lastEvent": "CourierRequestedLeavingPermission"
+    }
+  },
+  "adminAuth": {
+    "present": true,
+    "tokenFingerprint": "sha256:07f395429af7dbfd",
+    "loginDashboardCalls": 1
+  },
+  "uninjected": "not-started",
+  "bd6": "closed"
+}

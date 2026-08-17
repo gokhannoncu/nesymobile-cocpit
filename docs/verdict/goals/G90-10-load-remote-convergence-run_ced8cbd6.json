@@ -1,0 +1,112 @@
+{
+  "kind": "g90-10-load-remote-convergence",
+  "notBd6Proof": true,
+  "occurrence": "run_ced8cbd6-9670-4990-b2e6-d6cf63187cd3",
+  "waybill": "51676030011731",
+  "scan": "6880051000294418",
+  "lineageAtOccurrence": {
+    "apiPid": "16953",
+    "head": "f4a68e7",
+    "runtime": "node dist/server.js"
+  },
+  "lineageNow": {
+    "note": "16953 is no longer listening. :4001 is a later pid with empty cache. This file is pinned to the persisted run record, not to the current listener."
+  },
+  "question": "Why did load-to-vehicle local PASS_ONLINE not move SearchShipment to Loaded, and is that a 120s deferred queue?",
+  "answer": {
+    "deferred120s": false,
+    "requestLeftTheWire": true,
+    "path": "FORCE_LOAD CreateInstantTask (not LOAD_PARCEL_TO_COURIER_VEHICLE queue)",
+    "remoteLoaded": false,
+    "whyNotNewBugYet": "CreateInstantTask HTTP 200 already returned. SearchShipment is a different read model than Room itemStatus=4. Pack oracle never required remote Loaded."
+  },
+  "loadChain": [
+    {
+      "t": "2026-08-17T00:34:15.470Z",
+      "atMs": 0,
+      "fact": "run start",
+      "detail": "nesy.workflow.load-to-vehicle reuse-session; tour 11-31-20260817-1 status 0"
+    },
+    {
+      "t": "2026-08-17T00:34:45.259Z",
+      "atMs": 29789,
+      "fact": "outbound GetShipmentCreateInstantTaskServiceData",
+      "http": 200,
+      "durationMs": 160,
+      "bytesIn": 3610
+    },
+    {
+      "t": "2026-08-17T00:34:56.121Z",
+      "atMs": 40651,
+      "fact": "outbound Task/CreateInstantTask",
+      "http": 200,
+      "durationMs": 1148,
+      "bytesIn": 3031,
+      "queued": false,
+      "isWaitingRequest": false
+    },
+    {
+      "t": "2026-08-17T00:34:56.366Z",
+      "atMs": 40896,
+      "fact": "outbound Task/GetMyScheduleByZoneCode FETCH_SCHEDULE",
+      "http": 200,
+      "durationMs": 225
+    },
+    {
+      "t": "2026-08-17T00:35:16.810Z",
+      "atMs": 61340,
+      "fact": "local oracle PASS_ONLINE",
+      "requirements": {
+        "LOCAL.PARCEL_IN_SCHEDULE": "SATISFIED",
+        "LOCAL.SCHEDULE_BODY_STORED": "SATISFIED",
+        "APP.AVAILABLE_STOPS_LOADED": "SATISFIED"
+      },
+      "remoteFacts": "none — load-to-vehicle binds no SearchShipment / Loaded fact"
+    },
+    {
+      "t": "2026-08-17T00:36:22Z/00:37:14Z",
+      "fact": "SearchShipment still Unloaded",
+      "lastEvent": "UnloadAtDeliveryHub",
+      "eventHistory": ["UnloadAtDeliveryHub @ 00:24:03"],
+      "note": "More than 120s after CreateInstantTask 200. Not a waiting-window miss."
+    }
+  ],
+  "queueMeasurement": {
+    "Request.rowCount": 0,
+    "CompletedRequest.rowCount": 0,
+    "LoadParcelToCourierVehicle": "absent from run HTTP",
+    "conclusion": "FORCE_LOAD is online immediate. Delivery's saveRequest(DELIVER_PARCELS, isWaitingRequest=true) model does not apply here."
+  },
+  "approvalOccurrence": {
+    "runId": "run_fa1b44a1-0097-4143-8cee-643870c077d5",
+    "inputs": { "sessionCorrelationId": "present", "scheduleId": "MISSING" },
+    "stepActionVsFact": {
+      "verify-approved-status.action": "SUCCEEDED",
+      "verify-approved-status.meaning": "GetWaitingLeavingRequests HTTP 200",
+      "REMOTE.TOUR_APPROVAL_STATUS_APPROVED": "VIOLATED",
+      "REMOTE.TOUR_APPROVAL_REQUEST_CREATED": "VIOLATED",
+      "REMOTE.TOUR_APPROVAL_CONFIRMED": "VIOLATED"
+    },
+    "approveResponse": {},
+    "cleanup": "FAILED reject-tour-request requires approvalRequest (scheduleId); refusing empty teardown",
+    "listContamination": {
+      "firstRow": { "scheduleId": "11-1-20260716-1", "scheduleStatus": 2, "courierName": "Eray Courier" },
+      "ours": "11-31-20260817-1"
+    },
+    "authoritative": {
+      "adapterHttp2xx": "transport only",
+      "GetWaitingLeavingRequests row for 11-31-20260817-1": "remote tour status",
+      "device Room schedule.status": "local tour (now 1 Waiting Approval)",
+      "SearchShipment.shipmentStatus + eventHistory": "shipment tracking, not tour approval"
+    }
+  },
+  "gate": {
+    "waybill": "51676030011731",
+    "remoteLoaded": false,
+    "tourUsable": false,
+    "uninjected": "blocked",
+    "offlineQueue": "blocked",
+    "bd6": "NOT_STARTED",
+    "newSingleton": "blocked"
+  }
+}

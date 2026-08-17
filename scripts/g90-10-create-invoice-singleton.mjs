@@ -42,7 +42,12 @@ async function searchShipment(waybill) {
     details.result?.result?.payload ??
     details.result?.data?.payload ??
     details.result?.payload
-  const row = Array.isArray(payload) ? payload[0] : payload
+  const items = payload?.items ?? payload?.Items
+  const row = Array.isArray(payload)
+    ? payload[0]
+    : Array.isArray(items)
+      ? items[0]
+      : payload
   return {
     http: details.http ?? read.status,
     shipmentStatus: row?.shipmentStatus ?? row?.ShipmentStatus ?? null,
