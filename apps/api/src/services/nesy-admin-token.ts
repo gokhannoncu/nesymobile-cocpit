@@ -6,6 +6,10 @@
  * One process-wide cache keyed by country/environment. `/nesy/auth/login` and
  * `getDashboardAdminToken` must share this map — a 200 from LoginDashboard that
  * never lands here is not a verify credential.
+ *
+ * Lifetime follows the JWT `exp` claim (Nesy dashboard tokens expire at the
+ * next 03:00 UTC). A 30-minute wall clock is only the fallback when `exp`
+ * cannot be read. The bearer never leaves this process on HTTP.
  */
 
 import { createHash } from 'node:crypto'
@@ -19,7 +23,9 @@ import {
   type NesyEnvironment,
 } from '../nesy-env.js'
 
+/** Used only when the token is not a JWT or `exp` is missing. */
 export const TOKEN_TTL_MS = 30 * 60 * 1000
+export const JWT_EXP_SKEW_MS = 60_000
 export const ADMIN_AUTH_NOT_READY = 'ADMIN_AUTH_NOT_READY'
 
 export type BackofficeCredentialSource =
@@ -27,6 +33,10 @@ export type BackofficeCredentialSource =
   | 'NESY_BACKOFFICE_TOKEN'
   | 'login-dashboard'
   | 'empty'
+
+export type AdminTokenExpirySource = 'jwt' | 'fallback-ttl'
+
+export type LoginDashboardTrigger = 'explicit' | 'jwt-expired-refresh'
 
 export interface DashboardAdminCachePeek {
   pid: number
@@ -37,7 +47,14 @@ export interface DashboardAdminCachePeek {
   ageMs: number | null
   expiresAt: string | null
   ttlMs: number
+  expirySource: AdminTokenExpirySource | null
+  cacheExpired: boolean
+  jwtExpired: boolean
   loginDashboardCalls: number
+  lastResultCode: number | null
+  lastResultMessage: string | null
+  nextLoginRequiresCaptcha: boolean | null
+  accountIsBlocked: boolean | null
   credentialSource: Exclude<BackofficeCredentialSource, 'login-dashboard'>
 }
 
@@ -52,11 +69,30 @@ export interface DashboardAdminLoginResult {
 interface CacheEntry {
   token: string
   at: number
+  expiresAtMs: number
+  expirySource: AdminTokenExpirySource
   result: unknown
+}
+
+interface LastLoginSignal {
+  resultCode: number | null
+  resultMessage: string | null
+  nextLoginRequiresCaptcha: boolean | null
+  accountIsBlocked: boolean | null
 }
 
 const cache = new Map<string, CacheEntry>()
 let loginDashboardCalls = 0
+let lastLogin: LastLoginSignal = emptyLastLogin()
+
+function emptyLastLogin(): LastLoginSignal {
+  return {
+    resultCode: null,
+    resultMessage: null,
+    nextLoginRequiresCaptcha: null,
+    accountIsBlocked: null,
+  }
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -74,6 +110,32 @@ function resultCodeOf(result: unknown): number | null {
   return null
 }
 
+function safeResultMessage(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed)) return '[redacted-jwt]'
+  return trimmed.slice(0, 300)
+}
+
+function asBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value
+  return null
+}
+
+export function loginDiagnostics(result: unknown): LastLoginSignal {
+  const record = asRecord(result)
+  const payload = asRecord(record.payload ?? record.Payload)
+  return {
+    resultCode: resultCodeOf(result),
+    resultMessage: safeResultMessage(record.resultMessage ?? record.ResultMessage),
+    nextLoginRequiresCaptcha: asBoolean(
+      payload.nextLoginRequiresCaptcha ?? payload.NextLoginRequiresCaptcha,
+    ),
+    accountIsBlocked: asBoolean(payload.accountIsBlocked ?? payload.AccountIsBlocked),
+  }
+}
+
 export function fingerprintAdminToken(token: string): string {
   return `sha256:${createHash('sha256').update(token).digest('hex').slice(0, 16)}`
 }
@@ -85,6 +147,37 @@ export function extractDashboardAdminToken(result: unknown): string | null {
   return typeof token === 'string' && token.trim() !== '' ? token.trim() : null
 }
 
+/** Reads `exp` without verifying the signature. The token never leaves this process. */
+export function readJwtExpiryMs(token: string): number | null {
+  const parts = token.split('.')
+  if (parts.length < 2) return null
+  try {
+    const padded = parts[1]!.replace(/-/g, '+').replace(/_/g, '/')
+    const json = Buffer.from(padded, 'base64').toString('utf8')
+    const payload = JSON.parse(json) as { exp?: unknown }
+    if (typeof payload.exp === 'number' && Number.isFinite(payload.exp) && payload.exp > 0) {
+      return Math.floor(payload.exp * 1000)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function resolveTokenExpiry(token: string, nowMs = Date.now()): {
+  expiresAtMs: number
+  expirySource: AdminTokenExpirySource
+} {
+  const jwtExpMs = readJwtExpiryMs(token)
+  if (jwtExpMs != null) return { expiresAtMs: jwtExpMs, expirySource: 'jwt' }
+  return { expiresAtMs: nowMs + TOKEN_TTL_MS, expirySource: 'fallback-ttl' }
+}
+
+function entryStillLive(entry: CacheEntry, nowMs = Date.now()): boolean {
+  const skew = entry.expirySource === 'jwt' ? JWT_EXP_SKEW_MS : 0
+  return nowMs < entry.expiresAtMs - skew
+}
+
 export function getLoginDashboardCallCount(): number {
   return loginDashboardCalls
 }
@@ -92,6 +185,7 @@ export function getLoginDashboardCallCount(): number {
 export function resetDashboardAdminTokenStateForTests(): void {
   cache.clear()
   loginDashboardCalls = 0
+  lastLogin = emptyLastLogin()
 }
 
 export function rememberDashboardAdminToken(
@@ -103,18 +197,27 @@ export function rememberDashboardAdminToken(
   const trimmed = token.trim()
   if (!trimmed) return peekDashboardAdminCache(country, environment)
   const previous = cache.get(cacheKey(country, environment))
+  const nowMs = Date.now()
+  const expiry = resolveTokenExpiry(trimmed, nowMs)
   cache.set(cacheKey(country, environment), {
     token: trimmed,
-    at: Date.now(),
+    at: nowMs,
+    expiresAtMs: expiry.expiresAtMs,
+    expirySource: expiry.expirySource,
     result: result ?? previous?.result ?? { resultCode: 200, payload: { token: trimmed } },
   })
+  if (result != null) lastLogin = loginDiagnostics(result)
+  else if (lastLogin.resultCode == null) lastLogin = { ...emptyLastLogin(), resultCode: 200 }
   return peekDashboardAdminCache(country, environment)
 }
 
+function storedEntry(country: NesyCountry, environment: NesyEnvironment): CacheEntry | null {
+  return cache.get(cacheKey(country, environment)) ?? null
+}
+
 function liveEntry(country: NesyCountry, environment: NesyEnvironment): CacheEntry | null {
-  const entry = cache.get(cacheKey(country, environment))
-  if (!entry) return null
-  if (Date.now() - entry.at >= TOKEN_TTL_MS) return null
+  const entry = storedEntry(country, environment)
+  if (!entry || !entryStillLive(entry)) return null
   return entry
 }
 
@@ -129,7 +232,10 @@ export function peekDashboardAdminCache(
   country: NesyCountry,
   environment: NesyEnvironment,
 ): DashboardAdminCachePeek {
-  const entry = liveEntry(country, environment)
+  const stored = storedEntry(country, environment)
+  const entry = stored && entryStillLive(stored) ? stored : null
+  const cacheExpired = stored != null && entry == null
+  const jwtExpired = cacheExpired && stored.expirySource === 'jwt'
   const envToken = process.env.NESY_BACKOFFICE_TOKEN?.trim() ?? ''
   const credentialSource: Exclude<BackofficeCredentialSource, 'login-dashboard'> = entry
     ? 'dashboard-admin-cache'
@@ -143,9 +249,16 @@ export function peekDashboardAdminCache(
     present: entry !== null,
     tokenFingerprint: entry ? fingerprintAdminToken(entry.token) : null,
     ageMs: entry ? Date.now() - entry.at : null,
-    expiresAt: entry ? new Date(entry.at + TOKEN_TTL_MS).toISOString() : null,
-    ttlMs: TOKEN_TTL_MS,
+    expiresAt: stored ? new Date(stored.expiresAtMs).toISOString() : null,
+    ttlMs: entry ? Math.max(0, entry.expiresAtMs - Date.now()) : TOKEN_TTL_MS,
+    expirySource: stored?.expirySource ?? null,
+    cacheExpired,
+    jwtExpired,
     loginDashboardCalls,
+    lastResultCode: lastLogin.resultCode,
+    lastResultMessage: lastLogin.resultMessage,
+    nextLoginRequiresCaptcha: lastLogin.nextLoginRequiresCaptcha,
+    accountIsBlocked: lastLogin.accountIsBlocked,
     credentialSource,
   }
 }
@@ -165,7 +278,9 @@ export function resolveRemoteActionCountryEnv(): {
 export async function loginDashboardAndCache(
   country: NesyCountry,
   environment: NesyEnvironment,
+  options: { trigger?: LoginDashboardTrigger } = {},
 ): Promise<DashboardAdminLoginResult> {
+  const trigger = options.trigger ?? 'explicit'
   const cached = liveEntry(country, environment)
   if (cached) {
     return {
@@ -174,6 +289,23 @@ export async function loginDashboardAndCache(
       token: cached.token,
       resultCode: 200,
       fromCache: true,
+    }
+  }
+
+  if (trigger === 'jwt-expired-refresh') {
+    const peek = peekDashboardAdminCache(country, environment)
+    if (peek.lastResultCode !== 200 || peek.nextLoginRequiresCaptcha === true) {
+      return {
+        httpStatus: 0,
+        result: {
+          resultCode: peek.lastResultCode,
+          resultMessage: peek.lastResultMessage,
+          payload: { nextLoginRequiresCaptcha: peek.nextLoginRequiresCaptcha },
+        },
+        token: null,
+        resultCode: peek.lastResultCode,
+        fromCache: false,
+      }
     }
   }
 
@@ -193,6 +325,7 @@ export async function loginDashboardAndCache(
       signal: AbortSignal.timeout(25_000),
     })
     const result = await res.json()
+    lastLogin = loginDiagnostics(result)
     const resultCode = resultCodeOf(result)
     const token = extractDashboardAdminToken(result)
     if (res.ok && resultCode === 200 && token) {
@@ -215,7 +348,13 @@ export async function getDashboardAdminToken(
   country: NesyCountry,
   environment: NesyEnvironment,
 ): Promise<string | null> {
-  return (await loginDashboardAndCache(country, environment)).token
+  const cached = getCachedDashboardAdminToken(country, environment)
+  if (cached) return cached
+  const peek = peekDashboardAdminCache(country, environment)
+  if (peek.cacheExpired && peek.lastResultCode === 200 && peek.nextLoginRequiresCaptcha !== true) {
+    return (await loginDashboardAndCache(country, environment, { trigger: 'jwt-expired-refresh' })).token
+  }
+  return null
 }
 
 export async function resolveBackofficeAdminCredentials(

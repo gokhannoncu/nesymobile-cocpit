@@ -60,22 +60,33 @@ export function isAdminAuthGoArmed() {
 /**
  * May this process fire LoginDashboard?
  *
- * Cache already present → no. Empty cache without an external reason → no.
- * Calls already > 0 on this PID → no. GO+reason and calls === 0 → yes.
+ * Live JWT/cache → no.
+ * Natural expiry after a 200 → one refresh on the same PID (no GO).
+ * resultCode=400 / captcha flag → only GO+reason, same PID is fine.
+ * Empty process with no prior 200 → GO+reason.
  */
 export function loginDashboardDecision(cache) {
   const present = cache?.present === true
-  const calls = Number(cache?.loginDashboardCalls ?? 0)
+  const lastResultCode = cache?.lastResultCode ?? null
+  const captchaRequired = cache?.nextLoginRequiresCaptcha === true
+  const expired = cache?.jwtExpired === true || cache?.cacheExpired === true
   const reason = adminAuthGoReason()
   const goArmed = isAdminAuthGoArmed()
   if (present) {
     return { allowed: false, code: 'CACHE_PRESENT', detail: 'cache already holds a token; do not login' }
   }
-  if (calls > 0) {
+  if (expired && lastResultCode === 200 && !captchaRequired) {
+    return {
+      allowed: true,
+      code: 'JWT_EXPIRED_REFRESH',
+      detail: 'previous LoginDashboard was 200 and the JWT/cache TTL elapsed; one refresh on this PID',
+    }
+  }
+  if ((lastResultCode === 400 || captchaRequired) && !goArmed) {
     return {
       allowed: false,
       code: AUTH_FREEZE_CODE,
-      detail: `LoginDashboardCalls=${calls}; the one shot on this PID is spent`,
+      detail: `lastResultCode=${lastResultCode}; captcha/400 is not cleared by an empty cache. Set VERDICT_ADMIN_AUTH_GO=1 and VERDICT_ADMIN_AUTH_GO_REASON.`,
     }
   }
   if (!goArmed) {
@@ -83,7 +94,7 @@ export function loginDashboardDecision(cache) {
       allowed: false,
       code: AUTH_FREEZE_CODE,
       detail:
-        'last signal was LoginDashboard resultCode=400; empty cache is not a captcha-clear. Set VERDICT_ADMIN_AUTH_GO=1 and VERDICT_ADMIN_AUTH_GO_REASON to the external evidence.',
+        'empty cache is not a captcha-clear. Set VERDICT_ADMIN_AUTH_GO=1 and VERDICT_ADMIN_AUTH_GO_REASON to the external evidence.',
     }
   }
   return { allowed: true, code: 'ADMIN_AUTH_GO', detail: reason }

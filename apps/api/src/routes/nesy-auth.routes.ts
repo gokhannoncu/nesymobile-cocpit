@@ -32,7 +32,14 @@ const cachePeekSchema = z.object({
   ageMs: z.number().nullable(),
   expiresAt: z.string().nullable(),
   ttlMs: z.number(),
+  expirySource: z.enum(['jwt', 'fallback-ttl']).nullable(),
+  cacheExpired: z.boolean(),
+  jwtExpired: z.boolean(),
   loginDashboardCalls: z.number(),
+  lastResultCode: z.number().nullable(),
+  lastResultMessage: z.string().nullable(),
+  nextLoginRequiresCaptcha: z.boolean().nullable(),
+  accountIsBlocked: z.boolean().nullable(),
   credentialSource: z.enum(['dashboard-admin-cache', 'NESY_BACKOFFICE_TOKEN', 'empty']),
 })
 
@@ -177,7 +184,7 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
       }
 
       try {
-        const login = await loginDashboardAndCache(country, environment)
+        const login = await loginDashboardAndCache(country, environment, { trigger: 'explicit' })
         if (!login.token || login.resultCode !== 200) {
           return reply.status(502).send({
             message: 'Nesy login request failed.',

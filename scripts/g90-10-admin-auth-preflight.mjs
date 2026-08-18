@@ -170,10 +170,22 @@ const artifact = {
   },
   steps: {
     cacheBefore: stripToken(before.body),
-    login: decision.allowed
+        login: decision.allowed
       ? {
           http: login.status,
           resultCode: loginResultCode,
+          resultMessage:
+            afterLogin.body.lastResultMessage ??
+            login.body.result?.resultMessage ??
+            login.body.result?.ResultMessage ??
+            null,
+          nextLoginRequiresCaptcha:
+            afterLogin.body.nextLoginRequiresCaptcha ??
+            login.body.result?.payload?.nextLoginRequiresCaptcha ??
+            null,
+          accountIsBlocked: afterLogin.body.accountIsBlocked ?? null,
+          expirySource: afterLogin.body.expirySource ?? null,
+          expiresAt: afterLogin.body.expiresAt ?? null,
           extracted,
           fromCache: Boolean(before.body.present),
         }

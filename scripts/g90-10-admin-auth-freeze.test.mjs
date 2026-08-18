@@ -30,12 +30,40 @@ describe('admin auth freeze', () => {
     assert.equal(decision.code, 'ADMIN_AUTH_GO')
   })
 
-  it('does not spend a second LoginDashboard on a PID that already called it', () => {
-    process.env.VERDICT_ADMIN_AUTH_GO = '1'
-    process.env.VERDICT_ADMIN_AUTH_GO_REASON = 'manual dashboard login confirmed 200'
-    const decision = loginDashboardDecision({ present: false, loginDashboardCalls: 1 })
+  it('refuses a second login after resultCode=400 unless GO is armed', () => {
+    const decision = loginDashboardDecision({
+      present: false,
+      loginDashboardCalls: 1,
+      lastResultCode: 400,
+      nextLoginRequiresCaptcha: true,
+    })
     assert.equal(decision.allowed, false)
     assert.equal(decision.code, AUTH_FREEZE_CODE)
+  })
+
+  it('allows the same PID to retry after 400 when GO and reason are set', () => {
+    process.env.VERDICT_ADMIN_AUTH_GO = '1'
+    process.env.VERDICT_ADMIN_AUTH_GO_REASON = 'manual dashboard login confirmed 200'
+    const decision = loginDashboardDecision({
+      present: false,
+      loginDashboardCalls: 1,
+      lastResultCode: 400,
+      nextLoginRequiresCaptcha: true,
+    })
+    assert.equal(decision.allowed, true)
+    assert.equal(decision.code, 'ADMIN_AUTH_GO')
+  })
+
+  it('allows one same-PID refresh after a 200 JWT expires, without GO', () => {
+    const decision = loginDashboardDecision({
+      present: false,
+      loginDashboardCalls: 1,
+      lastResultCode: 200,
+      jwtExpired: true,
+      cacheExpired: true,
+    })
+    assert.equal(decision.allowed, true)
+    assert.equal(decision.code, 'JWT_EXPIRED_REFRESH')
   })
 
   it('does not login when the cache already holds a token', () => {
