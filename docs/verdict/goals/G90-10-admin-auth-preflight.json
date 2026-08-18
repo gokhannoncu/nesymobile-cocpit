@@ -5,13 +5,13 @@
   "ready": false,
   "code": "ADMIN_AUTH_NOT_READY",
   "runtime": {
-    "apiPid": "7371",
+    "apiPid": "30115",
     "apiCommand": "node dist/server.js",
     "health": 200
   },
   "steps": {
     "cacheBefore": {
-      "pid": 7371,
+      "pid": 30115,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -19,17 +19,29 @@
       "ageMs": null,
       "expiresAt": null,
       "ttlMs": 1800000,
+      "expirySource": null,
+      "cacheExpired": false,
+      "jwtExpired": false,
       "loginDashboardCalls": 0,
+      "lastResultCode": null,
+      "lastResultMessage": null,
+      "nextLoginRequiresCaptcha": null,
+      "accountIsBlocked": null,
       "credentialSource": "empty"
     },
     "login": {
       "http": 502,
       "resultCode": 400,
+      "resultMessage": "USERNAME_OR_PASSWORD_IS_WRONG",
+      "nextLoginRequiresCaptcha": false,
+      "accountIsBlocked": false,
+      "expirySource": null,
+      "expiresAt": null,
       "extracted": false,
       "fromCache": false
     },
     "cacheAfterLogin": {
-      "pid": 7371,
+      "pid": 30115,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -37,7 +49,14 @@
       "ageMs": null,
       "expiresAt": null,
       "ttlMs": 1800000,
+      "expirySource": null,
+      "cacheExpired": false,
+      "jwtExpired": false,
       "loginDashboardCalls": 1,
+      "lastResultCode": 400,
+      "lastResultMessage": "USERNAME_OR_PASSWORD_IS_WRONG",
+      "nextLoginRequiresCaptcha": false,
+      "accountIsBlocked": false,
       "credentialSource": "empty"
     },
     "cachedTokenRead": {
@@ -46,7 +65,7 @@
       "tokenFingerprint": null
     },
     "cacheAfterCachedRead": {
-      "pid": 7371,
+      "pid": 30115,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -54,7 +73,14 @@
       "ageMs": null,
       "expiresAt": null,
       "ttlMs": 1800000,
+      "expirySource": null,
+      "cacheExpired": false,
+      "jwtExpired": false,
       "loginDashboardCalls": 1,
+      "lastResultCode": 400,
+      "lastResultMessage": "USERNAME_OR_PASSWORD_IS_WRONG",
+      "nextLoginRequiresCaptcha": false,
+      "accountIsBlocked": false,
       "credentialSource": "empty"
     },
     "adapterPreflight": {
@@ -65,7 +91,7 @@
       "harmlessRead": null
     },
     "cacheAfterPreflight": {
-      "pid": 7371,
+      "pid": 30115,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -73,7 +99,14 @@
       "ageMs": null,
       "expiresAt": null,
       "ttlMs": 1800000,
+      "expirySource": null,
+      "cacheExpired": false,
+      "jwtExpired": false,
       "loginDashboardCalls": 1,
+      "lastResultCode": 400,
+      "lastResultMessage": "USERNAME_OR_PASSWORD_IS_WRONG",
+      "nextLoginRequiresCaptcha": false,
+      "accountIsBlocked": false,
       "credentialSource": "empty"
     },
     "loginDashboardCalls": [

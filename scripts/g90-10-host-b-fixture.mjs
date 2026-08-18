@@ -25,7 +25,7 @@ const WEB = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
 const DEVICE = process.env.VERDICT_DEVICE ?? 'R6CW400BC8N'
 const APP_ID = process.env.VERDICT_APP_ID ?? 'com.arasdigital.nesymobile.rstest'
 const ROUTE = process.env.VERDICT_ROUTE_CODE ?? '31'
-const CLOSED_API_PIDS = new Set(['55798', '21508', '16953', '8433', '13440', '52684', '10060', '63409', '7371'])
+const CLOSED_API_PIDS = new Set(['55798', '21508', '16953', '8433', '13440', '52684', '10060', '63409', '7371', '52089', '30115'])
 const PRESERVED_API_PID = process.env.VERDICT_PRESERVED_API_PID ?? ''
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 240)
 

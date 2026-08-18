@@ -20,6 +20,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   AUTH_FREEZE_CODE,
+  CLOSED_AUTH_PIDS,
   loginDashboardDecision,
   writeAuthFreezeArtifact,
 } from './g90-10-admin-auth-freeze.mjs'
@@ -68,7 +69,13 @@ const healthRes = await fetch(HEALTH, { signal: AbortSignal.timeout(5_000) }).ca
 const healthOk = healthRes instanceof Response && healthRes.status === 200
 
 const before = await cockpit('GET', '/nesy/auth/admin-cache?country=RS&environment=stage')
-const decision = loginDashboardDecision(before.body)
+const decision = CLOSED_AUTH_PIDS.includes(String(apiPid))
+  ? {
+      allowed: false,
+      code: AUTH_FREEZE_CODE,
+      detail: `PID ${apiPid} already spent its LoginDashboard shot; start a new PID after an external clear.`,
+    }
+  : loginDashboardDecision(before.body)
 const freeze = writeAuthFreezeArtifact({
   runtime: {
     apiPid,

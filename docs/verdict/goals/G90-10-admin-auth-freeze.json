@@ -1,26 +1,32 @@
 {
   "kind": "g90-10-admin-auth-freeze",
-  "verdict": "NO_GO",
+  "verdict": "GO_CACHE",
   "notBd6Proof": true,
   "commit": "1caf40f",
   "eventualContract": "LOCKED",
   "deadlineMs": 120000,
+  "flushGraceMs": 2000,
+  "adapterTimeoutMs": 20000,
   "lastAuthSignal": {
-    "pid": 7371,
-    "resultCode": 400,
-    "http": 502,
-    "independentCaptchaClear": false,
-    "note": "Operator GO. One LoginDashboard on fresh PID 7371. resultCode=400. Do not fire a second login on 7371."
+    "pid": 37299,
+    "resultCode": 200,
+    "source": "operator-imported",
+    "loginDashboardCalls": 0,
+    "expirySource": "jwt",
+    "expiresAt": "2026-08-19T03:00:00.000Z",
+    "tokenFingerprint": "sha256:06cab5d8a4a10431",
+    "independentCaptchaClear": true,
+    "note": "Operator JWT re-imported on PID 37299 after 35617 exit 137 (auto-restart emptied memory cache). LoginDashboard not called. Use until JWT exp. Do not POST /nesy/auth/login on this PID."
   },
-  "adminAuthReady": false,
+  "adminAuthReady": true,
   "singleton": {
     "waybill": "61525961555490",
     "scan": "6880051000294913",
     "local": "Loaded itemStatus=4",
     "consumed": false
   },
-  "uninjected": "BLOCKED_AUTH_400",
+  "uninjected": "READY_AUTH",
   "bd6": "CLOSED",
-  "closedPids": ["10060", "63409", "7371"],
-  "writtenAt": "2026-08-17T13:51:30.000Z"
+  "closedPids": ["10060", "63409", "7371", "52089", "30115"],
+  "writtenAt": "2026-08-18T14:10:00.000Z"
 }

@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url'
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 export const AUTH_FREEZE_CODE = 'AUTH_EXTERNAL_SIGNAL_REQUIRED'
-export const CLOSED_AUTH_PIDS = Object.freeze(['8433', '13440', '52684', '16953', '10060', '63409', '7371'])
+export const CLOSED_AUTH_PIDS = Object.freeze(['8433', '13440', '52684', '16953', '10060', '63409', '7371', '52089', '30115'])
 
 export const FROZEN_AUTH_STATE = Object.freeze({
   kind: 'g90-10-admin-auth-freeze',

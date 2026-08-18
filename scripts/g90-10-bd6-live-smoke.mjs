@@ -36,7 +36,7 @@ const WORKFLOW = 'nesy.workflow.complete-delivery'
 const PROFILE = 'nesy.launch.reuse-session'
 const REQUIRED_PACK = '1.34.0'
 const TIMEOUT_SEC = Number(process.env.VERDICT_TIMEOUT ?? 360)
-const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043', '25062', '8433', '13440', '52684', '10060', '63409', '7371'])
+const CLOSED_PIDS = new Set(['55798', '21508', '29171', '38870', '64978', '95043', '25062', '8433', '13440', '52684', '10060', '63409', '7371', '52089', '30115'])
 const CLOSED_COMMITS = new Set(['3770d2a', '291553b', '94a9acf', '413485a', 'eb48304'])
 const REMOTE_SUCCESS_FACTS = new Set([
   'REMOTE.DELIVERY_STATUS_COMPLETED',

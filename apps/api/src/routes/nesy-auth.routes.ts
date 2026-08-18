@@ -15,11 +15,14 @@ import { resolveCachedStageAdminCredentials, TARGET_NOT_STAGE } from '../service
 import { createUnloadableInvoiceShipment } from '../services/admin-fixture-create.js'
 import {
   ADMIN_AUTH_NOT_READY,
+  JWT_EXP_SKEW_MS,
   fingerprintAdminToken,
   getCachedDashboardAdminToken,
   getLoginDashboardCallCount,
   loginDashboardAndCache,
   peekDashboardAdminCache,
+  readJwtExpiryMs,
+  rememberDashboardAdminToken,
   resolveBackofficeAdminCredentials,
 } from '../services/nesy-admin-token.js'
 
@@ -260,6 +263,72 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
         })
       }
       return cache
+    },
+  )
+
+  /**
+   * Loopback-only operator seed. Stores a dashboard JWT already obtained
+   * outside LoginDashboard (browser login). Does not call LoginDashboard
+   * and does not increment the login counter. Lifetime follows JWT `exp`.
+   */
+  typed.post(
+    '/import-cached-token',
+    {
+      schema: {
+        body: z.object({
+          country: nesyCountrySchema.default('RS'),
+          environment: nesyEnvironmentSchema.default('stage'),
+          token: z.string().min(1),
+        }),
+        response: {
+          200: cachePeekSchema.extend({
+            imported: z.literal(true),
+            loginDashboardCallsUnchanged: z.literal(true),
+          }),
+          400: z.object({ message: z.string(), code: z.string().optional() }),
+          403: z.object({ message: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!isLoopbackAddress(request.ip)) {
+        return reply.status(403).send({ message: 'token import is available only from loopback.' })
+      }
+      const { country, environment } = request.body
+      const token = request.body.token.trim()
+      if (!isNesyDashboardCountry(country) || !isNesyEnvironment(environment)) {
+        return reply.status(400).send({ message: 'country and environment are required.' })
+      }
+      const expMs = readJwtExpiryMs(token)
+      if (expMs == null) {
+        return reply.status(400).send({
+          code: 'TOKEN_EXP_UNREADABLE',
+          message: 'operator token must be a JWT with an exp claim.',
+        })
+      }
+      if (expMs <= Date.now() + JWT_EXP_SKEW_MS) {
+        return reply.status(400).send({
+          code: 'TOKEN_EXPIRED',
+          message: 'operator token JWT exp is already elapsed.',
+        })
+      }
+      const callsBefore = getLoginDashboardCallCount()
+      rememberDashboardAdminToken(country, environment, token, {
+        resultCode: 200,
+        resultMessage: 'operator-imported',
+        payload: { nextLoginRequiresCaptcha: false, accountIsBlocked: false },
+      })
+      if (getLoginDashboardCallCount() !== callsBefore) {
+        return reply.status(400).send({
+          code: 'LOGIN_DASHBOARD_TOUCHED',
+          message: 'token import must not call LoginDashboard.',
+        })
+      }
+      return {
+        ...peekDashboardAdminCache(country, environment),
+        imported: true as const,
+        loginDashboardCallsUnchanged: true as const,
+      }
     },
   )
 
