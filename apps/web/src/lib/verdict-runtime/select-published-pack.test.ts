@@ -36,7 +36,7 @@ describe('selectPinnedPublishedPack', () => {
         bundleDigest: `sha256:${'c'.repeat(64)}`,
       }),
       pack({
-        packKey: 'match.reaction',
+        packKey: 'acme.demo',
         version: '9.0.0',
         bundleDigest: `sha256:${'d'.repeat(64)}`,
       }),

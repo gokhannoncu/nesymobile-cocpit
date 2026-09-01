@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react'
 import { Button } from '@nesy/metronic/components/ui/button'
+import { DomainPackSurfacesPageShimmer } from '@/components/automation/domain-pack/domain-pack-catalog-shimmer'
 import { SurfaceRegistryManager } from '@/components/automation/domain-pack/SurfaceRegistryManager'
 import { fetchVerdictScreenSurfaces } from '@/lib/verdict-runtime/client'
 
@@ -45,6 +46,10 @@ export default function DomainPackSurfacesPage() {
     }
   }, [packId, version, reloadToken])
 
+  if (gate.status === 'loading') {
+    return <DomainPackSurfacesPageShimmer />
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center gap-3 mb-6">
@@ -62,12 +67,6 @@ export default function DomainPackSurfacesPage() {
           </p>
         </div>
       </div>
-
-      {gate.status === 'loading' && (
-        <div className="p-8 text-sm text-gray-500 border border-dashed rounded-lg">
-          Loading surface registry…
-        </div>
-      )}
 
       {gate.status === 'error' && (
         <div className="flex flex-col items-center justify-center p-12 border border-red-200 bg-red-50 rounded-xl">

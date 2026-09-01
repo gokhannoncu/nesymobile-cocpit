@@ -439,6 +439,8 @@ async function ensureCompilePackHydrated(input: {
   })
 }
 
+const RETIRED_DOMAIN_PACKS = new Set(['match.reaction', 'nesy-courier'])
+
 function annotateDomainPackCatalog(items: Array<{
   packKey: string
   version: string
@@ -451,14 +453,14 @@ function annotateDomainPackCatalog(items: Array<{
     listDomainPacks().map((pack) => [`${pack.packKey}@${pack.packVersion}`, pack.packDigest]),
   )
 
-  const annotated = items.map((item) => {
+  const annotated = items.filter((item) => !RETIRED_DOMAIN_PACKS.has(item.packKey)).map((item) => {
     const slot = `${item.packKey}@${item.version}`
     const registryDigest = compileDigests.get(slot)
     const compileReady =
       (registryDigest !== undefined && registryDigest === item.bundleDigest) ||
       (item.publicationState === 'PUBLISHED' &&
         isCanonicalPackDigest(item.bundleDigest) &&
-        (item.packKey === 'nesy.courier' || item.packKey === 'match.reaction'))
+        item.packKey === 'nesy.courier')
     return { ...item, compileReady }
   })
 
@@ -534,6 +536,9 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
   app.get<{ Params: { packKey: string; version: string } }>(
     '/runtime/domain-packs/:packKey/:version',
     async (request, reply) => {
+      if (RETIRED_DOMAIN_PACKS.has(request.params.packKey)) {
+        return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })
+      }
       const result = await domainPackAdmin.get(request.params.packKey, request.params.version)
       if (!result) {
         return reply.code(404).send({ status: 'not_found', detail: 'domain pack version not found' })

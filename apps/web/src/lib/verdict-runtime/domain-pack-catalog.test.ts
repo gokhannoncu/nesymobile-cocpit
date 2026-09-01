@@ -19,13 +19,13 @@ describe('groupDomainPackCatalog', () => {
   it('groups versions under packKey and sorts newest first', () => {
     const groups = groupDomainPackCatalog([
       pack({ packKey: 'nesy.courier', version: '1.34.0' }),
-      pack({ packKey: 'match.reaction', version: '1.0.0' }),
+      pack({ packKey: 'acme.demo', version: '1.0.0' }),
       pack({ packKey: 'nesy.courier', version: '1.36.0' }),
       pack({ packKey: 'nesy.courier', version: '1.35.0' }),
     ])
 
     expect(groups).toHaveLength(2)
-    expect(groups[0]?.packKey).toBe('match.reaction')
+    expect(groups[0]?.packKey).toBe('acme.demo')
     expect(groups[1]?.packKey).toBe('nesy.courier')
     expect(groups[1]?.versions.map((item) => item.version)).toEqual([
       '1.36.0',

@@ -54,7 +54,18 @@ function classify(absPath) {
     rel.startsWith('apps/api/src/') ||
     rel === 'apps/api/package.json' ||
     rel === 'apps/api/tsconfig.json' ||
-    rel.startsWith('packages/db/')
+    rel.startsWith('packages/db/') ||
+    rel.startsWith('packages/bridge-contract/') ||
+    rel.startsWith('packages/bridge-client/') ||
+    rel.startsWith('packages/bridgeflow-compiler/') ||
+    rel.startsWith('packages/bridgeflow-executor/') ||
+    rel.startsWith('packages/control-channels/') ||
+    rel.startsWith('packages/control-contract/') ||
+    rel.startsWith('packages/execution-contract/') ||
+    rel.startsWith('packages/oracle-engine/') ||
+    rel.startsWith('packages/workflow-contract/') ||
+    rel.startsWith('packages/domain-pack-contracts/') ||
+    rel.startsWith('domain-packs/')
   ) {
     return 'api'
   }

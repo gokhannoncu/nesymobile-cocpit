@@ -270,7 +270,44 @@ export interface TargetResolutionEvidence {
  * imkânsız kılar.
  */
 export const mayActOnResolution = (evidence: TargetResolutionEvidence): boolean =>
-  evidence.outcome === "RESOLVED_UNIQUE";
+  evidence.outcome === "RESOLVED_UNIQUE" && !resolvedRowOntoTextEntry(evidence);
+
+/**
+ * Bir SATIR kimliğinin metin giriş alanına düşmesi.
+ *
+ * `rowKey` taşıyan bir fingerprint "şu KAYDI bul" der. Bir kayıt hiçbir zaman
+ * bir `EditText` değildir; eşleşme oraya düştüyse, aranan metin ekranda kaydın
+ * üstünde değil, birinin o alana YAZDIĞI için duruyordur.
+ *
+ * Ölçüldü, run_3acf9459: `open-stop` durak listesini ürünün kendi aramasıyla
+ * filtreliyor, sonra satırı aynı anahtarla arıyordu. Ekranda o metni taşıyan tek
+ * node, koşunun bir adım önce doldurduğu arama kutusuydu. Bridge onu
+ * `RESOLVED_UNIQUE` bulup tıkladı, jest tamamlandı, hiçbir şey açılmadı — her
+ * katman "başarılı" dedi. Yanlış satıra dokunmayı imkânsız kılmak bu dosyanın
+ * varlık sebebi; kendi yazdığı metne dokunmak da aynı hatanın bir kılığı.
+ *
+ * Yalnızca `rowKey` varken uygulanır: bir metin alanına dokunmak ya da yazmak
+ * meşru hedeftir — o hedefler satır kimliği taşımaz.
+ */
+export function resolvedRowOntoTextEntry(evidence: TargetResolutionEvidence): boolean {
+  const rowKey = evidence.fingerprint.rowKey;
+  if (rowKey === undefined || rowKey === "") return false;
+  return isTextEntryNode(evidence.node);
+}
+
+/**
+ * Düzenlenebilir bir metin alanı mı?
+ *
+ * Sınıf adına bakar, çünkü Bridge v1 node'unda `isEditable` yok. `EditText` ve
+ * ondan türeyen `TextInputEditText` / `AppCompatEditText` ailesi bu ada göre
+ * ayırt edilebilir; ölçülemeyen bir sınıf adı `false` sayılır — ölçüm boşluğunu
+ * bulguya çevirmemek bu dosyanın kuralı.
+ */
+export function isTextEntryNode(node: BridgeNode | undefined): boolean {
+  const className = node?.className;
+  if (className === null || className === undefined || className === "") return false;
+  return className.includes("EditText") || className.endsWith(".TextInputLayout");
+}
 
 /**
  * Host tarafı tap zaman aşımını cihaz sınırına kırpar.

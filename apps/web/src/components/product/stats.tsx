@@ -72,20 +72,30 @@ export function StatCard({
           : undefined
       }
       className={cn(
-        'relative overflow-hidden rounded-xl border p-4 outline-none transition-[box-shadow,opacity]',
+        'relative overflow-hidden rounded-lg border p-4 outline-none transition-[box-shadow,opacity,border-color]',
         toneCard[tone],
         interactive && 'cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40',
         interactive && !active && 'opacity-80 hover:opacity-100',
-        active && 'ring-2 ring-primary/35 shadow-sm',
+        active && cn('border-current/20 shadow-sm', toneText[tone]),
       )}
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.4, ease: EASE }}
-      whileHover={{ y: -2 }}
+      whileHover={interactive ? { y: -2 } : undefined}
     >
-      <span className={cn('absolute inset-x-0 top-0 h-0.5', toneDot[tone])} />
-      <div className="flex h-5 items-center justify-between gap-2">
+      {interactive ? (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute right-3 top-3 size-3.5 rounded-full border-2 transition-all',
+            active
+              ? cn('scale-100 border-transparent', toneDot[tone])
+              : 'scale-90 border-muted-foreground/35 bg-background/60',
+          )}
+        />
+      ) : null}
+      <div className="flex h-5 items-center justify-between gap-2 pr-1">
         <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
           {label}
         </div>

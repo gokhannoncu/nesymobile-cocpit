@@ -9,7 +9,6 @@ import {
   NESY_COURIER_INDEPENDENT_WORKFLOWS,
   NESY_COURIER_TEST_PROFILES,
 } from '@nesy/nesy-courier-domain-pack'
-import { buildMatchReactionBundle } from '@nesy/match-reaction-domain-pack'
 import { PrismaDomainPackAdminStore, PrismaTestProfileCatalogStore } from '../services/phase6-prisma-stores.js'
 import type { TestProfileKind, TestProfileRecord } from '../services/test-profile-catalog.service.js'
 
@@ -23,10 +22,7 @@ function publishFirstPartyBundles(): PublishedVersion[] {
     publishedBy: PUBLISHED_BY,
     sourceCommit: SOURCE_COMMIT,
   }
-  return [
-    publishBundle(buildNesyCourierBundle(), provenance),
-    publishBundle(buildMatchReactionBundle(), provenance),
-  ]
+  return [publishBundle(buildNesyCourierBundle(), provenance)]
 }
 
 function runtimeProfileKind(kind: TestProfileDefinition['kind']): TestProfileKind {

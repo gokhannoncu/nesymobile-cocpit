@@ -162,5 +162,39 @@ export const NESY_COURIER_DERIVED_FACTS: DerivedFactGraph = {
       preserveInputs: true,
       requiresCorrelation: true,
     },
+    {
+      /**
+       * The same conclusion for the path where the request was already open.
+       *
+       * The macro refuses to re-request a tour that is already WaitingApproval or
+       * Approved (1.37.0), and on that path the courier's request happened before
+       * this run — so `APP.TOUR_APPROVAL_REQUESTED` is not merely late, it will
+       * never arrive. The device-side half of the join is the stored schedule
+       * status instead, and it is a DIFFERENT derivation rather than an extra
+       * input to the one above precisely because it proves less: nobody watched
+       * the button being pressed here.
+       *
+       * Still correlated on the schedule. The reason the original derivation
+       * correlates is unchanged — 47 rows came back from the leaving-request list
+       * on RS staging, most of them other couriers' — and a weaker device-side
+       * input makes correlation more necessary, not less.
+       */
+      factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST,
+      plane: "REMOTE",
+      authority: "PRIMARY",
+      displayName: "Tour approval already requested on the device and approved by the dispatcher",
+      provenance: {
+        reducerKind: "CORRELATED_ALL_OF",
+        reducerVersion: 1,
+        inputFactKeys: [
+          NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN,
+          NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
+          NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED,
+        ],
+        parameters: { correlationPath: "scheduleId" },
+      },
+      preserveInputs: true,
+      requiresCorrelation: true,
+    },
   ],
 };

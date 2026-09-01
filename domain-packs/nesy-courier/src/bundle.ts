@@ -51,6 +51,17 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.39.0 — the stop row is addressed by the legacy system id the row PRINTS,
+  //   not the mongo stop_id no screen renders. run_3acf9459: the old key made
+  //   the only match on screen the search box the run had just typed into, so
+  //   the bridge tapped an EditText and reported RESOLVED_UNIQUE.
+  //
+  // 1.38.0 — tour approval measures the already-open path instead of waiting for
+  //   an event that cannot be re-emitted: the schedule read publishes
+  //   LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN, a second correlated derivation
+  //   concludes REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST, and the final
+  //   oracle applies exactly one of the two conclusions per path.
+  //
   // 1.37.0 — tour approval accepts an already WaitingForApproval/Approved
   //   schedule and jumps to backend verification instead of reopening UI request.
   //
@@ -443,7 +454,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 37, patch: 0 },
+  version: { major: 1, minor: 39, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

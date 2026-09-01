@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 37,
+      "minor": 39,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -1250,7 +1250,7 @@
             {
               "kind": "ENTITY_BINDING",
               "selector": {
-                "keyPath": "stop_id",
+                "keyPath": "legacy_system_id",
                 "collectionQueryRef": "nesy.availableStops"
               },
               "establishesIdentity": true
@@ -3201,6 +3201,37 @@
         ]
       },
       {
+        "sourceKey": "nesy.local.tour-approval-request-open",
+        "plane": "LOCAL",
+        "kind": "DATABASE_VERIFIER",
+        "authority": "PRIMARY",
+        "displayName": "A tour approval request is already open for the stored schedule",
+        "factKey": "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
+        "observationRef": "nesy.db.schedule",
+        "freshness": {
+          "maxAgeMs": 15000,
+          "onStale": "REOBSERVE"
+        },
+        "correlation": {
+          "requireEntityMatch": true,
+          "requireOccurrenceMatch": true,
+          "correlationPaths": [
+            "entityRef.id",
+            "correlationId"
+          ],
+          "crossPlane": true
+        },
+        "redaction": {
+          "redactPaths": [
+            "schedule_courier_name"
+          ]
+        },
+        "preservesRawEvidence": true,
+        "requiredCapabilityRefs": [
+          "domain.nesy.adapter.named-query"
+        ]
+      },
+      {
         "sourceKey": "nesy.remote.auth-accepted",
         "plane": "REMOTE",
         "kind": "REMOTE_VALIDATOR",
@@ -3476,6 +3507,26 @@
             ],
             "parameters": {
               "correlationPath": "approvalRequestCode"
+            }
+          },
+          "preserveInputs": true,
+          "requiresCorrelation": true
+        },
+        {
+          "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+          "plane": "REMOTE",
+          "authority": "PRIMARY",
+          "displayName": "Tour approval already requested on the device and approved by the dispatcher",
+          "provenance": {
+            "reducerKind": "CORRELATED_ALL_OF",
+            "reducerVersion": 1,
+            "inputFactKeys": [
+              "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
+              "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
+              "REMOTE.TOUR_APPROVAL_STATUS_APPROVED"
+            ],
+            "parameters": {
+              "correlationPath": "scheduleId"
             }
           },
           "preserveInputs": true,
@@ -10708,6 +10759,16 @@
               "name": "confirmed",
               "type": "boolean",
               "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED"
+            },
+            {
+              "name": "confirmedForOpenRequest",
+              "type": "boolean",
+              "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST"
+            },
+            {
+              "name": "requestAlreadyOpen",
+              "type": "boolean",
+              "factKey": "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
             }
           ]
         },
@@ -10754,10 +10815,12 @@
           "factKeys": [
             "APP.SELECTED_ROUTE_OBSERVED",
             "APP.TOUR_APPROVAL_REQUESTED",
+            "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
             "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
             "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
             "APP.TOUR_APPROVAL_PUSH_RECEIVED",
-            "REMOTE.TOUR_APPROVAL_CONFIRMED"
+            "REMOTE.TOUR_APPROVAL_CONFIRMED",
+            "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST"
           ],
           "queryRefs": [
             "nesy.routeState"
@@ -10784,7 +10847,24 @@
                 "obligation": "REQUIRED",
                 "timing": "EVENTUAL",
                 "deadlineMs": 180000,
-                "onTimeout": "INCONCLUSIVE"
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 180000,
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "anyOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -10799,6 +10879,17 @@
                 "timing": "EVENTUAL",
                 "deadlineMs": 120000,
                 "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.TOUR_APPROVAL_REQUESTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
@@ -10892,7 +10983,20 @@
                 "kind": "SDK_QUERY",
                 "queryRef": "nesy.db.schedule",
                 "maxRows": 1,
-                "outputVariable": "approvalScheduleRows"
+                "outputVariable": "approvalScheduleRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
+                    "from": {
+                      "kind": "COLUMN_NOT_IN",
+                      "column": "schedule_status",
+                      "values": [
+                        "0"
+                      ]
+                    },
+                    "correlationColumn": "schedule_id"
+                  }
+                ]
               },
               {
                 "planStepId": "check-request-already-open",
@@ -11250,7 +11354,24 @@
                       "obligation": "REQUIRED",
                       "timing": "EVENTUAL",
                       "deadlineMs": 180000,
-                      "onTimeout": "INCONCLUSIVE"
+                      "onTimeout": "INCONCLUSIVE",
+                      "applicabilityCondition": {
+                        "noneOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
+                    },
+                    {
+                      "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                      "obligation": "REQUIRED",
+                      "timing": "EVENTUAL",
+                      "deadlineMs": 180000,
+                      "onTimeout": "INCONCLUSIVE",
+                      "applicabilityCondition": {
+                        "anyOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
                     },
                     {
                       "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -11270,7 +11391,12 @@
                       "factKey": "APP.TOUR_APPROVAL_REQUESTED",
                       "obligation": "REQUIRED",
                       "timing": "IMMEDIATE",
-                      "onTimeout": "FAIL"
+                      "onTimeout": "FAIL",
+                      "applicabilityCondition": {
+                        "noneOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
                     },
                     {
                       "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
@@ -11730,6 +11856,16 @@
               "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED"
             },
             {
+              "name": "confirmedForOpenRequest",
+              "type": "boolean",
+              "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST"
+            },
+            {
+              "name": "requestAlreadyOpen",
+              "type": "boolean",
+              "factKey": "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+            },
+            {
               "name": "activeStopMatches",
               "type": "boolean",
               "factKey": "APP.ACTIVE_STOP_MATCHES"
@@ -11845,10 +11981,12 @@
             "LOCAL.PARCEL_IN_SCHEDULE",
             "LOCAL.SCHEDULE_BODY_STORED",
             "APP.TOUR_APPROVAL_REQUESTED",
+            "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
             "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
             "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
             "APP.TOUR_APPROVAL_PUSH_RECEIVED",
             "REMOTE.TOUR_APPROVAL_CONFIRMED",
+            "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
             "UI.TASK_LIST_READY",
             "UI.DELIVERY_FLOW_READY",
             "UI.LOADING_BLOCKER_PRESENT",
@@ -11980,7 +12118,24 @@
                 "obligation": "REQUIRED",
                 "timing": "EVENTUAL",
                 "deadlineMs": 180000,
-                "onTimeout": "INCONCLUSIVE"
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 180000,
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "anyOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -12000,7 +12155,12 @@
                 "factKey": "APP.TOUR_APPROVAL_REQUESTED",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
+                "onTimeout": "FAIL",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
@@ -13464,7 +13624,20 @@
                 "kind": "SDK_QUERY",
                 "queryRef": "nesy.db.schedule",
                 "maxRows": 1,
-                "outputVariable": "permitApprovalScheduleRows"
+                "outputVariable": "permitApprovalScheduleRows",
+                "outputFactBindings": [
+                  {
+                    "factKey": "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
+                    "from": {
+                      "kind": "COLUMN_NOT_IN",
+                      "column": "schedule_status",
+                      "values": [
+                        "0"
+                      ]
+                    },
+                    "correlationColumn": "schedule_id"
+                  }
+                ]
               },
               {
                 "planStepId": "permit-check-request-already-open",
@@ -13822,7 +13995,24 @@
                       "obligation": "REQUIRED",
                       "timing": "EVENTUAL",
                       "deadlineMs": 180000,
-                      "onTimeout": "INCONCLUSIVE"
+                      "onTimeout": "INCONCLUSIVE",
+                      "applicabilityCondition": {
+                        "noneOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
+                    },
+                    {
+                      "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                      "obligation": "REQUIRED",
+                      "timing": "EVENTUAL",
+                      "deadlineMs": 180000,
+                      "onTimeout": "INCONCLUSIVE",
+                      "applicabilityCondition": {
+                        "anyOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
                     },
                     {
                       "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -13842,7 +14032,12 @@
                       "factKey": "APP.TOUR_APPROVAL_REQUESTED",
                       "obligation": "REQUIRED",
                       "timing": "IMMEDIATE",
-                      "onTimeout": "FAIL"
+                      "onTimeout": "FAIL",
+                      "applicabilityCondition": {
+                        "noneOf": [
+                          "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                        ]
+                      }
                     },
                     {
                       "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
@@ -17389,7 +17584,24 @@
                 "obligation": "REQUIRED",
                 "timing": "EVENTUAL",
                 "deadlineMs": 180000,
-                "onTimeout": "INCONCLUSIVE"
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 180000,
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "anyOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -17404,6 +17616,17 @@
                 "timing": "EVENTUAL",
                 "deadlineMs": 120000,
                 "onTimeout": "INCONCLUSIVE"
+              },
+              {
+                "factKey": "APP.TOUR_APPROVAL_REQUESTED",
+                "obligation": "REQUIRED",
+                "timing": "IMMEDIATE",
+                "onTimeout": "FAIL",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",
@@ -17557,7 +17780,24 @@
                 "obligation": "REQUIRED",
                 "timing": "EVENTUAL",
                 "deadlineMs": 180000,
-                "onTimeout": "INCONCLUSIVE"
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
+              },
+              {
+                "factKey": "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
+                "obligation": "REQUIRED",
+                "timing": "EVENTUAL",
+                "deadlineMs": 180000,
+                "onTimeout": "INCONCLUSIVE",
+                "applicabilityCondition": {
+                  "anyOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
@@ -17577,7 +17817,12 @@
                 "factKey": "APP.TOUR_APPROVAL_REQUESTED",
                 "obligation": "REQUIRED",
                 "timing": "IMMEDIATE",
-                "onTimeout": "FAIL"
+                "onTimeout": "FAIL",
+                "applicabilityCondition": {
+                  "noneOf": [
+                    "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN"
+                  ]
+                }
               },
               {
                 "factKey": "APP.TOUR_APPROVAL_PUSH_RECEIVED",

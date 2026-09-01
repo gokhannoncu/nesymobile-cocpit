@@ -34,6 +34,7 @@ import {
   dumpScopeToParams,
   laneForCommand,
   mayActOnResolution,
+  resolvedRowOntoTextEntry,
   redactForLog,
   type BridgeActionMethod,
   type BridgeActionRecord,
@@ -426,7 +427,13 @@ export class BridgeDeviceManager {
     const resolution = await this.resolve(fingerprint, options);
     lifecycle.withResolution(resolution).mark("ACCEPTED", this.now());
     if (!mayActOnResolution(resolution)) {
-      const record = lifecycle.finish("FAILED", resolution.deviceError ?? resolution.outcome);
+      // A unique match that turns out to be a text-entry node reads as success
+      // everywhere else, so the reason has to say what happened rather than echo
+      // `RESOLVED_UNIQUE` as though it were a failure code.
+      const reason = resolvedRowOntoTextEntry(resolution)
+        ? `row_identity_resolved_onto_text_entry:${resolution.node?.className ?? "unknown"}`
+        : (resolution.deviceError ?? resolution.outcome);
+      const record = lifecycle.finish("FAILED", reason);
       this.actionLog.push(record);
       return record;
     }

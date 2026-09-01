@@ -99,11 +99,11 @@ function portInUse(port) {
   return result.status === 0 && Boolean((result.stdout || '').trim())
 }
 
-function runPnpm(filter, script) {
-  log(`building ${filter} (${script})…`)
+function runTurboBuild(filter) {
+  log(`building ${filter} (turbo, with workspace deps)…`)
   const result = spawnSync(
     process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
-    ['--filter', filter, script],
+    ['exec', 'turbo', 'run', 'build', `--filter=${filter}`],
     {
       cwd: repoRoot,
       encoding: 'utf8',
@@ -115,9 +115,27 @@ function runPnpm(filter, script) {
   if (result.status !== 0) {
     const output = `${result.stdout || ''}\n${result.stderr || ''}`.trim()
     const clipped = output.slice(-2500)
-    throw new Error(`${filter} ${script} failed (exit ${result.status})\n${clipped}`)
+    throw new Error(`${filter} turbo build failed (exit ${result.status})\n${clipped}`)
   }
   log(`${filter} build ok`)
+}
+
+function listenerCommand(port) {
+  const listening = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], {
+    encoding: 'utf8',
+  })
+  const pid = (listening.stdout || '').trim().split(/\s+/).filter(Boolean)[0]
+  if (!pid) return ''
+  const ps = spawnSync('ps', ['-p', pid, '-o', 'command='], { encoding: 'utf8' })
+  return (ps.stdout || '').replace(/\s+/g, ' ').trim()
+}
+
+/** True when the operator is on `pnpm dev` (next-dev / cockpit-runner --mode dev). */
+function isDevWebSession() {
+  const webCmd = listenerCommand(4002)
+  if (/next-dev|next\s+dev/i.test(webCmd)) return true
+  const ps = spawnSync('ps', ['-ax', '-o', 'command='], { encoding: 'utf8' })
+  return /cockpit-runner\.mjs\s+--mode\s+dev/.test(ps.stdout || '')
 }
 
 function prepareWebProductionBuild() {
@@ -206,10 +224,15 @@ try {
     // Clear before build so concurrent afterFileEdit marks stay for the next waiter.
     clearState()
 
-    if (state.api) runPnpm('@nesy/api', 'build')
-    if (state.web) {
+    const skipWebProd = Boolean(state.web) && isDevWebSession()
+    if (skipWebProd) {
+      log('pnpm dev / next-dev is running — skip web .next wipe, prod build, and next start restart')
+    }
+
+    if (state.api) runTurboBuild('@nesy/api')
+    if (state.web && !skipWebProd) {
       prepareWebProductionBuild()
-      runPnpm('@nesy/web', 'build')
+      runTurboBuild('@nesy/web')
     }
     if (state.api && apiWasUp) {
       if (shouldPreserveApi()) {
@@ -218,7 +241,7 @@ try {
         restartApi()
       }
     }
-    if (state.web && webWasUp) restartNextWeb()
+    if (state.web && webWasUp && !skipWebProd) restartNextWeb()
     log('done')
     process.stdout.write('{}\n')
   }

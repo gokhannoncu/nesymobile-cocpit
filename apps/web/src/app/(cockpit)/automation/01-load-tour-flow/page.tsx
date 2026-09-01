@@ -5,6 +5,7 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@nesy/metronic/components/ui/button'
 import Link from 'next/link'
 import { AUTOMATION_LOAD_TOUR_PATH } from '@nesy/metronic/config/layout-21.config'
+import { LoadTourFlowPageShimmer } from '@/components/automation/shimmers/load-tour-flow-shimmer'
 import { LoadTourFlowWorkspace } from '@/components/automation/load-tour-flow-workspace'
 import { ProductPage } from '@/components/product'
 import { fetchWorkflow } from '@/services/automation-api'
@@ -17,6 +18,7 @@ export default function LoadTourFlowPage() {
   const [workflowId, setWorkflowId] = useState<string | null>(null)
   const [packPin, setPackPin] = useState<string | null>(null)
   const [packError, setPackError] = useState<string | null>(null)
+  const [bootstrapping, setBootstrapping] = useState(true)
 
   useEffect(() => {
     void fetchWorkflow(WORKFLOW_SLUG)
@@ -40,6 +42,7 @@ export default function LoadTourFlowPage() {
         setPackError(error instanceof Error ? error.message : 'Domain Pack catalog unavailable')
         setPackPin(null)
       })
+      .finally(() => setBootstrapping(false))
   }, [])
 
   return (
@@ -57,6 +60,10 @@ export default function LoadTourFlowPage() {
         ) : null
       }
     >
+      {bootstrapping ? (
+        <LoadTourFlowPageShimmer />
+      ) : (
+        <>
       {packError ? (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           {packError}
@@ -67,6 +74,8 @@ export default function LoadTourFlowPage() {
         </div>
       ) : null}
       <LoadTourFlowWorkspace />
+        </>
+      )}
     </ProductPage>
   )
 }

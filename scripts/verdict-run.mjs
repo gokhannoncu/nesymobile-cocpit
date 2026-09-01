@@ -295,7 +295,14 @@ const inputs = {
   sessionCorrelationId:
     opts.inputs.sessionCorrelationId ?? `runner-${Date.now()}-${process.pid}`,
 }
-if (opts.workflowRef === 'nesy.workflow.tour-approval-lifecycle') {
+// Tur onayı bacağını İÇEREN her akış scheduleId ister; onu yalnızca tek başına
+// koşan iş akışına pinlemek, birleşik akışı `refusing unbound tour call` ile
+// düşürüyordu (run_13a6cd5f: 38 adım yeşil, sonra bağlanmamış entity).
+const NEEDS_SCHEDULE_ID = new Set([
+  'nesy.workflow.tour-approval-lifecycle',
+  'nesy.workflow.full-courier-day',
+])
+if (NEEDS_SCHEDULE_ID.has(opts.workflowRef)) {
   if (!inputs.routeCode) inputs.routeCode = process.env.VERDICT_ROUTE_CODE ?? '31'
   if (typeof inputs.scheduleId !== 'string' || inputs.scheduleId.trim() === '') {
     const web = process.env.VERDICT_WEB ?? 'http://127.0.0.1:4002'
@@ -311,7 +318,8 @@ if (opts.workflowRef === 'nesy.workflow.tour-approval-lifecycle') {
     }
     if (fromDevice === '') {
       console.error(
-        'HATA: tour-approval-lifecycle scheduleId pinlenemedi. Cihazda Room scheduleId yok; --input scheduleId=… ver.',
+        `HATA: ${opts.workflowRef} scheduleId pinlenemedi. Cihazda Room scheduleId yok — ` +
+          '`--reset` sonrası Room boştur, bu durumda `--input scheduleId=…` zorunludur.',
       )
       process.exit(64)
     }

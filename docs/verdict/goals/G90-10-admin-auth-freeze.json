@@ -1,6 +1,6 @@
 {
   "kind": "g90-10-admin-auth-freeze",
-  "verdict": "GO_CACHE",
+  "verdict": "NO_GO",
   "notBd6Proof": true,
   "commit": "1caf40f",
   "eventualContract": "LOCKED",
@@ -8,25 +8,33 @@
   "flushGraceMs": 2000,
   "adapterTimeoutMs": 20000,
   "lastAuthSignal": {
-    "pid": 37299,
-    "resultCode": 200,
-    "source": "operator-imported",
-    "loginDashboardCalls": 0,
-    "expirySource": "jwt",
-    "expiresAt": "2026-08-19T03:00:00.000Z",
-    "tokenFingerprint": "sha256:06cab5d8a4a10431",
-    "independentCaptchaClear": true,
-    "note": "Operator JWT re-imported on PID 37299 after 35617 exit 137 (auto-restart emptied memory cache). LoginDashboard not called. Use until JWT exp. Do not POST /nesy/auth/login on this PID."
+    "pid": 8433,
+    "resultCode": 400,
+    "independentCaptchaClear": false,
+    "note": "PID 8433 later exit 137 was operational replacement, not ENV_FAILURE"
   },
-  "adminAuthReady": true,
-  "singleton": {
-    "waybill": "61525961555490",
-    "scan": "6880051000294913",
-    "local": "Loaded itemStatus=4",
-    "consumed": false
-  },
-  "uninjected": "READY_AUTH",
+  "adminAuthReady": false,
+  "singleton": null,
+  "uninjected": "NOT_STARTED",
   "bd6": "CLOSED",
-  "closedPids": ["10060", "63409", "7371", "52089", "30115"],
-  "writtenAt": "2026-08-18T14:10:00.000Z"
+  "loginGo": {
+    "env": "VERDICT_ADMIN_AUTH_GO=1",
+    "reasonEnv": "VERDICT_ADMIN_AUTH_GO_REASON",
+    "requires": "external captcha/400 clear — not an empty cache and not a retry"
+  },
+  "writtenAt": "2026-09-01T19:45:21.277Z",
+  "goArmed": true,
+  "goReasonPresent": true,
+  "runtime": {
+    "apiPid": "65859",
+    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "cachePresent": false,
+    "loginDashboardCalls": 0,
+    "tokenFingerprint": null
+  },
+  "loginDecision": {
+    "allowed": true,
+    "code": "ADMIN_AUTH_GO",
+    "detail": "API restarted to load bridge-contract + pack 1.39.0; cache empty on new pid 65859, loginDashboardCalls=0, user standing approval to continue the run"
+  }
 }

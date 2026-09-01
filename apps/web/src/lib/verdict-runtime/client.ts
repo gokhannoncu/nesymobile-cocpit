@@ -27,6 +27,7 @@ import type {
   ScreenSurfaceCatalogApi,
   DomainPackAdminGetApi,
 } from './types'
+import { mapAdminPackToDetailApi } from './domain-pack-detail'
 
 export async function fetchVerdictRunHistory(query: RunHistoryQuery = {}): Promise<RunHistoryResult> {
   const params = new URLSearchParams()
@@ -207,7 +208,10 @@ export async function fetchVerdictDomainPacks(): Promise<DomainPackCatalogApi> {
 }
 
 export async function fetchVerdictDomainPack(packKey: string, version: string): Promise<DomainPackDetailApi> {
-  return getJson<DomainPackDetailApi>(`/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}`)
+  const admin = await getJson<DomainPackAdminGetApi>(
+    `/verdict/runtime/domain-packs/${encodeURIComponent(packKey)}/${encodeURIComponent(version)}`,
+  )
+  return mapAdminPackToDetailApi(admin)
 }
 
 export async function saveDomainPackDraft(body: Record<string, unknown>): Promise<DomainPackSaveResult> {

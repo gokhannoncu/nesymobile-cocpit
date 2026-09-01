@@ -37,7 +37,7 @@ export function AutomationListStatCardsShimmer() {
   )
 }
 
-export function AutomationListGridShimmer({ count = 3 }: { count?: number }) {
+export function AutomationListGridShimmer({ count = 1 }: { count?: number }) {
   return (
     <div
       className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
@@ -51,10 +51,63 @@ export function AutomationListGridShimmer({ count = 3 }: { count?: number }) {
   )
 }
 
+function WorkflowLibraryHeroShimmer() {
+  return (
+    <div
+      className="overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
+      aria-hidden
+    >
+      <ShimmerBlock className="h-3 w-36" />
+      <ShimmerBlock className="mt-2 h-7 w-48" />
+      <ShimmerBlock className="mt-2 h-4 w-full max-w-2xl" />
+      <div className="mt-3 flex flex-wrap gap-2">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <ShimmerBlock key={index} className="h-6 w-28 rounded-full" />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-lg border border-border/70 bg-background/80 p-4">
+            <ShimmerBlock className="h-3 w-20" />
+            <ShimmerBlock className="mt-3 h-8 w-12" />
+            <ShimmerBlock className="mt-2 h-3 w-28" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function WorkflowLibraryCommandShimmer() {
+  return (
+    <div className="rounded-lg border border-border/80 bg-card p-3 shadow-xs" aria-hidden>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <ShimmerBlock className="h-10 flex-1 rounded-lg" />
+        <div className="flex gap-2">
+          <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
+          <ShimmerBlock className="h-10 w-32 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function AutomationListPageShimmer() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Loading workflow library">
+      <div className="space-y-4">
+        <WorkflowLibraryHeroShimmer />
+        <WorkflowLibraryCommandShimmer />
+      </div>
+      <AutomationListGridShimmer count={1} />
+    </div>
+  )
+}
+
 function WorkflowCardSkeleton() {
   return (
     <article
-      className="flex min-h-[232px] flex-col overflow-hidden rounded-xl border border-border/90 bg-card shadow-xs"
+      className="flex min-h-[232px] flex-col overflow-hidden rounded-lg border border-border/90 bg-card shadow-xs"
       aria-hidden
     >
       <div className="flex flex-1 flex-col p-4 pb-3">

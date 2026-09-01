@@ -82,6 +82,23 @@ describe('applyLogLine', () => {
     assert.equal(state.web.status, 'ready')
     assert.equal(state.error, null)
   })
+
+  it('ignores Next ENOENT open races as failures', () => {
+    const state = createCockpitState('dev')
+    applyLogLine(
+      state,
+      "@nesy/web:dev: [Error: ENOENT: no such file or directory, open '/Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/web/.next/cache/foo']",
+    )
+    assert.notEqual(state.web.status, 'failed')
+    assert.equal(state.error, null)
+    applyLogLine(state, '@nesy/web:dev: ✓ Ready in 694ms')
+    applyLogLine(
+      state,
+      "@nesy/web:dev: ⨯ [Error: ENOENT: no such file or directory, open '/Users/gokhanoncu/Desktop/foo']",
+    )
+    assert.equal(state.web.status, 'ready')
+    assert.equal(state.error, null)
+  })
 })
 
 describe('applyHealthProbe', () => {

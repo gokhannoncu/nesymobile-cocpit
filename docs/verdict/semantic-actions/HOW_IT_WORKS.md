@@ -211,7 +211,7 @@ Kaynak haritası kuralı (sözleşme başlığı):
 | Parça | Durum | Kanıt / path |
 |---|---|---|
 | Contract `SemanticActionDefinition` | Var | `packages/domain-pack-contracts/src/semantic-action.ts` |
-| Pack bundle + validate | Var | `bundle.ts`, `validate.ts`; nesy-courier / match-reaction |
+| Pack bundle + validate | Var | `bundle.ts`, `validate.ts`; nesy-courier |
 | SemanticActionQuery API + `capabilityStatus` | Var (5D.1b) | `domain-pack-read-models.service.ts` |
 | Verdict `SemanticActionPalette` pack okuma | Var (6D.1e) | `SemanticActionPalette.tsx` |
 | Sol palet pack primary cutover | Var (6D.1f) | `pack-palette.ts` + `workflow-editor.tsx` |

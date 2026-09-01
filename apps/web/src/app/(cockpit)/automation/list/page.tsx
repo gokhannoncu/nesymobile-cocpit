@@ -23,7 +23,6 @@ import {
   IdCard,
   Layers,
   ListChecks,
-  Loader2,
   Lock,
   Mail,
   MapPin,
@@ -33,7 +32,6 @@ import {
   Pencil,
   Play,
   Plus,
-  Search,
   ShieldCheck,
   Tag,
   Trash2,
@@ -74,13 +72,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   AutomationListGridShimmer,
-  AutomationListStatCardsShimmer,
-  ShimmerBlock,
+  AutomationListPageShimmer,
 } from '@/components/automation/automation-list-page-shimmer'
-import { ProductPage, CountUp, type Tone, toneIcon, toneIconBox } from '@/components/product'
+import { WorkflowLibraryHeader } from '@/components/automation/workflow-library/WorkflowLibraryHeader'
+import { ProductPage } from '@/components/product'
 import {
   countWorkflowLibraryStatuses,
-  formatWorkflowShare,
   isVisibleLibraryWorkflow,
   workflowMatchesStatusFilter,
   type WorkflowLibraryStatusFilter,
@@ -172,38 +169,6 @@ const modalOptions: ModalOption[] = [
   },
 ]
 
-const summaryCards: Array<{
-  title: string
-  icon: LucideIcon
-  tone: Tone
-  filter: WorkflowLibraryStatusFilter
-}> = [
-  {
-    title: 'Total Workflows',
-    icon: Workflow,
-    tone: 'nesy',
-    filter: 'all',
-  },
-  {
-    title: 'Active',
-    icon: Play,
-    tone: 'green',
-    filter: 'active',
-  },
-  {
-    title: 'Draft',
-    icon: Pencil,
-    tone: 'amber',
-    filter: 'draft',
-  },
-  {
-    title: 'Archived',
-    icon: Archive,
-    tone: 'gray',
-    filter: 'archived',
-  },
-]
-
 const iconMap: Record<string, LucideIcon> = {
   Truck,
   Package,
@@ -232,160 +197,6 @@ const iconMap: Record<string, LucideIcon> = {
 
 function resolveIcon(iconName: string): LucideIcon {
   return iconMap[iconName] ?? Workflow
-}
-
-function buildWorkflowLibraryStatHint(
-  filter: WorkflowLibraryStatusFilter,
-  total: number,
-  counts: ReturnType<typeof countWorkflowLibraryStatuses>,
-): string {
-  if (total === 0) return 'Create a workflow to get started'
-
-  const hints: Record<WorkflowLibraryStatusFilter, string> = {
-    all: [
-      counts.active > 0 ? `${counts.active} live` : null,
-      counts.draft > 0 ? `${counts.draft} draft` : null,
-      counts.archived > 0 ? `${counts.archived} archived` : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || `${total} in library`,
-    active:
-      counts.active === 0
-        ? 'No published or active workflows yet'
-        : 'Published and active workflows',
-    draft: formatWorkflowShare(counts.draft, total),
-    archived: formatWorkflowShare(counts.archived, total),
-  }
-
-  return hints[filter]
-}
-
-function WorkflowFilterStatCard({
-  title,
-  value,
-  hint,
-  icon: Icon,
-  tone,
-  filter,
-  selected,
-  onSelect,
-}: {
-  title: string
-  value: number
-  hint: string
-  icon: LucideIcon
-  tone: Tone
-  filter: WorkflowLibraryStatusFilter
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        'w-full rounded-lg border bg-card p-4 text-left shadow-xs transition-[border-color,box-shadow,background-color]',
-        'cursor-pointer hover:border-nesy/30 hover:shadow-sm',
-        'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-nesy-soft/40',
-        selected
-          ? 'border-nesy/40 bg-nesy-soft/10 ring-2 ring-nesy/15'
-          : 'border-border',
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            'flex size-10 shrink-0 items-center justify-center rounded-lg',
-            toneIconBox[tone],
-          )}
-        >
-          <Icon className={cn('size-5', toneIcon[tone])} strokeWidth={2.2} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {title}
-            </p>
-            {selected && filter !== 'all' ? (
-              <span className="shrink-0 rounded-full bg-nesy/10 px-2 py-0.5 text-[10px] font-semibold text-nesy-ink">
-                Filtered
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1.5 text-2xl font-bold tabular-nums leading-none tracking-[-0.02em] text-foreground">
-            <CountUp to={value} />
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">{hint}</p>
-        </div>
-      </div>
-    </button>
-  )
-}
-
-function WorkflowLibrarySearch({
-  inputRef,
-  searchQuery,
-  isSearchPending,
-  onChange,
-  onClear,
-}: {
-  inputRef: React.RefObject<HTMLInputElement | null>
-  searchQuery: string
-  isSearchPending: boolean
-  onChange: (value: string) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="relative w-full lg:max-w-sm lg:shrink-0">
-      <label htmlFor="workflow-library-search" className="sr-only">
-        Search workflows
-      </label>
-      <Search
-        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-        aria-hidden
-      />
-      <input
-        ref={inputRef}
-        id="workflow-library-search"
-        value={searchQuery}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          'h-10 w-full cursor-text rounded-md border py-2 pl-9 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow]',
-          'bg-muted/35 placeholder:text-muted-foreground/75 hover:bg-muted/50',
-          'focus:border-nesy/40 focus:bg-card focus:ring-4 focus:ring-nesy-soft/30',
-          searchQuery || isSearchPending ? 'pr-10' : 'pr-12',
-          isSearchPending ? 'border-nesy/20' : 'border-transparent',
-        )}
-        placeholder="Search workflows…"
-        type="search"
-        autoComplete="off"
-        spellCheck={false}
-        aria-busy={isSearchPending}
-      />
-      <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-        {isSearchPending ? (
-          <Loader2
-            className="size-4 animate-spin text-nesy"
-            aria-label="Searching workflows"
-          />
-        ) : searchQuery ? (
-          <button
-            type="button"
-            onClick={onClear}
-            className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            aria-label="Clear search"
-          >
-            <X className="size-4" />
-          </button>
-        ) : (
-          <kbd className="hidden rounded border border-border/80 bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">
-            /
-          </kbd>
-        )}
-      </div>
-    </div>
-  )
 }
 
 function NewWorkflowButton({
@@ -448,7 +259,12 @@ export default function AutomationListPage() {
   const [allWorkflows, setAllWorkflows] = useState<WorkflowListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<WorkflowLibraryStatusFilter>('all')
+  const [createShortcutLabel, setCreateShortcutLabel] = useState('Ctrl+N')
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setCreateShortcutLabel(/Mac|iPhone|iPad/i.test(navigator.userAgent) ? '⌘N' : 'Ctrl+N')
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -526,27 +342,23 @@ export default function AutomationListPage() {
     [searchedWorkflows],
   )
 
-  const stats = useMemo(() => {
-    const total = visibleWorkflows.length
-    const counts = countWorkflowLibraryStatuses(visibleWorkflows)
+  const statusCounts = useMemo(
+    () => countWorkflowLibraryStatuses(visibleWorkflows),
+    [visibleWorkflows],
+  )
 
-    const values: Record<WorkflowLibraryStatusFilter, number> = {
-      all: total,
-      active: counts.active,
-      draft: counts.draft,
-      archived: counts.archived,
-    }
+  const clearSearch = () => {
+    setSearchQuery('')
+    setDebouncedSearch('')
+    setPage(1)
+  }
 
-    return summaryCards.map((card) => {
-      const selected = statusFilter === card.filter
-      return {
-        ...card,
-        value: values[card.filter],
-        hint: buildWorkflowLibraryStatHint(card.filter, total, counts),
-        selected,
-      }
-    })
-  }, [visibleWorkflows, statusFilter])
+  const hasFilters = statusFilter !== 'all' || Boolean(debouncedSearch)
+
+  const clearFilters = () => {
+    setStatusFilter('all')
+    clearSearch()
+  }
 
   const filteredWorkflows = useMemo(
     () =>
@@ -565,12 +377,6 @@ export default function AutomationListPage() {
   useEffect(() => {
     setPage(1)
   }, [statusFilter, debouncedSearch])
-
-  const clearSearch = () => {
-    setSearchQuery('')
-    setDebouncedSearch('')
-    setPage(1)
-  }
 
   const safePage = Math.min(page, totalPages)
   const pageSlice = useMemo(() => {
@@ -614,222 +420,185 @@ export default function AutomationListPage() {
   }
 
   return (
-    <ProductPage
-      path="/automation/list"
-      toolbarActions={<NewWorkflowButton onClick={openCreateModal} variant="toolbar" />}
-    >
-      <section aria-label="Filter workflows by status">
-        {loading ? (
-          <AutomationListStatCardsShimmer />
+    <ProductPage path="/automation/list" hideToolbar>
+      <div className="space-y-5">
+        {loading && allWorkflows.length === 0 ? (
+          <AutomationListPageShimmer />
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((card) => (
-              <WorkflowFilterStatCard
-                key={card.title}
-                title={card.title}
-                value={card.value}
-                hint={card.hint}
-                icon={card.icon}
-                tone={card.tone}
-                filter={card.filter}
-                selected={card.selected}
-                onSelect={() => {
-                  setStatusFilter((current) =>
-                    current === card.filter ? 'all' : card.filter,
-                  )
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section
-        className={cn('space-y-4 transition-opacity duration-150', isSearchPending && 'opacity-85')}
-        aria-busy={isSearchPending}
-        aria-label="Workflow library"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <h2 className="flex flex-wrap items-baseline gap-x-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
-              All Workflows
-              {loading ? (
-                <ShimmerBlock className="inline-block h-4 w-10 rounded-sm" />
-              ) : (
-                <span className="text-sm font-medium text-muted-foreground">
-                  ({filteredWorkflows.length}
-                  {statusFilter !== 'all' && visibleWorkflows.length !== filteredWorkflows.length
-                    ? ` of ${visibleWorkflows.length}`
-                    : ''}
-                  )
-                </span>
-              )}
-            </h2>
-            {debouncedSearch ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {isSearchPending
-                  ? 'Updating results…'
-                  : `${filteredWorkflows.length} result${filteredWorkflows.length === 1 ? '' : 's'} for “${debouncedSearch}”`}
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Browse, filter, and open workflows from your library
-              </p>
-            )}
-          </div>
-
-          {loading && allWorkflows.length === 0 ? (
-            <ShimmerBlock className="h-10 w-full rounded-md lg:max-w-sm" aria-hidden />
-          ) : (
-            <WorkflowLibrarySearch
-              inputRef={searchInputRef}
+          <>
+            <WorkflowLibraryHeader
+              totalCount={visibleWorkflows.length}
+              filteredCount={filteredWorkflows.length}
+              visibleCount={visibleWorkflows.length}
+              statusCounts={statusCounts}
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
               searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onClearSearch={clearSearch}
+              onRefresh={() => void loadWorkflows()}
+              onClearFilters={clearFilters}
+              hasFilters={hasFilters}
               isSearchPending={isSearchPending}
-              onChange={setSearchQuery}
-              onClear={clearSearch}
+              onCreateClick={openCreateModal}
+              createShortcutLabel={createShortcutLabel}
+              searchInputRef={searchInputRef}
             />
-          )}
-        </div>
 
-        {loading ? (
-          <AutomationListGridShimmer count={3} />
-        ) : pageSlice.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-card px-6 py-12 text-center">
-            {allWorkflows.length === 0 ? (
-              <div className="mx-auto flex max-w-md flex-col items-center gap-3">
-                <p className="text-sm font-medium text-foreground">No workflows yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Start with a blank workflow or import a template when that option is enabled.
-                </p>
-                <NewWorkflowButton onClick={openCreateModal} />
-              </div>
-            ) : (
-              <div className="mx-auto flex max-w-md flex-col items-center gap-3">
-                <p className="text-sm font-medium text-foreground">No workflows in this view</p>
-                <p className="text-sm text-muted-foreground">
-                  Try another status filter or clear your search query.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter('all')
-                    clearSearch()
-                  }}
-                  className="text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
-                >
-                  Reset filters
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {pageSlice.map((workflow) => (
-              <WorkflowCard
-                key={workflow.id}
-                workflow={workflow}
-                onDelete={() => handleDelete(workflow.id, workflow.slug)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {filteredWorkflows.length > 0 ? (
-        <footer className="flex flex-col gap-4 border-t border-border pt-4 pb-2 lg:flex-row lg:items-center lg:justify-between">
-          <p className="order-2 text-center text-sm text-muted-foreground lg:order-1 lg:text-left">
-            Showing{' '}
-            <span className="font-semibold tabular-nums text-foreground">
-              {rangeStart}–{rangeEnd}
-            </span>{' '}
-            of{' '}
-            <span className="font-semibold tabular-nums text-foreground">
-              {filteredWorkflows.length}
-            </span>{' '}
-            workflow{filteredWorkflows.length === 1 ? '' : 's'}
-            {totalPages > 1 ? (
-              <span className="hidden sm:inline">
-                {' '}
-                · Page {safePage} of {totalPages}
-              </span>
-            ) : null}
-          </p>
-
-          {totalPages > 1 ? (
-            <nav
-              className="order-1 flex flex-wrap items-center justify-center gap-1 lg:order-2"
-              aria-label="Workflow pages"
-            >
-              <PaginationButton aria-label="Previous page" disabled={safePage <= 1} onClick={goPrev}>
-                <ChevronLeft className="size-4" />
-              </PaginationButton>
-              {paginationPages.map((item, idx) =>
-                item === 'ellipsis' ? (
-                  <span
-                    key={`e-${idx}`}
-                    className="flex size-9 items-center justify-center text-sm font-medium text-muted-foreground"
-                    aria-hidden
-                  >
-                    …
-                  </span>
-                ) : (
-                  <PaginationButton
-                    key={item}
-                    active={item === safePage}
-                    aria-label={`Page ${item}`}
-                    aria-current={item === safePage ? 'page' : undefined}
-                    onClick={() => setPage(item)}
-                  >
-                    {item}
-                  </PaginationButton>
-                ),
+            <section
+              className={cn(
+                'space-y-4 transition-opacity duration-150',
+                isSearchPending && 'opacity-85',
               )}
-              <PaginationButton
-                aria-label="Next page"
-                disabled={safePage >= totalPages}
-                onClick={goNext}
-              >
-                <ChevronRight className="size-4" />
-              </PaginationButton>
-            </nav>
-          ) : (
-            <div className="order-1 hidden lg:block lg:order-2 lg:flex-1" aria-hidden />
-          )}
-
-          <div className="order-3 flex items-center justify-center gap-2 lg:justify-end">
-            <label htmlFor="workflow-page-size" className="text-sm text-muted-foreground">
-              Rows per page
-            </label>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(v) => {
-                const next = Number(v)
-                setPageSize(next)
-                setPage(1)
-              }}
+              aria-busy={isSearchPending}
+              aria-label="Workflow library"
             >
-              <SelectTrigger
-                id="workflow-page-size"
-                size="sm"
-                className="h-9 w-[4.5rem] justify-between gap-1 px-2.5 shadow-xs"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end">
-                <SelectItem value="4">4</SelectItem>
-                <SelectItem value="8">8</SelectItem>
-                <SelectItem value="12">12</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </footer>
-      ) : null}
+              {loading ? (
+                <AutomationListGridShimmer count={1} />
+              ) : pageSlice.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center">
+                  {allWorkflows.length === 0 ? (
+                    <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                      <p className="text-sm font-medium text-foreground">No workflows yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Start with a blank workflow or import a template when that option is enabled.
+                      </p>
+                      <NewWorkflowButton onClick={openCreateModal} />
+                    </div>
+                  ) : (
+                    <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                      <p className="text-sm font-medium text-foreground">No workflows in this view</p>
+                      <p className="text-sm text-muted-foreground">
+                        Try another status filter or clear your search query.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter('all')
+                          clearSearch()
+                        }}
+                        className="text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {pageSlice.map((workflow) => (
+                    <WorkflowCard
+                      key={workflow.id}
+                      workflow={workflow}
+                      onDelete={() => handleDelete(workflow.id, workflow.slug)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
-      <AnimatePresence>
-        {modalOpen && (
-          <CreateWorkflowModal onClose={() => setModalOpen(false)} onCreate={handleCreate} />
+            {filteredWorkflows.length > 0 ? (
+              <footer className="flex flex-col gap-4 border-t border-border pt-4 pb-2 lg:flex-row lg:items-center lg:justify-between">
+                <p className="order-2 text-center text-sm text-muted-foreground lg:order-1 lg:text-left">
+                  Showing{' '}
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {rangeStart}–{rangeEnd}
+                  </span>{' '}
+                  of{' '}
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {filteredWorkflows.length}
+                  </span>{' '}
+                  workflow{filteredWorkflows.length === 1 ? '' : 's'}
+                  {totalPages > 1 ? (
+                    <span className="hidden sm:inline">
+                      {' '}
+                      · Page {safePage} of {totalPages}
+                    </span>
+                  ) : null}
+                </p>
+
+                {totalPages > 1 ? (
+                  <nav
+                    className="order-1 flex flex-wrap items-center justify-center gap-1 lg:order-2"
+                    aria-label="Workflow pages"
+                  >
+                    <PaginationButton
+                      aria-label="Previous page"
+                      disabled={safePage <= 1}
+                      onClick={goPrev}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </PaginationButton>
+                    {paginationPages.map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span
+                          key={`e-${idx}`}
+                          className="flex size-9 items-center justify-center text-sm font-medium text-muted-foreground"
+                          aria-hidden
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <PaginationButton
+                          key={item}
+                          active={item === safePage}
+                          aria-label={`Page ${item}`}
+                          aria-current={item === safePage ? 'page' : undefined}
+                          onClick={() => setPage(item)}
+                        >
+                          {item}
+                        </PaginationButton>
+                      ),
+                    )}
+                    <PaginationButton
+                      aria-label="Next page"
+                      disabled={safePage >= totalPages}
+                      onClick={goNext}
+                    >
+                      <ChevronRight className="size-4" />
+                    </PaginationButton>
+                  </nav>
+                ) : (
+                  <div className="order-1 hidden lg:block lg:order-2 lg:flex-1" aria-hidden />
+                )}
+
+                <div className="order-3 flex items-center justify-center gap-2 lg:justify-end">
+                  <label htmlFor="workflow-page-size" className="text-sm text-muted-foreground">
+                    Rows per page
+                  </label>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => {
+                      const next = Number(v)
+                      setPageSize(next)
+                      setPage(1)
+                    }}
+                  >
+                    <SelectTrigger
+                      id="workflow-page-size"
+                      size="sm"
+                      className="h-9 w-[4.5rem] justify-between gap-1 px-2.5 shadow-xs"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      <SelectItem value="4">4</SelectItem>
+                      <SelectItem value="8">8</SelectItem>
+                      <SelectItem value="12">12</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </footer>
+            ) : null}
+          </>
         )}
-      </AnimatePresence>
+
+        <AnimatePresence>
+          {modalOpen && (
+            <CreateWorkflowModal onClose={() => setModalOpen(false)} onCreate={handleCreate} />
+          )}
+        </AnimatePresence>
+      </div>
     </ProductPage>
   )
 }

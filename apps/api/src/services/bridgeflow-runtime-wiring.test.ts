@@ -21,17 +21,15 @@ import { Prisma } from '@nesy/db'
 const PACK = listDomainPacks()[0]!
 
 describe('BridgeFlow compile adapter', () => {
-  it('publishes more than one first-party pack so core stays app-agnostic', () => {
+  it('publishes the first-party nesy.courier pack for compile', () => {
     const packs = listDomainPacks()
-    expect(packs.map((pack) => pack.packKey)).toEqual(
-      expect.arrayContaining(['nesy.courier', 'match.reaction']),
-    )
-    const second = packs.find((pack) => pack.packKey === 'match.reaction')
-    expect(second?.bundle.registries.macros[0]?.expansionSnapshot?.authoredBy).toBe('COMPILER')
+    expect(packs.map((pack) => pack.packKey)).toEqual(['nesy.courier'])
+    const courier = packs[0]!
+    expect(courier.bundle.registries.macros[0]?.expansionSnapshot?.authoredBy).toBe('COMPILER')
     expect(resolveDomainPack({
-      packKey: 'match.reaction',
-      packVersion: second!.packVersion,
-      packDigest: second!.packDigest,
+      packKey: 'nesy.courier',
+      packVersion: courier.packVersion,
+      packDigest: courier.packDigest,
     }).ok).toBe(true)
   })
 

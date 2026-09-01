@@ -550,6 +550,38 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     preservesRawEvidence: true,
     requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
   },
+  {
+    /**
+     * "A tour approval request is already on record for this schedule."
+     *
+     * Read from the device's own stored schedule status, which is the only place
+     * the answer exists once the request was made by an earlier run: the app
+     * emits `TOUR_STARTED` at the moment of the tap and never re-emits it, so a
+     * run that correctly declines to re-request has no event to watch for.
+     *
+     * PRIMARY for the claim it actually makes. Room is where the working plan
+     * lives and its status is the device's own answer to "has this tour been
+     * requested" — there is no more direct observation of it. What it is NOT is
+     * a substitute for `APP.TOUR_APPROVAL_REQUESTED`: it says a request exists,
+     * not that this run watched a courier make one. The two are separate fact
+     * keys and the oracle applies exactly one of them per path.
+     *
+     * Correlated on the schedule, like every other fact in this slice, so a
+     * status left over from another tour cannot answer for this one.
+     */
+    sourceKey: "nesy.local.tour-approval-request-open",
+    plane: "LOCAL",
+    kind: "DATABASE_VERIFIER",
+    authority: "PRIMARY",
+    displayName: "A tour approval request is already open for the stored schedule",
+    factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN,
+    observationRef: "nesy.db.schedule",
+    freshness: APP_FRESHNESS,
+    correlation: ENTITY_CORRELATION,
+    redaction: { redactPaths: ["schedule_courier_name"] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.named-query"],
+  },
 ];
 
 const REMOTE_SOURCES: readonly EvidenceSourceDefinition[] = [

@@ -484,6 +484,74 @@ export function createGenericStepRuntime(options: {
     bundle.registries.targets.map((target) => [target.targetKey, target]),
   )
   const applicationId = options.applicationId?.trim() || bundle.registries.applications[0]?.packageIdentity
+
+  /**
+   * Surfaces the pack says to dismiss on sight, paired with the target its own
+   * handler macro drives.
+   *
+   * Built once from the bundle, and entirely from the pack's own declarations:
+   * a surface with `defaultPolicy: "HANDLE"` names a `handlerMacroRef`, and that
+   * macro declares the target it taps. No surface, macro or target name appears
+   * in this file — the host stays domain-neutral and the pack keeps deciding
+   * what an unbidden thing is and how it closes.
+   */
+  const dismissibleSurfaces = bundle.registries.surfaces
+    .filter((surface) => surface.defaultPolicy === 'HANDLE' && surface.handlerMacroRef !== undefined)
+    .map((surface) => {
+      const handler = bundle.registries.macros.find((macro) => macro.macroKey === surface.handlerMacroRef)
+      const targetRefs = handler?.allowedRegistryRefs.targetRefs ?? []
+      return { surfaceRef: surface.surfaceKey, handlerRef: surface.handlerMacroRef, targetRefs }
+    })
+    .filter((entry) => entry.targetRefs.length > 0)
+
+  /**
+   * Close whatever handled surface is currently on top, and say whether anything
+   * was closed.
+   *
+   * WHY THIS EXISTS IN THE HOST, MEASURED 2026-09-01 (run_a1f5bbdd)
+   *
+   * The pack had the whole answer already: the notification list a push puts over
+   * the stop list is a registered surface, its policy is HANDLE, and a handler
+   * macro exists whose single job is to tap the dialog's exit. None of it ran.
+   * Interrupts were compiled into WAIT plans only, and even there
+   * `onInterrupt: "HANDLE"` merely let the executor continue — no code path ever
+   * invoked the handler macro. So the approval push landed, the list covered the
+   * stop list, and every target under it resolved NOT_FOUND until a human sent
+   * `tap_id btn_exit` by hand. That manual tap is what a handler macro IS.
+   *
+   * Deliberately narrow, because a full interrupt engine is a bigger contract
+   * than this: presence is established by the handler's own target resolving
+   * UNIQUELY, and the sweep only ever taps that target. A surface that is not up
+   * resolves to nothing and costs one probe.
+   */
+  const dismissHandledSurfaces = async (): Promise<string[]> => {
+    const dismissed: string[] = []
+    for (const surface of dismissibleSurfaces) {
+      for (const targetRef of surface.targetRefs) {
+        const exit = targets.get(targetRef)
+        if (exit === undefined) continue
+        const fingerprint = buildTargetFingerprint(exit)
+        if (fingerprint === undefined) continue
+        const probe = await manager.resolve(fingerprint, { runId })
+        if (probe.outcome !== 'RESOLVED_UNIQUE') continue
+        const record = await manager.act(
+          fingerprint.selector.by === 'id' ? 'tap_id' : 'tap_text',
+          fingerprint,
+          { runId },
+        )
+        if (record.terminalState === 'SUCCEEDED') {
+          dismissed.push(surface.surfaceRef)
+          options.logger?.('[BridgeFlowGenericSteps] dismissed a handled surface', {
+            surfaceRef: surface.surfaceRef,
+            handlerRef: surface.handlerRef,
+            targetRef,
+          })
+        }
+        break
+      }
+    }
+    return dismissed
+  }
   const controlExecutor = options.controlExecutor ?? (
     applicationId === undefined ? undefined : createControlExecutor({ applicationId })
   )
@@ -693,6 +761,19 @@ export function createGenericStepRuntime(options: {
         )
         evidence = await manager.resolve(fingerprint, { runId })
       }
+
+      // A target the pack says MUST be there, still absent after its deadline, is
+      // the exact shape an unbidden overlay makes: everything under it reports
+      // NOT_FOUND while the screen is perfectly healthy. So ask the pack whether
+      // anything it knows how to close is up, close it, and give the target ONE
+      // more look. Only here — a target declared TREAT_AS_ABSENT has already been
+      // answered, and sweeping on its behalf would dismiss a dialog to prove
+      // something is missing.
+      if (evidence.outcome === 'NOT_FOUND' && waitsForTarget) {
+        const dismissed = await dismissHandledSurfaces()
+        if (dismissed.length > 0) evidence = await manager.resolve(fingerprint, { runId })
+      }
+
       const evidenceRef = describeResolutionEvidence(evidence)
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
         // The pack's `notFoundPolicy`, finally read. It has always been part of

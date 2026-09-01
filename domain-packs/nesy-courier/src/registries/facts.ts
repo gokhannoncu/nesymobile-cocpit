@@ -195,6 +195,24 @@ export const NESY_FACTS = {
    */
   SCHEDULE_PERSISTED: "LOCAL.SCHEDULE_PERSISTED",
   /**
+   * The device's stored schedule already sits past BeginningOfDay — a request
+   * for this tour exists before this run touched the phone.
+   *
+   * A WEAKER claim than `TOUR_APPROVAL_REQUESTED`, and deliberately a different
+   * key. The event fact says "the courier asked, and this run watched them do
+   * it"; this one says only "a request is on record for this schedule". It
+   * cannot substitute for the event on the path where the run drives the button,
+   * and the oracle keeps them apart for exactly that reason.
+   *
+   * It exists because the macro already refuses to re-request an open tour
+   * (1.37.0): on that path the app emits no `TOUR_STARTED`, so the run had a
+   * back office that approved the right record and no admissible statement of
+   * what the device side of it was. Measured 2026-09-01 (run_02f4d73b): both
+   * back-office reads SATISFIED, `APP.TOUR_APPROVAL_REQUESTED` REQUIRED_TIMEOUT,
+   * verdict INCONCLUSIVE with every step green.
+   */
+  TOUR_APPROVAL_REQUEST_ALREADY_OPEN: "LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN",
+  /**
    * WHICH route the stored schedule was created for.
    *
    * A separate fact from [SCHEDULE_PERSISTED] because a fact carries ONE
@@ -223,6 +241,20 @@ export const NESY_FACTS = {
   TOUR_APPROVAL_REQUEST_CREATED: "REMOTE.TOUR_APPROVAL_REQUEST_CREATED",
   TOUR_APPROVAL_STATUS_APPROVED: "REMOTE.TOUR_APPROVAL_STATUS_APPROVED",
   TOUR_APPROVAL_CONFIRMED: "REMOTE.TOUR_APPROVAL_CONFIRMED",
+  /**
+   * The same conclusion as `TOUR_APPROVAL_CONFIRMED`, drawn on the path where the
+   * request was already open before the run started.
+   *
+   * A SECOND fact rather than a second way of proving the first, because the two
+   * do not carry the same evidence. `TOUR_APPROVAL_CONFIRMED` joins the courier's
+   * own request event to the back office; this one joins the device's stored
+   * schedule state to it. Folding them into one key would let a run that never
+   * watched anyone press the button report the verdict that says it did.
+   *
+   * Both are CORRELATED on the schedule, so neither can be satisfied by another
+   * courier's tour or by yesterday's approval.
+   */
+  TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST: "REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST",
 } as const;
 
 export type NesyFactKey = (typeof NESY_FACTS)[keyof typeof NESY_FACTS];

@@ -386,9 +386,34 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
       chain: [
         {
           kind: "ENTITY_BINDING",
-          // `stop_id`, the column the collection query projects — not `stopCode`,
-          // which is the ENTITY's business key path and appears in no projection.
-          selector: { keyPath: "stop_id", collectionQueryRef: "nesy.availableStops" },
+          /**
+           * The legacy system id the ROW PRINTS, not the mongo `stop_id`.
+           *
+           * `stop_id` is what `nesy.availableStops` projects, and naming it here
+           * read as the careful choice — the column that exists, rather than the
+           * entity's business key path that no projection carries. It is still
+           * wrong, for a reason no projection can show: the host turns
+           * ENTITY_BINDING into a TEXT search over the screen, and a mongo id is
+           * rendered nowhere. Measured 2026-09-01 on the filtered stop list, the
+           * card prints an address, a consignee, `1 Task`, `1/1 Parcel` and
+           * `textViewLegacySystemId` — and nothing else that identifies it.
+           *
+           * WHAT THE OLD KEY ACTUALLY DID, run_3acf9459
+           *
+           * The run supplied the parcel key for BOTH the search term and this
+           * binding, so the only node on screen carrying that text was the search
+           * box the run had just typed into. The bridge matched it, reported
+           * `RESOLVED_UNIQUE`, tapped an EditText and completed the gesture. Every
+           * layer said success and the stop never opened. The macro's own comment
+           * at `resolve-row` had already named the rule this broke: resolve the
+           * surviving row by the text the ROW shows, deliberately a DIFFERENT key
+           * from the one typed above.
+           *
+           * `legacy_system_id` restores that rule. The search establishes the
+           * identity by filtering; this key addresses the survivor by something a
+           * text search can actually find on it.
+           */
+          selector: { keyPath: "legacy_system_id", collectionQueryRef: "nesy.availableStops" },
           establishesIdentity: true,
         },
         {

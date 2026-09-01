@@ -93,10 +93,10 @@ export function applyLogLine(state, line) {
   const msg = message.toLowerCase()
   let changed = false
 
-  // Next HMR / Fast Refresh often logs "Could not find the module" or a bare
-  // `code: 'ENOENT'` while the server keeps serving — do not sticky-fail on those.
+  // Next HMR / Fast Refresh / mid-compile cache races often log module misses
+  // or `ENOENT: … open '…'` while the server keeps serving — do not sticky-fail.
   const transientDevNoise =
-    /could not find the module|fast refresh|hot-reloader|hot-update|compiling \.\.\.|code:\s*['"]ENOENT['"]/i.test(
+    /could not find the module|fast refresh|hot-reloader|hot-update|compiling \.\.\.|code:\s*['"]ENOENT['"]|enoent:\s*no such file or directory,\s*open/i.test(
       message,
     )
 

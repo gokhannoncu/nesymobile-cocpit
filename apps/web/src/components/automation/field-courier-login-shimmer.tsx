@@ -2,7 +2,7 @@
 
 import { ShimmerBlock } from '@/components/automation/automation-list-page-shimmer'
 
-export function FieldCourierLoginTableShimmer({ rowCount = 8 }: { rowCount?: number }) {
+export function FieldCourierLoginTableShimmer({ rowCount = 1 }: { rowCount?: number }) {
   return (
     <section
       className="overflow-hidden rounded-[4px] border border-border bg-card"

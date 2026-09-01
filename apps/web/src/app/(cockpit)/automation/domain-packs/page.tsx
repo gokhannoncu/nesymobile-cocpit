@@ -2,15 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ChevronRight, Package, RefreshCw, Search } from 'lucide-react'
+import { AlertCircle, ChevronRight, Package, RefreshCw } from 'lucide-react'
+import { DomainPackFamilyStrip } from '@/components/automation/domain-pack/DomainPackFamilyStrip'
 import { fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client'
-import type { DomainPackCatalogApi, DomainPackSummary } from '@/lib/verdict-runtime/types'
+import type {
+  DomainPackCatalogApi,
+  DomainPackState,
+  DomainPackSummary,
+} from '@/lib/verdict-runtime/types'
 import {
   formatPackPublishedAt,
   groupDomainPackCatalog,
   truncateDigest,
 } from '@/lib/verdict-runtime/domain-pack-catalog'
+import { DomainPackCatalogHeader } from '@/components/automation/domain-pack/DomainPackCatalogHeader'
 import { DomainPackStateBadge } from '@/components/automation/domain-pack/DomainPackStateBadge'
+import { DomainPackCatalogPageShimmer } from '@/components/automation/domain-pack/domain-pack-catalog-shimmer'
 import { ProductPage } from '@/components/product'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { cn } from '@nesy/metronic/lib/utils'
@@ -23,71 +30,36 @@ function DomainPackGroupCard({
   packKey,
   versions,
   latestPublished,
+  compactHeader = false,
 }: {
   packKey: string
   versions: DomainPackSummary[]
   latestPublished?: DomainPackSummary
+  compactHeader?: boolean
 }) {
   const [expanded, setExpanded] = useState(versions.length <= 6)
   const visibleVersions = expanded ? versions : versions.slice(0, 3)
   const hiddenCount = versions.length - visibleVersions.length
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-      <header className="flex flex-col gap-3 border-b border-border/80 bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-nesy-soft text-nesy-ink">
-              <Package className="size-4" strokeWidth={2.2} />
-            </div>
-            <h2 className="truncate text-lg font-semibold tracking-[-0.02em] text-foreground">
-              {packKey}
-            </h2>
-            {latestPublished ? (
-              <DomainPackStateBadge state={latestPublished.publicationState} />
-            ) : null}
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {versions.length} version{versions.length === 1 ? '' : 's'}
-            {latestPublished ? (
-              <>
-                {' '}
-                · Latest published{' '}
-                <span className="font-semibold tabular-nums text-foreground">
-                  v{latestPublished.version}
-                </span>
-              </>
-            ) : null}
-          </p>
-        </div>
-
-        {latestPublished ? (
-          <Button size="sm" className="shrink-0 bg-nesy text-white hover:bg-nesy-hover" asChild>
-            <Link href={packDetailHref(latestPublished)}>
-              Open latest
-              <ChevronRight className="size-4" />
-            </Link>
-          </Button>
-        ) : (
-          <Button size="sm" variant="outline" className="shrink-0" asChild>
-            <Link href={packDetailHref(versions[0]!)}>
-              Open pack
-              <ChevronRight className="size-4" />
-            </Link>
-          </Button>
-        )}
-      </header>
+    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+      <DomainPackFamilyStrip
+        packKey={packKey}
+        versions={versions}
+        latestPublished={latestPublished}
+        variant={compactHeader ? 'compact' : 'card'}
+      />
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-border/70 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border/70 bg-muted/25 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">Version</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Revision</th>
               <th className="hidden px-4 py-3 md:table-cell">Published</th>
               <th className="hidden px-4 py-3 lg:table-cell">Digest</th>
-              <th className="px-4 py-3 text-right">Open</th>
+              <th className="w-20 px-4 py-3 text-right">Open</th>
             </tr>
           </thead>
           <tbody>
@@ -99,8 +71,12 @@ function DomainPackGroupCard({
                 <tr
                   key={`${version.packKey}-${version.version}-${version.revision}`}
                   className={cn(
-                    'border-b border-border/50 transition-colors last:border-b-0',
-                    isLatest ? 'bg-nesy-soft/10' : 'hover:bg-muted/30',
+                    'border-b border-border/60 transition-colors last:border-b-0',
+                    isLatest
+                      ? 'bg-nesy-soft/30 hover:bg-nesy-soft/40'
+                      : index % 2 === 1
+                        ? 'bg-muted/50 hover:bg-muted/65'
+                        : 'bg-card hover:bg-muted/35',
                   )}
                 >
                   <td className="px-4 py-3">
@@ -126,20 +102,22 @@ function DomainPackGroupCard({
                   </td>
                   <td className="hidden px-4 py-3 lg:table-cell">
                     <code
-                      className="rounded bg-muted/60 px-1.5 py-0.5 text-xs text-muted-foreground"
+                      className="rounded-lg bg-muted/60 px-1.5 py-0.5 text-xs text-muted-foreground"
                       title={version.bundleDigest}
                     >
                       {truncateDigest(version.bundleDigest)}
                     </code>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={packDetailHref(version)}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
-                    >
-                      View
-                      <ChevronRight className="size-3.5" />
-                    </Link>
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex justify-end">
+                      <Link
+                        href={packDetailHref(version)}
+                        className="inline-flex w-14 items-center justify-end gap-0.5 rounded-lg py-1 text-xs font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+                      >
+                        View
+                        <ChevronRight className="size-3.5 shrink-0" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )
@@ -168,6 +146,8 @@ export default function DomainPacksCatalogPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [activePack, setActivePack] = useState<string | null>(null)
+  const [activeStatus, setActiveStatus] = useState<DomainPackState | null>(null)
 
   const loadData = async () => {
     try {
@@ -186,10 +166,23 @@ export default function DomainPacksCatalogPage() {
     void loadData()
   }, [])
 
+  const allPackGroups = useMemo(
+    () => groupDomainPackCatalog(data?.items ?? []),
+    [data],
+  )
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<DomainPackState, number> = { PUBLISHED: 0, DRAFT: 0, ARCHIVED: 0 }
+    for (const item of data?.items ?? []) counts[item.publicationState] += 1
+    return counts
+  }, [data])
+
   const groups = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     const items =
       data?.items.filter((item) => {
+        if (activePack && item.packKey !== activePack) return false
+        if (activeStatus && item.publicationState !== activeStatus) return false
         if (!query) return true
         return (
           item.packKey.toLowerCase().includes(query) ||
@@ -199,50 +192,46 @@ export default function DomainPacksCatalogPage() {
       }) ?? []
 
     return groupDomainPackCatalog(items)
-  }, [data, searchQuery])
+  }, [activePack, activeStatus, data, searchQuery])
 
   const totalVersions = data?.items.length ?? 0
+  const totalPacks = allPackGroups.length
+  const visibleVersions = groups.reduce((total, group) => total + group.versions.length, 0)
+  const hasFilters = Boolean(searchQuery || activePack || activeStatus)
+  const compactGroupHeader =
+    allPackGroups.length === 1 && groups.length === 1 && !hasFilters
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setActivePack(null)
+    setActiveStatus(null)
+  }
 
   return (
-    <ProductPage path="/automation/domain-packs">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {loading
-              ? 'Loading catalog…'
-              : `${groups.length} pack${groups.length === 1 ? '' : 's'} · ${totalVersions} version${totalVersions === 1 ? '' : 's'} total`}
-          </p>
-        </div>
-
-        <div className="relative w-full lg:max-w-sm">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <input
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search pack, version, or digest…"
-            className="h-10 w-full cursor-text rounded-md border border-transparent bg-muted/35 py-2 pl-9 pr-3 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:bg-muted/50 focus:border-nesy/40 focus:bg-card focus:ring-4 focus:ring-nesy-soft/30"
-            type="search"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </div>
-      </div>
-
+    <ProductPage path="/automation/domain-packs" hideToolbar>
       {loading ? (
-        <div className="mt-6 space-y-4">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-56 animate-pulse rounded-xl border border-border bg-muted/30"
-              aria-hidden
-            />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 px-6 py-12 text-center">
+        <DomainPackCatalogPageShimmer />
+      ) : (
+        <div className="space-y-5">
+          <DomainPackCatalogHeader
+            totalPacks={totalPacks}
+            totalVersions={totalVersions}
+            visibleVersions={visibleVersions}
+            statusCounts={statusCounts}
+            activeStatus={activeStatus}
+            onStatusChange={setActiveStatus}
+            allPackGroups={allPackGroups}
+            activePack={activePack}
+            onPackChange={setActivePack}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onRefresh={() => void loadData()}
+            onClearFilters={clearFilters}
+            hasFilters={hasFilters}
+          />
+
+      {error ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 px-6 py-12 text-center">
           <AlertCircle className="mb-4 size-10 text-destructive" />
           <h3 className="text-lg font-semibold text-foreground">Failed to load domain packs</h3>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{error.message}</p>
@@ -252,25 +241,37 @@ export default function DomainPacksCatalogPage() {
           </Button>
         </div>
       ) : groups.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
           <Package className="mb-4 size-12 text-muted-foreground" />
           <h3 className="text-lg font-semibold text-foreground">No domain packs found</h3>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            {searchQuery
-              ? 'Try another search term or clear the filter.'
+            {hasFilters
+              ? 'Try another search term or clear the active filters.'
               : 'No domain packs are currently available in the runtime.'}
           </p>
+          {hasFilters ? (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-4 cursor-pointer text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+            >
+              Clear filters
+            </button>
+          ) : null}
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
+        <div className="space-y-4">
           {groups.map((group) => (
             <DomainPackGroupCard
               key={group.packKey}
               packKey={group.packKey}
               versions={group.versions}
               latestPublished={group.latestPublished}
+              compactHeader={compactGroupHeader}
             />
           ))}
+        </div>
+      )}
         </div>
       )}
     </ProductPage>

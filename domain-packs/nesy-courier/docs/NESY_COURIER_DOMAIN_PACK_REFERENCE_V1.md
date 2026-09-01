@@ -61,8 +61,8 @@ artifact tek bir yolculuk olarak okunabilir.
 | Surface | 10 | `nesy.route.selection-dialog`, `nesy.tour.routing-dialog`, `nesy.notification-list-dialog`, `nesy.mandatory-update-dialog`, `nesy.session-expired-dialog`, `nesy.permission-dialog`, `nesy.network-dialog`, `nesy.scanner.surface`, `nesy.payment.surface`, `nesy.fiscal.surface` |
 | Entity | 7 | `ROUTE`, `STOP`, `TASK`, `SHIPMENT`, `PARCEL`, `PENDING_OPERATION`, `TOUR_APPROVAL_REQUEST` |
 | Target | 28 | login alanları, `nesy.target.route-row`, `nesy.target.stop-row`, `nesy.target.task-row`, scan trigger, delivery complete üçlüsü, tur başlatma düğmesi + routing chooser, rota seçim diyaloğu, durak listesi arama üçlüsü, zimmet manuel giriş zinciri |
-| Evidence source | 57 | UI 17, APP 26, LOCAL 9, REMOTE 5 (biri `transportSuccessOnly`) |
-| Derived fact | 6 | `APP.LOGIN_SUCCEEDED`, `APP.ACTIVE_STOP_MATCHES`, `REMOTE.DELIVERY_CONFIRMED`, `REMOTE.TOUR_APPROVAL_CONFIRMED` |
+| Evidence source | 58 | UI 17, APP 26, LOCAL 10, REMOTE 5 (biri `transportSuccessOnly`) |
+| Derived fact | 7 | `APP.LOGIN_SUCCEEDED`, `APP.ACTIVE_STOP_MATCHES`, `REMOTE.DELIVERY_CONFIRMED`, `REMOTE.TOUR_APPROVAL_CONFIRMED`, `REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST` |
 | Semantic action | 10 | 7 slice + 3 interrupt handler |
 | Macro | 12 | 7 slice macro + 3 interrupt handler + 2 composed (`login-and-select-route`, `full-courier-day`) |
 | Launch profile | 4 | `cold-real-login`, `prepared-session`, `direct-state`, `reuse-session` |

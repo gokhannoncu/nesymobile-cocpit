@@ -45,6 +45,31 @@
  *  one of those was plausible on paper. The flow was then run by hand, end to
  *  end, and none of them survived contact with the device.
  *
+ *  TWO WAYS IN, AND ONLY ONE OF THEM HAS AN EVENT
+ *
+ *  Since 1.37.0 the slice does not re-request a tour that is already
+ *  WaitingForApproval or Approved; it jumps straight to back-office
+ *  verification. On that path the courier's request happened before this run, so
+ *  `APP.TOUR_APPROVAL_REQUESTED` cannot arrive — the app emits `TOUR_STARTED`
+ *  once, at the tap. Requiring it there produced run_02f4d73b: every step green,
+ *  both back-office reads satisfied, verdict INCONCLUSIVE on an event that was
+ *  never going to be emitted.
+ *
+ *  The device half of the join is then the stored schedule status, read by the
+ *  same query that chooses the branch:
+ *
+ *    LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN  a request is on record
+ *    REMOTE.TOUR_APPROVAL_REQUEST_CREATED      the back office holds it
+ *    REMOTE.TOUR_APPROVAL_STATUS_APPROVED      and it reached APPROVED
+ *      ↓ CORRELATED_ALL_OF on scheduleId
+ *    REMOTE.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST
+ *
+ *  A SEPARATE conclusion, not a relaxation of the first. It proves less — nobody
+ *  watched the button being pressed — and the fact key says so, so a run that
+ *  took the shortcut cannot report the verdict that means the courier journey
+ *  was exercised. On the path that does press the button, the event stays
+ *  REQUIRED with onTimeout FAIL.
+ *
  *  THE PUSH IS CONFIRMATORY, NOT REQUIRED
  *
  *  `APP.TOUR_APPROVAL_PUSH_RECEIVED` is a WARNING requirement and the wait uses
@@ -61,7 +86,7 @@
  */
 
 import type { BridgeFlowPlanSnapshot, MacroDefinition, MacroExpansionSnapshot } from "@nesy/domain-pack-contracts";
-import type { WorkflowStepV2 } from "@nesy/workflow-contract";
+import type { FinalOraclePolicy, WorkflowStepV2 } from "@nesy/workflow-contract";
 import { NESY_BACKOFFICE_ADAPTER_REF, NESY_BACKOFFICE_OPERATIONS } from "../adapters/backoffice.js";
 import { NESY_ADAPTER_QUERY_REFS } from "../registries/application.js";
 import { NESY_ENTITIES } from "../registries/entities.js";
@@ -81,6 +106,84 @@ export const NESY_TOUR_APPROVAL_MACRO_KEY = "nesy.macro.tour-approval-lifecycle"
  */
 const REQUEST_ENTITY = { type: NESY_ENTITIES.tourApprovalRequest, id: "run.input.scheduleId" } as const;
 
+/**
+ * The slice's final oracle, authored once and used by both the assert step and
+ * the macro template.
+ *
+ * TWO PATHS, ONE VERDICT, DIFFERENT EVIDENCE
+ *
+ * `LOCAL.TOUR_APPROVAL_REQUEST_ALREADY_OPEN` is what decides which half applies,
+ * and it is the same observation the branch at `check-request-already-open`
+ * reads — so the requirement that gets enforced is always the one describing the
+ * path the run actually took:
+ *
+ *   request NOT open at start  → the run drove the button, so the courier's own
+ *                                event is REQUIRED and the join that includes it
+ *                                (`TOUR_APPROVAL_CONFIRMED`) is the verdict.
+ *   request ALREADY open       → the request predates this run and no event can
+ *                                arrive; the device's stored schedule status
+ *                                carries the device half, and the verdict is
+ *                                `TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST`.
+ *
+ * What this deliberately does NOT do is make the courier's event optional. On
+ * the path where the run presses the button, a missing `TOUR_APPROVAL_REQUESTED`
+ * is still a FAIL: relaxing it there would let a broken request button pass by
+ * reading a status some earlier run left behind.
+ *
+ * If the device cannot answer whether a request is open, applicability is
+ * UNKNOWN, both conclusions stay PENDING and the slice ends INCONCLUSIVE. That
+ * is the intended outcome: neither path's evidence was established.
+ */
+const REQUEST_ALREADY_OPEN = NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN;
+
+const APPROVAL_REQUIREMENTS = [
+  {
+    factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED,
+    obligation: "REQUIRED",
+    timing: "EVENTUAL",
+    deadlineMs: 180_000,
+    onTimeout: "INCONCLUSIVE",
+    applicabilityCondition: { noneOf: [REQUEST_ALREADY_OPEN] },
+  },
+  {
+    factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST,
+    obligation: "REQUIRED",
+    timing: "EVENTUAL",
+    deadlineMs: 180_000,
+    onTimeout: "INCONCLUSIVE",
+    applicabilityCondition: { anyOf: [REQUEST_ALREADY_OPEN] },
+  },
+  {
+    factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
+    obligation: "REQUIRED",
+    timing: "EVENTUAL",
+    deadlineMs: 60_000,
+    onTimeout: "INCONCLUSIVE",
+  },
+  {
+    factKey: NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED,
+    obligation: "REQUIRED",
+    timing: "EVENTUAL",
+    deadlineMs: 120_000,
+    onTimeout: "INCONCLUSIVE",
+  },
+  {
+    // Only on the path that actually pressed the button. See the note above.
+    factKey: NESY_FACTS.TOUR_APPROVAL_REQUESTED,
+    obligation: "REQUIRED",
+    timing: "IMMEDIATE",
+    onTimeout: "FAIL",
+    applicabilityCondition: { noneOf: [REQUEST_ALREADY_OPEN] },
+  },
+  {
+    factKey: NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED,
+    obligation: "WARNING",
+    timing: "EVENTUAL",
+    deadlineMs: 120_000,
+    onTimeout: "WARNING",
+  },
+] as const satisfies FinalOraclePolicy["requirements"];
+
 const STEPS: readonly WorkflowStepV2[] = [
   {
     ...stepBase({
@@ -94,6 +197,29 @@ const STEPS: readonly WorkflowStepV2[] = [
     queryRef: NESY_ADAPTER_QUERY_REFS.dbSchedule,
     maxRows: 1,
     outputVariable: "approvalScheduleRows",
+    /**
+     * The read that decides the branch also has to SAY what it saw.
+     *
+     * Until 1.38.0 this query fed the condition below and published nothing, so
+     * on the already-open path the slice skipped the mobile leg — correctly —
+     * and then had no admissible statement that a request existed on the device
+     * side at all. The oracle waited out `APP.TOUR_APPROVAL_REQUESTED`, an event
+     * that cannot be re-emitted for a tour already requested, and run_02f4d73b
+     * closed INCONCLUSIVE with both back-office reads satisfied.
+     *
+     * `COLUMN_NOT_IN ["0"]` is the honest shape of the question: BeginningOfDay
+     * is the only status that means "not requested". Statuses 1–5 all mean the
+     * request happened, and an approved or ended tour is not less requested than
+     * a waiting one. Missing column stays UNKNOWN — a projection that never
+     * carried the answer is not a proven negative.
+     */
+    outputFactBindings: [
+      {
+        factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN,
+        from: { kind: "COLUMN_NOT_IN", column: "schedule_status", values: ["0"] },
+        correlationColumn: "schedule_id",
+      },
+    ],
   },
   {
     ...stepBase({ planStepId: "check-request-already-open", sourceMapRef: "sm-appr-0b", next: null }),
@@ -307,44 +433,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     expected: true,
     unknownPolicy: "INCONCLUSIVE",
     entityBinding: REQUEST_ENTITY,
-    finalOraclePolicy: {
-      requirements: [
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 180_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 60_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 120_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_REQUESTED,
-          obligation: "REQUIRED",
-          timing: "IMMEDIATE",
-          onTimeout: "FAIL",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED,
-          obligation: "WARNING",
-          timing: "EVENTUAL",
-          deadlineMs: 120_000,
-          onTimeout: "WARNING",
-        },
-      ],
-    },
+    finalOraclePolicy: { requirements: APPROVAL_REQUIREMENTS },
   },
   {
     ...stepBase({ planStepId: "release-approval-fixture", sourceMapRef: "sm-appr-10", next: null, timeoutMs: 40_000 }),
@@ -472,6 +561,18 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
       { name: "recordCreated", type: "boolean", factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED },
       { name: "approved", type: "boolean", factKey: NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED },
       { name: "confirmed", type: "boolean", factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED },
+      {
+        // The already-open path's conclusion. Reported separately so a reader can
+        // tell which of the two journeys produced the verdict.
+        name: "confirmedForOpenRequest",
+        type: "boolean",
+        factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST,
+      },
+      {
+        name: "requestAlreadyOpen",
+        type: "boolean",
+        factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN,
+      },
     ],
   },
   preconditions: [
@@ -501,10 +602,12 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
     factKeys: [
       NESY_FACTS.SELECTED_ROUTE_OBSERVED,
       NESY_FACTS.TOUR_APPROVAL_REQUESTED,
+      NESY_FACTS.TOUR_APPROVAL_REQUEST_ALREADY_OPEN,
       NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
       NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED,
       NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED,
       NESY_FACTS.TOUR_APPROVAL_CONFIRMED,
+      NESY_FACTS.TOUR_APPROVAL_CONFIRMED_FOR_OPEN_REQUEST,
     ],
     queryRefs: ["nesy.routeState"],
     adapterOperationRefs: [
@@ -520,38 +623,11 @@ export const NESY_TOUR_APPROVAL_MACRO: MacroDefinition = {
       deadlineMs: 30_000,
       unknownPolicy: "RETRY",
     },
-    finalOracle: {
-      requirements: [
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_CONFIRMED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 180_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_REQUEST_CREATED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 60_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_STATUS_APPROVED,
-          obligation: "REQUIRED",
-          timing: "EVENTUAL",
-          deadlineMs: 120_000,
-          onTimeout: "INCONCLUSIVE",
-        },
-        {
-          factKey: NESY_FACTS.TOUR_APPROVAL_PUSH_RECEIVED,
-          obligation: "WARNING",
-          timing: "EVENTUAL",
-          deadlineMs: 120_000,
-          onTimeout: "WARNING",
-        },
-      ],
-    },
+    // The macro template and the step carry ONE list, not two copies of it. They
+    // had drifted — the template omitted the courier-request requirement the step
+    // enforced — and a reader consulting the template would have concluded the
+    // slice could pass without any device-side evidence at all.
+    finalOracle: { requirements: APPROVAL_REQUIREMENTS },
     notResponsibleFor: [
       "whether the dispatcher was authorised — only that an approval was recorded against this request",
     ],

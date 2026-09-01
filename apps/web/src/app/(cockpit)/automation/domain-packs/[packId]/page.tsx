@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { fetchVerdictDomainPack, saveDomainPackDraft, publishDomainPack } from '@/lib/verdict-runtime/client'
 import { DomainPackDetailApi } from '@/lib/verdict-runtime/types'
+import { DomainPackDetailPageShimmer } from '@/components/automation/domain-pack/domain-pack-catalog-shimmer'
 import { DomainPackHeader } from '@/components/automation/domain-pack/DomainPackHeader'
 import { DomainPackTabs } from '@/components/automation/domain-pack/DomainPackTabs'
 import { AlertCircle, RefreshCw } from 'lucide-react'
@@ -88,13 +89,7 @@ export default function DomainPackDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="container mx-auto p-6 max-w-7xl animate-pulse">
-        <div className="h-32 bg-gray-100 dark:bg-gray-900 rounded-xl mb-8"></div>
-        <div className="h-12 bg-gray-100 dark:bg-gray-900 rounded-lg mb-6 w-3/4"></div>
-        <div className="h-96 bg-gray-50 dark:bg-gray-900/50 rounded-xl"></div>
-      </div>
-    )
+    return <DomainPackDetailPageShimmer />
   }
 
   if (error || !data) {

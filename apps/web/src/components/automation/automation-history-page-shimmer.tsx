@@ -25,7 +25,7 @@ export function AutomationHistoryStatCardsShimmer() {
   )
 }
 
-export function AutomationHistoryTableShimmer({ rowCount = 3 }: { rowCount?: number }) {
+export function AutomationHistoryTableShimmer({ rowCount = 1 }: { rowCount?: number }) {
   return (
     <section
       className="overflow-hidden rounded-md border border-border bg-card shadow-xs"
