@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Clock,
   Cloud,
   Database,
@@ -28,6 +27,7 @@ import {
   Lock,
   Mail,
   MapPin,
+  MinusCircle,
   Package,
   PenLine,
   Pencil,
@@ -41,6 +41,7 @@ import {
   WalletCards,
   Workflow,
   X,
+  XCircle,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -210,9 +211,10 @@ const iconMap: Record<string, LucideIcon> = {
   IdCard,
   Layers,
   ListChecks,
-  CircleDot,
   Check,
   CheckCircle2,
+  MinusCircle,
+  XCircle,
 }
 
 function resolveIcon(iconName: string): LucideIcon {
@@ -512,7 +514,7 @@ export default function AutomationListPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {pageSlice.map((workflow) => (
               <WorkflowCard
                 key={workflow.id}
@@ -879,25 +881,29 @@ function workflowStatusBadgeProps(status: string): {
   }
 }
 
-function WorkflowMetaChip({
+function WorkflowMetaItem({
   icon: Icon,
   children,
   tone = 'neutral',
+  title,
 }: {
   icon: LucideIcon
   children: ReactNode
-  tone?: 'neutral' | 'success' | 'danger'
+  tone?: 'neutral' | 'success' | 'danger' | 'muted'
+  title?: string
 }) {
   return (
     <span
+      title={title}
       className={cn(
-        'inline-flex max-w-full items-center gap-1 rounded-md border border-border/80 bg-muted/30 px-2 py-1 text-[11px] font-medium leading-none',
-        tone === 'success' && 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400',
-        tone === 'danger' && 'border-red-200/80 bg-red-50/80 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400',
+        'inline-flex min-w-0 items-center gap-1 text-[11px] font-medium leading-none',
+        tone === 'success' && 'text-emerald-700 dark:text-emerald-400',
+        tone === 'danger' && 'text-red-700 dark:text-red-400',
+        tone === 'muted' && 'text-muted-foreground/80',
         tone === 'neutral' && 'text-muted-foreground',
       )}
     >
-      <Icon className="size-3 shrink-0 opacity-70" strokeWidth={2.2} />
+      <Icon className="size-3 shrink-0 opacity-75" strokeWidth={2.2} />
       <span className="truncate">{children}</span>
     </span>
   )
@@ -932,21 +938,42 @@ function WorkflowCard({
       ? 'success'
       : workflow.lastRun?.status === 'failed'
         ? 'danger'
-        : 'neutral'
+        : workflow.lastRun
+          ? 'neutral'
+          : 'muted'
+
+  const LastRunIcon =
+    workflow.lastRun?.status === 'success'
+      ? CheckCircle2
+      : workflow.lastRun?.status === 'failed'
+        ? XCircle
+        : workflow.lastRun
+          ? MinusCircle
+          : Clock
 
   const lastRunLabel = workflow.lastRun
     ? workflow.lastRun.status === 'success'
-      ? 'Last run passed'
+      ? 'Passed'
       : workflow.lastRun.status === 'failed'
-        ? 'Last run failed'
-        : `Last run ${workflow.lastRun.status}`
-    : 'No runs yet'
+        ? 'Failed'
+        : workflow.lastRun.status
+    : 'No runs'
+
+  const accentTone =
+    workflow.lastRun?.status === 'success'
+      ? 'bg-emerald-500'
+      : workflow.lastRun?.status === 'failed'
+        ? 'bg-red-500'
+        : workflow.status === 'draft'
+          ? 'bg-amber-400'
+          : 'bg-nesy'
 
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs transition-all duration-200',
-        'hover:-translate-y-0.5 hover:border-nesy-muted/70 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]',
+        'group/card relative flex min-h-[232px] flex-col overflow-hidden rounded-xl border border-border/90 bg-card shadow-xs transition-all duration-200',
+        'hover:-translate-y-0.5 hover:border-nesy-muted/80 hover:shadow-[0_14px_32px_rgba(15,23,42,0.10)]',
+        'has-[:focus-visible]:border-nesy-muted/80 has-[:focus-visible]:shadow-[0_14px_32px_rgba(15,23,42,0.10)]',
       )}
     >
       <WorkflowDeleteDialog
@@ -959,19 +986,32 @@ function WorkflowCard({
         }}
       />
 
+      <span
+        aria-hidden
+        className={cn(
+          'absolute inset-y-0 start-0 w-[3px] origin-center scale-y-0 transition-transform duration-200',
+          accentTone,
+          'group-hover/card:scale-y-100 group-focus-within/card:scale-y-100',
+        )}
+      />
+
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             aria-label={`Delete ${workflow.name}`}
             className={cn(
-              'absolute right-2.5 top-2.5 z-10 inline-flex size-7 items-center justify-center rounded-md',
-              'text-muted-foreground opacity-0 transition-all duration-150',
-              'hover:bg-destructive/10 hover:text-destructive',
+              'absolute right-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md',
+              'border border-transparent bg-background/80 text-muted-foreground opacity-0 backdrop-blur-sm transition-all duration-150',
+              'hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive',
               'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30',
-              'group-hover:opacity-100 group-focus-within:opacity-100',
+              'group-hover/card:opacity-100 group-focus-within/card:opacity-100',
             )}
-            onClick={() => setDeleteOpen(true)}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setDeleteOpen(true)
+            }}
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -981,73 +1021,97 @@ function WorkflowCard({
 
       <Link
         href={editorHref}
-        className="flex min-w-0 flex-1 flex-col p-4 outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-inset"
+        className="relative flex min-h-[232px] flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-inset"
       >
-        <div className="flex gap-3 pr-7">
-          <div
-            className={cn(
-              'flex size-10 shrink-0 items-center justify-center rounded-lg border border-nesy-muted/30',
-              workflow.iconClassName ||
-                'bg-nesy-soft text-nesy-ink dark:border-nesy-muted/40 dark:bg-nesy-soft/20',
-            )}
-          >
-            <Icon className="size-[18px]" strokeWidth={2.1} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <h3
-              className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground"
-              title={workflow.name}
+        <div className="flex flex-1 flex-col p-4 pb-3">
+          <div className="flex gap-3 pe-8">
+            <div
+              className={cn(
+                'flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-xs',
+                workflow.iconClassName ||
+                  'border-nesy-muted/30 bg-nesy-soft text-nesy-ink dark:border-nesy-muted/40 dark:bg-nesy-soft/20',
+              )}
             >
-              {workflow.name}
-            </h3>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <Badge size="sm" appearance={statusBadge.appearance} variant={statusBadge.variant}>
-                {statusLabel}
-              </Badge>
-              {workflow.category ? (
-                <Badge size="sm" appearance="outline" variant="secondary">
-                  {workflow.category}
+              <Icon className="size-[19px]" strokeWidth={2.1} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3
+                className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground"
+                title={workflow.name}
+              >
+                {workflow.name}
+              </h3>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge size="sm" appearance={statusBadge.appearance} variant={statusBadge.variant}>
+                  {statusLabel}
                 </Badge>
-              ) : null}
+                {workflow.category ? (
+                  <Badge
+                    size="sm"
+                    appearance="outline"
+                    variant="secondary"
+                    className="font-mono text-[10px] uppercase tracking-wide"
+                  >
+                    {workflow.category}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
           </div>
+
+          <div className="mt-3 min-h-[3.75rem] flex-1">
+            {workflow.description ? (
+              <p
+                className="line-clamp-3 text-[13px] leading-[1.55] text-foreground/70"
+                title={workflow.description}
+              >
+                {workflow.description}
+              </p>
+            ) : (
+              <p className="text-[13px] italic leading-[1.55] text-muted-foreground/65">
+                Add a short description in the editor
+              </p>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/70 pt-3">
+            <WorkflowMetaItem icon={Clock} title={`Updated ${timeSince}`}>
+              {timeSince}
+            </WorkflowMetaItem>
+            {workflow.latestVersion ? (
+              <>
+                <span className="text-border" aria-hidden>
+                  ·
+                </span>
+                <WorkflowMetaItem icon={Tag} title={`Version ${workflow.latestVersion.version}`}>
+                  v{workflow.latestVersion.version}
+                </WorkflowMetaItem>
+              </>
+            ) : null}
+            <span className="text-border" aria-hidden>
+              ·
+            </span>
+            <WorkflowMetaItem icon={LastRunIcon} tone={lastRunTone} title={lastRunLabel}>
+              {lastRunLabel}
+            </WorkflowMetaItem>
+          </div>
         </div>
 
-        {workflow.description ? (
-          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            {workflow.description}
-          </p>
-        ) : (
-          <p className="mt-3 text-sm italic leading-relaxed text-muted-foreground/70">
-            Add a short description in the editor
-          </p>
-        )}
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <WorkflowMetaChip icon={Clock}>Updated {timeSince}</WorkflowMetaChip>
-          {workflow.latestVersion ? (
-            <WorkflowMetaChip icon={Tag}>v{workflow.latestVersion.version}</WorkflowMetaChip>
-          ) : null}
-          <WorkflowMetaChip icon={CircleDot} tone={lastRunTone}>
-            {lastRunLabel}
-          </WorkflowMetaChip>
+        <div
+          className={cn(
+            'mt-auto flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5',
+            'bg-muted/15 text-xs font-semibold text-muted-foreground transition-colors duration-200',
+            'group-hover/card:bg-nesy-soft/30 group-hover/card:text-nesy-ink',
+            'group-focus-within/card:bg-nesy-soft/30 group-focus-within/card:text-nesy-ink',
+          )}
+        >
+          <span>Open workflow</span>
+          <ChevronRight
+            className="size-4 shrink-0 transition-transform duration-200 group-hover/card:translate-x-0.5 group-hover/card:text-nesy"
+            strokeWidth={2.2}
+          />
         </div>
-      </Link>
-
-      <Link
-        href={editorHref}
-        className={cn(
-          'flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5',
-          'bg-muted/10 text-xs font-semibold text-muted-foreground transition-colors duration-200',
-          'group-hover:bg-nesy-soft/25 group-hover:text-nesy-ink',
-        )}
-      >
-        <span>Open workflow</span>
-        <ChevronRight
-          className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-nesy"
-          strokeWidth={2.2}
-        />
       </Link>
     </article>
   )
