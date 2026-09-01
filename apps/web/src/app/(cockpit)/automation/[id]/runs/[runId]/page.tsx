@@ -27,13 +27,18 @@ export default async function RunDetailPage(props: {
   const params = await props.params
   const { id, runId } = params
 
-  const [[detailSettled, evidenceSettled, telemetrySettled], requestHeaders] = await Promise.all([
-    Promise.allSettled([
-      fetchVerdictRunDetail(runId),
-      fetchVerdictEvidenceJourney(runId),
-      fetchVerdictRunTelemetry(runId),
-    ]),
-    headers(),
+  // Permission is resolved BEFORE the telemetry request, not alongside it: the
+  // answer is an argument to that request. Captured HTTP bodies are withheld by
+  // the API unless asked for, so a viewer without raw-evidence rights never has
+  // the payload delivered to their browser at all — it is not fetched and then
+  // hidden in the UI.
+  const requestHeaders = await headers()
+  const canViewRawEvidence = canReadRawEvidence(requestHeaders)
+
+  const [detailSettled, evidenceSettled, telemetrySettled] = await Promise.allSettled([
+    fetchVerdictRunDetail(runId),
+    fetchVerdictEvidenceJourney(runId),
+    fetchVerdictRunTelemetry(runId, canViewRawEvidence),
   ])
   const detailResult = unwrapSettled<RunDetailResult>(detailSettled)
   const evidenceResult = unwrapSettled<EvidenceJourneyResult>(evidenceSettled)
@@ -49,7 +54,7 @@ export default async function RunDetailPage(props: {
       initialDetail={runDetail ?? emptyRunDetail(runId)}
       initialEvidenceJourney={evidenceJourney}
       initialTelemetry={telemetry}
-      canViewRawEvidence={canReadRawEvidence(requestHeaders)}
+      canViewRawEvidence={canViewRawEvidence}
       initialSourceErrors={{
         ...(detailResult.error ? { detail: detailResult.error } : {}),
         ...(evidenceResult.error ? { evidence: evidenceResult.error } : {}),

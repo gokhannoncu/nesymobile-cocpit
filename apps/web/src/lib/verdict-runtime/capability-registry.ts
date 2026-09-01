@@ -5,56 +5,86 @@ import {
 import { cn } from '@nesy/metronic/lib/utils'
 
 export const capabilityBadgeBase =
-  'inline-flex rounded-[4px] border px-1.5 py-px text-[8px] font-bold uppercase tracking-wide leading-none'
+  'inline-flex rounded-[4px] px-1.5 py-px text-[8px] font-bold uppercase tracking-wide leading-none ring-1 ring-inset'
 
-/** Filled NESY primary — core platform seams and bridge provider. */
-export const capabilityBadgePrimary = cn(
+const layerCoreBadge = cn(
   capabilityBadgeBase,
-  'border-nesy/30 bg-nesy-soft text-nesy-ink dark:border-nesy/35 dark:bg-nesy-soft/20 dark:text-nesy',
+  'bg-indigo-50 text-indigo-700 ring-indigo-200/80',
+  'dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-800/50',
 )
 
-/** Outlined NESY secondary — domain pack seams and app adapters. */
-export const capabilityBadgeSecondary = cn(
+const layerDomainBadge = cn(
   capabilityBadgeBase,
-  'border-nesy/25 bg-background text-nesy-ink dark:border-nesy/30 dark:bg-card dark:text-nesy',
+  'bg-violet-50 text-violet-700 ring-violet-200/80',
+  'dark:bg-violet-950/40 dark:text-violet-300 dark:ring-violet-800/50',
 )
 
-/** Neutral tertiary — backoffice and unknown providers. */
-export const capabilityBadgeNeutral = cn(
+const badgeNeutral = cn(
   capabilityBadgeBase,
-  'border-border bg-muted/35 text-muted-foreground',
+  'bg-slate-100 text-slate-600 ring-slate-200/80',
+  'dark:bg-muted/40 dark:text-muted-foreground dark:ring-border/80',
 )
+
+const providerBridgeBadge = cn(
+  capabilityBadgeBase,
+  'bg-sky-50 text-sky-700 ring-sky-200/80',
+  'dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-800/50',
+)
+
+const providerAppBadge = cn(
+  capabilityBadgeBase,
+  'bg-teal-50 text-teal-700 ring-teal-200/80',
+  'dark:bg-teal-950/40 dark:text-teal-300 dark:ring-teal-800/50',
+)
+
+const traitRuntimeBadge = cn(
+  capabilityBadgeBase,
+  'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+  'dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/50',
+)
+
+const traitAutomationBadge = cn(
+  capabilityBadgeBase,
+  'bg-amber-50 text-amber-700 ring-amber-200/80',
+  'dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/50',
+)
+
+/** @deprecated Use semantic layer/provider/trait helpers instead. */
+export const capabilityBadgePrimary = layerCoreBadge
+
+/** @deprecated Use semantic layer/provider/trait helpers instead. */
+export const capabilityBadgeSecondary = layerDomainBadge
+
+/** @deprecated Use semantic layer/provider/trait helpers instead. */
+export const capabilityBadgeNeutral = badgeNeutral
 
 export function capabilityLayerBadgeClass(layer: string): string {
-  if (isCoreCapabilityLayer(layer)) return capabilityBadgePrimary
-  if (isDomainCapabilityLayer(layer)) return capabilityBadgeSecondary
-  return capabilityBadgeNeutral
+  if (isCoreCapabilityLayer(layer)) return layerCoreBadge
+  if (isDomainCapabilityLayer(layer)) return layerDomainBadge
+  return badgeNeutral
 }
 
 export function capabilityProviderBadgeClass(provider: string): string {
   switch (provider) {
     case 'BRIDGE':
-      return capabilityBadgePrimary
+      return providerBridgeBadge
     case 'APP_ADAPTER':
-      return capabilityBadgeSecondary
+      return providerAppBadge
     case 'BACKOFFICE_ADAPTER':
-      return capabilityBadgeNeutral
+      return badgeNeutral
     default:
-      return capabilityBadgeNeutral
+      return badgeNeutral
   }
 }
 
 export function capabilityTraitBadgeClass(trait: 'runtime' | 'automation'): string {
   switch (trait) {
     case 'runtime':
-      return capabilityBadgePrimary
+      return traitRuntimeBadge
     case 'automation':
-      return cn(
-        capabilityBadgeBase,
-        'border-nesy-muted/70 bg-nesy-muted/25 text-nesy-ink dark:border-nesy/25 dark:bg-nesy-soft/10 dark:text-nesy',
-      )
+      return traitAutomationBadge
     default:
-      return capabilityBadgeNeutral
+      return badgeNeutral
   }
 }
 

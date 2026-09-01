@@ -112,6 +112,33 @@ export interface RunTelemetryHttpCall {
   bytesOut: number | null
 }
 
+/**
+ * One captured HTTP body, reassembled from its chunks.
+ *
+ * Three different kinds of absence, deliberately not collapsed into one:
+ * `omittedReason` set means the device declined to capture it; `withheld` means
+ * the viewer may not see it; `purged` means retention erased it on schedule;
+ * `complete: false` means chunks were lost in transit. Only all four being
+ * clear makes `body === null` mean "there was no body".
+ */
+export interface RunTelemetryHttpBody {
+  requestId: string | null
+  direction: 'REQUEST' | 'RESPONSE' | null
+  contentType: string | null
+  originalBytes: number | null
+  capturedBytes: number | null
+  truncated: boolean | null
+  omittedReason: string | null
+  encoding: string | null
+  atMs: number | null
+  chunkCount: number | null
+  chunksReceived: number
+  complete: boolean
+  withheld: boolean
+  purged: boolean
+  body: string | null
+}
+
 export interface RunTelemetrySpan {
   name: string
   startMs: number
@@ -202,6 +229,7 @@ export interface RunTelemetryDto {
   }
   memorySamples: readonly RunTelemetryMemorySample[]
   httpCalls: readonly RunTelemetryHttpCall[]
+  httpBodies: readonly RunTelemetryHttpBody[]
   spans: readonly RunTelemetrySpan[]
   incidents: readonly RunTelemetryIncident[]
   eventBuckets: readonly { startMs: number; count: number }[]

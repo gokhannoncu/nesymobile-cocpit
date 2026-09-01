@@ -50,9 +50,18 @@ export async function fetchVerdictEvidenceJourney(runId: string): Promise<Eviden
   return getJson<EvidenceJourneyResult>(`/verdict/runtime/runs/${encodeURIComponent(runId)}/evidence-journey`)
 }
 
-export async function fetchVerdictRunTelemetry(runId: string): Promise<RunTelemetryDto> {
+/**
+ * @param includeBodyText pass the caller's raw-evidence permission, not `true`.
+ *   Captured HTTP bodies are withheld by the API unless this is set, so a
+ *   caller that forgets it under-fetches rather than over-shares.
+ */
+export async function fetchVerdictRunTelemetry(
+  runId: string,
+  includeBodyText = false,
+): Promise<RunTelemetryDto> {
+  const query = includeBodyText ? '?includeBodyText=true' : ''
   return getJson<RunTelemetryDto>(
-    `/verdict/runtime/runs/${encodeURIComponent(runId)}/telemetry`,
+    `/verdict/runtime/runs/${encodeURIComponent(runId)}/telemetry${query}`,
   )
 }
 

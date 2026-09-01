@@ -381,4 +381,227 @@ describe("run telemetry read model", () => {
     expect(percentile([Number.NaN, -1], 0.5)).toBeNull();
     expect(percentile([], 0.95)).toBeNull();
   });
+
+  // ---------------------------------------------------------------------------
+  //  Captured HTTP bodies
+  // ---------------------------------------------------------------------------
+
+  describe("captured HTTP bodies", () => {
+    const startedAt = new Date("2026-09-02T08:00:00.000Z");
+
+    function bodyEvent(
+      data: Record<string, unknown>,
+      requestId: string | null = "call-1",
+      offsetMs = 1_000,
+    ): Record<string, unknown> {
+      return {
+        receivedAt: new Date(startedAt.getTime() + offsetMs),
+        payload: {
+          event: "HTTP_BODY_CAPTURED",
+          ts: startedAt.getTime() + offsetMs,
+          ...(requestId === null ? {} : { requestId }),
+          data,
+        },
+      };
+    }
+
+    function build(events: Record<string, unknown>[], includeBodyText = true) {
+      return buildRunTelemetry({
+        runId: "run-1",
+        run: { id: "run-1", startedAt },
+        events,
+        snapshots: [],
+        streamHealth: [],
+        diagnosticCaptures: [],
+        includeBodyText,
+      });
+    }
+
+    it("reassembles chunks in index order, not arrival order", () => {
+      const dto = build([
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "1",
+          chunk_count: "2",
+          body: '2,"b":3}',
+        }, "call-1", 2_000),
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "2",
+          body: '{"a":',
+        }, "call-1", 1_000),
+      ]);
+
+      expect(dto.httpBodies).toHaveLength(1);
+      expect(dto.httpBodies[0]).toMatchObject({
+        requestId: "call-1",
+        direction: "RESPONSE",
+        body: '{"a":2,"b":3}',
+        complete: true,
+        chunksReceived: 2,
+      });
+    });
+
+    it("reports an incomplete body instead of silently shortening it", () => {
+      // Chunks are separate logcat lines through a ring buffer that drops under
+      // pressure. Concatenating what survived hides the hole; saying so does not.
+      const dto = build([
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "3",
+          body: '{"a":',
+        }),
+      ]);
+
+      expect(dto.httpBodies[0]).toMatchObject({
+        complete: false,
+        chunkCount: 3,
+        chunksReceived: 1,
+      });
+    });
+
+    it("keeps request and response as separate records for one call", () => {
+      const dto = build([
+        bodyEvent({
+          direction: "REQUEST",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "1",
+          body: '{"in":1}',
+        }),
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "1",
+          body: '{"out":2}',
+        }, "call-1", 2_000),
+      ]);
+
+      expect(dto.httpBodies).toHaveLength(2);
+      expect(dto.httpBodies.map((body) => body.direction).sort()).toEqual([
+        "REQUEST",
+        "RESPONSE",
+      ]);
+    });
+
+    it("withholds body text without the caller's permission, keeping the metadata", () => {
+      const dto = build(
+        [
+          bodyEvent({
+            direction: "RESPONSE",
+            content_type: "application/json",
+            original_bytes: "119",
+            captured_bytes: "13",
+            truncated: "false",
+            chunk_index: "0",
+            chunk_count: "1",
+            body: '{"secret":1}',
+          }),
+        ],
+        false,
+      );
+
+      expect(dto.httpBodies[0]).toMatchObject({
+        withheld: true,
+        body: null,
+        // Metadata still answers "was there a body, how big, what kind" without
+        // handing over one byte of it.
+        contentType: "application/json",
+        originalBytes: 119,
+        truncated: false,
+      });
+      expect(JSON.stringify(dto)).not.toContain("secret");
+    });
+
+    it("carries an omission reason with no body text", () => {
+      const dto = build([
+        bodyEvent({
+          direction: "REQUEST",
+          content_type: "image/png",
+          omitted_reason: "CONTENT_TYPE_NOT_TEXTUAL",
+        }),
+      ]);
+
+      expect(dto.httpBodies[0]).toMatchObject({
+        omittedReason: "CONTENT_TYPE_NOT_TEXTUAL",
+        body: null,
+        withheld: false,
+      });
+    });
+
+    it("drops an omission reason the SDK does not declare", () => {
+      // This string is rendered to a human as an explanation. An explanation
+      // echoed straight from an untrusted payload is a place to inject one.
+      const dto = build([
+        bodyEvent({
+          direction: "REQUEST",
+          content_type: "image/png",
+          omitted_reason: "<img src=x onerror=alert(1)>",
+        }),
+      ]);
+
+      expect(dto.httpBodies[0]?.omittedReason).toBeNull();
+    });
+
+    it("does not merge two uncorrelated bodies into one document", () => {
+      const dto = build([
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "1",
+          body: '{"first":1}',
+        }, null),
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          chunk_index: "0",
+          chunk_count: "1",
+          body: '{"second":2}',
+        }, null, 2_000),
+      ]);
+
+      expect(dto.httpBodies).toHaveLength(2);
+      expect(dto.httpBodies.map((body) => body.body)).toEqual([
+        '{"first":1}',
+        '{"second":2}',
+      ]);
+    });
+
+    it("reports a retention-purged body as purged, not as lost in transit", () => {
+      // Retention redacts the chunk in place and leaves a marker. Without it the
+      // body comes back short and reads as a transport defect, turning a
+      // scheduled erasure into a bug report.
+      const dto = build([
+        bodyEvent({
+          direction: "RESPONSE",
+          content_type: "application/json",
+          original_bytes: "119",
+          chunk_index: "0",
+          chunk_count: "1",
+          body_purged: "true",
+        }),
+      ]);
+
+      expect(dto.httpBodies[0]).toMatchObject({
+        purged: true,
+        complete: true,
+        body: null,
+        originalBytes: 119,
+      });
+    });
+
+    it("marks the section UNAVAILABLE when a run captured no bodies", () => {
+      const dto = build([]);
+
+      expect(dto.httpBodies).toEqual([]);
+      expect(dto.sections.httpBodies?.measurementState).toBe("UNAVAILABLE");
+    });
+  });
 });

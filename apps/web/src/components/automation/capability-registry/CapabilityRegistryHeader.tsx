@@ -44,7 +44,7 @@ function FilterChip({
       className={cn(
         'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition',
         active
-          ? 'border-nesy/35 bg-nesy-soft text-nesy-ink shadow-xs'
+          ? 'border-indigo-200 bg-indigo-50 text-indigo-800 shadow-xs dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-200'
           : 'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
       )}
     >
@@ -52,7 +52,9 @@ function FilterChip({
       <span
         className={cn(
           'rounded-[8px] px-1.5 py-px text-[10px] tabular-nums',
-          active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
+          active
+            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+            : 'bg-muted text-muted-foreground',
         )}
       >
         {count}
@@ -78,7 +80,7 @@ function CapabilityPackCommandStrip({
           v{version} · {capabilityCount} capabilit{capabilityCount === 1 ? 'y' : 'ies'}
         </p>
       </div>
-      <Button size="sm" className="h-8 shrink-0 bg-nesy text-white hover:bg-nesy-hover" asChild>
+      <Button size="sm" variant="outline" className="h-8 shrink-0" asChild>
         <Link href={packDetailHref(packKey, version)}>
           Open pack
           <ChevronRight className="size-4" />
@@ -149,7 +151,7 @@ export function CapabilityRegistryHeader({
         eyebrow="Automation / Registry"
         title="Capability Contracts"
         lead="Reusable automation semantics from the latest published domain pack — layer, provider, runtime detection, and allowlisted operations in one catalog."
-        tone="nesy"
+        tone="indigo"
         compact
         layout="stack"
         chips={['verdict.core', 'domain layer', 'Runtime detection']}
@@ -164,7 +166,7 @@ export function CapabilityRegistryHeader({
                 ? `${visibleCount} of ${totalCount} match filters`
                 : `${packCount} ${packCount === 1 ? 'family' : 'families'}`
             }
-            tone="nesy"
+            tone="gray"
             active={
               activeLayerFilter === 'all' &&
               activeTraitFilter === 'all' &&
@@ -179,7 +181,7 @@ export function CapabilityRegistryHeader({
             label="Core layer"
             value={coreCount}
             hint="verdict.core platform seams"
-            tone="nesy"
+            tone="indigo"
             active={activeLayerFilter === 'core'}
             onClick={() =>
               onLayerFilterChange(activeLayerFilter === 'core' ? 'all' : 'core')
@@ -190,7 +192,7 @@ export function CapabilityRegistryHeader({
             label="Domain layer"
             value={domainCount}
             hint="domain.* pack-specific seams"
-            tone="nesy"
+            tone="purple"
             active={activeLayerFilter === 'domain'}
             onClick={() =>
               onLayerFilterChange(activeLayerFilter === 'domain' ? 'all' : 'domain')
@@ -225,7 +227,7 @@ export function CapabilityRegistryHeader({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search capability, key, layer, provider…"
-              className="h-9 w-full rounded-[8px] border border-border/70 bg-background py-2 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
+              className="h-9 w-full rounded-[8px] border border-border/70 bg-background py-2 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/80 dark:focus:border-indigo-700 dark:focus:ring-indigo-950/40"
               type="search"
               autoComplete="off"
               spellCheck={false}

@@ -29,6 +29,12 @@ export interface RunTelemetryDto {
   };
   memorySamples: readonly Record<string, unknown>[];
   httpCalls: readonly Record<string, unknown>[];
+  /**
+   * Captured HTTP bodies, reassembled from their chunks and joined to a call by
+   * `requestId`. Empty unless the caller asked for them AND the run has any —
+   * body capture is opt-in on the device and off in production.
+   */
+  httpBodies: readonly Record<string, unknown>[];
   spans: readonly Record<string, unknown>[];
   incidents: readonly Record<string, unknown>[];
   eventBuckets: readonly { startMs: number; count: number }[];
@@ -40,6 +46,20 @@ export interface RunTelemetryDto {
 
 type Row = Record<string, unknown>;
 
+/**
+ * Whether the caller may see captured body TEXT.
+ *
+ * Defaults to withholding. The route reads it from an explicit query parameter
+ * that the web layer only sets after `canReadRawEvidence` passed, so an
+ * unauthenticated or forgetful caller gets the body metadata (sizes, media
+ * type, whether it was truncated) and never the payload. Fail-closed matters
+ * more here than anywhere else in this file: these bytes are real customer
+ * data, not measurements about it.
+ */
+export interface RunTelemetryReadOptions {
+  includeBodyText?: boolean;
+}
+
 export interface RunTelemetryBuildInput {
   runId: string;
   run: Row;
@@ -48,10 +68,12 @@ export interface RunTelemetryBuildInput {
   streamHealth: readonly Row[];
   diagnosticCaptures: readonly Row[];
   nowMs?: number;
+  includeBodyText?: boolean;
 }
 
 export async function getRunTelemetry(
   runId: string,
+  options: RunTelemetryReadOptions = {},
 ): Promise<RunTelemetryDto | null> {
   const runRows = await prisma.$queryRaw<Row[]>`
     SELECT
@@ -115,6 +137,7 @@ export async function getRunTelemetry(
     snapshots,
     streamHealth: streamHealth as unknown as Row[],
     diagnosticCaptures,
+    includeBodyText: options.includeBodyText === true,
   });
 }
 
@@ -187,6 +210,12 @@ export function buildRunTelemetry(
       bytesOut: nonNegative(data.bytes_out ?? payload.bytes_out),
     }];
   });
+
+  const httpBodies = assembleHttpBodies(
+    eventRows,
+    relativeOrigin,
+    input.includeBodyText === true,
+  );
 
   const rawSpans = input.run.spans;
   const workflowSpansDeclared = Array.isArray(rawSpans);
@@ -352,6 +381,9 @@ export function buildRunTelemetry(
       "verdict_inbox:MEMORY_PRESSURE_DETECTED",
     ]),
     httpCalls: section(httpCalls.length > 0, ["verdict_inbox:HTTP_*"]),
+    httpBodies: section(httpBodies.length > 0, [
+      "verdict_inbox:HTTP_BODY_CAPTURED",
+    ]),
     spans: {
       measurementState: !spansMeasured
         ? "UNAVAILABLE"
@@ -406,6 +438,7 @@ export function buildRunTelemetry(
     },
     memorySamples,
     httpCalls,
+    httpBodies,
     spans,
     incidents,
     eventBuckets,
@@ -414,6 +447,177 @@ export function buildRunTelemetry(
     diagnosticCaptures: input.diagnosticCaptures.map(safeDiagnosticCapture),
     sections,
   };
+}
+
+/**
+ * Reassembles `HTTP_BODY_CAPTURED` chunks into one record per (call, direction).
+ *
+ * ## Why the chunks are re-checked instead of trusted
+ *
+ * Each chunk states its own `chunk_index` and `chunk_count`, and they travel as
+ * separate logcat lines through a ring buffer that drops under pressure. So a
+ * body can arrive with a hole in it, and a hole is invisible once the pieces
+ * are concatenated — `{"a":1,` + `"c":3}` reads as a short body, not a damaged
+ * one. Every group therefore reports `complete`, and an incomplete one keeps
+ * whatever arrived while saying so, because "we captured a truncated body" and
+ * "we lost part of one" are different facts about the same run.
+ *
+ * ## Ordering
+ *
+ * Bodies are emitted from the OkHttp interceptor and `HTTP_CALL` from the
+ * EventListener's `callEnd`, so a body usually arrives BEFORE its call. Nothing
+ * here depends on the order; the join is `requestId` equality and the caller
+ * gets both lists.
+ */
+function assembleHttpBodies(
+  eventRows: readonly { row: Row; payload: Row }[],
+  relativeOrigin: number | null,
+  includeBodyText: boolean,
+): Record<string, unknown>[] {
+  interface Group {
+    requestId: string | null;
+    direction: string | null;
+    contentType: string | null;
+    originalBytes: number | null;
+    capturedBytes: number | null;
+    truncated: boolean | null;
+    omittedReason: string | null;
+    encoding: string | null;
+    atMs: number | null;
+    chunkCount: number | null;
+    chunks: Map<number, string>;
+    purged: boolean;
+  }
+
+  const groups = new Map<string, Group>();
+  let unlinked = 0;
+
+  for (const { row, payload } of eventRows) {
+    if (payload.event !== "HTTP_BODY_CAPTURED") continue;
+    const data = record(payload.data) ?? {};
+    const requestId = safeIdentifier(payload.requestId);
+    const direction = safeBodyDirection(data.direction);
+
+    // A body with no correlation id cannot be joined to a call and cannot be
+    // merged with its own siblings either — two of them would otherwise collide
+    // on the same key and interleave into one nonsense document. Each gets its
+    // own group and stays visibly unlinked.
+    const key =
+      requestId === null
+        ? `unlinked:${unlinked++}`
+        : `${requestId}|${direction ?? "UNKNOWN"}`;
+
+    const chunkIndex = numericValue(data.chunk_index);
+    const existing = groups.get(key);
+    const group: Group = existing ?? {
+      requestId,
+      direction,
+      contentType: safeMediaType(data.content_type),
+      originalBytes: numericValue(data.original_bytes),
+      capturedBytes: numericValue(data.captured_bytes),
+      truncated: safeBoolean(data.truncated),
+      omittedReason: safeOmissionReason(data.omitted_reason),
+      encoding: safeState(data.encoding),
+      atMs: relativeMs(eventTimestamp(payload, row), relativeOrigin),
+      chunkCount: numericValue(data.chunk_count),
+      chunks: new Map<number, string>(),
+      purged: false,
+    };
+    if (!existing) groups.set(key, group);
+
+    // Retention redacted this chunk in place. Without the marker the body would
+    // come back short and be reported as lost in transit, turning a scheduled,
+    // intended erasure into what looks like a transport defect.
+    if (data.body_purged === "true") group.purged = true;
+
+    const text = typeof data.body === "string" ? data.body : null;
+    if (text !== null && chunkIndex !== null && chunkIndex >= 0) {
+      group.chunks.set(chunkIndex, text);
+    }
+  }
+
+  return [...groups.values()].map((group) => {
+    const declared = group.chunkCount;
+    const received = group.chunks.size;
+    // A purged body is not incomplete — it was complete and is now, on purpose,
+    // gone. Reporting it as incomplete would put an expired body in the same
+    // bucket as a dropped chunk.
+    const complete = group.purged
+      ? true
+      : declared === null
+        ? received > 0
+        : received === declared && declared > 0;
+    const ordered = [...group.chunks.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([, text]) => text);
+    const assembled = ordered.join("");
+    const withheld = !includeBodyText && assembled.length > 0;
+
+    return {
+      requestId: group.requestId,
+      direction: group.direction,
+      contentType: group.contentType,
+      originalBytes: group.originalBytes,
+      capturedBytes: group.capturedBytes,
+      truncated: group.truncated,
+      omittedReason: group.omittedReason,
+      encoding: group.encoding,
+      atMs: group.atMs,
+      chunkCount: declared,
+      chunksReceived: received,
+      complete,
+      // Four distinct reasons a body can be null, which the UI must not flatten
+      // into one: `omittedReason` = the device declined to capture it,
+      // `withheld` = the viewer may not see it, `purged` = retention erased it,
+      // `complete: false` = chunks were lost. Only all four clear makes a null
+      // body mean "there was no body".
+      withheld,
+      purged: group.purged,
+      body: withheld ? null : assembled.length > 0 ? assembled : null,
+    };
+  });
+}
+
+function safeBodyDirection(value: unknown): string | null {
+  return value === "REQUEST" || value === "RESPONSE" ? value : null;
+}
+
+/** Media type only — the SDK already stripped parameters, this re-checks it. */
+function safeMediaType(value: unknown): string | null {
+  return typeof value === "string" &&
+    /^[a-z0-9][a-z0-9!#$&^_.+-]{0,80}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,80}$/.test(
+      value,
+    )
+    ? value
+    : null;
+}
+
+/**
+ * Only the vocabulary the SDK declares.
+ *
+ * An unrecognised reason becomes null rather than being passed through: this
+ * string reaches a UI that renders it as an explanation, and an explanation
+ * echoed from an untrusted payload is a place to inject one.
+ */
+function safeOmissionReason(value: unknown): string | null {
+  const known = new Set([
+    "POLICY_DISABLED",
+    "HOST_NOT_ALLOWLISTED",
+    "CONTENT_TYPE_NOT_TEXTUAL",
+    "BODY_TOO_LARGE",
+    "RUN_BUDGET_EXHAUSTED",
+    "NOT_REDACTABLE",
+    "STREAMING_BODY",
+    "CAPTURE_FAILED",
+  ]);
+  return typeof value === "string" && known.has(value) ? value : null;
+}
+
+function safeBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
 }
 
 function safeMemorySample(

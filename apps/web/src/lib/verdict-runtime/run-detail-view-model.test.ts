@@ -44,6 +44,7 @@ function telemetry(overrides: Partial<RunTelemetryDto> = {}): RunTelemetryDto {
     },
     memorySamples: [],
     httpCalls: [],
+    httpBodies: [],
     spans: [],
     incidents: [],
     eventBuckets: [],
@@ -195,5 +196,121 @@ describe('run detail manager view model', () => {
     expect(view.charts.throughput).toEqual([{ startMs: 0, count: 17 }])
     expect(formatDuration(500)).toBe('500 ms')
     expect(formatBytes(1024 * 1024)).toBe('1.0 MB')
+  })
+
+  it('joins a captured body to its call by requestId', () => {
+    const view = buildRunDetailViewModel(
+      detail(),
+      telemetry({
+        httpCalls: [{
+          atMs: 150,
+          requestId: 'req-1',
+          method: 'POST',
+          host: 'example.test',
+          path: '/login',
+          code: 200,
+          status: 200,
+          success: true,
+          durationMs: 90,
+          bytesIn: 20,
+          bytesOut: 10,
+        }],
+        httpBodies: [{
+          requestId: 'req-1',
+          direction: 'RESPONSE',
+          contentType: 'application/json',
+          originalBytes: 61,
+          capturedBytes: 61,
+          truncated: false,
+          omittedReason: null,
+          encoding: 'utf8',
+          atMs: 150,
+          chunkCount: 1,
+          chunksReceived: 1,
+          complete: true,
+          withheld: false,
+          body: '{"ok":true}',
+        }],
+      }),
+    )
+
+    expect(view.charts.network).toHaveLength(1)
+    expect(view.charts.network[0]?.response?.body).toBe('{"ok":true}')
+    expect(view.charts.network[0]?.request).toBeNull()
+  })
+
+  it('keeps a body whose call never arrived instead of dropping it', () => {
+    // Bodies leave the interceptor and HTTP_CALL leaves the EventListener, so a
+    // body normally arrives first; an orphan is ordinary, not a corruption.
+    const view = buildRunDetailViewModel(
+      detail(),
+      telemetry({
+        httpCalls: [],
+        httpBodies: [{
+          requestId: 'req-orphan',
+          direction: 'REQUEST',
+          contentType: 'application/json',
+          originalBytes: 12,
+          capturedBytes: 12,
+          truncated: false,
+          omittedReason: null,
+          encoding: 'utf8',
+          atMs: 20,
+          chunkCount: 1,
+          chunksReceived: 1,
+          complete: true,
+          withheld: false,
+          body: '{"id":1}',
+        }],
+      }),
+    )
+
+    expect(view.charts.network).toHaveLength(1)
+    expect(view.charts.network[0]?.call.requestId).toBe('req-orphan')
+    expect(view.charts.network[0]?.call.method).toBeNull()
+    expect(view.charts.network[0]?.request?.body).toBe('{"id":1}')
+  })
+
+  it('does not guess a body for a call that carries no requestId', () => {
+    const view = buildRunDetailViewModel(
+      detail(),
+      telemetry({
+        httpCalls: [{
+          atMs: 150,
+          requestId: null,
+          method: 'GET',
+          host: 'example.test',
+          path: '/health',
+          code: 200,
+          status: 200,
+          success: true,
+          durationMs: 90,
+          bytesIn: 20,
+          bytesOut: 10,
+        }],
+        httpBodies: [{
+          requestId: 'req-1',
+          direction: 'RESPONSE',
+          contentType: 'application/json',
+          originalBytes: 11,
+          capturedBytes: 11,
+          truncated: false,
+          omittedReason: null,
+          encoding: 'utf8',
+          atMs: 150,
+          chunkCount: 1,
+          chunksReceived: 1,
+          complete: true,
+          withheld: false,
+          body: '{"ok":true}',
+        }],
+      }),
+    )
+
+    // The call gets no body, and the body survives as an orphan. Matching them
+    // on timestamp would attach the wrong payload to the wrong call.
+    const unjoined = view.charts.network.find((item) => item.call.method === 'GET')
+    expect(unjoined?.response).toBeNull()
+    expect(view.charts.network).toHaveLength(2)
   })
 })

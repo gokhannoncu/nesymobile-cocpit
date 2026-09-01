@@ -1,7 +1,16 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import {
+  Camera,
+  ChevronRight,
+  Database,
+  ShieldAlert,
+} from 'lucide-react'
 import { TestProfileDetailHeader } from '@/components/automation/test-profile-detail/TestProfileDetailHeader'
+import { SegmentTabs } from '@/components/product/segment-tabs'
+import { StatCard, StatGrid } from '@/components/product/stats'
 import { cn } from '@nesy/metronic/lib/utils'
 import type { TestProfileCatalogItemApi } from '@/lib/verdict-runtime/types'
 import type {
@@ -11,28 +20,28 @@ import type {
 import { testCampaignDetailHref } from '@/lib/verdict-runtime/test-campaign-registry'
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-2 text-left', cellGrid)
-const tdClass = cn('px-2.5 py-2 align-middle', cellGrid)
+const thClass = cn('px-2.5 py-1.5 text-left', cellGrid)
+const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
 
-function DetailSection({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description?: string
-  children: ReactNode
-}) {
+function WorkflowRefChip({ refKey }: { refKey: string }) {
   return (
-    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
-      <div className="border-b border-border bg-muted/10 px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-        {description ? (
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
-      <div className="p-4">{children}</div>
-    </article>
+    <span
+      title={refKey}
+      className="inline-flex max-w-full truncate rounded-md border border-indigo-200/80 bg-indigo-50/70 px-2 py-1 font-mono text-[10px] font-medium text-indigo-800 ring-1 ring-inset ring-indigo-200/50 dark:border-indigo-800/50 dark:bg-indigo-950/30 dark:text-indigo-200"
+    >
+      {refKey}
+    </span>
+  )
+}
+
+function CapabilityRefChip({ refKey }: { refKey: string }) {
+  return (
+    <span
+      title={refKey}
+      className="inline-flex max-w-full truncate rounded-md border border-violet-200/80 bg-violet-50/70 px-2 py-1 font-mono text-[10px] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/50 dark:border-violet-800/50 dark:bg-violet-950/30 dark:text-violet-200"
+    >
+      {refKey}
+    </span>
   )
 }
 
@@ -40,7 +49,7 @@ function RefChip({ children, title }: { children: React.ReactNode; title?: strin
   return (
     <span
       title={title}
-      className="inline-flex max-w-full truncate rounded-[4px] border border-border/70 bg-muted/30 px-2 py-1 font-mono text-[10px] font-medium text-muted-foreground"
+      className="inline-flex max-w-full truncate rounded-md border border-border/70 bg-muted/30 px-2 py-1 font-mono text-[10px] font-medium text-muted-foreground"
     >
       {children}
     </span>
@@ -48,43 +57,62 @@ function RefChip({ children, title }: { children: React.ReactNode; title?: strin
 }
 
 function EmptyHint({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>
+  return (
+    <p className="rounded-md border border-dashed border-border/80 bg-muted/15 px-3 py-4 text-center text-sm text-muted-foreground">
+      {children}
+    </p>
+  )
 }
 
-function TelemetryGrid({
+function SectionPanel({
+  title,
+  children,
+  className,
+}: {
+  title: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <section className={cn('space-y-2', className)}>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function TelemetryPanel({
   telemetry,
 }: {
   telemetry: ParsedTestProfileDefinition['telemetry']
 }) {
-  const items = [
-    {
-      label: 'Capture artifacts',
-      value: telemetry.captureArtifacts ? 'Yes' : 'No',
-    },
-    {
-      label: 'Evidence sample rate',
-      value: `Every ${telemetry.evidenceSampleEveryN} event${telemetry.evidenceSampleEveryN === 1 ? '' : 's'}`,
-    },
-    {
-      label: 'Retain raw evidence',
-      value: telemetry.retainRawEvidence ? 'Yes' : 'No',
-    },
-  ]
-
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-[8px] border border-border/60 bg-muted/15 px-3 py-2.5"
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {item.label}
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">{item.value}</p>
-        </div>
-      ))}
-    </div>
+    <StatGrid cols={3} dense>
+      <StatCard
+        variant="compact"
+        icon={Camera}
+        label="Artifacts"
+        value={telemetry.captureArtifacts ? 'On' : 'Off'}
+        hint="Capture diagnostic artifacts during run"
+        tone={telemetry.captureArtifacts ? 'green' : 'gray'}
+      />
+      <StatCard
+        variant="compact"
+        icon={Database}
+        label="Sample rate"
+        value={`1 / ${telemetry.evidenceSampleEveryN}`}
+        hint="Evidence sampling frequency"
+        tone="blue"
+      />
+      <StatCard
+        variant="compact"
+        icon={ShieldAlert}
+        label="Raw evidence"
+        value={telemetry.retainRawEvidence ? 'Retain' : 'Drop'}
+        hint="Whether raw evidence is retained"
+        tone={telemetry.retainRawEvidence ? 'teal' : 'gray'}
+      />
+    </StatGrid>
   )
 }
 
@@ -94,24 +122,34 @@ function CampaignMembershipTable({
   campaigns: ParsedTestCampaignMembership[]
 }) {
   if (campaigns.length === 0) {
-    return <EmptyHint>This profile is not referenced by any declared campaign in the pack.</EmptyHint>
+    return (
+      <EmptyHint>
+        This profile is not referenced by any declared campaign in the pack.
+      </EmptyHint>
+    )
   }
 
   return (
-    <div className="overflow-x-auto rounded-[8px] border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="min-w-full border-collapse text-xs">
         <thead>
           <tr className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <th className={thClass}>Campaign</th>
-            <th className={cn('hidden sm:table-cell', thClass)}>Failure policy</th>
+            <th className={cn('hidden sm:table-cell', thClass)}>On failure</th>
             <th className={cn('w-24', thClass)}>Gate</th>
             <th className={cn('w-20 text-right', thClass)}>Order</th>
             <th className={cn('w-16 text-right', thClass)}>Open</th>
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((campaign) => (
-            <tr key={campaign.campaignKey} className="bg-card">
+          {campaigns.map((campaign, index) => (
+            <tr
+              key={campaign.campaignKey}
+              className={cn(
+                'transition-colors',
+                index % 2 === 1 ? 'bg-muted/35' : 'bg-card',
+              )}
+            >
               <td className={tdClass}>
                 <p className="font-semibold text-foreground">{campaign.displayName}</p>
                 <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
@@ -122,7 +160,16 @@ function CampaignMembershipTable({
                 <span className="text-foreground">{campaign.onProfileFailure.replace(/_/g, ' ')}</span>
               </td>
               <td className={tdClass}>
-                <span className="text-foreground">{campaign.releaseGate ? 'Yes' : 'No'}</span>
+                <span
+                  className={cn(
+                    'inline-flex rounded-[4px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                    campaign.releaseGate
+                      ? 'bg-sky-50 text-sky-700 ring-sky-200/80'
+                      : 'bg-slate-100 text-slate-500 ring-slate-200/80',
+                  )}
+                >
+                  {campaign.releaseGate ? 'Yes' : 'No'}
+                </span>
               </td>
               <td className={cn('tabular-nums text-muted-foreground', tdClass)}>
                 {campaign.profileIndex + 1}/{campaign.profileCount}
@@ -132,7 +179,7 @@ function CampaignMembershipTable({
                   {campaign.campaignId ? (
                     <Link
                       href={testCampaignDetailHref(campaign.campaignId)}
-                      className="inline-flex items-center gap-0.5 rounded-[8px] py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+                      className="inline-flex items-center gap-0.5 rounded-md py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
                     >
                       Open
                       <ChevronRight className="size-3 shrink-0" />
@@ -150,30 +197,34 @@ function CampaignMembershipTable({
   )
 }
 
-function FaultPlanSection({
+function FaultPlanPanel({
   faultPlan,
 }: {
   faultPlan: NonNullable<ParsedTestProfileDefinition['faultPlan']>
 }) {
   return (
-    <DetailSection
-      title="Fault plan"
-      description={`Expect recovery: ${faultPlan.expectRecovery ? 'yes' : 'no'} · ${faultPlan.injections.length} injection${faultPlan.injections.length === 1 ? '' : 's'}`}
-    >
-      <div className="overflow-x-auto rounded-[8px] border border-border">
+    <SectionPanel title={`Fault plan · ${faultPlan.injections.length} injection${faultPlan.injections.length === 1 ? '' : 's'}`}>
+      <p className="text-xs text-muted-foreground">
+        Expect recovery:{' '}
+        <span className="font-semibold text-foreground">{faultPlan.expectRecovery ? 'Yes' : 'No'}</span>
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className={thClass}>Fault</th>
               <th className={cn('w-28', thClass)}>Kind</th>
               <th className={thClass}>Trigger</th>
-              <th className={cn('hidden lg:table-cell', thClass)}>Correlation fact</th>
-              <th className={cn('hidden lg:table-cell', thClass)}>Recovery fact</th>
+              <th className={cn('hidden lg:table-cell', thClass)}>Correlation</th>
+              <th className={cn('hidden lg:table-cell', thClass)}>Recovery</th>
             </tr>
           </thead>
           <tbody>
-            {faultPlan.injections.map((injection) => (
-              <tr key={`${injection.faultRef}-${injection.triggerRef}`} className="bg-card">
+            {faultPlan.injections.map((injection, index) => (
+              <tr
+                key={`${injection.faultRef}-${injection.triggerRef}`}
+                className={index % 2 === 1 ? 'bg-muted/35' : 'bg-card'}
+              >
                 <td className={tdClass}>
                   <RefChip title={injection.faultRef}>{injection.faultRef}</RefChip>
                 </td>
@@ -202,7 +253,162 @@ function FaultPlanSection({
           </tbody>
         </table>
       </div>
-    </DetailSection>
+    </SectionPanel>
+  )
+}
+
+function ScopeTab({
+  definition,
+  workflowRefs,
+  capabilityRefs,
+}: {
+  definition: ParsedTestProfileDefinition | null
+  workflowRefs: string[]
+  capabilityRefs: string[]
+}) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <SectionPanel title="Workflow scope">
+        {workflowRefs.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {workflowRefs.map((workflowRef) => (
+              <WorkflowRefChip key={workflowRef} refKey={workflowRef} />
+            ))}
+          </div>
+        ) : (
+          <EmptyHint>
+            {definition
+              ? 'No workflow refs declared in the pack contract.'
+              : 'Pack contract unavailable — only runtime catalog metadata is shown.'}
+          </EmptyHint>
+        )}
+      </SectionPanel>
+
+      <SectionPanel title="Required capabilities">
+        {capabilityRefs.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {capabilityRefs.map((capabilityRef) => (
+              <CapabilityRefChip key={capabilityRef} refKey={capabilityRef} />
+            ))}
+          </div>
+        ) : (
+          <EmptyHint>No required capabilities declared in the pack contract.</EmptyHint>
+        )}
+      </SectionPanel>
+    </div>
+  )
+}
+
+function PolicyTab({
+  definition,
+  catalogItem,
+}: {
+  definition: ParsedTestProfileDefinition | null
+  catalogItem: TestProfileCatalogItemApi
+}) {
+  if (!definition) {
+    return (
+      <EmptyHint>
+        Execution policy details are only available from the published pack contract.
+      </EmptyHint>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <SectionPanel title="Telemetry">
+        <TelemetryPanel telemetry={definition.telemetry} />
+      </SectionPanel>
+
+      {definition.performanceBudgetRefs.length > 0 ? (
+        <SectionPanel title="Performance budgets">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="min-w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <th className={thClass}>Budget</th>
+                  <th className={thClass}>Applies to</th>
+                </tr>
+              </thead>
+              <tbody>
+                {definition.performanceBudgetRefs.map((budget, index) => (
+                  <tr
+                    key={`${budget.budgetRef}-${budget.appliesToRef}`}
+                    className={index % 2 === 1 ? 'bg-muted/35' : 'bg-card'}
+                  >
+                    <td className={tdClass}>
+                      <RefChip>{budget.budgetRef}</RefChip>
+                    </td>
+                    <td className={tdClass}>
+                      <RefChip>{budget.appliesToRef}</RefChip>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionPanel>
+      ) : null}
+
+      {definition.differential ? (
+        <SectionPanel title="Differential policy">
+          <div className="rounded-lg border border-violet-200/70 bg-violet-50/40 p-3 dark:border-violet-900/50 dark:bg-violet-950/20">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Baseline build
+                </p>
+                <p className="mt-1 font-mono text-xs text-foreground">
+                  {definition.differential.baselineBuildRef}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  On critical diff
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {definition.differential.onCriticalDiff.replace(/_/g, ' ')}
+                </p>
+              </div>
+            </div>
+            {definition.differential.criticalFactKeys.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {definition.differential.criticalFactKeys.map((factKey) => (
+                  <RefChip key={factKey}>{factKey}</RefChip>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </SectionPanel>
+      ) : null}
+
+      {definition.faultPlan && definition.faultPlan.injections.length > 0 ? (
+        <FaultPlanPanel faultPlan={definition.faultPlan} />
+      ) : null}
+
+      <SectionPanel title="Contract anchors">
+        <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Application', value: definition.applicationRef },
+            { label: 'Launch profile', value: definition.launchProfileRef },
+            { label: 'Contract version', value: `v${definition.version}` },
+            { label: 'Catalog version', value: `v${catalogItem.version}` },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2"
+            >
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {item.label}
+              </dt>
+              <dd className="mt-1 truncate font-mono text-xs text-foreground" title={item.value}>
+                {item.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </SectionPanel>
+    </div>
   )
 }
 
@@ -221,6 +427,12 @@ export function TestProfileDetailView({
   const workflowRefs = definition?.includedWorkflowRefs ?? []
   const capabilityRefs = definition?.requiredCapabilityRefs ?? []
   const faultCount = definition?.faultPlan?.injections.length ?? 0
+
+  const policyCount =
+    (definition ? 1 : 0) +
+    (definition?.performanceBudgetRefs.length ?? 0) +
+    (definition?.differential ? 1 : 0) +
+    faultCount
 
   return (
     <div className="space-y-5">
@@ -243,155 +455,40 @@ export function TestProfileDetailView({
         campaignCount={campaigns.length}
       />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DetailSection
-          title="Workflow scope"
-          description="Macros and journeys executed when this profile runs."
-        >
-          {workflowRefs.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {workflowRefs.map((workflowRef) => (
-                <RefChip key={workflowRef} title={workflowRef}>
-                  {workflowRef}
-                </RefChip>
-              ))}
-            </div>
-          ) : (
-            <EmptyHint>
-              {definition
-                ? 'The pack contract does not list any workflow refs for this profile.'
-                : 'Pack contract unavailable — only runtime catalog metadata is shown.'}
-            </EmptyHint>
-          )}
-        </DetailSection>
-
-        <DetailSection
-          title="Required capabilities"
-          description="Capability contracts that must be available for the profile to execute."
-        >
-          {capabilityRefs.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {capabilityRefs.map((capabilityRef) => (
-                <RefChip key={capabilityRef} title={capabilityRef}>
-                  {capabilityRef}
-                </RefChip>
-              ))}
-            </div>
-          ) : (
-            <EmptyHint>No required capabilities declared in the pack contract.</EmptyHint>
-          )}
-        </DetailSection>
-      </div>
-
-      <DetailSection
-        title="Telemetry policy"
-        description="Evidence capture and sampling rules applied during execution."
-      >
-        {definition ? (
-          <TelemetryGrid telemetry={definition.telemetry} />
-        ) : (
-          <EmptyHint>Telemetry policy is only available from the published pack contract.</EmptyHint>
-        )}
-      </DetailSection>
-
-      {definition?.faultPlan && definition.faultPlan.injections.length > 0 ? (
-        <FaultPlanSection faultPlan={definition.faultPlan} />
-      ) : null}
-
-      {definition?.differential ? (
-        <DetailSection
-          title="Differential policy"
-          description="Baseline comparison rules for regression against a prior build."
-        >
-          <div className="space-y-3 text-sm">
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Baseline build
-                </p>
-                <p className="mt-1 font-mono text-xs text-foreground">
-                  {definition.differential.baselineBuildRef}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  On critical diff
-                </p>
-                <p className="mt-1 text-foreground">
-                  {definition.differential.onCriticalDiff.replace(/_/g, ' ')}
-                </p>
-              </div>
-            </div>
-            {definition.differential.criticalFactKeys.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {definition.differential.criticalFactKeys.map((factKey) => (
-                  <RefChip key={factKey}>{factKey}</RefChip>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </DetailSection>
-      ) : null}
-
-      {definition && definition.performanceBudgetRefs.length > 0 ? (
-        <DetailSection title="Performance budgets" description="Latency budgets enforced during the run.">
-          <div className="overflow-x-auto rounded-[8px] border border-border">
-            <table className="min-w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className={thClass}>Budget</th>
-                  <th className={thClass}>Applies to</th>
-                </tr>
-              </thead>
-              <tbody>
-                {definition.performanceBudgetRefs.map((budget) => (
-                  <tr key={`${budget.budgetRef}-${budget.appliesToRef}`} className="bg-card">
-                    <td className={tdClass}>
-                      <RefChip>{budget.budgetRef}</RefChip>
-                    </td>
-                    <td className={tdClass}>
-                      <RefChip>{budget.appliesToRef}</RefChip>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </DetailSection>
-      ) : null}
-
-      <DetailSection
-        title="Campaign membership"
-        description="Ordered campaigns in the domain pack that include this profile."
-      >
-        <CampaignMembershipTable campaigns={campaigns} />
-      </DetailSection>
-
-      {definition ? (
-        <DetailSection
-          title="Contract anchors"
-          description="Immutable references from the published profile definition."
-        >
-          <dl className="grid gap-3 sm:grid-cols-2">
-            {[
-              { label: 'Application ref', value: definition.applicationRef },
-              { label: 'Launch profile ref', value: definition.launchProfileRef },
-              { label: 'Contract version', value: `v${definition.version}` },
-              { label: 'Catalog version', value: `v${catalogItem.version}` },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[8px] border border-border/60 bg-muted/15 px-3 py-2.5"
-              >
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {item.label}
-                </dt>
-                <dd className="mt-1 font-mono text-xs text-foreground">{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </DetailSection>
-      ) : null}
+      <SegmentTabs
+        appearance="pill"
+        defaultValue="scope"
+        items={[
+          {
+            value: 'scope',
+            label: 'Scope',
+            count: workflowRefs.length + capabilityRefs.length,
+            content: (
+              <ScopeTab
+                definition={definition}
+                workflowRefs={workflowRefs}
+                capabilityRefs={capabilityRefs}
+              />
+            ),
+          },
+          {
+            value: 'policy',
+            label: 'Policy',
+            count: policyCount,
+            content: <PolicyTab definition={definition} catalogItem={catalogItem} />,
+          },
+          {
+            value: 'campaigns',
+            label: 'Campaigns',
+            count: campaigns.length,
+            content: (
+              <SectionPanel title="Campaign membership">
+                <CampaignMembershipTable campaigns={campaigns} />
+              </SectionPanel>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }

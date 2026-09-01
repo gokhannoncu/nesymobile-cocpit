@@ -38,6 +38,58 @@ afterEach(() => {
 });
 
 describe("GET /runtime/runs/:runId/telemetry", () => {
+  async function telemetryApp() {
+    mocks.getRunTelemetry.mockResolvedValue({
+      apiVersion: "verdict-run-telemetry.v1",
+      runId: "run-1",
+      measurementState: "UNAVAILABLE",
+      summary: {},
+    });
+    const app = Fastify();
+    await app.register(verdictRuntimeRoutes);
+    return app;
+  }
+
+  it("withholds captured body text unless the caller asks for it", async () => {
+    // Fail-closed. A forgotten parameter, or a direct request that never went
+    // through the permission check, must under-fetch rather than over-share.
+    const app = await telemetryApp();
+
+    await app.inject({ method: "GET", url: "/runtime/runs/run-1/telemetry" });
+
+    expect(mocks.getRunTelemetry).toHaveBeenCalledWith("run-1", {
+      includeBodyText: false,
+    });
+  });
+
+  it("passes the body permission through when it is explicitly stated", async () => {
+    const app = await telemetryApp();
+
+    await app.inject({
+      method: "GET",
+      url: "/runtime/runs/run-1/telemetry?includeBodyText=true",
+    });
+
+    expect(mocks.getRunTelemetry).toHaveBeenCalledWith("run-1", {
+      includeBodyText: true,
+    });
+  });
+
+  it("treats any value other than the exact opt-in as a refusal", async () => {
+    const app = await telemetryApp();
+
+    for (const value of ["1", "yes", "TRUE", ""]) {
+      mocks.getRunTelemetry.mockClear();
+      await app.inject({
+        method: "GET",
+        url: `/runtime/runs/run-1/telemetry?includeBodyText=${value}`,
+      });
+      expect(mocks.getRunTelemetry).toHaveBeenCalledWith("run-1", {
+        includeBodyText: false,
+      });
+    }
+  });
+
   it("returns the dedicated telemetry DTO", async () => {
     mocks.getRunTelemetry.mockResolvedValue({
       apiVersion: "verdict-run-telemetry.v1",

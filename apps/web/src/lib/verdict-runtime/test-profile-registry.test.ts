@@ -26,21 +26,21 @@ function profile(
 }
 
 describe('test-profile-registry helpers', () => {
-  it('maps kind and result badge classes to NESY palette', () => {
-    expect(testProfileKindBadgeClass('CORE')).toContain('bg-nesy-soft')
-    expect(testProfileKindBadgeClass('PREVIEW')).toContain('bg-background')
-    expect(testProfileKindBadgeClass('FAULT')).toContain('bg-nesy-muted/25')
-    expect(testProfileResultBadgeClass('PASS')).toContain('bg-nesy-soft')
-    expect(testProfileResultBadgeClass('FAIL')).toContain('bg-nesy-muted/25')
-    expect(testProfileResultBadgeClass('NOT_RUN', true)).toContain('bg-nesy-muted/25')
+  it('maps kind and result badge classes to semantic palette', () => {
+    expect(testProfileKindBadgeClass('CORE')).toContain('bg-indigo-50')
+    expect(testProfileKindBadgeClass('PREVIEW')).toContain('bg-teal-50')
+    expect(testProfileKindBadgeClass('FAULT')).toContain('bg-amber-50')
+    expect(testProfileResultBadgeClass('PASS')).toContain('bg-emerald-50')
+    expect(testProfileResultBadgeClass('FAIL')).toContain('bg-rose-50')
+    expect(testProfileResultBadgeClass('NOT_RUN', true)).toContain('bg-amber-50')
   })
 
-  it('maps legacy kind and result tones', () => {
-    expect(testProfileKindTone('CORE')).toBe('nesy')
+  it('maps kind and result tones', () => {
+    expect(testProfileKindTone('CORE')).toBe('indigo')
     expect(testProfileKindTone('PREVIEW')).toBe('teal')
     expect(testProfileKindTone('SOAK')).toBe('gray')
-    expect(testProfileKindTone('FAULT')).toBe('orange')
-    expect(testProfileResultTone('PASS')).toBe('teal')
+    expect(testProfileKindTone('FAULT')).toBe('amber')
+    expect(testProfileResultTone('PASS')).toBe('green')
     expect(testProfileResultTone('FAIL')).toBe('red')
   })
 

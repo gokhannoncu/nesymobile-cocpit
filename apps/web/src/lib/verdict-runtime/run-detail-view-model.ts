@@ -2,6 +2,7 @@ import type { DiagramElement } from '@/data/product/nesy-types'
 import type {
   RunDetailResult,
   RunTelemetryDto,
+  RunTelemetryHttpBody,
   RunTelemetryHttpCall,
   RunTelemetryIncident,
   RunTelemetryMemorySample,
@@ -51,9 +52,25 @@ export interface RunComparisonRow {
   tone: OutcomeTone
 }
 
+/** One HTTP call with whatever body evidence exists for it. */
+export interface RunNetworkCall {
+  call: RunTelemetryHttpCall
+  request: RunTelemetryHttpBody | null
+  response: RunTelemetryHttpBody | null
+}
+
 export interface RunDetailCharts {
   memory: RunTelemetryMemorySample[]
   http: RunTelemetryHttpCall[]
+  /**
+   * Calls joined to their bodies, plus any body whose call never arrived.
+   *
+   * Bodies leave the device from the OkHttp interceptor and `HTTP_CALL` from
+   * the EventListener, so a body normally arrives FIRST. An orphan is therefore
+   * ordinary — a lost or still-in-flight call — and is surfaced rather than
+   * dropped.
+   */
+  network: RunNetworkCall[]
   spans: RunTelemetrySpan[]
   throughput: { startMs: number; count: number }[]
   incidents: RunTelemetryIncident[]
@@ -285,6 +302,10 @@ export function buildRunDetailViewModel(
     charts: {
       memory: normalizeMemory(telemetry?.memorySamples),
       http: normalizeHttp(telemetry?.httpCalls),
+      network: joinNetwork(
+        normalizeHttp(telemetry?.httpCalls),
+        normalizeHttpBodies(telemetry?.httpBodies),
+      ),
       spans: normalizeSpans(telemetry?.spans),
       throughput: normalizeBuckets(telemetry?.eventBuckets),
       incidents,
@@ -417,6 +438,90 @@ function normalizeHttp(values: RunTelemetryDto['httpCalls'] | undefined): RunTel
     bytesIn: numberValue(row.bytesIn),
     bytesOut: numberValue(row.bytesOut),
   }))
+}
+
+function normalizeHttpBodies(
+  values: RunTelemetryDto['httpBodies'] | undefined,
+): RunTelemetryHttpBody[] {
+  return records(values).map((row) => ({
+    requestId: nullableText(row.requestId),
+    direction:
+      row.direction === 'REQUEST' || row.direction === 'RESPONSE'
+        ? row.direction
+        : null,
+    contentType: nullableText(row.contentType),
+    originalBytes: numberValue(row.originalBytes),
+    capturedBytes: numberValue(row.capturedBytes),
+    truncated: typeof row.truncated === 'boolean' ? row.truncated : null,
+    omittedReason: nullableText(row.omittedReason),
+    encoding: nullableText(row.encoding),
+    atMs: numberValue(row.atMs),
+    chunkCount: numberValue(row.chunkCount),
+    chunksReceived: numberValue(row.chunksReceived) ?? 0,
+    complete: row.complete === true,
+    withheld: row.withheld === true,
+    purged: row.purged === true,
+    body: nullableText(row.body),
+  }))
+}
+
+/**
+ * Joins calls to bodies on `requestId`.
+ *
+ * A call with no `requestId` cannot be joined and is not guessed at by
+ * timestamp or path: two calls to the same endpoint one second apart would then
+ * be indistinguishable, and attaching the wrong body to a call is worse than
+ * showing none. Such calls appear with both bodies null, which reads correctly
+ * as "no body evidence for this call".
+ */
+function joinNetwork(
+  calls: RunTelemetryHttpCall[],
+  bodies: RunTelemetryHttpBody[],
+): RunNetworkCall[] {
+  const byRequest = new Map<string, RunTelemetryHttpBody[]>()
+  for (const body of bodies) {
+    if (body.requestId === null) continue
+    const bucket = byRequest.get(body.requestId)
+    if (bucket) bucket.push(body)
+    else byRequest.set(body.requestId, [body])
+  }
+
+  const claimed = new Set<string>()
+  const joined = calls.map((call) => {
+    const matches = call.requestId === null ? [] : byRequest.get(call.requestId) ?? []
+    if (call.requestId !== null && matches.length > 0) claimed.add(call.requestId)
+    return {
+      call,
+      request: matches.find((body) => body.direction === 'REQUEST') ?? null,
+      response: matches.find((body) => body.direction === 'RESPONSE') ?? null,
+    }
+  })
+
+  // Bodies whose call never arrived. Kept, with a placeholder call carrying the
+  // little that is known, so a run does not silently under-report its evidence.
+  const orphans: RunNetworkCall[] = []
+  for (const [requestId, group] of byRequest) {
+    if (claimed.has(requestId)) continue
+    orphans.push({
+      call: {
+        atMs: group[0]?.atMs ?? null,
+        requestId,
+        method: null,
+        host: null,
+        path: null,
+        code: null,
+        status: null,
+        success: null,
+        durationMs: null,
+        bytesIn: null,
+        bytesOut: null,
+      },
+      request: group.find((body) => body.direction === 'REQUEST') ?? null,
+      response: group.find((body) => body.direction === 'RESPONSE') ?? null,
+    })
+  }
+
+  return [...joined, ...orphans]
 }
 
 function normalizeSpans(values: RunTelemetryDto['spans'] | undefined): RunTelemetrySpan[] {

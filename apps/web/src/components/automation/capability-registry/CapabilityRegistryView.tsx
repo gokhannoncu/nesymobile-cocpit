@@ -110,7 +110,7 @@ function CapabilityRow({ row, index }: { row: CapabilityRegistryRow; index: numb
           <Link
             href={href}
             onClick={(event) => event.stopPropagation()}
-            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[10px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[10px] font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
           >
             Open
             <ChevronRight className="size-3 shrink-0" />
@@ -161,7 +161,7 @@ function PackGroupHeader({
       </div>
       <Link
         href={packDetailHref(packKey, version)}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-semibold text-nesy-ink transition hover:underline"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-semibold text-muted-foreground transition hover:text-foreground hover:underline"
       >
         Open pack
         <ChevronRight className="size-3.5" />
@@ -220,7 +220,7 @@ function CapabilityPackGroupCard({
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
-            className="cursor-pointer text-[11px] font-semibold text-nesy-ink underline-offset-2 hover:underline"
+            className="cursor-pointer text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             {expanded
               ? 'Show fewer capabilities'
@@ -393,7 +393,7 @@ export function CapabilityRegistryView({ capabilities }: { capabilities: Capabil
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-4 cursor-pointer text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+              className="mt-4 cursor-pointer text-sm font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
             >
               Clear filters
             </button>

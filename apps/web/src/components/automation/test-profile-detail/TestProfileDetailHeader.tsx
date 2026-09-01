@@ -3,55 +3,32 @@ import {
   ArrowLeft,
   ChevronRight,
   FlaskConical,
+  GitBranch,
+  Info,
   Layers,
-  Package,
   Play,
-  ShieldCheck,
+  Workflow,
   Zap,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { Button } from '@nesy/metronic/components/ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@nesy/metronic/components/ui/popover'
 import { TestProfileKindBadge } from '@/components/automation/test-profile/TestProfileKindBadge'
+import { StatCard, StatGrid } from '@/components/product/stats'
 import { cn } from '@nesy/metronic/lib/utils'
 import { AUTOMATION_RUN_PLANNER_PATH } from '@nesy/metronic/config/layout-21.config'
 import {
+  testProfileGateBadgeClass,
   testProfileIsBlocked,
   testProfileResultBadgeClass,
-  testProfileBadgePrimary,
 } from '@/lib/verdict-runtime/test-profile-registry'
 import { profileKindHint } from '@/lib/verdict-runtime/test-profile-detail'
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
-}
-
-function MetaCell({
-  icon: Icon,
-  label,
-  value,
-  mono = false,
-}: {
-  icon: LucideIcon
-  label: string
-  value: string
-  mono?: boolean
-}) {
-  return (
-    <div className="min-w-0 rounded-[8px] border border-border/60 bg-background/70 px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3 shrink-0" aria-hidden />
-        {label}
-      </div>
-      <p
-        className={cn(
-          'mt-1 text-sm font-semibold leading-snug text-foreground',
-          mono && 'font-mono text-xs',
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  )
 }
 
 function ResultBadge({
@@ -62,11 +39,62 @@ function ResultBadge({
   blockedReason: string | null
 }) {
   const blocked = testProfileIsBlocked({ blockedReason })
-
   return (
     <span className={testProfileResultBadgeClass(lastResult, blocked)}>
-      {blocked ? 'Blocked' : lastResult}
+      {blocked ? 'Blocked' : lastResult.replace(/_/g, ' ')}
     </span>
+  )
+}
+
+function ProfileMetaStrip({
+  packKey,
+  packVersion,
+  launchProfileLabel,
+  owner,
+  contractKind,
+}: {
+  packKey: string
+  packVersion: string
+  launchProfileLabel: string
+  owner: string
+  contractKind: string
+}) {
+  return (
+    <dl className="inline-flex max-w-full flex-wrap overflow-hidden rounded-lg border border-border/80 bg-muted/25 text-xs shadow-sm">
+      <MetaSegment label="Pack" value={`${packKey} · v${packVersion}`} title={`${packKey} v${packVersion}`} mono />
+      <MetaSegment label="Launch" value={launchProfileLabel} title={launchProfileLabel} mono />
+      <MetaSegment label="Owner" value={owner || '—'} />
+      <MetaSegment label="Contract" value={contractKind} mono />
+    </dl>
+  )
+}
+
+function MetaSegment({
+  label,
+  value,
+  title,
+  mono = false,
+}: {
+  label: string
+  value: string
+  title?: string
+  mono?: boolean
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 border-r border-border/80 px-2.5 py-1.5 last:border-r-0">
+      <dt className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          'min-w-0 truncate font-semibold text-foreground',
+          mono && 'font-mono text-[11px] font-medium',
+        )}
+        title={title ?? value}
+      >
+        {value}
+      </dd>
+    </div>
   )
 }
 
@@ -81,7 +109,6 @@ export function TestProfileDetailHeader({
   lastResult,
   blockedReason,
   releaseGate,
-  launchProfileRef,
   launchProfileLabel,
   workflowCount,
   capabilityCount,
@@ -106,45 +133,60 @@ export function TestProfileDetailHeader({
   campaignCount: number
 }) {
   const blocked = testProfileIsBlocked({ blockedReason })
+  const gateBadgeClass = testProfileGateBadgeClass(releaseGate)
 
   return (
-    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
-      <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
+    <header className="rounded-[8px] border border-slate-200/90 bg-white dark:border-border dark:bg-card">
+      <div className="border-b border-slate-200/80 px-4 py-2 sm:px-5 dark:border-border">
+        <Link
+          href="/automation/test-profiles"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
+          Profiles
+        </Link>
+      </div>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-[8px] px-2" asChild>
-                <Link href="/automation/test-profiles">
-                  <ArrowLeft className="size-3.5" />
-                  Profiles
-                </Link>
-              </Button>
-            </div>
-
-            <div className="mt-3 flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-nesy-soft text-nesy-ink ring-1 ring-nesy/10">
-                <FlaskConical className="size-4" strokeWidth={2.2} />
+      <div className="space-y-3 px-4 py-3 sm:px-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300">
+                <FlaskConical className="size-3.5" strokeWidth={2.2} />
               </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-mono text-lg font-bold leading-tight text-foreground lg:text-xl">
-                    {profileKey}
-                  </h1>
-                  <TestProfileKindBadge kind={catalogKind} />
-                  <ResultBadge lastResult={lastResult} blockedReason={blockedReason} />
-                  {releaseGate ? (
-                    <span className={testProfileBadgePrimary}>Release gate</span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm font-medium text-foreground">{displayName}</p>
-                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                  {profileKindHint(contractKind)} · contract kind{' '}
-                  <span className="font-mono font-semibold text-foreground">{contractKind}</span>
-                </p>
-              </div>
+              <h1 className="min-w-0 text-lg font-semibold leading-snug tracking-tight text-slate-950 sm:text-xl dark:text-foreground">
+                {displayName}
+              </h1>
+              <TestProfileKindBadge kind={catalogKind} />
+              <ResultBadge lastResult={lastResult} blockedReason={blockedReason} />
+              {gateBadgeClass ? <span className={gateBadgeClass}>Release gate</span> : null}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 rounded-[6px] text-slate-400 hover:text-slate-700"
+                    aria-label="About this profile kind"
+                  >
+                    <Info className="size-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="max-w-sm text-sm leading-relaxed text-slate-600">
+                  {profileKindHint(contractKind)}
+                </PopoverContent>
+              </Popover>
             </div>
+
+            <p className="font-mono text-[11px] text-muted-foreground">{profileKey}</p>
+
+            <ProfileMetaStrip
+              packKey={packKey}
+              packVersion={packVersion}
+              launchProfileLabel={launchProfileLabel}
+              owner={owner}
+              contractKind={contractKind}
+            />
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -154,7 +196,7 @@ export function TestProfileDetailHeader({
                 <ChevronRight className="size-4" />
               </Link>
             </Button>
-            <Button size="sm" className="h-9 rounded-[8px] bg-nesy text-white hover:bg-nesy-hover" asChild>
+            <Button size="sm" className="h-9 rounded-[8px]" asChild>
               <Link href={AUTOMATION_RUN_PLANNER_PATH}>
                 <Play className="size-4" />
                 Run planner
@@ -163,23 +205,47 @@ export function TestProfileDetailHeader({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <MetaCell icon={Package} label="Domain pack" value={`${packKey} · v${packVersion}`} mono />
-          <MetaCell icon={Zap} label="Launch profile" value={launchProfileLabel} mono />
-          <MetaCell icon={ShieldCheck} label="Owner" value={owner || '—'} />
-          <MetaCell
-            icon={Layers}
-            label="Scope"
-            value={`${workflowCount} workflow${workflowCount === 1 ? '' : 's'} · ${capabilityCount} cap · ${faultCount} fault${faultCount === 1 ? '' : 's'} · ${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
+        <StatGrid cols={4} dense>
+          <StatCard
+            variant="compact"
+            icon={Workflow}
+            label="Workflows"
+            value={workflowCount}
+            hint="Macros and journeys in scope"
+            tone="indigo"
           />
-        </div>
+          <StatCard
+            variant="compact"
+            icon={Layers}
+            label="Capabilities"
+            value={capabilityCount}
+            hint="Required capability contracts"
+            tone="purple"
+          />
+          <StatCard
+            variant="compact"
+            icon={Zap}
+            label="Fault injections"
+            value={faultCount}
+            hint="Declared fault plan entries"
+            tone="amber"
+          />
+          <StatCard
+            variant="compact"
+            icon={GitBranch}
+            label="Campaigns"
+            value={campaignCount}
+            hint="Pack campaigns referencing this profile"
+            tone="teal"
+          />
+        </StatGrid>
 
         {blocked && blockedReason ? (
-          <div className="mt-4 rounded-[8px] border border-amber-200/80 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="rounded-[8px] border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
             <span className="font-semibold">Catalog blocker:</span> {blockedReason}
           </div>
         ) : null}
       </div>
-    </article>
+    </header>
   )
 }

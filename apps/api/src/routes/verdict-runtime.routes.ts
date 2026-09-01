@@ -46,11 +46,16 @@ export async function verdictRuntimeRoutes(app: FastifyInstance) {
     return result
   })
 
-  app.get<{ Params: { runId: string } }>(
+  app.get<{ Params: { runId: string }; Querystring: { includeBodyText?: string } }>(
     '/runtime/runs/:runId/telemetry',
     async (request, reply) => {
+      // Fail-closed: captured HTTP bodies are real customer payloads, so the
+      // body TEXT ships only when the caller states it may. The web layer sets
+      // this after `canReadRawEvidence` passed; anything else — a forgotten
+      // parameter, a direct curl — gets sizes and media types and no payload.
+      const includeBodyText = request.query.includeBodyText === 'true'
       const result = await withRuntimeRead(reply, () =>
-        getRunTelemetry(request.params.runId),
+        getRunTelemetry(request.params.runId, { includeBodyText }),
       )
       if (result === undefined) return
       if (result === null) {
