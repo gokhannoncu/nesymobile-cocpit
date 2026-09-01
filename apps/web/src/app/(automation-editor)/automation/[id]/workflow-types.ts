@@ -10,6 +10,7 @@ export type TargetHandle = "top";
 
 export enum WorkflowNodeType {
   LAUNCH_APP = "LAUNCH_APP",
+  GRANT_PERMISSIONS = "GRANT_PERMISSIONS",
   IF_LOGIN = "IF_LOGIN",
   AUTH_LOGIN = "AUTH_LOGIN",
   CHECK_ROUTE = "CHECK_ROUTE",

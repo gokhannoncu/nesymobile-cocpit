@@ -109,6 +109,15 @@ const LAUNCH_NODE: CanvasNodeSeed = {
   config: { country: 'HR', environment: 'stage', clearState: true },
 }
 
+const GRANT_PERMISSIONS_NODE: CanvasNodeSeed = {
+  id: 'grant-permissions',
+  type: 'GRANT_PERMISSIONS',
+  title: 'Grant Permissions',
+  subtitle: 'Android startup permissions',
+  icon: 'ClipboardCheck',
+  config: {},
+}
+
 const LOGIN_NODE: CanvasNodeSeed = {
   id: 'auth-login',
   type: 'AUTH_LOGIN',
@@ -135,9 +144,10 @@ const SELECT_ROUTE_NODE: CanvasNodeSeed = {
  * three keep the ids the login-and-select-route canvas already seeded.
  */
 const CANVAS_CHAINS: Record<string, readonly CanvasNodeSeed[]> = {
-  'nesy.workflow.login-and-select-route': [LAUNCH_NODE, LOGIN_NODE, SELECT_ROUTE_NODE],
+  'nesy.workflow.login-and-select-route': [LAUNCH_NODE, GRANT_PERMISSIONS_NODE, LOGIN_NODE, SELECT_ROUTE_NODE],
   'nesy.workflow.full-courier-day': [
     LAUNCH_NODE,
+    GRANT_PERMISSIONS_NODE,
     LOGIN_NODE,
     SELECT_ROUTE_NODE,
     {

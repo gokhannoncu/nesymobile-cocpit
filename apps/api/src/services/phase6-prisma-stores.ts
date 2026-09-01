@@ -79,7 +79,15 @@ export class PrismaCompiledPlanStore implements CompiledPlanStore {
       await this.prisma.verdictCompiledPlan.upsert({
         where: { planHash: plan.hash.digest },
         create: data,
-        update: { planRef: plan.planId },
+        update: {
+          planRef: plan.planId,
+          workflowRef: data.workflowRef,
+          domainPackKey: data.domainPackKey,
+          domainPackVersion: data.domainPackVersion,
+          domainPackDigest: data.domainPackDigest,
+          compilerVersion: data.compilerVersion,
+          plan: data.plan,
+        },
       })
     } catch (error) {
       if (
@@ -105,18 +113,16 @@ export class PrismaCompiledPlanStore implements CompiledPlanStore {
   }
 
   async get(input: { planRef: string; planHash: string }): Promise<StoredBridgeFlowPlan | undefined> {
-    const row = await this.prisma.verdictCompiledPlan.findFirst({
-      where: {
-        OR: [
-          { planHash: input.planHash },
-          { planRef: input.planRef },
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
+    const byHash = await this.prisma.verdictCompiledPlan.findUnique({
+      where: { planHash: input.planHash },
     })
-    if (!row) return undefined
-    if (row.planHash !== input.planHash) return undefined
-    return row.plan as StoredBridgeFlowPlan
+    if (byHash !== null) return byHash.plan as StoredBridgeFlowPlan
+
+    const byRef = await this.prisma.verdictCompiledPlan.findUnique({
+      where: { planRef: input.planRef },
+    })
+    if (byRef === null || byRef.planHash !== input.planHash) return undefined
+    return byRef.plan as StoredBridgeFlowPlan
   }
 }
 

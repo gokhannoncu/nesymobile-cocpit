@@ -802,15 +802,15 @@ function layoutWorkflow(nodes: WorkflowNode[], connections: Connection[]) {
 
 function applyNodeInsertion(nodes: WorkflowNode[], connections: Connection[], node: WorkflowNode, target?: DropTarget) {
   if (node.type === WorkflowNodeType.IF_LOGIN) {
-    const launchSourceNode =
+    const permissionSourceNode =
       target?.kind === "node"
-        ? nodes.find((candidate) => candidate.id === target.nodeId && candidate.type === WorkflowNodeType.LAUNCH_APP)
+        ? nodes.find((candidate) => candidate.id === target.nodeId && candidate.type === WorkflowNodeType.GRANT_PERMISSIONS)
         : target?.kind === "connection"
           ? nodes.find((candidate) => candidate.id === connections.find((connection) => connection.id === target.connectionId)?.sourceNodeId)
           : findTerminalNode(nodes, connections);
 
     const canAutoExpandIfLogin =
-      launchSourceNode?.type === WorkflowNodeType.LAUNCH_APP &&
+      permissionSourceNode?.type === WorkflowNodeType.GRANT_PERMISSIONS &&
       (!target || target.kind === "canvas" || target.kind === "node" || target.kind === "connection");
 
     if (canAutoExpandIfLogin) {
@@ -818,7 +818,7 @@ function applyNodeInsertion(nodes: WorkflowNode[], connections: Connection[], no
       const nextNodes = [...nodes, node, authLogin];
       const existingDefaultConnection = connections.find(
         (connection) =>
-          connection.sourceNodeId === launchSourceNode.id &&
+          connection.sourceNodeId === permissionSourceNode.id &&
           connection.sourceHandle === "default" &&
           !connection.isPlaceholder,
       );
@@ -826,7 +826,7 @@ function applyNodeInsertion(nodes: WorkflowNode[], connections: Connection[], no
         connections
           .filter((connection) => connection.id !== existingDefaultConnection?.id)
           .concat(
-            createConnection(launchSourceNode.id, node.id, "default"),
+            createConnection(permissionSourceNode.id, node.id, "default"),
             createPlaceholderConnection(node.id, "true"),
             createConnection(node.id, authLogin.id, "false"),
           ),

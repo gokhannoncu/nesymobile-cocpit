@@ -122,6 +122,10 @@
       ],
       "variables": [
         {
+          "name": "approvalScheduleRows",
+          "type": "stringList"
+        },
+        {
           "name": "requestHandle",
           "type": "string"
         },
@@ -131,6 +135,73 @@
         }
       ],
       "steps": [
+        {
+          "planStepId": "read-current-schedule",
+          "sourceMapRef": "sm-appr-0a",
+          "next": "check-request-already-open",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.named-query",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.db.schedule",
+          "maxRows": 1,
+          "outputVariable": "approvalScheduleRows"
+        },
+        {
+          "planStepId": "check-request-already-open",
+          "sourceMapRef": "sm-appr-0b",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CONDITION",
+          "condition": {
+            "kind": "or",
+            "operands": [
+              {
+                "kind": "comparison",
+                "operator": "in",
+                "left": {
+                  "kind": "literal",
+                  "value": "1"
+                },
+                "right": {
+                  "kind": "operand",
+                  "source": "step.output",
+                  "path": "read-current-schedule.schedule_status"
+                }
+              },
+              {
+                "kind": "comparison",
+                "operator": "in",
+                "left": {
+                  "kind": "literal",
+                  "value": "2"
+                },
+                "right": {
+                  "kind": "operand",
+                  "source": "step.output",
+                  "path": "read-current-schedule.schedule_status"
+                }
+              }
+            ]
+          },
+          "onTrue": "verify-request-record",
+          "onFalse": "resolve-request-button",
+          "unknownPolicy": "BRANCH",
+          "onUnknown": "resolve-request-button"
+        },
         {
           "planStepId": "resolve-request-button",
           "sourceMapRef": "sm-appr-1",
@@ -525,7 +596,7 @@
           }
         }
       ],
-      "entryStepId": "resolve-request-button",
+      "entryStepId": "read-current-schedule",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -563,6 +634,18 @@
         }
       ],
       "sourceMap": [
+        {
+          "ref": "sm-appr-0a",
+          "planStepId": "read-current-schedule",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "detect an already-open or already-approved tour request"
+        },
+        {
+          "ref": "sm-appr-0b",
+          "planStepId": "check-request-already-open",
+          "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+          "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
+        },
         {
           "ref": "sm-appr-1",
           "planStepId": "resolve-request-button",
@@ -622,6 +705,18 @@
       ]
     },
     "irSourceMap": [
+      {
+        "ref": "sm-appr-0a",
+        "planStepId": "read-current-schedule",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "detect an already-open or already-approved tour request"
+      },
+      {
+        "ref": "sm-appr-0b",
+        "planStepId": "check-request-already-open",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
+      },
       {
         "ref": "sm-appr-1",
         "planStepId": "resolve-request-button",
@@ -684,6 +779,8 @@
         "ref": "ds-appr-1",
         "macroRef": "nesy.macro.tour-approval-lifecycle",
         "planStepIds": [
+          "read-current-schedule",
+          "check-request-already-open",
           "resolve-request-button",
           "tap-request",
           "resolve-routing-choice",
@@ -723,6 +820,10 @@
     ],
     "variables": [
       {
+        "name": "approvalScheduleRows",
+        "type": "stringList"
+      },
+      {
         "name": "requestHandle",
         "type": "string"
       },
@@ -732,6 +833,73 @@
       }
     ],
     "steps": [
+      {
+        "planStepId": "read-current-schedule",
+        "sourceMapRef": "sm-appr-0a",
+        "next": "check-request-already-open",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.named-query",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.db.schedule",
+        "maxRows": 1,
+        "outputVariable": "approvalScheduleRows"
+      },
+      {
+        "planStepId": "check-request-already-open",
+        "sourceMapRef": "sm-appr-0b",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CONDITION",
+        "condition": {
+          "kind": "or",
+          "operands": [
+            {
+              "kind": "comparison",
+              "operator": "in",
+              "left": {
+                "kind": "literal",
+                "value": "1"
+              },
+              "right": {
+                "kind": "operand",
+                "source": "step.output",
+                "path": "read-current-schedule.schedule_status"
+              }
+            },
+            {
+              "kind": "comparison",
+              "operator": "in",
+              "left": {
+                "kind": "literal",
+                "value": "2"
+              },
+              "right": {
+                "kind": "operand",
+                "source": "step.output",
+                "path": "read-current-schedule.schedule_status"
+              }
+            }
+          ]
+        },
+        "onTrue": "verify-request-record",
+        "onFalse": "resolve-request-button",
+        "unknownPolicy": "BRANCH",
+        "onUnknown": "resolve-request-button"
+      },
       {
         "planStepId": "resolve-request-button",
         "sourceMapRef": "sm-appr-1",
@@ -1126,7 +1294,7 @@
         }
       }
     ],
-    "entryStepId": "resolve-request-button",
+    "entryStepId": "read-current-schedule",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -1164,6 +1332,18 @@
       }
     ],
     "sourceMap": [
+      {
+        "ref": "sm-appr-0a",
+        "planStepId": "read-current-schedule",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "detect an already-open or already-approved tour request"
+      },
+      {
+        "ref": "sm-appr-0b",
+        "planStepId": "check-request-already-open",
+        "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+        "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
+      },
       {
         "ref": "sm-appr-1",
         "planStepId": "resolve-request-button",

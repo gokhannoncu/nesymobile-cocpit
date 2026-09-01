@@ -52,6 +52,10 @@ import { resolveBackofficeAdminCredentials } from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
 import { createPendingDeliveryStatusRefresher } from './pending-delivery-status-refresh.js'
+import {
+  STARTUP_PERMISSION_PLAN_STEP_ID,
+  type AndroidStartupPermissionReport,
+} from './android-startup-permissions.js'
 import { deriveFacts, shipmentCorrelationAliases } from './derived-fact-engine.js'
 import { createControlExecutor } from '@nesy/control-channels/node'
 import type { ControlExecutor } from '@nesy/control-contract'
@@ -652,6 +656,11 @@ export interface BridgeFlowExecutionQueueOptions {
   readinessDeadlineMs?: number
   forceStop?: typeof forceStopAndConfirm
   launch?: typeof launchApplication
+  /** Setup-only step executed after a cold launch and before Bridge acquisition. */
+  prepareStartupPermissions?: (input: {
+    deviceId: string
+    applicationId: string
+  }) => Promise<AndroidStartupPermissionReport>
   observeLaunch?: typeof observeAndroidLaunch
   readDeviceState?: typeof getDeviceBridgeState
   readDeviceHealth?: typeof getDeviceHealth
@@ -697,6 +706,17 @@ function readinessTarget(input: {
   const fingerprint =
     targetOnExpectedScreen === undefined ? undefined : buildTargetFingerprint(targetOnExpectedScreen)
   return { expectedScreen, target: targetOnExpectedScreen, fingerprint }
+}
+
+export function planRequestsStartupPermissionBootstrap(plan: unknown): boolean {
+  if (plan === null || typeof plan !== 'object') return false
+  const steps = (plan as { steps?: unknown }).steps
+  if (!Array.isArray(steps)) return false
+  return steps.some((step) => {
+    if (step === null || typeof step !== 'object') return false
+    const planStepId = (step as { planStepId?: unknown }).planStepId
+    return typeof planStepId === 'string' && planStepId.endsWith(STARTUP_PERMISSION_PLAN_STEP_ID)
+  })
 }
 
 async function acquireBridgeFromRegistry(input: {
@@ -878,6 +898,37 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
         const trace = tracker.trace(monoClock())
         await this.blockRun(item, `PROCESS_NOT_STARTED · launch failed: ${describeError(error)}`, trace)
         return
+      }
+
+      const preparePermissions = planRequestsStartupPermissionBootstrap(plan)
+      if (preparePermissions && this.options.prepareStartupPermissions === undefined) {
+        const trace = tracker.trace(monoClock())
+        await this.blockRun(item, 'STARTUP_PERMISSION_BOOTSTRAP_FAILED · runtime handler is not configured', trace)
+        return
+      }
+      if (preparePermissions && this.options.prepareStartupPermissions !== undefined) {
+        try {
+          const permissionReport = await this.options.prepareStartupPermissions({
+            deviceId: item.deviceId,
+            applicationId,
+          })
+          this.options.logger?.('[BridgeFlowExecutionQueue] post-launch permission bootstrap completed', {
+            runId: item.runId,
+            applicationId,
+            changed: permissionReport.changed,
+            restarted: permissionReport.restarted,
+            grantedNow: permissionReport.grantedNow,
+            overlay: permissionReport.overlay,
+          })
+        } catch (error) {
+          const trace = tracker.trace(monoClock())
+          await this.blockRun(
+            item,
+            `STARTUP_PERMISSION_BOOTSTRAP_FAILED · ${describeError(error)}`,
+            trace,
+          )
+          return
+        }
       }
 
       // Acquire only after the previous process is proven dead. Reusing a socket

@@ -83,6 +83,10 @@
       ],
       "variables": [
         {
+          "name": "currentRouteRows",
+          "type": "stringList"
+        },
+        {
           "name": "offeredRouteRows",
           "type": "stringList"
         },
@@ -112,6 +116,74 @@
         }
       ],
       "steps": [
+        {
+          "planStepId": "read-current-route",
+          "sourceMapRef": "sm-route-0a",
+          "next": "check-already-selected",
+          "timeoutMs": 15000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "domain.nesy.adapter.state-projection",
+              "optional": false
+            }
+          ],
+          "kind": "SDK_QUERY",
+          "queryRef": "nesy.routeState",
+          "maxRows": 1,
+          "outputVariable": "currentRouteRows"
+        },
+        {
+          "planStepId": "check-already-selected",
+          "sourceMapRef": "sm-route-0b",
+          "next": null,
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "CONDITION",
+          "condition": {
+            "kind": "and",
+            "operands": [
+              {
+                "kind": "comparison",
+                "operator": "in",
+                "left": {
+                  "kind": "literal",
+                  "value": "true"
+                },
+                "right": {
+                  "kind": "operand",
+                  "source": "step.output",
+                  "path": "read-current-route.route_selected"
+                }
+              },
+              {
+                "kind": "comparison",
+                "operator": "in",
+                "left": {
+                  "kind": "operand",
+                  "source": "run.input",
+                  "path": "routeCode"
+                },
+                "right": {
+                  "kind": "operand",
+                  "source": "step.output",
+                  "path": "read-current-route.route_name"
+                }
+              }
+            ]
+          },
+          "onTrue": "read-local-schedule",
+          "onFalse": "wait-dialog",
+          "unknownPolicy": "BRANCH",
+          "onUnknown": "wait-dialog"
+        },
         {
           "planStepId": "wait-dialog",
           "sourceMapRef": "sm-route-1",
@@ -191,8 +263,10 @@
             "effectClass": "READ_ONLY"
           },
           "capabilityRequirements": [],
-          "kind": "ANNOTATE",
-          "message": "The requested route is not in the offered projection; no row was tapped."
+          "kind": "ASSERT_FACT",
+          "factKey": "REMOTE.ROUTES_AVAILABLE",
+          "expected": true,
+          "unknownPolicy": "FAIL"
         },
         {
           "planStepId": "resolve-spinner",
@@ -516,7 +590,7 @@
           }
         }
       ],
-      "entryStepId": "wait-dialog",
+      "entryStepId": "read-current-route",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -550,6 +624,18 @@
         }
       ],
       "sourceMap": [
+        {
+          "ref": "sm-route-0a",
+          "planStepId": "read-current-route",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "detect already-selected route before waiting for the dialog"
+        },
+        {
+          "ref": "sm-route-0b",
+          "planStepId": "check-already-selected",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "skip route selection when the requested route is already active"
+        },
         {
           "ref": "sm-route-1",
           "planStepId": "wait-dialog",
@@ -636,6 +722,18 @@
       ]
     },
     "irSourceMap": [
+      {
+        "ref": "sm-route-0a",
+        "planStepId": "read-current-route",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "detect already-selected route before waiting for the dialog"
+      },
+      {
+        "ref": "sm-route-0b",
+        "planStepId": "check-already-selected",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "skip route selection when the requested route is already active"
+      },
       {
         "ref": "sm-route-1",
         "planStepId": "wait-dialog",
@@ -725,6 +823,8 @@
         "ref": "ds-route-1",
         "macroRef": "nesy.macro.select-route",
         "planStepIds": [
+          "read-current-route",
+          "check-already-selected",
           "wait-dialog",
           "read-offered-routes",
           "check-offered",
@@ -742,7 +842,7 @@
           "assert-selection"
         ],
         "sliceRef": "SELECT_ROUTE",
-        "note": "One CONDITION branch: the not-offered path annotates and stops instead of tapping."
+        "note": "Branches around an already-selected route; the not-offered path fails closed instead of producing a green terminal annotation."
       }
     ]
   },
@@ -763,6 +863,10 @@
       }
     ],
     "variables": [
+      {
+        "name": "currentRouteRows",
+        "type": "stringList"
+      },
       {
         "name": "offeredRouteRows",
         "type": "stringList"
@@ -793,6 +897,74 @@
       }
     ],
     "steps": [
+      {
+        "planStepId": "read-current-route",
+        "sourceMapRef": "sm-route-0a",
+        "next": "check-already-selected",
+        "timeoutMs": 15000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "domain.nesy.adapter.state-projection",
+            "optional": false
+          }
+        ],
+        "kind": "SDK_QUERY",
+        "queryRef": "nesy.routeState",
+        "maxRows": 1,
+        "outputVariable": "currentRouteRows"
+      },
+      {
+        "planStepId": "check-already-selected",
+        "sourceMapRef": "sm-route-0b",
+        "next": null,
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "CONDITION",
+        "condition": {
+          "kind": "and",
+          "operands": [
+            {
+              "kind": "comparison",
+              "operator": "in",
+              "left": {
+                "kind": "literal",
+                "value": "true"
+              },
+              "right": {
+                "kind": "operand",
+                "source": "step.output",
+                "path": "read-current-route.route_selected"
+              }
+            },
+            {
+              "kind": "comparison",
+              "operator": "in",
+              "left": {
+                "kind": "operand",
+                "source": "run.input",
+                "path": "routeCode"
+              },
+              "right": {
+                "kind": "operand",
+                "source": "step.output",
+                "path": "read-current-route.route_name"
+              }
+            }
+          ]
+        },
+        "onTrue": "read-local-schedule",
+        "onFalse": "wait-dialog",
+        "unknownPolicy": "BRANCH",
+        "onUnknown": "wait-dialog"
+      },
       {
         "planStepId": "wait-dialog",
         "sourceMapRef": "sm-route-1",
@@ -872,8 +1044,10 @@
           "effectClass": "READ_ONLY"
         },
         "capabilityRequirements": [],
-        "kind": "ANNOTATE",
-        "message": "The requested route is not in the offered projection; no row was tapped."
+        "kind": "ASSERT_FACT",
+        "factKey": "REMOTE.ROUTES_AVAILABLE",
+        "expected": true,
+        "unknownPolicy": "FAIL"
       },
       {
         "planStepId": "resolve-spinner",
@@ -1197,7 +1371,7 @@
         }
       }
     ],
-    "entryStepId": "wait-dialog",
+    "entryStepId": "read-current-route",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -1231,6 +1405,18 @@
       }
     ],
     "sourceMap": [
+      {
+        "ref": "sm-route-0a",
+        "planStepId": "read-current-route",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "detect already-selected route before waiting for the dialog"
+      },
+      {
+        "ref": "sm-route-0b",
+        "planStepId": "check-already-selected",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "skip route selection when the requested route is already active"
+      },
       {
         "ref": "sm-route-1",
         "planStepId": "wait-dialog",

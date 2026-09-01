@@ -889,6 +889,7 @@ function Pagination({
           <option value="5">5 / page</option>
           <option value="10">10 / page</option>
           <option value="20">20 / page</option>
+          <option value="50">50 / page</option>
         </select>
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       </div>

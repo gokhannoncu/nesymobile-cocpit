@@ -30,6 +30,7 @@ function chain(nodes: WorkflowNode[]): Connection[] {
  */
 const seededCourierDay = [
   node("launch-app", WorkflowNodeType.LAUNCH_APP, { country: "RS", environment: "stage", clearState: false }),
+  node("grant-permissions", WorkflowNodeType.GRANT_PERMISSIONS),
   node("auth-login", WorkflowNodeType.AUTH_LOGIN, { pinCode: "3680" }),
   node("select-route", WorkflowNodeType.SELECT_ROUTE, { routeNumber: "36" }),
   node("load", WorkflowNodeType.LOAD_TO_VEHICLE, { barcode: "N688011" }),
@@ -48,6 +49,15 @@ describe("validateWorkflowState — stop list prerequisite", () => {
   it("does not require a stop order on Open Stop, which the macro addresses by entityRef", () => {
     const errors = validateWorkflowState({ nodes: seededCourierDay, connections: chain(seededCourierDay) });
     expect(errors.some((error) => error.nodeId === "visit")).toBe(false);
+  });
+
+  it("requires Grant Permissions directly between Launch App and Auth / Login", () => {
+    const nodes = [
+      node("launch-app", WorkflowNodeType.LAUNCH_APP),
+      node("auth-login", WorkflowNodeType.AUTH_LOGIN, { pinCode: "3680" }),
+    ];
+    const errors = validateWorkflowState({ nodes, connections: chain(nodes) });
+    expect(errors.map((error) => error.code)).toContain("MISSING_PERMISSIONS_AFTER_LAUNCH");
   });
 
   it("still rejects a courier operation with no route selection upstream", () => {

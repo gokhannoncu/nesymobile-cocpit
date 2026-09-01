@@ -51,6 +51,15 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.37.0 — tour approval accepts an already WaitingForApproval/Approved
+  //   schedule and jumps to backend verification instead of reopening UI request.
+  //
+  // 1.36.0 — select-route first accepts an already-selected matching route and
+  //   its not-offered branch fails closed instead of ending a composed run green.
+  //
+  // 1.35.0 — cold login workflows expose an executable post-launch Android
+  //   permission bootstrap before the first PIN target is resolved.
+  //
   // 1.34.0 — G90.10 BD.6: complete-delivery keeps the product scan on
   //   consignmentNumber (short barcode) and asks GetShipmentDeliveryProof
   //   with proofLookupId (waybill). run_c96899d5 submitted locally then
@@ -434,7 +443,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 34, patch: 0 },
+  version: { major: 1, minor: 37, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

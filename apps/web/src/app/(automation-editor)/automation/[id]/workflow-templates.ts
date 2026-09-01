@@ -36,6 +36,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
     category: "Templates",
     nodes: [
       { id: "launch-app", type: WorkflowNodeType.LAUNCH_APP },
+      { id: "grant-permissions", type: WorkflowNodeType.GRANT_PERMISSIONS },
       { id: "if-login", type: WorkflowNodeType.IF_LOGIN },
       { id: "auth-login", type: WorkflowNodeType.AUTH_LOGIN },
       { id: "check-route", type: WorkflowNodeType.CHECK_ROUTE },
@@ -45,6 +46,12 @@ export const workflowTemplates: WorkflowTemplate[] = [
     connections: [
       {
         sourceNodeId: "launch-app",
+        targetNodeId: "grant-permissions",
+        sourceHandle: "default",
+        targetHandle: "top",
+      },
+      {
+        sourceNodeId: "grant-permissions",
         targetNodeId: "if-login",
         sourceHandle: "default",
         targetHandle: "top",

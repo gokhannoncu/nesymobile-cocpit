@@ -47,6 +47,7 @@ import { TestCampaignService } from '../services/test-campaign.service.js'
 import { TestProfileCatalogService } from '../services/test-profile-catalog.service.js'
 import { BridgeFlowExecutionQueue } from '../services/bridgeflow-execution-queue.js'
 import { createBridgeFlowCompileService } from '../services/bridgeflow-compile-adapter.js'
+import { ensureNesyLoginStartupPermissions } from '../services/android-startup-permissions.js'
 import { parseInjectedFaultBody, WorkflowRunService } from '../services/workflow-run.service.js'
 import {
   PrismaCompiledPlanStore,
@@ -69,6 +70,7 @@ const runService = new WorkflowRunService(
     prisma,
     planStore: compiledPlanStore,
     logger: (message, detail) => console.warn(message, detail),
+    prepareStartupPermissions: ensureNesyLoginStartupPermissions,
   }),
   new PrismaWorkflowRunStartStore(prisma),
 )

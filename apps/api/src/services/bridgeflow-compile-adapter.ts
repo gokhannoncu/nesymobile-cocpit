@@ -21,6 +21,7 @@ import type { CompileIssue } from '@nesy/bridgeflow-compiler'
 import type { DomainPackBundle, MacroExpansionSnapshot } from '@nesy/domain-pack-contracts'
 import type { WorkflowIrV2 } from '@nesy/workflow-contract'
 
+import { STARTUP_PERMISSION_PLAN_STEP_ID } from './android-startup-permissions.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
 import {
   WorkflowCompileService,
@@ -76,6 +77,21 @@ function isWorkflowIrV2(value: unknown): value is WorkflowIrV2 {
   return Array.isArray(record.steps) && typeof record.entryStepId === 'string'
 }
 
+function canvasHasNodeType(value: unknown, type: string): boolean {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const nodes = (value as { nodes?: unknown }).nodes
+  return Array.isArray(nodes) && nodes.some(
+    (node) =>
+      node !== null &&
+      typeof node === 'object' &&
+      (node as { type?: unknown }).type === type,
+  )
+}
+
+function irRequiresStartupPermissions(ir: WorkflowIrV2): boolean {
+  return ir.steps.some((step) => step.planStepId.endsWith(STARTUP_PERMISSION_PLAN_STEP_ID))
+}
+
 /**
  * Editor canvas graphs (`nodes`/`connections`) are not BridgeFlow IR. When the
  * workflowRef matches a pack independent workflow/fragment with exactly one
@@ -114,7 +130,22 @@ function materializeWorkflowIr(
     .filter((snapshot): snapshot is MacroExpansionSnapshot => snapshot !== undefined)
 
   if (snapshots.length === 1) {
-    return { ok: true, ir: snapshots[0]!.genericIr }
+    const ir = snapshots[0]!.genericIr
+    if (
+      Array.isArray((workflowIr as { nodes?: unknown })?.nodes) &&
+      irRequiresStartupPermissions(ir) &&
+      !canvasHasNodeType(workflowIr, 'GRANT_PERMISSIONS')
+    ) {
+      return {
+        ok: false,
+        issue: {
+          severity: 'ERROR',
+          code: 'MISSING_STARTUP_PERMISSION_STEP',
+          message: 'Grant Permissions must be present between Launch App and Auth / Login.',
+        },
+      }
+    }
+    return { ok: true, ir }
   }
 
   return {

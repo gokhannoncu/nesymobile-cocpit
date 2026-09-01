@@ -32,9 +32,9 @@ const LEG_PREFIXES = ["auth", "route", "load", "permit", "visit", "item", "deliv
 
 /** The chain the composition claims to drive, in product order. */
 const CHAIN: readonly { exit: string; entry: string }[] = [
-  { exit: "auth-assert-login", entry: "route-wait-dialog" },
+  { exit: "auth-assert-login", entry: "route-read-current-route" },
   { exit: "route-assert-selection", entry: "load-wait-stop-list-ready" },
-  { exit: "load-assert-loaded", entry: "permit-resolve-request-button" },
+  { exit: "load-assert-loaded", entry: "permit-read-current-schedule" },
   { exit: "permit-assert-approved", entry: "visit-read-available" },
   { exit: "visit-assert-correct-item", entry: "item-wait-task-list" },
   { exit: "item-assert-delivery-started", entry: "deliver-wait-flow" },
@@ -161,7 +161,7 @@ describe("full courier day composition", () => {
   // ── 2. stitching ────────────────────────────────────────────────────────
 
   it("continues each leg's closing assertion into the next leg's entry", () => {
-    expect(IR.entryStepId).toBe("auth-resolve-pin-field");
+    expect(IR.entryStepId).toBe("auth-prepare-startup-permissions");
     for (const { exit, entry } of CHAIN) {
       const assertion = step(exit);
       expect(assertion.kind).toBe("ASSERT_FACT");
@@ -171,10 +171,11 @@ describe("full courier day composition", () => {
     expect(step("deliver-assert-confirmed").next).toBeNull();
   });
 
-  it("leaves the not-offered dead end a dead end", () => {
+  it("leaves the not-offered path as a failing dead end", () => {
     // Falling through here would have started loading a vehicle for a route the
     // backend never offered.
     expect(step("route-report-not-offered").next).toBeNull();
+    expect(step("route-report-not-offered").kind).toBe("ASSERT_FACT");
   });
 
   it("keeps every leg's own final oracle policy on its assertion", () => {

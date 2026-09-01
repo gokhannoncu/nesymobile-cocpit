@@ -23,7 +23,7 @@ function BrandLogo() {
     <span className="inline-flex items-center gap-2" aria-label="Nesy Mobile Cockpit">
       <BrandMark className="size-7" />
       <span className="text-[17px] font-bold tracking-[-0.035em] text-foreground">
-        Nesy<span className="text-orange-500">Mobile</span>
+        Nesy <span className="text-orange-500">Mobile</span>
       </span>
     </span>
   );

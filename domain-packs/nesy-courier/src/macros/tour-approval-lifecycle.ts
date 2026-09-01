@@ -63,6 +63,7 @@
 import type { BridgeFlowPlanSnapshot, MacroDefinition, MacroExpansionSnapshot } from "@nesy/domain-pack-contracts";
 import type { WorkflowStepV2 } from "@nesy/workflow-contract";
 import { NESY_BACKOFFICE_ADAPTER_REF, NESY_BACKOFFICE_OPERATIONS } from "../adapters/backoffice.js";
+import { NESY_ADAPTER_QUERY_REFS } from "../registries/application.js";
 import { NESY_ENTITIES } from "../registries/entities.js";
 import { NESY_FACTS } from "../registries/facts.js";
 import { NESY_ACTIONS, NESY_SCREENS, NESY_SURFACES } from "../registries/screens.js";
@@ -81,6 +82,44 @@ export const NESY_TOUR_APPROVAL_MACRO_KEY = "nesy.macro.tour-approval-lifecycle"
 const REQUEST_ENTITY = { type: NESY_ENTITIES.tourApprovalRequest, id: "run.input.scheduleId" } as const;
 
 const STEPS: readonly WorkflowStepV2[] = [
+  {
+    ...stepBase({
+      planStepId: "read-current-schedule",
+      sourceMapRef: "sm-appr-0a",
+      next: "check-request-already-open",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.dbSchedule,
+    maxRows: 1,
+    outputVariable: "approvalScheduleRows",
+  },
+  {
+    ...stepBase({ planStepId: "check-request-already-open", sourceMapRef: "sm-appr-0b", next: null }),
+    kind: "CONDITION",
+    condition: {
+      kind: "or",
+      operands: [
+        {
+          kind: "comparison",
+          operator: "in",
+          left: { kind: "literal", value: "1" },
+          right: { kind: "operand", source: "step.output", path: "read-current-schedule.schedule_status" },
+        },
+        {
+          kind: "comparison",
+          operator: "in",
+          left: { kind: "literal", value: "2" },
+          right: { kind: "operand", source: "step.output", path: "read-current-schedule.schedule_status" },
+        },
+      ],
+    },
+    onTrue: "verify-request-record",
+    onFalse: "resolve-request-button",
+    unknownPolicy: "BRANCH",
+    onUnknown: "resolve-request-button",
+  },
   // ── Actor 1: the courier, on the device ─────────────────────────────────
   //
   // On the STOP LIST, not at end-of-day. Measured 2026-08-12: the button is
@@ -341,17 +380,20 @@ const GENERIC_IR = irDocument({
     { name: "scheduleId", type: "string", required: true },
   ],
   variables: [
+    { name: "approvalScheduleRows", type: "stringList" },
     { name: "requestHandle", type: "string" },
     { name: "routingHandle", type: "string" },
   ],
   steps: STEPS,
-  entryStepId: "resolve-request-button",
+  entryStepId: "read-current-schedule",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.remote.allowlisted-operation"),
     requires("domain.nesy.backoffice.approval-operations"),
   ],
   sourceMap: [
+    sourceMapEntry("sm-appr-0a", "read-current-schedule", NESY_TOUR_APPROVAL_MACRO_KEY, "detect an already-open or already-approved tour request"),
+    sourceMapEntry("sm-appr-0b", "check-request-already-open", NESY_TOUR_APPROVAL_MACRO_KEY, "skip mobile request UI when schedule status is already WaitingForApproval/Approved"),
     sourceMapEntry("sm-appr-1", "resolve-request-button", NESY_TOUR_APPROVAL_MACRO_KEY),
     sourceMapEntry("sm-appr-2", "tap-request", NESY_TOUR_APPROVAL_MACRO_KEY, "actor 1: the courier, real UI — opens the routing chooser, calls nothing"),
     sourceMapEntry("sm-appr-3", "resolve-routing-choice", NESY_TOUR_APPROVAL_MACRO_KEY),

@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 34,
+      "minor": 37,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -3941,6 +3941,19 @@
             ],
             "steps": [
               {
+                "planStepId": "prepare-startup-permissions",
+                "sourceMapRef": "sm-login-3",
+                "next": "resolve-pin-field",
+                "timeoutMs": 30000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ANNOTATE",
+                "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
+              {
                 "planStepId": "resolve-pin-field",
                 "sourceMapRef": "sm-login-4",
                 "next": "enter-pin",
@@ -4204,7 +4217,7 @@
                 "runOnFailure": true
               }
             ],
-            "entryStepId": "resolve-pin-field",
+            "entryStepId": "prepare-startup-permissions",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -4242,6 +4255,12 @@
               }
             ],
             "sourceMap": [
+              {
+                "ref": "sm-login-3",
+                "planStepId": "prepare-startup-permissions",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "post-launch setup"
+              },
               {
                 "ref": "sm-login-4",
                 "planStepId": "resolve-pin-field",
@@ -4293,6 +4312,12 @@
             ]
           },
           "irSourceMap": [
+            {
+              "ref": "sm-login-3",
+              "planStepId": "prepare-startup-permissions",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "post-launch setup"
+            },
             {
               "ref": "sm-login-4",
               "planStepId": "resolve-pin-field",
@@ -4347,6 +4372,7 @@
               "ref": "ds-login-1",
               "macroRef": "nesy.macro.login",
               "planStepIds": [
+                "prepare-startup-permissions",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -4525,6 +4551,19 @@
             ],
             "steps": [
               {
+                "planStepId": "prepare-startup-permissions",
+                "sourceMapRef": "sm-login-3",
+                "next": "resolve-pin-field",
+                "timeoutMs": 30000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ANNOTATE",
+                "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
+              {
                 "planStepId": "resolve-pin-field",
                 "sourceMapRef": "sm-login-4",
                 "next": "enter-pin",
@@ -4659,7 +4698,7 @@
                 "runOnFailure": true
               }
             ],
-            "entryStepId": "resolve-pin-field",
+            "entryStepId": "prepare-startup-permissions",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -4698,6 +4737,12 @@
             ],
             "sourceMap": [
               {
+                "ref": "sm-login-3",
+                "planStepId": "prepare-startup-permissions",
+                "domainSourceRef": "nesy.macro.login-rejected",
+                "note": "post-launch setup"
+              },
+              {
                 "ref": "sm-login-4",
                 "planStepId": "resolve-pin-field",
                 "domainSourceRef": "nesy.macro.login-rejected"
@@ -4730,6 +4775,12 @@
             ]
           },
           "irSourceMap": [
+            {
+              "ref": "sm-login-3",
+              "planStepId": "prepare-startup-permissions",
+              "domainSourceRef": "nesy.macro.login-rejected",
+              "note": "post-launch setup"
+            },
             {
               "ref": "sm-login-4",
               "planStepId": "resolve-pin-field",
@@ -4766,6 +4817,7 @@
               "ref": "ds-login-rejected-1",
               "macroRef": "nesy.macro.login-rejected",
               "planStepIds": [
+                "prepare-startup-permissions",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -4969,6 +5021,10 @@
             ],
             "variables": [
               {
+                "name": "currentRouteRows",
+                "type": "stringList"
+              },
+              {
                 "name": "offeredRouteRows",
                 "type": "stringList"
               },
@@ -4998,6 +5054,74 @@
               }
             ],
             "steps": [
+              {
+                "planStepId": "read-current-route",
+                "sourceMapRef": "sm-route-0a",
+                "next": "check-already-selected",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.routeState",
+                "maxRows": 1,
+                "outputVariable": "currentRouteRows"
+              },
+              {
+                "planStepId": "check-already-selected",
+                "sourceMapRef": "sm-route-0b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "and",
+                  "operands": [
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "true"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-route.route_selected"
+                      }
+                    },
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "operand",
+                        "source": "run.input",
+                        "path": "routeCode"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-route.route_name"
+                      }
+                    }
+                  ]
+                },
+                "onTrue": "read-local-schedule",
+                "onFalse": "wait-dialog",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "wait-dialog"
+              },
               {
                 "planStepId": "wait-dialog",
                 "sourceMapRef": "sm-route-1",
@@ -5077,8 +5201,10 @@
                   "effectClass": "READ_ONLY"
                 },
                 "capabilityRequirements": [],
-                "kind": "ANNOTATE",
-                "message": "The requested route is not in the offered projection; no row was tapped."
+                "kind": "ASSERT_FACT",
+                "factKey": "REMOTE.ROUTES_AVAILABLE",
+                "expected": true,
+                "unknownPolicy": "FAIL"
               },
               {
                 "planStepId": "resolve-spinner",
@@ -5402,7 +5528,7 @@
                 }
               }
             ],
-            "entryStepId": "wait-dialog",
+            "entryStepId": "read-current-route",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -5436,6 +5562,18 @@
               }
             ],
             "sourceMap": [
+              {
+                "ref": "sm-route-0a",
+                "planStepId": "read-current-route",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "detect already-selected route before waiting for the dialog"
+              },
+              {
+                "ref": "sm-route-0b",
+                "planStepId": "check-already-selected",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "skip route selection when the requested route is already active"
+              },
               {
                 "ref": "sm-route-1",
                 "planStepId": "wait-dialog",
@@ -5522,6 +5660,18 @@
             ]
           },
           "irSourceMap": [
+            {
+              "ref": "sm-route-0a",
+              "planStepId": "read-current-route",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "detect already-selected route before waiting for the dialog"
+            },
+            {
+              "ref": "sm-route-0b",
+              "planStepId": "check-already-selected",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "skip route selection when the requested route is already active"
+            },
             {
               "ref": "sm-route-1",
               "planStepId": "wait-dialog",
@@ -5611,6 +5761,8 @@
               "ref": "ds-route-1",
               "macroRef": "nesy.macro.select-route",
               "planStepIds": [
+                "read-current-route",
+                "check-already-selected",
                 "wait-dialog",
                 "read-offered-routes",
                 "check-offered",
@@ -5628,7 +5780,7 @@
                 "assert-selection"
               ],
               "sliceRef": "SELECT_ROUTE",
-              "note": "One CONDITION branch: the not-offered path annotates and stops instead of tapping."
+              "note": "Branches around an already-selected route; the not-offered path fails closed instead of producing a green terminal annotation."
             }
           ]
         },
@@ -5931,6 +6083,10 @@
                 "type": "stringList"
               },
               {
+                "name": "currentRouteRows",
+                "type": "stringList"
+              },
+              {
                 "name": "offeredRouteRows",
                 "type": "stringList"
               },
@@ -5960,6 +6116,19 @@
               }
             ],
             "steps": [
+              {
+                "planStepId": "prepare-startup-permissions",
+                "sourceMapRef": "sm-login-3",
+                "next": "resolve-pin-field",
+                "timeoutMs": 30000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ANNOTATE",
+                "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
               {
                 "planStepId": "resolve-pin-field",
                 "sourceMapRef": "sm-login-4",
@@ -6172,7 +6341,7 @@
               {
                 "planStepId": "assert-login",
                 "sourceMapRef": "sm-login-9",
-                "next": "wait-dialog",
+                "next": "read-current-route",
                 "timeoutMs": 20000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -6223,6 +6392,74 @@
                   "tap-submit"
                 ],
                 "runOnFailure": true
+              },
+              {
+                "planStepId": "read-current-route",
+                "sourceMapRef": "sm-route-0a",
+                "next": "check-already-selected",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.routeState",
+                "maxRows": 1,
+                "outputVariable": "currentRouteRows"
+              },
+              {
+                "planStepId": "check-already-selected",
+                "sourceMapRef": "sm-route-0b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "and",
+                  "operands": [
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "true"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-route.route_selected"
+                      }
+                    },
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "operand",
+                        "source": "run.input",
+                        "path": "routeCode"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-route.route_name"
+                      }
+                    }
+                  ]
+                },
+                "onTrue": "read-local-schedule",
+                "onFalse": "wait-dialog",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "wait-dialog"
               },
               {
                 "planStepId": "wait-dialog",
@@ -6303,8 +6540,10 @@
                   "effectClass": "READ_ONLY"
                 },
                 "capabilityRequirements": [],
-                "kind": "ANNOTATE",
-                "message": "The requested route is not in the offered projection; no row was tapped."
+                "kind": "ASSERT_FACT",
+                "factKey": "REMOTE.ROUTES_AVAILABLE",
+                "expected": true,
+                "unknownPolicy": "FAIL"
               },
               {
                 "planStepId": "resolve-spinner",
@@ -6628,7 +6867,7 @@
                 }
               }
             ],
-            "entryStepId": "resolve-pin-field",
+            "entryStepId": "prepare-startup-permissions",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -6687,6 +6926,12 @@
             ],
             "sourceMap": [
               {
+                "ref": "sm-login-3",
+                "planStepId": "prepare-startup-permissions",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "post-launch setup"
+              },
+              {
                 "ref": "sm-login-4",
                 "planStepId": "resolve-pin-field",
                 "domainSourceRef": "nesy.macro.login"
@@ -6733,6 +6978,18 @@
                 "ref": "sm-login-10",
                 "planStepId": "clear-session",
                 "domainSourceRef": "nesy.macro.login"
+              },
+              {
+                "ref": "sm-route-0a",
+                "planStepId": "read-current-route",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "detect already-selected route before waiting for the dialog"
+              },
+              {
+                "ref": "sm-route-0b",
+                "planStepId": "check-already-selected",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "skip route selection when the requested route is already active"
               },
               {
                 "ref": "sm-route-1",
@@ -6821,6 +7078,12 @@
           },
           "irSourceMap": [
             {
+              "ref": "sm-login-3",
+              "planStepId": "prepare-startup-permissions",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "post-launch setup"
+            },
+            {
               "ref": "sm-login-4",
               "planStepId": "resolve-pin-field",
               "domainSourceRef": "nesy.macro.login"
@@ -6867,6 +7130,18 @@
               "ref": "sm-login-10",
               "planStepId": "clear-session",
               "domainSourceRef": "nesy.macro.login"
+            },
+            {
+              "ref": "sm-route-0a",
+              "planStepId": "read-current-route",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "detect already-selected route before waiting for the dialog"
+            },
+            {
+              "ref": "sm-route-0b",
+              "planStepId": "check-already-selected",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "skip route selection when the requested route is already active"
             },
             {
               "ref": "sm-route-1",
@@ -6957,6 +7232,7 @@
               "ref": "ds-login-select-1",
               "macroRef": "nesy.macro.login-and-select-route",
               "planStepIds": [
+                "prepare-startup-permissions",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -6966,6 +7242,8 @@
                 "verify-backend-session",
                 "assert-login",
                 "clear-session",
+                "read-current-route",
+                "check-already-selected",
                 "wait-dialog",
                 "read-offered-routes",
                 "check-offered",
@@ -6988,6 +7266,7 @@
               "ref": "ds-login-select-login",
               "macroRef": "nesy.macro.login",
               "planStepIds": [
+                "prepare-startup-permissions",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -7005,6 +7284,8 @@
               "ref": "ds-login-select-route",
               "macroRef": "nesy.macro.select-route",
               "planStepIds": [
+                "read-current-route",
+                "check-already-selected",
                 "wait-dialog",
                 "read-offered-routes",
                 "check-offered",
@@ -10580,6 +10861,10 @@
             ],
             "variables": [
               {
+                "name": "approvalScheduleRows",
+                "type": "stringList"
+              },
+              {
                 "name": "requestHandle",
                 "type": "string"
               },
@@ -10589,6 +10874,73 @@
               }
             ],
             "steps": [
+              {
+                "planStepId": "read-current-schedule",
+                "sourceMapRef": "sm-appr-0a",
+                "next": "check-request-already-open",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.db.schedule",
+                "maxRows": 1,
+                "outputVariable": "approvalScheduleRows"
+              },
+              {
+                "planStepId": "check-request-already-open",
+                "sourceMapRef": "sm-appr-0b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "or",
+                  "operands": [
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "1"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-schedule.schedule_status"
+                      }
+                    },
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "2"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "read-current-schedule.schedule_status"
+                      }
+                    }
+                  ]
+                },
+                "onTrue": "verify-request-record",
+                "onFalse": "resolve-request-button",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "resolve-request-button"
+              },
               {
                 "planStepId": "resolve-request-button",
                 "sourceMapRef": "sm-appr-1",
@@ -10983,7 +11335,7 @@
                 }
               }
             ],
-            "entryStepId": "resolve-request-button",
+            "entryStepId": "read-current-schedule",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -11021,6 +11373,18 @@
               }
             ],
             "sourceMap": [
+              {
+                "ref": "sm-appr-0a",
+                "planStepId": "read-current-schedule",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+                "note": "detect an already-open or already-approved tour request"
+              },
+              {
+                "ref": "sm-appr-0b",
+                "planStepId": "check-request-already-open",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+                "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
+              },
               {
                 "ref": "sm-appr-1",
                 "planStepId": "resolve-request-button",
@@ -11080,6 +11444,18 @@
             ]
           },
           "irSourceMap": [
+            {
+              "ref": "sm-appr-0a",
+              "planStepId": "read-current-schedule",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+              "note": "detect an already-open or already-approved tour request"
+            },
+            {
+              "ref": "sm-appr-0b",
+              "planStepId": "check-request-already-open",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+              "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
+            },
             {
               "ref": "sm-appr-1",
               "planStepId": "resolve-request-button",
@@ -11142,6 +11518,8 @@
               "ref": "ds-appr-1",
               "macroRef": "nesy.macro.tour-approval-lifecycle",
               "planStepIds": [
+                "read-current-schedule",
+                "check-request-already-open",
                 "resolve-request-button",
                 "tap-request",
                 "resolve-routing-choice",
@@ -11827,6 +12205,10 @@
                 "type": "stringList"
               },
               {
+                "name": "routeCurrentRouteRows",
+                "type": "stringList"
+              },
+              {
                 "name": "routeOfferedRouteRows",
                 "type": "stringList"
               },
@@ -11884,6 +12266,10 @@
               },
               {
                 "name": "loadLoadedRows",
+                "type": "stringList"
+              },
+              {
+                "name": "permitApprovalScheduleRows",
                 "type": "stringList"
               },
               {
@@ -11968,6 +12354,19 @@
               }
             ],
             "steps": [
+              {
+                "planStepId": "auth-prepare-startup-permissions",
+                "sourceMapRef": "sm-login-3",
+                "next": "auth-resolve-pin-field",
+                "timeoutMs": 30000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ANNOTATE",
+                "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
               {
                 "planStepId": "auth-resolve-pin-field",
                 "sourceMapRef": "sm-login-4",
@@ -12180,7 +12579,7 @@
               {
                 "planStepId": "auth-assert-login",
                 "sourceMapRef": "sm-login-9",
-                "next": "route-wait-dialog",
+                "next": "route-read-current-route",
                 "timeoutMs": 20000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -12231,6 +12630,74 @@
                   "auth-tap-submit"
                 ],
                 "runOnFailure": true
+              },
+              {
+                "planStepId": "route-read-current-route",
+                "sourceMapRef": "sm-route-0a",
+                "next": "route-check-already-selected",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.routeState",
+                "maxRows": 1,
+                "outputVariable": "routeCurrentRouteRows"
+              },
+              {
+                "planStepId": "route-check-already-selected",
+                "sourceMapRef": "sm-route-0b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "and",
+                  "operands": [
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "true"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "route-read-current-route.route_selected"
+                      }
+                    },
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "operand",
+                        "source": "run.input",
+                        "path": "routeCode"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "route-read-current-route.route_name"
+                      }
+                    }
+                  ]
+                },
+                "onTrue": "route-read-local-schedule",
+                "onFalse": "route-wait-dialog",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "route-wait-dialog"
               },
               {
                 "planStepId": "route-wait-dialog",
@@ -12311,8 +12778,10 @@
                   "effectClass": "READ_ONLY"
                 },
                 "capabilityRequirements": [],
-                "kind": "ANNOTATE",
-                "message": "The requested route is not in the offered projection; no row was tapped."
+                "kind": "ASSERT_FACT",
+                "factKey": "REMOTE.ROUTES_AVAILABLE",
+                "expected": true,
+                "unknownPolicy": "FAIL"
               },
               {
                 "planStepId": "route-resolve-spinner",
@@ -12939,7 +13408,7 @@
               {
                 "planStepId": "load-assert-loaded",
                 "sourceMapRef": "sm-load-14",
-                "next": "permit-resolve-request-button",
+                "next": "permit-read-current-schedule",
                 "timeoutMs": 20000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -12976,6 +13445,73 @@
                     }
                   ]
                 }
+              },
+              {
+                "planStepId": "permit-read-current-schedule",
+                "sourceMapRef": "sm-appr-0a",
+                "next": "permit-check-request-already-open",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.named-query",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.db.schedule",
+                "maxRows": 1,
+                "outputVariable": "permitApprovalScheduleRows"
+              },
+              {
+                "planStepId": "permit-check-request-already-open",
+                "sourceMapRef": "sm-appr-0b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "or",
+                  "operands": [
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "1"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "permit-read-current-schedule.schedule_status"
+                      }
+                    },
+                    {
+                      "kind": "comparison",
+                      "operator": "in",
+                      "left": {
+                        "kind": "literal",
+                        "value": "2"
+                      },
+                      "right": {
+                        "kind": "operand",
+                        "source": "step.output",
+                        "path": "permit-read-current-schedule.schedule_status"
+                      }
+                    }
+                  ]
+                },
+                "onTrue": "permit-verify-request-record",
+                "onFalse": "permit-resolve-request-button",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "permit-resolve-request-button"
               },
               {
                 "planStepId": "permit-resolve-request-button",
@@ -14467,7 +15003,7 @@
                 }
               }
             ],
-            "entryStepId": "auth-resolve-pin-field",
+            "entryStepId": "auth-prepare-startup-permissions",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -14535,6 +15071,12 @@
             ],
             "sourceMap": [
               {
+                "ref": "sm-login-3",
+                "planStepId": "auth-prepare-startup-permissions",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "post-launch setup"
+              },
+              {
                 "ref": "sm-login-4",
                 "planStepId": "auth-resolve-pin-field",
                 "domainSourceRef": "nesy.macro.login"
@@ -14581,6 +15123,18 @@
                 "ref": "sm-login-10",
                 "planStepId": "auth-clear-session",
                 "domainSourceRef": "nesy.macro.login"
+              },
+              {
+                "ref": "sm-route-0a",
+                "planStepId": "route-read-current-route",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "detect already-selected route before waiting for the dialog"
+              },
+              {
+                "ref": "sm-route-0b",
+                "planStepId": "route-check-already-selected",
+                "domainSourceRef": "nesy.macro.select-route",
+                "note": "skip route selection when the requested route is already active"
               },
               {
                 "ref": "sm-route-1",
@@ -14748,6 +15302,18 @@
                 "ref": "sm-load-14",
                 "planStepId": "load-assert-loaded",
                 "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-appr-0a",
+                "planStepId": "permit-read-current-schedule",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+                "note": "detect an already-open or already-approved tour request"
+              },
+              {
+                "ref": "sm-appr-0b",
+                "planStepId": "permit-check-request-already-open",
+                "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+                "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
               },
               {
                 "ref": "sm-appr-1",
@@ -15046,6 +15612,12 @@
           },
           "irSourceMap": [
             {
+              "ref": "sm-login-3",
+              "planStepId": "auth-prepare-startup-permissions",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "post-launch setup"
+            },
+            {
               "ref": "sm-login-4",
               "planStepId": "auth-resolve-pin-field",
               "domainSourceRef": "nesy.macro.login"
@@ -15092,6 +15664,18 @@
               "ref": "sm-login-10",
               "planStepId": "auth-clear-session",
               "domainSourceRef": "nesy.macro.login"
+            },
+            {
+              "ref": "sm-route-0a",
+              "planStepId": "route-read-current-route",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "detect already-selected route before waiting for the dialog"
+            },
+            {
+              "ref": "sm-route-0b",
+              "planStepId": "route-check-already-selected",
+              "domainSourceRef": "nesy.macro.select-route",
+              "note": "skip route selection when the requested route is already active"
             },
             {
               "ref": "sm-route-1",
@@ -15259,6 +15843,18 @@
               "ref": "sm-load-14",
               "planStepId": "load-assert-loaded",
               "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-appr-0a",
+              "planStepId": "permit-read-current-schedule",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+              "note": "detect an already-open or already-approved tour request"
+            },
+            {
+              "ref": "sm-appr-0b",
+              "planStepId": "permit-check-request-already-open",
+              "domainSourceRef": "nesy.macro.tour-approval-lifecycle",
+              "note": "skip mobile request UI when schedule status is already WaitingForApproval/Approved"
             },
             {
               "ref": "sm-appr-1",
@@ -15559,6 +16155,7 @@
               "ref": "ds-full-day-0",
               "macroRef": "nesy.macro.full-courier-day",
               "planStepIds": [
+                "auth-prepare-startup-permissions",
                 "auth-resolve-pin-field",
                 "auth-enter-pin",
                 "auth-resolve-submit",
@@ -15568,6 +16165,8 @@
                 "auth-verify-backend-session",
                 "auth-assert-login",
                 "auth-clear-session",
+                "route-read-current-route",
+                "route-check-already-selected",
                 "route-wait-dialog",
                 "route-read-offered-routes",
                 "route-check-offered",
@@ -15598,6 +16197,8 @@
                 "load-read-local-schedule",
                 "load-read-available-stops",
                 "load-assert-loaded",
+                "permit-read-current-schedule",
+                "permit-check-request-already-open",
                 "permit-resolve-request-button",
                 "permit-tap-request",
                 "permit-resolve-routing-choice",
@@ -15658,6 +16259,7 @@
               "ref": "ds-full-day-auth",
               "macroRef": "nesy.macro.login",
               "planStepIds": [
+                "auth-prepare-startup-permissions",
                 "auth-resolve-pin-field",
                 "auth-enter-pin",
                 "auth-resolve-submit",
@@ -15675,6 +16277,8 @@
               "ref": "ds-full-day-route",
               "macroRef": "nesy.macro.select-route",
               "planStepIds": [
+                "route-read-current-route",
+                "route-check-already-selected",
                 "route-wait-dialog",
                 "route-read-offered-routes",
                 "route-check-offered",
@@ -15721,6 +16325,8 @@
               "ref": "ds-full-day-permit",
               "macroRef": "nesy.macro.tour-approval-lifecycle",
               "planStepIds": [
+                "permit-read-current-schedule",
+                "permit-check-request-already-open",
                 "permit-resolve-request-button",
                 "permit-tap-request",
                 "permit-resolve-routing-choice",

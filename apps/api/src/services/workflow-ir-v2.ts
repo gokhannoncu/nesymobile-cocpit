@@ -47,6 +47,10 @@ const LEGACY_ORACLE_FACT_KEYS: Record<string, string> = {
  */
 const LEGACY_NODE_MAPPINGS: Record<string, LegacyNodeMapping> = {
   LAUNCH_APP: { to: "BRIDGE_ACTION", action: "launchApp" },
+  GRANT_PERMISSIONS: {
+    to: "ANNOTATE",
+    message: "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP",
+  },
 
   // The two preflight-resolved conditions. `RETRY` rather than `FAIL` on
   // UNKNOWN mirrors today's behavior: an unresolved preflight deferred to the

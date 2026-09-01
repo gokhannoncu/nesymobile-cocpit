@@ -109,7 +109,10 @@ describe('BridgeFlow compile adapter', () => {
     const result = service.compileWorkflow({
       workflowRef: 'nesy.workflow.login',
       workflowIr: {
-        nodes: [{ id: 'auth', type: 'AUTH_LOGIN' }],
+        nodes: [
+          { id: 'permissions', type: 'GRANT_PERMISSIONS' },
+          { id: 'auth', type: 'AUTH_LOGIN' },
+        ],
         connections: [],
       },
       domainPackKey: PACK.packKey,
@@ -127,6 +130,7 @@ describe('BridgeFlow compile adapter', () => {
       workflowRef: 'nesy.workflow.login-and-select-route',
       workflowIr: {
         nodes: [
+          { id: 'permissions', type: 'GRANT_PERMISSIONS' },
           { id: 'auth', type: 'AUTH_LOGIN' },
           { id: 'route', type: 'SELECT_ROUTE' },
         ],
@@ -139,6 +143,23 @@ describe('BridgeFlow compile adapter', () => {
 
     expect(result.ok).toBe(true)
     expect(result.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([])
+  })
+
+  it('refuses a login canvas that omits the executable Grant Permissions node', () => {
+    const service = createBridgeFlowCompileService(new InMemoryCompiledPlanStore())
+    const result = service.compileWorkflow({
+      workflowRef: 'nesy.workflow.login',
+      workflowIr: {
+        nodes: [{ id: 'auth', type: 'AUTH_LOGIN' }],
+        connections: [],
+      },
+      domainPackKey: PACK.packKey,
+      domainPackVersion: PACK.packVersion,
+      domainPackDigest: PACK.packDigest,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.map((issue) => issue.code)).toContain('MISSING_STARTUP_PERMISSION_STEP')
   })
 })
 
@@ -811,12 +832,13 @@ describe('execution queue device gating', () => {
     }
 
     const planStore = new InMemoryCompiledPlanStore()
+    const includesPermissionBootstrap = queueOverrides.prepareStartupPermissions !== undefined
     planStore.put({
       planId: 'plan-1',
       schemaVersion: 1,
       workflowRef: 'workflow/demo',
       workflowVersion: 1,
-      entryStepId: 'step-1',
+      entryStepId: includesPermissionBootstrap ? 'prepare-startup-permissions' : 'step-1',
       packDigest: PACK.packDigest,
       hash: { algorithm: 'sha256', digest: 'sha256:plan-1' },
       provenance: {
@@ -826,6 +848,17 @@ describe('execution queue device gating', () => {
         compilerVersion: 'test',
       },
       steps: [
+        ...(includesPermissionBootstrap
+          ? [
+              {
+                planStepId: 'prepare-startup-permissions',
+                sourceMapRef: 'src:permissions',
+                kind: 'ANNOTATE' as const,
+                next: 'step-1',
+                params: { message: 'POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP' },
+              },
+            ]
+          : []),
         {
           planStepId: 'step-1',
           sourceMapRef: 'src:1',
@@ -945,6 +978,7 @@ describe('execution queue device gating', () => {
   it('gates the executor on SDK_READY and persists the completed pre-action boundaries', async () => {
     let mono = 0
     let launched = false
+    const startupOrder: string[] = []
     const actionableNode = {
       depth: 1,
       id: 'pinView',
@@ -971,13 +1005,29 @@ describe('execution queue device gating', () => {
         node: actionableNode,
       }),
     } as never)
-    const { queue, statuses, runtimeWrites } = queueHarness(async () => manager, {
+    const { queue, statuses, runtimeWrites } = queueHarness(async () => {
+      startupOrder.push('bridge-acquire')
+      return manager
+    }, {
       admissionGate: async () => ({ ok: true }),
       setRunId: async () => true,
       broadcastRun: async () => true,
       forceStop: async () => ({ confirmed: true, previousPids: [100], remainingPids: [] }),
       launch: async () => {
         launched = true
+        startupOrder.push('launch')
+      },
+      prepareStartupPermissions: async () => {
+        startupOrder.push('permissions')
+        return {
+          ok: true,
+          changed: false,
+          restarted: false,
+          grantedNow: [],
+          alreadyGranted: [],
+          skippedNotRuntime: [],
+          overlay: 'already-granted',
+        }
       },
       observeLaunch: async () => ({
         processCreated: true,
@@ -1013,6 +1063,7 @@ describe('execution queue device gating', () => {
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     expect(launched).toBe(true)
+    expect(startupOrder.slice(0, 3)).toEqual(['launch', 'permissions', 'bridge-acquire'])
     expect(statuses).toContain('BLOCKED')
     expect(runtimeWrites).toContainEqual(
       expect.objectContaining({

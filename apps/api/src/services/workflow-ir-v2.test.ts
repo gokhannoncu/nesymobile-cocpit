@@ -35,6 +35,7 @@ describe("legacy graph → IR v2 skeleton", () => {
   it("covers the node types the repo actually uses", () => {
     for (const type of [
       "LAUNCH_APP",
+      "GRANT_PERMISSIONS",
       "IF_LOGIN",
       "CHECK_ROUTE",
       "CONDITION",

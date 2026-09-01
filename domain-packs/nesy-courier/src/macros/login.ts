@@ -59,6 +59,19 @@ export const NESY_LOGIN_MACRO_KEY = "nesy.macro.login";
 export const NESY_LOGIN_REJECTED_MACRO_KEY = "nesy.macro.login-rejected";
 
 const STEPS: readonly WorkflowStepV2[] = [
+  {
+    ...stepBase({
+      planStepId: "prepare-startup-permissions",
+      sourceMapRef: "sm-login-3",
+      next: "resolve-pin-field",
+      timeoutMs: 30_000,
+    }),
+    kind: "ANNOTATE",
+    // The execution queue consumes this stable step id immediately after
+    // Launch App, before Bridge acquisition. The executor later records this
+    // annotation as the visible workflow step without repeating the grants.
+    message: "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP",
+  },
   // G90.2b owns pre-action readiness. The queue proves PROCESS_TERMINATED →
   // INTERACTION_READY (including this PIN target's actionability) before the
   // executor receives the plan, so a second `wait-login-ready` fact here would
@@ -305,13 +318,14 @@ const GENERIC_IR = irDocument({
     { name: "localSessionRows", type: "stringList" },
   ],
   steps: STEPS,
-  entryStepId: "resolve-pin-field",
+  entryStepId: "prepare-startup-permissions",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.bridge.set-text"),
     requires("verdict.core.bridge.watch-fact"),
   ],
   sourceMap: [
+    sourceMapEntry("sm-login-3", "prepare-startup-permissions", NESY_LOGIN_MACRO_KEY, "post-launch setup"),
     sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
@@ -394,13 +408,14 @@ const LOGIN_REJECTED_GENERIC_IR = irDocument({
     { name: "submitHandle", type: "string" },
   ],
   steps: LOGIN_REJECTED_STEPS,
-  entryStepId: "resolve-pin-field",
+  entryStepId: "prepare-startup-permissions",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.bridge.set-text"),
     requires("verdict.core.bridge.watch-fact"),
   ],
   sourceMap: [
+    sourceMapEntry("sm-login-3", "prepare-startup-permissions", NESY_LOGIN_REJECTED_MACRO_KEY, "post-launch setup"),
     sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_REJECTED_MACRO_KEY),
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_REJECTED_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_REJECTED_MACRO_KEY),

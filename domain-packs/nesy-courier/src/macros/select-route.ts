@@ -41,6 +41,44 @@ export const NESY_SELECT_ROUTE_MACRO_KEY = "nesy.macro.select-route";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
+    ...stepBase({
+      planStepId: "read-current-route",
+      sourceMapRef: "sm-route-0a",
+      next: "check-already-selected",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.routeState,
+    maxRows: 1,
+    outputVariable: "currentRouteRows",
+  },
+  {
+    ...stepBase({ planStepId: "check-already-selected", sourceMapRef: "sm-route-0b", next: null }),
+    kind: "CONDITION",
+    condition: {
+      kind: "and",
+      operands: [
+        {
+          kind: "comparison",
+          operator: "in",
+          left: { kind: "literal", value: "true" },
+          right: { kind: "operand", source: "step.output", path: "read-current-route.route_selected" },
+        },
+        {
+          kind: "comparison",
+          operator: "in",
+          left: { kind: "operand", source: "run.input", path: "routeCode" },
+          right: { kind: "operand", source: "step.output", path: "read-current-route.route_name" },
+        },
+      ],
+    },
+    onTrue: "read-local-schedule",
+    onFalse: "wait-dialog",
+    unknownPolicy: "BRANCH",
+    onUnknown: "wait-dialog",
+  },
+  {
     ...stepBase({ planStepId: "wait-dialog", sourceMapRef: "sm-route-1", next: "read-offered-routes", timeoutMs: 20_000 }),
     kind: "WAIT_EVENT",
     factKey: NESY_FACTS.ROUTE_DIALOG_READY,
@@ -95,8 +133,10 @@ const STEPS: readonly WorkflowStepV2[] = [
   },
   {
     ...stepBase({ planStepId: "report-not-offered", sourceMapRef: "sm-route-4", next: null }),
-    kind: "ANNOTATE",
-    message: "The requested route is not in the offered projection; no row was tapped.",
+    kind: "ASSERT_FACT",
+    factKey: NESY_FACTS.ROUTES_AVAILABLE,
+    expected: true,
+    unknownPolicy: "FAIL",
   },
   // The offered list is inside a Spinner popup, so it does not exist until the
   // spinner is tapped. Resolving a row before that is resolving against a screen
@@ -370,6 +410,7 @@ const GENERIC_IR = irDocument({
   sourceRef: NESY_SELECT_ROUTE_MACRO_KEY,
   inputs: [{ name: "routeCode", type: "string", required: true }],
   variables: [
+    { name: "currentRouteRows", type: "stringList" },
     { name: "offeredRouteRows", type: "stringList" },
     { name: "selectedRouteRows", type: "stringList" },
     { name: "loadedRows", type: "stringList" },
@@ -379,9 +420,11 @@ const GENERIC_IR = irDocument({
     { name: "confirmHandle", type: "string" },
   ],
   steps: STEPS,
-  entryStepId: "wait-dialog",
+  entryStepId: "read-current-route",
   capabilityRequirements: [requires("verdict.core.bridge.tap"), requires("verdict.core.bridge.watch-fact")],
   sourceMap: [
+    sourceMapEntry("sm-route-0a", "read-current-route", NESY_SELECT_ROUTE_MACRO_KEY, "detect already-selected route before waiting for the dialog"),
+    sourceMapEntry("sm-route-0b", "check-already-selected", NESY_SELECT_ROUTE_MACRO_KEY, "skip route selection when the requested route is already active"),
     sourceMapEntry("sm-route-1", "wait-dialog", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-2", "read-offered-routes", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-3", "check-offered", NESY_SELECT_ROUTE_MACRO_KEY, "guards against tapping a row that is not offered"),
@@ -411,7 +454,7 @@ const EXPANSION: MacroExpansionSnapshot = {
       macroRef: NESY_SELECT_ROUTE_MACRO_KEY,
       planStepIds: STEPS.map((step) => step.planStepId),
       sliceRef: "SELECT_ROUTE",
-      note: "One CONDITION branch: the not-offered path annotates and stops instead of tapping.",
+      note: "Branches around an already-selected route; the not-offered path fails closed instead of producing a green terminal annotation.",
     },
   ],
 };

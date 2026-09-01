@@ -112,6 +112,19 @@
       ],
       "steps": [
         {
+          "planStepId": "prepare-startup-permissions",
+          "sourceMapRef": "sm-login-3",
+          "next": "resolve-pin-field",
+          "timeoutMs": 30000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [],
+          "kind": "ANNOTATE",
+          "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+        },
+        {
           "planStepId": "resolve-pin-field",
           "sourceMapRef": "sm-login-4",
           "next": "enter-pin",
@@ -375,7 +388,7 @@
           "runOnFailure": true
         }
       ],
-      "entryStepId": "resolve-pin-field",
+      "entryStepId": "prepare-startup-permissions",
       "policies": {
         "runDeadlineMs": 600000,
         "cleanupDeadlineMs": 60000,
@@ -413,6 +426,12 @@
         }
       ],
       "sourceMap": [
+        {
+          "ref": "sm-login-3",
+          "planStepId": "prepare-startup-permissions",
+          "domainSourceRef": "nesy.macro.login",
+          "note": "post-launch setup"
+        },
         {
           "ref": "sm-login-4",
           "planStepId": "resolve-pin-field",
@@ -464,6 +483,12 @@
       ]
     },
     "irSourceMap": [
+      {
+        "ref": "sm-login-3",
+        "planStepId": "prepare-startup-permissions",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "post-launch setup"
+      },
       {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",
@@ -518,6 +543,7 @@
         "ref": "ds-login-1",
         "macroRef": "nesy.macro.login",
         "planStepIds": [
+          "prepare-startup-permissions",
           "resolve-pin-field",
           "enter-pin",
           "resolve-submit",
@@ -574,6 +600,19 @@
       }
     ],
     "steps": [
+      {
+        "planStepId": "prepare-startup-permissions",
+        "sourceMapRef": "sm-login-3",
+        "next": "resolve-pin-field",
+        "timeoutMs": 30000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [],
+        "kind": "ANNOTATE",
+        "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+      },
       {
         "planStepId": "resolve-pin-field",
         "sourceMapRef": "sm-login-4",
@@ -838,7 +877,7 @@
         "runOnFailure": true
       }
     ],
-    "entryStepId": "resolve-pin-field",
+    "entryStepId": "prepare-startup-permissions",
     "policies": {
       "runDeadlineMs": 600000,
       "cleanupDeadlineMs": 60000,
@@ -876,6 +915,12 @@
       }
     ],
     "sourceMap": [
+      {
+        "ref": "sm-login-3",
+        "planStepId": "prepare-startup-permissions",
+        "domainSourceRef": "nesy.macro.login",
+        "note": "post-launch setup"
+      },
       {
         "ref": "sm-login-4",
         "planStepId": "resolve-pin-field",

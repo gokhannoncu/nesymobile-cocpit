@@ -94,7 +94,7 @@ function postValidateForbiddenRuleDrop(): RuleValidationResult {
       title: "Invalid step order",
       message: "This step can't be added here because the workflow sequence is restricted.",
       beforeTitle: "Allowed before Validate StopList",
-      beforeItems: ["Launch App", "Auth / Login", "Route Setup"],
+      beforeItems: ["Launch App", "Grant Permissions", "Auth / Login", "Route Setup"],
       afterTitle: "Allowed after Validate StopList",
       afterItems: ["Search", "Open", "Operation", "Assertion", "Integration"],
     },
@@ -113,7 +113,7 @@ function postValidateForbiddenRuleState(nodeId: string, nodeType: WorkflowNodeTy
       title: "Invalid step order",
       message: `${label} can't be added here because the workflow sequence is restricted.`,
       beforeTitle: "Allowed before Validate StopList",
-      beforeItems: ["Launch App", "Auth / Login", "Route Setup"],
+      beforeItems: ["Launch App", "Grant Permissions", "Auth / Login", "Route Setup"],
       afterTitle: "Allowed after Validate StopList",
       afterItems: ["Search", "Open", "Operation", "Assertion", "Integration"],
     },
@@ -181,7 +181,7 @@ export function validateNodeDrop({
         valid: false,
         code: "REQUIRES_REQUIRED_FLOW",
         title: "Required flow missing",
-        message: "This node requires Launch App -> If Login -> Check Route first.",
+        message: "This node requires Launch App -> Grant Permissions -> If Login -> Check Route first.",
         suggestedAction: "AUTO_CREATE_REQUIRED_FLOW",
         suggestedActionLabel: "Auto-create required flow",
       };
@@ -240,21 +240,43 @@ export function validateConnection({
   /** First real source in a palette drop (for two-step insert: anchor → new → tail). */
   insertionAnchorSourceId?: string | null;
 }): RuleValidationResult {
-  if (sourceNode.type === WorkflowNodeType.LAUNCH_APP && targetNode.type !== WorkflowNodeType.IF_LOGIN) {
+  if (sourceNode.type === WorkflowNodeType.LAUNCH_APP && targetNode.type !== WorkflowNodeType.GRANT_PERMISSIONS) {
     return {
       valid: false,
-      code: "MISSING_IF_LOGIN_AFTER_LAUNCH",
-      title: "Missing login validation",
-      message: "After Launch App, you must add If Login validation.",
+      code: "MISSING_PERMISSIONS_AFTER_LAUNCH",
+      title: "Missing startup permissions",
+      message: "After Launch App, you must add Grant Permissions.",
     };
   }
 
-  if (targetNode.type === WorkflowNodeType.IF_LOGIN && sourceNode.type !== WorkflowNodeType.LAUNCH_APP) {
+  if (targetNode.type === WorkflowNodeType.GRANT_PERMISSIONS && sourceNode.type !== WorkflowNodeType.LAUNCH_APP) {
+    return {
+      valid: false,
+      code: "PERMISSIONS_SOURCE_INVALID",
+      title: "Invalid permission step position",
+      message: "Grant Permissions can only be connected after Launch App.",
+    };
+  }
+
+  if (
+    sourceNode.type === WorkflowNodeType.GRANT_PERMISSIONS &&
+    targetNode.type !== WorkflowNodeType.IF_LOGIN &&
+    targetNode.type !== WorkflowNodeType.AUTH_LOGIN
+  ) {
+    return {
+      valid: false,
+      code: "PERMISSIONS_TARGET_INVALID",
+      title: "Missing login step",
+      message: "Grant Permissions must continue to If Login or Auth / Login.",
+    };
+  }
+
+  if (targetNode.type === WorkflowNodeType.IF_LOGIN && sourceNode.type !== WorkflowNodeType.GRANT_PERMISSIONS) {
     return {
       valid: false,
       code: "IF_LOGIN_SOURCE_INVALID",
       title: "Invalid login validation position",
-      message: "If Login can only be connected after Launch App.",
+      message: "If Login can only be connected after Grant Permissions.",
     };
   }
 
@@ -356,6 +378,7 @@ export function validateConnection({
 export function validateWorkflowState(state: WorkflowGraphState): RuleValidationResult[] {
   const errors: RuleValidationResult[] = [];
   const launchApp = firstNodeOfType(state.nodes, WorkflowNodeType.LAUNCH_APP);
+  const grantPermissions = firstNodeOfType(state.nodes, WorkflowNodeType.GRANT_PERMISSIONS);
   const ifLogin = firstNodeOfType(state.nodes, WorkflowNodeType.IF_LOGIN);
   const authLogin = firstNodeOfType(state.nodes, WorkflowNodeType.AUTH_LOGIN);
   const checkRoute = firstNodeOfType(state.nodes, WorkflowNodeType.CHECK_ROUTE);
@@ -371,12 +394,44 @@ export function validateWorkflowState(state: WorkflowGraphState): RuleValidation
     });
   }
 
-  if (launchApp && ifLogin && !hasConnection(state, launchApp.id, ifLogin.id, "default")) {
+  if (!grantPermissions) {
     errors.push({
       valid: false,
-      code: "MISSING_IF_LOGIN_AFTER_LAUNCH",
-      title: "Missing If Login after Launch App",
-      message: "If Login must be connected after Launch App.",
+      code: "MISSING_PERMISSIONS_AFTER_LAUNCH",
+      title: "Missing Grant Permissions after Launch App",
+      message: "Every workflow must prepare Android startup permissions after Launch App.",
+    });
+  }
+
+  if (launchApp && grantPermissions && !hasConnection(state, launchApp.id, grantPermissions.id, "default")) {
+    errors.push({
+      valid: false,
+      code: "MISSING_PERMISSIONS_AFTER_LAUNCH",
+      title: "Grant Permissions is not connected after Launch App",
+      message: "Launch App must connect directly to Grant Permissions.",
+    });
+  }
+
+  if (grantPermissions && ifLogin && !hasConnection(state, grantPermissions.id, ifLogin.id, "default")) {
+    errors.push({
+      valid: false,
+      code: "MISSING_IF_LOGIN_AFTER_PERMISSIONS",
+      title: "Missing If Login after Grant Permissions",
+      message: "If Login must be connected after Grant Permissions.",
+    });
+  }
+
+  if (
+    grantPermissions &&
+    !ifLogin &&
+    authLogin &&
+    !hasConnection(state, grantPermissions.id, authLogin.id, "default")
+  ) {
+    errors.push({
+      valid: false,
+      code: "MISSING_AUTH_LOGIN_AFTER_PERMISSIONS",
+      title: "Missing Auth / Login after Grant Permissions",
+      message: "Grant Permissions must connect directly to Auth / Login.",
     });
   }
 

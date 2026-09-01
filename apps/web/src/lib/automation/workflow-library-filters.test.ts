@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  countWorkflowLibraryStatuses,
   isVisibleLibraryWorkflow,
   workflowMatchesStatusFilter,
 } from './workflow-library-filters'
@@ -19,6 +20,23 @@ describe('workflowMatchesStatusFilter', () => {
   it('matches a single workflow status', () => {
     expect(workflowMatchesStatusFilter(workflow('active'), 'active')).toBe(true)
     expect(workflowMatchesStatusFilter(workflow('draft'), 'active')).toBe(false)
+  })
+
+  it('treats published workflows as active', () => {
+    expect(workflowMatchesStatusFilter(workflow('published'), 'active')).toBe(true)
+    expect(workflowMatchesStatusFilter(workflow('published'), 'draft')).toBe(false)
+  })
+})
+
+describe('countWorkflowLibraryStatuses', () => {
+  it('groups published workflows under active', () => {
+    expect(
+      countWorkflowLibraryStatuses([
+        workflow('published'),
+        workflow('active'),
+        workflow('draft'),
+      ]),
+    ).toEqual({ active: 2, draft: 1, archived: 0 })
   })
 })
 
