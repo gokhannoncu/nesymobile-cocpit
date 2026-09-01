@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -10,24 +11,40 @@ import {
   RadioTower,
   ShieldCheck,
 } from 'lucide-react'
+import { Alert, AlertContent, AlertDescription, AlertIcon, AlertTitle } from '@nesy/metronic/components/ui/alert'
 import { Badge } from '@nesy/metronic/components/ui/badge'
+import { cn } from '@nesy/metronic/lib/utils'
+import { ComparisonTable } from '@/components/product/comparison'
+import { StatCard, StatGrid } from '@/components/product/stats'
+import type { Tone } from '@/components/product/tones'
 import type {
   EvidenceJourneyResult,
   RunDetailResult,
   RunTelemetryDto,
 } from '@/lib/verdict-runtime/types'
 import type { RunDetailViewModel } from '@/lib/verdict-runtime/run-detail-view-model'
-import { EvidenceJourneyDrawer } from './EvidenceJourneyDrawer'
 import { InteractionOriginsPanel } from './InteractionOriginsPanel'
 import { ProvenancePanel } from './ProvenancePanel'
 import { ReproExportPanel } from './ReproExportPanel'
+
+const METRIC_TONES = {
+  evidence: 'blue',
+  stream: 'teal',
+  captures: 'gray',
+} as const satisfies Record<string, Tone>
+
+const HEALTH_TONES = {
+  runtime: 'purple',
+  heap: 'blue',
+  anr: 'amber',
+  delivery: 'teal',
+} as const satisfies Record<string, Tone>
 
 export function RunDetailDiagnostics({
   runId,
   detail,
   telemetry,
   evidenceJourney,
-  canViewRawEvidence,
   latestSeq,
   supplementalError,
   view,
@@ -41,183 +58,248 @@ export function RunDetailDiagnostics({
   supplementalError?: string
   view: RunDetailViewModel
 }) {
+  void evidenceJourney
+
+  const streamRows =
+    telemetry?.streamHealth.map((stream, index) => [
+      <span
+        key={`session-${index}`}
+        className="block max-w-[9rem] truncate font-mono text-[11px]"
+        title={stream.sessionId ?? undefined}
+      >
+        {stream.sessionId ?? '—'}
+      </span>,
+      stream.contiguousSeq ?? '—',
+      stream.receiptPending ?? '—',
+      stream.orderedLag ?? '—',
+      stream.deadLetteredCount ?? '—',
+    ]) ?? []
+
+  const incidentRows = view.charts.incidents.map((incident, index) => [
+    <Badge
+      key={`sev-${index}`}
+      variant="outline"
+      className={cn(
+        'h-5 px-1.5 text-[10px] font-semibold',
+        incident.severity === 'warning'
+          ? 'border-amber-300 bg-amber-50 text-amber-800'
+          : 'border-red-300 bg-red-50 text-red-800',
+      )}
+    >
+      {incident.severity}
+    </Badge>,
+    <span key={`evt-${index}`} className="font-medium">
+      {incident.event.replaceAll('_', ' ')}
+    </span>,
+    <span key={`ctx-${index}`} className="text-muted-foreground">
+      {[incident.screen, incident.operation].filter(Boolean).join(' · ') || '—'}
+    </span>,
+  ])
+
+  const captureRows =
+    telemetry?.diagnosticCaptures.map((capture, index) => [
+      <span key={`id-${index}`} className="font-mono text-[11px]">
+        {capture.captureId ?? '—'}
+      </span>,
+      <Badge key={`st-${index}`} variant="outline" className="h-5 px-1.5 text-[10px] font-semibold">
+        {capture.status ?? '—'}
+      </Badge>,
+      <span key={`ctx-${index}`} className="text-muted-foreground">
+        {[capture.triggerEvent, capture.screen, capture.operation].filter(Boolean).join(' · ') || '—'}
+      </span>,
+      capture.sensitive ? (
+        <span key={`sen-${index}`} className="text-amber-700">
+          Sensitive
+        </span>
+      ) : (
+        '—'
+      ),
+    ]) ?? []
+
+  const hasIncidents = incidentRows.length > 0
+  const hasCaptures = captureRows.length > 0
+  const hasStream = streamRows.length > 0
+  const allSignalsEmpty = !hasIncidents && !hasCaptures && !hasStream
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {supplementalError ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Some diagnostic sources are stale</p>
-          <p className="mt-1 text-xs">{supplementalError}. Last successful data remains visible.</p>
-        </div>
+        <Alert variant="warning" appearance="light" size="sm" className="items-center">
+          <AlertIcon>
+            <AlertTriangle className="size-4" />
+          </AlertIcon>
+          <AlertContent className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+            <AlertTitle className="text-xs font-semibold">Some sources are stale</AlertTitle>
+            <AlertDescription className="text-xs text-muted-foreground sm:text-right">
+              {supplementalError}. Last successful data remains visible.
+            </AlertDescription>
+          </AlertContent>
+        </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <DiagnosticMetric
+      <StatGrid cols={3} dense>
+        <StatCard
+          variant="compact"
           icon={Database}
           label="Evidence facts"
-          value={evidenceJourney ? String(evidenceJourney.items.length) : 'UNAVAILABLE'}
-          detail="Durable normalized evidence journey"
+          value={evidenceJourney ? evidenceJourney.items.length : '—'}
+          hint="Durable normalized evidence journey"
+          tone={METRIC_TONES.evidence}
         />
-        <DiagnosticMetric
+        <StatCard
+          variant="compact"
           icon={RadioTower}
           label="Stream health"
-          value={telemetry ? String(telemetry.streamHealth.length) : 'UNAVAILABLE'}
-          detail="Durable stream/session health rows"
+          value={telemetry ? telemetry.streamHealth.length : '—'}
+          hint="Durable stream/session health rows"
+          tone={METRIC_TONES.stream}
         />
-        <DiagnosticMetric
+        <StatCard
+          variant="compact"
           icon={Camera}
           label="Diagnostic captures"
-          value={telemetry ? String(telemetry.diagnosticCaptures.length) : 'UNAVAILABLE'}
-          detail="Triggered device diagnostic captures"
+          value={telemetry ? telemetry.diagnosticCaptures.length : '—'}
+          hint="Triggered device diagnostic captures"
+          tone={METRIC_TONES.captures}
         />
-      </div>
+      </StatGrid>
 
-      <Section title="Latest SDK health snapshot" icon={HeartPulse}>
-        {telemetry?.latestHealth ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <HealthDatum
-              icon={Activity}
-              label="Runtime context"
-              value={telemetry.latestHealth.screen ?? 'UNAVAILABLE'}
-              detail={telemetry.latestHealth.operation ?? 'No active operation captured'}
-            />
-            <HealthDatum
-              icon={MemoryStick}
-              label="Heap"
-              value={formatHeap(
-                telemetry.latestHealth.heapUsedMb,
-                telemetry.latestHealth.heapMaxMb,
-              )}
-              detail={
-                telemetry.latestHealth.nativeHeapMb === null
-                  ? 'Native heap not measured'
-                  : `${telemetry.latestHealth.nativeHeapMb.toFixed(1)} MB native`
-              }
-            />
-            <HealthDatum
-              icon={AlertTriangle}
-              label="ANR watchdog"
-              value={telemetry.latestHealth.anrLevel ?? 'UNAVAILABLE'}
-              detail={
-                telemetry.latestHealth.anrBlockedMs === null
-                  ? 'Blocked duration not measured'
-                  : `${telemetry.latestHealth.anrBlockedMs.toLocaleString()} ms blocked`
-              }
-            />
-            <HealthDatum
-              icon={RadioTower}
-              label="Delivery"
-              value={telemetry.latestHealth.walState ?? 'UNAVAILABLE'}
-              detail={formatDelivery(
-                telemetry.latestHealth.eventsEmitted,
-                telemetry.latestHealth.droppedSince,
-              )}
-            />
-          </div>
-        ) : (
-          <Unavailable message="The device did not provide a get_health snapshot." />
-        )}
-      </Section>
-
-      <Section title="Evidence journey" icon={Database}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Follow raw events through normalization and business evidence. Raw deep links remain
-            protected by evidence:read RBAC.
-          </p>
-          <EvidenceJourneyDrawer
-            runId={runId}
-            journey={evidenceJourney}
-            canViewRawEvidence={canViewRawEvidence}
-          />
+      <section className="overflow-hidden rounded-lg border border-sky-200/70 bg-gradient-to-r from-sky-50/60 via-card to-card shadow-sm dark:border-sky-900/40 dark:from-sky-950/20">
+        <div className="flex items-center gap-2 border-b border-sky-100/80 px-3 py-2 dark:border-sky-900/30">
+          <HeartPulse className="size-3.5 text-sky-700 dark:text-sky-300" strokeWidth={2} aria-hidden />
+          <h2 className="text-xs font-semibold text-foreground">SDK health snapshot</h2>
         </div>
-      </Section>
-
-      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
-        <Section title="Incidents" icon={AlertTriangle}>
-          {view.charts.incidents.length === 0 ? (
-            <Unavailable message="Incident telemetry was not measured." />
-          ) : (
-            <div className="space-y-2">
-              {view.charts.incidents.map((incident, index) => (
-                <div
-                  key={`${incident.event}-${incident.atMs ?? index}`}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-xs"
-                >
-                  <Badge variant={incident.severity === 'warning' ? 'outline' : 'destructive'}>
-                    {incident.severity}
-                  </Badge>
-                  <span className="font-medium">{incident.event.replaceAll('_', ' ')}</span>
-                  <span className="text-muted-foreground">
-                    {[incident.screen, incident.operation].filter(Boolean).join(' · ') || 'No context'}
-                  </span>
-                </div>
-              ))}
+        <div className="p-3">
+          {telemetry?.latestHealth ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <HealthChip
+                icon={Activity}
+                label="Runtime"
+                value={telemetry.latestHealth.screen ?? 'Not measured'}
+                hint={telemetry.latestHealth.operation ?? 'No active operation'}
+                tone={HEALTH_TONES.runtime}
+              />
+              <HealthChip
+                icon={MemoryStick}
+                label="Heap"
+                value={formatHeap(telemetry.latestHealth.heapUsedMb, telemetry.latestHealth.heapMaxMb)}
+                hint={
+                  telemetry.latestHealth.nativeHeapMb === null
+                    ? 'Native heap not measured'
+                    : `${telemetry.latestHealth.nativeHeapMb.toFixed(1)} MB native`
+                }
+                tone={HEALTH_TONES.heap}
+              />
+              <HealthChip
+                icon={AlertTriangle}
+                label="ANR watchdog"
+                value={telemetry.latestHealth.anrLevel ?? 'Not measured'}
+                hint={
+                  telemetry.latestHealth.anrBlockedMs === null
+                    ? 'Blocked duration not measured'
+                    : `${telemetry.latestHealth.anrBlockedMs.toLocaleString()} ms blocked`
+                }
+                tone={HEALTH_TONES.anr}
+              />
+              <HealthChip
+                icon={RadioTower}
+                label="Delivery"
+                value={telemetry.latestHealth.walState ?? 'Not measured'}
+                hint={formatDelivery(
+                  telemetry.latestHealth.eventsEmitted,
+                  telemetry.latestHealth.droppedSince,
+                )}
+                tone={HEALTH_TONES.delivery}
+              />
             </div>
-          )}
-        </Section>
-
-        <Section title="Stream health" icon={RadioTower}>
-          {!telemetry || telemetry.streamHealth.length === 0 ? (
-            <Unavailable message="No stream health rows are available." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-left text-xs">
-                <thead className="text-muted-foreground">
-                  <tr>
-                    <th className="pb-2 font-medium">Session</th>
-                    <th className="pb-2 font-medium">Contiguous seq</th>
-                    <th className="pb-2 font-medium">Pending</th>
-                    <th className="pb-2 font-medium">Lag</th>
-                    <th className="pb-2 font-medium">Dead letter</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {telemetry.streamHealth.map((stream, index) => (
-                    <tr key={stream.sessionId ?? index} className="border-t">
-                      <td className="py-2 font-mono">{stream.sessionId ?? 'UNAVAILABLE'}</td>
-                      <td className="py-2">{stream.contiguousSeq ?? 'UNAVAILABLE'}</td>
-                      <td className="py-2">{stream.receiptPending ?? 'UNAVAILABLE'}</td>
-                      <td className="py-2">{stream.orderedLag ?? 'UNAVAILABLE'}</td>
-                      <td className="py-2">{stream.deadLetteredCount ?? 'UNAVAILABLE'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <InlineEmpty message="No get_health snapshot from device." />
           )}
-        </Section>
-      </div>
+        </div>
+      </section>
 
-      <Section title="Diagnostic captures" icon={Camera}>
-        {!telemetry || telemetry.diagnosticCaptures.length === 0 ? (
-          <Unavailable message="No diagnostic capture records are available." />
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Runtime signals</h2>
+        {allSignalsEmpty ? (
+          <InlineEmpty message="No incidents, stream health rows, or diagnostic captures for this run." />
         ) : (
-          <div className="grid gap-2 md:grid-cols-2">
-            {telemetry.diagnosticCaptures.map((capture, index) => (
-              <div key={capture.captureId ?? index} className="rounded-lg border p-3 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-medium">{capture.captureId ?? 'UNAVAILABLE'}</span>
-                  <Badge variant="outline">{capture.status ?? 'UNAVAILABLE'}</Badge>
-                </div>
-                <p className="mt-1 text-muted-foreground">
-                  {[capture.triggerEvent, capture.screen, capture.operation].filter(Boolean).join(' · ') || 'No capture context'}
-                </p>
-                {capture.sensitive ? (
-                  <p className="mt-2 flex items-center gap-1 text-amber-700">
-                    <ShieldCheck className="size-3.5" /> Sensitive capture; access remains restricted.
-                  </p>
-                ) : null}
-              </div>
-            ))}
+          <div className="grid min-w-0 gap-3 xl:grid-cols-12">
+            {hasStream ? (
+              <SignalPanel
+                className="xl:col-span-7"
+                title="Stream health"
+                icon={RadioTower}
+                accent="teal"
+                badge={String(streamRows.length)}
+              >
+                <ComparisonTable
+                  density="dense"
+                  headers={[
+                    { label: 'Session' },
+                    { label: 'Seq' },
+                    { label: 'Pending' },
+                    { label: 'Lag' },
+                    { label: 'Dead letter' },
+                  ]}
+                  rows={streamRows}
+                />
+              </SignalPanel>
+            ) : null}
+
+            <div
+              className={cn(
+                'grid min-w-0 gap-3',
+                hasStream ? 'xl:col-span-5' : 'xl:col-span-12 xl:grid-cols-2',
+              )}
+            >
+              <SignalPanel
+                title="Incidents"
+                icon={AlertTriangle}
+                accent="amber"
+                badge={hasIncidents ? String(incidentRows.length) : '—'}
+              >
+                {hasIncidents ? (
+                  <ComparisonTable
+                    density="dense"
+                    headers={[{ label: 'Severity' }, { label: 'Event' }, { label: 'Context' }]}
+                    rows={incidentRows}
+                  />
+                ) : (
+                  <InlineEmpty message="Not measured" />
+                )}
+              </SignalPanel>
+
+              <SignalPanel
+                title="Captures"
+                icon={Camera}
+                accent="gray"
+                badge={hasCaptures ? String(captureRows.length) : '—'}
+              >
+                {hasCaptures ? (
+                  <ComparisonTable
+                    density="dense"
+                    headers={[
+                      { label: 'Capture ID' },
+                      { label: 'Status' },
+                      { label: 'Context' },
+                      { label: 'Access' },
+                    ]}
+                    rows={captureRows}
+                  />
+                ) : (
+                  <InlineEmpty message="No capture records" />
+                )}
+              </SignalPanel>
+            </div>
           </div>
         )}
-      </Section>
+      </section>
 
-      <Section title="Interaction origins" icon={ShieldCheck}>
+      <SignalPanel title="Interaction origins" icon={ShieldCheck} accent="purple">
         <InteractionOriginsPanel runId={runId} refreshToken={latestSeq} />
-      </Section>
+      </SignalPanel>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <ProvenancePanel run={detail} />
         <ReproExportPanel run={detail} />
       </div>
@@ -225,89 +307,84 @@ export function RunDetailDiagnostics({
   )
 }
 
-function DiagnosticMetric({
+const ACCENT_STYLES = {
+  teal: 'border-l-teal-500',
+  amber: 'border-l-amber-500',
+  gray: 'border-l-slate-400',
+  purple: 'border-l-violet-500',
+} as const
+
+function SignalPanel({
+  title,
   icon: Icon,
-  label,
-  value,
-  detail,
+  accent = 'gray',
+  badge,
+  className,
+  children,
 }: {
+  title: string
   icon: typeof Database
-  label: string
-  value: string
-  detail: string
+  accent?: keyof typeof ACCENT_STYLES
+  badge?: string
+  className?: string
+  children: ReactNode
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" />
-        <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+    <section
+      className={cn(
+        'min-w-0 rounded-lg border border-border/80 border-l-[3px] bg-card shadow-sm',
+        ACCENT_STYLES[accent],
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Icon className="size-3.5 text-muted-foreground" strokeWidth={2} aria-hidden />
+          <h3 className="text-xs font-semibold text-foreground">{title}</h3>
+        </div>
+        {badge ? (
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+            {badge}
+          </Badge>
+        ) : null}
       </div>
-      <p className="mt-2 font-mono text-xl font-bold">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </div>
+      <div className="border-t border-border/60 px-2 pb-2 pt-1">{children}</div>
+    </section>
   )
 }
 
-function HealthDatum({
+function HealthChip({
   icon: Icon,
   label,
   value,
-  detail,
+  hint,
+  tone,
 }: {
   icon: typeof Database
   label: string
   value: string
-  detail: string
+  hint: string
+  tone: Tone
 }) {
   return (
-    <div className="rounded-lg border bg-muted/15 p-3">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3.5" />
-        {label}
-      </div>
-      <p className="mt-2 font-mono text-sm font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </div>
+    <StatCard variant="compact" icon={Icon} label={label} value={value} hint={hint} tone={tone} />
+  )
+}
+
+function InlineEmpty({ message }: { message: string }) {
+  return (
+    <p className="px-2 py-3 text-center text-xs text-muted-foreground">{message}</p>
   )
 }
 
 function formatHeap(usedMb: number | null, maxMb: number | null): string {
-  if (usedMb === null) return 'UNAVAILABLE'
+  if (usedMb === null) return 'Not measured'
   return maxMb === null
     ? `${usedMb.toFixed(1)} MB`
     : `${usedMb.toFixed(1)} / ${maxMb.toFixed(1)} MB`
 }
 
 function formatDelivery(eventsEmitted: number | null, droppedSince: number | null): string {
-  if (eventsEmitted === null && droppedSince === null) return 'Event counters not measured'
+  if (eventsEmitted === null && droppedSince === null) return 'Counters not measured'
   return `${eventsEmitted?.toLocaleString() ?? '—'} emitted · ${droppedSince?.toLocaleString() ?? '—'} dropped`
-}
-
-function Section({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string
-  icon: typeof Database
-  children: React.ReactNode
-}) {
-  return (
-    <section className="min-w-0 rounded-xl border bg-card p-4">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-        <Icon className="size-4 text-primary" />
-        {title}
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-function Unavailable({ message }: { message: string }) {
-  return (
-    <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-xs text-muted-foreground">
-      <span className="font-mono font-semibold">NOT_MEASURED</span>
-      <p className="mt-1">{message}</p>
-    </div>
-  )
 }

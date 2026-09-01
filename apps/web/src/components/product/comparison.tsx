@@ -15,29 +15,39 @@ export function ComparisonTable({
   rows,
   highlightCol,
   className,
+  density = 'default',
 }: {
   headers: { label: string; tone?: Tone }[]
   rows: ReactNode[][]
   /** Index of the column to highlight (e.g. the "CORE" column). */
   highlightCol?: number
   className?: string
+  /** `dense` — tighter rows, stronger zebra and cell borders. */
+  density?: 'default' | 'dense'
 }) {
+  const dense = density === 'dense'
+
   return (
     <motion.div
-      className={cn('overflow-x-auto rounded-xl border border-border', className)}
+      className={cn(
+        'overflow-x-auto rounded-lg border border-border bg-card',
+        dense && 'border-border/90 shadow-sm',
+        className,
+      )}
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.4, ease: EASE }}
     >
-      <table className="w-full text-sm">
+      <table className={cn('w-full', dense ? 'text-xs' : 'text-sm', dense && 'border-collapse')}>
         <thead>
-          <tr className="border-b border-border bg-muted/50">
+          <tr className={cn('border-b border-border bg-muted/60', dense && 'border-border')}>
             {headers.map((h, i) => (
               <th
                 key={h.label}
                 className={cn(
-                  'px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap',
+                  'text-start font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap',
+                  dense ? 'border-r border-border px-3 py-2 text-[10px] last:border-r-0' : 'px-4 py-2.5 text-xs font-bold',
                   h.tone && toneText[h.tone],
                   highlightCol === i && 'bg-primary/5',
                 )}
@@ -52,16 +62,26 @@ export function ComparisonTable({
             <tr
               key={ri}
               className={cn(
-                'border-b border-border/60 last:border-0 transition-colors hover:bg-muted/30',
-                ri % 2 === 1 && 'bg-muted/20',
+                'border-b border-border transition-colors',
+                dense ? 'border-border/80 hover:bg-muted/50' : 'border-border/60 hover:bg-muted/30',
+                dense
+                  ? ri % 2 === 0
+                    ? 'bg-background'
+                    : 'bg-muted/35'
+                  : ri % 2 === 1 && 'bg-muted/20',
+                dense && 'last:border-b-0',
+                !dense && 'last:border-0',
               )}
             >
               {row.map((cell, ci) => (
                 <td
                   key={ci}
                   className={cn(
-                    'px-4 py-3 align-top text-foreground/90 leading-relaxed',
-                    ci === 0 && 'font-medium text-foreground',
+                    'align-middle text-foreground/90',
+                    dense
+                      ? 'border-r border-border/80 px-3 py-2 leading-snug last:border-r-0'
+                      : 'px-4 py-3 align-top leading-relaxed',
+                    ci === 0 && (dense ? 'font-medium text-foreground' : 'font-medium text-foreground'),
                     highlightCol === ci && 'bg-primary/5',
                   )}
                 >

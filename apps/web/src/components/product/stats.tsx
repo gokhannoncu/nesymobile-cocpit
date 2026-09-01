@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react'
 import { animate, motion, useInView, useMotionValue } from 'framer-motion'
 import { Check, type LucideIcon } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
-import { EASE, type Tone, toneCard, toneDot, toneText } from './tones'
+import { EASE, type Tone, toneCard, toneDot, toneIcon, toneIconBox, toneText } from './tones'
 
 /** Animated count-up number that starts counting when in view (Calm Tech — ease-out). */
 export function CountUp({ to, format }: { to: number; format?: (v: number) => string }) {
@@ -31,7 +31,7 @@ export function CountUp({ to, format }: { to: number; format?: (v: number) => st
  * If value is a number, counter animation is applied; if string, plain display (e.g. "18–24 months").
  */
 export function StatCard({
-  icon: _icon,
+  icon: Icon,
   label,
   value,
   suffix,
@@ -42,6 +42,7 @@ export function StatCard({
   onClick,
   active = false,
   selectionIndicator,
+  variant = 'default',
 }: {
   icon?: LucideIcon
   label: string
@@ -56,9 +57,79 @@ export function StatCard({
   active?: boolean
   /** Top-right radio/check indicator for filter cards. Defaults to true when onClick is set. */
   selectionIndicator?: boolean
+  /** `compact` — icon-led strip with balanced type; hints become tooltips. */
+  variant?: 'default' | 'compact'
 }) {
   const interactive = Boolean(onClick)
   const showSelection = selectionIndicator ?? interactive
+
+  if (variant === 'compact') {
+    const valueText = typeof value === 'number' ? null : String(value)
+    const compactValueClass =
+      valueText && valueText.length > 14
+        ? 'text-sm font-semibold'
+        : 'text-base font-semibold'
+
+    return (
+      <motion.div
+        role={interactive ? 'button' : undefined}
+        tabIndex={interactive ? 0 : undefined}
+        aria-pressed={interactive ? active : undefined}
+        title={hint}
+        onClick={onClick}
+        onKeyDown={
+          interactive
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClick?.()
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          'flex items-center gap-2.5 rounded-lg border border-border/80 bg-card px-3 py-2.5 outline-none',
+          'shadow-sm transition-[box-shadow,border-color,ring-color]',
+          interactive && 'cursor-pointer hover:border-border hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/30',
+          active && 'border-primary/40 ring-2 ring-primary/15',
+        )}
+        initial={{ opacity: 0, y: 6 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.32, ease: EASE }}
+      >
+        {Icon ? (
+          <span
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center rounded-md',
+              toneIconBox[tone],
+            )}
+            aria-hidden
+          >
+            <Icon className={cn('size-4', toneIcon[tone])} strokeWidth={2} />
+          </span>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[11px] font-medium leading-none text-muted-foreground">
+            {label}
+          </div>
+          <div
+            className={cn(
+              'mt-1 truncate tabular-nums leading-tight text-foreground',
+              compactValueClass,
+            )}
+          >
+            {prefix}
+            {typeof value === 'number' ? <CountUp to={value} format={format} /> : value}
+            {suffix ? (
+              <span className="ml-0.5 text-xs font-medium text-muted-foreground">{suffix}</span>
+            ) : null}
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div
       role={interactive ? 'button' : undefined}
@@ -194,16 +265,24 @@ export function StatGrid({
   children,
   cols = 4,
   className,
+  dense = false,
 }: {
   children: ReactNode
-  cols?: 2 | 3 | 4 | 5
+  cols?: 2 | 3 | 4 | 5 | 6
   className?: string
+  /** Tighter gaps — pairs with StatCard `variant="compact"`. */
+  dense?: boolean
 }) {
   const colCls = {
     2: 'sm:grid-cols-2',
     3: 'sm:grid-cols-2 lg:grid-cols-3',
     4: 'sm:grid-cols-2 lg:grid-cols-4',
     5: 'sm:grid-cols-2 lg:grid-cols-5',
+    6: 'sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6',
   }[cols]
-  return <div className={cn('grid grid-cols-1 gap-3', colCls, className)}>{children}</div>
+  return (
+    <div className={cn('grid grid-cols-1', dense ? 'gap-2' : 'gap-3', colCls, className)}>
+      {children}
+    </div>
+  )
 }

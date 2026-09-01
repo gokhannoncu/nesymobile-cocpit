@@ -183,7 +183,7 @@ export function buildRunDetailViewModel(
     {
       type: 'node',
       label: 'Run result',
-      variant: isFailure(verdict) ? 'error' : verdict === 'NOT_MEASURED' ? 'decision' : 'end',
+      variant: isFailure(verdict) ? 'error' : verdict === 'NOT_MEASURED' || /INCONCLUSIVE/i.test(verdict) ? 'decision' : 'end',
       desc: verdict,
       layers: runLayers,
     },
@@ -204,14 +204,14 @@ export function buildRunDetailViewModel(
       }
     : failureDetail || isFailure(verdict)
       ? {
-          title: 'Run requires attention',
-          description: failureDetail ?? `Final observed verdict: ${verdict}`,
+          title: failureDetail ? 'Failure detail' : 'Run did not pass',
+          description: failureDetail ?? verdict,
           severity: 'destructive' as const,
         }
       : riskTotal !== null && riskTotal > 0
         ? {
-            title: 'Stability risk detected',
-            description: `${riskTotal} warning or error signal${riskTotal === 1 ? '' : 's'} were captured during this run.`,
+            title: 'Stability signals',
+            description: `${riskTotal} warning or error signal${riskTotal === 1 ? '' : 's'} during this run.`,
             severity: 'warning' as const,
           }
         : null
@@ -576,7 +576,7 @@ function resultOf(row: Row | undefined): string {
 }
 
 function isFailure(value: string): boolean {
-  return /(FAIL|ERROR|CRASH|ANR|ABORT|REJECT|BLOCK|LEAKED|INCONCLUSIVE)/i.test(value)
+  return /(FAIL|ERROR|CRASH|ANR|ABORT|REJECT|BLOCK|LEAKED)/i.test(value)
 }
 
 function isTerminal(value: string): boolean {

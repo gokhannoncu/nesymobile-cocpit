@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  CheckCircle2,
   Clock3,
   Gauge,
   Gavel,
@@ -13,11 +12,12 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
+import { Alert, AlertContent, AlertDescription, AlertIcon, AlertTitle } from '@nesy/metronic/components/ui/alert'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { CardGrid, InfoCard } from '@/components/product/cards'
+import { cn } from '@nesy/metronic/lib/utils'
 import { ComparisonTable } from '@/components/product/comparison'
 import { StatCard, StatGrid } from '@/components/product/stats'
+import { toneIcon, toneIconBox, toneText, type Tone } from '@/components/product/tones'
 import type {
   OutcomeTone,
   RunDetailViewModel,
@@ -52,20 +52,15 @@ export function RunDetailSummary({
 }) {
   return (
     <div className="space-y-6">
-      {view.alert ? (
-        <Alert variant={view.alert.severity === 'destructive' ? 'destructive' : 'warning'}>
-          <ShieldAlert className="size-4" />
-          <AlertTitle>{view.alert.title}</AlertTitle>
-          <AlertDescription>{view.alert.description}</AlertDescription>
-        </Alert>
-      ) : null}
+      {view.alert ? <RunDetailNotice alert={view.alert} /> : null}
 
       <section aria-labelledby="run-kpis">
         <h2 id="run-kpis" className="sr-only">Run summary metrics</h2>
-        <StatGrid cols={3}>
+        <StatGrid cols={6} dense>
           {view.kpis.map((kpi) => (
             <StatCard
               key={kpi.key}
+              variant="compact"
               icon={KPI_ICONS[kpi.key]}
               label={kpi.label}
               value={kpi.value}
@@ -76,26 +71,22 @@ export function RunDetailSummary({
         </StatGrid>
       </section>
 
-      <section className="space-y-3" aria-labelledby="run-outcomes">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 id="run-outcomes" className="text-base font-semibold">Decision outcomes</h2>
-            <p className="text-xs text-muted-foreground">
-              Persisted action, gate, oracle and cleanup lanes; missing values fail closed.
-            </p>
-          </div>
-          <LayerBadges states={layerStates} />
+      <section className="space-y-2.5" aria-labelledby="run-outcomes">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="run-outcomes" className="text-sm font-semibold text-foreground">Decision outcomes</h2>
+          <LayerBadges states={layerStates} compact />
         </div>
-        <CardGrid cols={4}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {view.outcomes.map((outcome) => (
-            <OutcomeInfoCard key={outcome.key} outcome={outcome} />
+            <OutcomeLaneCard key={outcome.key} outcome={outcome} />
           ))}
-        </CardGrid>
+        </div>
       </section>
 
-      <section className="space-y-3" aria-labelledby="run-comparison">
-        <h2 id="run-comparison" className="text-base font-semibold">Expected vs observed</h2>
+      <section className="space-y-2.5" aria-labelledby="run-comparison">
+        <h2 id="run-comparison" className="text-sm font-semibold text-foreground">Expected vs observed</h2>
         <ComparisonTable
+          density="dense"
           headers={[
             { label: 'Checkpoint' },
             { label: 'Expected', tone: 'blue' },
@@ -104,12 +95,12 @@ export function RunDetailSummary({
           ]}
           rows={view.comparisons.map((row) => [
             row.label,
-            row.expected,
-            <span key={`${row.label}-observed`} className="font-mono text-xs">{row.observed}</span>,
+            <span key={`${row.label}-expected`} className="text-muted-foreground">{row.expected}</span>,
+            <span key={`${row.label}-observed`} className="font-mono text-[11px] font-medium">{row.observed}</span>,
             <Badge
               key={`${row.label}-status`}
-              variant={row.tone === 'red' ? 'destructive' : 'outline'}
-              className={badgeClass(row.tone)}
+              variant="outline"
+              className={cn('h-5 px-1.5 text-[10px] font-semibold', badgeClass(row.tone))}
             >
               {row.status}
             </Badge>,
@@ -118,13 +109,7 @@ export function RunDetailSummary({
       </section>
 
       <section className="min-w-0 space-y-3" aria-labelledby="workflow-path">
-        <div>
-          <h2 id="workflow-path" className="text-base font-semibold">Actual workflow path</h2>
-          <p className="text-xs text-muted-foreground">
-            Each step shows its measured duration and Oracle validation across Bridge (UI), SDK (App),
-            Local DB and Backend planes.
-          </p>
-        </div>
+        <h2 id="workflow-path" className="text-base font-semibold">Actual workflow path</h2>
         {view.workflowPath.length === 0 ? (
           <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
             NOT_MEASURED — no persisted workflow steps.
@@ -137,22 +122,68 @@ export function RunDetailSummary({
   )
 }
 
-function OutcomeInfoCard({ outcome }: { outcome: RunOutcomeCard }) {
+function RunDetailNotice({
+  alert,
+}: {
+  alert: NonNullable<RunDetailViewModel['alert']>
+}) {
+  const destructive = alert.severity === 'destructive'
   return (
-    <InfoCard
-      icon={OUTCOME_ICONS[outcome.key]}
-      title={outcome.label}
-      eyebrow={outcome.value}
-      desc={outcome.description}
-      tone={outcome.tone}
-      footer={
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <CheckCircle2 className="size-3.5" />
-          Durable read model
-        </div>
-      }
-    />
+    <Alert
+      variant={destructive ? 'destructive' : 'warning'}
+      appearance="light"
+      size="sm"
+      className="items-start sm:items-center"
+    >
+      <AlertIcon>
+        <ShieldAlert className="size-4" strokeWidth={2} />
+      </AlertIcon>
+      <AlertContent className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <AlertTitle className="text-xs font-semibold leading-snug">{alert.title}</AlertTitle>
+        <AlertDescription className="text-xs leading-snug text-muted-foreground sm:text-right">
+          {alert.description}
+        </AlertDescription>
+      </AlertContent>
+    </Alert>
   )
+}
+
+function OutcomeLaneCard({ outcome }: { outcome: RunOutcomeCard }) {
+  const Icon = OUTCOME_ICONS[outcome.key]
+  const tone = outcome.tone as Tone
+
+  return (
+    <div
+      title={outcome.description}
+      className="flex items-center gap-2.5 rounded-lg border border-border/80 bg-card px-3 py-2.5 shadow-sm"
+    >
+      <span
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-md',
+          toneIconBox[tone],
+        )}
+        aria-hidden
+      >
+        <Icon className={cn('size-4', toneIcon[tone])} strokeWidth={2} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[11px] font-medium leading-none text-muted-foreground">
+          {outcome.label}
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          <span className={cn('truncate text-sm font-semibold leading-tight', toneText[tone])}>
+            {formatOutcomeValue(outcome.value)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatOutcomeValue(value: string): string {
+  if (value === 'NOT_MEASURED') return 'Not measured'
+  if (value === 'REQUIRED_PENDING') return 'Pending'
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function badgeClass(tone: OutcomeTone): string {

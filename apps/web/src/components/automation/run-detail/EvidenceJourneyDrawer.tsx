@@ -107,9 +107,14 @@ export function EvidenceJourneyDrawer({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <History className="w-4 h-4" />
-          Evidence Journey
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-background hover:text-foreground"
+          aria-label="Evidence journey"
+          title="Evidence journey"
+        >
+          <History className="size-3.5" />
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-[540px]">

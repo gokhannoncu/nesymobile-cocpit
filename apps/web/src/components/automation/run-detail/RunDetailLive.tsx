@@ -1,17 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MotionConfig } from 'framer-motion'
-import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
-import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Button } from '@nesy/metronic/components/ui/button'
 import {
   Activity,
-  ArrowLeft,
   BarChart3,
-  Check,
-  Clipboard,
   FileSearch,
   LayoutDashboard,
 } from 'lucide-react'
@@ -31,10 +24,9 @@ import type {
   RunDetailResult,
   RunTelemetryDto,
 } from '@/lib/verdict-runtime/types'
-import { EvidenceJourneyDrawer } from './EvidenceJourneyDrawer'
-import { LiveUpdateSubscription } from './LiveUpdateSubscription'
 import { RunDetailDiagnostics } from './RunDetailDiagnostics'
 import { RunDetailExecution } from './RunDetailExecution'
+import { RunDetailHero } from './RunDetailHero'
 import { RunDetailPerformance } from './RunDetailPerformance'
 import { RunDetailSummary } from './RunDetailSummary'
 
@@ -167,134 +159,75 @@ export function RunDetailLive({
   const blockedReason = runDetail.blockedReason
   const isBlocked = runDetail.partial || Boolean(blockedReason)
 
+  const copyRunId = useCallback(() => {
+    void navigator.clipboard?.writeText(runId)
+      .then(() => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1_500)
+      })
+      .catch(() => undefined)
+  }, [runId])
+
   return (
     <MotionConfig reducedMotion="user">
-      <ProductPage
-      path="/automation/list"
-      title="Run Detail"
-      toolbarHeading={
-        <div className="min-w-0">
-          <Link
-            href={`/automation/${encodeURIComponent(automationId)}`}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to workflow
-          </Link>
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-            <h1 className="truncate text-lg font-semibold">{view.header.workflowName}</h1>
-            <Badge variant="outline">{view.header.lifecycle}</Badge>
-          </div>
-        </div>
-      }
-      toolbarActions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <LiveUpdateSubscription
-            status={live.status}
-            latestSeq={live.latestSeq}
-            refreshing={live.refreshing || supplementalRefreshing}
-            onRefresh={refreshAll}
-          />
-          <EvidenceJourneyDrawer
+      <ProductPage path="/automation/list" title="Run Detail" hideToolbar>
+        <div className="space-y-4">
+          <RunDetailHero
+            automationId={automationId}
             runId={runId}
-            journey={evidenceJourney}
+            view={view}
+            telemetry={telemetry}
+            evidenceJourney={evidenceJourney}
             canViewRawEvidence={canViewRawEvidence}
+            liveStatus={live.status}
+            latestSeq={live.latestSeq}
+            liveRefreshing={live.refreshing}
+            supplementalRefreshing={supplementalRefreshing}
+            onRefreshAll={refreshAll}
+            copied={copied}
+            onCopyRunId={copyRunId}
+            isBlocked={isBlocked}
+            blockedReason={blockedReason}
+            partial={runDetail.partial}
+            staleSourceCount={errorCount}
           />
-        </div>
-      }
-    >
-      <header className="min-w-0 rounded-xl border bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Manager run dashboard
-            </p>
-            <h2 className="mt-1 text-xl font-bold tracking-tight">{view.header.workflowName}</h2>
-            {view.header.workflowDescription ? (
-              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                {view.header.workflowDescription}
-              </p>
-            ) : null}
-            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary">{view.header.device}</Badge>
-              <Badge variant="secondary">{view.header.environment}</Badge>
-              <span className="break-all font-mono">Run ID: {runId}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                aria-label="Copy full run ID"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(runId)
-                    .then(() => {
-                      setCopied(true)
-                      window.setTimeout(() => setCopied(false), 1_500)
-                    })
-                    .catch(() => undefined)
-                }}
-              >
-                {copied ? <Check className="size-3.5" /> : <Clipboard className="size-3.5" />}
-              </Button>
+
+          {live.status === 'offline' || errorCount > 0 ? (
+            <div
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs text-amber-950"
+              role="status"
+            >
+              <span className="font-semibold">Data source status</span>
+              {live.status === 'offline' ? (
+                <span>Live socket offline — showing last durable state</span>
+              ) : null}
+              {Object.entries(sourceErrors).map(([source, message]) => (
+                <span key={source} title={message}>
+                  {source} stale
+                </span>
+              ))}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="font-mono">
-              {telemetry?.measurementState ?? 'UNAVAILABLE'}
-            </Badge>
-            {errorCount > 0 ? (
-              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
-                {errorCount} source{errorCount === 1 ? '' : 's'} stale
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-      </header>
+          ) : null}
 
-      {isBlocked ? (
-        <Alert variant="destructive">
-          <AlertTitle>Execution is blocked or partial</AlertTitle>
-          <AlertDescription>
-            {blockedReason ?? 'The durable read model marked this run partial.'} The dashboard
-            remains visible so available evidence and live events can still be inspected.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {live.status === 'offline' || errorCount > 0 ? (
-        <div
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
-          role="status"
-        >
-          <span className="font-semibold">Data source status:</span>
-          {live.status === 'offline' ? <span>live socket offline; showing last durable state</span> : null}
-          {Object.entries(sourceErrors).map(([source, message]) => (
-            <span key={source} title={message}>{source} stale</span>
-          ))}
-        </div>
-      ) : null}
-
-      <SegmentTabs
-        appearance="segmented"
+          <SegmentTabs
+        appearance="pill"
         defaultValue="summary"
         items={[
           {
             value: 'summary',
             label: 'Summary',
-            description: 'Verdict, duration, progress and risk',
             icon: LayoutDashboard,
             content: <RunDetailSummary view={view} layerStates={layerStates} />,
           },
           {
             value: 'performance',
             label: 'Performance',
-            description: 'Memory, HTTP, spans and throughput',
             icon: BarChart3,
             content: <RunDetailPerformance view={view} />,
           },
           {
             value: 'execution',
             label: 'Execution',
-            description: 'Timeline, workflow and live events',
             icon: Activity,
             count: live.events.length || undefined,
             content: (
@@ -308,8 +241,7 @@ export function RunDetailLive({
           },
           {
             value: 'diagnostics',
-            label: 'Evidence & Diagnostics',
-            description: 'Evidence, incidents, provenance and repro',
+            label: 'Diagnostics',
             icon: FileSearch,
             count: view.charts.incidents.length || undefined,
             // RunDetailDiagnostics owns ProvenancePanel and ReproExportPanel so
@@ -328,7 +260,8 @@ export function RunDetailLive({
             ),
           },
         ]}
-      />
+          />
+        </div>
       </ProductPage>
     </MotionConfig>
   )

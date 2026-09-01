@@ -26,7 +26,7 @@ describe('run detail manager dashboard wiring', () => {
     expect(live).toContain("defaultValue=\"summary\"")
     expect(live).toContain("label: 'Performance'")
     expect(live).toContain("label: 'Execution'")
-    expect(live).toContain("label: 'Evidence & Diagnostics'")
+    expect(live).toContain("label: 'Diagnostics'")
     expect(live).toContain('SUPPLEMENTAL_DEBOUNCE_MS')
     expect(live).toContain('Promise.allSettled')
     expect(diagnostics).toContain('Last successful data remains visible')
@@ -44,7 +44,8 @@ describe('run detail manager dashboard wiring', () => {
     expect(performance).toContain('heapUsedMb')
     expect(performance).toContain('heapCommittedMb')
     expect(performance).toContain('ReferenceLine')
-    expect(performance).toContain('NOT_MEASURED')
+    expect(performance).toContain('ChartLegend')
+    expect(performance).toContain('EmptyChart')
     expect(performance).toContain('aria-label')
   })
 

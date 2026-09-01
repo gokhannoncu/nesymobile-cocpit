@@ -16,17 +16,19 @@ interface InteractionRow {
   revision?: number
 }
 
+const ORIGIN_META: Array<{ key: keyof ReturnType<typeof countInteractionOrigins>; label: string }> = [
+  { key: 'manual', label: 'Manual' },
+  { key: 'bridge', label: 'Bridge' },
+  { key: 'unknown', label: 'Unknown' },
+  { key: 'humanBaseline', label: 'Human baseline' },
+]
+
 /**
  * Durable interactions for a run. Human baseline counts MANUAL only —
  * BRIDGE_INJECTED never inflates the baseline (Phase 7.17 / CHECKPOINT 54–57).
  */
 export function InteractionOriginsPanel({
   runId,
-  /**
-   * Bumped by the page's live stream. Interactions are appended while the run is
-   * running, so a panel that only read once would keep showing the count the run
-   * had when the page opened.
-   */
   refreshToken = 0,
 }: {
   runId: string
@@ -35,8 +37,6 @@ export function InteractionOriginsPanel({
   const [rows, setRows] = useState<InteractionRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  // Only the first read is a "loading" state: a refresh must not replace a list
-  // the operator is reading with a spinner every time an event arrives.
   const loadedOnceRef = useRef(false)
 
   useEffect(() => {
@@ -78,55 +78,48 @@ export function InteractionOriginsPanel({
   const counts = useMemo(() => countInteractionOrigins(rows), [rows])
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading durable interactions…</p>
+    return <p className="text-xs text-muted-foreground">Loading interactions…</p>
   }
 
   if (error) {
-    return <p className="text-sm text-destructive">{error}</p>
-  }
-
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No durable interactions for this run — UNKNOWN/MANUAL/BRIDGE_INJECTED will appear when
-        classified events arrive.
-      </p>
-    )
+    return <p className="text-xs text-destructive">{error}</p>
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {rows.map((row) => (
-          <div key={row.id} className="flex items-center gap-1.5">
-            <InteractionOriginBadge origin={row.origin} confidence={row.confidence ?? 0} />
-            {row.summary ? (
-              <span className="text-[11px] text-muted-foreground max-w-[12rem] truncate">
-                {row.summary}
-              </span>
-            ) : null}
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {ORIGIN_META.map(({ key, label }) => (
+          <div
+            key={key}
+            className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-2 text-center"
+          >
+            <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
+            <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">{counts[key]}</p>
           </div>
         ))}
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground sm:grid-cols-4">
-        <div>
-          <dt className="inline">BRIDGE_INJECTED </dt>
-          <dd className="inline text-foreground">{counts.bridge}</dd>
+
+      {rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No classified interactions yet — events will appear as MANUAL, BRIDGE_INJECTED, or UNKNOWN.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {rows.map((row) => (
+            <div
+              key={row.id}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-1"
+            >
+              <InteractionOriginBadge origin={row.origin} confidence={row.confidence ?? 0} />
+              {row.summary ? (
+                <span className="max-w-[12rem] truncate text-[10px] text-muted-foreground">
+                  {row.summary}
+                </span>
+              ) : null}
+            </div>
+          ))}
         </div>
-        <div>
-          <dt className="inline">MANUAL </dt>
-          <dd className="inline text-foreground">{counts.manual}</dd>
-        </div>
-        <div>
-          <dt className="inline">UNKNOWN </dt>
-          <dd className="inline text-foreground">{counts.unknown}</dd>
-        </div>
-        <div>
-          <dt className="inline">human baseline </dt>
-          <dd className="inline text-foreground">{counts.humanBaseline}</dd>
-          <span className="ml-1 text-[10px]">(excludes bridge)</span>
-        </div>
-      </dl>
+      )}
     </div>
   )
 }

@@ -250,6 +250,76 @@ describe("golden contract fixtures", () => {
     expect(readEvent("fields__large-seq.json")).toContain("9007199254740993");
   });
 
+  // -------------------------------------------------------------------------
+  //  SDK-era events (outside the frozen 49)
+  // -------------------------------------------------------------------------
+
+  it("the frozen 49 count is not inflated by SDK-era fixtures", () => {
+    // `sdk__` exists precisely so that adding an event the SDK emits does not
+    // quietly redefine what "frozen" means. If a future fixture lands under
+    // `event__` by habit, the 49 assertion above fails and this one explains why.
+    const sdkNames = structuredFiles.filter((f) => f.startsWith("sdk__"));
+    expect(sdkNames.length).toBeGreaterThan(0);
+    expect(structuredFiles.filter((f) => f.startsWith("event__"))).toHaveLength(49);
+  });
+
+  it("HTTP_CALL carries the correlation id on the envelope, not in `data`", () => {
+    const parsed = parseTestEventLine(
+      `NESY_TEST_EVENT|${readEvent("sdk__http_call.json")}`,
+    );
+
+    expect(parsed?.event).toBe("HTTP_CALL");
+    expect(parsed?.requestId).toBe("7f3c1a9b4e2d48f5a6c0b1d2e3f40516");
+    // The metadata payload is unchanged by body capture — this is the assertion
+    // that a body feature cannot silently reshape the metrics event.
+    expect(Object.keys(parsed?.data ?? {}).sort()).toEqual([
+      "bytes_in",
+      "bytes_out",
+      "code",
+      "host",
+      "method",
+      "path",
+    ]);
+  });
+
+  it("a captured body joins its call by requestId and ships redacted", () => {
+    const call = parseTestEventLine(
+      `NESY_TEST_EVENT|${readEvent("sdk__http_call.json")}`,
+    );
+    const body = parseTestEventLine(
+      `NESY_TEST_EVENT|${readEvent("sdk__http_body_captured.json")}`,
+    );
+
+    expect(body?.event).toBe("HTTP_BODY_CAPTURED");
+    expect(body?.requestId).toBe(call?.requestId);
+    expect(body?.data?.direction).toBe("RESPONSE");
+    expect(body?.data?.chunk_count).toBe("1");
+    // The waybill survives (it is the correlation key); the token does not.
+    expect(body?.data?.body).toContain("11333042800798");
+    expect(body?.data?.body).toContain('"token":"***REDACTED***"');
+  });
+
+  it("a multi-chunk body states its position and that it was cut", () => {
+    const parsed = parseTestEventLine(
+      `NESY_TEST_EVENT|${readEvent("sdk__http_body_chunk.json")}`,
+    );
+
+    expect(parsed?.data?.chunk_index).toBe("1");
+    expect(parsed?.data?.chunk_count).toBe("2");
+    expect(parsed?.data?.truncated).toBe("true");
+  });
+
+  it("an omitted body says why and carries no body text", () => {
+    const parsed = parseTestEventLine(
+      `NESY_TEST_EVENT|${readEvent("sdk__http_body_omitted.json")}`,
+    );
+
+    // "We chose not to capture this" must stay distinguishable from "we
+    // captured nothing" — the same line NOT_MEASURED draws for telemetry.
+    expect(parsed?.data?.omitted_reason).toBe("CONTENT_TYPE_NOT_TEXTUAL");
+    expect(parsed?.data?.body).toBeUndefined();
+  });
+
   it("no fixture contains a raw line break", () => {
     const offenders = [
       ...legacyFiles.map((f) => [f, readLine(f)] as const),
