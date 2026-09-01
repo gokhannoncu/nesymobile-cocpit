@@ -15,6 +15,7 @@ const MANIFEST = readFileSync(resolve(__dirname, '../lib/page-migration-manifest
 describe('Left palette pack cutover (6D.1f)', () => {
   it('loads semantic actions from the published domain pack as primary source', () => {
     expect(EDITOR).toMatch(/fetchVerdictSemanticActions/)
+    expect(EDITOR).toMatch(/selectedDevice\?\.id/)
     expect(EDITOR).toMatch(/fetchVerdictDomainPacks/)
     expect(EDITOR).toMatch(/selectPinnedPublishedPack/)
     expect(EDITOR).toMatch(/buildPackPaletteGroups/)

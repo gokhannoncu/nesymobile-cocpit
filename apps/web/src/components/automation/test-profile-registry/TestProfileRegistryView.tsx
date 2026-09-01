@@ -71,7 +71,7 @@ function TestProfileRow({ item, index }: { item: TestProfileCatalogItemApi; inde
         <TestProfileKindBadge kind={item.kind} />
       </td>
       <td className={tdClass}>
-        <div className="text-xs font-semibold leading-tight text-foreground">{item.profileKey}</div>
+        <div className="text-[11px] font-semibold leading-tight text-foreground">{item.profileKey}</div>
         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">v{item.version}</p>
       </td>
       <td className={tdClass}>
@@ -86,7 +86,7 @@ function TestProfileRow({ item, index }: { item: TestProfileCatalogItemApi; inde
         <GateBadge releaseGate={item.releaseGate} />
       </td>
       <td className={cn('hidden lg:table-cell', tdClass)}>
-        <span className="text-xs text-foreground">{item.owner || '—'}</span>
+        <span className="text-[11px] text-foreground">{item.owner || '—'}</span>
       </td>
       <td className={tdClass}>
         <div className="flex justify-end">
@@ -177,7 +177,7 @@ function TestProfilePackGroupCard({
       />
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-xs">
+        <table className="min-w-full border-collapse text-[11px]">
           <thead>
             <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className={cn('w-24', thClass)}>Kind</th>

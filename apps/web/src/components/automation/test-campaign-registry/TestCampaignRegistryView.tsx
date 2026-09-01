@@ -11,47 +11,26 @@ import {
 import { CampaignTypeBadge } from '@/components/automation/test-campaign/CampaignTypeBadge'
 import type { TestCampaignCatalogItemApi } from '@/lib/verdict-runtime/types'
 import {
-  campaignGateResultTone,
+  campaignGateResultBadgeClass,
+  campaignStatusBadgeClass,
   campaignStatusRank,
-  campaignStatusTone,
   countCampaignsByType,
   sumCampaignCells,
   testCampaignDetailHref,
 } from '@/lib/verdict-runtime/test-campaign-registry'
 import { cn } from '@nesy/metronic/lib/utils'
-import { toneIconBox, toneText } from '@/components/product/tones'
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-1.5', cellGrid)
-const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
+const thClass = cn('px-2 py-1.5', cellGrid)
+const tdClass = cn('px-2 py-1.5 align-middle', cellGrid)
 
 function StatusBadge({ status }: { status: string }) {
-  const tone = campaignStatusTone(status)
-
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
-      {status}
-    </span>
-  )
+  return <span className={campaignStatusBadgeClass(status)}>{status}</span>
 }
 
 function GateResultBadge({ result }: { result: string }) {
-  const tone = campaignGateResultTone(result)
-
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
+    <span className={campaignGateResultBadgeClass(result)}>
       {result.replace(/_/g, ' ')}
     </span>
   )
@@ -73,14 +52,14 @@ function CampaignRow({ item, index }: { item: TestCampaignCatalogItemApi; index:
         <CampaignTypeBadge type={item.campaignKey} />
       </td>
       <td className={tdClass}>
-        <div className="text-xs font-semibold leading-tight text-foreground">{item.campaignId}</div>
+        <div className="text-[11px] font-semibold leading-tight text-foreground">{item.campaignId}</div>
         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">v{item.campaignVersion}</p>
       </td>
       <td className={tdClass}>
         <StatusBadge status={item.status} />
       </td>
       <td className={cn('hidden sm:table-cell', tdClass)}>
-        <span className="tabular-nums text-xs font-semibold text-foreground">{item.cellCount}</span>
+        <span className="tabular-nums text-[11px] font-semibold text-foreground">{item.cellCount}</span>
       </td>
       <td className={cn('hidden md:table-cell', tdClass)}>
         <GateResultBadge result={item.releaseGateResult} />
@@ -150,7 +129,7 @@ function CampaignTypeGroupCard({
   const hiddenCount = items.length - visibleItems.length
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs ring-1 ring-border/40">
+    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
       <CampaignTypeGroupHeader
         campaignKey={campaignKey}
         items={items}
@@ -158,7 +137,7 @@ function CampaignTypeGroupCard({
       />
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-xs">
+        <table className="min-w-full border-collapse text-[11px]">
           <thead>
             <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className={cn('w-24', thClass)}>Type</th>

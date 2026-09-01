@@ -2028,7 +2028,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
 
   useEffect(() => {
     let cancelled = false
-    setPaletteSource({ mode: 'loading' })
+    setPaletteSource((current) => (current.mode === 'pack' ? current : { mode: 'loading' }))
     ;(async () => {
       try {
         const packs = await fetchVerdictDomainPacks()
@@ -2042,7 +2042,11 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           })
           return
         }
-        const catalog = await fetchVerdictSemanticActions(pack.packKey, pack.version)
+        const catalog = await fetchVerdictSemanticActions(
+          pack.packKey,
+          pack.version,
+          selectedDevice?.id,
+        )
         if (cancelled) return
         if (catalog.items.length === 0) {
           setPaletteSource({
@@ -2075,7 +2079,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selectedDevice?.id])
 
   const searchTerm = paletteSearch.trim().toLowerCase();
   const filteredTemplates = useMemo(

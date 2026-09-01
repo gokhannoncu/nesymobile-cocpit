@@ -14,11 +14,12 @@ import { CampaignTypeBadge } from '@/components/automation/test-campaign/Campaig
 import { cn } from '@nesy/metronic/lib/utils'
 import { AUTOMATION_RUN_PLANNER_PATH } from '@nesy/metronic/config/layout-21.config'
 import {
-  campaignGateResultTone,
-  campaignStatusTone,
+  campaignGateResultBadgeClass,
+  campaignStatusBadgeClass,
+  campaignBadgePrimary,
+  campaignBadgeWarning,
 } from '@/lib/verdict-runtime/test-campaign-registry'
 import { campaignTypeHint } from '@/lib/verdict-runtime/test-campaign-detail'
-import { toneIconBox, toneText } from '@/components/product/tones'
 import type { CampaignCellStats } from '@/lib/verdict-runtime/test-campaign-detail'
 
 function packDetailHref(packKey: string, version: string): string {
@@ -55,30 +56,12 @@ function MetaCell({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const tone = campaignStatusTone(status)
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
-      {status}
-    </span>
-  )
+  return <span className={campaignStatusBadgeClass(status)}>{status}</span>
 }
 
 function GateResultBadge({ result }: { result: string }) {
-  const tone = campaignGateResultTone(result)
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
+    <span className={campaignGateResultBadgeClass(result)}>
       {result.replace(/_/g, ' ')}
     </span>
   )
@@ -137,14 +120,10 @@ export function TestCampaignDetailHeader({
                   <StatusBadge status={status} />
                   <GateResultBadge result={releaseGateResult} />
                   {contractReleaseGate ? (
-                    <span className="inline-flex rounded-[4px] border border-current/10 bg-teal-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800 dark:bg-teal-950/40 dark:text-teal-300">
-                      Release gate
-                    </span>
+                    <span className={campaignBadgePrimary}>Release gate</span>
                   ) : null}
                   {partial ? (
-                    <span className="inline-flex rounded-[4px] border border-current/10 bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                      Partial
-                    </span>
+                    <span className={campaignBadgeWarning}>Partial</span>
                   ) : null}
                 </div>
                 <h1 className="mt-2 text-lg font-bold leading-tight text-foreground lg:text-xl">

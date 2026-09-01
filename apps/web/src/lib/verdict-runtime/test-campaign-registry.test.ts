@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  campaignGateResultBadgeClass,
   campaignGateResultTone,
+  campaignStatusBadgeClass,
   campaignStatusRank,
   campaignStatusTone,
+  campaignTypeBadgeClass,
   campaignTypeTone,
   countCampaignsByType,
   sumCampaignCells,
@@ -24,7 +27,17 @@ function campaign(
 }
 
 describe('test-campaign-registry helpers', () => {
-  it('maps campaign type, status, and gate tones', () => {
+  it('maps campaign type, status, and gate badge classes to NESY palette', () => {
+    expect(campaignTypeBadgeClass('NIGHTLY')).toContain('bg-background')
+    expect(campaignTypeBadgeClass('RELEASE')).toContain('bg-nesy-soft')
+    expect(campaignTypeBadgeClass('persist-nightly')).toContain('bg-background')
+    expect(campaignStatusBadgeClass('RUNNING')).toContain('bg-nesy-soft')
+    expect(campaignStatusBadgeClass('BLOCKED')).toContain('bg-nesy-muted/25')
+    expect(campaignGateResultBadgeClass('PASS')).toContain('bg-nesy-soft')
+    expect(campaignGateResultBadgeClass('FAIL')).toContain('bg-nesy-muted/25')
+  })
+
+  it('maps legacy campaign type, status, and gate tones', () => {
     expect(campaignTypeTone('NIGHTLY')).toBe('purple')
     expect(campaignTypeTone('RELEASE')).toBe('nesy')
     expect(campaignStatusTone('RUNNING')).toBe('blue')

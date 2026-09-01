@@ -443,6 +443,97 @@ describe('phase 6 read-model DTO shape', () => {
       ['missing', 'reason', 'satisfied'].sort(),
     )
     expect(item.capabilityStatus.satisfied).toBe(false)
+    expect(item.capabilityStatus.missing).toEqual(['verdict.capability.semantic-action'])
+    expect(item.capabilityStatus.reason).toMatch(/Host Bridge B2 baseline missing capabilities/)
+  })
+
+  it('satisfies host Bridge B2 refs without a deviceId so authoring is not blocked', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          semanticActions: [
+            {
+              actionKey: 'nesy.action.login',
+              applicationRef: 'nesy.courier.mobile',
+              displayName: 'Sign in',
+              businessMeaning: 'authenticate',
+              notResponsibleFor: ['password reset'],
+              screenRefs: ['nesy.auth.login'],
+              surfaceRefs: [],
+              entityTypeRefs: [],
+              targetRefs: ['nesy.target.login-submit'],
+              requiredCapabilityRefs: ['verdict.core.bridge.tap', 'verdict.core.bridge.set-text'],
+            },
+            {
+              actionKey: 'nesy.action.process-parcel',
+              applicationRef: 'nesy.courier.mobile',
+              displayName: 'Process parcel',
+              businessMeaning: 'scan a parcel',
+              notResponsibleFor: ['camera hardware'],
+              screenRefs: ['nesy.delivery.flow'],
+              surfaceRefs: [],
+              entityTypeRefs: [],
+              targetRefs: [],
+              requiredCapabilityRefs: ['domain.nesy.scanner.inject'],
+            },
+          ],
+          macros: [],
+        },
+      },
+    })
+    const catalog = (await new DomainPackReadModelsService(store).listSemanticActions(
+      'nesy-courier',
+      '1.0.0',
+    ))!
+    expect(catalog.items.map((item) => [item.actionKey, item.capabilityStatus.satisfied])).toEqual([
+      ['nesy.action.login', true],
+      ['nesy.action.process-parcel', true],
+    ])
+  })
+
+  it('names the device in the missing-reason when a deviceId is supplied', async () => {
+    const store = new InMemoryDomainPackAdminStore()
+    await store.upsert({
+      packKey: 'nesy-courier',
+      version: '1.0.0',
+      bundleDigest: 'sha256:seed',
+      publicationState: 'PUBLISHED',
+      revision: 1,
+      bundle: {
+        registries: {
+          semanticActions: [
+            {
+              actionKey: 'nesy.action.unknown-cap',
+              applicationRef: 'nesy.courier.mobile',
+              displayName: 'Unknown',
+              businessMeaning: 'unknown',
+              notResponsibleFor: ['n/a'],
+              screenRefs: [],
+              surfaceRefs: [],
+              entityTypeRefs: [],
+              targetRefs: [],
+              requiredCapabilityRefs: ['verdict.capability.not-in-baseline'],
+            },
+          ],
+          macros: [],
+        },
+      },
+    })
+    const [item] = (await new DomainPackReadModelsService(store).listSemanticActions(
+      'nesy-courier',
+      '1.0.0',
+      { deviceId: 'R6CW400BC8N' },
+    ))!.items
+    expect(item.capabilityStatus.satisfied).toBe(false)
+    expect(item.capabilityStatus.reason).toBe(
+      'Device R6CW400BC8N missing capabilities: verdict.capability.not-in-baseline',
+    )
   })
 
   it('pins the target resolution entity keys', async () => {

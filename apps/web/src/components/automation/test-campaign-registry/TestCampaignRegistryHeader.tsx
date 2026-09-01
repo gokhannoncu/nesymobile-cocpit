@@ -13,6 +13,7 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
+import { campaignTypeBadgeClass, campaignBadgePrimary } from '@/lib/verdict-runtime/test-campaign-registry'
 import { cn } from '@nesy/metronic/lib/utils'
 
 export type CampaignTraitFilter = 'all' | 'running' | 'blocked' | 'gateFail'
@@ -34,14 +35,27 @@ function TypeChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide transition',
+        'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border transition',
         active
-          ? 'border-nesy/35 bg-nesy-soft text-nesy-ink'
-          : 'border-border bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+          ? cn(
+              label === 'All' ? campaignBadgePrimary : campaignTypeBadgeClass(label),
+              'shadow-xs ring-1 ring-nesy/15',
+            )
+          : cn(
+              'border-border bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              count === 0 && 'opacity-40',
+            ),
       )}
     >
-      {label}
-      <span className="tabular-nums">{count}</span>
+      <span>{label}</span>
+      <span
+        className={cn(
+          'rounded-[4px] px-1 py-px text-[9px] tabular-nums',
+          active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
+        )}
+      >
+        {count}
+      </span>
     </button>
   )
 }
@@ -114,7 +128,7 @@ export function TestCampaignRegistryHeader({
             label="Running"
             value={runningCount}
             hint="Active execution"
-            tone="blue"
+            tone="nesy"
             active={activeTraitFilter === 'running'}
             onClick={() =>
               onTraitFilterChange(activeTraitFilter === 'running' ? 'all' : 'running')
@@ -125,7 +139,7 @@ export function TestCampaignRegistryHeader({
             label="Blocked"
             value={blockedCount}
             hint="Campaign-level blockers"
-            tone="amber"
+            tone="orange"
             active={activeTraitFilter === 'blocked'}
             onClick={() =>
               onTraitFilterChange(activeTraitFilter === 'blocked' ? 'all' : 'blocked')
@@ -145,7 +159,7 @@ export function TestCampaignRegistryHeader({
         </StatGrid>
       </HeroCallout>
 
-      <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
+      <div className="rounded-[8px] border border-border/80 bg-card/95 p-3 backdrop-blur-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <Search

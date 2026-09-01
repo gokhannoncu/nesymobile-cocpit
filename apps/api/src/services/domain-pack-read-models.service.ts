@@ -209,9 +209,9 @@ export class DomainPackReadModelsService {
 
     const actions = asArray<SemanticActionDefinition>(loaded.registries?.semanticActions)
     const macros = asArray<MacroDefinition>(loaded.registries?.macros)
-    // deviceId present → host evaluates against Bridge B2 contract baseline.
-    // Live BridgeDeviceManager handshake can refine this later; deviceId now matters.
-    const negotiationAvailable = Boolean(options.deviceId?.trim())
+    // Host B2 baseline is available without a plugged-in device so authoring
+    // (drop / compile) does not wait on mobile. deviceId only names the
+    // missing-reason; live BridgeDeviceManager handshake can refine the set later.
 
     return {
       apiVersion: DOMAIN_PACK_READ_API_VERSION,
@@ -232,7 +232,6 @@ export class DomainPackReadModelsService {
         capabilityStatus: capabilityStatusFor(
           action.requiredCapabilityRefs ?? [],
           options.deviceId,
-          negotiationAvailable,
         ),
       })),
       macros: macros.map((macro) => ({
@@ -245,7 +244,6 @@ export class DomainPackReadModelsService {
         capabilityStatus: capabilityStatusFor(
           macro.requiredCapabilityRefs ?? [],
           options.deviceId,
-          negotiationAvailable,
         ),
       })),
       ...(actions.length === 0
@@ -549,24 +547,17 @@ export class DomainPackReadModelsService {
 
 /**
  * Capability gating for palette listing.
- * - No deviceId → negotiation unavailable (fail-closed for non-empty refs).
- * - deviceId present → evaluate against Bridge B2 host contract baseline
- *   (`deriveCapabilityManifest`). Unsatisfied refs stay visible+disabled.
+ * Always evaluate against the host Bridge B2 contract baseline
+ * (`deriveCapabilityManifest`). Authoring does not require a deviceId —
+ * unsatisfied refs stay visible+disabled. When deviceId is present the
+ * missing-reason names that device; live handshake can replace the set later.
  */
 function capabilityStatusFor(
   required: readonly string[],
   deviceId: string | undefined,
-  negotiationAvailable: boolean,
 ): CapabilityStatus {
   if (required.length === 0) {
     return { satisfied: true, missing: [], reason: null }
-  }
-  if (!negotiationAvailable || !deviceId?.trim()) {
-    return {
-      satisfied: false,
-      missing: [...required],
-      reason: 'Bridge B2 capability negotiation requires a deviceId',
-    }
   }
 
   const available = negotiatedCapabilitySet()
@@ -574,10 +565,13 @@ function capabilityStatusFor(
   if (missing.length === 0) {
     return { satisfied: true, missing: [], reason: null }
   }
+  const trimmedDevice = deviceId?.trim()
   return {
     satisfied: false,
     missing,
-    reason: `Device ${deviceId} missing capabilities: ${missing.join(', ')}`,
+    reason: trimmedDevice
+      ? `Device ${trimmedDevice} missing capabilities: ${missing.join(', ')}`
+      : `Host Bridge B2 baseline missing capabilities: ${missing.join(', ')}`,
   }
 }
 
@@ -608,6 +602,11 @@ function negotiatedCapabilitySet(): Set<string> {
   set.add('verdict.core.bridge.watch-fact')
   set.add('bridge-b2')
   set.add('bridge')
+  // Host-side adapter / back-office seams — not device-negotiated. Authoring
+  // and compile must not wait on a plugged-in phone for these.
+  set.add('verdict.core.remote.allowlisted-operation')
+  set.add('domain.nesy.scanner.inject')
+  set.add('domain.nesy.backoffice.approval-operations')
   return set
 }
 
