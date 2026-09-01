@@ -3,27 +3,22 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { DomainPackDetailApi } from '@/lib/verdict-runtime/types'
-import { cn } from '@nesy/metronic/lib/utils'
 import { SurfaceRegistryManager } from './SurfaceRegistryManager'
+import {
+  DomainPackTabNav,
+  domainPackTabMeta,
+  DOMAIN_PACK_TABS,
+  type DomainPackTabId,
+} from './DomainPackTabNav'
 
 interface DomainPackTabsProps {
   pack: DomainPackDetailApi
 }
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'applications', label: 'Applications' },
-  { id: 'screens', label: 'Screens & Surfaces' },
-  { id: 'entities', label: 'Entities & Targets' },
-  { id: 'evidence', label: 'Evidence Sources' },
-  { id: 'actions', label: 'Actions & Macros' },
-  { id: 'oracles', label: 'Oracle Templates' },
-  { id: 'profiles', label: 'Profiles' },
-  { id: 'migrations', label: 'Migrations' },
-]
-
 export function DomainPackTabs({ pack }: DomainPackTabsProps) {
-  const [activeTab, setActiveTab] = useState(TABS[0]!.id)
+  const [activeTab, setActiveTab] = useState<DomainPackTabId>(DOMAIN_PACK_TABS[0]!.id)
+  const activeMeta = domainPackTabMeta(activeTab)
+  const ActiveIcon = activeMeta.icon
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -31,35 +26,37 @@ export function DomainPackTabs({ pack }: DomainPackTabsProps) {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium mb-2">Manifest</h3>
-              <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border text-sm overflow-auto">
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Manifest</h3>
+              <pre className="overflow-auto rounded-[8px] border border-border bg-muted/20 p-4 text-xs">
                 {JSON.stringify(pack.manifest, null, 2) || '{}'}
               </pre>
             </div>
             <div>
-              <h3 className="text-lg font-medium mb-2">Compatibility</h3>
-              <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border text-sm overflow-auto">
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Compatibility</h3>
+              <pre className="overflow-auto rounded-[8px] border border-border bg-muted/20 p-4 text-xs">
                 {JSON.stringify(pack.compatibility, null, 2) || '{}'}
               </pre>
             </div>
-            {Object.keys(pack.validation || {}).length > 0 && (
+            {Object.keys(pack.validation || {}).length > 0 ? (
               <div>
-                <h3 className="text-lg font-medium mb-2 text-red-600 dark:text-red-400">Validation Errors</h3>
-                <pre className="bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 p-4 rounded-lg border border-red-200 dark:border-red-900 text-sm overflow-auto">
+                <h3 className="mb-2 text-sm font-semibold text-red-700 dark:text-red-300">
+                  Validation errors
+                </h3>
+                <pre className="overflow-auto rounded-[8px] border border-red-200/80 bg-red-50/70 p-4 text-xs text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
                   {JSON.stringify(pack.validation, null, 2)}
                 </pre>
               </div>
-            )}
+            ) : null}
           </div>
         )
       case 'applications':
         return (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Application list is shown in the Screen &amp; Surface hierarchy.{' '}
               <Link
                 href={`/automation/domain-packs/${encodeURIComponent(pack.packKey)}/surfaces?version=${encodeURIComponent(pack.version)}`}
-                className="text-indigo-600 hover:underline"
+                className="font-semibold text-nesy-ink hover:underline"
               >
                 Open Surface Registry
               </Link>
@@ -71,13 +68,13 @@ export function DomainPackTabs({ pack }: DomainPackTabsProps) {
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
-                Pack-scoped Application → Screen → Surface manager (DRAFT editable,
-                PUBLISHED read-only).
+              <p className="text-xs text-muted-foreground">
+                Pack-scoped Application → Screen → Surface manager (DRAFT editable, PUBLISHED
+                read-only).
               </p>
               <Link
                 href={`/automation/domain-packs/${encodeURIComponent(pack.packKey)}/surfaces?version=${encodeURIComponent(pack.version)}`}
-                className="text-xs text-indigo-600 hover:underline whitespace-nowrap"
+                className="whitespace-nowrap text-xs font-semibold text-nesy-ink hover:underline"
               >
                 Open dedicated route
               </Link>
@@ -118,43 +115,40 @@ export function DomainPackTabs({ pack }: DomainPackTabsProps) {
   }
 
   return (
-    <div className="mt-4">
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-300',
-                  'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors'
-                )}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </nav>
+    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
+      <div className="flex min-h-[520px] flex-col lg:flex-row">
+        <DomainPackTabNav pack={pack} activeTab={activeTab} onTabChange={setActiveTab} />
+
+        <div className="min-w-0 flex-1" role="tabpanel">
+          <div className="border-b border-border bg-muted/10 px-4 py-3 lg:px-5">
+            <div className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-nesy-soft text-nesy-ink ring-1 ring-nesy/10">
+                <ActiveIcon className="size-4" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">{activeMeta.label}</h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {activeMeta.description}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 lg:p-5">{renderTabContent()}</div>
+        </div>
       </div>
-      <div className="py-6">
-        {renderTabContent()}
-      </div>
-    </div>
+    </article>
   )
 }
 
-function CountView({ title, items }: { title: string, items?: any[] }) {
-  const count = items?.length || 0
-  
+function CountView({ title, items }: { title: string; items?: unknown[] }) {
+  const count = items?.length ?? 0
+
   if (count === 0) {
     return (
       <div>
-        <h3 className="text-lg font-medium mb-4">{title}</h3>
-        <div className="p-8 text-center text-gray-500 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
+        <div className="rounded-[8px] border border-dashed border-border bg-muted/15 p-8 text-center text-sm text-muted-foreground">
           No {title.toLowerCase()} configured
         </div>
       </div>
@@ -163,16 +157,16 @@ function CountView({ title, items }: { title: string, items?: any[] }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <h3 className="text-lg font-medium">{title}</h3>
-        <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full text-xs font-medium">
+      <div className="mb-4 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <span className="inline-flex rounded-[4px] border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">
           {count}
         </span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {(items ?? []).map((item, idx) => (
-          <div key={idx} className="p-4 rounded-lg border bg-white dark:bg-gray-950 shadow-sm">
-            <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-hidden text-ellipsis">
+          <div key={idx} className="rounded-[8px] border border-border bg-card p-3">
+            <pre className="overflow-hidden text-ellipsis text-[11px] text-muted-foreground">
               {JSON.stringify(item, null, 2)}
             </pre>
           </div>

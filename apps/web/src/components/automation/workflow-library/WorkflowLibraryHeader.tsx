@@ -188,9 +188,8 @@ export function WorkflowLibraryHeader({
             </Button>
             <Button
               type="button"
-              size="sm"
               onClick={onCreateClick}
-              className="gap-1.5 bg-nesy text-white hover:bg-nesy-hover"
+              className="h-10 gap-1.5 bg-nesy px-4 text-sm text-white hover:bg-nesy-hover"
             >
               New Workflow
               <kbd className="hidden rounded-lg border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white/90 lg:inline">

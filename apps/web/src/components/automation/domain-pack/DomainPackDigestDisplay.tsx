@@ -22,17 +22,24 @@ export function DomainPackDigestDisplay({ label, digest, className }: DomainPack
   const truncated = digest.length > 12 ? `${digest.substring(0, 6)}...${digest.substring(digest.length - 6)}` : digest
 
   return (
-    <div className={cn("flex items-center space-x-2 text-sm text-gray-500", className)}>
-      <span className="font-medium text-gray-700 dark:text-gray-300">{label}:</span>
-      <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
+    <div className={cn('flex min-w-0 items-center gap-2', className)}>
+      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <code className="rounded-[4px] border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground">
         {truncated}
       </code>
-      <button 
+      <button
+        type="button"
         onClick={handleCopy}
-        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+        className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
         title="Copy to clipboard"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? (
+          <Check className="size-3.5 text-emerald-600" />
+        ) : (
+          <Copy className="size-3.5" />
+        )}
       </button>
     </div>
   )

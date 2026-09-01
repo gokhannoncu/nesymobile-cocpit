@@ -15,11 +15,11 @@ export function testProfileIsBlocked(item: Pick<TestProfileCatalogItemApi, 'bloc
 export function testProfileKindTone(kind: TestProfileKind | string): Tone {
   switch (kind) {
     case 'CORE':
-      return 'blue'
+      return 'nesy'
     case 'PREVIEW':
-      return 'purple'
-    case 'SOAK':
       return 'teal'
+    case 'SOAK':
+      return 'gray'
     case 'FAULT':
       return 'orange'
     default:
@@ -32,7 +32,7 @@ export function testProfileResultTone(result: TestProfileResult): Tone {
     case 'PASS':
       return 'teal'
     case 'FAIL':
-      return 'orange'
+      return 'red'
     case 'INCONCLUSIVE':
       return 'amber'
     case 'NOT_RUN':

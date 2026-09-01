@@ -48,15 +48,15 @@ function CapabilityRegistryCommandShimmer() {
 
 function CapabilityTableRowShimmer() {
   const cellGrid = 'border-b border-r border-border last:border-r-0'
-  const tdClass = `px-2.5 py-1.5 align-middle ${cellGrid}`
+  const tdClass = `px-2.5 py-2 align-middle ${cellGrid}`
 
   return (
     <tr className="bg-card" aria-hidden>
       <td className={tdClass}>
-        <ShimmerBlock className="h-4 w-20 rounded-md" />
+        <ShimmerBlock className="h-5 w-20 rounded-[4px]" />
       </td>
       <td className={tdClass}>
-        <ShimmerBlock className="h-4 w-24 rounded-md" />
+        <ShimmerBlock className="h-5 w-24 rounded-[4px]" />
       </td>
       <td className={tdClass}>
         <ShimmerBlock className="h-3.5 w-40" />
@@ -79,7 +79,7 @@ function CapabilityTableRowShimmer() {
 
 function CapabilityPackGroupShimmer() {
   const cellGrid = 'border-b border-r border-border last:border-r-0'
-  const thClass = `px-2.5 py-1.5 ${cellGrid}`
+  const thClass = `px-2.5 py-2 ${cellGrid}`
 
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs ring-1 ring-border/40" aria-hidden>
@@ -132,8 +132,8 @@ export function CapabilitiesPageShimmer() {
 
 export function CoverageGraphPageShimmer() {
   const cellGrid = 'border-b border-r border-border last:border-r-0'
-  const thClass = `px-2.5 py-1.5 ${cellGrid}`
-  const tdClass = `px-2.5 py-1.5 align-middle ${cellGrid}`
+  const thClass = `px-2.5 py-2 ${cellGrid}`
+  const tdClass = `px-2.5 py-2 align-middle ${cellGrid}`
 
   return (
     <div className="space-y-5" aria-busy="true" aria-label="Loading coverage graph">

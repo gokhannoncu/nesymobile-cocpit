@@ -25,10 +25,12 @@ function profile(
 
 describe('test-profile-registry helpers', () => {
   it('maps kind and result tones', () => {
-    expect(testProfileKindTone('CORE')).toBe('blue')
+    expect(testProfileKindTone('CORE')).toBe('nesy')
+    expect(testProfileKindTone('PREVIEW')).toBe('teal')
+    expect(testProfileKindTone('SOAK')).toBe('gray')
     expect(testProfileKindTone('FAULT')).toBe('orange')
     expect(testProfileResultTone('PASS')).toBe('teal')
-    expect(testProfileResultTone('FAIL')).toBe('orange')
+    expect(testProfileResultTone('FAIL')).toBe('red')
   })
 
   it('detects blocked profiles', () => {

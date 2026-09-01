@@ -82,3 +82,12 @@ export function sumCoverageTotals(rows: readonly CoverageGraphCounts[]) {
     },
   )
 }
+
+export function coverageChainStatusTone(
+  complete: boolean,
+  gapCount: number,
+): 'complete' | 'warning' | 'critical' {
+  if (complete) return 'complete'
+  if (gapCount >= 3) return 'critical'
+  return 'warning'
+}

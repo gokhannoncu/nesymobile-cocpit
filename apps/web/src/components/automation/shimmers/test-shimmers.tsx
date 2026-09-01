@@ -132,19 +132,50 @@ export function TestProfilesPageShimmer() {
 
 export function TestProfileDetailPageShimmer() {
   return (
-    <div className="mx-auto max-w-4xl space-y-8 p-8" aria-busy="true" aria-label="Loading test profile">
-      <div className="space-y-2" aria-hidden>
-        <div className="flex items-center gap-3">
-          <ShimmerBlock className="h-8 w-48" />
-          <ShimmerBlock className="h-6 w-20 rounded-full" />
+    <div className="space-y-5" aria-busy="true" aria-label="Loading test profile">
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
+          <div className="flex items-start gap-3">
+            <ShimmerBlock className="size-10 shrink-0 rounded-[8px]" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ShimmerBlock className="h-7 w-72 max-w-full" />
+              <ShimmerBlock className="h-5 w-96 max-w-full" />
+              <ShimmerBlock className="h-4 w-full max-w-lg" />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <ShimmerBlock key={index} className="h-16 rounded-[8px]" />
+            ))}
+          </div>
         </div>
-        <ShimmerBlock className="h-4 w-24" />
       </div>
-      <div className="space-y-4" aria-hidden>
-        <ShimmerBlock className="h-5 w-32" />
-        <div className="flex justify-between gap-4">
-          <ShimmerBlock className="h-4 w-24" />
-          <ShimmerBlock className="h-4 w-20" />
+
+      <div className="grid gap-4 xl:grid-cols-2" aria-hidden>
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="overflow-hidden rounded-[8px] border border-border bg-card">
+            <div className="border-b border-border bg-muted/10 px-4 py-3">
+              <ShimmerBlock className="h-4 w-32" />
+              <ShimmerBlock className="mt-1.5 h-3 w-56" />
+            </div>
+            <div className="flex flex-wrap gap-2 p-4">
+              {Array.from({ length: 4 }).map((__, chipIndex) => (
+                <ShimmerBlock key={chipIndex} className="h-7 w-28 rounded-[4px]" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="border-b border-border bg-muted/10 px-4 py-3">
+          <ShimmerBlock className="h-4 w-36" />
+        </div>
+        <div className="grid gap-2 p-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <ShimmerBlock key={index} className="h-16 rounded-[8px]" />
+          ))}
         </div>
       </div>
     </div>
@@ -215,19 +246,41 @@ export function TestCampaignsPageShimmer() {
 
 export function TestCampaignDetailPageShimmer() {
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8" aria-busy="true" aria-label="Loading campaign">
-      <div className="flex items-center gap-3" aria-hidden>
-        <ShimmerBlock className="h-8 w-64" />
-        <ShimmerBlock className="h-6 w-20 rounded-full" />
-      </div>
-      <ShimmerBlock className="h-20 w-full rounded-xl" />
-      <div className="grid gap-3 md:grid-cols-4" aria-hidden>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="rounded-lg border border-border/70 bg-background/80 p-4">
-            <ShimmerBlock className="h-3 w-20" />
-            <ShimmerBlock className="mt-3 h-8 w-12" />
+    <div className="space-y-5" aria-busy="true" aria-label="Loading campaign detail">
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
+          <div className="flex items-start gap-3">
+            <ShimmerBlock className="size-10 shrink-0 rounded-[8px]" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex gap-2">
+                <ShimmerBlock className="h-5 w-16 rounded-[4px]" />
+                <ShimmerBlock className="h-5 w-20 rounded-[4px]" />
+              </div>
+              <ShimmerBlock className="h-7 w-80 max-w-full" />
+              <ShimmerBlock className="h-4 w-64 max-w-full" />
+            </div>
           </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <ShimmerBlock key={index} className="h-16 rounded-[8px]" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <ShimmerBlock className="h-20 w-full rounded-[8px]" />
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5" aria-hidden>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <ShimmerBlock key={index} className="h-20 rounded-[8px]" />
         ))}
+      </div>
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="border-b border-border bg-muted/10 px-4 py-3">
+          <ShimmerBlock className="h-4 w-36" />
+        </div>
+        <div className="p-4">
+          <ShimmerBlock className="h-40 w-full rounded-[8px]" />
+        </div>
       </div>
     </div>
   )
@@ -235,13 +288,44 @@ export function TestCampaignDetailPageShimmer() {
 
 export function FeatureDetailPageShimmer() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading feature detail">
-      <div className="space-y-2" aria-hidden>
-        <ShimmerBlock className="h-3 w-40" />
-        <ShimmerBlock className="h-8 w-72 max-w-full" />
-        <ShimmerBlock className="h-4 w-56" />
+    <div className="space-y-5" aria-busy="true" aria-label="Loading feature detail">
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
+          <div className="flex items-start gap-3">
+            <ShimmerBlock className="size-9 shrink-0 rounded-full" />
+            <ShimmerBlock className="size-10 shrink-0 rounded-[8px]" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ShimmerBlock className="h-7 w-64 max-w-full" />
+              <ShimmerBlock className="h-5 w-80 max-w-full rounded-[4px]" />
+              <ShimmerBlock className="h-4 w-full max-w-lg" />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <ShimmerBlock key={index} className="h-16 rounded-[8px]" />
+            ))}
+          </div>
+        </div>
       </div>
-      <ShimmerBlock className="h-80 w-full rounded-xl" />
+      <div className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2">
+          <ShimmerBlock className="h-4 w-32" />
+          <ShimmerBlock className="h-8 w-40 rounded-[8px]" />
+        </div>
+        <div className="grid min-h-[480px] lg:grid-cols-2">
+          <div className="space-y-3 border-b border-border p-4 lg:border-b-0 lg:border-r lg:p-5">
+            <ShimmerBlock className="h-3 w-28" />
+            <ShimmerBlock className="h-24 w-full rounded-[8px]" />
+            <ShimmerBlock className="h-32 w-full rounded-[8px]" />
+            <ShimmerBlock className="h-20 w-full rounded-[8px]" />
+          </div>
+          <div className="p-4 lg:p-5">
+            <ShimmerBlock className="mb-3 h-3 w-24" />
+            <ShimmerBlock className="h-[min(420px,50vh)] w-full rounded-[8px]" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

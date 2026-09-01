@@ -507,6 +507,11 @@ export interface TestCampaignCatalogApi {
 export interface TestCampaignResultApi {
   apiVersion: VerdictRuntimeApiVersion
   campaignId: string
+  campaignKey?: string
+  campaignVersion?: number
+  status?: string
+  releaseGateResult?: string
+  evidenceSummaryRef?: string
   cells: Record<string, unknown>[]
   failedCells: string[]
   partial: boolean
@@ -574,6 +579,7 @@ export interface DomainPackDetailApi {
   oracleTemplates: Record<string, unknown>[]
   launchProfiles: Record<string, unknown>[]
   testProfiles: Record<string, unknown>[]
+  testCampaigns: Record<string, unknown>[]
   migrations: Record<string, unknown>[]
   validation: Record<string, unknown>
   partial: boolean

@@ -31,7 +31,7 @@ function RunHistoryHeroShimmer() {
 
 function RunHistoryCommandShimmer() {
   return (
-    <div className="rounded-lg border border-border/80 bg-card p-3 shadow-xs" aria-hidden>
+    <div className="rounded-[8px] border border-border bg-card p-3" aria-hidden>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <ShimmerBlock className="h-10 flex-1 rounded-lg" />
         <ShimmerBlock className="h-10 w-48 shrink-0 rounded-lg" />
@@ -73,16 +73,16 @@ export function AutomationHistoryPageShimmer() {
 
 export function AutomationHistoryTableShimmer({ rowCount = 1 }: { rowCount?: number }) {
   const cellGrid = 'border-b border-r border-border last:border-r-0'
-  const thClass = `px-2.5 py-1.5 ${cellGrid}`
-  const tdClass = `px-2.5 py-1.5 align-middle ${cellGrid}`
+  const thClass = `px-2.5 py-2 ${cellGrid}`
+  const tdClass = `px-2.5 py-2 align-middle ${cellGrid}`
 
   return (
     <article
-      className="overflow-hidden rounded-lg border border-border bg-card shadow-xs ring-1 ring-border/40"
+      className="overflow-hidden rounded-[8px] border border-border bg-card"
       aria-busy="true"
       aria-label="Loading run history table"
     >
-      <div className="border-b border-border bg-muted/15 px-3 py-2" aria-hidden>
+      <div className="border-b border-border bg-muted/10 px-3 py-2.5 sm:px-4" aria-hidden>
         <ShimmerBlock className="h-4 w-32" />
         <ShimmerBlock className="mt-1.5 h-3 w-48" />
       </div>
@@ -108,18 +108,18 @@ export function AutomationHistoryTableShimmer({ rowCount = 1 }: { rowCount?: num
                 </td>
                 <td className={tdClass}>
                   <div className="flex items-center gap-2">
-                    <ShimmerBlock className="size-7 shrink-0 rounded-md" />
+                    <ShimmerBlock className="size-7 shrink-0 rounded-[8px]" />
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <ShimmerBlock className="h-3.5 w-40 max-w-full" />
                       <div className="flex gap-1">
-                        <ShimmerBlock className="h-4 w-12 rounded-md" />
-                        <ShimmerBlock className="h-4 w-24 rounded-md" />
+                        <ShimmerBlock className="h-4 w-12 rounded-[4px]" />
+                        <ShimmerBlock className="h-4 w-24 rounded-[4px]" />
                       </div>
                     </div>
                   </div>
                 </td>
                 <td className={tdClass}>
-                  <ShimmerBlock className="h-6 w-20 rounded-md" />
+                  <ShimmerBlock className="h-6 w-20 rounded-[4px]" />
                 </td>
                 <td className={tdClass}>
                   <ShimmerBlock className="h-3.5 w-24" />

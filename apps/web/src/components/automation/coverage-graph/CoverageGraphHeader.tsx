@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import {
   AlertTriangle,
   ChevronRight,
@@ -14,14 +15,8 @@ import {
   TestTube2,
   X,
 } from 'lucide-react'
-import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
-import { HeroCallout } from '@/components/product/blocks'
-import { StatCard, StatGrid } from '@/components/product/stats'
-import {
-  componentCount,
-  type CoverageGraphCounts,
-} from '@/lib/verdict-runtime/coverage-graph'
+import { componentCount, type CoverageGraphCounts } from '@/lib/verdict-runtime/coverage-graph'
 import { cn } from '@nesy/metronic/lib/utils'
 
 export type CoverageHealthFilter = 'all' | 'complete' | 'gaps'
@@ -34,7 +29,30 @@ function packSurfacesHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}/surfaces?version=${encodeURIComponent(version)}`
 }
 
-function PackScopeChip({
+function MetaCell({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string | number
+  hint?: string
+}) {
+  return (
+    <div className="min-w-0 rounded-[8px] border border-border/60 bg-background/70 px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icon className="size-3 shrink-0" aria-hidden />
+        {label}
+      </div>
+      <p className="mt-0.5 text-sm font-bold tabular-nums leading-snug text-foreground">{value}</p>
+      {hint ? <p className="mt-0.5 text-[9px] text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}
+
+function FilterChip({
   active,
   label,
   count,
@@ -51,16 +69,16 @@ function PackScopeChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold transition',
+        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[8px] border px-2 py-1 text-[10px] font-semibold transition',
         active
-          ? 'border-nesy/35 bg-nesy-soft text-nesy-ink shadow-xs'
-          : 'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
+          ? 'border-nesy/35 bg-nesy-soft text-nesy-ink'
+          : 'border-border bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
     >
       <span className="max-w-[10rem] truncate">{label}</span>
       <span
         className={cn(
-          'rounded-[8px] px-1.5 py-px text-[10px] tabular-nums',
+          'rounded-[4px] px-1 py-px text-[9px] tabular-nums',
           active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
         )}
       >
@@ -70,25 +88,34 @@ function PackScopeChip({
   )
 }
 
-function PipelineNode({
+function ChainStep({
   label,
   value,
   hint,
+  isLast,
 }: {
   label: string
   value: number
   hint?: string
+  isLast?: boolean
 }) {
   return (
-    <div className="min-w-0 flex-1 rounded-[8px] border border-border/70 bg-background/80 px-2.5 py-2 text-center">
-      <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">{value}</p>
-      {hint ? <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p> : null}
-    </div>
+    <>
+      <div className="flex min-w-[4.75rem] shrink-0 flex-col items-center rounded-[8px] border border-nesy/20 bg-background/80 px-2 py-1.5 text-center">
+        <span className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <span className="mt-0.5 text-base font-bold tabular-nums text-nesy-ink">{value}</span>
+        {hint ? <span className="mt-0.5 text-[8px] leading-tight text-muted-foreground">{hint}</span> : null}
+      </div>
+      {!isLast ? (
+        <ChevronRight className="size-3 shrink-0 text-muted-foreground/45" aria-hidden />
+      ) : null}
+    </>
   )
 }
 
-function CoveragePipelineStrip({
+function CoverageChainStepper({
   familyCount,
   totals,
 }: {
@@ -98,32 +125,21 @@ function CoveragePipelineStrip({
   const components = componentCount(totals)
 
   return (
-    <div className="mt-3 rounded-[8px] border border-border/70 bg-muted/20 p-3">
-      <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        <GitBranch className="size-3.5" aria-hidden />
+    <div className="rounded-[8px] border border-border/60 bg-muted/10 px-2.5 py-2">
+      <div className="mb-2 flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <GitBranch className="size-3" aria-hidden />
         Product coverage chain
       </div>
-      <div className="flex items-stretch gap-1.5 sm:gap-2">
-        <PipelineNode label="Families" value={familyCount} hint="published" />
-        <div className="flex shrink-0 items-center text-muted-foreground/60" aria-hidden>
-          →
-        </div>
-        <PipelineNode label="Features" value={totals.features} />
-        <div className="flex shrink-0 items-center text-muted-foreground/60" aria-hidden>
-          →
-        </div>
-        <PipelineNode label="Components" value={components} hint={`${totals.screens} scr · ${totals.targets} tgt`} />
-        <div className="flex shrink-0 items-center text-muted-foreground/60" aria-hidden>
-          →
-        </div>
-        <PipelineNode label="Evidence" value={totals.evidence} />
-        <div className="flex shrink-0 items-center text-muted-foreground/60" aria-hidden>
-          →
-        </div>
-        <PipelineNode
+      <div className="flex items-center gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ChainStep label="Families" value={familyCount} hint="published" />
+        <ChainStep label="Features" value={totals.features} />
+        <ChainStep label="Components" value={components} hint={`${totals.screens} scr · ${totals.targets} tgt`} />
+        <ChainStep label="Evidence" value={totals.evidence} />
+        <ChainStep
           label="Tests"
           value={totals.tests}
-          hint={totals.releaseGateTests > 0 ? `${totals.releaseGateTests} release gate` : undefined}
+          hint={totals.releaseGateTests > 0 ? `${totals.releaseGateTests} gate` : undefined}
+          isLast
         />
       </div>
     </div>
@@ -164,69 +180,98 @@ export function CoverageGraphHeader({
   hasFilters: boolean
 }) {
   const solePack = packGroups.length === 1 ? packGroups[0] : null
+  const components = componentCount(totals)
 
   return (
     <div className="space-y-4">
-      <HeroCallout
-        icon={Network}
-        eyebrow="Automation / Registry"
-        title="Coverage Graph"
-        lead="Product → Feature → Component → Evidence → Test Profile chain across the latest published domain pack per family — spot gaps before release planning."
-        tone="nesy"
-        compact
-        layout="stack"
-        chips={['Feature contracts', 'UI components', 'Evidence sources', 'Release gates']}
-      >
-        <CoveragePipelineStrip familyCount={familyCount} totals={totals} />
-        <StatGrid cols={4}>
-          <StatCard
-            icon={Package}
-            label="All families"
-            value={hasFilters ? visibleCount : familyCount}
-            hint={
-              hasFilters
-                ? `${visibleCount} of ${familyCount} match filters`
-                : `${totals.features} features · ${componentCount(totals)} components`
-            }
-            tone="nesy"
-            active={activeHealthFilter === 'all' && !activePack && !searchQuery}
-            onClick={onClearFilters}
-          />
-          <StatCard
-            icon={ShieldCheck}
-            label="Complete chain"
-            value={completeCount}
-            hint="All four layers populated"
-            tone="teal"
-            active={activeHealthFilter === 'complete'}
-            onClick={() =>
-              onHealthFilterChange(activeHealthFilter === 'complete' ? 'all' : 'complete')
-            }
-          />
-          <StatCard
-            icon={AlertTriangle}
-            label="Has gaps"
-            value={gapCount}
-            hint="Missing features, UI, evidence, or tests"
-            tone="amber"
-            active={activeHealthFilter === 'gaps'}
-            onClick={() => onHealthFilterChange(activeHealthFilter === 'gaps' ? 'all' : 'gaps')}
-          />
-          <StatCard
-            icon={TestTube2}
-            label="Test profiles"
-            value={totals.tests}
-            hint={
-              totals.releaseGateTests > 0
-                ? `${totals.releaseGateTests} release gate`
-                : 'Release gate input'
-            }
-            tone="blue"
-          />
-        </StatGrid>
-      </HeroCallout>
+      <article className="overflow-hidden rounded-[8px] border border-border bg-card">
+        <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
 
-      <div className="rounded-[8px] border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-nesy-soft text-nesy-ink ring-1 ring-nesy/10">
+                  <Network className="size-4" strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold leading-tight text-foreground lg:text-xl">
+                    Coverage graph
+                  </h1>
+                  <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                    Product → Feature → Component → Evidence → Test Profile chain across the latest
+                    published domain pack per family.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {solePack ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 rounded-[8px]" asChild>
+                  <Link href={packSurfacesHref(solePack.packKey, solePack.version)}>
+                    <LayoutGrid className="size-4" />
+                    Surfaces
+                  </Link>
+                </Button>
+                <Button size="sm" className="h-9 rounded-[8px] bg-nesy text-white hover:bg-nesy-hover" asChild>
+                  <Link href={packDetailHref(solePack.packKey, solePack.version)}>
+                    Open pack
+                    <ChevronRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            <MetaCell icon={Package} label="Families" value={familyCount} hint="published packs" />
+            <MetaCell icon={Network} label="Features" value={totals.features} />
+            <MetaCell icon={LayoutGrid} label="Components" value={components} hint={`${totals.screens} screens`} />
+            <MetaCell icon={ShieldCheck} label="Evidence" value={totals.evidence} />
+            <MetaCell
+              icon={TestTube2}
+              label="Test profiles"
+              value={totals.tests}
+              hint={totals.releaseGateTests > 0 ? `${totals.releaseGateTests} release gate` : undefined}
+            />
+          </div>
+
+          <div className="mt-3">
+            <CoverageChainStepper familyCount={familyCount} totals={totals} />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <FilterChip
+              active={activeHealthFilter === 'all' && !activePack && !searchQuery}
+              label="All families"
+              count={hasFilters ? visibleCount : familyCount}
+              onClick={onClearFilters}
+            />
+            <FilterChip
+              active={activeHealthFilter === 'complete'}
+              label="Complete chain"
+              count={completeCount}
+              onClick={() =>
+                onHealthFilterChange(activeHealthFilter === 'complete' ? 'all' : 'complete')
+              }
+            />
+            <FilterChip
+              active={activeHealthFilter === 'gaps'}
+              label="Has gaps"
+              count={gapCount}
+              onClick={() => onHealthFilterChange(activeHealthFilter === 'gaps' ? 'all' : 'gaps')}
+            />
+            {hasFilters ? (
+              <span className="text-[10px] text-muted-foreground">
+                · {visibleCount} of {familyCount} shown
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </article>
+
+      <div className="rounded-[8px] border border-border bg-card p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -256,7 +301,7 @@ export function CoverageGraphHeader({
 
           <div className="flex shrink-0 items-center gap-2">
             {hasFilters ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+              <Button type="button" variant="ghost" size="sm" className="h-9" onClick={onClearFilters}>
                 Clear filters
               </Button>
             ) : null}
@@ -273,34 +318,19 @@ export function CoverageGraphHeader({
           </div>
         </div>
 
-        {solePack ? (
-          <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" asChild>
-              <Link href={packSurfacesHref(solePack.packKey, solePack.version)}>
-                <LayoutGrid className="size-3.5" />
-                Surface manager
-              </Link>
-            </Button>
-            <Button size="sm" className="h-8 bg-nesy text-white hover:bg-nesy-hover" asChild>
-              <Link href={packDetailHref(solePack.packKey, solePack.version)}>
-                Open pack
-                <ChevronRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        ) : packGroups.length > 1 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {packGroups.length > 1 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Family
             </span>
-            <PackScopeChip
+            <FilterChip
               active={activePack === null}
-              label="All families"
+              label="All"
               count={familyCount}
               onClick={() => onPackChange(null)}
             />
             {packGroups.map((group) => (
-              <PackScopeChip
+              <FilterChip
                 key={group.packKey}
                 active={activePack === group.packKey}
                 label={group.packKey}
@@ -311,27 +341,10 @@ export function CoverageGraphHeader({
           </div>
         ) : null}
 
-        {hasFilters ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs text-muted-foreground">Active view</span>
-            <Badge variant="secondary" appearance="outline" size="sm" className="rounded-[8px]">
-              {visibleCount} of {familyCount} families
-            </Badge>
-            {activeHealthFilter !== 'all' ? (
-              <Badge variant="secondary" size="sm" className="rounded-[8px]">
-                {activeHealthFilter === 'complete' ? 'Complete chain' : 'Has gaps'}
-              </Badge>
-            ) : null}
-            {activePack ? (
-              <Badge variant="secondary" size="sm" className="rounded-[8px]">
-                {activePack}
-              </Badge>
-            ) : null}
-            {searchQuery ? (
-              <Badge variant="secondary" size="sm" className="rounded-[8px] font-mono">
-                “{searchQuery}”
-              </Badge>
-            ) : null}
+        {hasFilters && activeHealthFilter === 'gaps' ? (
+          <div className="mt-3 flex items-start gap-2 rounded-[8px] border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            <span>Showing families with missing features, components, evidence, or test profiles.</span>
           </div>
         ) : null}
       </div>

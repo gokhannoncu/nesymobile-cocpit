@@ -3,7 +3,7 @@ import { ProductPage } from '@/components/product'
 
 export default function Loading() {
   return (
-    <ProductPage path="/automation/features">
+    <ProductPage path="/automation/features" hideToolbar>
       <FeatureDetailPageShimmer />
     </ProductPage>
   )

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DomainPackSummary } from './types'
 import {
   formatPackPublishedAt,
+  formatPackPublishedAtParts,
   groupDomainPackCatalog,
   truncateDigest,
 } from './domain-pack-catalog'
@@ -44,6 +45,16 @@ describe('formatPackPublishedAt', () => {
   it('formats a real publish timestamp as a compact local date', () => {
     const label = formatPackPublishedAt('2026-09-01T20:07:34.276Z')
     expect(label).toMatch(/^\d{2}\.\d{2}\.2026 \d{2}:\d{2}$/)
+  })
+})
+
+describe('formatPackPublishedAtParts', () => {
+  it('returns stacked date and time parts', () => {
+    const parts = formatPackPublishedAtParts('2026-09-01T20:07:34.276Z')
+    expect(parts).not.toBeNull()
+    expect(parts?.date).toMatch(/^\d{2}\.\d{2}\.2026$/)
+    expect(parts?.time).toMatch(/^\d{2}:\d{2}$/)
+    expect(formatPackPublishedAt('2026-09-01T20:07:34.276Z')).toBe(`${parts?.date} ${parts?.time}`)
   })
 })
 

@@ -17,7 +17,6 @@ import { Button } from '@nesy/metronic/components/ui/button'
 import { Checkbox } from '@nesy/metronic/components/ui/checkbox'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -39,8 +38,8 @@ import { formatRunEnvironmentLabel } from '@/lib/verdict-runtime/adapters'
 import type { WorkflowRun } from '@/services/automation-api'
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-1.5', cellGrid)
-const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
+const thClass = cn('px-2.5 py-2', cellGrid)
+const tdClass = cn('px-2.5 py-2 align-middle', cellGrid)
 
 const STATUS_META: Record<
   string,
@@ -100,7 +99,7 @@ function RunStatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex h-6 items-center gap-1 rounded-[4px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
         toneIconBox[meta.tone],
         toneText[meta.tone],
       )}
@@ -113,7 +112,7 @@ function RunStatusBadge({ status }: { status: string }) {
 
 function ModeBadge({ mode }: { mode: string }) {
   return (
-    <span className="inline-flex rounded-md border border-border bg-background px-1.5 py-px text-[10px] font-semibold capitalize text-muted-foreground">
+    <span className="inline-flex rounded-[4px] border border-border bg-background px-2 py-0.5 text-[10px] font-semibold capitalize text-muted-foreground">
       {mode}
     </span>
   )
@@ -123,10 +122,142 @@ function MetaChip({ children, title }: { children: ReactNode; title?: string }) 
   return (
     <span
       title={title}
-      className="inline-flex max-w-[10rem] truncate rounded border border-border bg-muted/40 px-1.5 py-[3px] font-mono text-[10px] font-medium text-muted-foreground"
+      className="inline-flex max-w-[10rem] truncate rounded-[4px] border border-border/70 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
     >
       {children}
     </span>
+  )
+}
+
+function summarizeWorkflowRuns(runs: WorkflowRun[]): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>()
+  for (const run of runs) {
+    const name = run.workflow?.name ?? 'Unknown workflow'
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+}
+
+function RunHistoryDeleteDialog({
+  open,
+  onOpenChange,
+  count,
+  workflowName,
+  workflowSummary = [],
+  confirming,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  count: number
+  workflowName?: string
+  workflowSummary?: Array<{ name: string; count: number }>
+  confirming: boolean
+  onConfirm: () => void | Promise<void>
+}) {
+  const isBulk = count > 1
+  const preview = workflowSummary.slice(0, 4)
+  const hiddenCount = Math.max(0, workflowSummary.length - preview.length)
+  const actionLabel = confirming
+    ? 'Removing…'
+    : isBulk
+      ? `Remove ${count} runs`
+      : 'Remove run'
+
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !confirming && onOpenChange(next)}>
+      <AlertDialogContent className="max-w-md gap-0 overflow-hidden rounded-[8px] border border-border p-0 shadow-lg">
+        <AlertDialogHeader className="space-y-3 border-b border-border px-5 py-4 text-left">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-red-50 text-red-600 ring-1 ring-red-100 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900/40">
+              <Trash2 className="size-4" strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <AlertDialogTitle className="text-base font-semibold leading-snug text-foreground">
+                Remove from history?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                {isBulk ? (
+                  <>
+                    You selected{' '}
+                    <span className="font-semibold text-foreground">
+                      {count} run{count === 1 ? '' : 's'}
+                    </span>{' '}
+                    to remove from the execution log.
+                  </>
+                ) : (
+                  <>
+                    Remove the run record for{' '}
+                    <span className="font-semibold text-foreground">
+                      {workflowName ?? 'this workflow'}
+                    </span>
+                    .
+                  </>
+                )}
+              </AlertDialogDescription>
+            </div>
+          </div>
+        </AlertDialogHeader>
+
+        <div className="space-y-3 px-5 py-4">
+          <div className="rounded-[8px] border border-border/70 bg-muted/20 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground">Workflows stay intact</p>
+            <p className="mt-1">
+              Only execution history is removed. Workflow definitions, versions, and future runs are
+              not affected.
+            </p>
+          </div>
+
+          {isBulk && preview.length > 0 ? (
+            <div className="rounded-[8px] border border-border/70 bg-background px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Affected workflows
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {preview.map((item) => (
+                  <li
+                    key={item.name}
+                    className="flex items-center justify-between gap-3 text-xs text-foreground"
+                  >
+                    <span className="min-w-0 truncate">{item.name}</span>
+                    <span className="shrink-0 rounded-[4px] border border-border/70 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
+                      ×{item.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {hiddenCount > 0 ? (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  +{hiddenCount} more workflow{hiddenCount === 1 ? '' : 's'}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <AlertDialogFooter className="gap-2 border-t border-border bg-muted/10 px-5 py-4 sm:space-x-0">
+          <AlertDialogCancel
+            disabled={confirming}
+            className="h-9 rounded-[8px] border-border bg-background px-4"
+          >
+            Keep runs
+          </AlertDialogCancel>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={confirming}
+            onClick={() => void onConfirm()}
+            className="h-9 gap-1.5 rounded-[8px] border-red-200 bg-background px-4 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
+          >
+            {confirming ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
+            {actionLabel}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -219,13 +350,17 @@ export function RunHistoryTable({
     })
   }
 
-  const selectedDeleteTargets = useMemo(
-    () =>
-      runs
-        .filter((run) => selectedRunIds.has(run.id))
-        .map((run) => ({ workflowId: run.workflowId, runId: run.id })),
+  const selectedRuns = useMemo(
+    () => runs.filter((run) => selectedRunIds.has(run.id)),
     [runs, selectedRunIds],
   )
+
+  const selectedDeleteTargets = useMemo(
+    () => selectedRuns.map((run) => ({ workflowId: run.workflowId, runId: run.id })),
+    [selectedRuns],
+  )
+
+  const bulkWorkflowSummary = useMemo(() => summarizeWorkflowRuns(selectedRuns), [selectedRuns])
 
   const confirmDelete = () => {
     if (!deleteTarget) return
@@ -252,8 +387,8 @@ export function RunHistoryTable({
   }
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs ring-1 ring-border/40">
-      <div className="flex flex-col gap-2 border-b border-border bg-muted/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
+      <div className="border-b border-border bg-muted/10 px-3 py-2.5 sm:px-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Execution log</p>
           <p className="text-xs text-muted-foreground">
@@ -267,32 +402,54 @@ export function RunHistoryTable({
               : null}
           </p>
         </div>
-        {selectedCount > 0 ? (
+      </div>
+
+      {selectedCount > 0 ? (
+        <div className="flex flex-col gap-2 border-b border-nesy/20 bg-nesy-soft/35 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-foreground">
-              {selectedCount} selected
+            <span className="inline-flex items-center gap-2 rounded-[8px] border border-nesy/20 bg-background/80 px-2.5 py-1">
+              <span className="rounded-[4px] bg-nesy px-1.5 py-px text-[10px] font-bold tabular-nums text-white">
+                {selectedCount}
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                run{selectedCount === 1 ? '' : 's'} selected
+              </span>
             </span>
+            {paginatedRunIds.length > 0 && !allPageSelected ? (
+              <button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={() => togglePageSelection(true)}
+                className="text-xs font-semibold text-nesy-ink underline-offset-2 transition hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                Select page ({paginatedRunIds.length})
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="destructive"
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={bulkDeleting}
+              onClick={() => setSelectedRunIds(new Set())}
+              className="h-8 rounded-[8px]"
+            >
+              Clear selection
+            </Button>
+            <Button
+              variant="outline"
               size="sm"
               disabled={bulkDeleting}
               onClick={() => setBulkDeleteOpen(true)}
-              className="h-8 gap-1.5"
+              className="h-8 gap-1.5 rounded-[8px] border-red-200 bg-background text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
             >
               <Trash2 className="size-3.5" />
               {bulkDeleting ? 'Deleting…' : 'Delete selected'}
             </Button>
-            <button
-              type="button"
-              disabled={bulkDeleting}
-              onClick={() => setSelectedRunIds(new Set())}
-              className="text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
-            >
-              Clear
-            </button>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto border-t border-border">
         <table className="min-w-full border-collapse text-xs">
@@ -388,58 +545,23 @@ export function RunHistoryTable({
         />
       ) : null}
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-lg border border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete run?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the run record from history. The workflow &quot;{deleteTarget?.label}
-              &quot; will not be deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete run
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RunHistoryDeleteDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        count={1}
+        workflowName={deleteTarget?.label}
+        confirming={false}
+        onConfirm={confirmDelete}
+      />
 
-      <AlertDialog
+      <RunHistoryDeleteDialog
         open={bulkDeleteOpen}
-        onOpenChange={(open) => !bulkDeleting && setBulkDeleteOpen(open)}
-      >
-        <AlertDialogContent className="rounded-lg border border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">
-              Delete {selectedCount} run{selectedCount === 1 ? '' : 's'}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the selected run records from history. The workflows themselves will not
-              be deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg" disabled={bulkDeleting}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault()
-                void confirmBulkDelete()
-              }}
-              disabled={bulkDeleting}
-              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {bulkDeleting ? 'Deleting…' : `Delete ${selectedCount} run${selectedCount === 1 ? '' : 's'}`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={setBulkDeleteOpen}
+        count={selectedCount}
+        workflowSummary={bulkWorkflowSummary}
+        confirming={bulkDeleting}
+        onConfirm={confirmBulkDelete}
+      />
     </article>
   )
 }
@@ -490,13 +612,13 @@ function RunHistoryRow({
       </td>
       <td className={tdClass}>
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-nesy-soft/70 ring-1 ring-nesy/10">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-nesy-soft/70 ring-1 ring-nesy/10">
             <Workflow className="size-3.5 text-nesy-ink" strokeWidth={2.2} />
           </span>
           <div className="min-w-0">
             <Link
               href={`/automation/${workflowSlug}`}
-              className="block truncate text-xs font-semibold leading-tight text-foreground outline-none transition-colors group-hover:text-nesy-ink focus-visible:ring-2 focus-visible:ring-nesy-soft rounded-sm"
+              className="block truncate text-xs font-semibold leading-tight text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             >
               {workflowName}
             </Link>
@@ -537,7 +659,7 @@ function RunHistoryRow({
         <div className="flex items-center justify-end gap-0.5">
           <Link
             href={runHref}
-            className="inline-flex w-12 items-center justify-end gap-0.5 rounded-md py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+            className="inline-flex w-12 items-center justify-end gap-0.5 rounded-[8px] py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
           >
             Open
             <ChevronRight className="size-3 shrink-0" />
@@ -549,7 +671,7 @@ function RunHistoryRow({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-6 rounded-md text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                  className="size-7 rounded-[8px] text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                   onClick={onDelete}
                   aria-label={`Delete run for ${workflowName}`}
                 >

@@ -2,7 +2,6 @@
 
 import { Wrapper } from './components/wrapper'
 import { LayoutProvider } from './components/context'
-import { NavigationFeedbackProvider } from './components/navigation-feedback'
 
 export function Layout21({ children }: { children: React.ReactNode }) {
   return (
@@ -19,9 +18,7 @@ export function Layout21({ children }: { children: React.ReactNode }) {
         } as React.CSSProperties
       }
     >
-      <NavigationFeedbackProvider>
-        <Wrapper>{children}</Wrapper>
-      </NavigationFeedbackProvider>
+      <Wrapper>{children}</Wrapper>
     </LayoutProvider>
   )
 }

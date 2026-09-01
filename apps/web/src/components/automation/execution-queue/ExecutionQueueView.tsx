@@ -12,7 +12,12 @@ import {
   workflowRunApiToQueueRow,
   type ExecutionQueueFilter,
 } from '@/lib/automation/execution-queue-filters'
+import { deleteRun, deleteRuns } from '@/services/automation-api'
 import { toast } from 'sonner'
+
+function itemRunId(item: WorkflowRunApi): string {
+  return String(item.run?.id ?? item.correlation.runId)
+}
 
 export function ExecutionQueueView({
   initialItems,
@@ -50,6 +55,46 @@ export function ExecutionQueueView({
   const clearFilters = () => {
     setActiveFilter('all')
     clearSearch()
+  }
+
+  const handleDeleteRun = async (workflowId: string, runId: string) => {
+    try {
+      await deleteRun(workflowId, runId)
+      setItems((prev) => prev.filter((item) => itemRunId(item) !== runId))
+      toast.success('Run removed from the queue.')
+    } catch (error) {
+      console.error('Failed to delete run:', error)
+      toast.error('Failed to delete run.')
+    }
+  }
+
+  const handleBulkDeleteRuns = async (
+    targets: Array<{ workflowId: string; runId: string }>,
+  ) => {
+    if (targets.length === 0) return
+
+    try {
+      const { deleted, failed } = await deleteRuns(targets)
+      if (deleted.length > 0) {
+        const deletedSet = new Set(deleted)
+        setItems((prev) => prev.filter((item) => !deletedSet.has(itemRunId(item))))
+      }
+
+      if (failed.length === 0) {
+        toast.success(
+          deleted.length === 1
+            ? 'Run removed from the queue.'
+            : `${deleted.length} runs removed from the queue.`,
+        )
+      } else if (deleted.length > 0) {
+        toast.warning(`${deleted.length} runs deleted, ${failed.length} could not be removed.`)
+      } else {
+        toast.error('Failed to delete selected runs.')
+      }
+    } catch (error) {
+      console.error('Failed to bulk delete runs:', error)
+      toast.error('Failed to delete selected runs.')
+    }
   }
 
   const loadQueue = useCallback(async () => {
@@ -112,6 +157,8 @@ export function ExecutionQueueView({
         allRowsCount={rows.length}
         sortBy={sortBy}
         onClearFilters={clearFilters}
+        onDeleteRun={handleDeleteRun}
+        onBulkDeleteRuns={handleBulkDeleteRuns}
       />
     </div>
   )

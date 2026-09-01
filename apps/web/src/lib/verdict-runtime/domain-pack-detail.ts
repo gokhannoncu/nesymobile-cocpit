@@ -53,6 +53,7 @@ export function mapAdminPackToDetailApi(admin: DomainPackAdminGetApi): DomainPac
     oracleTemplates: asArray(registries.oracleTemplates),
     launchProfiles: asArray(registries.launchProfiles),
     testProfiles: asArray(registries.testProfiles),
+    testCampaigns: asArray(registries.testCampaigns),
     migrations: asArray(registries.migrations),
     validation: {},
     partial: false,
@@ -125,13 +126,25 @@ export function featureExecutableSummary(entry: Record<string, unknown>): {
   screenCount: number
   workflowCount: number
 } {
-  const executable = asRecord(entry.executable) ?? entry
-  const invariants = asArray(executable.invariants)
+  const refs = featureExecutableRefs(entry)
   return {
-    invariantCount: invariants.length,
-    gatingInvariantCount: invariants.filter((item) => item.bindsReleaseGate === true).length,
-    screenCount: asStringArray(executable.screenRefs).length,
-    workflowCount: asStringArray(executable.workflowRefs).length,
+    invariantCount: refs.invariants.length,
+    gatingInvariantCount: refs.invariants.filter((item) => item.bindsReleaseGate === true).length,
+    screenCount: refs.screenRefs.length,
+    workflowCount: refs.workflowRefs.length,
+  }
+}
+
+export function featureExecutableRefs(entry: Record<string, unknown>): {
+  invariants: Record<string, unknown>[]
+  screenRefs: string[]
+  workflowRefs: string[]
+} {
+  const executable = asRecord(entry.executable) ?? entry
+  return {
+    invariants: asArray(executable.invariants),
+    screenRefs: asStringArray(executable.screenRefs),
+    workflowRefs: asStringArray(executable.workflowRefs),
   }
 }
 

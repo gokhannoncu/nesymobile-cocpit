@@ -139,30 +139,34 @@ export function TablePaginationFooter({
             </nav>
           ) : null}
 
-          <div className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 bg-background/90 px-2.5 py-1 shadow-xs sm:ml-0">
-            <label
-              htmlFor={`${idPrefix}-page-size`}
-              className="cursor-pointer whitespace-nowrap text-xs font-medium text-muted-foreground"
-            >
+          <label
+            htmlFor={`${idPrefix}-page-size`}
+            className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 bg-background/90 px-2.5 py-1 shadow-xs sm:ml-0"
+          >
+            <span className="pointer-events-none select-none whitespace-nowrap text-xs font-medium text-muted-foreground">
               Per page
-            </label>
-            <div className="relative">
-              <select
-                id={`${idPrefix}-page-size`}
-                aria-label="Rows per page"
-                value={String(pageSize)}
-                onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                className="h-8 min-w-[3.25rem] cursor-pointer appearance-none rounded-lg border-0 bg-transparent py-0 pl-1 pr-6 text-sm font-semibold tabular-nums text-foreground outline-none focus:ring-0"
-              >
-                {pageSizeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            </div>
-          </div>
+            </span>
+            <span className="pointer-events-none select-none text-sm font-semibold tabular-nums text-foreground">
+              {pageSize}
+            </span>
+            <ChevronDown
+              className="pointer-events-none size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            <select
+              id={`${idPrefix}-page-size`}
+              aria-label="Rows per page"
+              value={String(pageSize)}
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+              className="absolute inset-0 size-full cursor-pointer opacity-0"
+            >
+              {pageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
     </footer>

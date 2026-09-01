@@ -4,7 +4,6 @@ import { Header } from './header';
 import { HeaderBreadcrumbs } from './header-breadcrumbs';
 import { useEffect, useState } from 'react';
 import { cn } from '@nesy/metronic/lib/utils';
-import { NavigationFeedback } from './navigation-feedback';
 
 export function Wrapper({ children }: { children: React.ReactNode }) {
   const {isMobile} = useLayout();
@@ -17,7 +16,6 @@ export function Wrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <NavigationFeedback />
       <Header />
       {!isMobile && <Sidebar />}
 

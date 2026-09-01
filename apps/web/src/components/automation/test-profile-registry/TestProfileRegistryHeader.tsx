@@ -247,7 +247,7 @@ export function TestProfileRegistryHeader({
             label="Not run"
             value={notRunCount}
             hint="Awaiting first execution"
-            tone="blue"
+            tone="gray"
             active={activeTraitFilter === 'notRun'}
             onClick={() => onTraitFilterChange(activeTraitFilter === 'notRun' ? 'all' : 'notRun')}
           />

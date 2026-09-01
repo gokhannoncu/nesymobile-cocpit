@@ -9,7 +9,8 @@ export function testCampaignDetailHref(campaignId: string): string {
 }
 
 export function campaignTypeTone(type: string): Tone {
-  switch (type) {
+  const normalized = type.replace(/^persist-/, '').toUpperCase()
+  switch (normalized) {
     case 'PR':
       return 'blue'
     case 'NIGHTLY':
@@ -74,4 +75,21 @@ export function campaignStatusRank(status: CampaignStatus): number {
 
 export function sumCampaignCells(items: readonly TestCampaignCatalogItemApi[]): number {
   return items.reduce((total, item) => total + item.cellCount, 0)
+}
+
+export function campaignCellResultTone(result: string): Tone {
+  switch (result) {
+    case 'PASS':
+      return 'teal'
+    case 'FAIL':
+      return 'red'
+    case 'BLOCKED':
+      return 'orange'
+    case 'PARTIAL':
+      return 'amber'
+    case 'PENDING':
+      return 'gray'
+    default:
+      return 'gray'
+  }
 }

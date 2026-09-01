@@ -17,6 +17,10 @@ const TABS = readFileSync(
   resolve(__dirname, '../components/automation/domain-pack/DomainPackTabs.tsx'),
   'utf8',
 )
+const DETAIL = readFileSync(
+  resolve(__dirname, '../components/automation/domain-pack/surface-registry/SurfaceDetailPanel.tsx'),
+  'utf8',
+)
 const CLIENT = readFileSync(
   resolve(__dirname, '../lib/verdict-runtime/client.ts'),
   'utf8',
@@ -26,7 +30,7 @@ const MANIFEST = readFileSync(resolve(__dirname, '../lib/page-migration-manifest
 describe('SurfaceRegistryManager — 6D.2', () => {
   it('loads the pack screen-surface registry instead of JSON stubs', () => {
     expect(SRC).toMatch(/fetchVerdictScreenSurfaces/)
-    expect(SRC).toMatch(/Application → Screen → Surface/)
+    expect(SRC).toMatch(/SurfaceRegistryHeader/)
     expect(CLIENT).toMatch(/screen-surfaces/)
     expect(TABS).toMatch(/SurfaceRegistryManager/)
     expect(PAGE).toMatch(/SurfaceRegistryManager/)
@@ -37,14 +41,14 @@ describe('SurfaceRegistryManager — 6D.2', () => {
     expect(SRC).toMatch(/status: 'empty'/)
     expect(SRC).toMatch(/status: 'error'/)
     expect(SRC).toMatch(/Surface registry unavailable/)
-    expect(SRC).toMatch(/No applications \/ screens \/ surfaces/)
+    expect(SRC).toMatch(/No applications, screens, or surfaces/)
   })
 
   it('keeps PUBLISHED packs read-only with an explicit reason', () => {
     expect(SRC).toMatch(/immutableReason/)
-    expect(SRC).toMatch(/Read-only surface registry/)
+    expect(SRC).toMatch(/readOnly/)
     expect(SRC).toMatch(/publicationState !== 'DRAFT'/)
-    expect(SRC).toMatch(/Save surface to draft/)
+    expect(DETAIL).toMatch(/Save surface to draft/)
   })
 
   it('edits surface fields and persists via draft save', () => {

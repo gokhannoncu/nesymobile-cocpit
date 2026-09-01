@@ -160,7 +160,7 @@ export function RunHistoryHeader({
         </StatGrid>
       </HeroCallout>
 
-      <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
+      <div className="rounded-[8px] border border-border bg-card p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -172,7 +172,7 @@ export function RunHistoryHeader({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search runs, workflows, or devices…"
-              className="h-10 w-full rounded-lg border border-border/70 bg-background py-2 pl-9 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
+              className="h-10 w-full rounded-[8px] border border-border/70 bg-background py-2 pl-9 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
               type="search"
               autoComplete="off"
               spellCheck={false}
@@ -205,7 +205,7 @@ export function RunHistoryHeader({
               onChange={(event) =>
                 onSortChange(event.target.value as 'created-desc' | 'created-asc')
               }
-              className="h-10 w-full appearance-none rounded-lg border border-border/70 bg-background px-3.5 pr-9 text-sm font-medium text-foreground outline-none transition hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
+              className="h-10 w-full appearance-none rounded-[8px] border border-border/70 bg-background px-3.5 pr-9 text-sm font-medium text-foreground outline-none transition hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
             >
               <option value="created-desc">Newest first</option>
               <option value="created-asc">Oldest first</option>
@@ -223,7 +223,7 @@ export function RunHistoryHeader({
               type="button"
               variant="outline"
               size="icon"
-              className="size-10 shrink-0"
+              className="size-10 shrink-0 rounded-[8px]"
               onClick={onRefresh}
               aria-label="Refresh run history"
             >

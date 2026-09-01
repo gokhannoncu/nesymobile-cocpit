@@ -1,61 +1,129 @@
-import { fetchVerdictTestCampaign } from '@/lib/verdict-runtime/client'
-import { CampaignMatrix } from '@/components/automation/test-campaign/CampaignMatrix'
-import { ReleaseGatePolicy } from '@/components/automation/test-campaign/ReleaseGatePolicy'
-import { CampaignTypeBadge } from '@/components/automation/test-campaign/CampaignTypeBadge'
+import Link from 'next/link'
+import { AlertCircle, CalendarRange, ChevronLeft } from 'lucide-react'
+import {
+  fetchVerdictDomainPack,
+  fetchVerdictTestCampaign,
+  fetchVerdictTestCampaigns,
+  fetchVerdictTestProfiles,
+} from '@/lib/verdict-runtime/client'
+import { TestCampaignDetailView } from '@/components/automation/test-campaign-detail/TestCampaignDetailView'
+import { ProductPage } from '@/components/product'
+import { Button } from '@nesy/metronic/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
+import {
+  buildProfileSequence,
+  countCampaignCellResults,
+  findTestCampaignDefinition,
+  parseCampaignCells,
+  profileCatalogByKey,
+  resolvePackFromProfiles,
+} from '@/lib/verdict-runtime/test-campaign-detail'
 
-export default async function TestCampaignDetailPage(props: { params: Promise<{ campaignId: string }> }) {
-  const params = await props.params;
-  const { campaignId } = params;
-  
-  let campaign = null
+export default async function TestCampaignDetailPage(props: {
+  params: Promise<{ campaignId: string }>
+}) {
+  const { campaignId } = await props.params
+  const decoded = decodeURIComponent(campaignId)
+
+  let campaign
   let loadError: string | null = null
   try {
-    campaign = await fetchVerdictTestCampaign(campaignId)
-  } catch (err) {
-    loadError = err instanceof Error ? err.message : 'Campaign could not be loaded'
+    campaign = await fetchVerdictTestCampaign(decoded)
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : 'Campaign could not be loaded'
   }
 
   if (!campaign) {
     return (
-      <div className="p-8 max-w-6xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Campaign: {campaignId}</h1>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-          Campaign read model unavailable. {loadError}
+      <ProductPage path="/automation/test-campaigns" hideToolbar>
+        <div className="flex flex-col items-center justify-center rounded-[8px] border border-dashed border-border bg-card px-6 py-16 text-center">
+          <CalendarRange className="mb-4 size-12 text-muted-foreground" />
+          <h1 className="text-lg font-semibold text-foreground">Campaign unavailable</h1>
+          <p className="mt-2 max-w-md font-mono text-sm text-muted-foreground">{decoded}</p>
+          {loadError ? (
+            <p className="mt-2 max-w-md text-xs text-muted-foreground">{loadError}</p>
+          ) : null}
+          <Button variant="outline" size="sm" className="mt-4 gap-2 rounded-[8px]" asChild>
+            <Link href="/automation/test-campaigns">
+              <ChevronLeft className="size-4" />
+              Back to catalog
+            </Link>
+          </Button>
         </div>
-      </div>
+      </ProductPage>
     )
   }
-  const passCount = campaign.cells.filter((cell) => String(cell.result ?? cell.status) === 'PASS').length
-  const failCount = campaign.cells.filter((cell) => String(cell.result ?? cell.status) === 'FAIL').length
-  const blockedCount = campaign.cells.filter((cell) => String(cell.result ?? cell.status) === 'BLOCKED').length
-  const pendingCount = campaign.cells.length - passCount - failCount - blockedCount
+
+  let catalogItem = null
+  try {
+    const catalog = await fetchVerdictTestCampaigns()
+    catalogItem = catalog.items.find((item) => item.campaignId === decoded) ?? null
+  } catch {
+    // Catalog enrichment is optional.
+  }
+
+  const cells = parseCampaignCells(campaign.cells)
+  const stats = countCampaignCellResults(cells)
+  const profileKeys = [...new Set(cells.map((cell) => cell.profileKey))]
+
+  let packDetail = null
+  let packLoadError: string | null = null
+  let profileCatalog = profileCatalogByKey([])
+  let packKey: string | null = null
+  let packVersion: string | null = null
+
+  try {
+    const profiles = await fetchVerdictTestProfiles()
+    profileCatalog = profileCatalogByKey(profiles.items)
+    const packRef = resolvePackFromProfiles(profileKeys, profiles.items)
+    if (packRef) {
+      packKey = packRef.packKey
+      packVersion = packRef.packVersion
+      packDetail = await fetchVerdictDomainPack(packRef.packKey, packRef.packVersion)
+    }
+  } catch (error) {
+    packLoadError = error instanceof Error ? error.message : 'Pack detail unavailable'
+  }
+
+  const campaignKey = campaign.campaignKey ?? catalogItem?.campaignKey ?? 'UNKNOWN'
+  const definition = packDetail
+    ? findTestCampaignDefinition(packDetail.testCampaigns ?? [], campaignKey)
+    : null
+
+  const profileSequence = buildProfileSequence(definition, cells, profileCatalog)
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Campaign: {campaign.campaignId}</h1>
-          <CampaignTypeBadge type={String((campaign as { type?: string }).type ?? 'NIGHTLY')} />
-        </div>
-      </div>
+    <ProductPage path="/automation/test-campaigns" hideToolbar>
+      {packLoadError ? (
+        <Alert className="mb-5">
+          <AlertCircle className="size-4" />
+          <AlertTitle>Pack contract partially unavailable</AlertTitle>
+          <AlertDescription>
+            Runtime campaign results are shown, but the published pack contract could not be loaded (
+            {packLoadError}).
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
-      <ReleaseGatePolicy failedCells={campaign.failedCells || []} />
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <Summary label="PASS" value={passCount} />
-        <Summary label="FAIL" value={failCount} />
-        <Summary label="BLOCKED" value={blockedCount} />
-        <Summary label="PENDING" value={pendingCount} />
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Execution Matrix</h3>
-        <CampaignMatrix cells={campaign.cells || []} />
-      </div>
-    </div>
+      <TestCampaignDetailView
+        campaign={{
+          campaignId: campaign.campaignId,
+          campaignKey,
+          campaignVersion: campaign.campaignVersion ?? catalogItem?.campaignVersion ?? 1,
+          status: campaign.status ?? catalogItem?.status ?? 'UNKNOWN',
+          releaseGateResult:
+            campaign.releaseGateResult ?? catalogItem?.releaseGateResult ?? 'NOT_EVALUATED',
+          failedCells: campaign.failedCells ?? [],
+          partial: campaign.partial,
+        }}
+        catalogItem={catalogItem}
+        definition={definition}
+        packKey={packKey}
+        packVersion={packVersion}
+        cells={cells}
+        stats={stats}
+        profileSequence={profileSequence}
+      />
+    </ProductPage>
   )
-}
-
-function Summary({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-xl border bg-card p-4"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-bold">{value}</div></div>
 }

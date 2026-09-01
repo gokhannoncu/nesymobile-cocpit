@@ -1,112 +1,110 @@
-import { fetchVerdictTestProfiles } from '@/lib/verdict-runtime/client'
-import { PreviewGateWarning } from '@/components/automation/test-profile/PreviewGateWarning'
-import { TestProfileKindBadge } from '@/components/automation/test-profile/TestProfileKindBadge'
+import Link from 'next/link'
+import { AlertCircle, ChevronLeft, FlaskConical } from 'lucide-react'
+import {
+  fetchVerdictDomainPack,
+  fetchVerdictTestCampaigns,
+  fetchVerdictTestProfiles,
+} from '@/lib/verdict-runtime/client'
+import { TestProfileDetailView } from '@/components/automation/test-profile-detail/TestProfileDetailView'
+import { ProductPage } from '@/components/product'
+import { Button } from '@nesy/metronic/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
-import { Badge } from '@nesy/metronic/components/ui/badge'
+import {
+  catalogCampaignIdByKey,
+  findCampaignMembershipsForProfile,
+  findTestProfileDefinition,
+  resolveLaunchProfileLabel,
+} from '@/lib/verdict-runtime/test-profile-detail'
 
-/**
- * The runtime exposes a profile catalog but no per-profile detail endpoint yet,
- * so the detail view selects its profile from the catalog response. Nothing is
- * synthesised: an unknown id renders as not-found rather than as a placeholder
- * profile.
- */
-export default async function TestProfileDetailPage(props: { params: Promise<{ profileId: string }> }) {
+export default async function TestProfileDetailPage(props: {
+  params: Promise<{ profileId: string }>
+}) {
   const { profileId } = await props.params
+  const decoded = decodeURIComponent(profileId)
 
   let catalog
   try {
     catalog = await fetchVerdictTestProfiles()
-  } catch {
+  } catch (error) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <ProductPage path="/automation/test-profiles" hideToolbar>
         <Alert variant="destructive">
           <AlertTitle>Profile catalog unavailable</AlertTitle>
           <AlertDescription>
-            The Verdict runtime did not return the test profile catalog, so
-            profile <span className="font-mono">{profileId}</span> cannot be shown.
+            The Verdict runtime did not return the test profile catalog.
+            {error instanceof Error ? ` ${error.message}` : null}
           </AlertDescription>
         </Alert>
-      </div>
+      </ProductPage>
     )
   }
 
-  const profile = catalog.items.find(
-    (item) => item.profileKey === profileId,
-  ) as
-    | {
-        profileKey: string
-        version?: string
-        kind?: string
-        releaseGate?: boolean
-        owner?: string
-        lastResult?: string
-        blockedReason?: string | null
-      }
-    | undefined
-
-  if (!profile) {
+  const catalogItem = catalog.items.find((item) => item.profileKey === decoded)
+  if (!catalogItem) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <Alert>
-          <AlertTitle>Profile not found</AlertTitle>
-          <AlertDescription>
-            No profile with key <span className="font-mono">{profileId}</span> exists in the catalog.
-          </AlertDescription>
-        </Alert>
-      </div>
+      <ProductPage path="/automation/test-profiles" hideToolbar>
+        <div className="flex flex-col items-center justify-center rounded-[8px] border border-dashed border-border bg-card px-6 py-16 text-center">
+          <FlaskConical className="mb-4 size-12 text-muted-foreground" />
+          <h1 className="text-lg font-semibold text-foreground">Profile not found</h1>
+          <p className="mt-2 max-w-md font-mono text-sm text-muted-foreground">{decoded}</p>
+          <Button variant="outline" size="sm" className="mt-4 gap-2 rounded-[8px]" asChild>
+            <Link href="/automation/test-profiles">
+              <ChevronLeft className="size-4" />
+              Back to catalog
+            </Link>
+          </Button>
+        </div>
+      </ProductPage>
     )
   }
 
-  const isPreview = profile.releaseGate === false
+  let packDetail = null
+  let packLoadError: string | null = null
+  try {
+    packDetail = await fetchVerdictDomainPack(catalogItem.packKey, catalogItem.packVersion)
+  } catch (error) {
+    packLoadError = error instanceof Error ? error.message : 'Pack detail unavailable'
+  }
+
+  const definition = packDetail
+    ? findTestProfileDefinition(packDetail.testProfiles, decoded)
+    : null
+
+  let campaigns = catalogCampaignIdByKey([])
+  try {
+    const campaignCatalog = await fetchVerdictTestCampaigns()
+    campaigns = catalogCampaignIdByKey(campaignCatalog.items)
+  } catch {
+    // Campaign catalog is optional enrichment for detail links.
+  }
+
+  const campaignMemberships = packDetail
+    ? findCampaignMembershipsForProfile(packDetail.testCampaigns ?? [], decoded, campaigns)
+    : []
+
+  const launchProfileLabel = packDetail && definition
+    ? resolveLaunchProfileLabel(packDetail.launchProfiles, definition.launchProfileRef)
+    : definition?.launchProfileRef ?? '—'
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">{profile.profileKey}</h1>
-          {profile.kind && <TestProfileKindBadge kind={profile.kind} />}
-          {isPreview && <Badge variant="secondary">PREVIEW</Badge>}
-        </div>
-        <p className="text-muted-foreground font-mono text-sm mt-1">
-          {profile.version ? `v${profile.version}` : 'version not reported'}
-        </p>
-      </div>
-
-      {isPreview && <PreviewGateWarning releaseGate={profile.releaseGate ?? false} />}
-
-      {profile.blockedReason && (
-        <Alert variant="destructive">
-          <AlertTitle>Blocked</AlertTitle>
-          <AlertDescription>{profile.blockedReason}</AlertDescription>
+    <ProductPage path="/automation/test-profiles" hideToolbar>
+      {packLoadError ? (
+        <Alert className="mb-5">
+          <AlertCircle className="size-4" />
+          <AlertTitle>Pack contract partially unavailable</AlertTitle>
+          <AlertDescription>
+            Runtime catalog metadata is shown, but the published pack contract could not be loaded (
+            {packLoadError}).
+          </AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
-      <div className="grid grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h3 className="font-semibold border-b pb-2">Configuration</h3>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Release Gate</dt>
-              <dd>{profile.releaseGate ? 'Yes' : 'No'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Owner</dt>
-              <dd>{profile.owner ?? 'not reported'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Last Result</dt>
-              <dd>{profile.lastResult ?? 'NOT_RUN'}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="font-semibold border-b pb-2">Device Matrix</h3>
-          <p className="text-sm text-muted-foreground">
-            The catalog response does not carry device constraints; open a campaign to see the executed matrix.
-          </p>
-        </div>
-      </div>
-    </div>
+      <TestProfileDetailView
+        catalogItem={catalogItem}
+        definition={definition}
+        launchProfileLabel={launchProfileLabel}
+        campaigns={campaignMemberships}
+      />
+    </ProductPage>
   )
 }

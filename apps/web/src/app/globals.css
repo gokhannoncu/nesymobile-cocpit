@@ -173,30 +173,6 @@ html {
   scroll-behavior: smooth;
 }
 
-@keyframes route-progress {
-  0% {
-    transform: translateX(-110%);
-  }
-  55% {
-    transform: translateX(120%);
-  }
-  100% {
-    transform: translateX(260%);
-  }
-}
-
-.route-progress-bar {
-  animation: route-progress 1.15s ease-in-out infinite;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .route-progress-bar {
-    animation: none;
-    width: 100%;
-  }
-}
-
 @utility container {
   @apply mx-auto max-w-none px-4 lg:px-5;
 
@@ -223,14 +199,12 @@ html {
     margin-inline-start: var(--sidebar-collapsed-width);
   }
 
-  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='layout-header'],
-  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='navigation-feedback'] {
+  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='layout-header'] {
     /* Beat the leftover `start-0` utility when Turbopack drops `lg:start-*`. */
     inset-inline-start: var(--sidebar-width) !important;
   }
 
-  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='layout-header'],
-  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='navigation-feedback'] {
+  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='layout-header'] {
     inset-inline-start: var(--sidebar-collapsed-width) !important;
   }
 }

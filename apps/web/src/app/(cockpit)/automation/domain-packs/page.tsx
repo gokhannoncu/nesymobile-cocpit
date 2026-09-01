@@ -11,7 +11,7 @@ import type {
   DomainPackSummary,
 } from '@/lib/verdict-runtime/types'
 import {
-  formatPackPublishedAt,
+  formatPackPublishedAtParts,
   groupDomainPackCatalog,
   truncateDigest,
 } from '@/lib/verdict-runtime/domain-pack-catalog'
@@ -69,7 +69,7 @@ function DomainPackGroupCard({
           <tbody>
             {visibleVersions.map((version, index) => {
               const isLatest = index === 0
-              const publishedLabel = formatPackPublishedAt(version.publishedAt)
+              const publishedAt = formatPackPublishedAtParts(version.publishedAt)
 
               return (
                 <tr
@@ -101,11 +101,19 @@ function DomainPackGroupCard({
                   <td className={cn(tdClass, 'tabular-nums text-muted-foreground')}>
                     {version.revision}
                   </td>
-                  <td
-                    className={cn(tdClass, 'whitespace-nowrap tabular-nums text-foreground')}
-                    title={version.publishedAt}
-                  >
-                    {publishedLabel ?? '—'}
+                  <td className={tdClass} title={version.publishedAt}>
+                    {publishedAt ? (
+                      <>
+                        <p className="text-xs font-medium tabular-nums leading-tight text-foreground">
+                          {publishedAt.date}
+                        </p>
+                        <p className="mt-0.5 text-[10px] tabular-nums leading-none text-muted-foreground">
+                          {publishedAt.time}
+                        </p>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td className={cn('hidden lg:table-cell', tdClass)}>
                     <code

@@ -34,12 +34,23 @@ function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-export function formatPackPublishedAt(value?: string | Date | null): string | null {
+export function formatPackPublishedAtParts(
+  value?: string | Date | null,
+): { date: string; time: string } | null {
   if (value === undefined || value === null || value === '') return null
   const ms = value instanceof Date ? value.getTime() : Date.parse(String(value))
   if (!Number.isFinite(ms) || ms < 86_400_000) return null
   const date = new Date(ms)
-  return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  return {
+    date: `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()}`,
+    time: `${pad2(date.getHours())}:${pad2(date.getMinutes())}`,
+  }
+}
+
+export function formatPackPublishedAt(value?: string | Date | null): string | null {
+  const parts = formatPackPublishedAtParts(value)
+  if (!parts) return null
+  return `${parts.date} ${parts.time}`
 }
 
 export function truncateDigest(digest: string, head = 10, tail = 8): string {

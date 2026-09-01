@@ -13,8 +13,14 @@ import {
   isCoreCapabilityLayer,
   isDomainCapabilityLayer,
 } from '@/lib/verdict-runtime/domain-pack-detail'
+import {
+  capabilityLayerBadgeClass,
+  capabilityLayerLabel,
+  capabilityProviderBadgeClass,
+  capabilityProviderLabel,
+  capabilityTraitBadgeClass,
+} from '@/lib/verdict-runtime/capability-registry'
 import { cn } from '@nesy/metronic/lib/utils'
-import { type Tone, toneIconBox, toneText } from '@/components/product/tones'
 
 export type CapabilityRegistryRow = {
   packKey: string
@@ -30,71 +36,27 @@ export type CapabilityRegistryRow = {
 }
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-1.5', cellGrid)
-const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
-
-const PROVIDER_TONE: Record<string, Tone> = {
-  BRIDGE: 'blue',
-  APP_ADAPTER: 'purple',
-  BACKOFFICE_ADAPTER: 'orange',
-}
+const thClass = cn('px-2 py-1.5', cellGrid)
+const tdClass = cn('px-2 py-1.5 align-middle', cellGrid)
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
 }
 
-function layerTone(layer: string): Tone {
-  if (isCoreCapabilityLayer(layer)) return 'teal'
-  if (isDomainCapabilityLayer(layer)) return 'amber'
-  return 'gray'
-}
-
-const registryBadgeClass =
-  'inline-flex rounded-[4px] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide leading-none'
-
 function LayerBadge({ layer }: { layer: string }) {
-  const tone = layerTone(layer)
-  const short = layer.replace(/^verdict\./, '').replace(/^domain\./, 'domain.')
-
   return (
-    <span
-      className={cn(
-        registryBadgeClass,
-        'max-w-[9rem] truncate',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-      title={layer}
-    >
-      {short}
+    <span className={cn(capabilityLayerBadgeClass(layer), 'max-w-[9rem] truncate')} title={layer}>
+      {capabilityLayerLabel(layer)}
     </span>
   )
 }
 
 function ProviderBadge({ provider }: { provider: string }) {
-  const tone = PROVIDER_TONE[provider] ?? 'gray'
-
-  return (
-    <span
-      className={cn(registryBadgeClass, toneIconBox[tone], toneText[tone])}
-    >
-      {provider.replace(/_/g, ' ')}
-    </span>
-  )
+  return <span className={capabilityProviderBadgeClass(provider)}>{capabilityProviderLabel(provider)}</span>
 }
 
-function TraitBadge({
-  label,
-  tone = 'gray',
-}: {
-  label: string
-  tone?: Tone
-}) {
-  return (
-    <span className={cn(registryBadgeClass, toneIconBox[tone], toneText[tone])}>
-      {label}
-    </span>
-  )
+function TraitBadge({ trait, label }: { trait: 'runtime' | 'automation'; label: string }) {
+  return <span className={capabilityTraitBadgeClass(trait)}>{label}</span>
 }
 
 function CapabilityRow({ row, index }: { row: CapabilityRegistryRow; index: number }) {
@@ -116,19 +78,19 @@ function CapabilityRow({ row, index }: { row: CapabilityRegistryRow; index: numb
         <ProviderBadge provider={row.provider} />
       </td>
       <td className={tdClass}>
-        <div className="text-xs font-semibold leading-tight text-foreground">{row.title}</div>
+        <div className="text-[11px] font-semibold leading-tight text-foreground">{row.title}</div>
         {row.description ? (
-          <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground">
+          <p className="mt-0.5 line-clamp-1 text-[9px] leading-snug text-muted-foreground">
             {row.description}
           </p>
         ) : null}
-        <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground md:hidden" title={row.key}>
+        <p className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground md:hidden" title={row.key}>
           {row.key}
         </p>
       </td>
       <td className={cn('hidden lg:table-cell', tdClass)}>
         <code
-          className="block max-w-xs truncate rounded-md border border-border bg-muted/40 px-1 py-px font-mono text-[10px] text-foreground"
+          className="block max-w-xs truncate rounded-[4px] border border-border/70 bg-muted/30 px-1 py-px font-mono text-[9px] font-medium text-muted-foreground"
           title={row.key}
         >
           {row.key}
@@ -136,10 +98,10 @@ function CapabilityRow({ row, index }: { row: CapabilityRegistryRow; index: numb
       </td>
       <td className={cn('hidden md:table-cell', tdClass)}>
         <div className="flex flex-wrap gap-1">
-          {row.runtimeDetected ? <TraitBadge label="Runtime" tone="blue" /> : null}
-          {row.automationOnly ? <TraitBadge label="Auto-only" tone="amber" /> : null}
+          {row.runtimeDetected ? <TraitBadge trait="runtime" label="Runtime" /> : null}
+          {row.automationOnly ? <TraitBadge trait="automation" label="Auto-only" /> : null}
           {!row.runtimeDetected && !row.automationOnly ? (
-            <span className="text-[10px] text-muted-foreground">—</span>
+            <span className="text-[9px] text-muted-foreground">—</span>
           ) : null}
         </div>
       </td>
@@ -148,7 +110,7 @@ function CapabilityRow({ row, index }: { row: CapabilityRegistryRow; index: numb
           <Link
             href={href}
             onClick={(event) => event.stopPropagation()}
-            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[10px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
           >
             Open
             <ChevronRight className="size-3 shrink-0" />
@@ -180,12 +142,12 @@ function PackGroupHeader({
   showPackTitle: boolean
 }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-border bg-muted/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-1.5 border-b border-border bg-muted/10 px-2.5 py-1.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">
+        <p className="truncate text-[13px] font-semibold text-foreground">
           {showPackTitle ? packKey : 'Capability catalog'}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           {showPackTitle ? (
             <>
               v{version} · {rowCount} contract{rowCount === 1 ? '' : 's'} · {formatCapabilitySummary(rows)}
@@ -199,7 +161,7 @@ function PackGroupHeader({
       </div>
       <Link
         href={packDetailHref(packKey, version)}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-nesy-ink transition hover:underline"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-semibold text-nesy-ink transition hover:underline"
       >
         Open pack
         <ChevronRight className="size-3.5" />
@@ -234,9 +196,9 @@ function CapabilityPackGroupCard({
       />
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-xs">
+        <table className="min-w-full border-collapse text-[11px]">
           <thead>
-            <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="bg-muted/40 text-left text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className={cn('w-28', thClass)}>Layer</th>
               <th className={cn('w-28', thClass)}>Provider</th>
               <th className={cn('min-w-[220px]', thClass)}>Capability</th>
@@ -254,11 +216,11 @@ function CapabilityPackGroupCard({
       </div>
 
       {hiddenCount > 0 ? (
-        <div className="border-t border-border px-3 py-2">
+        <div className="border-t border-border px-2.5 py-1.5">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
-            className="cursor-pointer text-sm font-semibold text-nesy-ink underline-offset-2 hover:underline"
+            className="cursor-pointer text-[11px] font-semibold text-nesy-ink underline-offset-2 hover:underline"
           >
             {expanded
               ? 'Show fewer capabilities'

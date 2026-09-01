@@ -18,7 +18,7 @@ import {
   type TestProfileKind,
 } from '@/lib/verdict-runtime/test-profile-registry'
 import { cn } from '@nesy/metronic/lib/utils'
-import { type Tone, toneIconBox, toneText } from '@/components/product/tones'
+import { toneIconBox, toneText } from '@/components/product/tones'
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
 const thClass = cn('px-2.5 py-1.5', cellGrid)
@@ -28,6 +28,9 @@ function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
 }
 
+const profileTraitBadgeClass =
+  'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide leading-none'
+
 function ResultBadge({
   item,
 }: {
@@ -36,11 +39,7 @@ function ResultBadge({
   if (testProfileIsBlocked(item)) {
     return (
       <span
-        className={cn(
-          'inline-flex rounded-[8px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-          toneIconBox.orange,
-          toneText.orange,
-        )}
+        className={cn(profileTraitBadgeClass, toneIconBox.amber, toneText.amber)}
         title={item.blockedReason ?? undefined}
       >
         Blocked
@@ -51,13 +50,7 @@ function ResultBadge({
   const tone = testProfileResultTone(item.lastResult)
 
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-[8px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
+    <span className={cn(profileTraitBadgeClass, toneIconBox[tone], toneText[tone])}>
       {item.lastResult}
     </span>
   )
@@ -69,13 +62,7 @@ function GateBadge({ releaseGate }: { releaseGate: boolean }) {
   }
 
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-[8px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox.teal,
-        toneText.teal,
-      )}
-    >
+    <span className={cn(profileTraitBadgeClass, toneIconBox.teal, toneText.teal)}>
       Gate
     </span>
   )

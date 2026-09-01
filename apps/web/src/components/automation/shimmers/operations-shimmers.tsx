@@ -76,7 +76,7 @@ export function ExecutionQueuePageShimmer() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-border/80 bg-card p-3 shadow-xs" aria-hidden>
+        <div className="rounded-[8px] border border-border bg-card p-3" aria-hidden>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <ShimmerBlock className="h-10 flex-1 rounded-lg" />
             <ShimmerBlock className="h-10 w-48 shrink-0 rounded-lg" />
@@ -85,19 +85,19 @@ export function ExecutionQueuePageShimmer() {
         </div>
       </div>
 
-      <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs" aria-hidden>
-        <div className="border-b border-border bg-muted/15 px-3 py-2">
+      <article className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="border-b border-border bg-muted/10 px-3 py-2.5 sm:px-4">
           <ShimmerBlock className="h-3.5 w-36" />
           <ShimmerBlock className="mt-1.5 h-3 w-52" />
         </div>
         <div className="overflow-x-auto border-t border-border p-0">
           <table className="min-w-full border-collapse text-xs">
             <thead>
-              <tr className="bg-muted/25">
+              <tr className="bg-muted/40">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <th
                     key={index}
-                    className="border-b border-r border-border px-3 py-2 text-left last:border-r-0"
+                    className="border-b border-r border-border px-2.5 py-2 text-left last:border-r-0"
                   >
                     <ShimmerBlock className="h-2.5 w-14" />
                   </th>
@@ -106,18 +106,18 @@ export function ExecutionQueuePageShimmer() {
             </thead>
             <tbody>
               <tr className="bg-muted/50">
-                <td className="border-b border-r border-border px-3 py-2 last:border-r-0">
+                <td className="border-b border-r border-border px-2.5 py-2 last:border-r-0">
                   <div className="flex items-center gap-2">
-                    <ShimmerBlock className="size-7 shrink-0 rounded-lg" />
+                    <ShimmerBlock className="size-7 shrink-0 rounded-[8px]" />
                     <div className="min-w-0 flex-1">
                       <ShimmerBlock className="h-3.5 w-40" />
                     </div>
                   </div>
                 </td>
-                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-6 w-20 rounded-lg" /></td>
-                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-6 w-16 rounded-lg" /></td>
-                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-3.5 w-24" /></td>
-                <td className="border-b border-border px-3 py-2"><ShimmerBlock className="ms-auto h-3.5 w-12" /></td>
+                <td className="border-b border-r border-border px-2.5 py-2"><ShimmerBlock className="h-6 w-20 rounded-[4px]" /></td>
+                <td className="border-b border-r border-border px-2.5 py-2"><ShimmerBlock className="h-6 w-16 rounded-[4px]" /></td>
+                <td className="border-b border-r border-border px-2.5 py-2"><ShimmerBlock className="h-3.5 w-24" /></td>
+                <td className="border-b border-border px-2.5 py-2"><ShimmerBlock className="ms-auto h-3.5 w-12" /></td>
               </tr>
             </tbody>
           </table>

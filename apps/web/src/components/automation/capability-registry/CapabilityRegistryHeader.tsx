@@ -179,7 +179,7 @@ export function CapabilityRegistryHeader({
             label="Core layer"
             value={coreCount}
             hint="verdict.core platform seams"
-            tone="teal"
+            tone="nesy"
             active={activeLayerFilter === 'core'}
             onClick={() =>
               onLayerFilterChange(activeLayerFilter === 'core' ? 'all' : 'core')
@@ -190,7 +190,7 @@ export function CapabilityRegistryHeader({
             label="Domain layer"
             value={domainCount}
             hint="domain.* pack-specific seams"
-            tone="amber"
+            tone="nesy"
             active={activeLayerFilter === 'domain'}
             onClick={() =>
               onLayerFilterChange(activeLayerFilter === 'domain' ? 'all' : 'domain')
@@ -205,7 +205,7 @@ export function CapabilityRegistryHeader({
                 ? `${automationCount} automation-only`
                 : 'Probe-backed capabilities'
             }
-            tone="blue"
+            tone="gray"
             active={activeTraitFilter === 'runtime'}
             onClick={() =>
               onTraitFilterChange(activeTraitFilter === 'runtime' ? 'all' : 'runtime')
