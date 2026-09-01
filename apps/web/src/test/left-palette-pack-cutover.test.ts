@@ -33,7 +33,7 @@ describe('Left palette pack cutover (6D.1f)', () => {
   })
 
   it('blocks action authoring instead of falling back to the old palette', () => {
-    expect(EDITOR).toMatch(/Domain Pack palette blocked/)
+    expect(EDITOR).toMatch(/Palette unavailable/)
     expect(EDITOR).toMatch(/mode: 'blocked'/)
     expect(EDITOR).not.toMatch(/legacy palette/)
     expect(EDITOR).not.toMatch(/mode: 'legacy'/)

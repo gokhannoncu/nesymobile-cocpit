@@ -59,8 +59,13 @@ describe('pack palette capability gating', () => {
     }
     const groups = buildPackPaletteGroups(catalog)
     expect(groups).toHaveLength(1)
-    expect(groups[0]?.title).toBe('nesy.courier.mobile')
+    expect(groups[0]?.title).toBe('Nesy Mobile')
+    expect(groups[0]?.detail).toBe('nesy.courier.mobile')
     expect(groups[0]?.subsections?.map((sub) => sub.title)).toEqual([
+      'Login',
+      'Route stop list',
+    ])
+    expect(groups[0]?.subsections?.map((sub) => sub.detail)).toEqual([
       'nesy.auth.login',
       'nesy.route.stop-list',
     ])

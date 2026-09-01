@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react'
 import {
   Link2,
-  Loader2,
   AlertTriangle,
   RefreshCw,
   ShieldAlert,
   CheckCircle2,
 } from 'lucide-react'
+import { cn } from '@nesy/metronic/lib/utils'
+import { ShimmerBlock } from '@/components/automation/automation-list-page-shimmer'
 import {
   fetchVerdictDomainPacks,
   fetchVerdictEntityBindings,
@@ -25,6 +26,90 @@ type LoadState =
   | { status: 'error'; message: string }
   | { status: 'empty'; blockedReason?: string; pack?: DomainPackSummary }
   | { status: 'ready'; pack: DomainPackSummary; catalog: EntityBindingCatalogApi }
+
+function EntityBindingEditorShimmer() {
+  return (
+    <div className="space-y-3 p-3" aria-hidden>
+      <div className="flex items-center justify-between gap-2">
+        <ShimmerBlock className="h-4 w-28" />
+        <ShimmerBlock className="h-7 w-16 rounded-md" />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <ShimmerBlock className="h-5 w-24 rounded-md" />
+        <ShimmerBlock className="h-5 w-16 rounded-md" />
+        <ShimmerBlock className="h-5 w-16 rounded-md" />
+      </div>
+      <ShimmerBlock className="h-9 w-full rounded-lg" />
+      <div className="space-y-2 rounded-lg border border-slate-200/70 p-2.5">
+        <ShimmerBlock className="h-3 w-24" />
+        <ShimmerBlock className="h-3.5 w-full" />
+        <ShimmerBlock className="h-3 w-28" />
+        <ShimmerBlock className="h-3.5 w-[88%]" />
+      </div>
+      <div className="space-y-2">
+        <ShimmerBlock className="h-16 w-full rounded-lg" />
+        <ShimmerBlock className="h-16 w-full rounded-lg" />
+      </div>
+    </div>
+  )
+}
+
+function EntityField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] font-semibold text-slate-500">{label}</dt>
+      <dd className="mt-0.5 break-all font-mono text-[11px] leading-snug text-slate-800">{value}</dd>
+    </div>
+  )
+}
+
+function BindingEvidenceCard({ binding }: { binding: EntityBindingCatalogItemApi }) {
+  return (
+    <article className="rounded-lg border border-slate-200/90 bg-slate-50/50 p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold leading-snug text-slate-800">{binding.targetDisplayName}</p>
+          <p className="mt-0.5 break-all font-mono text-[10px] leading-snug text-slate-500">
+            {binding.targetRef}
+          </p>
+        </div>
+        {binding.entityKnown ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+            <CheckCircle2 className="size-3" aria-hidden />
+            Known
+          </span>
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+            <AlertTriangle className="size-3" aria-hidden />
+            Unknown
+          </span>
+        )}
+      </div>
+
+      {binding.projectedPaths.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {binding.projectedPaths.map((path) => (
+            <span
+              key={path}
+              className="rounded border border-slate-200/90 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700"
+            >
+              {path}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-[10px] text-slate-500">No projected paths</p>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+        <span className="font-mono">{binding.entityTypeRef}</span>
+        {binding.redactProjection ? (
+          <span className="rounded bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">Redacted</span>
+        ) : null}
+      </div>
+    </article>
+  )
+}
 
 export function EntityBindingEditor() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
@@ -98,101 +183,97 @@ export function EntityBindingEditor() {
       : 0
 
   return (
-    <div className="p-4 bg-white border rounded-lg shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Link2 size={16} className="text-purple-600" />
-          <h3 className="font-semibold text-sm">Entity Bindings</h3>
+    <div className="p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link2 className="size-4 shrink-0 text-violet-600" aria-hidden />
+          <h3 className="truncate text-sm font-semibold text-slate-900">Entity Bindings</h3>
         </div>
         <button
           type="button"
           onClick={() => setReloadToken((n) => n + 1)}
-          className="flex items-center gap-1 text-[10px] bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-medium"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200/90 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-100 disabled:opacity-50"
           disabled={state.status === 'loading'}
         >
-          <RefreshCw size={12} className={state.status === 'loading' ? 'animate-spin' : ''} />
+          <RefreshCw className={cn('size-3', state.status === 'loading' && 'animate-spin')} />
           Refresh
         </button>
       </div>
 
-      {state.status === 'loading' && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center">
-          <Loader2 size={14} className="animate-spin" />
-          Loading entity bindings…
-        </div>
-      )}
+      {state.status === 'loading' ? (
+        <EntityBindingEditorShimmer />
+      ) : null}
 
-      {state.status === 'error' && (
-        <div className="flex gap-2 text-xs text-red-800 bg-red-50 border border-red-200 rounded p-3">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div>
-            <div className="font-medium">Entity bindings unavailable</div>
-            <div className="mt-0.5 text-red-700">{state.message}</div>
+      {state.status === 'error' ? (
+        <div className="flex gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-semibold">Entity bindings unavailable</p>
+            <p className="mt-0.5 leading-snug text-rose-800">{state.message}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {state.status === 'empty' && (
-        <div className="flex gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded p-3">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div>
-            <div className="font-medium">No entity bindings</div>
-            <div className="mt-0.5">
-              {state.blockedReason ?? 'published pack has no entity registry entries'}
-            </div>
-            {state.pack && (
-              <div className="mt-1 font-mono text-[10px] text-amber-800">
+      {state.status === 'empty' ? (
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-semibold">No entity bindings</p>
+            <p className="mt-0.5 leading-snug">{state.blockedReason ?? 'published pack has no entity registry entries'}</p>
+            {state.pack ? (
+              <p className="mt-1 break-all font-mono text-[10px] text-amber-900/90">
                 {state.pack.packKey}@{state.pack.version}
-              </div>
-            )}
+              </p>
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {state.status === 'ready' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
-            <span className="font-mono">
+      {state.status === 'ready' ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-md border border-slate-200/90 bg-slate-50 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-600">
               {state.pack.packKey}@{state.pack.version}
             </span>
-            <span>·</span>
-            <span>{state.catalog.entities.length} entities</span>
-            <span>·</span>
-            <span>{state.catalog.bindings.length} bindings</span>
-            {state.catalog.partial && (
-              <>
-                <span>·</span>
-                <span className="text-amber-700 font-medium">partial</span>
-              </>
-            )}
+            <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600">
+              {state.catalog.entities.length} entities
+            </span>
+            <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600">
+              {state.catalog.bindings.length} bindings
+            </span>
+            {state.catalog.partial ? (
+              <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                Partial
+              </span>
+            ) : null}
           </div>
 
-          {state.catalog.blockedReason && (
-            <div className="flex gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded p-2">
-              <ShieldAlert size={14} className="shrink-0 mt-0.5" />
-              <span>{state.catalog.blockedReason}</span>
+          {state.catalog.blockedReason ? (
+            <div className="flex gap-2 rounded-lg border border-amber-200/90 bg-amber-50/80 p-2.5 text-xs text-amber-950">
+              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+              <span className="leading-snug">{state.catalog.blockedReason}</span>
             </div>
-          )}
+          ) : null}
 
-          {unknownBindingCount > 0 && (
-            <div className="flex gap-2 text-xs text-red-800 bg-red-50 border border-red-200 rounded p-2">
-              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-              <span>
-                {unknownBindingCount} binding(s) reference an entityTypeRef missing from
-                EntityDefinition registry — not valid evidence.
+          {unknownBindingCount > 0 ? (
+            <div className="flex gap-2 rounded-lg border border-rose-200/90 bg-rose-50/80 p-2.5 text-xs text-rose-900">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <span className="leading-snug">
+                {unknownBindingCount} binding(s) reference an entity type missing from the registry.
               </span>
             </div>
-          )}
+          ) : null}
 
           <div>
-            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
-              EntityDefinition
+            <label htmlFor="entity-binding-select" className="mb-1.5 block text-[11px] font-semibold text-slate-600">
+              Entity
             </label>
             {state.catalog.entities.length === 0 ? (
-              <p className="text-xs text-gray-500">No EntityDefinition entries in pack.</p>
+              <p className="text-xs text-slate-500">No entity definitions in this pack.</p>
             ) : (
               <select
-                className="w-full text-xs border rounded p-1.5 bg-gray-50"
+                id="entity-binding-select"
+                className="w-full rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-800 outline-none transition-[border-color,box-shadow] focus:border-slate-300 focus:ring-2 focus:ring-slate-200/80"
                 value={selectedEntity?.entityType ?? ''}
                 onChange={(e) => setSelectedEntityType(e.target.value)}
               >
@@ -205,94 +286,49 @@ export function EntityBindingEditor() {
             )}
           </div>
 
-          {selectedEntity && (
-            <div className="grid grid-cols-2 gap-2 text-[11px] bg-gray-50 border rounded p-2">
-              <div>
-                <div className="text-[10px] uppercase text-gray-500">businessKeyPath</div>
-                <div className="font-mono break-all">{selectedEntity.businessKeyPath}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase text-gray-500">applicationRef</div>
-                <div className="font-mono break-all">{selectedEntity.applicationRef}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="text-[10px] uppercase text-gray-500">identityPaths</div>
-                <div className="font-mono break-all">
-                  {selectedEntity.identityPaths.length > 0
+          {selectedEntity ? (
+            <dl className="space-y-2.5 rounded-lg border border-slate-200/90 bg-slate-50/60 p-2.5">
+              <EntityField label="Business key path" value={selectedEntity.businessKeyPath} />
+              <EntityField label="Application" value={selectedEntity.applicationRef} />
+              <EntityField
+                label="Identity paths"
+                value={
+                  selectedEntity.identityPaths.length > 0
                     ? selectedEntity.identityPaths.join(', ')
-                    : '—'}
-                </div>
-              </div>
-              <div className="col-span-2">
-                <div className="text-[10px] uppercase text-gray-500">sourceQueryRefs</div>
-                <div className="font-mono break-all">
-                  {selectedEntity.sourceQueryRefs.length > 0
+                    : '—'
+                }
+              />
+              <EntityField
+                label="Source queries"
+                value={
+                  selectedEntity.sourceQueryRefs.length > 0
                     ? selectedEntity.sourceQueryRefs.join(', ')
-                    : '—'}
-                </div>
-              </div>
-            </div>
-          )}
+                    : '—'
+                }
+              />
+            </dl>
+          ) : null}
 
           <div>
-            <div className="text-[10px] font-medium text-gray-500 uppercase mb-1">
-              EntityBindingDefinition evidence
-              {selectedEntity ? ` for ${selectedEntity.entityType}` : ''}
+            <p className="mb-2 text-[11px] font-semibold text-slate-600">
+              Binding evidence
+              {selectedEntity ? (
+                <span className="font-normal text-slate-500"> · {selectedEntity.displayName}</span>
+              ) : null}
+            </p>
+            <div className="space-y-2">
+              {bindingsForEntity.map((binding) => (
+                <BindingEvidenceCard key={`${binding.targetRef}:${binding.entityTypeRef}`} binding={binding} />
+              ))}
+              {bindingsForEntity.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-3 py-4 text-center text-xs text-slate-500">
+                  No bindings for this entity.
+                </p>
+              ) : null}
             </div>
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-2 px-2 font-medium text-gray-600">entityTypeRef</th>
-                  <th className="text-left py-2 px-2 font-medium text-gray-600">targetRef</th>
-                  <th className="text-left py-2 px-2 font-medium text-gray-600">projectedPaths</th>
-                  <th className="text-left py-2 px-2 font-medium text-gray-600">redact</th>
-                  <th className="text-left py-2 px-2 font-medium text-gray-600">known</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bindingsForEntity.map((binding) => (
-                  <tr
-                    key={`${binding.targetRef}:${binding.entityTypeRef}`}
-                    className="border-b align-top"
-                  >
-                    <td className="py-2 px-2 font-mono text-[11px]">{binding.entityTypeRef}</td>
-                    <td className="py-2 px-2">
-                      <div className="font-medium">{binding.targetDisplayName}</div>
-                      <div className="font-mono text-[10px] text-gray-500">{binding.targetRef}</div>
-                    </td>
-                    <td className="py-2 px-2 font-mono text-[11px]">
-                      {binding.projectedPaths.length > 0
-                        ? binding.projectedPaths.join(', ')
-                        : '—'}
-                    </td>
-                    <td className="py-2 px-2">{binding.redactProjection ? 'yes' : 'no'}</td>
-                    <td className="py-2 px-2">
-                      {binding.entityKnown ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700">
-                          <CheckCircle2 size={12} />
-                          yes
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-red-700">
-                          <AlertTriangle size={12} />
-                          no
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {bindingsForEntity.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-gray-500">
-                      No EntityBindingDefinition for this entity.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

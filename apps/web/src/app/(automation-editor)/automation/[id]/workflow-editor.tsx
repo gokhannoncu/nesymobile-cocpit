@@ -46,7 +46,6 @@ import {
   Smartphone,
   Trash2,
   Truck,
-  ShieldCheck,
   UserCheck,
   UserRound,
   X,
@@ -98,6 +97,8 @@ import {
   buildEditorScaffoldingGroups,
   buildPackPaletteGroups,
 } from "./pack-palette";
+import { PaletteLoadingShimmer } from "./palette-shimmer";
+import { PaletteBlockedBanner, PaletteDomainPackBanner } from "./palette-domain-pack-banner";
 import {
   fetchVerdictDomainPacks,
   fetchVerdictSemanticActions,
@@ -122,6 +123,7 @@ import {
 import { BackendLaneNodeView } from "./BackendLaneNodeView";
 import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { VerdictEditorToolbar } from "@/components/automation/editor/VerdictEditorToolbar";
+import { ShimmerBlock } from "@/components/automation/automation-list-page-shimmer";
 import {
   WorkflowNodeType,
   type BranchType,
@@ -132,6 +134,21 @@ import {
 } from "./workflow-types";
 
 const RIGHT_PROPERTIES_PANEL_PX = 320;
+const LEFT_PALETTE_WIDTH_PX = 300;
+const VERDICT_PANEL_WIDTH_PX = 350;
+
+function editorSurfaceInsets(options: {
+  verdictPanelOpen: boolean;
+  propertiesPanelOpen: boolean;
+}): { left: number; right: number } {
+  const propertiesInset = options.propertiesPanelOpen ? RIGHT_PROPERTIES_PANEL_PX : 0;
+  const verdictInset = options.verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX : 0;
+
+  return {
+    left: LEFT_PALETTE_WIDTH_PX,
+    right: verdictInset + propertiesInset,
+  };
+}
 
 const VIEWPORT_ZOOM_MIN = 0.3;
 const VIEWPORT_ZOOM_MAX = 2.5;
@@ -251,6 +268,145 @@ const STORAGE_VERSION = 1;
 const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 type PersistStatus = "idle" | "saving" | "autosaved" | "save_failed" | "saved_version";
+
+function WorkflowStatusSegments({
+  isPublishButtonPublished,
+  hasUnsavedChanges,
+  isPublishing,
+}: {
+  isPublishButtonPublished: boolean;
+  hasUnsavedChanges: boolean;
+  isPublishing: boolean;
+}) {
+  const publishedActive = isPublishButtonPublished && !hasUnsavedChanges && !isPublishing;
+
+  return (
+    <div
+      className="flex shrink-0 rounded-lg bg-slate-100/90 p-0.5"
+      role="status"
+      aria-label={publishedActive ? "Workflow published" : "Editing draft"}
+    >
+      <span
+        className={cn(
+          "rounded-md px-2.5 py-1 text-[10px] font-semibold leading-none transition-all",
+          !publishedActive
+            ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
+            : "text-slate-500",
+        )}
+      >
+        Draft
+      </span>
+      <span
+        className={cn(
+          "rounded-md px-2.5 py-1 text-[10px] font-semibold leading-none transition-all",
+          publishedActive
+            ? "bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-200/80"
+            : "text-slate-500",
+        )}
+      >
+        Published
+      </span>
+    </div>
+  );
+}
+
+function WorkflowSyncIndicator({
+  persistStatus,
+  hasUnsavedChanges,
+  isPublishing,
+  isTestRunning,
+}: {
+  persistStatus: PersistStatus;
+  hasUnsavedChanges: boolean;
+  isPublishing: boolean;
+  isTestRunning: boolean;
+}) {
+  if (isTestRunning) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-blue-600">
+        <Loader2 className="size-3 shrink-0 animate-spin" />
+        Test running
+      </span>
+    );
+  }
+  if (isPublishing) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-red-600">
+        <Loader2 className="size-3 shrink-0 animate-spin" />
+        Publishing
+      </span>
+    );
+  }
+  if (persistStatus === "saving") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-slate-500">
+        <Loader2 className="size-3 shrink-0 animate-spin" />
+        Saving
+      </span>
+    );
+  }
+  if (persistStatus === "save_failed" && hasUnsavedChanges) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-red-600">
+        <CircleX className="size-3 shrink-0" />
+        Save failed
+      </span>
+    );
+  }
+  if (hasUnsavedChanges) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-amber-700">
+        <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
+        Unsaved
+      </span>
+    );
+  }
+  if (persistStatus === "saved_version") {
+    return null;
+  }
+  if (persistStatus === "autosaved") {
+    return <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-slate-500">Autosaved</span>;
+  }
+  return <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-slate-500">Saved</span>;
+}
+
+function WorkflowEditorHeaderShimmer({ verdictPanelOpen }: { verdictPanelOpen: boolean }) {
+  const centerMaxWidth = `min(42rem, calc(100vw - ${LEFT_PALETTE_WIDTH_PX + 280 + (verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX : 0)}px))`;
+
+  return (
+    <>
+      <div
+        className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 overflow-hidden max-xl:hidden"
+        style={{ maxWidth: centerMaxWidth }}
+        aria-hidden
+      >
+        <ShimmerBlock className="h-3 w-14 shrink-0" />
+        <ShimmerBlock className="size-3.5 shrink-0 rounded-sm" />
+        <ShimmerBlock className="h-4 w-[min(16rem,42vw)] shrink" />
+        <span className="h-4 w-px shrink-0 bg-slate-200/80" aria-hidden />
+        <ShimmerBlock className="h-7 w-[4.75rem] shrink-0 rounded-[8px]" />
+      </div>
+
+      <div
+        className="absolute top-1/2 flex -translate-y-1/2 items-center gap-2"
+        style={{ right: verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX + 16 : 16 }}
+        aria-hidden
+      >
+        <ShimmerBlock className="h-9 w-[5.5rem] shrink-0 rounded-[8px]" />
+        <ShimmerBlock className="h-9 w-[5.25rem] shrink-0 rounded-[8px]" />
+        <div className="flex h-9 max-w-[300px] items-center gap-2 rounded-[8px] border border-slate-200/70 bg-white px-2 max-lg:max-w-[260px] max-md:w-9 max-md:px-0">
+          <ShimmerBlock className="size-5 shrink-0 rounded-[6px]" />
+          <div className="min-w-0 flex-1 space-y-1 max-md:hidden">
+            <ShimmerBlock className="h-2.5 w-36" />
+            <ShimmerBlock className="h-2 w-28" />
+          </div>
+          <ShimmerBlock className="size-3.5 shrink-0 rounded-sm max-md:hidden" />
+        </div>
+        <ShimmerBlock className="size-9 shrink-0 rounded-[8px]" />
+      </div>
+    </>
+  );
+}
 
 function workflowContentFingerprint(nodes: WorkflowNode[], connections: Connection[]) {
   return JSON.stringify({ nodes, connections });
@@ -2106,31 +2262,53 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             (item.notResponsibleFor?.some((line) => line.toLowerCase().includes(searchTerm)) ??
               false)
 
+          const matchesGroupMeta =
+            group.title.toLowerCase().includes(searchTerm) ||
+            (group.detail?.toLowerCase().includes(searchTerm) ?? false)
+
           if (group.subsections) {
             return {
               ...group,
               subsections: group.subsections
-                .map((sub) => ({
-                  ...sub,
-                  items: sub.items.filter(matchesItem),
-                }))
-                .filter((sub) => sub.items.length > 0),
-            };
+                .map((sub) => {
+                  const matchesSubMeta =
+                    sub.title.toLowerCase().includes(searchTerm) ||
+                    (sub.detail?.toLowerCase().includes(searchTerm) ?? false)
+                  const filteredItems = sub.items.filter(matchesItem)
+                  return {
+                    ...sub,
+                    items: matchesSubMeta ? sub.items : filteredItems,
+                  }
+                })
+                .filter(
+                  (sub) =>
+                    sub.items.length > 0 ||
+                    sub.title.toLowerCase().includes(searchTerm) ||
+                    (sub.detail?.toLowerCase().includes(searchTerm) ?? false),
+                ),
+            }
           }
           return {
             ...group,
-            items: (group.items ?? []).filter(matchesItem),
-          };
+            items: matchesGroupMeta
+              ? (group.items ?? [])
+              : (group.items ?? []).filter(matchesItem),
+          }
         })
         .filter((group) =>
-          group.subsections ? group.subsections.length > 0 : (group.items?.length ?? 0) > 0,
+          group.subsections
+            ? group.subsections.length > 0 ||
+              group.title.toLowerCase().includes(searchTerm) ||
+              (group.detail?.toLowerCase().includes(searchTerm) ?? false)
+            : (group.items?.length ?? 0) > 0 ||
+              group.title.toLowerCase().includes(searchTerm) ||
+              (group.detail?.toLowerCase().includes(searchTerm) ?? false),
         ),
     [activePaletteGroups, searchTerm],
   );
   const hasPaletteResults =
-    filteredTemplates.length > 0 ||
-    filteredPaletteGroups.length > 0 ||
-    paletteSource.mode === 'loading';
+    filteredTemplates.length > 0 || filteredPaletteGroups.length > 0;
+  const paletteReady = paletteSource.mode !== 'loading';
 
   const getViewportCenterWorld = useCallback(() => {
     const el = canvasContainerRef.current;
@@ -2576,7 +2754,10 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       <div
         className="h-screen w-full overflow-hidden bg-slate-50 text-slate-950"
       >
-        <header className="fixed inset-x-0 top-0 z-30 h-14 min-h-14 shrink-0 overflow-visible border-b border-slate-200 bg-white px-4">
+        <header
+          className="fixed inset-x-0 top-0 z-30 h-14 min-h-14 shrink-0 overflow-visible border-b border-slate-200 bg-white px-4"
+          aria-busy={isWorkflowLoading}
+        >
           <div className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center gap-4">
             <button
               type="button"
@@ -2592,100 +2773,94 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             </button>
           </div>
 
-          <div className="absolute left-1/2 top-1/2 flex max-w-[min(38rem,calc(100vw-58rem))] -translate-x-1/2 -translate-y-1/2 items-center gap-2 overflow-hidden max-xl:hidden">
-            <span className="shrink-0 whitespace-nowrap text-xs text-slate-500">Workflows /</span>
-            {isTitleEditing ? (
-              <Input
-                ref={titleInputRef}
-                autoFocus
-                disabled={isTitleSaving}
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => void commitTitleEdit()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    titleInputRef.current?.blur();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setTitleDraft(displayTitle);
-                    setIsTitleEditing(false);
-                  }
-                }}
-                className="h-9 min-w-0 max-w-[28rem] shrink border-0 bg-transparent px-0 shadow-none ring-0 outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
-              />
-            ) : (
+          {isWorkflowLoading ? (
+            <WorkflowEditorHeaderShimmer verdictPanelOpen={verdictPanelOpen} />
+          ) : (
+            <>
+          <div
+            className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 overflow-hidden max-xl:hidden"
+            style={{
+              maxWidth: `min(42rem, calc(100vw - ${LEFT_PALETTE_WIDTH_PX + 280 + (verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX : 0)}px))`,
+            }}
+          >
+            <nav aria-label="Workflow breadcrumb" className="flex min-w-0 items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => {
-                  setTitleDraft(displayTitle);
-                  setIsTitleEditing(true);
-                }}
-                disabled={editorLocked || isTitleSaving}
-                className="group flex min-w-0 max-w-full shrink items-center gap-2 truncate rounded-md px-1.5 py-1 text-left text-base font-semibold tracking-[-0.02em] text-slate-950 outline-none transition-colors hover:bg-slate-100/90 focus-visible:ring-2 focus-visible:ring-slate-300/90 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
-                aria-label="Edit workflow title"
+                onClick={requestCloseEditor}
+                disabled={editorLocked}
+                className="shrink-0 whitespace-nowrap text-xs font-medium text-slate-500 transition-colors hover:text-slate-800 disabled:pointer-events-none disabled:opacity-50"
               >
-                <span className="min-w-0 truncate">{displayTitle}</span>
-                <Pencil
-                  className="size-3.5 shrink-0 text-slate-400 group-hover:text-slate-500"
-                  strokeWidth={1.85}
-                  aria-hidden
-                />
+                Workflows
               </button>
-            )}
-            <span className="shrink-0 whitespace-nowrap rounded-md bg-nesy-soft px-2 py-0.5 text-[11px] font-semibold text-nesy-ink">
-              Draft
-            </span>
-            {isTestRunning ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-blue-600">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                Test running
-              </span>
-            ) : isPublishing ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-red-600">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                Publishing...
-              </span>
-            ) : persistStatus === "saving" ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-slate-600">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                Saving...
-              </span>
-            ) : persistStatus === "save_failed" && hasUnsavedChanges ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-red-600">
-                <CircleX className="size-3.5 shrink-0" />
-                Save failed
-              </span>
-            ) : hasUnsavedChanges ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-amber-600">
-                <CircleX className="size-3.5 shrink-0" />
-                Unsaved changes
-              </span>
-            ) : persistStatus === "saved_version" ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-600">
-                <CheckCircle2 className="size-3.5 shrink-0" />
-                Published
-              </span>
-            ) : persistStatus === "autosaved" ? (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-600">
-                <CheckCircle2 className="size-3.5 shrink-0" />
-                Autosaved
-              </span>
-            ) : (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-600">
-                <CheckCircle2 className="size-3.5 shrink-0" />
-                Saved
-              </span>
-            )}
+              <ChevronRight className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+              {isTitleEditing ? (
+                <Input
+                  ref={titleInputRef}
+                  autoFocus
+                  disabled={isTitleSaving}
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onBlur={() => void commitTitleEdit()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      titleInputRef.current?.blur();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setTitleDraft(displayTitle);
+                      setIsTitleEditing(false);
+                    }
+                  }}
+                  className="h-9 min-w-0 max-w-[28rem] shrink border-0 bg-transparent px-0 shadow-none ring-0 outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleDraft(displayTitle);
+                    setIsTitleEditing(true);
+                  }}
+                  disabled={editorLocked || isTitleSaving}
+                  className="group flex min-w-0 max-w-full shrink items-center gap-1.5 truncate rounded-md px-1.5 py-1 text-left text-base font-semibold tracking-[-0.02em] text-slate-950 outline-none transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-300/90 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Edit workflow title"
+                >
+                  <span className="min-w-0 truncate">{displayTitle}</span>
+                  <Pencil
+                    className="size-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    strokeWidth={1.85}
+                    aria-hidden
+                  />
+                </button>
+              )}
+            </nav>
+
+            <span className="h-4 w-px shrink-0 bg-slate-200/90" aria-hidden />
+
+            <WorkflowStatusSegments
+              isPublishButtonPublished={isPublishButtonPublished}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isPublishing={isPublishing}
+            />
+
+            <WorkflowSyncIndicator
+              persistStatus={persistStatus}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isPublishing={isPublishing}
+              isTestRunning={isTestRunning}
+            />
+
             {showValidationWarning && hasValidationErrors ? (
-              <span className="shrink-0 whitespace-nowrap rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                Workflow has validation errors
+              <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-200/90 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                Validation errors
               </span>
             ) : null}
           </div>
 
-          <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-2">
+          <div
+            className="absolute top-1/2 flex -translate-y-1/2 items-center gap-2"
+            style={{ right: verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX + 16 : 16 }}
+          >
             <Button
               type="button"
               size="lg"
@@ -2797,6 +2972,9 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+            </>
+          )}
+          {isWorkflowLoading ? <span className="sr-only">Loading workflow…</span> : null}
         </header>
 
         <UnsavedChangesDialog
@@ -2978,20 +3156,22 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         <div className="h-[calc(100vh-3.5rem)] pt-14">
           <aside
             className={cn(
-              "fixed bottom-0 left-0 top-14 z-20 w-[280px] overflow-y-auto border-r border-slate-200 bg-white p-4",
+              "fixed bottom-0 left-0 top-14 z-20 overflow-y-auto border-r border-slate-200/90 bg-slate-50/40 p-3",
               editorLocked && "pointer-events-none opacity-55",
             )}
+            style={{ width: `${LEFT_PALETTE_WIDTH_PX}px` }}
             aria-disabled={editorLocked}
           >
-            <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-slate-400 shadow-xs">
-              <Search className="size-4" />
+            <label className="flex h-9 items-center gap-2 rounded-[8px] border border-slate-200 bg-white px-2.5 text-slate-400 transition-[border-color] focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-200/80">
+              <Search className="size-4 shrink-0" />
               <input
                 ref={paletteSearchInputRef}
                 type="search"
-                placeholder="Search components"
+                placeholder="Search actions & templates"
                 value={paletteSearch}
                 onChange={(event) => setPaletteSearch(event.target.value)}
-                className="min-w-0 flex-1 appearance-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+                disabled={!paletteReady}
+                className="min-w-0 flex-1 appearance-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 disabled:cursor-wait disabled:opacity-60 [&::-webkit-search-cancel-button]:hidden"
               />
               {paletteSearch ? (
                 <button
@@ -3005,44 +3185,41 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               ) : null}
             </label>
 
-            {paletteSource.mode === 'loading' ? (
-              <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                <Loader2 className="size-3.5 animate-spin" />
-                Loading domain pack palette…
-              </div>
+            {!paletteReady ? <PaletteLoadingShimmer /> : null}
+
+            {paletteReady && paletteSource.mode === 'pack' ? (
+              <PaletteDomainPackBanner
+                packKey={paletteSource.packKey}
+                packVersion={paletteSource.packVersion}
+              />
             ) : null}
 
-            {paletteSource.mode === 'pack' ? (
-              <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-medium text-emerald-900">
-                Domain Pack palette ·{' '}
-                <span className="font-mono">
-                  {paletteSource.packKey}@{paletteSource.packVersion}
-                </span>
-              </div>
+            {paletteReady && paletteSource.mode === 'blocked' ? (
+              <PaletteBlockedBanner reason={paletteSource.reason} />
             ) : null}
 
-            {paletteSource.mode === 'blocked' ? (
-              <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-medium text-rose-950">
-                Domain Pack palette blocked — {paletteSource.reason}
-              </div>
-            ) : null}
-
-            {filteredTemplates.length > 0 ? (
+            {paletteReady && filteredTemplates.length > 0 ? (
               <TemplatePaletteSection templates={filteredTemplates} onTemplateSelect={requestTemplateApply} />
             ) : null}
 
-            {filteredPaletteGroups.map((group) => (
-              <PaletteSection
-                key={group.title}
-                title={group.title}
-                items={group.items}
-                subsections={group.subsections}
-              />
-            ))}
+            {paletteReady
+              ? filteredPaletteGroups.map((group) => (
+                  <PaletteSection
+                    key={group.detail ?? group.title}
+                    title={group.title}
+                    detail={group.detail}
+                    items={group.items}
+                    subsections={group.subsections}
+                  />
+                ))
+              : null}
 
-            {!hasPaletteResults ? (
-              <div className="mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs font-medium text-slate-500">
-                No components found.
+            {paletteReady && !hasPaletteResults ? (
+              <div className="mt-4 rounded-[8px] border border-dashed border-slate-200 bg-white px-3 py-5 text-center">
+                <p className="text-xs font-semibold text-slate-600">No matches</p>
+                <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                  Try a screen name, action title, or technical ref.
+                </p>
               </div>
             ) : null}
           </aside>
@@ -3071,6 +3248,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             propertiesPanelOpen={propertiesPanelOpen}
+            verdictPanelOpen={verdictPanelOpen}
             selectedNodeId={selectedNodeId ?? null}
             showGrid={showGrid}
             showMinimap={showMinimap}
@@ -3084,8 +3262,8 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
 
           {isPublishing ? (
             <div
-              className="fixed bottom-0 left-[280px] top-14 z-[35] flex cursor-wait items-center justify-center bg-slate-900/10 backdrop-blur-[1px]"
-              style={{ right: propertiesPanelOpen ? `${RIGHT_PROPERTIES_PANEL_PX}px` : 0 }}
+              className="fixed bottom-0 top-14 z-[35] flex cursor-wait items-center justify-center bg-slate-900/10 backdrop-blur-[1px]"
+              style={editorSurfaceInsets({ verdictPanelOpen, propertiesPanelOpen })}
               role="status"
               aria-live="polite"
               aria-busy="true"
@@ -3100,8 +3278,8 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
 
           {isWorkflowLoading ? (
             <div
-              className="fixed bottom-0 left-[280px] top-14 z-[25] overflow-hidden bg-[#F8FAFC]"
-              style={{ right: propertiesPanelOpen ? `${RIGHT_PROPERTIES_PANEL_PX}px` : 0 }}
+              className="fixed bottom-0 top-14 z-[25] overflow-hidden bg-[#F8FAFC]"
+              style={editorSurfaceInsets({ verdictPanelOpen, propertiesPanelOpen })}
               role="status"
               aria-live="polite"
               aria-busy="true"
@@ -3112,8 +3290,11 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
 
           {propertiesPanelOpen && selectedNode ? (
             <aside
-              className="fixed bottom-0 right-0 top-14 z-20 shrink-0 overflow-hidden border-l border-slate-200 bg-white"
-              style={{ width: `${RIGHT_PROPERTIES_PANEL_PX}px` }}
+              className="fixed bottom-0 top-14 z-[35] shrink-0 overflow-hidden border-l border-slate-200 bg-white"
+              style={{
+                width: `${RIGHT_PROPERTIES_PANEL_PX}px`,
+                right: verdictPanelOpen ? `${VERDICT_PANEL_WIDTH_PX}px` : 0,
+              }}
             >
               <NodeSettingsPanel
                 selectedNode={selectedNode}
@@ -3128,40 +3309,54 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               type="button"
               aria-label="Open properties panel"
               onClick={() => setPropertiesPanelOpen(true)}
-              className="fixed right-0 top-1/2 z-20 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-md border border-slate-200 border-r-0 bg-white text-slate-600 shadow-xs hover:bg-slate-50"
+              className="fixed top-1/2 z-[25] flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-md border border-slate-200 border-r-0 bg-white text-slate-600 hover:bg-slate-50"
+              style={{ right: verdictPanelOpen ? `${VERDICT_PANEL_WIDTH_PX}px` : 0 }}
             >
               <ChevronLeft className="size-4 shrink-0" aria-hidden />
             </button>
           ) : null}
         </div>
 
-        {verdictPanelOpen ? (
-          <aside
-            aria-label="Verdict authoring panel"
-            className="fixed right-0 top-14 bottom-0 z-30 flex"
-          >
-            <VerdictEditorToolbar
-              workflowState={{
-                workflowId,
-                workflowSlug: workflowMeta?.slug,
-                nodes,
-                connections,
-              }}
-            />
-          </aside>
-        ) : null}
+        <aside
+          aria-label="Verdict authoring panel"
+          aria-hidden={!verdictPanelOpen}
+          className={cn(
+            'fixed right-0 top-14 bottom-0 z-30 flex w-[350px] transition-transform duration-200 ease-out',
+            verdictPanelOpen ? 'translate-x-0' : 'pointer-events-none translate-x-full',
+          )}
+        >
+          <VerdictEditorToolbar
+            workflowState={{
+              workflowId,
+              workflowSlug: workflowMeta?.slug,
+              nodes,
+              connections,
+            }}
+          />
+        </aside>
 
         <button
           type="button"
           aria-label={verdictPanelOpen ? 'Close Verdict panel' : 'Open Verdict panel'}
           aria-expanded={verdictPanelOpen}
           onClick={() => setVerdictPanelOpen((open) => !open)}
-          className={`fixed top-20 z-40 flex h-9 items-center gap-2 rounded-l-md border border-r-0 border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs hover:bg-slate-50 ${
-            verdictPanelOpen ? 'right-[350px]' : 'right-0'
-          }`}
+          className={cn(
+            'fixed top-20 flex h-9 w-8 items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            propertiesPanelOpen ? 'z-[25]' : 'z-[40]',
+          )}
+          style={{
+            right: verdictPanelOpen
+              ? VERDICT_PANEL_WIDTH_PX
+              : propertiesPanelOpen
+                ? RIGHT_PROPERTIES_PANEL_PX
+                : 0,
+          }}
         >
-          <ShieldCheck className="size-4 shrink-0" aria-hidden />
-          Verdict
+          {verdictPanelOpen ? (
+            <ChevronRight className="size-4 shrink-0" aria-hidden />
+          ) : (
+            <ChevronLeft className="size-4 shrink-0" aria-hidden />
+          )}
         </button>
       </div>
 
@@ -3215,27 +3410,27 @@ function DeviceSelector({
           disabled={disabled}
           aria-label="Select test device"
           className={cn(
-            "group inline-flex h-10 w-fit max-w-[340px] shrink-0 items-center gap-2 overflow-hidden rounded-[6px] border bg-white pl-2.5 pr-1.5 text-left shadow-xs shadow-black/5 transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy/25 max-lg:max-w-[280px] max-md:w-10 max-md:max-w-none max-md:justify-center max-md:gap-0 max-md:overflow-visible max-md:px-0 disabled:pointer-events-none disabled:opacity-50",
+            "group inline-flex h-9 w-fit max-w-[300px] shrink-0 items-center gap-1.5 overflow-hidden rounded-[8px] border bg-white pl-2 pr-1 text-left transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy/25 max-lg:max-w-[260px] max-md:w-9 max-md:max-w-none max-md:justify-center max-md:gap-0 max-md:overflow-visible max-md:px-0 disabled:pointer-events-none disabled:opacity-50",
             attention ? "border-amber-400 ring-2 ring-amber-100" : "border-slate-200",
             isOpen ? "border-slate-300" : "",
           )}
         >
-          <span className="flex min-w-0 flex-1 items-center gap-3 max-md:flex-none">
-            <span className="relative flex size-6 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-slate-50 text-slate-600">
-              <Smartphone className="size-4" aria-hidden />
+          <span className="flex min-w-0 flex-1 items-center gap-2 max-md:flex-none">
+            <span className="relative flex size-5 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-slate-50 text-slate-600">
+              <Smartphone className="size-3.5" aria-hidden />
               {selectedDevice && selectedStatus !== "Offline" ? (
-                <span className="absolute -right-1 -top-1 size-2 rounded-full border border-white bg-emerald-500" aria-hidden />
+                <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full border border-white bg-emerald-500" aria-hidden />
               ) : null}
             </span>
             <span className="min-w-0 max-md:hidden flex flex-col justify-center">
-              <span className="block truncate text-xs font-semibold leading-[1.05] text-slate-900">{selectedTitle}</span>
-              <span className="mt-px flex min-w-0 items-center gap-1.5 truncate text-[10px] font-medium leading-[1.05] text-slate-500">
+              <span className="block truncate text-[11px] font-semibold leading-tight text-slate-900">{selectedTitle}</span>
+              <span className="mt-px flex min-w-0 items-center gap-1 truncate text-[10px] font-medium leading-tight text-slate-500">
                 <span className="truncate">{selectedSubtitle}</span>
               </span>
             </span>
           </span>
-          <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-600 max-md:hidden">
-            <ChevronDown className={cn("size-4 text-slate-400 transition-transform", isOpen ? "rotate-180" : "")} aria-hidden />
+          <span className="flex shrink-0 items-center text-slate-600 max-md:hidden">
+            <ChevronDown className={cn("size-3.5 text-slate-400 transition-transform", isOpen ? "rotate-180" : "")} aria-hidden />
           </span>
         </button>
       </PopoverTrigger>
@@ -3392,6 +3587,7 @@ function WorkflowCanvas({
   onZoomIn,
   onZoomOut,
   propertiesPanelOpen,
+  verdictPanelOpen,
   selectedNodeId,
   showGrid,
   showMinimap,
@@ -3421,6 +3617,7 @@ function WorkflowCanvas({
   onZoomIn: () => void;
   onZoomOut: () => void;
   propertiesPanelOpen: boolean;
+  verdictPanelOpen: boolean;
   selectedNodeId: string | null;
   showGrid: boolean;
   showMinimap: boolean;
@@ -3459,17 +3656,20 @@ function WorkflowCanvas({
     return base;
   }, [backendLane.connections, connections, virtualStartConnection]);
 
+  const canvasInsets = editorSurfaceInsets({ verdictPanelOpen, propertiesPanelOpen });
+
   return (
     <main
       ref={(node) => {
         canvasContainerRef.current = node;
         setCanvasDropRef(node);
       }}
-      className={cn("fixed bottom-0 left-[280px] top-14 overflow-hidden", cursorClass)}
+      className={cn("fixed bottom-0 top-14 overflow-hidden", cursorClass)}
       style={
         {
+          left: canvasInsets.left,
+          right: canvasInsets.right,
           backgroundColor: "#F8FAFC",
-          right: propertiesPanelOpen ? `${RIGHT_PROPERTIES_PANEL_PX}px` : 0,
           backgroundImage: showGrid
             ? `radial-gradient(circle, ${VIEWPORT_GRID_DOT} ${VIEWPORT_GRID_DOT_RADIUS_PX}px, transparent ${VIEWPORT_GRID_DOT_RADIUS_PX}px)`
             : "none",
@@ -3593,15 +3793,33 @@ function paletteSectionSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function PaletteSubgroupHeading({ label }: { label: string }) {
+function paletteSectionItemCount(group: {
+  items?: PaletteItem[];
+  subsections?: { items: PaletteItem[] }[];
+}): number {
+  if (group.subsections?.length) {
+    return group.subsections.reduce((sum, sub) => sum + sub.items.length, 0)
+  }
+  return group.items?.length ?? 0
+}
+
+function PaletteSubgroupHeading({ label, detail }: { label: string; detail?: string }) {
   return (
-    <p className="mb-2 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+    <p
+      className="mb-1.5 truncate px-0.5 text-[11px] font-semibold leading-tight text-slate-600"
+      title={detail}
+    >
+      {label}
+    </p>
   );
 }
 
 const templateIconRegistry = {
   UserCheck,
 };
+
+const paletteSectionTriggerClass =
+  "mb-2 flex w-full min-w-0 items-center justify-between gap-2 rounded-[8px] px-1.5 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70";
 
 function TemplatePaletteSection({
   templates,
@@ -3616,23 +3834,28 @@ function TemplatePaletteSection({
   const triggerId = `${regionId}-trigger`;
 
   return (
-    <section className="mt-5">
+    <section className="mt-4">
       <button
         type="button"
         id={triggerId}
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((v) => !v)}
-        className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 rounded-md py-1 text-left text-xs font-semibold text-slate-700"
+        className={paletteSectionTriggerClass}
       >
-        <span className="truncate">Templates</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[13px] font-semibold text-slate-800">Templates</span>
+          <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600">
+            {templates.length}
+          </span>
+        </span>
         <ChevronDown
           className={cn("size-3.5 shrink-0 text-slate-400 transition-transform duration-200", !open && "-rotate-90")}
           aria-hidden
         />
       </button>
       {open ? (
-        <div id={regionId} role="region" aria-labelledby={triggerId} className="space-y-2">
+        <div id={regionId} role="region" aria-labelledby={triggerId} className="space-y-1.5">
           {templates.map((template) => (
             <TemplatePaletteButton key={template.id} template={template} onTemplateSelect={onTemplateSelect} />
           ))}
@@ -3654,15 +3877,15 @@ function TemplatePaletteButton({
   return (
     <button
       type="button"
-      className="group flex min-h-12 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 shadow-xs transition-all hover:border-purple-200 hover:bg-purple-50/35"
+      className="group flex min-h-[52px] w-full items-center gap-2.5 rounded-[8px] border border-slate-200/90 bg-white px-2.5 py-2 text-left transition-colors hover:border-purple-200 hover:bg-purple-50/40"
       onClick={() => onTemplateSelect(template.id)}
     >
-      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-sm border", template.tone)}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-[8px] border", template.tone)}>
         <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold leading-tight text-slate-800">{template.name}</span>
-        <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-slate-400">
+        <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-slate-500">
           {template.subtitle}
         </span>
       </span>
@@ -3673,44 +3896,53 @@ function TemplatePaletteButton({
 
 function PaletteSection({
   title,
+  detail,
   items,
   subsections,
   defaultOpen = true,
 }: {
   title: string;
+  detail?: string;
   items?: PaletteItem[];
-  subsections?: { title: string; items: PaletteItem[] }[];
+  subsections?: { title: string; detail?: string; items: PaletteItem[] }[];
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const reactId = useId();
   const regionId = `palette-${paletteSectionSlug(title)}-${reactId.replace(/:/g, "")}`;
   const triggerId = `${regionId}-trigger`;
+  const itemCount = paletteSectionItemCount({ items, subsections });
 
   return (
-    <section className="mt-5">
+    <section className="mt-4 border-t border-slate-200/70 pt-4 first:mt-3 first:border-t-0 first:pt-0">
       <button
         type="button"
         id={triggerId}
         aria-expanded={open}
         aria-controls={regionId}
+        title={detail}
         onClick={() => setOpen((v) => !v)}
-        className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 rounded-md py-1 text-left text-xs font-semibold text-slate-700"
+        className={paletteSectionTriggerClass}
       >
-        <span className="truncate">{title}</span>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate text-[13px] font-semibold text-slate-800">{title}</span>
+          <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600">
+            {itemCount}
+          </span>
+        </span>
         <ChevronDown
           className={cn("size-3.5 shrink-0 text-slate-400 transition-transform duration-200", !open && "-rotate-90")}
           aria-hidden
         />
       </button>
       {open ? (
-        <div id={regionId} role="region" aria-labelledby={triggerId} className="space-y-2">
+        <div id={regionId} role="region" aria-labelledby={triggerId} className="space-y-3">
           {subsections?.length ? (
-            <div className="space-y-4 pt-0.5">
+            <div className="space-y-3">
               {subsections.map((sub) => (
-                <div key={sub.title}>
-                  <PaletteSubgroupHeading label={sub.title} />
-                  <div className="space-y-2">
+                <div key={sub.detail ?? sub.title}>
+                  <PaletteSubgroupHeading label={sub.title} detail={sub.detail} />
+                  <div className="space-y-1.5">
                     {sub.items.map((item) => (
                       <PaletteButton key={item.paletteKey ?? item.type} item={item} />
                     ))}
@@ -3720,7 +3952,7 @@ function PaletteSection({
             </div>
           ) : null}
           {items?.length ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {items.map((item) => (
                 <PaletteButton key={item.paletteKey ?? item.type} item={item} />
               ))}
@@ -3759,10 +3991,10 @@ function PaletteButton({ item }: { item: PaletteItem }) {
       disabled={disabled}
       title={titleParts.join('\n')}
       className={cn(
-        "group flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-left text-sm font-medium text-slate-700 shadow-xs transition-all",
+        "group flex w-full items-start gap-2.5 rounded-[8px] border px-2.5 py-2 text-left text-sm transition-colors",
         disabled
-          ? "cursor-not-allowed opacity-60"
-          : "hover:border-nesy-muted hover:bg-nesy-soft",
+          ? "cursor-not-allowed border-amber-200/90 bg-amber-50/70"
+          : "border-slate-200/90 bg-white font-medium text-slate-700 hover:border-nesy-muted hover:bg-nesy-soft",
         isDragging && "opacity-45",
       )}
       {...attributes}
@@ -3783,28 +4015,39 @@ function PaletteButton({ item }: { item: PaletteItem }) {
       onPointerLeave={() => setShowDragHandle(false)}
       onPointerMove={() => setShowDragHandle(true)}
     >
-      <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-sm border", item.tone)}>
+      <span
+        className={cn(
+          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[8px] border",
+          disabled ? "border-amber-200/80 bg-white/80 text-amber-700" : item.tone,
+        )}
+      >
         <Icon className="size-3.5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate">{item.title}</span>
+        <span className={cn("block leading-tight", disabled ? "font-semibold text-slate-700" : "truncate")}>
+          {item.title}
+        </span>
         {disabled && item.paletteDisabledReason ? (
-          <span className="mt-0.5 block truncate text-[10px] font-normal text-amber-800">
+          <span className="mt-1 block text-[10px] font-medium leading-snug text-amber-900 line-clamp-2">
             {item.paletteDisabledReason}
+          </span>
+        ) : item.subtitle ? (
+          <span className="mt-0.5 block truncate text-[10px] font-normal leading-snug text-slate-500">
+            {item.subtitle}
           </span>
         ) : null}
       </span>
       <span
         className={cn(
-          "flex size-5 shrink-0 items-center justify-center rounded-sm transition-all duration-150 group-focus:text-nesy-ink group-focus:opacity-100 group-hover:text-nesy-ink group-hover:opacity-100",
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm transition-all duration-150 group-focus:text-nesy-ink group-focus:opacity-100 group-hover:text-nesy-ink group-hover:opacity-100",
           disabled
-            ? "text-amber-600 opacity-100"
+            ? "text-amber-700 opacity-100"
             : showDragHandle
               ? "text-nesy-ink opacity-100"
               : "text-slate-300 opacity-0",
         )}
       >
-        {disabled ? <CircleX className="size-4" /> : <GripVertical className="size-4" />}
+        {disabled ? <CircleX className="size-4" aria-hidden /> : <GripVertical className="size-4" aria-hidden />}
       </span>
     </button>
   );
@@ -3856,10 +4099,10 @@ function PaletteDragPreview({ item }: { item: PaletteItem }) {
   const subtitleTags = parseWorkflowSubtitleTags(item.subtitle);
   return (
     <div
-      className="flex items-start gap-3 rounded-xl border border-nesy-muted bg-white px-3.5 py-3 text-left shadow-xl"
+      className="flex items-start gap-3 rounded-[8px] border border-nesy-muted bg-white px-3.5 py-3 text-left"
       style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
     >
-      <span className={cn("mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg border", item.tone)}>
+      <span className={cn("mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-[8px] border", item.tone)}>
         <Icon className="size-4.5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -4552,8 +4795,8 @@ function CanvasToolbarButton({ active, children, danger, disabled, label, onClic
 function CanvasControls({ canvasTool, hasNodes, hasSelectedNode, isGridVisible, isMinimapVisible, onCanvasToolChange, onDuplicateNode, onFitToScreen, onRequestSelectedNodeDelete, onToggleGrid, onToggleMinimap, zoomPercent, onZoomIn, onZoomOut, editorLocked }: { canvasTool: CanvasPointerTool; hasNodes: boolean; hasSelectedNode: boolean; isGridVisible: boolean; isMinimapVisible: boolean; onCanvasToolChange: (tool: CanvasPointerTool) => void; onDuplicateNode: () => void; onFitToScreen: () => void; onRequestSelectedNodeDelete: () => void; onToggleGrid: () => void; onToggleMinimap: () => void; zoomPercent: number; onZoomIn: () => void; onZoomOut: () => void; editorLocked: boolean }) {
   if (!hasNodes) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-4 bottom-5 z-30 flex justify-center">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }} className="pointer-events-auto flex h-16 max-w-full items-center overflow-x-auto rounded-[6px] border border-[#ECECF3] bg-[rgba(255,255,255,0.96)] px-3 py-2.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[18px] [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden" role="toolbar" aria-label="Canvas toolbar">
+    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }} className="pointer-events-auto flex h-16 max-w-full items-center overflow-x-auto rounded-[8px] border border-[#ECECF3] bg-[rgba(255,255,255,0.96)] px-3 py-2.5 backdrop-blur-[18px] [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden" role="toolbar" aria-label="Canvas toolbar">
         <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Interaction tools">
           <CanvasToolbarButton active={canvasTool === "move"} label="Select tool" onClick={() => onCanvasToolChange("move")}><MousePointer2 /></CanvasToolbarButton>
           <CanvasToolbarButton active={canvasTool === "hand"} label="Hand tool" onClick={() => onCanvasToolChange("hand")}><Hand /></CanvasToolbarButton>
@@ -4580,26 +4823,67 @@ function CanvasControls({ canvasTool, hasNodes, hasSelectedNode, isGridVisible, 
   );
 }
 
+function WorkflowCanvasNodeShimmer({ widthClass = "w-[228px]" }: { widthClass?: string }) {
+  return (
+    <div
+      className={cn("rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]", widthClass)}
+      aria-hidden
+    >
+      <div className="flex items-center gap-2.5">
+        <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
+        <div className="min-w-0 flex-1">
+          <ShimmerBlock className="h-3.5 w-[72%]" />
+          <ShimmerBlock className="mt-1.5 h-2.5 w-[48%]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowCanvasConnectorShimmer() {
+  return <div className="h-7 w-px bg-slate-200/90" aria-hidden />;
+}
+
 function WorkflowCanvasContentShimmer({ title }: { title: string }) {
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-[#F8FAFC]">
-      <div className="pointer-events-none absolute inset-0 opacity-[0.45]" style={{ backgroundImage: `radial-gradient(circle, ${VIEWPORT_GRID_DOT} ${VIEWPORT_GRID_DOT_RADIUS_PX}px, transparent ${VIEWPORT_GRID_DOT_RADIUS_PX}px)`, backgroundSize: `${VIEWPORT_GRID_SPACING_PX}px ${VIEWPORT_GRID_SPACING_PX}px` }} />
-      <div className="relative flex flex-1 items-center justify-center px-8 py-16">
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-16 w-44 animate-pulse rounded-xl bg-slate-200/80 shadow-sm" />
-            <div className="h-6 w-px bg-slate-200/90" />
-            <div className="h-16 w-44 animate-pulse rounded-xl bg-slate-200/65 shadow-sm" />
-            <div className="h-6 w-px bg-slate-200/90" />
-            <div className="h-16 w-44 animate-pulse rounded-xl bg-slate-200/55 shadow-sm" />
-            <div className="h-6 w-px bg-slate-200/90" />
-            <div className="flex gap-12">
-              <div className="h-14 w-36 animate-pulse rounded-xl bg-slate-200/45 shadow-sm" />
-              <div className="h-14 w-36 animate-pulse rounded-xl bg-slate-200/45 shadow-sm" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.45]"
+        style={{
+          backgroundImage: `radial-gradient(circle, ${VIEWPORT_GRID_DOT} ${VIEWPORT_GRID_DOT_RADIUS_PX}px, transparent ${VIEWPORT_GRID_DOT_RADIUS_PX}px)`,
+          backgroundSize: `${VIEWPORT_GRID_SPACING_PX}px ${VIEWPORT_GRID_SPACING_PX}px`,
+        }}
+      />
+      <div className="relative flex flex-1 items-center justify-center px-8 py-12">
+        <div className="flex max-w-md flex-col items-center gap-5">
+          <div className="flex flex-col items-center" aria-hidden>
+            <WorkflowCanvasNodeShimmer />
+            <WorkflowCanvasConnectorShimmer />
+            <WorkflowCanvasNodeShimmer />
+            <WorkflowCanvasConnectorShimmer />
+            <WorkflowCanvasNodeShimmer />
+            <WorkflowCanvasConnectorShimmer />
+            <div className="flex gap-14">
+              <WorkflowCanvasNodeShimmer widthClass="w-[196px]" />
+              <WorkflowCanvasNodeShimmer widthClass="w-[196px]" />
             </div>
           </div>
-          <p className="mt-2 text-center text-sm font-medium text-slate-500">Loading workflow\u2026</p>
-          <p className="-mt-3 text-center text-xs text-slate-400">{title}</p>
+
+          <div
+            className="rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 text-center shadow-sm backdrop-blur-sm"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="size-4 shrink-0 animate-spin text-slate-500" aria-hidden />
+              <p className="text-sm font-semibold text-slate-700">Loading workflow</p>
+            </div>
+            {title ? (
+              <p className="mt-1 truncate text-xs font-medium text-slate-500">{title}</p>
+            ) : null}
+            <p className="sr-only">Please wait while the workflow canvas loads.</p>
+          </div>
         </div>
       </div>
     </div>

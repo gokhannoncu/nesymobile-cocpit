@@ -5,6 +5,56 @@ import { WorkflowNodeType, type PaletteItem } from './workflow-types'
 const CAPABILITY_UNAVAILABLE_REASON =
   'Bridge B2 capability negotiation not available on this device'
 
+/** Known screen keys → short human labels for the left palette. */
+const SCREEN_LABEL_OVERRIDES: Record<string, string> = {
+  'nesy.auth.login': 'Login',
+  'nesy.route.stop-list': 'Route stop list',
+  'nesy.stop.task-list': 'Stop tasks',
+  'nesy.delivery.flow': 'Delivery flow',
+  'nesy.pickup.flow': 'Pickup flow',
+  'nesy.vehicle-loading': 'Vehicle loading',
+  'nesy.end-of-day': 'End of day',
+}
+
+function titleCase(value: string): string {
+  return value.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatRefSegment(ref: string): string {
+  const override = SCREEN_LABEL_OVERRIDES[ref]
+  if (override) return override
+  const segment = ref.split('.').pop() ?? ref
+  return titleCase(segment.replace(/-/g, ' '))
+}
+
+export function formatPaletteScreenGroup(screenKey: string): { title: string; detail?: string } {
+  if (screenKey === 'All screens') {
+    return { title: 'All screens' }
+  }
+  const refs = screenKey.split(' · ').map((ref) => ref.trim()).filter(Boolean)
+  const labels = refs.map(formatRefSegment)
+  return {
+    title: labels.length === 1 ? labels[0]! : labels.join(' · '),
+    detail: screenKey,
+  }
+}
+
+export function formatPaletteApplicationTitle(appRef: string): { title: string; detail?: string } {
+  if (!appRef || appRef === 'unscoped') {
+    return { title: 'Unscoped actions' }
+  }
+  const parts = appRef.split('.')
+  const leaf = parts[parts.length - 1] ?? appRef
+  const leafLabel = titleCase(leaf.replace(/-/g, ' '))
+  if (parts[0] === 'nesy' && parts.length >= 2) {
+    return {
+      title: `Nesy ${leafLabel}`,
+      detail: appRef,
+    }
+  }
+  return { title: leafLabel, detail: appRef }
+}
+
 export function paletteItemFromSemanticAction(action: SemanticActionApi): PaletteItem {
   const blocked = !action.capabilityStatus.satisfied
   const reason =
@@ -52,6 +102,7 @@ export function buildPackPaletteGroups(
 
   const groups: WorkflowPaletteCategory[] = []
   for (const [appRef, actions] of byApp) {
+    const appHeading = formatPaletteApplicationTitle(appRef)
     const byScreen = new Map<string, SemanticActionApi[]>()
     for (const action of actions) {
       const screenKey =
@@ -64,16 +115,22 @@ export function buildPackPaletteGroups(
     const screenEntries = [...byScreen.entries()]
     if (screenEntries.length === 1 && screenEntries[0]![0] === 'All screens') {
       groups.push({
-        title: appRef,
+        title: appHeading.title,
+        detail: appHeading.detail,
         items: screenEntries[0]![1].map(paletteItemFromSemanticAction),
       })
     } else {
       groups.push({
-        title: appRef,
-        subsections: screenEntries.map(([title, screenActions]) => ({
-          title,
-          items: screenActions.map(paletteItemFromSemanticAction),
-        })),
+        title: appHeading.title,
+        detail: appHeading.detail,
+        subsections: screenEntries.map(([screenKey, screenActions]) => {
+          const screenHeading = formatPaletteScreenGroup(screenKey)
+          return {
+            title: screenHeading.title,
+            detail: screenHeading.detail,
+            items: screenActions.map(paletteItemFromSemanticAction),
+          }
+        }),
       })
     }
   }

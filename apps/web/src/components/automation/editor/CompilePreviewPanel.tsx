@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { compileVerdictWorkflow, fetchVerdictDomainPacks } from '@/lib/verdict-runtime/client';
 import { selectPinnedPublishedPack } from '@/lib/verdict-runtime/select-published-pack';
 import type { DomainPackSummary } from '@/lib/verdict-runtime/types';
-import { Loader2, CheckCircle2, XCircle, AlertTriangle, Copy, Terminal } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertTriangle, Copy } from 'lucide-react';
 
 export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
   const [compiling, setCompiling] = useState(false);
@@ -75,43 +75,50 @@ export function CompilePreviewPanel({ workflowState }: { workflowState: any }) {
   }, [workflowState, autoCompile]);
 
   return (
-    <div className="flex flex-col h-full border-l border-gray-200 bg-gray-50">
-      <div className="p-4 border-b border-gray-200 bg-white flex justify-between items-center">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Terminal size={16} /> Compile Preview
-        </h3>
-        <div className="flex gap-2 items-center">
-          <label className="text-xs flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={autoCompile} onChange={e => setAutoCompile(e.target.checked)} />
-            Auto-compile
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/90 px-3 py-2.5">
+        <h3 className="text-sm font-semibold text-slate-900">Compile Preview</h3>
+        <div className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={autoCompile}
+              onChange={(e) => setAutoCompile(e.target.checked)}
+              className="size-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+            />
+            Auto
           </label>
-          <button 
-            onClick={handleCompile} 
+          <button
+            onClick={handleCompile}
             disabled={compiling || pack === null}
             title={packError ?? undefined}
-            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+            className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {compiling && <Loader2 size={12} className="animate-spin" />}
+            {compiling ? <Loader2 size={12} className="animate-spin" /> : null}
             Compile
           </button>
         </div>
       </div>
 
       {packError ? (
-        <div className="p-3 border-b border-red-200 bg-red-50 text-red-800 text-xs flex gap-2">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+        <div className="flex shrink-0 gap-2 border-b border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-900">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
           <p>{packError} Publish a Domain Pack before compiling — an unpinned plan cannot be attributed to a pack.</p>
         </div>
       ) : pack ? (
-        <div className="px-4 py-2 border-b border-gray-200 bg-white text-[11px] text-gray-600 font-mono">
+        <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/80 px-3 py-1.5 font-mono text-[10px] font-medium text-slate-600">
           pinned: {pack.packKey}@{pack.version}
         </div>
       ) : null}
 
-      <div className="flex-1 overflow-auto p-4">
-        {!result && !compiling && (
-          <div className="text-gray-500 text-sm text-center mt-10">Click Compile to generate the Verdict plan.</div>
-        )}
+      <div className="min-h-0 flex-1 overflow-auto p-3">
+        {!result && !compiling ? (
+          <div className="flex h-full min-h-[12rem] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
+            <p className="text-xs font-medium leading-snug text-slate-500">
+              Click Compile to generate the Verdict plan.
+            </p>
+          </div>
+        ) : null}
 
         {result && (
           <div className="space-y-4">

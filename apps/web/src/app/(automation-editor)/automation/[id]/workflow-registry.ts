@@ -45,10 +45,19 @@ export const courierPaletteSubgroupOrder: CourierPaletteSubgroup[] = [
   "Documents & LOS",
 ];
 
+export type WorkflowPaletteSubsection = {
+  title: string;
+  /** Technical screen ref(s) — shown on hover and used for search. */
+  detail?: string;
+  items: PaletteItem[];
+};
+
 export type WorkflowPaletteCategory = {
   title: string;
+  /** Technical application ref — shown on hover and used for search. */
+  detail?: string;
   items?: PaletteItem[];
-  subsections?: { title: string; items: PaletteItem[] }[];
+  subsections?: WorkflowPaletteSubsection[];
 };
 
 type NodeToneKey =

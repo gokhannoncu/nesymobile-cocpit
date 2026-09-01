@@ -6,11 +6,12 @@ import {
   Smartphone,
   Shield,
   Power,
-  Loader2,
   AlertTriangle,
   RefreshCw,
   CheckCircle2,
 } from 'lucide-react'
+import { cn } from '@nesy/metronic/lib/utils'
+import { ShimmerBlock } from '@/components/automation/automation-list-page-shimmer'
 import {
   fetchVerdictDomainPacks,
   fetchVerdictLaunchProfiles,
@@ -50,6 +51,94 @@ type Draft = {
 
 const SESSION_MODES = ['REAL_UI_LOGIN', 'PREPARED_SESSION', 'DIRECT_STATE'] as const
 const START_MODES = ['COLD_START', 'WARM_START', 'REUSE_SESSION'] as const
+
+function FieldShimmer() {
+  return (
+    <div className="space-y-1">
+      <ShimmerBlock className="h-3 w-28" />
+      <ShimmerBlock className="h-9 w-full rounded-lg" />
+    </div>
+  )
+}
+
+function SectionShimmer({ fieldCount }: { fieldCount: number }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-1.5">
+        <ShimmerBlock className="size-3.5 shrink-0 rounded" />
+        <ShimmerBlock className="h-3 w-32" />
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: fieldCount }).map((_, index) => (
+          <FieldShimmer key={index} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LaunchProfileBuilderShimmer() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <ShimmerBlock className="h-10 w-full rounded-lg" />
+      <ShimmerBlock className="h-5 w-32 rounded-md" />
+
+      <div>
+        <ShimmerBlock className="mb-1.5 h-3 w-14" />
+        <ShimmerBlock className="h-9 w-full rounded-lg" />
+        <div className="mt-2 space-y-1.5 rounded-lg border border-slate-200/70 p-2.5">
+          <ShimmerBlock className="h-3.5 w-[78%]" />
+          <ShimmerBlock className="h-2.5 w-full" />
+        </div>
+      </div>
+
+      <SectionShimmer fieldCount={3} />
+      <SectionShimmer fieldCount={4} />
+
+      <div>
+        <div className="mb-2 flex items-center gap-1.5">
+          <ShimmerBlock className="size-3.5 shrink-0 rounded" />
+          <ShimmerBlock className="h-3 w-36" />
+        </div>
+        <div className="space-y-2">
+          <FieldShimmer />
+          <FieldShimmer />
+          <ShimmerBlock className="h-4 w-40 rounded-md" />
+          <ShimmerBlock className="h-4 w-44 rounded-md" />
+          <ShimmerBlock className="h-4 w-52 rounded-md" />
+          <FieldShimmer />
+        </div>
+      </div>
+
+      <ShimmerBlock className="h-9 w-full rounded-lg" />
+    </div>
+  )
+}
+
+function ProfileSummaryCard({ displayName, profileKey, blockedReason }: {
+  displayName: string
+  profileKey: string
+  blockedReason?: string | null
+}) {
+  return (
+    <div className="mt-2 rounded-lg border border-slate-200/90 bg-slate-50/60 p-2.5">
+      <p className="text-xs font-semibold leading-snug text-slate-800">{displayName}</p>
+      <p className="mt-0.5 break-all font-mono text-[10px] leading-snug text-slate-500">{profileKey}</p>
+      {blockedReason ? (
+        <p className="mt-1.5 text-[10px] font-medium leading-snug text-amber-800">{blockedReason}</p>
+      ) : null}
+    </div>
+  )
+}
+
+function SectionHeading({ icon: Icon, title }: { icon: typeof Smartphone; title: string }) {
+  return (
+    <h4 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+      <Icon className="size-3.5 shrink-0 text-slate-500" aria-hidden />
+      {title}
+    </h4>
+  )
+}
 
 export function LaunchProfileBuilder() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
@@ -164,95 +253,111 @@ export function LaunchProfileBuilder() {
     }
   }
 
+  const selectedProfile =
+    state.status === 'ready'
+      ? state.items.find((item) => item.profileKey === selectedKey) ?? state.items[0]
+      : undefined
+
   return (
-    <div className="p-4 bg-white border rounded-lg shadow-sm">
-      <div className="flex items-center justify-between mb-4 pb-2 border-b">
-        <div className="flex items-center gap-2">
-          <Rocket size={18} className="text-indigo-600" />
-          <h3 className="font-semibold text-sm">Launch Profile</h3>
+    <div className="p-3">
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Rocket className="size-4 shrink-0 text-indigo-600" aria-hidden />
+          <h3 className="truncate text-sm font-semibold text-slate-900">Launch Profile</h3>
         </div>
         <button
           type="button"
           onClick={() => setReloadToken((n) => n + 1)}
-          className="flex items-center gap-1 text-[10px] bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-medium"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200/90 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-100 disabled:opacity-50"
           disabled={state.status === 'loading'}
         >
-          <RefreshCw size={12} className={state.status === 'loading' ? 'animate-spin' : ''} />
+          <RefreshCw className={cn('size-3', state.status === 'loading' && 'animate-spin')} />
           Refresh
         </button>
       </div>
 
-      <label className="flex items-center gap-2 text-[11px] mb-3">
-        <input
-          type="checkbox"
-          checked={releaseBuild}
-          onChange={(e) => setReleaseBuild(e.target.checked)}
-        />
-        Release build (DIRECT_STATE blocked)
-      </label>
+      {state.status === 'loading' ? (
+        <LaunchProfileBuilderShimmer />
+      ) : (
+        <>
+          <label className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/60 px-2.5 py-2 text-[11px] font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={releaseBuild}
+              onChange={(e) => setReleaseBuild(e.target.checked)}
+              className="size-3.5 rounded border-slate-300"
+            />
+            Release build (DIRECT_STATE blocked)
+          </label>
 
-      {state.status === 'loading' && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center">
-          <Loader2 size={14} className="animate-spin" />
-          Loading launch profiles…
-        </div>
-      )}
-
-      {state.status === 'error' && (
-        <div className="flex gap-2 text-xs text-red-800 bg-red-50 border border-red-200 rounded p-3">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div>
+          {state.status === 'error' ? (
+        <div className="flex gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0">
             <p className="font-semibold">Launch profiles unavailable</p>
-            <p className="mt-0.5 opacity-90">{state.message}</p>
+            <p className="mt-0.5 leading-snug text-rose-800">{state.message}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {state.status === 'empty' && (
-        <div className="flex gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded p-3">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div>
+      {state.status === 'empty' ? (
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0">
             <p className="font-semibold">No launch profiles</p>
-            <p className="mt-0.5 opacity-90">{state.blockedReason}</p>
+            <p className="mt-0.5 leading-snug">{state.blockedReason}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {state.status === 'ready' && draft && (
+      {state.status === 'ready' && draft ? (
         <div className="space-y-4">
-          <p className="text-[10px] text-gray-500 font-mono">
+          <span className="inline-flex rounded-md border border-slate-200/90 bg-slate-50 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-600">
             {state.pack.packKey}@{state.pack.version}
-          </p>
+          </span>
 
-          <select
-            className="w-full text-xs border rounded p-1.5 bg-gray-50"
-            value={selectedKey ?? ''}
-            onChange={(e) => selectProfile(e.target.value)}
-          >
-            {state.items.map((item) => (
-              <option key={item.profileKey} value={item.profileKey}>
-                {item.displayName} ({item.profileKey})
-                {item.blockedReason ? ' — blocked' : ''}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label htmlFor="launch-profile-select" className="mb-1.5 block text-[11px] font-semibold text-slate-600">
+              Profile
+            </label>
+            <select
+              id="launch-profile-select"
+              className="w-full rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-800 outline-none transition-[border-color,box-shadow] focus:border-slate-300 focus:ring-2 focus:ring-slate-200/80"
+              value={selectedKey ?? ''}
+              onChange={(e) => selectProfile(e.target.value)}
+            >
+              {state.items.map((item) => (
+                <option key={item.profileKey} value={item.profileKey}>
+                  {item.displayName}
+                  {item.blockedReason ? ' (blocked)' : ''}
+                </option>
+              ))}
+            </select>
+            {selectedProfile ? (
+              <ProfileSummaryCard
+                displayName={selectedProfile.displayName}
+                profileKey={selectedProfile.profileKey}
+                blockedReason={selectedProfile.blockedReason}
+              />
+            ) : null}
+          </div>
 
           <section>
-            <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1 mb-2">
-              <Smartphone size={14} /> Process / session
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
+            <SectionHeading icon={Smartphone} title="Process / session" />
+            <div className="space-y-2">
               <Field
-                label="applicationRef"
+                label="Application"
                 value={draft.applicationRef}
                 error={fieldErrors.applicationRef}
                 onChange={(v) => patch({ applicationRef: v })}
-                className="col-span-2"
               />
-              <label className="col-span-1 text-[10px] text-gray-600">
-                startMode
+              <label className="block text-[10px] font-semibold text-slate-600">
+                Start mode
                 <select
-                  className={`mt-0.5 w-full text-xs border rounded p-1.5 ${fieldErrors.startMode ? 'border-red-400' : ''}`}
+                  className={cn(
+                    'mt-1 w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200/80',
+                    fieldErrors.startMode ? 'border-rose-300' : 'border-slate-200/90',
+                  )}
                   value={draft.startMode}
                   onChange={(e) => patch({ startMode: e.target.value })}
                 >
@@ -263,10 +368,13 @@ export function LaunchProfileBuilder() {
                   ))}
                 </select>
               </label>
-              <label className="col-span-1 text-[10px] text-gray-600">
-                sessionPreparation
+              <label className="block text-[10px] font-semibold text-slate-600">
+                Session preparation
                 <select
-                  className={`mt-0.5 w-full text-xs border rounded p-1.5 ${fieldErrors.sessionPreparation ? 'border-red-400' : ''}`}
+                  className={cn(
+                    'mt-1 w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200/80',
+                    fieldErrors.sessionPreparation ? 'border-rose-300' : 'border-slate-200/90',
+                  )}
                   value={draft.sessionPreparation}
                   onChange={(e) => onSessionPreparationChange(e.target.value)}
                 >
@@ -282,41 +390,39 @@ export function LaunchProfileBuilder() {
                   ))}
                 </select>
                 {releaseBuild && draft.sessionPreparation === 'DIRECT_STATE' ? (
-                  <span className="block text-red-700 mt-0.5">
+                  <span className="mt-1 block text-[10px] text-rose-700">
                     DIRECT_STATE is not selectable in release builds
                   </span>
                 ) : null}
                 {fieldErrors.sessionPreparation ? (
-                  <span className="block text-red-700 mt-0.5">{fieldErrors.sessionPreparation}</span>
+                  <span className="mt-1 block text-[10px] text-rose-700">{fieldErrors.sessionPreparation}</span>
                 ) : null}
               </label>
             </div>
           </section>
 
           <section>
-            <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1 mb-2">
-              <Shield size={14} /> Entry / preconditions
-            </h4>
+            <SectionHeading icon={Shield} title="Entry / preconditions" />
             <div className="space-y-2">
               <Field
-                label="entry.entryRef"
+                label="Entry ref"
                 value={draft.entryRef}
                 error={fieldErrors.entry}
                 onChange={(v) => patch({ entryRef: v })}
               />
               <Field
-                label="entry.expectedScreenRef"
+                label="Expected screen"
                 value={draft.expectedScreenRef}
                 error={fieldErrors.entry}
                 onChange={(v) => patch({ expectedScreenRef: v })}
               />
               <Field
-                label="preconditionFactKeys (comma)"
+                label="Precondition facts (comma)"
                 value={draft.preconditionFactKeysText}
                 onChange={(v) => patch({ preconditionFactKeysText: v })}
               />
               <Field
-                label="preparationOperationRefs (comma)"
+                label="Preparation ops (comma)"
                 value={draft.preparationOperationRefsText}
                 error={fieldErrors.preparationOperationRefs}
                 onChange={(v) => patch({ preparationOperationRefsText: v })}
@@ -325,54 +431,55 @@ export function LaunchProfileBuilder() {
           </section>
 
           <section>
-            <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1 mb-2">
-              <Power size={14} /> Cleanup / release isolation
-            </h4>
+            <SectionHeading icon={Power} title="Cleanup / release isolation" />
             <div className="space-y-2">
               <Field
-                label="cleanup.cleanupRefs (comma)"
+                label="Cleanup refs (comma)"
                 value={draft.cleanupRefsText}
                 error={fieldErrors.cleanup}
                 onChange={(v) => patch({ cleanupRefsText: v })}
               />
               <Field
-                label="cleanup.deadlineMs"
+                label="Cleanup deadline (ms)"
                 value={draft.cleanupDeadlineMs}
                 error={fieldErrors.cleanup}
                 onChange={(v) => patch({ cleanupDeadlineMs: v })}
               />
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-2 text-xs text-slate-700">
                 <input
                   type="checkbox"
                   checked={draft.cleanupRunOnFailure}
                   onChange={(e) => patch({ cleanupRunOnFailure: e.target.checked })}
+                  className="size-3.5 rounded border-slate-300"
                 />
-                cleanup.runOnFailure
+                Run cleanup on failure
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-2 text-xs text-slate-700">
                 <input
                   type="checkbox"
                   checked={draft.producesProductVerdict}
                   onChange={(e) => patch({ producesProductVerdict: e.target.checked })}
+                  className="size-3.5 rounded border-slate-300"
                 />
-                producesProductVerdict
+                Produces product verdict
               </label>
               {fieldErrors.producesProductVerdict ? (
-                <p className="text-[10px] text-red-700">{fieldErrors.producesProductVerdict}</p>
+                <p className="text-[10px] text-rose-700">{fieldErrors.producesProductVerdict}</p>
               ) : null}
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-2 text-xs text-slate-700">
                 <input
                   type="checkbox"
                   checked={draft.automationOnly}
                   onChange={(e) => patch({ automationOnly: e.target.checked })}
+                  className="size-3.5 rounded border-slate-300"
                 />
-                releaseIsolation.automationOnly
+                Automation only (release isolation)
               </label>
               {fieldErrors.releaseIsolation ? (
-                <p className="text-[10px] text-red-700">{fieldErrors.releaseIsolation}</p>
+                <p className="text-[10px] text-rose-700">{fieldErrors.releaseIsolation}</p>
               ) : null}
               <Field
-                label="releaseIsolation.releaseGuard"
+                label="Release guard"
                 value={draft.releaseGuard}
                 onChange={(v) => patch({ releaseGuard: v })}
               />
@@ -383,35 +490,36 @@ export function LaunchProfileBuilder() {
             type="button"
             onClick={runValidate}
             disabled={validating || (releaseBuild && draft.sessionPreparation === 'DIRECT_STATE')}
-            className="w-full text-xs py-1.5 rounded border font-medium bg-indigo-50 text-indigo-800 border-indigo-200 hover:bg-indigo-100 disabled:opacity-50"
+            className="w-full rounded-lg border border-indigo-200/90 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800 transition-colors hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {validating ? 'Validating…' : 'Validate profile'}
           </button>
 
           {validateError ? (
-            <div className="flex gap-2 text-xs text-red-800 bg-red-50 border border-red-200 rounded p-2">
-              <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-              <p>{validateError}</p>
+            <div className="flex gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-900">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <p className="leading-snug">{validateError}</p>
             </div>
           ) : null}
 
           {validation ? (
             <div
-              className={`text-xs rounded border p-2 ${
+              className={cn(
+                'rounded-lg border p-2.5 text-xs',
                 validation.ok
-                  ? 'bg-green-50 border-green-200 text-green-800'
-                  : 'bg-red-50 border-red-200 text-red-800'
-              }`}
+                  ? 'border-emerald-200/90 bg-emerald-50/80 text-emerald-900'
+                  : 'border-rose-200/90 bg-rose-50/80 text-rose-900',
+              )}
             >
-              <div className="flex items-center gap-1.5 font-semibold mb-1">
-                {validation.ok ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+              <div className="mb-1 flex items-center gap-1.5 font-semibold">
+                {validation.ok ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
                 {validation.ok ? 'Profile valid' : 'Validation failed'}
               </div>
               {validation.blockedReason ? (
-                <p className="mb-1">{validation.blockedReason}</p>
+                <p className="mb-1 leading-snug">{validation.blockedReason}</p>
               ) : null}
               {!validation.ok ? (
-                <ul className="space-y-1 list-disc pl-4">
+                <ul className="list-disc space-y-1 pl-4 leading-snug">
                   {validation.violations.map((v) => (
                     <li key={`${v.code}:${v.message}`}>
                       <span className="font-mono">{v.code}</span>: {v.message}
@@ -422,6 +530,8 @@ export function LaunchProfileBuilder() {
             </div>
           ) : null}
         </div>
+      ) : null}
+        </>
       )}
     </div>
   )
@@ -432,24 +542,25 @@ function Field({
   value,
   onChange,
   error,
-  className = '',
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   error?: string
-  className?: string
 }) {
   return (
-    <label className={`block text-[10px] text-gray-600 ${className}`}>
+    <label className="block text-[10px] font-semibold text-slate-600">
       {label}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`mt-0.5 w-full text-xs border rounded p-1.5 ${error ? 'border-red-400' : ''}`}
+        className={cn(
+          'mt-1 w-full rounded-lg border bg-white px-2.5 py-2 font-mono text-xs text-slate-800 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200/80',
+          error ? 'border-rose-300' : 'border-slate-200/90',
+        )}
       />
-      {error ? <span className="block text-red-700 mt-0.5">{error}</span> : null}
+      {error ? <span className="mt-1 block text-[10px] text-rose-700">{error}</span> : null}
     </label>
   )
 }
