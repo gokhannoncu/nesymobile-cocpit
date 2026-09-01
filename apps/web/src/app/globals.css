@@ -211,6 +211,30 @@ html {
 
 @import '../../../../packages/metronic/src/styles/config.metronic.css';
 
+/* Turbopack can omit Tailwind's responsive logical inset/margin utilities
+   for the workspace package. Keep the fixed sidebar/header/content
+   boundary deterministic. */
+@media (width >= 1024px) {
+  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='layout-content'] {
+    margin-inline-start: var(--sidebar-width);
+  }
+
+  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='layout-content'] {
+    margin-inline-start: var(--sidebar-collapsed-width);
+  }
+
+  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='layout-header'],
+  [data-slot='layout-wrapper'][data-sidebar-open='true'] > [data-slot='navigation-feedback'] {
+    /* Beat the leftover `start-0` utility when Turbopack drops `lg:start-*`. */
+    inset-inline-start: var(--sidebar-width) !important;
+  }
+
+  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='layout-header'],
+  [data-slot='layout-wrapper'][data-sidebar-open='false'] > [data-slot='navigation-feedback'] {
+    inset-inline-start: var(--sidebar-collapsed-width) !important;
+  }
+}
+
 /* Animated architecture flow moved from Architecture Report */
 .arch{--surface:var(--card);--surface2:var(--muted);--text:var(--foreground);--text2:var(--muted-foreground);--text3:var(--muted-foreground);margin-top:4px}
 .arch-nav{display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;padding:5px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;box-shadow:inset 0 1px 2px rgba(15,23,42,.04)}

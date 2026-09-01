@@ -149,7 +149,7 @@ export function NavigationFeedback() {
   return (
     <div
       data-slot="navigation-feedback"
-      className="pointer-events-none fixed inset-y-0 end-0 start-0 z-50 flex items-center justify-center bg-background/55 backdrop-blur-[1px] lg:top-[calc(var(--header-height)+var(--page-margin))] lg:start-(--sidebar-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width)"
+      className="pointer-events-none fixed inset-y-0 end-0 start-0 z-50 flex items-center justify-center bg-background/55 backdrop-blur-[1px] lg:start-(--sidebar-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width)"
       role="status"
       aria-live="polite"
       aria-label={pendingLabel ? `Preparing ${pendingLabel} page` : 'Preparing page'}

@@ -1,3 +1,5 @@
+'use client';
+
 import { PanelRight } from 'lucide-react';
 import { useLayout } from './context';
 import { toAbsoluteUrl } from '@nesy/metronic/lib/helpers';

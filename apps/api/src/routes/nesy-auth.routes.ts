@@ -197,12 +197,21 @@ export async function nesyAuthRoutes(app: FastifyInstance) {
           })
         }
 
+        // Data Center + operator scripts store this JWT in the browser session.
+        // Admin peek / fixture / qualification routes still never serialize it.
+        const rawResult = asRecord(login.result)
+        const rawPayload = asRecord(rawResult.payload ?? rawResult.Payload)
         return {
           message: 'Nesy login successful.',
           country,
           environment,
           result: {
-            ...asRecord(withoutTokenFields(login.result)),
+            ...rawResult,
+            payload: {
+              ...rawPayload,
+              token: login.token,
+              user: rawPayload.user ?? rawPayload.User,
+            },
             tokenPresent: true,
             tokenFingerprint: fingerprintAdminToken(login.token),
             fromCache: login.fromCache,

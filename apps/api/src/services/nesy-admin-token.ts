@@ -9,7 +9,9 @@
  *
  * Lifetime follows the JWT `exp` claim (Nesy dashboard tokens expire at the
  * next 03:00 UTC). A 30-minute wall clock is only the fallback when `exp`
- * cannot be read. The bearer never leaves this process on HTTP.
+ * cannot be read. Admin peek / fixture / qualification responses never
+ * serialize the bearer. Data Center `/nesy/auth/login` still returns
+ * `payload.token` for the browser session.
  */
 
 import { createHash } from 'node:crypto'

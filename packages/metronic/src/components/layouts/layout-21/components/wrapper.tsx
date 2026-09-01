@@ -21,7 +21,7 @@ export function Wrapper({ children }: { children: React.ReactNode }) {
       <Header />
       {!isMobile && <Sidebar />}
 
-      <div className={cn(
+      <div data-slot="layout-content" className={cn(
         'bg-background lg:border-e lg:border-b lg:border-border grow min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:rounded-ee-xl lg:in-data-[sidebar-open=false]:rounded-es-xl lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) duration-300',
         enableTransitions ? 'transition-all duration-300' : 'transition-none'
       )}>    

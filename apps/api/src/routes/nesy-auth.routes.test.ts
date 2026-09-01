@@ -63,7 +63,7 @@ describe('Nesy admin credential routes', () => {
     expect(response.json()).not.toHaveProperty('token')
   })
 
-  it('scrubs the upstream token from the login response even on a cache hit', async () => {
+  it('returns payload.token on login so Data Center can store the session', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/nesy/auth/login',
@@ -71,13 +71,13 @@ describe('Nesy admin credential routes', () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).not.toContain('admin-bearer-secret')
     expect(response.json().result).toMatchObject({
       resultCode: 200,
       tokenPresent: true,
       fromCache: true,
     })
-    expect(response.json().result.payload).toEqual({})
+    expect(response.json().result.payload.token).toBe('admin-bearer-secret')
+    expect(response.json().result.payload.user).toBeUndefined()
   })
 
   it('performs qualification shipment reads server-side without returning the bearer', async () => {
