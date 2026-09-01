@@ -1,7 +1,6 @@
 'use client'
 
 import { ShimmerBlock } from '@/components/automation/automation-list-page-shimmer'
-import { DataTableShimmer, MetricCardsShimmer, PageTitleShimmer } from './shared-shimmer'
 
 export function RunPlannerPageShimmer() {
   return (
@@ -53,14 +52,82 @@ export function RunPlannerPageShimmer() {
 
 export function ExecutionQueuePageShimmer() {
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8" aria-busy="true" aria-label="Loading execution queue">
-      <PageTitleShimmer />
-      <MetricCardsShimmer count={3} />
-      <DataTableShimmer
-        title="Latest BridgeFlow Runs"
-        columns={['Run ID', 'Status', 'Engine', 'Read model']}
-        rowCount={1}
-      />
+    <div className="space-y-5" aria-busy="true" aria-label="Loading execution queue">
+      <div className="space-y-4">
+        <div
+          className="overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
+          aria-hidden
+        >
+          <ShimmerBlock className="h-3 w-40" />
+          <ShimmerBlock className="mt-2 h-7 w-52" />
+          <ShimmerBlock className="mt-2 h-4 w-full max-w-2xl" />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <ShimmerBlock key={index} className="h-6 w-32 rounded-full" />
+            ))}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="rounded-lg border border-border/70 bg-background/80 p-4">
+                <ShimmerBlock className="h-3 w-20" />
+                <ShimmerBlock className="mt-3 h-8 w-12" />
+                <ShimmerBlock className="mt-2 h-3 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border/80 bg-card p-3 shadow-xs" aria-hidden>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <ShimmerBlock className="h-10 flex-1 rounded-lg" />
+            <ShimmerBlock className="h-10 w-48 shrink-0 rounded-lg" />
+            <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
+          </div>
+        </div>
+      </div>
+
+      <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs" aria-hidden>
+        <div className="border-b border-border bg-muted/15 px-3 py-2">
+          <ShimmerBlock className="h-3.5 w-36" />
+          <ShimmerBlock className="mt-1.5 h-3 w-52" />
+        </div>
+        <div className="overflow-x-auto border-t border-border p-0">
+          <table className="min-w-full border-collapse text-xs">
+            <thead>
+              <tr className="bg-muted/25">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <th
+                    key={index}
+                    className="border-b border-r border-border px-3 py-2 text-left last:border-r-0"
+                  >
+                    <ShimmerBlock className="h-2.5 w-14" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-muted/50">
+                <td className="border-b border-r border-border px-3 py-2 last:border-r-0">
+                  <div className="flex items-center gap-2">
+                    <ShimmerBlock className="size-7 shrink-0 rounded-lg" />
+                    <div className="min-w-0 flex-1">
+                      <ShimmerBlock className="h-3.5 w-40" />
+                    </div>
+                  </div>
+                </td>
+                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-6 w-20 rounded-lg" /></td>
+                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-6 w-16 rounded-lg" /></td>
+                <td className="border-b border-r border-border px-3 py-2"><ShimmerBlock className="h-3.5 w-24" /></td>
+                <td className="border-b border-border px-3 py-2"><ShimmerBlock className="ms-auto h-3.5 w-12" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-col gap-3 border-t border-border px-3 py-2.5 lg:flex-row lg:items-center lg:justify-between">
+          <ShimmerBlock className="h-3.5 w-40" />
+          <ShimmerBlock className="h-8 w-52 rounded-lg" />
+          <ShimmerBlock className="h-8 w-36 rounded-lg" />
+        </div>
+      </article>
     </div>
   )
 }

@@ -1,17 +1,24 @@
 'use client'
-import { Badge } from '@nesy/metronic/components/ui/badge'
+
+import { cn } from '@nesy/metronic/lib/utils'
+import {
+  testProfileKindTone,
+  type TestProfileKind,
+} from '@/lib/verdict-runtime/test-profile-registry'
+import { toneIconBox, toneText } from '@/components/product/tones'
 
 export function TestProfileKindBadge({ kind }: { kind: string }) {
-  const colors: Record<string, string> = {
-    SMOKE: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    REGRESSION: 'bg-purple-100 text-purple-800 border-purple-200',
-    ACCEPTANCE: 'bg-blue-100 text-blue-800 border-blue-200',
-    PERFORMANCE: 'bg-orange-100 text-orange-800 border-orange-200',
-    CUSTOM: 'bg-gray-100 text-gray-800 border-gray-200'
-  }
+  const tone = testProfileKindTone(kind as TestProfileKind)
+
   return (
-    <Badge variant="outline" className={`${colors[kind] || colors.CUSTOM}`}>
+    <span
+      className={cn(
+        'inline-flex rounded-[8px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
+        toneIconBox[tone],
+        toneText[tone],
+      )}
+    >
       {kind}
-    </Badge>
+    </span>
   )
 }

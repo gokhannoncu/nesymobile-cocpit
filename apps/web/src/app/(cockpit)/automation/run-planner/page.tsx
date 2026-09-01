@@ -30,7 +30,7 @@ export default async function RunPlannerPage() {
   ].filter((item): item is string => item !== null)
 
   return (
-    <ProductPage path="/automation/run-planner">
+    <ProductPage path="/automation/run-planner" hideToolbar>
       <RunPlannerPageIntro
         workflowCount={workflows.items.length}
         publishedPackCount={publishedPacks.length}

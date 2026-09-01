@@ -5,13 +5,13 @@
   "ready": true,
   "code": "ADMIN_AUTH_READY",
   "runtime": {
-    "apiPid": "65859",
-    "apiCommand": "/usr/local/bin/node /Users/gokhanoncu/Desktop/Pype/Pype Develop/Consultants/NesyMobileCocpit/apps/api/dist/server.js",
+    "apiPid": "16194",
+    "apiCommand": "node dist/server.js",
     "health": 200
   },
   "steps": {
     "cacheBefore": {
-      "pid": 65859,
+      "pid": 16194,
       "country": "RS",
       "environment": "stage",
       "present": false,
@@ -41,14 +41,14 @@
       "fromCache": false
     },
     "cacheAfterLogin": {
-      "pid": 65859,
+      "pid": 16194,
       "country": "RS",
       "environment": "stage",
       "present": true,
-      "tokenFingerprint": "sha256:579e27ae6e4130c4",
+      "tokenFingerprint": "sha256:8e6d1d74a552bcb9",
       "ageMs": 5,
       "expiresAt": "2026-09-02T03:00:00.000Z",
-      "ttlMs": 26077916,
+      "ttlMs": 21521750,
       "expirySource": "jwt",
       "cacheExpired": false,
       "jwtExpired": false,
@@ -62,17 +62,17 @@
     "cachedTokenRead": {
       "http": 200,
       "code": null,
-      "tokenFingerprint": "sha256:579e27ae6e4130c4"
+      "tokenFingerprint": "sha256:8e6d1d74a552bcb9"
     },
     "cacheAfterCachedRead": {
-      "pid": 65859,
+      "pid": 16194,
       "country": "RS",
       "environment": "stage",
       "present": true,
-      "tokenFingerprint": "sha256:579e27ae6e4130c4",
+      "tokenFingerprint": "sha256:8e6d1d74a552bcb9",
       "ageMs": 9,
       "expiresAt": "2026-09-02T03:00:00.000Z",
-      "ttlMs": 26077912,
+      "ttlMs": 21521746,
       "expirySource": "jwt",
       "cacheExpired": false,
       "jwtExpired": false,
@@ -90,7 +90,7 @@
       "adapterReadback": {
         "present": true,
         "source": "dashboard-admin-cache",
-        "tokenFingerprint": "sha256:579e27ae6e4130c4",
+        "tokenFingerprint": "sha256:8e6d1d74a552bcb9",
         "matchesCache": true,
         "loginDashboardCallsBefore": 1,
         "loginDashboardCallsAfter": 1
@@ -103,14 +103,14 @@
       }
     },
     "cacheAfterPreflight": {
-      "pid": 65859,
+      "pid": 16194,
       "country": "RS",
       "environment": "stage",
       "present": true,
-      "tokenFingerprint": "sha256:579e27ae6e4130c4",
-      "ageMs": 194,
+      "tokenFingerprint": "sha256:8e6d1d74a552bcb9",
+      "ageMs": 228,
       "expiresAt": "2026-09-02T03:00:00.000Z",
-      "ttlMs": 26077727,
+      "ttlMs": 21521527,
       "expirySource": "jwt",
       "cacheExpired": false,
       "jwtExpired": false,

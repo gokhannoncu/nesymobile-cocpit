@@ -1,31 +1,36 @@
 'use client'
 
 import { ShimmerBlock } from '@/components/automation/automation-list-page-shimmer'
+import { cn } from '@nesy/metronic/lib/utils'
+
+const cellGrid = 'border-b border-r border-border last:border-r-0'
+const thClass = `px-2.5 py-1.5 ${cellGrid}`
+const tdClass = `px-2.5 py-1.5 align-middle ${cellGrid}`
 
 function DomainPackTableRowShimmer({ highlight }: { highlight?: boolean }) {
   return (
     <tr className={highlight ? 'bg-nesy-soft/30' : 'bg-muted/50'} aria-hidden>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ShimmerBlock className="h-4 w-14" />
-          {highlight ? <ShimmerBlock className="h-5 w-14 rounded-full" /> : null}
+      <td className={tdClass}>
+        <div className="flex items-center gap-1.5">
+          <ShimmerBlock className="h-3.5 w-14" />
+          {highlight ? <ShimmerBlock className="h-4 w-12 rounded-md" /> : null}
         </div>
       </td>
-      <td className="px-4 py-3">
-        <ShimmerBlock className="h-5 w-20 rounded-full" />
+      <td className={tdClass}>
+        <ShimmerBlock className="h-5 w-20 rounded-md" />
       </td>
-      <td className="px-4 py-3">
-        <ShimmerBlock className="h-4 w-8" />
+      <td className={tdClass}>
+        <ShimmerBlock className="h-3.5 w-8" />
       </td>
-      <td className="hidden px-4 py-3 md:table-cell">
-        <ShimmerBlock className="h-4 w-32" />
+      <td className={tdClass}>
+        <ShimmerBlock className="h-3.5 w-32" />
       </td>
-      <td className="hidden px-4 py-3 lg:table-cell">
-        <ShimmerBlock className="h-5 w-36 rounded-lg" />
+      <td className={cn('hidden lg:table-cell', tdClass)}>
+        <ShimmerBlock className="h-4 w-36 rounded-md" />
       </td>
-      <td className="px-4 py-3 align-middle">
+      <td className={tdClass}>
         <div className="flex justify-end">
-          <ShimmerBlock className="h-4 w-14" />
+          <ShimmerBlock className="h-3.5 w-12" />
         </div>
       </td>
     </tr>
@@ -34,7 +39,7 @@ function DomainPackTableRowShimmer({ highlight }: { highlight?: boolean }) {
 
 function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?: boolean }) {
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs" aria-hidden>
+    <article className="overflow-hidden rounded-lg border border-border bg-card" aria-hidden>
       {!compactHeader ? (
         <header className="relative border-b border-border/80 bg-gradient-to-br from-nesy-soft/25 via-background to-muted/15 px-4 py-4">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
@@ -59,7 +64,7 @@ function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?:
           </div>
         </header>
       ) : (
-        <div className="flex items-center justify-between gap-3 border-b border-border/70 bg-muted/15 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/15 px-3 py-2">
           <div className="space-y-1.5">
             <ShimmerBlock className="h-4 w-32" />
             <ShimmerBlock className="h-3 w-40" />
@@ -68,16 +73,16 @@ function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?:
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+      <div className="overflow-x-auto border-t border-border">
+        <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-border/70 bg-muted/25 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3">Version</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Revision</th>
-              <th className="hidden px-4 py-3 md:table-cell">Published</th>
-              <th className="hidden px-4 py-3 lg:table-cell">Digest</th>
-              <th className="w-20 px-4 py-3 text-right">Open</th>
+            <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className={thClass}>Version</th>
+              <th className={thClass}>Status</th>
+              <th className={thClass}>Revision</th>
+              <th className={thClass}>Published</th>
+              <th className={cn('hidden lg:table-cell', thClass)}>Digest</th>
+              <th className={cn('w-16 text-right', thClass)}>Open</th>
             </tr>
           </thead>
           <tbody>

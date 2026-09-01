@@ -1,5 +1,8 @@
 import { prisma } from '@nesy/db'
 
+import { attachDeviceDisplays } from './adb-device-identity.js'
+import { defaultRuntimeLaunchTarget, resolveRunTarget } from './launch-app-target.js'
+
 export interface RuntimeHistoryQuery {
   limit: number
   offset: number
@@ -55,10 +58,19 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           wr."startedAt" AS "startedAt",
           wr."completedAt" AS "completedAt",
           wr.duration,
+          wr.mode,
           wr."workflowId" AS "workflowId",
           wr."versionId" AS "versionId",
+          wr."deviceId" AS "deviceId",
+          wr.country,
+          wr.environment,
           w.slug AS "workflowSlug",
           w.name AS "workflowName",
+          wv.version AS "workflowVersion",
+          launch."launchCountry" AS "launchCountry",
+          launch."launchEnvironment" AS "launchEnvironment",
+          COALESCE(NULLIF(wr."deviceModelName", ''), md."modelName") AS "deviceModelName",
+          COALESCE(NULLIF(wr."deviceLabel", ''), md.label) AS "deviceLabel",
           bfr.engine_type AS "engineType",
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
@@ -72,6 +84,27 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.fault_provenance AS "faultProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
+        LEFT JOIN workflow_versions wv ON wv.id = wr."versionId"
+        LEFT JOIN LATERAL (
+          SELECT
+            COALESCE(elem->'data'->'config'->>'country', elem->'config'->>'country') AS "launchCountry",
+            COALESCE(elem->'data'->'config'->>'environment', elem->'config'->>'environment') AS "launchEnvironment"
+          FROM jsonb_array_elements(
+            CASE
+              WHEN wv.nodes IS NULL THEN '[]'::jsonb
+              WHEN jsonb_typeof(wv.nodes::jsonb) = 'array' THEN wv.nodes::jsonb
+              ELSE '[]'::jsonb
+            END
+          ) elem
+          WHERE elem->>'type' IN ('LAUNCH_APP', 'launch-app')
+          LIMIT 1
+        ) launch ON true
+        LEFT JOIN LATERAL (
+          SELECT "modelName", label
+          FROM mobile_devices
+          WHERE "adbDeviceId" = wr."deviceId" OR "deviceId" = wr."deviceId"
+          LIMIT 1
+        ) md ON true
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
         WHERE bfr.engine_type = ${query.engineType}
         ORDER BY wr."createdAt" DESC
@@ -86,10 +119,19 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           wr."startedAt" AS "startedAt",
           wr."completedAt" AS "completedAt",
           wr.duration,
+          wr.mode,
           wr."workflowId" AS "workflowId",
           wr."versionId" AS "versionId",
+          wr."deviceId" AS "deviceId",
+          wr.country,
+          wr.environment,
           w.slug AS "workflowSlug",
           w.name AS "workflowName",
+          wv.version AS "workflowVersion",
+          launch."launchCountry" AS "launchCountry",
+          launch."launchEnvironment" AS "launchEnvironment",
+          COALESCE(NULLIF(wr."deviceModelName", ''), md."modelName") AS "deviceModelName",
+          COALESCE(NULLIF(wr."deviceLabel", ''), md.label) AS "deviceLabel",
           bfr.engine_type AS "engineType",
           bfr.lifecycle,
           bfr.product_verdict AS "productVerdict",
@@ -103,6 +145,27 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
           bfr.fault_provenance AS "faultProvenance"
         FROM workflow_runs wr
         LEFT JOIN workflows w ON w.id = wr."workflowId"
+        LEFT JOIN workflow_versions wv ON wv.id = wr."versionId"
+        LEFT JOIN LATERAL (
+          SELECT
+            COALESCE(elem->'data'->'config'->>'country', elem->'config'->>'country') AS "launchCountry",
+            COALESCE(elem->'data'->'config'->>'environment', elem->'config'->>'environment') AS "launchEnvironment"
+          FROM jsonb_array_elements(
+            CASE
+              WHEN wv.nodes IS NULL THEN '[]'::jsonb
+              WHEN jsonb_typeof(wv.nodes::jsonb) = 'array' THEN wv.nodes::jsonb
+              ELSE '[]'::jsonb
+            END
+          ) elem
+          WHERE elem->>'type' IN ('LAUNCH_APP', 'launch-app')
+          LIMIT 1
+        ) launch ON true
+        LEFT JOIN LATERAL (
+          SELECT "modelName", label
+          FROM mobile_devices
+          WHERE "adbDeviceId" = wr."deviceId" OR "deviceId" = wr."deviceId"
+          LIMIT 1
+        ) md ON true
         LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
         ORDER BY wr."createdAt" DESC
         LIMIT ${limit}
@@ -113,7 +176,7 @@ export async function queryRunHistory(query: RuntimeHistoryQuery): Promise<RunHi
     apiVersion: 'verdict-runtime.v1',
     limit,
     offset,
-    items: rows.map(toWorkflowRunApi),
+    items: await hydrateWorkflowRunItems(rows),
   }
 }
 
@@ -142,12 +205,28 @@ export async function getRunDetail(runId: string): Promise<RunDetailResult | nul
       w.description AS "workflowDescription",
       w.category AS "workflowCategory",
       wv.version AS "workflowVersion",
-      md."modelName" AS "deviceModelName",
-      md.label AS "deviceLabel",
+      launch."launchCountry" AS "launchCountry",
+      launch."launchEnvironment" AS "launchEnvironment",
+      COALESCE(NULLIF(wr."deviceModelName", ''), md."modelName") AS "deviceModelName",
+      COALESCE(NULLIF(wr."deviceLabel", ''), md.label) AS "deviceLabel",
       bfr.engine_type AS "engineType"
     FROM workflow_runs wr
     LEFT JOIN workflows w ON w.id = wr."workflowId"
     LEFT JOIN workflow_versions wv ON wv.id = wr."versionId"
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(elem->'data'->'config'->>'country', elem->'config'->>'country') AS "launchCountry",
+        COALESCE(elem->'data'->'config'->>'environment', elem->'config'->>'environment') AS "launchEnvironment"
+      FROM jsonb_array_elements(
+        CASE
+          WHEN wv.nodes IS NULL THEN '[]'::jsonb
+          WHEN jsonb_typeof(wv.nodes::jsonb) = 'array' THEN wv.nodes::jsonb
+          ELSE '[]'::jsonb
+        END
+      ) elem
+      WHERE elem->>'type' IN ('LAUNCH_APP', 'launch-app')
+      LIMIT 1
+    ) launch ON true
     LEFT JOIN mobile_devices md
       ON md."adbDeviceId" = wr."deviceId" OR md."deviceId" = wr."deviceId"
     LEFT JOIN bridgeflow_run_runtime bfr ON bfr.run_id = wr.id
@@ -182,8 +261,11 @@ export async function getRunDetail(runId: string): Promise<RunDetailResult | nul
       `,
     ])
 
+  const [item] = await hydrateWorkflowRunItems([first])
+  if (!item) return null
+
   return {
-    ...toWorkflowRunApi(first),
+    ...item,
     steps: toJsonSafe(steps),
     waits: toJsonSafe(waits),
     actionTransitions: toJsonSafe(actionTransitions),
@@ -262,6 +344,8 @@ export async function getWorkflowCatalog(limit = 50): Promise<Record<string, unk
       lr.id AS "lastRunId",
       lr.status AS "lastRunStatus",
       lr."createdAt" AS "lastRunCreatedAt",
+      lr."startedAt" AS "lastRunStartedAt",
+      lr."completedAt" AS "lastRunCompletedAt",
       lr.duration AS "lastRunDuration"
     FROM workflows w
     LEFT JOIN LATERAL (
@@ -272,7 +356,7 @@ export async function getWorkflowCatalog(limit = 50): Promise<Record<string, unk
       LIMIT 1
     ) lv ON true
     LEFT JOIN LATERAL (
-      SELECT id, status, "createdAt", duration
+      SELECT id, status, "createdAt", "startedAt", "completedAt", duration
       FROM workflow_runs
       WHERE "workflowId" = w.id
       ORDER BY "createdAt" DESC
@@ -309,7 +393,12 @@ export async function getWorkflowCatalog(limit = 50): Promise<Record<string, unk
               id: row.lastRunId,
               status: row.lastRunStatus,
               createdAt: row.lastRunCreatedAt,
-              duration: row.lastRunDuration ?? null,
+              duration: resolveWorkflowRunDurationMs({
+                duration: row.lastRunDuration,
+                startedAt: row.lastRunStartedAt,
+                completedAt: row.lastRunCompletedAt,
+                createdAt: row.lastRunCreatedAt,
+              }),
             }
           : null,
     })),
@@ -335,9 +424,37 @@ export function getTestCampaignResult(campaignId: string): Record<string, unknow
   }
 }
 
+export function resolveWorkflowRunDurationMs(row: Row): number | null {
+  const explicit = nonNegativeMs(row.duration)
+  if (explicit !== null) return explicit
+  const start = timestampMs(row.startedAt) ?? timestampMs(row.createdAt)
+  const end = timestampMs(row.completedAt)
+  if (start === null || end === null || end < start) return null
+  return end - start
+}
+
+async function hydrateWorkflowRunItems(rows: readonly Row[]): Promise<WorkflowRunApi[]> {
+  const items = rows.map(toWorkflowRunApi)
+  await attachDeviceDisplays(items)
+  return items
+}
+
 export function toWorkflowRunApi(row: Row): WorkflowRunApi {
   const runId = canonicalRunId(row)
-  const runRow = row.id === runId ? row : { ...row, id: runId }
+  const base = row.id === runId ? row : { ...row, id: runId }
+  const target = resolveRunTarget(
+    resolveRunTarget(
+      { country: textOrNull(base.country), environment: textOrNull(base.environment) },
+      { country: textOrNull(base.launchCountry), environment: textOrNull(base.launchEnvironment) },
+    ),
+    defaultRuntimeLaunchTarget(),
+  )
+  const runRow = {
+    ...base,
+    duration: resolveWorkflowRunDurationMs(base),
+    country: target.country,
+    environment: target.environment,
+  }
   const rawEngineType = row.engineType ?? row.engine_type
   const engineType = typeof rawEngineType === 'string' ? rawEngineType : 'BRIDGEFLOW'
   const runtimeFieldAliases: Readonly<Record<string, readonly string[]>> = {
@@ -409,6 +526,38 @@ export function toJsonSafe<T>(value: T): T {
     ) as T
   }
   return value
+}
+
+function textOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
+}
+
+function timestampMs(value: unknown): number | null {
+  if (value instanceof Date) {
+    const ms = value.getTime()
+    return Number.isFinite(ms) ? ms : null
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function nonNegativeMs(value: unknown): number | null {
+  if (typeof value === 'bigint') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+  return null
 }
 
 function clampLimit(limit: number): number {

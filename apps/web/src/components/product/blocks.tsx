@@ -110,7 +110,7 @@ export function HeroCallout({
           {chips && chips.length > 0 && (
             <div className={cn('flex flex-wrap gap-1.5', compact ? 'mt-2.5' : 'mt-4')}>
               {chips.map((c) => (
-                <Badge key={c} variant="secondary" appearance="outline" size="sm">
+                <Badge key={c} variant="secondary" appearance="outline" size="sm" className="rounded-lg">
                   {c}
                 </Badge>
               ))}

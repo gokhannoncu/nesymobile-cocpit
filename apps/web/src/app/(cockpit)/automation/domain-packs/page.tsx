@@ -26,6 +26,10 @@ function packDetailHref(pack: Pick<DomainPackSummary, 'packKey' | 'version'>): s
   return `/automation/domain-packs/${encodeURIComponent(pack.packKey)}?version=${encodeURIComponent(pack.version)}`
 }
 
+const cellGrid = 'border-b border-r border-border last:border-r-0'
+const thClass = cn('px-2.5 py-1.5', cellGrid)
+const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
+
 function DomainPackGroupCard({
   packKey,
   versions,
@@ -42,7 +46,7 @@ function DomainPackGroupCard({
   const hiddenCount = versions.length - visibleVersions.length
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+    <article className="overflow-hidden rounded-lg border border-border bg-card">
       <DomainPackFamilyStrip
         packKey={packKey}
         versions={versions}
@@ -50,16 +54,16 @@ function DomainPackGroupCard({
         variant={compactHeader ? 'compact' : 'card'}
       />
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+      <div className="overflow-x-auto border-t border-border">
+        <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-border/70 bg-muted/25 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3">Version</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Revision</th>
-              <th className="hidden px-4 py-3 md:table-cell">Published</th>
-              <th className="hidden px-4 py-3 lg:table-cell">Digest</th>
-              <th className="w-20 px-4 py-3 text-right">Open</th>
+            <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className={thClass}>Version</th>
+              <th className={thClass}>Status</th>
+              <th className={thClass}>Revision</th>
+              <th className={thClass}>Published</th>
+              <th className={cn('hidden lg:table-cell', thClass)}>Digest</th>
+              <th className={cn('w-16 text-right', thClass)}>Open</th>
             </tr>
           </thead>
           <tbody>
@@ -71,7 +75,7 @@ function DomainPackGroupCard({
                 <tr
                   key={`${version.packKey}-${version.version}-${version.revision}`}
                   className={cn(
-                    'border-b border-border/60 transition-colors last:border-b-0',
+                    'transition-colors',
                     isLatest
                       ? 'bg-nesy-soft/30 hover:bg-nesy-soft/40'
                       : index % 2 === 1
@@ -79,43 +83,46 @@ function DomainPackGroupCard({
                         : 'bg-card hover:bg-muted/35',
                   )}
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold tabular-nums text-foreground">
+                  <td className={tdClass}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold tabular-nums text-foreground">
                         v{version.version}
                       </span>
                       {isLatest ? (
-                        <span className="rounded-full bg-nesy/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-nesy-ink">
+                        <span className="rounded-md bg-nesy/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-nesy-ink">
                           Latest
                         </span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={tdClass}>
                     <DomainPackStateBadge state={version.publicationState} />
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                  <td className={cn(tdClass, 'tabular-nums text-muted-foreground')}>
                     {version.revision}
                   </td>
-                  <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                  <td
+                    className={cn(tdClass, 'whitespace-nowrap tabular-nums text-foreground')}
+                    title={version.publishedAt}
+                  >
                     {publishedLabel ?? '—'}
                   </td>
-                  <td className="hidden px-4 py-3 lg:table-cell">
+                  <td className={cn('hidden lg:table-cell', tdClass)}>
                     <code
-                      className="rounded-lg bg-muted/60 px-1.5 py-0.5 text-xs text-muted-foreground"
+                      className="rounded-md border border-border bg-muted/40 px-1 py-px font-mono text-[10px] text-muted-foreground"
                       title={version.bundleDigest}
                     >
                       {truncateDigest(version.bundleDigest)}
                     </code>
                   </td>
-                  <td className="px-4 py-3 align-middle">
+                  <td className={tdClass}>
                     <div className="flex justify-end">
                       <Link
                         href={packDetailHref(version)}
-                        className="inline-flex w-14 items-center justify-end gap-0.5 rounded-lg py-1 text-xs font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+                        className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
                       >
                         View
-                        <ChevronRight className="size-3.5 shrink-0" />
+                        <ChevronRight className="size-3 shrink-0" />
                       </Link>
                     </div>
                   </td>
@@ -127,7 +134,7 @@ function DomainPackGroupCard({
       </div>
 
       {hiddenCount > 0 ? (
-        <div className="border-t border-border/70 px-4 py-3">
+        <div className="border-t border-border px-3 py-2">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}

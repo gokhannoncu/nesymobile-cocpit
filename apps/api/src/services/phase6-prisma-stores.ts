@@ -12,12 +12,14 @@
 
 import { Prisma, type PrismaClient } from '@nesy/db'
 
+import { lookupStoredDeviceDisplay } from './adb-device-identity.js'
 import { ensureVerdictRunRow } from './verdict-run-row.js'
 import type {
   DomainPackAdminStore,
   DomainPackPublicationState,
   DomainPackVersionRecord,
 } from './domain-pack-admin.service.js'
+import { resolveCatalogPublishedAt } from './domain-pack-published-at.js'
 import type {
   TestProfileCatalogStore,
   TestProfileKind,
@@ -250,9 +252,18 @@ interface DomainPackVersionRow {
   revision: number
   publishedAt: Date | null
   publishedBy: string | null
+  immutableAt: Date | null
+  createdAt: Date
 }
 
 function toDomainPackRecord(row: DomainPackVersionRow, packKey: string): DomainPackVersionRecord {
+  const publishedAt = resolveCatalogPublishedAt({
+    publicationState: row.publicationState,
+    publishedAt: row.publishedAt,
+    immutableAt: row.immutableAt,
+    createdAt: row.createdAt,
+  })
+
   return {
     packKey,
     version: row.version,
@@ -260,7 +271,7 @@ function toDomainPackRecord(row: DomainPackVersionRow, packKey: string): DomainP
     publicationState: row.publicationState as DomainPackPublicationState,
     bundle: row.bundle,
     revision: row.revision,
-    ...(row.publishedAt === null ? {} : { publishedAt: row.publishedAt.toISOString() }),
+    ...(publishedAt === undefined ? {} : { publishedAt }),
     ...(row.publishedBy === null ? {} : { publishedBy: row.publishedBy }),
   }
 }
@@ -484,10 +495,14 @@ export class PrismaWorkflowRunStartStore implements WorkflowRunStartStore {
     // pick it up — the run must own a `workflow_runs` row. Every BridgeFlow
     // persistence table has a foreign key to it, and the cockpit read model
     // joins it; a run without one dies on its first persisted step.
+    const deviceDisplay = await lookupStoredDeviceDisplay(request.deviceId)
     await ensureVerdictRunRow(this.prisma, {
       runId: result.runId,
       workflowRef: request.workflowRef,
       deviceId: request.deviceId,
+      ...(deviceDisplay === null ? {} : { deviceModelName: deviceDisplay.modelName, deviceLabel: deviceDisplay.label }),
+      ...(request.country === undefined ? {} : { country: request.country }),
+      ...(request.environment === undefined ? {} : { environment: request.environment }),
       ...(request.inputs === undefined ? {} : { runInput: request.inputs }),
     })
     await this.prisma.verdictRunStart.create({

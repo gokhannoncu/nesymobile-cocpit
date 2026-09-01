@@ -12,7 +12,7 @@ import {
 import { PrismaDomainPackAdminStore, PrismaTestProfileCatalogStore } from '../services/phase6-prisma-stores.js'
 import type { TestProfileKind, TestProfileRecord } from '../services/test-profile-catalog.service.js'
 
-const PUBLISHED_AT = '1970-01-01T00:00:00.000Z'
+const PUBLISHED_AT = new Date().toISOString()
 const PUBLISHED_BY = 'catalog-seed'
 const SOURCE_COMMIT = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? 'workspace'
 

@@ -688,9 +688,17 @@ router.post("/:id/runs/:runId/cancel", async (req, res) => {
       `[Cancel] run ${runId}: ${killed ? "process killed" : "no process found"}`,
     );
 
+    const completedAt = new Date();
+    const start = run.startedAt ?? run.createdAt;
     await prisma.workflowRun.update({
       where: { id: runId },
-      data: { status: "cancelled", completedAt: new Date() },
+      data: {
+        status: "cancelled",
+        completedAt,
+        ...(start
+          ? { duration: Math.max(0, completedAt.getTime() - start.getTime()) }
+          : {}),
+      },
     });
 
     await prisma.workflowStepResult.updateMany({

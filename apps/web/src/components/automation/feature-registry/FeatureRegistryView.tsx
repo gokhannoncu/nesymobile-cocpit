@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, ShieldCheck, Sparkles } from 'lucide-react'
+import { ChevronRight, Sparkles } from 'lucide-react'
 import { FeatureRegistryHeader } from '@/components/automation/feature-registry/FeatureRegistryHeader'
 import { cn } from '@nesy/metronic/lib/utils'
-import { type Tone, toneCard, toneIcon, toneIconBox, toneText } from '@/components/product/tones'
+import { type Tone, toneIcon, toneIconBox } from '@/components/product/tones'
 
 export type FeatureRegistryRow = {
   packKey: string
@@ -29,107 +29,61 @@ function packTone(packKey: string): Tone {
 }
 
 function FeatureCard({ row }: { row: FeatureRegistryRow }) {
-  const tone = packTone(row.packKey)
+  const visibleTags = row.tags.slice(0, 2)
+  const hiddenTagCount = row.tags.length - visibleTags.length
 
   return (
     <Link
       href={`/automation/features/${encodeURIComponent(row.key)}`}
-      className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-lg border shadow-xs transition-[box-shadow,transform,border-color] hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy/40 dark:hover:shadow-black/30',
-        toneCard[tone],
-      )}
+      className="group flex flex-col rounded-lg border border-border bg-card p-3 transition-colors hover:border-nesy-muted/80 hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy/40"
     >
-      <div
-        aria-hidden
-        className={cn(
-          'absolute inset-y-0 left-0 w-1',
-          tone === 'nesy' ? 'bg-nesy' : tone === 'purple' ? 'bg-purple-500' : 'bg-teal-500',
-        )}
-      />
-
-      <div className="flex flex-1 flex-col p-4 pl-5">
-        <div className="flex items-start justify-between gap-3">
-          <span
-            className={cn(
-              'flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-black/5',
-              toneIconBox[tone],
-            )}
-          >
-            <Sparkles className={cn('size-4.5', toneIcon[tone])} strokeWidth={2.2} />
-          </span>
-          <ChevronRight
-            className="size-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-            aria-hidden
-          />
-        </div>
-
-        <div className="mt-3 min-w-0 flex-1">
-          <h3 className="text-base font-semibold leading-snug tracking-[-0.01em] text-foreground">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-nesy-ink">
             {row.title}
           </h3>
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-foreground/80">
-            {row.description ??
-              'Executable feature contract from the published domain pack — open for invariants, workflows, and capability bindings.'}
-          </p>
-
-          {row.tags.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {row.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className={cn(
-                    'rounded-lg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                    toneIconBox[tone],
-                    toneText[tone],
-                  )}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          <code
-            className="mt-3 block truncate rounded-lg border border-border/60 bg-background/90 px-2.5 py-1.5 font-mono text-[11px] font-medium text-foreground"
-            title={row.key}
-          >
+          <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground" title={row.key}>
             {row.key}
-          </code>
+          </p>
         </div>
+        <ChevronRight
+          className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+          aria-hidden
+        />
+      </div>
 
-        <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              <ShieldCheck className="size-3 shrink-0" aria-hidden />
-              {row.invariantCount} invariant{row.invariantCount === 1 ? '' : 's'}
-              {row.gatingInvariantCount > 0 ? (
-                <span className="text-foreground/70">
-                  · {row.gatingInvariantCount} gating
-                </span>
-              ) : null}
+      {row.description ? (
+        <p className="mt-1.5 line-clamp-1 text-xs leading-snug text-muted-foreground">
+          {row.description}
+        </p>
+      ) : null}
+
+      {row.tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {visibleTags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded border border-border/80 px-1 py-px text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {tag}
             </span>
-            <span className="tabular-nums">
-              {row.screenCount} screen{row.screenCount === 1 ? '' : 's'}
-            </span>
-            <span className="tabular-nums">
-              {row.workflowCount} workflow{row.workflowCount === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="truncate text-muted-foreground">
-              {row.owner ? (
-                <>
-                  Owner <span className="font-semibold text-foreground/80">{row.owner}</span>
-                </>
-              ) : (
-                <span className="font-medium">{row.packKey}</span>
-              )}
-            </span>
-            <span className="shrink-0 rounded-lg bg-background/80 px-2 py-0.5 font-mono font-semibold tabular-nums text-foreground">
-              v{row.version}
-            </span>
-          </div>
+          ))}
+          {hiddenTagCount > 0 ? (
+            <span className="text-[9px] font-medium text-muted-foreground">+{hiddenTagCount}</span>
+          ) : null}
         </div>
+      ) : null}
+
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
+        <span className="min-w-0 truncate tabular-nums">
+          {row.invariantCount} inv
+          {row.gatingInvariantCount > 0 ? ` · ${row.gatingInvariantCount} gate` : ''}
+          {' · '}
+          {row.screenCount} scr · {row.workflowCount} wf
+        </span>
+        <span className="shrink-0 font-mono text-[10px] font-medium tabular-nums text-foreground/70">
+          v{row.version}
+        </span>
       </div>
     </Link>
   )
@@ -233,7 +187,6 @@ export function FeatureRegistryView({ features }: { features: FeatureRegistryRow
 
       {visibleCount === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
-          <Sparkles className="mb-4 size-12 text-muted-foreground" />
           <h3 className="text-lg font-semibold text-foreground">No features found</h3>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
             {hasFilters
@@ -290,12 +243,12 @@ export function FeatureRegistryView({ features }: { features: FeatureRegistryRow
                     </Link>
                   </header>
                 ) : (
-                  <div className="border-b border-border/70 bg-muted/15 px-4 py-3">
-                    <p className="text-sm font-semibold text-foreground">Feature contracts</p>
+                  <div className="border-b border-border bg-muted/10 px-3 py-2">
+                    <p className="text-xs font-semibold text-foreground">Feature contracts</p>
                   </div>
                 )}
 
-                <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">
                   {group.rows.map((row) => (
                     <FeatureCard key={`${row.packKey}:${row.key}`} row={row} />
                   ))}

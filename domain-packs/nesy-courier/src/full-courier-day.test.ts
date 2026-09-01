@@ -137,6 +137,41 @@ describe("full courier day composition", () => {
     expect(branch.default.next).toBe("deliver-verify-backend-status");
   });
 
+  it("rewrites a variable named inside a step's args, not just the fields that hold one", () => {
+    /**
+     * run_237cb164: the first composed run that had to open the route spinner
+     * asked the device to scroll to row "-" and got `missing_scroll_target`. The
+     * leg had renamed `offeredRouteRows` to `routeOfferedRouteRows`; the arg
+     * still pointed at the old name, and a `var.` reference in a VALUE was not
+     * covered by the key-name rewrite. Every earlier run had found the route
+     * already selected and skipped the branch, so nothing executed the dangling
+     * reference.
+     */
+    const scroll = step("route-scroll-to-row");
+    if (scroll.kind !== "BRIDGE_ACTION") throw new Error("expected BRIDGE_ACTION");
+    expect(scroll.args?.["rowIndex"]).toBe("var.routeOfferedRouteRows.route_index");
+
+    // No leg may leave a `var.` reference pointing at a name it renamed away.
+    const declared = new Set(IR.variables.map((variable) => variable.name));
+    const dangling: string[] = [];
+    const walk = (value: unknown, planStepId: string): void => {
+      if (typeof value === "string" && value.startsWith("var.")) {
+        const head = value.slice("var.".length).split(".")[0];
+        if (head !== undefined && !declared.has(head)) dangling.push(`${planStepId}: ${value}`);
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const entry of value) walk(entry, planStepId);
+        return;
+      }
+      if (typeof value === "object" && value !== null) {
+        for (const entry of Object.values(value)) walk(entry, planStepId);
+      }
+    };
+    for (const entry of IR.steps) walk(entry, entry.planStepId);
+    expect(dangling).toEqual([]);
+  });
+
   it("re-points cleanup compensation at the namespaced steps it compensates", () => {
     const cleanups = IR.steps.filter((entry) => entry.kind === "CLEANUP");
     expect(cleanups.map((entry) => entry.planStepId)).toEqual([

@@ -181,9 +181,11 @@ model WorkflowRun {
   status       String  @default("pending")
   mode         String  @default("full")
   targetStepId String?
-  deviceId     String?
-  country      String?
-  environment  String?
+  deviceId        String?
+  deviceModelName String?
+  deviceLabel     String?
+  country         String?
+  environment     String?
 
   /// Run-time inputs (barcode, shipmentId, ...) used to resolve parameter tokens.
   /// Lets one workflow run against different shipments without editing the saved version.

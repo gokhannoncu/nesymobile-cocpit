@@ -2,9 +2,9 @@
 
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { animate, motion, useInView, useMotionValue } from 'framer-motion'
-import { type LucideIcon } from 'lucide-react'
+import { Check, type LucideIcon } from 'lucide-react'
 import { cn } from '@nesy/metronic/lib/utils'
-import { EASE, type Tone, toneCard, toneDot, toneIcon, toneText } from './tones'
+import { EASE, type Tone, toneCard, toneDot, toneText } from './tones'
 
 /** Animated count-up number that starts counting when in view (Calm Tech — ease-out). */
 export function CountUp({ to, format }: { to: number; format?: (v: number) => string }) {
@@ -31,7 +31,7 @@ export function CountUp({ to, format }: { to: number; format?: (v: number) => st
  * If value is a number, counter animation is applied; if string, plain display (e.g. "18–24 months").
  */
 export function StatCard({
-  icon: Icon,
+  icon: _icon,
   label,
   value,
   suffix,
@@ -41,6 +41,7 @@ export function StatCard({
   format,
   onClick,
   active = false,
+  selectionIndicator,
 }: {
   icon?: LucideIcon
   label: string
@@ -53,8 +54,11 @@ export function StatCard({
   /** Makes the card a toggle control (e.g. filter by status). */
   onClick?: () => void
   active?: boolean
+  /** Top-right radio/check indicator for filter cards. Defaults to true when onClick is set. */
+  selectionIndicator?: boolean
 }) {
   const interactive = Boolean(onClick)
+  const showSelection = selectionIndicator ?? interactive
   return (
     <motion.div
       role={interactive ? 'button' : undefined}
@@ -72,11 +76,15 @@ export function StatCard({
           : undefined
       }
       className={cn(
-        'relative overflow-hidden rounded-lg border p-4 outline-none transition-[box-shadow,opacity,border-color]',
+        'relative overflow-hidden rounded-lg border p-4 outline-none transition-[box-shadow,opacity,border-color,ring-color]',
         toneCard[tone],
         interactive && 'cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40',
-        interactive && !active && 'opacity-80 hover:opacity-100',
-        active && cn('border-current/20 shadow-sm', toneText[tone]),
+        interactive && !active && 'hover:border-border/80 hover:shadow-sm',
+        active &&
+          cn(
+            'border-current/30 shadow-sm ring-2 ring-current/20 ring-offset-1 ring-offset-background',
+            toneText[tone],
+          ),
       )}
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -84,22 +92,23 @@ export function StatCard({
       transition={{ duration: 0.4, ease: EASE }}
       whileHover={interactive ? { y: -2 } : undefined}
     >
-      {interactive ? (
+      {showSelection && interactive ? (
         <span
           aria-hidden
           className={cn(
-            'absolute right-3 top-3 size-3.5 rounded-full border-2 transition-all',
+            'absolute right-3 top-3 flex size-6 items-center justify-center rounded-full border-2 transition-all',
             active
-              ? cn('scale-100 border-transparent', toneDot[tone])
-              : 'scale-90 border-muted-foreground/35 bg-background/60',
+              ? cn('border-transparent text-white shadow-sm', toneDot[tone])
+              : 'border-muted-foreground/30 bg-background/70',
           )}
-        />
+        >
+          {active ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : null}
+        </span>
       ) : null}
-      <div className="flex h-5 items-center justify-between gap-2 pr-1">
+      <div className={cn('flex h-5 items-center gap-2', showSelection && interactive && 'pr-8')}>
         <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
           {label}
         </div>
-        {Icon && <Icon className={cn('size-4 shrink-0', toneIcon[tone])} />}
       </div>
       <div className="mt-2 min-h-[1.75rem] text-2xl lg:text-[28px] font-bold text-foreground tabular-nums leading-none">
         {prefix}

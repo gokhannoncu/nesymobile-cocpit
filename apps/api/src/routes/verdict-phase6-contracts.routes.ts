@@ -501,10 +501,14 @@ export async function verdictPhase6ContractRoutes(app: FastifyInstance) {
         body.inputs !== null && typeof body.inputs === 'object' && !Array.isArray(body.inputs)
           ? (body.inputs as Record<string, unknown>)
           : undefined
+      const country = typeof body.country === 'string' ? body.country.trim() : ''
+      const environment = typeof body.environment === 'string' ? body.environment.trim() : ''
       const result = await runService.start({
         workflowRef: String(body.workflowRef ?? ''),
         deviceId: String(body.deviceId ?? ''),
         ...(appId === undefined ? {} : { appId }),
+        ...(country === '' ? {} : { country }),
+        ...(environment === '' ? {} : { environment }),
         compiledPlanRef: String(body.compiledPlanRef ?? ''),
         compiledPlanHash: String(body.compiledPlanHash ?? ''),
         domainPackKey: String(body.domainPackKey ?? ''),

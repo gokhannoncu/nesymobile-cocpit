@@ -40,6 +40,11 @@ describe('formatPackPublishedAt', () => {
     expect(formatPackPublishedAt(undefined)).toBeNull()
     expect(formatPackPublishedAt('1970-01-01T00:00:00.000Z')).toBeNull()
   })
+
+  it('formats a real publish timestamp as a compact local date', () => {
+    const label = formatPackPublishedAt('2026-09-01T20:07:34.276Z')
+    expect(label).toMatch(/^\d{2}\.\d{2}\.2026 \d{2}:\d{2}$/)
+  })
 })
 
 describe('truncateDigest', () => {

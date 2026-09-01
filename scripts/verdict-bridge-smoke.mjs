@@ -177,17 +177,24 @@ async function main() {
     }
     record("ping", "PASS", `protocolVersion=${ping.protocolVersion}, monoTs=${ping.monoTs}`);
 
-    // Bilinmeyen komut: `wait_any`/`cancel_request` gerçekten YOK MU?
+    // `wait_any` / `cancel_request` Mobile M3'ten beri UYGULANIYOR — bu iki adım
+    // hâlâ "yok mu?" diye soruyordu ve her sağlıklı köprüde FAIL basıyordu. Yalan
+    // söyleyen bir sağlık kontrolü, kontrolsüzlükten kötüdür: 2026-09-01'de köprü
+    // gerçekten çökmüşken de, sapasağlamken de aynı "18/20" görünüyordu.
+    //
+    // Doğru soru artık şu: komut TANINIYOR mu? Eksik argümanla çağrılıyor, çünkü
+    // dolu bir çağrı gerçek bir bekleme başlatır. `unsupported_command` = komut
+    // yok (regresyon); `missing_*`/`invalid_*` = komut var ve argümanı denetliyor.
     const waitAny = await request("wait_any", { value: "x" }, 8_000);
     record(
-      "wait_any-absent",
-      waitAny.error === "unsupported_command" ? "PASS" : "FAIL",
+      "wait_any-supported",
+      waitAny.error !== "unsupported_command" ? "PASS" : "FAIL",
       `device says: ${waitAny.error ?? JSON.stringify(waitAny).slice(0, 120)}`,
     );
     const cancel = await request("cancel_request", { targetRequestId: "x" }, 8_000);
     record(
-      "cancel_request-absent",
-      cancel.error === "unsupported_command" ? "PASS" : "FAIL",
+      "cancel_request-supported",
+      cancel.error !== "unsupported_command" ? "PASS" : "FAIL",
       `device says: ${cancel.error ?? JSON.stringify(cancel).slice(0, 120)}`,
     );
     const watch = await request("register_watch", {}, 8_000);

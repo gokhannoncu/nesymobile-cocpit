@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronRight,
   Crosshair,
-  Layers,
   LayoutGrid,
   Monitor,
   Package,
@@ -49,11 +48,9 @@ const KIND_META: Record<
   },
 }
 
-function packTone(packKey: string): Tone {
-  if (packKey.startsWith('nesy')) return 'nesy'
-  if (packKey.startsWith('match')) return 'purple'
-  return 'teal'
-}
+const cellGrid = 'border-b border-r border-border last:border-r-0'
+const thClass = cn('px-2.5 py-2', cellGrid)
+const tdClass = cn('px-2.5 py-2 align-middle', cellGrid)
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
@@ -73,50 +70,61 @@ function KindBadge({ kind }: { kind: ComponentKind }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+        'inline-flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide',
         toneIconBox[meta.tone],
         toneText[meta.tone],
       )}
     >
-      <Icon className={cn('size-3', toneIcon[meta.tone])} strokeWidth={2.4} />
+      <Icon className={cn('size-2.5', toneIcon[meta.tone])} strokeWidth={2.4} />
       {kind}
     </span>
   )
 }
 
+function ComponentKeyChip({ value }: { value: string }) {
+  return (
+    <code
+      className="inline-block max-w-full rounded-[4px] border border-nesy-muted/70 bg-nesy-soft/80 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-nesy-ink"
+      title={value}
+    >
+      {value}
+    </code>
+  )
+}
+
 function ComponentRow({ row, index }: { row: ComponentRegistryRow; index: number }) {
-  const meta = KIND_META[row.kind]
+  const router = useRouter()
+  const href = componentHref(row)
 
   return (
     <tr
+      onClick={() => router.push(href)}
       className={cn(
-        'border-b border-border/60 transition-colors last:border-b-0',
+        'cursor-pointer transition-colors',
         index % 2 === 1 ? 'bg-muted/50 hover:bg-muted/65' : 'bg-card hover:bg-muted/35',
       )}
     >
-      <td className="px-4 py-3 align-middle">
+      <td className={tdClass}>
         <KindBadge kind={row.kind} />
       </td>
-      <td className="px-4 py-3 align-middle">
-        <div className="font-semibold text-foreground">{row.title}</div>
-        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{meta.description}</p>
+      <td className={tdClass}>
+        <div className="text-xs font-semibold leading-tight text-foreground">{row.title}</div>
+        <div className="mt-0.5 md:hidden">
+          <ComponentKeyChip value={row.key} />
+        </div>
       </td>
-      <td className="hidden px-4 py-3 align-middle md:table-cell">
-        <code
-          className="block max-w-xs truncate rounded-lg border border-border/60 bg-background/90 px-2 py-1 font-mono text-[11px] font-medium text-foreground"
-          title={row.key}
-        >
-          {row.key}
-        </code>
+      <td className={cn('hidden md:table-cell', tdClass)}>
+        <ComponentKeyChip value={row.key} />
       </td>
-      <td className="px-4 py-3 align-middle">
+      <td className={tdClass}>
         <div className="flex justify-end">
           <Link
-            href={componentHref(row)}
-            className="inline-flex w-14 items-center justify-end gap-0.5 rounded-lg py-1 text-xs font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+            href={href}
+            onClick={(event) => event.stopPropagation()}
+            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-md py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
           >
             Open
-            <ChevronRight className="size-3.5 shrink-0" />
+            <ChevronRight className="size-3 shrink-0" />
           </Link>
         </div>
       </td>
@@ -130,89 +138,106 @@ function countByKind(rows: readonly ComponentRegistryRow[]): Record<ComponentKin
   return counts
 }
 
-function ComponentPackGroupCard({
+function formatKindSummary(counts: Record<ComponentKind, number>): string {
+  return `${counts.SCREEN} screen${counts.SCREEN === 1 ? '' : 's'} · ${counts.SURFACE} surface${counts.SURFACE === 1 ? '' : 's'} · ${counts.TARGET} target${counts.TARGET === 1 ? '' : 's'}`
+}
+
+function PackGroupHeader({
   packKey,
   version,
-  rows,
-  compactHeader = false,
+  rowCount,
+  kindCounts,
+  showPackTitle,
+  showPackActions,
 }: {
   packKey: string
   version: string
-  rows: ComponentRegistryRow[]
-  compactHeader?: boolean
+  rowCount: number
+  kindCounts: Record<ComponentKind, number>
+  showPackTitle: boolean
+  showPackActions: boolean
 }) {
-  const [expanded, setExpanded] = useState(rows.length <= 10)
-  const visibleRows = expanded ? rows : rows.slice(0, 10)
-  const hiddenCount = rows.length - visibleRows.length
-  const tone = packTone(packKey)
-  const kindCounts = countByKind(rows)
-
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
-      {!compactHeader ? (
-        <header className="relative border-b border-border/80 bg-gradient-to-br from-nesy-soft/25 via-background to-muted/15 px-4 py-4">
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <span
-                className={cn(
-                  'flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-black/5',
-                  toneIconBox[tone],
-                )}
-              >
-                <Layers className={cn('size-4', toneIcon[tone])} strokeWidth={2.2} />
-              </span>
-              <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold tracking-[-0.02em] text-foreground">
-                  {packKey}
-                </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Latest published · v{version} · {rows.length} component
-                  {rows.length === 1 ? '' : 's'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <KindCountPill label="Screens" value={kindCounts.SCREEN} tone="blue" />
-                  <KindCountPill label="Surfaces" value={kindCounts.SURFACE} tone="purple" />
-                  <KindCountPill label="Targets" value={kindCounts.TARGET} tone="orange" />
-                </div>
-              </div>
-            </div>
-            <Link
-              href={packDetailHref(packKey, version)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-nesy px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-nesy-hover"
-            >
-              Open pack
-              <ChevronRight className="size-3.5" />
-            </Link>
-          </div>
-        </header>
-      ) : (
-        <div className="flex flex-col gap-2 border-b border-border/70 bg-muted/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Component list</p>
-            <p className="text-xs text-muted-foreground">
-              {rows.length} item{rows.length === 1 ? '' : 's'} · {kindCounts.SCREEN} screens ·{' '}
-              {kindCounts.SURFACE} surfaces · {kindCounts.TARGET} targets
-            </p>
-          </div>
+    <div className="flex flex-col gap-2 border-b border-border bg-muted/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-foreground">
+          {showPackTitle ? packKey : 'Component list'}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {showPackTitle ? (
+            <>
+              v{version} · {rowCount} item{rowCount === 1 ? '' : 's'} · {formatKindSummary(kindCounts)}
+            </>
+          ) : (
+            <>
+              {rowCount} item{rowCount === 1 ? '' : 's'} · {formatKindSummary(kindCounts)}
+            </>
+          )}
+        </p>
+      </div>
+      {showPackActions ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            href={packSurfacesHref(packKey, version)}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-[8px] border border-border px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted/40"
+          >
+            <LayoutGrid className="size-3" />
+            Surfaces
+          </Link>
           <Link
             href={packDetailHref(packKey, version)}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-nesy-ink transition hover:underline"
+            className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-nesy-ink transition hover:underline"
           >
             Open pack
             <ChevronRight className="size-3.5" />
           </Link>
         </div>
-      )}
+      ) : null}
+    </div>
+  )
+}
+
+function packSurfacesHref(packKey: string, version: string): string {
+  return `/automation/domain-packs/${encodeURIComponent(packKey)}/surfaces?version=${encodeURIComponent(version)}`
+}
+
+function ComponentPackGroupCard({
+  packKey,
+  version,
+  rows,
+  showPackTitle,
+  showPackActions,
+}: {
+  packKey: string
+  version: string
+  rows: ComponentRegistryRow[]
+  showPackTitle: boolean
+  showPackActions: boolean
+}) {
+  const [expanded, setExpanded] = useState(rows.length <= 10)
+  const visibleRows = expanded ? rows : rows.slice(0, 10)
+  const hiddenCount = rows.length - visibleRows.length
+  const kindCounts = countByKind(rows)
+
+  return (
+    <article className="overflow-hidden rounded-[8px] border border-border bg-card">
+      <PackGroupHeader
+        packKey={packKey}
+        version={version}
+        rowCount={rows.length}
+        kindCounts={kindCounts}
+        showPackTitle={showPackTitle}
+        showPackActions={showPackActions}
+      />
 
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-border/70 bg-muted/25 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3">Kind</th>
-              <th className="px-4 py-3">Display name</th>
-              <th className="hidden px-4 py-3 md:table-cell">Key</th>
-              <th className="w-20 px-4 py-3 text-right">Open</th>
+            <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className={cn('w-24', thClass)}>Kind</th>
+              <th className={cn('min-w-[200px]', thClass)}>Display name</th>
+              <th className={cn('hidden md:table-cell', thClass)}>Key</th>
+              <th className={cn('w-16 text-right', thClass)}>Open</th>
             </tr>
           </thead>
           <tbody>
@@ -224,7 +249,7 @@ function ComponentPackGroupCard({
       </div>
 
       {hiddenCount > 0 ? (
-        <div className="border-t border-border/70 px-4 py-3">
+        <div className="border-t border-border px-3 py-2">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
@@ -237,29 +262,6 @@ function ComponentPackGroupCard({
         </div>
       ) : null}
     </article>
-  )
-}
-
-function KindCountPill({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: number
-  tone: Tone
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
-      {label}
-      <span className="tabular-nums">{value}</span>
-    </span>
   )
 }
 
@@ -317,7 +319,8 @@ export function ComponentRegistryView({ components }: { components: ComponentReg
   const totalCount = components.length
   const packCount = packGroups.length
   const hasFilters = Boolean(searchQuery || activeKind || activePack)
-  const compactGroupHeader = packGroups.length === 1 && !hasFilters
+  const showPackTitleInGroups = packGroups.length > 1 || hasFilters
+  const showPackActionsInGroups = showPackTitleInGroups
 
   const clearFilters = () => {
     setSearchQuery('')
@@ -337,7 +340,6 @@ export function ComponentRegistryView({ components }: { components: ComponentReg
           version: group.version,
           componentCount: group.rows.length,
         }))}
-        solePackRows={packGroups.length === 1 ? packGroups[0]!.rows : null}
         activeKind={activeKind}
         onKindChange={setActiveKind}
         activePack={activePack}
@@ -376,7 +378,8 @@ export function ComponentRegistryView({ components }: { components: ComponentReg
               packKey={group.packKey}
               version={group.version}
               rows={group.rows}
-              compactHeader={compactGroupHeader}
+              showPackTitle={showPackTitleInGroups}
+              showPackActions={showPackActionsInGroups}
             />
           ))}
         </div>

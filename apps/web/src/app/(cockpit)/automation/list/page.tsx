@@ -14,7 +14,6 @@ import {
   Bell,
   Check,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   Clock,
   Cloud,
@@ -75,6 +74,9 @@ import {
   AutomationListPageShimmer,
 } from '@/components/automation/automation-list-page-shimmer'
 import { WorkflowLibraryHeader } from '@/components/automation/workflow-library/WorkflowLibraryHeader'
+import {
+  TablePaginationFooter,
+} from '@/components/automation/TablePaginationFooter'
 import { ProductPage } from '@/components/product'
 import {
   countWorkflowLibraryStatuses,
@@ -97,40 +99,6 @@ type ModalOption = {
   icon: LucideIcon
   enabled: boolean
 }
-
-function buildPaginationPages(current: number, total: number): Array<number | 'ellipsis'> {
-  if (total <= 0) return []
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-
-  const pages = new Set<number>()
-  pages.add(1)
-  pages.add(total)
-  for (let p = current - 1; p <= current + 1; p++) {
-    if (p >= 1 && p <= total) pages.add(p)
-  }
-  if (current <= 4) {
-    for (let p = 2; p <= 5; p++) pages.add(p)
-  }
-  if (current >= total - 3) {
-    for (let p = total - 4; p <= total - 1; p++) {
-      if (p >= 1) pages.add(p)
-    }
-  }
-
-  const sorted = [...pages].sort((a, b) => a - b)
-  const out: Array<number | 'ellipsis'> = []
-  for (let i = 0; i < sorted.length; i++) {
-    const value = sorted[i]
-    if (value === undefined) continue
-    const prev = sorted[i - 1]
-    if (i > 0 && prev !== undefined && value - prev > 1) out.push('ellipsis')
-    out.push(value)
-  }
-  return out
-}
-
-const filterTriggerClass =
-  'h-12 max-h-[3rem] rounded-md border-border shadow-xs px-3 [&>svg]:text-muted-foreground'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -385,12 +353,8 @@ export default function AutomationListPage() {
     return filteredWorkflows.slice(start, start + pageSize)
   }, [filteredWorkflows, page, pageSize, totalPages])
 
-  const paginationPages = buildPaginationPages(safePage, totalPages)
   const rangeStart = filteredWorkflows.length === 0 ? 0 : (safePage - 1) * pageSize + 1
   const rangeEnd = Math.min(safePage * pageSize, filteredWorkflows.length)
-
-  const goPrev = () => setPage((p) => Math.max(1, p - 1))
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1))
 
   const handleDelete = async (workflowId: string, slug: string) => {
     try {
@@ -498,97 +462,25 @@ export default function AutomationListPage() {
             </section>
 
             {filteredWorkflows.length > 0 ? (
-              <footer className="flex flex-col gap-4 border-t border-border pt-4 pb-2 lg:flex-row lg:items-center lg:justify-between">
-                <p className="order-2 text-center text-sm text-muted-foreground lg:order-1 lg:text-left">
-                  Showing{' '}
-                  <span className="font-semibold tabular-nums text-foreground">
-                    {rangeStart}–{rangeEnd}
-                  </span>{' '}
-                  of{' '}
-                  <span className="font-semibold tabular-nums text-foreground">
-                    {filteredWorkflows.length}
-                  </span>{' '}
-                  workflow{filteredWorkflows.length === 1 ? '' : 's'}
-                  {totalPages > 1 ? (
-                    <span className="hidden sm:inline">
-                      {' '}
-                      · Page {safePage} of {totalPages}
-                    </span>
-                  ) : null}
-                </p>
-
-                {totalPages > 1 ? (
-                  <nav
-                    className="order-1 flex flex-wrap items-center justify-center gap-1 lg:order-2"
-                    aria-label="Workflow pages"
-                  >
-                    <PaginationButton
-                      aria-label="Previous page"
-                      disabled={safePage <= 1}
-                      onClick={goPrev}
-                    >
-                      <ChevronLeft className="size-4" />
-                    </PaginationButton>
-                    {paginationPages.map((item, idx) =>
-                      item === 'ellipsis' ? (
-                        <span
-                          key={`e-${idx}`}
-                          className="flex size-9 items-center justify-center text-sm font-medium text-muted-foreground"
-                          aria-hidden
-                        >
-                          …
-                        </span>
-                      ) : (
-                        <PaginationButton
-                          key={item}
-                          active={item === safePage}
-                          aria-label={`Page ${item}`}
-                          aria-current={item === safePage ? 'page' : undefined}
-                          onClick={() => setPage(item)}
-                        >
-                          {item}
-                        </PaginationButton>
-                      ),
-                    )}
-                    <PaginationButton
-                      aria-label="Next page"
-                      disabled={safePage >= totalPages}
-                      onClick={goNext}
-                    >
-                      <ChevronRight className="size-4" />
-                    </PaginationButton>
-                  </nav>
-                ) : (
-                  <div className="order-1 hidden lg:block lg:order-2 lg:flex-1" aria-hidden />
-                )}
-
-                <div className="order-3 flex items-center justify-center gap-2 lg:justify-end">
-                  <label htmlFor="workflow-page-size" className="text-sm text-muted-foreground">
-                    Rows per page
-                  </label>
-                  <Select
-                    value={String(pageSize)}
-                    onValueChange={(v) => {
-                      const next = Number(v)
-                      setPageSize(next)
-                      setPage(1)
-                    }}
-                  >
-                    <SelectTrigger
-                      id="workflow-page-size"
-                      size="sm"
-                      className="h-9 w-[4.5rem] justify-between gap-1 px-2.5 shadow-xs"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end">
-                      <SelectItem value="4">4</SelectItem>
-                      <SelectItem value="8">8</SelectItem>
-                      <SelectItem value="12">12</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </footer>
+              <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+                <TablePaginationFooter
+                  totalItems={filteredWorkflows.length}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  pageSizeOptions={[4, 8, 12]}
+                  onPageChange={setPage}
+                  onPageSizeChange={(next) => {
+                    setPageSize(next)
+                    setPage(1)
+                  }}
+                  itemLabel="workflow"
+                  ariaLabel="Workflow pages"
+                  idPrefix="workflow-library"
+                />
+              </div>
             ) : null}
           </>
         )}
@@ -1122,42 +1014,5 @@ function WorkflowCard({
         </div>
       </Link>
     </article>
-  )
-}
-
-function PaginationButton({
-  active,
-  disabled,
-  children,
-  onClick,
-  'aria-label': ariaLabel,
-  'aria-current': ariaCurrent,
-}: {
-  active?: boolean
-  disabled?: boolean
-  children: ReactNode
-  onClick?: () => void
-  'aria-label'?: string
-  'aria-current'?: 'page'
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      aria-current={ariaCurrent}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        'flex size-9 items-center justify-center rounded-md border text-sm font-semibold tabular-nums transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy-soft focus-visible:ring-offset-2',
-        active
-          ? 'cursor-pointer border-nesy bg-nesy text-white shadow-[0_1px_2px_rgba(255,122,26,0.35)]'
-          : disabled
-            ? 'cursor-not-allowed border-transparent bg-muted/60 text-muted-foreground/45'
-            : 'cursor-pointer border-border bg-card text-foreground shadow-xs hover:border-nesy/35 hover:bg-nesy-soft/40',
-      )}
-    >
-      {children}
-    </button>
   )
 }

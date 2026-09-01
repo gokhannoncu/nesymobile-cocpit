@@ -20,10 +20,14 @@
 
 import type { Prisma, PrismaClient } from '@nesy/db'
 
+import { defaultRuntimeLaunchTarget, extractLaunchAppTarget } from './launch-app-target.js'
+
 export interface VerdictRunRowInput {
   runId: string
   workflowRef: string
   deviceId: string
+  deviceModelName?: string
+  deviceLabel?: string
   country?: string
   environment?: string
   runInput?: Readonly<Record<string, unknown>>
@@ -48,6 +52,12 @@ export async function ensureVerdictRunRow(
     return { workflowId: existing.workflowId, versionId: existing.versionId }
   }
 
+  const launchTarget = await launchAppTargetForVersion(prisma, versionId)
+  const runtimeTarget = defaultRuntimeLaunchTarget()
+  const country = input.country?.trim() || launchTarget.country || runtimeTarget.country || undefined
+  const environment =
+    input.environment?.trim() || launchTarget.environment || runtimeTarget.environment || undefined
+
   await prisma.workflowRun.create({
     data: {
       id: input.runId,
@@ -56,8 +66,10 @@ export async function ensureVerdictRunRow(
       status: 'queued',
       mode: 'full',
       deviceId: input.deviceId,
-      ...(input.country === undefined ? {} : { country: input.country }),
-      ...(input.environment === undefined ? {} : { environment: input.environment }),
+      ...(input.deviceModelName === undefined ? {} : { deviceModelName: input.deviceModelName }),
+      ...(input.deviceLabel === undefined ? {} : { deviceLabel: input.deviceLabel }),
+      ...(country === undefined ? {} : { country }),
+      ...(environment === undefined ? {} : { environment }),
       ...(input.runInput === undefined
         ? {}
         : { runInput: input.runInput as Prisma.InputJsonValue }),
@@ -117,4 +129,15 @@ async function resolveVersionId(
     data: { currentVersionId: created.id },
   })
   return created.id
+}
+
+async function launchAppTargetForVersion(
+  prisma: RunRowClient,
+  versionId: string,
+): Promise<{ country: string | null; environment: string | null }> {
+  const version = await prisma.workflowVersion.findUnique({
+    where: { id: versionId },
+    select: { nodes: true },
+  })
+  return extractLaunchAppTarget(version?.nodes)
 }

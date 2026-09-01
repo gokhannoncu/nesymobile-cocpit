@@ -1724,7 +1724,30 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     data: { status: string; startedAt?: Date; completedAt?: Date },
   ): Promise<void> {
     try {
-      await this.options.prisma.workflowRun.updateMany({ where: { id: runId }, data })
+      const patch: {
+        status: string
+        startedAt?: Date
+        completedAt?: Date
+        duration?: number
+      } = { ...data }
+      if (patch.completedAt) {
+        try {
+          const existing = await this.options.prisma.workflowRun.findUnique({
+            where: { id: runId },
+            select: { startedAt: true, createdAt: true },
+          })
+          const start = existing?.startedAt ?? existing?.createdAt ?? null
+          if (start) {
+            patch.duration = Math.max(0, patch.completedAt.getTime() - start.getTime())
+          }
+        } catch (lookupError) {
+          this.options.logger?.('[BridgeFlowExecutionQueue] run duration lookup failed', {
+            runId,
+            error: lookupError instanceof Error ? lookupError.message : String(lookupError),
+          })
+        }
+      }
+      await this.options.prisma.workflowRun.updateMany({ where: { id: runId }, data: patch })
       publishRunLiveEvent({
         runId,
         kind: 'RUN_STATUS',

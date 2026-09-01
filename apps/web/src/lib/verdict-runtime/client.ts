@@ -225,6 +225,7 @@ export async function publishDomainPack(body: Record<string, unknown>): Promise<
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'GET',
+    cache: 'no-store',
     headers: {
       Accept: 'application/json',
     },

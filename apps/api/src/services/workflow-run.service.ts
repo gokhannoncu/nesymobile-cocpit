@@ -18,6 +18,8 @@ export interface WorkflowRunStartRequest {
   deviceId: string
   /** Runtime application package selected by the panel/env (e.g. com.arasdigital.nesymobile.rstest). */
   appId?: string
+  country?: string
+  environment?: string
   compiledPlanRef: string
   compiledPlanHash: string
   domainPackKey: string

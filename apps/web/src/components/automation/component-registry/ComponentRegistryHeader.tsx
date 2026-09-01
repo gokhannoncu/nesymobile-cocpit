@@ -4,7 +4,6 @@ import Link from 'next/link'
 import {
   ChevronRight,
   Crosshair,
-  Layers,
   LayoutGrid,
   Monitor,
   Package,
@@ -16,10 +15,7 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
-import type {
-  ComponentKind,
-  ComponentRegistryRow,
-} from '@/components/automation/component-registry/ComponentRegistryView'
+import type { ComponentKind } from '@/components/automation/component-registry/ComponentRegistryView'
 import { cn } from '@nesy/metronic/lib/utils'
 
 function packDetailHref(packKey: string, version: string): string {
@@ -30,71 +26,7 @@ function packSurfacesHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}/surfaces?version=${encodeURIComponent(version)}`
 }
 
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="truncate text-xs font-semibold tabular-nums text-foreground">{value}</span>
-    </div>
-  )
-}
-
-function ComponentPackCommandStrip({
-  packKey,
-  version,
-  rows,
-}: {
-  packKey: string
-  version: string
-  rows: ComponentRegistryRow[]
-}) {
-  const screenCount = rows.filter((row) => row.kind === 'SCREEN').length
-  const surfaceCount = rows.filter((row) => row.kind === 'SURFACE').length
-  const targetCount = rows.filter((row) => row.kind === 'TARGET').length
-
-  return (
-    <div className="mt-3 border-t border-border/70 pt-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-nesy-soft text-nesy-ink ring-1 ring-nesy/10">
-            <Layers className="size-4" strokeWidth={2.2} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{packKey}</p>
-            <p className="text-xs text-muted-foreground">UI registry · latest published</p>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:justify-center">
-          <StatPill label="Total" value={`${rows.length} components`} />
-          <StatPill label="Version" value={`v${version}`} />
-          <StatPill label="Screens" value={String(screenCount)} />
-          <StatPill label="Surfaces" value={String(surfaceCount)} />
-          <StatPill label="Targets" value={String(targetCount)} />
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button size="sm" className="bg-nesy text-white hover:bg-nesy-hover" asChild>
-            <Link href={packDetailHref(packKey, version)}>
-              Open pack
-              <ChevronRight className="size-4" />
-            </Link>
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" asChild>
-            <Link href={packSurfacesHref(packKey, version)}>
-              <LayoutGrid className="size-3.5" />
-              Surfaces
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function PackScopeChip({
+function FilterChip({
   active,
   label,
   count,
@@ -111,16 +43,16 @@ function PackScopeChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition',
         active
           ? 'border-nesy/35 bg-nesy-soft text-nesy-ink shadow-xs'
           : 'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
       )}
     >
-      <span className="max-w-[10rem] truncate">{label}</span>
+      <span className="max-w-[11rem] truncate">{label}</span>
       <span
         className={cn(
-          'rounded-full px-1.5 py-0.5 text-[10px] tabular-nums',
+          'rounded-[8px] px-1.5 py-px text-[10px] tabular-nums',
           active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
         )}
       >
@@ -130,13 +62,52 @@ function PackScopeChip({
   )
 }
 
+function ComponentPackCommandStrip({
+  packKey,
+  version,
+  componentCount,
+}: {
+  packKey: string
+  version: string
+  componentCount: number
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-nesy-soft text-nesy-ink ring-1 ring-nesy/10">
+          <Package className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{packKey}</p>
+          <p className="text-xs text-muted-foreground">
+            v{version} · {componentCount} component{componentCount === 1 ? '' : 's'}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-[8px]" asChild>
+          <Link href={packSurfacesHref(packKey, version)}>
+            <LayoutGrid className="size-3.5" />
+            Surfaces
+          </Link>
+        </Button>
+        <Button size="sm" className="h-8 rounded-[8px] bg-nesy text-white hover:bg-nesy-hover" asChild>
+          <Link href={packDetailHref(packKey, version)}>
+            Open pack
+            <ChevronRight className="size-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function ComponentRegistryHeader({
   totalCount,
   visibleCount,
   packCount,
   kindCounts,
   packGroups,
-  solePackRows,
   activeKind,
   onKindChange,
   activePack,
@@ -152,7 +123,6 @@ export function ComponentRegistryHeader({
   packCount: number
   kindCounts: Record<ComponentKind, number>
   packGroups: { packKey: string; version: string; componentCount: number }[]
-  solePackRows: ComponentRegistryRow[] | null
   activeKind: ComponentKind | null
   onKindChange: (kind: ComponentKind | null) => void
   activePack: string | null
@@ -164,6 +134,7 @@ export function ComponentRegistryHeader({
   hasFilters: boolean
 }) {
   const solePack = packGroups.length === 1 ? packGroups[0] : null
+  const showFamilyRow = !solePack && packGroups.length > 1
 
   return (
     <div className="space-y-4">
@@ -221,8 +192,8 @@ export function ComponentRegistryHeader({
         </StatGrid>
       </HeroCallout>
 
-      <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className="rounded-[8px] border border-border/80 bg-card/95 p-3 backdrop-blur-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -232,7 +203,7 @@ export function ComponentRegistryHeader({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search name, key, kind, or pack…"
-              className="h-10 w-full rounded-lg border border-border/70 bg-background py-2 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
+              className="h-9 w-full rounded-[8px] border border-border/70 bg-background py-2 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/75 hover:border-border focus:border-nesy/40 focus:ring-4 focus:ring-nesy-soft/30"
               type="search"
               autoComplete="off"
               spellCheck={false}
@@ -242,16 +213,16 @@ export function ComponentRegistryHeader({
                 type="button"
                 onClick={() => onSearchChange('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="absolute right-2 top-1/2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-[8px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3.5" />
               </button>
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 sm:justify-end">
             {hasFilters ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+              <Button type="button" variant="ghost" size="sm" className="h-9" onClick={onClearFilters}>
                 Clear filters
               </Button>
             ) : null}
@@ -259,7 +230,7 @@ export function ComponentRegistryHeader({
               type="button"
               variant="outline"
               size="icon"
-              className="size-10 shrink-0"
+              className="size-9 shrink-0 rounded-[8px]"
               onClick={onRefresh}
               aria-label="Refresh component registry"
             >
@@ -268,25 +239,29 @@ export function ComponentRegistryHeader({
           </div>
         </div>
 
-        {solePack && solePackRows ? (
-          <ComponentPackCommandStrip
-            packKey={solePack.packKey}
-            version={solePack.version}
-            rows={solePackRows}
-          />
-        ) : packGroups.length > 1 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
+        {solePack ? (
+          <div className="mt-3 border-t border-border pt-3">
+            <ComponentPackCommandStrip
+              packKey={solePack.packKey}
+              version={solePack.version}
+              componentCount={solePack.componentCount}
+            />
+          </div>
+        ) : null}
+
+        {showFamilyRow ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Family
             </span>
-            <PackScopeChip
+            <FilterChip
               active={activePack === null}
               label="All families"
               count={totalCount}
               onClick={() => onPackChange(null)}
             />
             {packGroups.map((group) => (
-              <PackScopeChip
+              <FilterChip
                 key={group.packKey}
                 active={activePack === group.packKey}
                 label={group.packKey}
@@ -300,23 +275,23 @@ export function ComponentRegistryHeader({
         ) : null}
 
         {hasFilters ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <span className="text-xs text-muted-foreground">Active view</span>
-            <Badge variant="secondary" appearance="outline" size="sm">
+            <Badge variant="secondary" appearance="outline" size="sm" className="rounded-[8px]">
               {visibleCount} of {totalCount} components
             </Badge>
             {activeKind ? (
-              <Badge variant="secondary" size="sm">
+              <Badge variant="secondary" size="sm" className="rounded-[8px]">
                 Kind: {activeKind.toLowerCase()}
               </Badge>
             ) : null}
             {activePack ? (
-              <Badge variant="secondary" size="sm">
+              <Badge variant="secondary" size="sm" className="rounded-[8px]">
                 {activePack}
               </Badge>
             ) : null}
             {searchQuery ? (
-              <Badge variant="secondary" size="sm" className="font-mono">
+              <Badge variant="secondary" size="sm" className="rounded-[8px] font-mono">
                 “{searchQuery}”
               </Badge>
             ) : null}

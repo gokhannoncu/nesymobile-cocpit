@@ -107,7 +107,7 @@ export function DomainPackFamilyStrip({
     return (
       <div
         className={cn(
-          'flex flex-col gap-3 border-b border-border/70 bg-muted/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between',
+          'flex flex-col gap-2 border-b border-border bg-muted/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between',
           className,
         )}
       >
@@ -117,6 +117,7 @@ export function DomainPackFamilyStrip({
             {versions.length} row{versions.length === 1 ? '' : 's'}
             {publishedCount > 0 ? ` · ${publishedCount} published` : ''}
             {draftCount > 0 ? ` · ${draftCount} draft` : ''}
+            {publishedLabel ? ` · ${publishedLabel}` : ''}
           </p>
         </div>
         {latestPublished ? (
@@ -126,7 +127,7 @@ export function DomainPackFamilyStrip({
             </code>
             <Link
               href={packDetailHref(latestPublished)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-nesy-ink transition hover:underline"
+              className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-nesy-ink transition hover:underline"
             >
               Open latest
               <ChevronRight className="size-3.5" />
@@ -173,6 +174,7 @@ export function DomainPackFamilyStrip({
             {publishedCount > 0 ? (
               <StatPill label="Live" value={`${publishedCount} published`} />
             ) : null}
+            {publishedLabel ? <StatPill label="Published" value={publishedLabel} /> : null}
           </div>
 
           {primary ? (

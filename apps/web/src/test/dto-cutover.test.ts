@@ -3,7 +3,11 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { PAGE_MIGRATION_MANIFEST } from '../lib/page-migration-manifest'
-import { catalogItemToWorkflowListItem, workflowRunApiToHistoryRow } from '../lib/verdict-runtime/adapters'
+import {
+  catalogItemToWorkflowListItem,
+  formatRunEnvironmentLabel,
+  workflowRunApiToHistoryRow,
+} from '../lib/verdict-runtime/adapters'
 import type { WorkflowCatalogItemApi, WorkflowRunApi } from '../lib/verdict-runtime/types'
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'app')
@@ -141,5 +145,110 @@ describe('DTO cutover — CHECKPOINT 33/34/37/38/44', () => {
     expect(row.workflow?.slug).toBe('field-courier-login')
     expect(row.duration).toBe(60_000)
     expect(row.startedAt).toBe('2026-01-04T00:00:00.000Z')
+    expect(row.deviceId).toBe('d1')
+  })
+
+  it('history adapter maps device serial, label, and workflow version', () => {
+    const item: WorkflowRunApi = {
+      apiVersion: 'verdict-runtime.v1',
+      partial: false,
+      correlation: {
+        runId: 'r11',
+        engineType: 'BRIDGEFLOW',
+      },
+      run: {
+        id: 'r11',
+        workflowId: 'w11',
+        workflowSlug: 'open-stop',
+        workflowName: 'Opening a stop opens the requested stop',
+        versionId: 'v11',
+        workflowVersion: 1,
+        status: 'completed',
+        mode: 'full',
+        deviceId: 'R6CW400BC8N',
+        deviceModelName: 'SM-A346E',
+        deviceLabel: 'Courier A',
+        createdAt: '2026-09-01T20:25:01.964Z',
+      },
+      runtime: { engineType: 'BRIDGEFLOW' },
+    }
+    const row = workflowRunApiToHistoryRow(item)
+    expect(row.deviceId).toBe('R6CW400BC8N')
+    expect(row.device).toEqual({ modelName: 'SM-A346E', label: 'Courier A' })
+    expect(row.version?.version).toBe(1)
+  })
+
+  it('history adapter maps country and environment for the RS-STAGE chip', () => {
+    const item: WorkflowRunApi = {
+      apiVersion: 'verdict-runtime.v1',
+      partial: false,
+      correlation: { runId: 'r12', engineType: 'BRIDGEFLOW' },
+      run: {
+        id: 'r12',
+        workflowId: 'w12',
+        workflowSlug: 'open-stop',
+        workflowName: 'Opening a stop',
+        versionId: 'v12',
+        workflowVersion: 1,
+        status: 'completed',
+        country: 'RS',
+        environment: 'stage',
+        createdAt: '2026-09-01T20:25:01.964Z',
+      },
+      runtime: { engineType: 'BRIDGEFLOW' },
+    }
+    const row = workflowRunApiToHistoryRow(item)
+    expect(row.country).toBe('RS')
+    expect(row.environment).toBe('stage')
+    expect(row.version?.version).toBe(1)
+    expect(formatRunEnvironmentLabel(row)).toBe('RS-STAGE')
+  })
+
+  it('history adapter falls back to RS-STAGE when the run did not persist an environment', () => {
+    const item: WorkflowRunApi = {
+      apiVersion: 'verdict-runtime.v1',
+      partial: false,
+      correlation: { runId: 'r13', engineType: 'BRIDGEFLOW' },
+      run: {
+        id: 'r13',
+        workflowId: 'w13',
+        workflowSlug: 'process-parcel',
+        workflowName: 'A scanned parcel is accepted and persisted',
+        versionId: 'v13',
+        workflowVersion: 1,
+        status: 'completed',
+        createdAt: '2026-09-01T20:25:01.964Z',
+      },
+      runtime: { engineType: 'BRIDGEFLOW' },
+    }
+    const row = workflowRunApiToHistoryRow(item)
+    expect(formatRunEnvironmentLabel(row)).toBe('RS-STAGE')
+    expect(row.version?.version).toBe(1)
+  })
+
+  it('history adapter derives duration from timestamps when the stored field is empty', () => {
+    const item: WorkflowRunApi = {
+      apiVersion: 'verdict-runtime.v1',
+      partial: false,
+      correlation: {
+        runId: 'r10',
+        engineType: 'BRIDGEFLOW',
+      },
+      run: {
+        id: 'r10',
+        workflowId: 'w10',
+        workflowSlug: 'parcel-accept',
+        workflowName: 'A scanned parcel is accepted and persisted',
+        versionId: 'v10',
+        status: 'completed',
+        mode: 'full',
+        startedAt: '2026-09-01T20:25:05.114Z',
+        completedAt: '2026-09-01T20:25:41.132Z',
+        createdAt: '2026-09-01T20:25:01.964Z',
+        duration: null,
+      },
+      runtime: { engineType: 'BRIDGEFLOW' },
+    }
+    expect(workflowRunApiToHistoryRow(item).duration).toBe(36_018)
   })
 })

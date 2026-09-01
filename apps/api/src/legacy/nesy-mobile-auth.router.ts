@@ -15,6 +15,7 @@ import {
   type NesyMobileCountry,
   type NesyMobileEnvironment,
 } from "../nesy-mobile-env.js";
+import { persistAdbDeviceIdentities } from "../services/adb-device-identity.js";
 
 interface LoginDeviceRequestBody {
   country?: string;
@@ -539,6 +540,11 @@ router.get("/adb-devices", async (req, res) => {
     const applicationId =
       typeof req.query.applicationId === "string" ? req.query.applicationId.trim() : undefined;
     const result = await listAdbDevices(applicationId);
+    void persistAdbDeviceIdentities(result.devices).catch((error) => {
+      console.warn("[nesy-mobile-auth] device identity persist failed", {
+        error: error instanceof Error ? error.message : error,
+      });
+    });
     res.json(result);
   } catch (error) {
     const output = getErrorWithOutput(error);

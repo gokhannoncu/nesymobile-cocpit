@@ -36,7 +36,10 @@ export async function startPinnedVerdictRun(input: {
     throw new Error('No published Domain Pack to pin a run to')
   }
 
-  const appId = resolveRunAppId(input)
+  const launchTarget = extractLaunchAppTarget(input.workflowIr)
+  const country = input.country?.trim() || launchTarget.country || undefined
+  const environment = input.environment?.trim() || launchTarget.environment || undefined
+  const appId = resolveRunAppId({ ...input, country, environment })
 
   await assertActModeReady(input.deviceId, appId)
 
@@ -68,11 +71,39 @@ export async function startPinnedVerdictRun(input: {
     domainPackVersion: pack.version,
     domainPackDigest: pack.bundleDigest,
     ...(appId ? { appId } : {}),
-    ...(input.country ? { country: input.country } : {}),
-    ...(input.environment ? { environment: input.environment } : {}),
+    ...(country ? { country } : {}),
+    ...(environment ? { environment } : {}),
     ...(input.profileKey ? { profileKey: input.profileKey } : {}),
     ...(input.inputs ? { inputs: input.inputs } : {}),
   })
+}
+
+function extractLaunchAppTarget(workflowIr?: Record<string, unknown>): {
+  country: string | null
+  environment: string | null
+} {
+  const nodes = workflowIr?.nodes
+  if (!Array.isArray(nodes)) return { country: null, environment: null }
+  for (const node of nodes) {
+    if (!node || typeof node !== 'object') continue
+    const record = node as Record<string, unknown>
+    const type = String(record.type ?? '')
+    if (type !== 'LAUNCH_APP' && type !== 'launch-app') continue
+    const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : {}
+    const config =
+      record.config && typeof record.config === 'object'
+        ? (record.config as Record<string, unknown>)
+        : data.config && typeof data.config === 'object'
+          ? (data.config as Record<string, unknown>)
+          : data
+    const country = typeof config.country === 'string' ? config.country.trim() : ''
+    const environment = typeof config.environment === 'string' ? config.environment.trim() : ''
+    return {
+      country: country || null,
+      environment: environment || null,
+    }
+  }
+  return { country: null, environment: null }
 }
 
 function resolveRunAppId(input: { appId?: string; country?: string; environment?: string }): string | undefined {

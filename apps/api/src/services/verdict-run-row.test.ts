@@ -12,6 +12,7 @@ interface VersionRow {
   id: string
   workflowId: string
   version: number
+  nodes?: unknown
 }
 interface RunRow {
   id: string
@@ -19,6 +20,8 @@ interface RunRow {
   versionId: string
   status: string
   deviceId?: string | null
+  country?: string
+  environment?: string
 }
 
 function fakePrisma(seed: { workflows?: WorkflowRow[]; versions?: VersionRow[] } = {}) {
@@ -60,8 +63,15 @@ function fakePrisma(seed: { workflows?: WorkflowRow[]; versions?: VersionRow[] }
     workflowVersion: {
       findFirst: async ({ where }: { where: { workflowId: string } }) =>
         versions.filter((row) => row.workflowId === where.workflowId).at(-1) ?? null,
-      create: async ({ data }: { data: { workflowId: string; version: number } }) => {
-        const row: VersionRow = { id: `ver-${++sequence}`, workflowId: data.workflowId, version: data.version }
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        versions.find((row) => row.id === where.id) ?? null,
+      create: async ({ data }: { data: { workflowId: string; version: number; nodes?: unknown } }) => {
+        const row: VersionRow = {
+          id: `ver-${++sequence}`,
+          workflowId: data.workflowId,
+          version: data.version,
+          nodes: data.nodes ?? [],
+        }
         versions.push(row)
         return row
       },
@@ -109,6 +119,53 @@ describe('verdict run row', () => {
     expect(refs).toEqual({ workflowId: 'wf-existing', versionId: 'ver-7' })
     expect(workflows).toHaveLength(1)
     expect(versions).toHaveLength(0)
+  })
+
+  it('copies RS / stage from the launch-app node onto the run row', async () => {
+    const { client, runs } = fakePrisma({
+      workflows: [
+        { id: 'wf-rs', slug: 'open-stop', name: 'Open stop', currentVersionId: 'ver-rs' },
+      ],
+      versions: [
+        {
+          id: 'ver-rs',
+          workflowId: 'wf-rs',
+          version: 1,
+          nodes: [
+            {
+              type: 'LAUNCH_APP',
+              data: { config: { country: 'RS', environment: 'stage' } },
+            },
+          ],
+        },
+      ],
+    })
+
+    await ensureVerdictRunRow(client as never, {
+      runId: 'run_env',
+      workflowRef: 'open-stop',
+      deviceId: 'R6CW400BC8N',
+    })
+
+    expect(runs[0]).toMatchObject({ country: 'RS', environment: 'STAGE' })
+  })
+
+  it('snapshots the device model onto the run so history does not need a live cable', async () => {
+    const { client, runs } = fakePrisma()
+
+    await ensureVerdictRunRow(client as never, {
+      runId: 'run_device',
+      workflowRef: 'open-stop',
+      deviceId: 'R6CW400BC8N',
+      deviceModelName: 'SM-A346E',
+      deviceLabel: 'Samsung SM-A346E',
+    })
+
+    expect(runs[0]).toMatchObject({
+      deviceId: 'R6CW400BC8N',
+      deviceModelName: 'SM-A346E',
+      deviceLabel: 'Samsung SM-A346E',
+    })
   })
 
   it('is idempotent for a repeated start of the same run', async () => {

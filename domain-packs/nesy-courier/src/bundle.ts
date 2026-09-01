@@ -51,6 +51,12 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   schemaVersion: 1,
   packKey: NESY_COURIER_PACK_KEY,
   packName: "Nesy Courier",
+  // 1.40.0 — composed legs also namespace `var.<name>` references that live
+  //   inside a step's args. run_237cb164 asked the device to scroll to row "-"
+  //   because `scroll-to-row` still pointed at the pre-rename variable; the
+  //   branch had never executed before, because every earlier composed run
+  //   found the route already selected.
+  //
   // 1.39.0 — the stop row is addressed by the legacy system id the row PRINTS,
   //   not the mongo stop_id no screen renders. run_3acf9459: the old key made
   //   the only match on screen the search box the run had just typed into, so
@@ -454,7 +460,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 39, patch: 0 },
+  version: { major: 1, minor: 40, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

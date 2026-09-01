@@ -1,37 +1,32 @@
+import { AlertCircle } from 'lucide-react'
 import { fetchVerdictTestCampaigns } from '@/lib/verdict-runtime/client'
-import { CampaignTable } from '@/components/automation/test-campaign/CampaignTable'
-import { Alert, AlertDescription, AlertTitle } from '@nesy/metronic/components/ui/alert'
-import type { TestCampaignCatalogItemApi } from '@/lib/verdict-runtime/types'
+import { TestCampaignRegistryView } from '@/components/automation/test-campaign-registry/TestCampaignRegistryView'
+import { ProductPage } from '@/components/product'
 
 export default async function TestCampaignsPage() {
-  let items: TestCampaignCatalogItemApi[]
   try {
-    items = (await fetchVerdictTestCampaigns()).items
-  } catch {
+    const catalog = await fetchVerdictTestCampaigns()
+
     return (
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Test Campaigns</h1>
+      <ProductPage path="/automation/test-campaigns" hideToolbar>
+        <TestCampaignRegistryView items={catalog.items} />
+      </ProductPage>
+    )
+  } catch (error) {
+    return (
+      <ProductPage path="/automation/test-campaigns" hideToolbar>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 px-6 py-12 text-center">
+          <AlertCircle className="mb-4 size-10 text-destructive" />
+          <h3 className="text-lg font-semibold text-foreground">Failed to load test campaign catalog</h3>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : String(error)}
+          </p>
+          <p className="mt-3 max-w-md text-xs text-muted-foreground">
+            Nothing is shown when the runtime is unreachable — that would be indistinguishable from
+            having no campaigns.
+          </p>
         </div>
-        <Alert variant="destructive">
-          <AlertTitle>Campaign catalog unavailable</AlertTitle>
-          <AlertDescription>
-            The Verdict runtime did not return the campaign catalog. Nothing is
-            shown rather than a guessed campaign state.
-          </AlertDescription>
-        </Alert>
-      </div>
+      </ProductPage>
     )
   }
-
-  return (
-    <div className="p-8 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Test Campaigns</h1>
-        <p className="text-muted-foreground">View execution matrices across devices and datasets.</p>
-      </div>
-
-      <CampaignTable items={items} />
-    </div>
-  )
 }

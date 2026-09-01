@@ -1,3 +1,5 @@
+import { isMeaningfulPublishedTimestamp } from './domain-pack-published-at.js'
+
 export const DOMAIN_PACK_ADMIN_API_VERSION = 'verdict-runtime.v1' as const
 
 export type DomainPackPublicationState = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
@@ -56,7 +58,9 @@ export class DomainPackAdminService {
         bundleDigest: item.bundleDigest,
         publicationState: item.publicationState,
         revision: item.revision,
-        publishedAt: item.publishedAt,
+        publishedAt: isMeaningfulPublishedTimestamp(item.publishedAt)
+          ? item.publishedAt
+          : undefined,
       })),
     }
   }

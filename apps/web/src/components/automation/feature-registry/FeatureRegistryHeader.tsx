@@ -211,15 +211,6 @@ export function FeatureRegistryHeader({
                 : `${packCount} ${packCount === 1 ? 'family' : 'families'} in catalog`
             }
             tone="nesy"
-            active={!hasFilters}
-            onClick={
-              hasFilters
-                ? onClearFilters
-                : () => {
-                    onPackChange(null)
-                    onSearchChange('')
-                  }
-            }
           />
           <StatCard
             icon={Layers}
@@ -227,11 +218,6 @@ export function FeatureRegistryHeader({
             value={packCount}
             hint="One pin per pack key"
             tone="blue"
-            active={activePack === null && !searchQuery}
-            onClick={() => {
-              onPackChange(null)
-              onSearchChange('')
-            }}
           />
           <StatCard
             icon={ShieldCheck}

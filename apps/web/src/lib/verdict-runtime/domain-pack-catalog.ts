@@ -30,14 +30,16 @@ export function groupDomainPackCatalog(items: readonly DomainPackSummary[]): Dom
     .sort((left, right) => left.packKey.localeCompare(right.packKey))
 }
 
-export function formatPackPublishedAt(value?: string): string | null {
-  if (!value) return null
-  const ms = Date.parse(value)
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+export function formatPackPublishedAt(value?: string | Date | null): string | null {
+  if (value === undefined || value === null || value === '') return null
+  const ms = value instanceof Date ? value.getTime() : Date.parse(String(value))
   if (!Number.isFinite(ms) || ms < 86_400_000) return null
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(ms)
+  const date = new Date(ms)
+  return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
 }
 
 export function truncateDigest(digest: string, head = 10, tail = 8): string {

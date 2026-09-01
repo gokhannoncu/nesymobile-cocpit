@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 39,
+      "minor": 40,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -12996,7 +12996,7 @@
                 "action": "scrollToItem",
                 "args": {
                   "listClass": "android.widget.ListView",
-                  "rowIndex": "var.offeredRouteRows.route_index"
+                  "rowIndex": "var.routeOfferedRouteRows.route_index"
                 }
               },
               {
@@ -13019,7 +13019,7 @@
                 "outputVariable": "routeRowHandle",
                 "entityBinding": {
                   "type": "ROUTE",
-                  "id": "var.offeredRouteRows.route_label"
+                  "id": "var.routeOfferedRouteRows.route_label"
                 }
               },
               {

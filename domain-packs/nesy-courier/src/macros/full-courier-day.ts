@@ -297,6 +297,29 @@ function rewriteReferences(value: unknown, names: LegNames): unknown {
       result[key] = names.variable(entry);
     } else if (key === "id" && typeof entry === "string" && entry.startsWith("vars.")) {
       result[key] = `vars.${names.variable(entry.slice("vars.".length))}`;
+    } else if (typeof entry === "string" && entry.startsWith("var.")) {
+      /**
+       * A `var.<name>[.<column>]` reference inside a step's ARGS.
+       *
+       * The two key-name sets above cover the fields that HOLD a variable name
+       * (`outputVariable`, `targetVariable`, …). They do not cover a variable
+       * named inside a value — and `BRIDGE_ACTION.args` is full of those: the
+       * host resolves `var.<name>` the same way it resolves `run.input.<name>`.
+       *
+       * Measured 2026-09-01 (run_237cb164), the first composed run that actually
+       * had to open the route spinner: `scroll-to-row` carries
+       * `rowIndex: "var.offeredRouteRows.route_index"`, the leg had renamed the
+       * variable to `routeOfferedRouteRows`, and the arg still pointed at the old
+       * name. The host resolved nothing, the device was asked to scroll to row
+       * "-" and answered `missing_scroll_target`. Every earlier composed run had
+       * found the route already selected and skipped this branch entirely, so the
+       * dangling reference had never been executed.
+       */
+      const [head, ...rest] = entry.slice("var.".length).split(".");
+      result[key] =
+        head !== undefined && names.variableNames.has(head)
+          ? [`var.${names.variable(head)}`, ...rest].join(".")
+          : entry;
     } else {
       result[key] = rewriteReferences(entry, names);
     }

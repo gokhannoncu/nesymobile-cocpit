@@ -145,6 +145,42 @@ export function capabilityContractTitle(entry: Record<string, unknown>): string 
   return capabilityContractKey(entry)
 }
 
+export function capabilityContractDescription(entry: Record<string, unknown>): string | null {
+  const description = entry.description
+  if (typeof description === 'string' && description.trim()) return description.trim()
+  return null
+}
+
+export function capabilityContractLayer(entry: Record<string, unknown>): string {
+  return String(entry.layer ?? 'unknown')
+}
+
+export function capabilityContractProvider(entry: Record<string, unknown>): string {
+  return String(entry.provider ?? 'unknown')
+}
+
+export function capabilityRuntimeDetected(entry: Record<string, unknown>): boolean {
+  return entry.runtimeDetected === true
+}
+
+export function capabilityAutomationOnly(entry: Record<string, unknown>): boolean {
+  return entry.automationOnly === true
+}
+
+export function capabilityDetectionRef(entry: Record<string, unknown>): string | null {
+  const ref = entry.detectionRef
+  if (typeof ref === 'string' && ref.trim()) return ref.trim()
+  return null
+}
+
+export function isCoreCapabilityLayer(layer: string): boolean {
+  return layer.startsWith('verdict.core')
+}
+
+export function isDomainCapabilityLayer(layer: string): boolean {
+  return layer.startsWith('domain.')
+}
+
 export function isDomainPackAdminGetApi(value: unknown): value is DomainPackAdminGetApi {
   const record = asRecord(value)
   if (!record) return false
