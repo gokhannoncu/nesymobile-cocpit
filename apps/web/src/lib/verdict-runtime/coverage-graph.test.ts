@@ -3,6 +3,7 @@ import {
   componentCount,
   countReleaseGateTests,
   coverageChainComplete,
+  coverageChainStatusTone,
   coverageGapLayers,
   coverageScore,
   sumCoverageTotals,
@@ -54,5 +55,11 @@ describe('coverage-graph helpers', () => {
       tests: 4,
       releaseGateTests: 2,
     })
+  })
+
+  it('classifies chain status tone', () => {
+    expect(coverageChainStatusTone(true, 0)).toBe('complete')
+    expect(coverageChainStatusTone(false, 1)).toBe('warning')
+    expect(coverageChainStatusTone(false, 3)).toBe('critical')
   })
 })

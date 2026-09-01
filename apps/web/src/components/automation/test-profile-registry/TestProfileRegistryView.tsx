@@ -13,59 +13,46 @@ import type { TestProfileCatalogItemApi } from '@/lib/verdict-runtime/types'
 import {
   countProfilesByKind,
   testProfileDetailHref,
+  testProfileGateBadgeClass,
   testProfileIsBlocked,
-  testProfileResultTone,
+  testProfileResultBadgeClass,
   type TestProfileKind,
 } from '@/lib/verdict-runtime/test-profile-registry'
 import { cn } from '@nesy/metronic/lib/utils'
-import { toneIconBox, toneText } from '@/components/product/tones'
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-1.5', cellGrid)
-const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
+const thClass = cn('px-2 py-1.5', cellGrid)
+const tdClass = cn('px-2 py-1.5 align-middle', cellGrid)
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
 }
 
-const profileTraitBadgeClass =
-  'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide leading-none'
 
 function ResultBadge({
   item,
 }: {
   item: Pick<TestProfileCatalogItemApi, 'lastResult' | 'blockedReason'>
 }) {
-  if (testProfileIsBlocked(item)) {
-    return (
-      <span
-        className={cn(profileTraitBadgeClass, toneIconBox.amber, toneText.amber)}
-        title={item.blockedReason ?? undefined}
-      >
-        Blocked
-      </span>
-    )
-  }
-
-  const tone = testProfileResultTone(item.lastResult)
+  const blocked = testProfileIsBlocked(item)
 
   return (
-    <span className={cn(profileTraitBadgeClass, toneIconBox[tone], toneText[tone])}>
-      {item.lastResult}
+    <span
+      className={testProfileResultBadgeClass(item.lastResult, blocked)}
+      title={blocked ? (item.blockedReason ?? undefined) : undefined}
+    >
+      {blocked ? 'Blocked' : item.lastResult}
     </span>
   )
 }
 
 function GateBadge({ releaseGate }: { releaseGate: boolean }) {
-  if (!releaseGate) {
-    return <span className="text-[10px] text-muted-foreground">—</span>
+  const badgeClass = testProfileGateBadgeClass(releaseGate)
+  if (!badgeClass) {
+    return <span className="text-[9px] text-muted-foreground">—</span>
   }
 
-  return (
-    <span className={cn(profileTraitBadgeClass, toneIconBox.teal, toneText.teal)}>
-      Gate
-    </span>
-  )
+  return <span className={badgeClass}>Gate</span>
 }
 
 function TestProfileRow({ item, index }: { item: TestProfileCatalogItemApi; index: number }) {

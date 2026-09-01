@@ -17,11 +17,10 @@ import { Button } from '@nesy/metronic/components/ui/button'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
 import {
-  testProfileKindTone,
+  testProfileKindBadgeClass,
   type TestProfileKind,
 } from '@/lib/verdict-runtime/test-profile-registry'
 import { cn } from '@nesy/metronic/lib/utils'
-import { toneIconBox, toneText } from '@/components/product/tones'
 
 export type TestProfileTraitFilter = 'all' | 'releaseGate' | 'blocked' | 'notRun'
 
@@ -42,8 +41,6 @@ function KindFilterChip({
   active: boolean
   onClick: () => void
 }) {
-  const tone = testProfileKindTone(kind)
-
   return (
     <button
       type="button"
@@ -51,11 +48,11 @@ function KindFilterChip({
       aria-pressed={active}
       title={`${kind} profiles`}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition',
+        'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border transition',
         active
-          ? cn('border-current/30 shadow-xs ring-1 ring-current/15', toneIconBox[tone], toneText[tone])
+          ? cn(testProfileKindBadgeClass(kind), 'shadow-xs ring-1 ring-nesy/15')
           : cn(
-              'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
+              'border-border bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground',
               count === 0 && 'opacity-40',
             ),
       )}
@@ -64,7 +61,7 @@ function KindFilterChip({
       <span
         className={cn(
           'rounded-[4px] px-1 py-px text-[9px] tabular-nums',
-          active ? 'bg-black/5 dark:bg-white/10' : 'bg-muted text-muted-foreground',
+          active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
         )}
       >
         {count}
@@ -225,7 +222,7 @@ export function TestProfileRegistryHeader({
             label="Release gate"
             value={releaseGateCount}
             hint="Blocks release when failing"
-            tone="teal"
+            tone="nesy"
             active={activeTraitFilter === 'releaseGate'}
             onClick={() =>
               onTraitFilterChange(activeTraitFilter === 'releaseGate' ? 'all' : 'releaseGate')
@@ -236,7 +233,7 @@ export function TestProfileRegistryHeader({
             label="Blocked"
             value={blockedCount}
             hint="Catalog blockers active"
-            tone="amber"
+            tone="orange"
             active={activeTraitFilter === 'blocked'}
             onClick={() =>
               onTraitFilterChange(activeTraitFilter === 'blocked' ? 'all' : 'blocked')

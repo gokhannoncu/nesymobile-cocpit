@@ -16,10 +16,10 @@ import { cn } from '@nesy/metronic/lib/utils'
 import { AUTOMATION_RUN_PLANNER_PATH } from '@nesy/metronic/config/layout-21.config'
 import {
   testProfileIsBlocked,
-  testProfileResultTone,
+  testProfileResultBadgeClass,
+  testProfileBadgePrimary,
 } from '@/lib/verdict-runtime/test-profile-registry'
 import { profileKindHint } from '@/lib/verdict-runtime/test-profile-detail'
-import { toneIconBox, toneText } from '@/components/product/tones'
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
@@ -61,30 +61,11 @@ function ResultBadge({
   lastResult: string
   blockedReason: string | null
 }) {
-  if (blockedReason) {
-    return (
-      <span
-        className={cn(
-          'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide',
-          toneIconBox.amber,
-          toneText.amber,
-        )}
-      >
-        Blocked
-      </span>
-    )
-  }
+  const blocked = testProfileIsBlocked({ blockedReason })
 
-  const tone = testProfileResultTone(lastResult)
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-[4px] border border-current/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide',
-        toneIconBox[tone],
-        toneText[tone],
-      )}
-    >
-      {lastResult}
+    <span className={testProfileResultBadgeClass(lastResult, blocked)}>
+      {blocked ? 'Blocked' : lastResult}
     </span>
   )
 }
@@ -154,9 +135,7 @@ export function TestProfileDetailHeader({
                   <TestProfileKindBadge kind={catalogKind} />
                   <ResultBadge lastResult={lastResult} blockedReason={blockedReason} />
                   {releaseGate ? (
-                    <span className="inline-flex rounded-[4px] border border-current/10 bg-teal-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800 dark:bg-teal-950/40 dark:text-teal-300">
-                      Release gate
-                    </span>
+                    <span className={testProfileBadgePrimary}>Release gate</span>
                   ) : null}
                 </div>
                 <p className="mt-1 text-sm font-medium text-foreground">{displayName}</p>

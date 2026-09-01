@@ -132,31 +132,44 @@ export function CapabilitiesPageShimmer() {
 
 export function CoverageGraphPageShimmer() {
   const cellGrid = 'border-b border-r border-border last:border-r-0'
-  const thClass = `px-2.5 py-2 ${cellGrid}`
-  const tdClass = `px-2.5 py-2 align-middle ${cellGrid}`
+  const thClass = `px-2 py-1.5 ${cellGrid}`
+  const tdClass = `px-2 py-1.5 align-middle ${cellGrid}`
 
   return (
     <div className="space-y-5" aria-busy="true" aria-label="Loading coverage graph">
-      <div className="space-y-4">
-        <CapabilityRegistryHeroShimmer />
-        <div className="rounded-[8px] border border-border/70 bg-muted/20 p-3" aria-hidden>
-          <ShimmerBlock className="h-3 w-40" />
-          <div className="mt-3 flex gap-2">
+      <article className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="relative bg-gradient-to-br from-nesy-soft/25 via-background to-muted/10 px-4 py-4 lg:px-5 lg:py-5">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-nesy" />
+          <div className="flex items-start gap-3">
+            <ShimmerBlock className="size-10 shrink-0 rounded-[8px]" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ShimmerBlock className="h-7 w-48 max-w-full" />
+              <ShimmerBlock className="h-4 w-full max-w-lg" />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, index) => (
-              <ShimmerBlock key={index} className="h-14 flex-1 rounded-[8px]" />
+              <ShimmerBlock key={index} className="h-14 rounded-[8px]" />
+            ))}
+          </div>
+          <ShimmerBlock className="mt-3 h-16 w-full rounded-[8px]" />
+          <div className="mt-3 flex gap-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <ShimmerBlock key={index} className="h-7 w-28 rounded-[8px]" />
             ))}
           </div>
         </div>
-        <CapabilityRegistryCommandShimmer />
-      </div>
+      </article>
 
-      <article className="overflow-hidden rounded-[8px] border border-border bg-card shadow-xs ring-1 ring-border/40" aria-hidden>
-        <div className="border-b border-border bg-muted/10 px-3 py-2">
+      <ShimmerBlock className="h-14 w-full rounded-[8px]" />
+
+      <article className="overflow-hidden rounded-[8px] border border-border bg-card" aria-hidden>
+        <div className="border-b border-border bg-muted/10 px-2.5 py-1.5">
           <ShimmerBlock className="h-4 w-44" />
-          <ShimmerBlock className="mt-1.5 h-3 w-56" />
+          <ShimmerBlock className="mt-1 h-3 w-56" />
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-xs">
+          <table className="min-w-full border-collapse text-[11px]">
             <thead>
               <tr className="bg-muted/40">
                 {['Family', 'Features', 'Screens', 'Evidence', 'Tests', 'Chain', 'Open'].map((col) => (
@@ -186,8 +199,8 @@ export function CoverageGraphPageShimmer() {
                     <ShimmerBlock className="h-3.5 w-8" />
                   </td>
                   <td className={tdClass}>
-                    <ShimmerBlock className="h-4 w-20 rounded-[8px]" />
-                    <ShimmerBlock className="mt-1 h-1.5 w-full rounded-[4px]" />
+                    <ShimmerBlock className="h-4 w-16 rounded-[4px]" />
+                    <ShimmerBlock className="mt-1 h-1 w-full rounded-[3px]" />
                   </td>
                   <td className={tdClass}>
                     <div className="flex justify-end">

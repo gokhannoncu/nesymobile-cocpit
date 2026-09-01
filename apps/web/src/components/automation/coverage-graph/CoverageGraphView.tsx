@@ -11,6 +11,7 @@ import {
 import {
   componentCount,
   coverageChainComplete,
+  coverageChainStatusTone,
   coverageGapLayers,
   coverageLayerLabel,
   coverageScore,
@@ -18,7 +19,6 @@ import {
   type CoverageGraphCounts,
 } from '@/lib/verdict-runtime/coverage-graph'
 import { cn } from '@nesy/metronic/lib/utils'
-import { type Tone, toneIconBox, toneText } from '@/components/product/tones'
 
 export type CoverageGraphRow = CoverageGraphCounts & {
   packKey: string
@@ -27,8 +27,11 @@ export type CoverageGraphRow = CoverageGraphCounts & {
 }
 
 const cellGrid = 'border-b border-r border-border last:border-r-0'
-const thClass = cn('px-2.5 py-1.5', cellGrid)
-const tdClass = cn('px-2.5 py-1.5 align-middle', cellGrid)
+const thClass = cn('px-2 py-1.5', cellGrid)
+const tdClass = cn('px-2 py-1.5 align-middle', cellGrid)
+
+const chainBadgeBase =
+  'inline-flex rounded-[4px] border px-1.5 py-px text-[8px] font-bold uppercase tracking-wide leading-none'
 
 function packDetailHref(packKey: string, version: string): string {
   return `/automation/domain-packs/${encodeURIComponent(packKey)}?version=${encodeURIComponent(version)}`
@@ -38,7 +41,7 @@ function CountCell({ value }: { value: number }) {
   return (
     <span
       className={cn(
-        'tabular-nums text-xs font-semibold',
+        'tabular-nums text-[11px] font-semibold',
         value > 0 ? 'text-foreground' : 'text-muted-foreground/60',
       )}
     >
@@ -60,38 +63,43 @@ function CoverageMiniBar({ row }: { row: CoverageGraphRow }) {
       {segments.map((filled, index) => (
         <span
           key={index}
-          className={cn(
-            'h-1.5 flex-1 rounded-[4px]',
-            filled ? 'bg-nesy/70' : 'bg-muted',
-          )}
+          className={cn('h-1 flex-1 rounded-[3px]', filled ? 'bg-nesy/75' : 'bg-muted')}
         />
       ))}
     </div>
   )
 }
 
+function chainStatusBadgeClass(tone: ReturnType<typeof coverageChainStatusTone>): string {
+  switch (tone) {
+    case 'complete':
+      return cn(chainBadgeBase, 'border-nesy/30 bg-nesy-soft text-nesy-ink')
+    case 'critical':
+      return cn(chainBadgeBase, 'border-border bg-muted/40 text-muted-foreground')
+    default:
+      return cn(
+        chainBadgeBase,
+        'border-nesy-muted/70 bg-nesy-muted/25 text-nesy-ink dark:border-nesy/25 dark:bg-nesy-soft/10',
+      )
+  }
+}
+
 function ChainStatusBadge({ row }: { row: CoverageGraphRow }) {
   const complete = coverageChainComplete(row)
   const gaps = coverageGapLayers(row)
-  const tone: Tone = complete ? 'teal' : gaps.length >= 3 ? 'orange' : 'amber'
+  const tone = coverageChainStatusTone(complete, gaps.length)
 
   return (
     <div className="space-y-1">
-      <span
-        className={cn(
-          'inline-flex rounded-[8px] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
-          toneIconBox[tone],
-          toneText[tone],
-        )}
-      >
+      <span className={chainStatusBadgeClass(tone)}>
         {complete ? 'Complete' : `${gaps.length} gap${gaps.length === 1 ? '' : 's'}`}
       </span>
       {!complete ? (
-        <p className="line-clamp-2 text-[10px] leading-snug text-muted-foreground">
+        <p className="line-clamp-2 text-[9px] leading-snug text-muted-foreground">
           Missing {gaps.map((layer) => coverageLayerLabel(layer)).join(', ')}
         </p>
       ) : (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[9px] text-muted-foreground">
           {coverageScore(row)}% · {row.releaseGateTests > 0 ? `${row.releaseGateTests} gate` : 'all layers'}
         </p>
       )}
@@ -113,8 +121,8 @@ function CoverageGraphTableRow({ row, index }: { row: CoverageGraphRow; index: n
       )}
     >
       <td className={tdClass}>
-        <div className="text-xs font-semibold leading-tight text-foreground">{row.packKey}</div>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
+        <div className="text-[11px] font-semibold leading-tight text-foreground">{row.packKey}</div>
+        <p className="mt-0.5 text-[9px] text-muted-foreground">
           v{row.version}
           {row.displayName && row.displayName !== row.packKey ? ` · ${row.displayName}` : ''}
         </p>
@@ -138,14 +146,14 @@ function CoverageGraphTableRow({ row, index }: { row: CoverageGraphRow; index: n
         <div className="flex items-baseline gap-1">
           <CountCell value={row.tests} />
           {row.releaseGateTests > 0 ? (
-            <span className="rounded-[8px] bg-nesy/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-nesy-ink">
+            <span className="rounded-[4px] border border-nesy/25 bg-nesy-soft px-1 py-px text-[8px] font-bold uppercase tracking-wide text-nesy-ink">
               {row.releaseGateTests} gate
             </span>
           ) : null}
         </div>
       </td>
       <td className={cn('sm:hidden', tdClass)}>
-        <p className="text-[10px] tabular-nums text-muted-foreground">
+        <p className="text-[9px] tabular-nums text-muted-foreground">
           {row.features} feat · {componentCount(row)} cmp · {row.evidence} ev · {row.tests} test
         </p>
       </td>
@@ -157,7 +165,7 @@ function CoverageGraphTableRow({ row, index }: { row: CoverageGraphRow; index: n
           <Link
             href={href}
             onClick={(event) => event.stopPropagation()}
-            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-[8px] py-0.5 text-[11px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
+            className="inline-flex w-12 cursor-pointer items-center justify-end gap-0.5 rounded-[8px] py-0.5 text-[10px] font-semibold text-nesy-ink transition hover:bg-nesy-soft/40"
           >
             Open
             <ChevronRight className="size-3 shrink-0" />
@@ -266,22 +274,22 @@ export function CoverageGraphView({ rows }: { rows: CoverageGraphRow[] }) {
           ) : null}
         </div>
       ) : (
-        <article className="overflow-hidden rounded-[8px] border border-border bg-card shadow-xs ring-1 ring-border/40">
-          <div className="flex flex-col gap-2 border-b border-border bg-muted/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <article className="overflow-hidden rounded-[8px] border border-border bg-card">
+          <div className="flex flex-col gap-1 border-b border-border bg-muted/10 px-2.5 py-1.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">Family coverage matrix</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="truncate text-[13px] font-semibold text-foreground">Family coverage matrix</p>
+              <p className="text-[11px] text-muted-foreground">
                 {visibleCount} famil{visibleCount === 1 ? 'y' : 'ies'} · {completeCount} complete ·{' '}
                 {gapCount} with gaps
               </p>
             </div>
-            <p className="text-[10px] text-muted-foreground">Sorted by gap severity, then pack key</p>
+            <p className="text-[9px] text-muted-foreground">Sorted by gap severity, then pack key</p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-xs">
+            <table className="min-w-full border-collapse text-[11px]">
               <thead>
-                <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr className="bg-muted/40 text-left text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <th className={cn('min-w-[160px]', thClass)}>Family</th>
                   <th className={cn('hidden w-16 sm:table-cell', thClass)}>Features</th>
                   <th className={cn('hidden w-16 md:table-cell', thClass)}>Screens</th>
