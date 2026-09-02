@@ -16,7 +16,7 @@ import { Alert, AlertContent, AlertDescription, AlertIcon, AlertTitle } from '@n
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { cn } from '@nesy/metronic/lib/utils'
 import { ComparisonTable } from '@/components/product/comparison'
-import { StatCard, StatGrid } from '@/components/product/stats'
+import { StatBar, StatBarItem } from '@/components/product/stats'
 import { toneIcon, toneIconBox, toneText, type Tone } from '@/components/product/tones'
 import type {
   OutcomeTone,
@@ -43,6 +43,8 @@ const OUTCOME_ICONS = {
   cleanup: Trash2,
 } as const
 
+const KPI_STRIP_ORDER = ['progress', 'duration', 'events', 'memory', 'risks'] as const
+
 export function RunDetailSummary({
   view,
   layerStates,
@@ -56,11 +58,12 @@ export function RunDetailSummary({
 
       <section aria-labelledby="run-kpis">
         <h2 id="run-kpis" className="sr-only">Run summary metrics</h2>
-        <StatGrid cols={6} dense>
-          {view.kpis.map((kpi) => (
-            <StatCard
+        <StatBar>
+          {KPI_STRIP_ORDER.map((key) => view.kpis.find((kpi) => kpi.key === key))
+            .filter((kpi): kpi is (typeof view.kpis)[number] => kpi != null)
+            .map((kpi) => (
+            <StatBarItem
               key={kpi.key}
-              variant="compact"
               icon={KPI_ICONS[kpi.key]}
               label={kpi.label}
               value={kpi.value}
@@ -68,7 +71,7 @@ export function RunDetailSummary({
               tone={kpi.tone}
             />
           ))}
-        </StatGrid>
+        </StatBar>
       </section>
 
       <section className="space-y-2.5" aria-labelledby="run-outcomes">

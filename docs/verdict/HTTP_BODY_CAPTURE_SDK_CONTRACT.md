@@ -1,6 +1,8 @@
 # HTTP body capture — SDK wire contract (design, not yet implemented)
 
-Status: **SDK IMPLEMENTED** (`NesyMobile`), cockpit side not started. The five
+Status: **SHIPPED end to end** — SDK, fixtures, cockpit read model, RBAC,
+retention, Network tab, and the app-side policy binding. Nothing is left before
+a test device can produce captured bodies. The five
 open decisions were approved on 2026-09-02 and are recorded in §10 with their
 answers. Two things changed during implementation and this document was
 corrected to match the code, not the other way round — see §12.
@@ -241,11 +243,14 @@ is a separate step.
 
 ## 10. Decisions taken (approved 2026-09-02)
 
-1. **`maxBodyBytesPerRun` = 512 KiB.** Measured against 773 stored runs and
-   17 301 events (14 MB, ~18 KB/run): realistic capture is ~40 KB/run, ~80 KB
-   on disk after C6, so the cap carries ~13x headroom. It is a backstop for a
-   runaway run, not a daily constraint — which is what keeps runs comparable to
-   each other.
+1. **`maxBodyBytesPerRun` = 512 KiB — approved on a measurement that was
+   wrong. See §13; these numbers do not hold.**
+
+   The original reasoning: 773 stored runs, 17 301 events (14 MB, ~18 KB/run),
+   33 calls in the sampled run with a largest response of 1 042 B, so ~40 KB/run
+   captured and ~13x headroom. The sample was taken from a run that was still
+   being ingested, and generalising a single largest-response figure from it was
+   the actual mistake.
 2. **`waybill` / `barcode` are not redacted.** A DB read settled it: real
    waybills (`11333042800798`) and real addresses
    (`KNEZA MILOSA ,11000 ,BEOGRAD ,RS`) already flow unmasked today in
@@ -302,7 +307,49 @@ is a separate step.
    until the fixture repo commit exists, and committing is the user's call.
    Note that the lock is *already* stale independently of this work: both repos
    pin `af203dc5…` while both checkouts sit on `0fc2a9d…`.
-4. `NesyMobileCocpit`: read-model section, RBAC gate, retention job (§9).
+4. ~~`NesyMobileCocpit`: read-model section, RBAC gate, retention job (§9).~~
+   **Done, except scheduling the retention job.** 22 new tests; 768 green in
+   `apps/api`, 53 in `apps/web/src/lib/verdict-runtime`.
+
+   - `run-telemetry-read-model.ts` gained `httpBodies`: chunks reassembled in
+     index order, `complete` reported against the declared `chunk_count`, and
+     the omission vocabulary validated against the SDK's own enum rather than
+     echoed through to the UI.
+   - **RBAC is fail-closed at the API, not in the UI.** The route reads an
+     explicit `includeBodyText=true`; anything else — a forgotten parameter, a
+     direct `curl` — returns body metadata and no payload. The page resolves
+     `canReadRawEvidence` *before* the telemetry request and passes it as an
+     argument, so a viewer without the permission never has the payload
+     delivered to their browser at all.
+   - `verdict-inbox-retention.ts` implements the 14/90 day windows. A body past
+     its window is **redacted in place with a marker**, not deleted: deleting
+     would take its own metadata with it and, worse, make the read model report
+     a scheduled erasure as chunks lost in transit. `raw` is cleared in the same
+     statement because C6 means the payload is stored twice.
+   - The read model therefore distinguishes **four** reasons a body is null —
+     `omittedReason` (device declined), `withheld` (permission), `purged`
+     (retention), `complete: false` (lost in transit) — and the UI must not
+     flatten them.
+
+   **Still open:** nothing calls `applyInboxRetention` yet. It follows the
+   existing `sensitive-capture-purge.ts` pattern in this repo, where the
+   selection contract is written and tested and the cron wiring is separate.
+5. ~~Network tab UI.~~ **Done** — `RunDetailNetwork.tsx`, registered as a fifth
+   tab in `RunDetailLive.tsx`. Verified against a real 318-call run. It renders
+   the five distinct reasons a body is absent (`NOT_CAPTURED` with the device's
+   own reason in plain language, `RESTRICTED`, `EXPIRED`, `INCOMPLETE` with the
+   chunk count, `EMPTY`) rather than a dash.
+6. ~~App-side binding.~~ **Done** — `VerdictBootstrap.kt` calls
+   `networkBodyPolicy(nesyNetworkBodyPolicy())`. `Verdict.install` and the
+   OkHttp hooks in `NetworkModule.kt` already existed; only the policy was
+   missing.
+
+   Three independent layers keep this off production, and they were each
+   compiled and checked: the `release` build type does not compile the
+   `app/src/automation` source set at all; `VerdictSdkImpl` refuses to arm on a
+   non-test application id (the layer that carries
+   `productionrsAutomationRelease`, which compiles this file *and* uses a
+   production id); and capture only ever looks at this build's own API host.
 5. Network tab UI — designed against the shipped contract, not before it.
 
 ## 12. Corrections made during implementation
@@ -326,3 +373,78 @@ emitted from the interceptor, which runs *before* `EventListener.callEnd` emits
 `HTTP_CALL`. Bodies therefore usually arrive **before** their call rather than
 after. The read model must join on `requestId` and tolerate either order, which
 §9.1 already required.
+
+## 13. Measurement correction — the size limits need revisiting
+
+Found while verifying the Network tab against a real run, after §7's defaults
+were already implemented.
+
+| Quantity | Believed when §6/§10 were written | Measured across the full table |
+|---|---|---|
+| HTTP calls in the sampled run | 33 | **318** |
+| HTTP calls per run | — | mean **17**, max **989** |
+| Response size | largest seen 1 042 B | mean **8 000 B**, max **160 298 B** |
+
+The first figure was read from a run mid-ingest; the second is the same run,
+complete. The response-size figure was never a distribution at all — it was one
+observation used as if it were a bound.
+
+**What this breaks.** `maxBodyBytes = 8 KiB` sits exactly at the *mean* response
+size, so roughly half of all responses would be refused with `BODY_TOO_LARGE`.
+And 318 calls x 8 KB is ~2.5 MB against a 512 KiB run budget, so a run like this
+one exhausts its budget early and reports `RUN_BUDGET_EXHAUSTED` for most of its
+traffic. The mechanism would work exactly as designed and capture almost
+nothing.
+
+**What does not change.** Every safety property still holds — bodies are
+redacted before emission, oversized bodies are refused rather than shipped
+unredacted, the budget stops runaway growth, and the gate keeps production
+disarmed. The failure mode of the wrong numbers is *too little evidence*, never
+a leak. That is the direction these defaults were chosen to fail in.
+
+### Resolution: narrow the allowlist (decided 2026-09-02)
+
+Per-endpoint measurement over the whole corpus, rather than one run:
+
+| Endpoint | Calls/run | Mean response | Max | Verdict |
+|---|---|---|---|---|
+| `/Task/Info` | **32.3** | 109 B | 183 B | excluded — pure polling |
+| `/Shipment/GetCollectionsFromShipment` | **35.4** | 649 B | 1 091 B | excluded — repeats per shipment |
+| `/Tracking/SaveCourierLocation/` | 3.9 | 55 B | 71 B | excluded — location beacon |
+| `/Tracking/SaveCourierDeviceInfo/` | 3.3 | 56 B | 71 B | excluded — device beacon |
+| `/Geocode/GetUserHub/` | 1.9 | **154 431 B** | 160 298 B | **excluded — see below** |
+| `/Task/GetMyScheduleByZoneCode/` | 1.3 | 7 496 B | **30 568 B** | included — sets the cap |
+| `/Auth/LoginDevice/` | 1.0 | 886 B | 1 507 B | included |
+| `/Task/DeliverParcels/` | 1.1 | 54 B | 71 B | included |
+| everything else | ~1.0 | < 4 KB | < 10 KB | included |
+
+Two endpoints alone (`/Task/Info`, `/Shipment/GetCollectionsFromShipment`) are
+~68 of the 318 calls per run on average and carry nothing a debugging session
+would read.
+
+`/Geocode/GetUserHub/` is the important exclusion and the reason the earlier
+mean of 8 000 B was so misleading: at ~154 KB it is single-handedly responsible
+for that average, it is not remotely representative, and two of them would spend
+600 KB — more than a whole run's budget — on a hub dump that answers no question
+about a courier's day.
+
+**Resulting configuration.** `maxBodyBytes` moves 8 KiB → **32 KiB** (the code
+default now), sized to clear `/Task/GetMyScheduleByZoneCode/`'s real maximum.
+Everything else stands: 2 KiB chunks, 200 events/run, 512 KiB/run.
+
+With the allowlist below, a run captures roughly **23 KB of responses**, about
+45 KB including request bodies, ~90 KB stored after C6's duplicate `raw` copy —
+comfortably inside the 512 KiB budget with ~5x headroom, and honest about which
+traffic it deliberately ignores.
+
+This list is now bound in
+`app/src/automation/java/com/arasdigital/nesymobile/verdict/VerdictBootstrap.kt`
+as `nesyNetworkBodyPolicy()`. The host is **not** part of the list: it comes
+from `BuildConfig.BASE_URL_HOST`, so each country flavour arms against its own
+API host without a hand-kept table of staging hostnames going stale.ause nothing calls `Verdict.install`
+in `NesyMobile/app` yet — a policy constant with no installer would be dead code
+that drifts from the measurement behind it.
+
+**Re-measure when the traffic changes.** This allowlist is a snapshot of one
+app's behaviour, and the failure it guards against — capturing the wrong
+things — returns quietly as endpoints are added.

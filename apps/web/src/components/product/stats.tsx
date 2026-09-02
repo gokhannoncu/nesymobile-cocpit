@@ -195,6 +195,109 @@ export function StatCard({
   )
 }
 
+function formatStatBarValue(value: number | string): string {
+  if (typeof value === 'number') return String(value)
+  if (value === 'NOT_MEASURED') return 'Not measured'
+  if (/^[A-Z0-9_/]+$/.test(value)) {
+    return value
+      .replaceAll('_', ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  }
+  return value
+}
+
+function formatStatBarLabel(label: string): string {
+  switch (label) {
+    case 'Step progress':
+      return 'Steps reached'
+    case 'Stability risks':
+      return 'Stability'
+    default:
+      return label
+  }
+}
+
+/** Unified horizontal KPI strip — value over label, dividers between segments. */
+export function StatBar({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex overflow-x-auto rounded-xl border border-border/80 bg-card shadow-sm',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+export function StatBarItem({
+  icon: Icon,
+  label,
+  value,
+  suffix,
+  prefix,
+  hint,
+  tone = 'blue',
+  format,
+  className,
+}: {
+  icon?: LucideIcon
+  label: string
+  value: number | string
+  suffix?: string
+  prefix?: string
+  hint?: string
+  tone?: Tone
+  format?: (v: number) => string
+  className?: string
+}) {
+  const displayValue = formatStatBarValue(
+    typeof value === 'number' && format ? format(value) : value,
+  )
+
+  return (
+    <div
+      title={hint}
+      className={cn(
+        'flex min-w-[9.5rem] flex-1 items-center gap-3 border-r border-border/70 px-4 py-3 last:border-r-0 sm:min-w-0',
+        className,
+      )}
+    >
+      {Icon ? (
+        <span
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-lg',
+            toneIconBox[tone],
+          )}
+          aria-hidden
+        >
+          <Icon className={cn('size-4', toneIcon[tone])} strokeWidth={2} />
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        <div className="truncate text-base font-semibold tabular-nums leading-tight text-foreground">
+          {prefix}
+          {typeof value === 'number' ? <CountUp to={value} format={format} /> : displayValue}
+          {suffix ? (
+            <span className="ml-0.5 text-xs font-medium text-muted-foreground">{suffix}</span>
+          ) : null}
+        </div>
+        <div className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
+          {formatStatBarLabel(label)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Compact inline KPI pill — filter toggles, dense stat strips. */
 export function StatPill({
   label,

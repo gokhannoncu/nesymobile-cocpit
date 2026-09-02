@@ -7,6 +7,7 @@ import {
   BarChart3,
   FileSearch,
   LayoutDashboard,
+  Network,
 } from 'lucide-react'
 import { ProductPage } from '@/components/product/page-shell'
 import { SegmentTabs } from '@/components/product/segment-tabs'
@@ -27,6 +28,7 @@ import type {
 import { RunDetailDiagnostics } from './RunDetailDiagnostics'
 import { RunDetailExecution } from './RunDetailExecution'
 import { RunDetailHero } from './RunDetailHero'
+import { RunDetailNetwork } from './RunDetailNetwork'
 import { RunDetailPerformance } from './RunDetailPerformance'
 import { RunDetailSummary } from './RunDetailSummary'
 
@@ -86,7 +88,11 @@ export function RunDetailLive({
     setSupplementalRefreshing(true)
     const [evidenceResult, telemetryResult] = await Promise.allSettled([
       fetchVerdictEvidenceJourney(runId),
-      fetchVerdictRunTelemetry(runId),
+      // The permission has to be repeated on every refetch. The API withholds
+      // captured HTTP bodies unless asked, so omitting it here would let the
+      // first server render carry them and the first live refresh silently drop
+      // them again — panels emptying themselves a moment after the page settles.
+      fetchVerdictRunTelemetry(runId, canViewRawEvidence),
     ])
     if (mountedRef.current) {
       if (evidenceResult.status === 'fulfilled') setEvidenceJourney(evidenceResult.value)
@@ -112,7 +118,7 @@ export function RunDetailLive({
       pendingRef.current = false
       void refreshSupplemental()
     }
-  }, [runId])
+  }, [runId, canViewRawEvidence])
 
   useEffect(() => {
     mountedRef.current = true
@@ -224,6 +230,15 @@ export function RunDetailLive({
             label: 'Performance',
             icon: BarChart3,
             content: <RunDetailPerformance view={view} />,
+          },
+          {
+            value: 'network',
+            label: 'Network',
+            icon: Network,
+            count: view.charts.network.length || undefined,
+            content: (
+              <RunDetailNetwork view={view} canViewRawEvidence={canViewRawEvidence} />
+            ),
           },
           {
             value: 'execution',
