@@ -103,8 +103,20 @@ export const NESY_TOUR_APPROVAL_MACRO_KEY = "nesy.macro.tour-approval-lifecycle"
  * Keyed by the schedule, because the product mints nothing else. See the entity
  * definition: the request response is a bare string and no approval code exists
  * on either side of the tap.
+ *
+ * The id comes from the schedule this run OBSERVED, not from a run input.
+ * `run.input.scheduleId` cannot work in an end-to-end journey: the schedule is
+ * created BY the run — `11-36-20260902-1` is minted when the route is confirmed
+ * — so its id is unknowable at start. Measured on run_419a050c: the binding
+ * resolved to nothing, the adapter refused the unbound tour call, and the run
+ * died at `verify-request-record` complaining about an input no operator could
+ * have supplied. `read-current-schedule` already reads the row, `maxRows: 1`
+ * makes it exactly one, and `schedule_id` is one of its columns.
  */
-const REQUEST_ENTITY = { type: NESY_ENTITIES.tourApprovalRequest, id: "run.input.scheduleId" } as const;
+const REQUEST_ENTITY = {
+  type: NESY_ENTITIES.tourApprovalRequest,
+  id: "var.approvalScheduleRows.schedule_id",
+} as const;
 
 /**
  * The slice's final oracle, authored once and used by both the assert step and

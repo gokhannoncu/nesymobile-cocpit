@@ -60,6 +60,16 @@ export interface NesyBackofficeAdapterOptions {
    * reason rather than calling an unknown host.
    */
   credentials: () => BackofficeCredentials | Promise<BackofficeCredentials>
+  /**
+   * Called when the back office answers 401, before the single retry.
+   *
+   * The token this adapter holds is no longer accepted, and the owner of that
+   * token is the only thing that can throw it away — otherwise every later call
+   * in the run fails the same way, and a persisted token would keep failing
+   * across restarts too. After this resolves, [credentials] is asked again and
+   * the call is retried ONCE with whatever it returns.
+   */
+  onUnauthorized?: () => void | Promise<void>
   /** Test seam. Defaults to global fetch. */
   fetchImpl?: typeof fetch
   /** Audit sink. Redaction is applied before anything reaches it. */
@@ -285,8 +295,27 @@ export function createNesyBackofficeAdapter(
           `back-office credentials unavailable: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
-      if (credentials.baseUrl.trim() === '' || credentials.token.trim() === '') {
-        return failed('back-office base URL or token is not configured for this run')
+      // Two different problems, previously reported as one sentence. "base URL
+      // or token is not configured" sent a reader looking for missing .env
+      // values, when the usual cause is that nobody has signed in to the
+      // dashboard yet: `getDashboardAdminToken` deliberately does NOT attempt a
+      // first login (blind attempts trip the dashboard's captcha), so it returns
+      // null until an explicit login has cached a token. Measured: baseUrl
+      // resolved fine to the RS staging host and the token was empty with
+      // source=empty, and every back-office step in every run had been failing
+      // that way — silently, because the message read like a config gap.
+      if (credentials.baseUrl.trim() === '') {
+        return failed(
+          'back-office base URL is not configured for this run — check NESY_BACKOFFICE_BASE_URL ' +
+            'or the country/environment dashboard URL in the API environment',
+        )
+      }
+      if (credentials.token.trim() === '') {
+        return failed(
+          'back-office token is unavailable: no dashboard admin session is cached. ' +
+            'Sign in once via POST /api/nesy/auth/login {country, environment} — a first ' +
+            'login is never attempted automatically, because blind attempts trip the captcha.',
+        )
       }
 
       const body = endpoint.body(input.inputs)
@@ -332,25 +361,52 @@ export function createNesyBackofficeAdapter(
       }
 
       try {
-        const response = await (injection === null ? doFetch : hangUntilAbort)(
-          `${credentials.baseUrl.replace(/\/$/, '')}/${endpoint.path}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              Authorization: `Bearer ${credentials.token}`,
-              'X-Channel': 'Portal',
-              'X-Client-Request-Time': new Date(startedAtMs).toISOString(),
-              'X-Error-Handling': 'inactive',
-              ...(input.idempotencyKey === undefined ? {} : { 'X-Idempotency-Key': input.idempotencyKey }),
-            },
-            body: JSON.stringify(body ?? {}),
-            signal: controller.signal,
-          } as RequestInit,
-        )
+        const callOnce = async (
+          creds: BackofficeCredentials,
+        ): Promise<{ response: Response; text: string }> => {
+          const response = await (injection === null ? doFetch : hangUntilAbort)(
+            `${creds.baseUrl.replace(/\/$/, '')}/${endpoint.path}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${creds.token}`,
+                'X-Channel': 'Portal',
+                'X-Client-Request-Time': new Date(startedAtMs).toISOString(),
+                'X-Error-Handling': 'inactive',
+                ...(input.idempotencyKey === undefined ? {} : { 'X-Idempotency-Key': input.idempotencyKey }),
+              },
+              body: JSON.stringify(body ?? {}),
+              signal: controller.signal,
+            } as RequestInit,
+          )
+          return { response, text: await response.text() }
+        }
 
-        const text = await response.text()
+        let attempt = await callOnce(credentials)
+
+        // 401 means the token is stale, not that the request was wrong. A
+        // dashboard token expires on its own schedule, and the run that happens
+        // to be holding it when that occurs would otherwise fail for a reason
+        // that has nothing to do with the product under test. So: tell the owner
+        // to drop it, ask for a fresh one, and retry ONCE.
+        //
+        // Once, and only on a token that actually changed. Retrying with the
+        // same rejected token would just double every failure, and a loop
+        // against an endpoint that answers 401 for a non-token reason (a revoked
+        // account) would hammer it — the dashboard locks accounts and demands a
+        // captcha, which is a far more expensive failure than one refused step.
+        if (attempt.response.status === 401 && options.onUnauthorized !== undefined) {
+          await options.onUnauthorized()
+          const refreshed = await options.credentials()
+          if (refreshed.token.trim() !== '' && refreshed.token !== credentials.token) {
+            attempt = await callOnce(refreshed)
+          }
+        }
+
+        const response = attempt.response
+        const text = attempt.text
         let envelope: Record<string, unknown> = {}
         try {
           envelope = text === '' ? {} : (JSON.parse(text) as Record<string, unknown>)

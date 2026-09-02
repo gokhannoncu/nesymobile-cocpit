@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 41,
+      "minor": 42,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -11236,7 +11236,7 @@
                 "targetVariable": "requestHandle",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.approvalScheduleRows.schedule_id"
                 }
               },
               {
@@ -11278,7 +11278,7 @@
                 "targetVariable": "routingHandle",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.approvalScheduleRows.schedule_id"
                 },
                 "continueGate": {
                   "allOf": [
@@ -11331,7 +11331,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.approvalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -11386,7 +11386,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.approvalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
                   "auditPolicy": {
@@ -11445,7 +11445,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.approvalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -11478,7 +11478,7 @@
                 "onTimeout": "CONTINUE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.approvalScheduleRows.schedule_id"
                 }
               },
               {
@@ -11497,7 +11497,7 @@
                 "unknownPolicy": "INCONCLUSIVE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.approvalScheduleRows.schedule_id"
                 },
                 "finalOraclePolicy": {
                   "requirements": [
@@ -11598,7 +11598,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.approvalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
                   "auditPolicy": {
@@ -13926,7 +13926,7 @@
                 "targetVariable": "permitRequestHandle",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.permitApprovalScheduleRows.schedule_id"
                 }
               },
               {
@@ -13968,7 +13968,7 @@
                 "targetVariable": "permitRoutingHandle",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.permitApprovalScheduleRows.schedule_id"
                 },
                 "continueGate": {
                   "allOf": [
@@ -14021,7 +14021,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.permitApprovalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -14076,7 +14076,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.permitApprovalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
                   "auditPolicy": {
@@ -14135,7 +14135,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.permitApprovalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "NONE",
                   "auditPolicy": {
@@ -14168,7 +14168,7 @@
                 "onTimeout": "CONTINUE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.permitApprovalScheduleRows.schedule_id"
                 }
               },
               {
@@ -14187,7 +14187,7 @@
                 "unknownPolicy": "INCONCLUSIVE",
                 "entityBinding": {
                   "type": "TOUR_APPROVAL_REQUEST",
-                  "id": "run.input.scheduleId"
+                  "id": "var.permitApprovalScheduleRows.schedule_id"
                 },
                 "finalOraclePolicy": {
                   "requirements": [
@@ -14288,7 +14288,7 @@
                   },
                   "entityBinding": {
                     "type": "TOUR_APPROVAL_REQUEST",
-                    "id": "run.input.scheduleId"
+                    "id": "var.permitApprovalScheduleRows.schedule_id"
                   },
                   "reconciliationPolicy": "RECONCILE_BEFORE_RELEASE",
                   "auditPolicy": {

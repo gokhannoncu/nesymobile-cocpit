@@ -29,6 +29,10 @@ import type { ExternalActionSpec } from '@nesy/workflow-contract'
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import type { BackendTimeoutSession } from './backend-timeout-injector.js'
 import type { NetworkDisconnectSession } from './network-disconnect-injector.js'
+// The condition language's plucking rule, reused rather than reimplemented: a
+// second answer to "what does a path mean over rows" would drift from the one
+// packs are written against.
+import { dig } from './condition-engine.js'
 import type { BridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { eventualObservedAtMs } from './eventual-observation-time.js'
 import { DELIVERY_STATUS_COMPLETED_FACT } from './pending-delivery-status-refresh.js'
@@ -342,7 +346,7 @@ function resolveInputs(
       const published = variables.get(binding.name)
       inputs[binding.name] =
         published === undefined || published === null || published === ''
-          ? resolveDeclaredEntityId(spec.entityBinding?.id, runInputs)
+          ? resolveDeclaredEntityId(spec.entityBinding?.id, runInputs, variables)
           : published
     }
   }
@@ -353,14 +357,40 @@ function resolveInputs(
  * Read an `entityBinding.id` the way the pack means it.
  *
  * `run.input.scheduleId` / `macro.input.stopCode` are PATHS into this run's
- * inputs. Anything else is a literal id — a pack is allowed to pin one, and
+ * inputs. `var.<name>[.column]` is a path into a VARIABLE an earlier step
+ * published. Anything else is a literal id — a pack is allowed to pin one, and
  * guessing a path out of it would turn a fixed target into a missing one.
+ *
+ * `var.` was added because some identities cannot be run inputs at all. A tour
+ * approval is keyed by the schedule, and in an end-to-end journey the schedule
+ * is CREATED by the run — its id (`11-36-20260902-1`) is unknowable when the run
+ * starts. Pinning `run.input.scheduleId` there resolved to nothing, the adapter
+ * refused the unbound call, and the run died at `permit-verify-request-record`
+ * with a message about a missing input the operator could not have supplied.
+ * Reading it from the query that already observed the schedule is both possible
+ * and more honest — it is the identity the run SAW, which is the same preference
+ * the caller above applies to a published variable.
  */
-function resolveDeclaredEntityId(
+export function resolveDeclaredEntityId(
   declared: string | undefined,
   runInputs: Readonly<Record<string, unknown>>,
+  variables?: VariableRuntimePort,
 ): unknown {
   if (declared === undefined) return undefined
+
+  if (declared.startsWith('var.')) {
+    if (variables === undefined) return undefined
+    const [name, ...rest] = declared.slice('var.'.length).split('.')
+    if (name === undefined || name === '') return undefined
+    const base = variables.get(name)
+    const dug = rest.length === 0 ? base : dig(base, rest)
+    // An entity id is ONE value. Plucking a column from a row set yields an
+    // array, and taking `[0]` would be a guess about which record the run meant
+    // — the wrong-row bug this codebase refuses elsewhere. One row answers.
+    if (Array.isArray(dug)) return dug.length === 1 ? dug[0] : undefined
+    return dug
+  }
+
   const path = /^(run|macro)\.input\./.exec(declared) === null ? undefined : declared.split('.').slice(2).join('.')
   if (path === undefined) return declared
   return readPath(runInputs, path)

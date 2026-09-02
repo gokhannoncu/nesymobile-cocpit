@@ -1,3 +1,4 @@
+import { getNodeConfigSchema } from "./workflow-node-config";
 import { WorkflowNodeType } from "./workflow-types";
 
 /**
@@ -50,38 +51,42 @@ export interface RunInputBinding {
   readonly configKey: string;
   /** Name the pack addresses as `run.input.<runInputName>`. */
   readonly runInputName: string;
-  /** Whether a run cannot proceed without it. */
-  readonly required: boolean;
+}
+
+/**
+ * Whether the field is required, read from the NODE's own schema.
+ *
+ * Deliberately not repeated in the table below. A second `required` flag here
+ * was wrong within a day: `stopOrder` is optional in the node schema — the
+ * journey resolves the stop the loading just created — and a duplicated `true`
+ * made Run Test refuse a perfectly valid canvas with "Open Stop requires
+ * stopOrder". One field, one source.
+ */
+function isRequiredField(nodeType: WorkflowNodeType, configKey: string): boolean {
+  return (
+    getNodeConfigSchema(nodeType).find((field) => field.key === configKey)?.required === true
+  );
 }
 
 export const WORKFLOW_RUN_INPUT_BINDINGS: Partial<
   Record<WorkflowNodeType, readonly RunInputBinding[]>
 > = {
-  [WorkflowNodeType.AUTH_LOGIN]: [
-    { configKey: "pinCode", runInputName: "pin", required: true },
-  ],
-  [WorkflowNodeType.SELECT_ROUTE]: [
-    { configKey: "routeNumber", runInputName: "routeCode", required: true },
-  ],
-  [WorkflowNodeType.CHANGE_ROUTE]: [
-    { configKey: "routeNumber", runInputName: "routeCode", required: true },
-  ],
-  [WorkflowNodeType.LOAD_TO_VEHICLE]: [
-    { configKey: "barcode", runInputName: "scanValue", required: true },
-  ],
+  [WorkflowNodeType.AUTH_LOGIN]: [{ configKey: "pinCode", runInputName: "pin" }],
+  [WorkflowNodeType.SELECT_ROUTE]: [{ configKey: "routeNumber", runInputName: "routeCode" }],
+  [WorkflowNodeType.CHANGE_ROUTE]: [{ configKey: "routeNumber", runInputName: "routeCode" }],
+  [WorkflowNodeType.LOAD_TO_VEHICLE]: [{ configKey: "barcode", runInputName: "scanValue" }],
   // `process-parcel` reads `scanPayload`; the Scan Barcode node is that macro's
   // entry ("Process parcel — opens the delivery flow").
-  [WorkflowNodeType.SCAN_BARCODE]: [
-    { configKey: "barcode", runInputName: "scanPayload", required: true },
-  ],
+  [WorkflowNodeType.SCAN_BARCODE]: [{ configKey: "barcode", runInputName: "scanPayload" }],
+  // Both of `open-stop`'s inputs are SHIPMENT keys, and the macro requires them
+  // to differ: the waybill is typed into the search box and stays there, so the
+  // row must be recognised by the short barcode it displays.
   [WorkflowNodeType.OPEN_STOP]: [
-    { configKey: "stopOrder", runInputName: "rowKey", required: true },
-  ],
-  [WorkflowNodeType.SEARCH_STOP]: [
-    { configKey: "stopOrder", runInputName: "searchTerm", required: true },
+    { configKey: "waybill", runInputName: "searchTerm" },
+    { configKey: "shortBarcode", runInputName: "rowKey" },
   ],
   [WorkflowNodeType.DELIVERY_OPERATION]: [
-    { configKey: "barcode", runInputName: "consignmentNumber", required: false },
+    { configKey: "barcode", runInputName: "consignmentNumber" },
   ],
 };
 
@@ -141,7 +146,7 @@ export function collectMissingRunInputs(
   const missing: MissingRunInput[] = [];
   for (const node of nodes) {
     for (const binding of WORKFLOW_RUN_INPUT_BINDINGS[node.type] ?? []) {
-      if (!binding.required) continue;
+      if (!isRequiredField(node.type, binding.configKey)) continue;
       if (readConfigValue(node, binding.configKey) !== "") continue;
       missing.push({
         nodeId: node.id,

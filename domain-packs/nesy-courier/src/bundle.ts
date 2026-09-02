@@ -357,6 +357,14 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   ASSERT_FACT policy; the two had drifted, with the template still demanding
   //   the back-office assignment and gating on stops.
   //
+  // 1.42.0 — the tour approval entity is keyed by the schedule the run OBSERVED
+  //   (`var.approvalScheduleRows.schedule_id`) instead of `run.input.scheduleId`.
+  //   In a journey the schedule is created by the run, so its id cannot be an
+  //   input: the binding resolved to nothing, the back-office adapter refused
+  //   the unbound tour call — correctly, since correlation is what stops
+  //   yesterday's approval from satisfying today's oracle — and the run died at
+  //   `verify-request-record` citing an input nobody could have supplied.
+  //
   // 1.41.0 — the login leg reads the session BEFORE deciding to sign in, so an
   //   already-signed-in device is a branch and not a failure. A journey run
   //   against a device left signed in used to die on `resolve-pin-field`: the
@@ -471,7 +479,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 41, patch: 0 },
+  version: { major: 1, minor: 42, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

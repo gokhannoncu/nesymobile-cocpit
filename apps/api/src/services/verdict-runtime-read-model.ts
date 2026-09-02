@@ -239,7 +239,20 @@ export async function getRunDetail(runId: string): Promise<RunDetailResult | nul
   const [steps, waits, actionTransitions, oracleEvaluations, testExecutions, resourceLeases, remoteActions] =
     await Promise.all([
       prisma.$queryRaw<Row[]>`
-        SELECT * FROM bridgeflow_step_occurrence WHERE run_id = ${runId} ORDER BY occurrence_index ASC
+        -- Chronological, because that is what the run detail page renders as
+        -- "Actual workflow path". Ordering by occurrence_index alone sorted
+        -- nothing: measured on a 50-step run, every row carried 0 (it separates
+        -- FOR_EACH iterations of the SAME step, not steps from each other), so
+        -- Postgres was free to return any order -- and did. The first step
+        -- showed up last, and because the socket refetches this query on every
+        -- event, the order also changed under the reader mid-run.
+        --
+        -- started_at first, occurrence_index to break ties within one step's
+        -- iterations, id last so the sort is TOTAL: two rows agreeing on both
+        -- would otherwise be free to swap between refetches.
+        SELECT * FROM bridgeflow_step_occurrence
+        WHERE run_id = ${runId}
+        ORDER BY started_at ASC NULLS LAST, occurrence_index ASC, id ASC
       `,
       prisma.$queryRaw<Row[]>`
         SELECT * FROM bridgeflow_wait_event WHERE run_id = ${runId} ORDER BY terminal_at ASC

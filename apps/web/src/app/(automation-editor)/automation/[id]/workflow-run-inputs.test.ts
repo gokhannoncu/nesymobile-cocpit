@@ -49,7 +49,10 @@ describe("collectRunInputs", () => {
       node(WorkflowNodeType.SELECT_ROUTE, { routeNumber: "36" }),
       node(WorkflowNodeType.LOAD_TO_VEHICLE, { barcode: "688005" }),
       node(WorkflowNodeType.SCAN_BARCODE, { barcode: "999111" }),
-      node(WorkflowNodeType.OPEN_STOP, { stopOrder: 12 }),
+      node(WorkflowNodeType.OPEN_STOP, {
+        waybill: "11333042800798",
+        shortBarcode: "688005",
+      }),
     ]);
 
     expect(inputs).toEqual({
@@ -57,7 +60,8 @@ describe("collectRunInputs", () => {
       routeCode: "36",
       scanValue: "688005",
       scanPayload: "999111",
-      rowKey: "12",
+      searchTerm: "11333042800798",
+      rowKey: "688005",
     });
   });
 
@@ -76,9 +80,22 @@ describe("collectRunInputs", () => {
     expect(collectRunInputs([node(WorkflowNodeType.REQUEST_TOUR_START)])).toEqual({});
   });
 
+  it("sends Open Stop's two shipment keys to their separate inputs", () => {
+    // The macro requires them to DIFFER: the waybill stays in the search box, so
+    // the row has to be recognised by the short barcode it displays.
+    const inputs = collectRunInputs([
+      node(WorkflowNodeType.OPEN_STOP, {
+        waybill: "11333042800798",
+        shortBarcode: "688005",
+      }),
+    ]);
+
+    expect(inputs).toEqual({ searchTerm: "11333042800798", rowKey: "688005" });
+  });
+
   it("accepts a numeric config value", () => {
-    expect(collectRunInputs([node(WorkflowNodeType.SEARCH_STOP, { stopOrder: 7 })])).toEqual({
-      searchTerm: "7",
+    expect(collectRunInputs([node(WorkflowNodeType.LOAD_TO_VEHICLE, { barcode: 688005 })])).toEqual({
+      scanValue: "688005",
     });
   });
 });
@@ -111,6 +128,19 @@ describe("collectMissingRunInputs", () => {
   it("does not report an optional input", () => {
     const missing = collectMissingRunInputs([
       node(WorkflowNodeType.DELIVERY_OPERATION, { barcode: "" }),
+    ]);
+
+    expect(missing).toEqual([]);
+  });
+
+  it("does not demand Open Stop's optional keys", () => {
+    // The regression this pins: a duplicated `required: true` in the binding
+    // table made Run Test refuse a valid canvas with "Open Stop requires
+    // stopOrder", even though the node schema marks it optional — the journey
+    // resolves the stop the loading just created. Requiredness now has one
+    // source, the node schema.
+    const missing = collectMissingRunInputs([
+      node(WorkflowNodeType.OPEN_STOP, { waybill: "", shortBarcode: "", stopOrder: "" }),
     ]);
 
     expect(missing).toEqual([]);

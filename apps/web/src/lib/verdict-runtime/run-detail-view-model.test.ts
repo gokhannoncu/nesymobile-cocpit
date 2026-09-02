@@ -229,6 +229,7 @@ describe('run detail manager view model', () => {
           chunksReceived: 1,
           complete: true,
           withheld: false,
+          purged: false,
           body: '{"ok":true}',
         }],
       }),
@@ -260,6 +261,7 @@ describe('run detail manager view model', () => {
           chunksReceived: 1,
           complete: true,
           withheld: false,
+          purged: false,
           body: '{"id":1}',
         }],
       }),
@@ -302,6 +304,7 @@ describe('run detail manager view model', () => {
           chunksReceived: 1,
           complete: true,
           withheld: false,
+          purged: false,
           body: '{"ok":true}',
         }],
       }),
@@ -312,5 +315,52 @@ describe('run detail manager view model', () => {
     const unjoined = view.charts.network.find((item) => item.call.method === 'GET')
     expect(unjoined?.response).toBeNull()
     expect(view.charts.network).toHaveLength(2)
+  })
+
+  it('renders the workflow path in the order the steps happened', () => {
+    // The read model used to ORDER BY occurrence_index, which is 0 on every row
+    // of a run without FOR_EACH — so Postgres returned any order it liked and
+    // the first step rendered last. The socket refetches on every event, so the
+    // order also moved while the operator watched. The view sorts for itself
+    // rather than trusting a remote ORDER BY for a claim about chronology.
+    const view = buildRunDetailViewModel(
+      detail({
+        steps: [
+          { plan_step_id: 'third', started_at: '2026-09-02T10:44:13.000Z', occurrence_index: 0 },
+          { plan_step_id: 'first', started_at: '2026-09-02T10:44:06.000Z', occurrence_index: 0 },
+          { plan_step_id: 'second', started_at: '2026-09-02T10:44:08.000Z', occurrence_index: 0 },
+        ],
+      }),
+    )
+
+    expect(view.workflowPath.map((step) => step.label)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('keeps a step that has not started yet at the end', () => {
+    const view = buildRunDetailViewModel(
+      detail({
+        steps: [
+          { plan_step_id: 'pending' },
+          { plan_step_id: 'started', started_at: '2026-09-02T10:44:06.000Z' },
+        ],
+      }),
+    )
+
+    expect(view.workflowPath.map((step) => step.label)).toEqual(['started', 'pending'])
+  })
+
+  it('orders FOR_EACH iterations of one step by their index', () => {
+    // Same timestamp, different iteration: `occurrence_index` is what it is
+    // actually for, and it only breaks ties.
+    const view = buildRunDetailViewModel(
+      detail({
+        steps: [
+          { plan_step_id: 'visit-b', started_at: '2026-09-02T10:44:06.000Z', occurrence_index: 1 },
+          { plan_step_id: 'visit-a', started_at: '2026-09-02T10:44:06.000Z', occurrence_index: 0 },
+        ],
+      }),
+    )
+
+    expect(view.workflowPath.map((step) => step.label)).toEqual(['visit-a', 'visit-b'])
   })
 })

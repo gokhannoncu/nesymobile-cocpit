@@ -154,6 +154,25 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
   // The open-stop macro addresses the stop by entityRef and resolves the row
   // through the product's own search, so a list index is a hint, not a contract.
   [WorkflowNodeType.OPEN_STOP]: [
+    // TWO shipment keys, because the macro needs two and they must DIFFER. Its
+    // own note records why: the search box keeps what was typed, so the row has
+    // to be recognised by something else or the tap matches twice and fails
+    // closed on ambiguity. Measured 2026-08-13 — waybill typed in, short barcode
+    // read off the row, exactly one match.
+    {
+      key: "waybill",
+      label: "Waybill",
+      type: "text",
+      placeholder: "e.g. 11333042800798",
+      helperText: "Searched for — typed into the stop search box",
+    },
+    {
+      key: "shortBarcode",
+      label: "Short Barcode",
+      type: "text",
+      placeholder: "e.g. 688005",
+      helperText: "Shown ON the row — must differ from the waybill, or the row match is ambiguous",
+    },
     {
       key: "stopOrder",
       label: "Stop Order",

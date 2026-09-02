@@ -117,7 +117,7 @@ export function buildRunDetailViewModel(
 ): RunDetailViewModel {
   const run = record(detail.run) ?? {}
   const runtime = record(detail.runtime) ?? {}
-  const steps = records(detail.steps)
+  const steps = chronological(records(detail.steps))
   const waits = records(detail.waits)
   const oracles = records(detail.oracleEvaluations)
   const oracleEvaluations = detail.oracleEvaluations ?? []
@@ -593,6 +593,50 @@ function pickText(...values: unknown[]): string {
   return 'NOT_MEASURED'
 }
 
+/**
+ * Steps in the order they actually happened.
+ *
+ * Sorted HERE and not left to the caller, because this list is rebuilt from two
+ * sources — the server render and every socket-triggered refetch — and the page
+ * renders it as "Actual workflow path". The read model orders chronologically
+ * now, but a view that depends on a remote ORDER BY for a claim about
+ * chronology is a view whose correctness lives in another repo's SQL. Measured
+ * before the read model was fixed: `occurrence_index` was 0 on all 50 rows of a
+ * run, the first step rendered last, and the order changed between refetches
+ * while the operator watched.
+ *
+ * The comparison is TOTAL: timestamp, then iteration index, then the original
+ * position. Without that last tiebreak two indistinguishable rows could still
+ * swap on the next refetch, which is the flicker this exists to remove. Steps
+ * with no timestamp have not started yet and sort last.
+ */
+function chronological(rows: Row[]): Row[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const leftAt = startedAtMs(left.row)
+      const rightAt = startedAtMs(right.row)
+      if (leftAt !== rightAt) {
+        if (leftAt === null) return 1
+        if (rightAt === null) return -1
+        return leftAt - rightAt
+      }
+      const leftOccurrence = numberValue(left.row.occurrenceIndex ?? left.row.occurrence_index) ?? 0
+      const rightOccurrence =
+        numberValue(right.row.occurrenceIndex ?? right.row.occurrence_index) ?? 0
+      if (leftOccurrence !== rightOccurrence) return leftOccurrence - rightOccurrence
+      return left.index - right.index
+    })
+    .map((entry) => entry.row)
+}
+
+function startedAtMs(row: Row): number | null {
+  const raw = row.startedAt ?? row.started_at
+  if (raw === null || raw === undefined) return null
+  const parsed = raw instanceof Date ? raw.getTime() : new Date(String(raw)).getTime()
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function numberValue(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
@@ -643,7 +687,13 @@ export function stepResultOf(row: Row): string {
   const lifecycle = fieldText(row, 'lifecycle')
   if (lifecycle) return lifecycle
 
-  return resultOf(row)
+  // The GENERIC reader, not `resultOf`. `resultOf` sends any row carrying a
+  // `planStepId` straight back here, so calling it from this last line was
+  // mutual recursion by construction: a step row with none of the fields above
+  // — a step the run has not reached yet, or a partial row from a socket
+  // refetch — blew the stack and took the page down with it. Real runs always
+  // carried a `lifecycle`, which is why it stayed hidden.
+  return genericResultOf(row)
 }
 
 function isFinishedStep(row: Row): boolean {
@@ -655,6 +705,11 @@ function isFinishedStep(row: Row): boolean {
 function resultOf(row: Row | undefined): string {
   if (!row) return 'NOT_MEASURED'
   if (fieldText(row, 'planStepId', 'plan_step_id')) return stepResultOf(row)
+  return genericResultOf(row)
+}
+
+/** Result fields shared by every non-step row — and the step reader's fallback. */
+function genericResultOf(row: Row): string {
   return pickText(
     row.outcome,
     row.productVerdict,

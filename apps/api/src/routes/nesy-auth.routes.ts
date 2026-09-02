@@ -20,6 +20,7 @@ import {
   getCachedDashboardAdminToken,
   getLoginDashboardCallCount,
   loginDashboardAndCache,
+  withoutTokenFields,
   peekDashboardAdminCache,
   readJwtExpiryMs,
   rememberDashboardAdminToken,
@@ -73,16 +74,6 @@ function resultCodeOf(result: unknown): number | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw
   if (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))) return Number(raw)
   return null
-}
-
-function withoutTokenFields(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutTokenFields)
-  if (value === null || typeof value !== 'object') return value
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => key.toLowerCase() !== 'token')
-      .map(([key, entry]) => [key, withoutTokenFields(entry)]),
-  )
 }
 
 function isLoopbackAddress(address: string): boolean {

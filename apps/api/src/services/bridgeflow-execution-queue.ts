@@ -48,7 +48,11 @@ import {
   evidenceSubtypeForFact,
   isLocalQueueItemWaitingObservation,
 } from './local-queue-evidence.js'
-import { resolveBackofficeAdminCredentials } from './nesy-admin-token.js'
+import {
+  invalidateDashboardAdminToken,
+  resolveBackofficeAdminCredentials,
+  resolveRemoteActionCountryEnv,
+} from './nesy-admin-token.js'
 import { getBridgeFlowEvidenceRuntime } from './bridgeflow-evidence-runtime.js'
 import { getSdkObservationStore } from './sdk-observation-store.js'
 import { createPendingDeliveryStatusRefresher } from './pending-delivery-status-refresh.js'
@@ -143,6 +147,15 @@ function createEnvBackofficeAdapter(sessions?: {
         baseUrl: resolved.baseUrl,
         token: resolved.token,
       }
+    },
+    // 401 = the dashboard no longer accepts this token. Drop it for THIS
+    // country/environment only — an HR test token must not be invalidated
+    // because an RS staging one expired, and the store is keyed to keep those
+    // apart. The adapter then asks `credentials` again, which signs in afresh
+    // because a previous successful login is on record.
+    onUnauthorized: async () => {
+      const { country, environment } = resolveRemoteActionCountryEnv()
+      await invalidateDashboardAdminToken(country, environment)
     },
     // Without this the only trace of a back-office call was the attempt row's
     // status, so "SUCCEEDED but published no fact" had to be reproduced by hand

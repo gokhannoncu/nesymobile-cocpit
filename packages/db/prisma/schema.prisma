@@ -1065,3 +1065,23 @@ model VerdictCampaignCell {
   @@index([result, updatedAt], map: "verdict_campaign_cell_result_idx")
   @@map("verdict_campaign_cell")
 }
+
+/// Back-office dashboard admin token, one row per country/environment.
+///
+/// Persisted because the previous process-local cache was wiped by every API
+/// restart, and a FIRST login is never attempted automatically (blind attempts
+/// trip the dashboard captcha) — so after a restart every back-office step
+/// failed until someone signed in by hand.
+model VerdictBackofficeAdminToken {
+  country      String
+  environment  String
+  token        String
+  expiresAt    DateTime @map("expires_at")
+  expirySource String   @map("expiry_source")
+  loginResult  Json?    @map("login_result")
+  obtainedAt   DateTime @default(now()) @map("obtained_at")
+  updatedAt    DateTime @default(now()) @map("updated_at")
+
+  @@id([country, environment])
+  @@map("verdict_backoffice_admin_token")
+}

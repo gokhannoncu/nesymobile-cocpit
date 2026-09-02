@@ -83,6 +83,12 @@ interface LastLoginSignal {
   accountIsBlocked: boolean | null
 }
 
+import {
+  deleteStoredAdminToken,
+  readStoredAdminToken,
+  writeStoredAdminToken,
+} from './nesy-admin-token-store.js'
+
 const cache = new Map<string, CacheEntry>()
 let loginDashboardCalls = 0
 let lastLogin: LastLoginSignal = emptyLastLogin()
@@ -98,6 +104,24 @@ function emptyLastLogin(): LastLoginSignal {
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+/**
+ * A copy of a login response with every `token` field removed, at any depth.
+ *
+ * Lives here rather than in the route that first needed it, because the durable
+ * token store also has to strip before writing its diagnostics blob — and a
+ * second implementation of "what counts as a token field" is a second thing to
+ * get wrong about a credential.
+ */
+export function withoutTokenFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutTokenFields)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => key.toLowerCase() !== 'token')
+      .map(([key, entry]) => [key, withoutTokenFields(entry)]),
+  )
 }
 
 function cacheKey(country: NesyCountry, environment: NesyEnvironment): string {
@@ -201,12 +225,26 @@ export function rememberDashboardAdminToken(
   const previous = cache.get(cacheKey(country, environment))
   const nowMs = Date.now()
   const expiry = resolveTokenExpiry(trimmed, nowMs)
-  cache.set(cacheKey(country, environment), {
+  const entry: CacheEntry = {
     token: trimmed,
     at: nowMs,
     expiresAtMs: expiry.expiresAtMs,
     expirySource: expiry.expirySource,
     result: result ?? previous?.result ?? { resultCode: 200, payload: { token: trimmed } },
+  }
+  cache.set(cacheKey(country, environment), entry)
+  // Write-through, not awaited: this function is synchronous by contract and
+  // several callers are on the request path. The durable copy exists to save a
+  // manual login after a restart, so it may lag by a few milliseconds; what it
+  // must not do is make an in-memory token unavailable while it is being saved.
+  void writeStoredAdminToken(country, environment, {
+    token: entry.token,
+    expiresAtMs: entry.expiresAtMs,
+    expirySource: entry.expirySource,
+    // The token is already a column; a second copy inside the diagnostics blob
+    // would outlive the deliberate expiry of the first.
+    loginResult: withoutTokenFields(entry.result),
+    obtainedAtMs: entry.at,
   })
   if (result != null) lastLogin = loginDiagnostics(result)
   else if (lastLogin.resultCode == null) lastLogin = { ...emptyLastLogin(), resultCode: 200 }
@@ -359,6 +397,52 @@ export async function getDashboardAdminToken(
   return null
 }
 
+/**
+ * Loads the durable token into this process, if memory has none.
+ *
+ * Called from the async credential path rather than at module load: a token is
+ * only needed when a run actually reaches a back-office step, and reading the
+ * database on import would make every process that merely links this module pay
+ * for it.
+ *
+ * A hydrated token also restores `lastLogin.resultCode`. Without that,
+ * `getDashboardAdminToken` would refuse to refresh once the hydrated token
+ * expired — it only re-logs in when a previous login is known to have
+ * succeeded, and a row in this table IS that knowledge.
+ */
+export async function hydrateDashboardAdminCache(
+  country: NesyCountry,
+  environment: NesyEnvironment,
+): Promise<void> {
+  if (storedEntry(country, environment) !== null) return
+  const stored = await readStoredAdminToken(country, environment)
+  if (stored === null) return
+  cache.set(cacheKey(country, environment), {
+    token: stored.token,
+    at: stored.obtainedAtMs,
+    expiresAtMs: stored.expiresAtMs,
+    expirySource: stored.expirySource,
+    result: stored.loginResult ?? { resultCode: 200 },
+  })
+  if (lastLogin.resultCode == null) lastLogin = { ...emptyLastLogin(), resultCode: 200 }
+}
+
+/**
+ * Drops a token the back office has rejected, from memory AND from the store.
+ *
+ * Leaving the durable copy would hydrate the rejected token straight back in on
+ * the next restart, which is worse than not persisting at all: the failure would
+ * survive the fix. The next credential read finds no cache, and because a
+ * previous login is on record, `getDashboardAdminToken` signs in again.
+ */
+export async function invalidateDashboardAdminToken(
+  country: NesyCountry,
+  environment: NesyEnvironment,
+): Promise<void> {
+  cache.delete(cacheKey(country, environment))
+  await deleteStoredAdminToken(country, environment)
+}
+
 export async function resolveBackofficeAdminCredentials(
   country?: NesyCountry,
   environment?: NesyEnvironment,
@@ -373,6 +457,8 @@ export async function resolveBackofficeAdminCredentials(
   const nextCountry = country ?? resolved.country
   const nextEnvironment = environment ?? resolved.environment
   const baseUrl = process.env.NESY_BACKOFFICE_BASE_URL?.trim() || resolveBaseUrl(nextCountry, nextEnvironment)
+  // Survives an API restart: without this the token was gone on every reload.
+  await hydrateDashboardAdminCache(nextCountry, nextEnvironment)
   const cached = getCachedDashboardAdminToken(nextCountry, nextEnvironment)
   if (cached) {
     return {
