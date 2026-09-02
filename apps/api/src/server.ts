@@ -3,6 +3,7 @@ import { loadEnv } from './env.js'
 import { buildApp } from './app.js'
 import { installNesyProxyDispatcher } from './lib/nesy-lan-proxy.js'
 import { printStartupBanner } from './lib/startup-banner.js'
+import { startInboxRetentionSchedule } from './services/verdict-inbox-retention.js'
 
 async function main() {
   const env = loadEnv()
@@ -16,8 +17,17 @@ async function main() {
 
   const { app } = await buildApp(env)
 
+  // Started here rather than inside `buildApp` so the test suite, which builds
+  // the app directly, never starts a timer that outlives a test file.
+  const stopRetention = startInboxRetentionSchedule({
+    enabled: env.VERDICT_RETENTION_ENABLED,
+    bodyRetentionDays: env.VERDICT_RETENTION_BODY_DAYS,
+    eventRetentionDays: env.VERDICT_RETENTION_EVENT_DAYS,
+  })
+
   const shutdown = async (signal: string) => {
     console.log(`\n\x1b[33m${signal}\x1b[0m received, shutting down API…`)
+    stopRetention()
     await app.close()
     process.exit(0)
   }

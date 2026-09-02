@@ -156,3 +156,110 @@ export async function applyInboxRetention(
 
   return { bodiesPurged, rowsDeleted };
 }
+
+const DAY_MS = 24 * 60 * 60_000;
+
+/** Long enough that boot is never blocked, short enough to survive a dev restart. */
+const FIRST_SWEEP_DELAY_MS = 60_000;
+
+/** Once a day; the windows are measured in weeks, so nothing needs finer. */
+const SWEEP_INTERVAL_MS = DAY_MS;
+
+export interface RetentionScheduleOptions {
+  enabled?: boolean;
+  bodyRetentionDays?: number;
+  eventRetentionDays?: number;
+  /** Injected in tests; defaults to the real database sweep. */
+  run?: (options: {
+    bodyRetentionMs: number;
+    eventRetentionMs: number;
+  }) => Promise<RetentionResult>;
+  log?: (message: string) => void;
+}
+
+/**
+ * Runs the retention sweep on a timer for as long as the process lives.
+ *
+ * ## Why the first sweep is a minute in, not a day in
+ *
+ * A plain 24-hour interval never fires in development, where the API restarts
+ * many times an hour, and never fires after any deploy that lands more often
+ * than daily. The window would look configured and would never once have run.
+ * Sweeping shortly after boot means a restart *is* a sweep; the work is
+ * idempotent, so doing it more often than needed costs a pair of indexed
+ * statements that match nothing.
+ *
+ * ## Why several instances are allowed to race
+ *
+ * Both statements are set-based and idempotent: the delete matches on age, and
+ * the body purge matches only rows that still have body text. Two instances
+ * sweeping at once do the same work twice and reach the same state — cheaper
+ * than a lock that then has to be reasoned about when it is held by a process
+ * that died.
+ *
+ * @returns a stop function; call it on shutdown so the timer cannot outlive the
+ *   server (and so tests do not hang on an open handle).
+ */
+export function startInboxRetentionSchedule(
+  options: RetentionScheduleOptions = {},
+): () => void {
+  const log = options.log ?? ((message: string) => console.log(message));
+  if (options.enabled === false) {
+    log("[verdict-retention] disabled by configuration");
+    return () => {};
+  }
+
+  const bodyRetentionMs = (options.bodyRetentionDays ?? 14) * DAY_MS;
+  const eventRetentionMs = (options.eventRetentionDays ?? 90) * DAY_MS;
+  if (bodyRetentionMs > eventRetentionMs) {
+    // Refuse rather than silently reordering: an operator who set these
+    // backwards meant something, and guessing which half they meant is worse
+    // than telling them the pair is impossible.
+    throw new Error(
+      "VERDICT_RETENTION_BODY_DAYS must not exceed VERDICT_RETENTION_EVENT_DAYS",
+    );
+  }
+
+  const run = options.run ?? applyInboxRetention;
+  let stopped = false;
+
+  const sweep = async () => {
+    if (stopped) return;
+    try {
+      const result = await run({ bodyRetentionMs, eventRetentionMs });
+      // Always logged, including the zero case. A retention job that only
+      // speaks up when it deletes something is indistinguishable from one that
+      // is not running.
+      log(
+        `[verdict-retention] swept: ${result.bodiesPurged} body text purged, ` +
+          `${result.rowsDeleted} rows deleted ` +
+          `(bodies > ${options.bodyRetentionDays ?? 14}d, rows > ${options.eventRetentionDays ?? 90}d)`,
+      );
+    } catch (error) {
+      // Never throws out of the timer: an unhandled rejection here would take
+      // the API process down over housekeeping.
+      log(
+        `[verdict-retention] sweep failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  };
+
+  const firstTimer = setTimeout(() => {
+    void sweep();
+  }, FIRST_SWEEP_DELAY_MS);
+  const intervalTimer = setInterval(() => {
+    void sweep();
+  }, SWEEP_INTERVAL_MS);
+
+  // Housekeeping must not be the reason the process stays alive.
+  firstTimer.unref?.();
+  intervalTimer.unref?.();
+
+  return () => {
+    stopped = true;
+    clearTimeout(firstTimer);
+    clearInterval(intervalTimer);
+  };
+}

@@ -331,9 +331,27 @@ is a separate step.
      (retention), `complete: false` (lost in transit) — and the UI must not
      flatten them.
 
-   **Still open:** nothing calls `applyInboxRetention` yet. It follows the
-   existing `sensitive-capture-purge.ts` pattern in this repo, where the
-   selection contract is written and tested and the cron wiring is separate.
+   `startInboxRetentionSchedule` runs the sweep from `server.ts`: **on by
+   default** (`VERDICT_RETENTION_ENABLED=false` opts out), first sweep 60 s
+   after boot and daily after that, windows configurable via
+   `VERDICT_RETENTION_BODY_DAYS` / `_EVENT_DAYS`.
+
+   Three choices worth stating. **On by default**, because a retention policy
+   that must be switched on is how this table reached 17 495 rows with no
+   retention at all. **First sweep a minute after boot, not a day**, because a
+   plain 24-hour interval never fires in a process that restarts hourly — the
+   window would look configured and never once have run. **Concurrent instances
+   are allowed to race**, because both statements are set-based and idempotent
+   and a lock would then need reasoning about when its holder dies.
+
+   Every sweep logs, including the zero case: a job that only speaks when it
+   deletes something cannot be told apart from a job that is not running.
+
+   Verified read-only against the live database before shipping: the purge
+   expression drops `data.body` *and* the duplicate `raw` line, writes the
+   `body_purged` marker, and leaves `direction` / `content_type` /
+   `original_bytes` intact. First run affects **0 rows** — the oldest row is 23
+   days old and no body has been captured yet.
 5. ~~Network tab UI.~~ **Done** — `RunDetailNetwork.tsx`, registered as a fifth
    tab in `RunDetailLive.tsx`. Verified against a real 318-call run. It renders
    the five distinct reasons a body is absent (`NOT_CAPTURED` with the device's

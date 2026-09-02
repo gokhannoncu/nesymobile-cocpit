@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_BODY_RETENTION_MS,
   DEFAULT_EVENT_RETENTION_MS,
   planInboxRetention,
+  startInboxRetentionSchedule,
 } from "./verdict-inbox-retention.js";
 
 const DAY = 24 * 60 * 60_000;
@@ -93,5 +94,104 @@ describe("verdict inbox retention", () => {
   it("defaults match the approved decision: bodies 14 days, events 90", () => {
     expect(DEFAULT_BODY_RETENTION_MS).toBe(14 * DAY);
     expect(DEFAULT_EVENT_RETENTION_MS).toBe(90 * DAY);
+  });
+});
+
+describe("retention schedule", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function harness(overrides: Record<string, unknown> = {}) {
+    const logs: string[] = [];
+    const run = vi.fn(async () => ({ bodiesPurged: 2, rowsDeleted: 5 }));
+    const stop = startInboxRetentionSchedule({
+      run,
+      log: (message) => logs.push(message),
+      ...overrides,
+    });
+    return { logs, run, stop };
+  }
+
+  it("sweeps shortly after boot rather than a day later", async () => {
+    // A plain 24h interval never fires in a process that restarts hourly, so
+    // the window would look configured and never once have run.
+    const { run, stop } = harness();
+
+    expect(run).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    stop();
+  });
+
+  it("keeps sweeping daily", async () => {
+    const { run, stop } = harness();
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+    expect(run.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    stop();
+  });
+
+  it("reports a sweep that changed nothing", async () => {
+    // A job that only speaks when it deletes something is indistinguishable
+    // from a job that is not running.
+    const { logs, stop } = harness({
+      run: async () => ({ bodiesPurged: 0, rowsDeleted: 0 }),
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(logs.some((line) => line.includes("0 body text purged"))).toBe(true);
+    stop();
+  });
+
+  it("survives a failing sweep instead of taking the process down", async () => {
+    const { logs, stop } = harness({
+      run: async () => {
+        throw new Error("connection lost");
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(logs.some((line) => line.includes("sweep failed: connection lost"))).toBe(true);
+    stop();
+  });
+
+  it("does nothing when disabled, and says so", async () => {
+    const { logs, run, stop } = harness({ enabled: false });
+
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+
+    expect(run).not.toHaveBeenCalled();
+    expect(logs).toEqual(["[verdict-retention] disabled by configuration"]);
+    stop();
+  });
+
+  it("stops cleanly so the timer cannot outlive the server", async () => {
+    const { run, stop } = harness();
+
+    stop();
+    await vi.advanceTimersByTimeAsync(48 * 60 * 60_000);
+
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("refuses an impossible window pair at startup", () => {
+    expect(() =>
+      startInboxRetentionSchedule({
+        bodyRetentionDays: 120,
+        eventRetentionDays: 90,
+        run: async () => ({ bodiesPurged: 0, rowsDeleted: 0 }),
+        log: () => {},
+      }),
+    ).toThrow(/must not exceed/);
   });
 });
