@@ -2,9 +2,11 @@
 
 import type { RefObject } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Archive, Pencil, Play, RefreshCw, Search, Workflow, X } from 'lucide-react'
+import { Archive, Pencil, Play, Search, Workflow, X } from 'lucide-react'
 import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
+import { AutomationListStatCardsShimmer } from '@/components/automation/automation-list-page-shimmer'
+import { HeroRefreshButton } from '@/components/automation/shared/HeroRefreshButton'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
 import type { WorkflowLibraryStatusFilter } from '@/lib/automation/workflow-library-filters'
@@ -22,6 +24,7 @@ export function WorkflowLibraryHeader({
   onRefresh,
   onClearFilters,
   hasFilters,
+  isRefreshing = false,
   isSearchPending,
   onCreateClick,
   createShortcutLabel,
@@ -39,6 +42,7 @@ export function WorkflowLibraryHeader({
   onRefresh: () => void
   onClearFilters: () => void
   hasFilters: boolean
+  isRefreshing?: boolean
   isSearchPending: boolean
   onCreateClick: () => void
   createShortcutLabel: string
@@ -108,7 +112,17 @@ export function WorkflowLibraryHeader({
         compact
         layout="stack"
         chips={['Authoring', 'Published runs', 'Draft workspace']}
+        actions={
+          <HeroRefreshButton
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
+            label="Refresh workflow library"
+          />
+        }
       >
+        {isRefreshing ? (
+          <AutomationListStatCardsShimmer />
+        ) : (
         <StatGrid cols={4}>
           {statCards.map((card) => (
             <StatCard
@@ -133,6 +147,7 @@ export function WorkflowLibraryHeader({
             />
           ))}
         </StatGrid>
+        )}
       </HeroCallout>
 
       <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
@@ -178,16 +193,6 @@ export function WorkflowLibraryHeader({
             ) : null}
             <Button
               type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 shrink-0"
-              onClick={onRefresh}
-              aria-label="Refresh workflow library"
-            >
-              <RefreshCw className="size-4" />
-            </Button>
-            <Button
-              type="button"
               onClick={onCreateClick}
               className="h-10 gap-1.5 bg-nesy px-4 text-sm text-white hover:bg-nesy-hover"
             >
@@ -199,13 +204,15 @@ export function WorkflowLibraryHeader({
           </div>
         </div>
 
-        {(hasFilters || isSearchPending) ? (
+        {hasFilters || isSearchPending || isRefreshing ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
             <span className="text-xs text-muted-foreground">Active view</span>
             <Badge variant="secondary" appearance="outline" size="sm">
-              {isSearchPending
-                ? 'Updating…'
-                : `${filteredCount} of ${visibleCount} workflows`}
+              {isRefreshing
+                ? 'Refreshing…'
+                : isSearchPending
+                  ? 'Updating…'
+                  : `${filteredCount} of ${visibleCount} workflows`}
             </Badge>
             {statusFilter !== 'all' ? (
               <Badge variant="secondary" size="sm">

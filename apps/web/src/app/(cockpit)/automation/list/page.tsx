@@ -84,6 +84,7 @@ import {
   workflowMatchesStatusFilter,
   type WorkflowLibraryStatusFilter,
 } from '@/lib/automation/workflow-library-filters'
+import { toast } from 'sonner'
 import { useNesyAuth } from '@/contexts/nesy-auth-context'
 import {
   coerceNesyMobileEnvironment,
@@ -251,6 +252,7 @@ export default function AutomationListPage() {
       setAllWorkflows(catalog.items.map(catalogItemToWorkflowListItem))
     } catch (err) {
       console.error('Failed to load workflows:', err)
+      toast.error('Workflow library could not be loaded.')
       setAllWorkflows([])
     } finally {
       setLoading(false)
@@ -403,6 +405,7 @@ export default function AutomationListPage() {
               onRefresh={() => void loadWorkflows()}
               onClearFilters={clearFilters}
               hasFilters={hasFilters}
+              isRefreshing={loading}
               isSearchPending={isSearchPending}
               onCreateClick={openCreateModal}
               createShortcutLabel={createShortcutLabel}
@@ -418,7 +421,9 @@ export default function AutomationListPage() {
               aria-label="Workflow library"
             >
               {loading ? (
-                <AutomationListGridShimmer count={1} />
+                <AutomationListGridShimmer
+                  count={Math.min(Math.max(pageSlice.length, 1), pageSize)}
+                />
               ) : pageSlice.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center">
                   {allWorkflows.length === 0 ? (
@@ -916,9 +921,7 @@ function WorkflowCard({
             <Trash2 className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" variant="light">
-          Delete workflow
-        </TooltipContent>
+        <TooltipContent variant="light">Delete workflow</TooltipContent>
       </Tooltip>
 
       <Link

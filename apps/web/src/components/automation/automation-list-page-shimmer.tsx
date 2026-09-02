@@ -54,9 +54,10 @@ export function AutomationListGridShimmer({ count = 1 }: { count?: number }) {
 function WorkflowLibraryHeroShimmer() {
   return (
     <div
-      className="overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
+      className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
       aria-hidden
     >
+      <ShimmerBlock className="absolute right-4 top-4 h-10 w-[7.5rem] rounded-full" />
       <ShimmerBlock className="h-3 w-36" />
       <ShimmerBlock className="mt-2 h-7 w-48" />
       <ShimmerBlock className="mt-2 h-4 w-full max-w-2xl" />
@@ -84,7 +85,6 @@ function WorkflowLibraryCommandShimmer() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <ShimmerBlock className="h-10 flex-1 rounded-lg" />
         <div className="flex gap-2">
-          <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
           <ShimmerBlock className="h-10 w-32 rounded-lg" />
         </div>
       </div>

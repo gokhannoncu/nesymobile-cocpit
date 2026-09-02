@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 43,
+      "minor": 44,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -11871,7 +11871,7 @@
       {
         "macroKey": "nesy.macro.full-courier-day",
         "actionRef": "nesy.action.login",
-        "displayName": "Full courier day — login through delivery",
+        "displayName": "Full Courier Day",
         "businessMeaning": "A courier signs in, takes today's route, loads a parcel onto the schedule, gets the tour approved, opens the stop that parcel created, processes it and completes the delivery — one continuous run, so every hand-off between those steps is exercised by the state the previous step actually produced.",
         "notResponsibleFor": [
           "username/password tab login",
@@ -12457,7 +12457,7 @@
             "schemaVersion": 2,
             "workflowId": "nesy.workflow.full-courier-day",
             "workflowVersion": 1,
-            "name": "Full courier day — login through delivery",
+            "name": "Full Courier Day",
             "source": {
               "kind": "DOMAIN_PACK_EXPANSION",
               "ref": "nesy.macro.full-courier-day"
@@ -17346,7 +17346,7 @@
     "independentWorkflows": [
       {
         "workflowKey": "nesy.workflow.login",
-        "displayName": "Login works through the real UI",
+        "displayName": "UI Login Success",
         "businessMeaning": "A courier signs in with their device PIN through the product's own login screens and ends up with a session that exists on the backend, in the app and on the device.",
         "notResponsibleFor": [
           "username/password tab login",
@@ -17407,7 +17407,7 @@
       },
       {
         "workflowKey": "nesy.workflow.login-rejected",
-        "displayName": "Wrong PIN is rejected through the real UI",
+        "displayName": "Invalid PIN Rejection",
         "businessMeaning": "A courier attempts to sign in through the real PIN login path with credentials that should be refused, and the product emits its own login-rejected state.",
         "notResponsibleFor": [
           "proving successful authentication",
@@ -17451,7 +17451,7 @@
       },
       {
         "workflowKey": "nesy.workflow.select-route",
-        "displayName": "Route selection reaches the backend",
+        "displayName": "Backend Route Assignment",
         "businessMeaning": "A courier selects the route they will work today, and both the app and the backend agree that this route is now assigned to them.",
         "notResponsibleFor": [
           "route planning or stop ordering — the pack asserts the route is assigned, not that its content is optimal",
@@ -17520,7 +17520,7 @@
       },
       {
         "workflowKey": "nesy.workflow.login-and-select-route",
-        "displayName": "Login then select route",
+        "displayName": "Login Route Selection",
         "businessMeaning": "A courier signs in with their device PIN through the product's own login screens, then selects the route they will work today.",
         "notResponsibleFor": [
           "username/password tab login",
@@ -17619,7 +17619,7 @@
       },
       {
         "workflowKey": "nesy.workflow.load-to-vehicle",
-        "displayName": "A scanned parcel enters the courier's schedule",
+        "displayName": "Parcel Schedule Entry",
         "businessMeaning": "A courier takes custody of a parcel at the branch: the app accepts the scanned parcel, the backend creates the task for it, and the parcel appears in the schedule stored on the device.",
         "notResponsibleFor": [
           "whether the parcel SHOULD have been loaded on this route — the backend owns that judgement and answers with a refusal",
@@ -17671,7 +17671,7 @@
       },
       {
         "workflowKey": "nesy.workflow.open-stop",
-        "displayName": "Opening a stop opens the requested stop",
+        "displayName": "Target Stop Opening",
         "businessMeaning": "A courier opens a specific stop from the route list and the app is then working on THAT stop — identified by its business key, never by its position in the list.",
         "notResponsibleFor": [
           "what happens inside the stop once it is open (see PROCESS_PARCEL and COMPLETE_DELIVERY)",
@@ -17722,7 +17722,7 @@
       },
       {
         "workflowKey": "nesy.workflow.process-parcel",
-        "displayName": "A scanned parcel is accepted and persisted",
+        "displayName": "Parcel Scan Persistence",
         "businessMeaning": "A courier scans one parcel at the current stop and the app accepts and records it, both in memory and on the device.",
         "notResponsibleFor": [
           "camera hardware, focus or lighting — the payload is injected, so optical scanning is out of scope by construction",
@@ -17782,7 +17782,7 @@
       },
       {
         "workflowKey": "nesy.workflow.complete-delivery",
-        "displayName": "A completed delivery is confirmed by the backend",
+        "displayName": "Backend Delivery Confirmation",
         "businessMeaning": "A courier completes the delivery for a shipment, and the backend eventually records it as completed — whether the device was online at the time or queued the operation.",
         "notResponsibleFor": [
           "payment collection and fiscal receipt printing — this slice is the unpaid DELY path; RS cash+EXW is a later slice",
@@ -17840,7 +17840,7 @@
       },
       {
         "workflowKey": "nesy.workflow.tour-approval-lifecycle",
-        "displayName": "Tour approval survives the courier/dispatcher handover",
+        "displayName": "Tour Approval Continuity",
         "businessMeaning": "A courier requests approval for the completed tour on the device, a dispatcher approves it in the back office, and both the created record and its APPROVED status are confirmed for that specific request.",
         "notResponsibleFor": [
           "rejection and rework flows",
@@ -17932,7 +17932,7 @@
       },
       {
         "workflowKey": "nesy.workflow.full-courier-day",
-        "displayName": "Full courier day — login through delivery",
+        "displayName": "Full Courier Day",
         "businessMeaning": "A courier signs in, takes today's route, loads a parcel onto the schedule, gets the tour approved, opens the stop that parcel created, processes it and completes the delivery — one continuous run, so every hand-off between those steps is exercised by the state the previous step actually produced.",
         "notResponsibleFor": [
           "username/password tab login",
@@ -18195,7 +18195,7 @@
       },
       {
         "workflowKey": "nesy.workflow.full-courier-golden",
-        "displayName": "Full courier golden — nested stop/parcel FOR_EACH",
+        "displayName": "Nested Parcel Processing",
         "businessMeaning": "Discovers stops and parcels at runtime and processes them via nested FOR_EACH (max 20 barcodes), without static node duplication.",
         "notResponsibleFor": [
           "unrolling one IR node per barcode",

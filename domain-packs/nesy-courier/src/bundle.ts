@@ -357,6 +357,12 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   ASSERT_FACT policy; the two had drifted, with the template still demanding
   //   the back-office assignment and gating on stops.
   //
+  // 1.44.0 — no behaviour change. 1.43.0 was published and then edited (a probe
+  //   target added during diagnosis was rolled back once the host's own surface
+  //   sweep turned out to own that job), which left the published digest and the
+  //   code disagreeing. A published version is immutable, so the corrected
+  //   content needs its own number rather than a quiet reissue.
+  //
   // 1.43.0 — open-stop waits for the stop list before probing it. The probe's
   //   TREAT_AS_ABSENT answers "absent" both when the search bar is shut and when
   //   the stop list is not on screen, and the slice read absent as the former:
@@ -488,7 +494,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 43, patch: 0 },
+  version: { major: 1, minor: 44, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

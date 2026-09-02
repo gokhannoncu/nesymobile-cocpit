@@ -556,14 +556,48 @@ export function createGenericStepRuntime(options: {
    */
   const dismissHandledSurfaces = async (): Promise<string[]> => {
     const dismissed: string[] = []
+    // The sweep used to be silent, and a silent sweep is indistinguishable from
+    // one that never ran. Measured on run_e8967885: the pack had already
+    // declared everything needed — `UI.NOTIFICATION_LIST_PRESENT` was true and
+    // fresh, the surface is HANDLE, the handler names `btn_exit` — the run still
+    // died on a target under the list, and nothing anywhere said whether this
+    // function was reached, which surface it considered, or what the probe
+    // answered. Diagnosing it took a hand-driven `uiautomator dump`. So every
+    // outcome is now stated, including the boring ones.
+    if (dismissibleSurfaces.length === 0) {
+      options.logger?.('[BridgeFlowGenericSteps] sweep: the pack declares no dismissible surface')
+      return dismissed
+    }
     for (const surface of dismissibleSurfaces) {
       for (const targetRef of surface.targetRefs) {
         const exit = targets.get(targetRef)
-        if (exit === undefined) continue
+        if (exit === undefined) {
+          options.logger?.('[BridgeFlowGenericSteps] sweep: handler target is not in the registry', {
+            surfaceRef: surface.surfaceRef,
+            targetRef,
+          })
+          continue
+        }
         const fingerprint = buildTargetFingerprint(exit)
-        if (fingerprint === undefined) continue
+        if (fingerprint === undefined) {
+          options.logger?.('[BridgeFlowGenericSteps] sweep: handler target has no usable selector', {
+            surfaceRef: surface.surfaceRef,
+            targetRef,
+          })
+          continue
+        }
         const probe = await manager.resolve(fingerprint, { runId })
-        if (probe.outcome !== 'RESOLVED_UNIQUE') continue
+        if (probe.outcome !== 'RESOLVED_UNIQUE') {
+          // Not necessarily wrong — a surface that is not up answers exactly
+          // this. It is logged because the SAME answer arrives when the surface
+          // IS up and the bridge cannot see it, and those two need telling apart.
+          options.logger?.('[BridgeFlowGenericSteps] sweep: nothing to dismiss for this surface', {
+            surfaceRef: surface.surfaceRef,
+            targetRef,
+            outcome: probe.outcome,
+          })
+          continue
+        }
         const record = await manager.act(
           fingerprint.selector.by === 'id' ? 'tap_id' : 'tap_text',
           fingerprint,
@@ -784,13 +818,21 @@ export function createGenericStepRuntime(options: {
       const resolveDeadlineMs = target.resolution.deadlineMs
       const resolveExpiresAt =
         clock() + (waitsForTarget && typeof resolveDeadlineMs === 'number' ? resolveDeadlineMs : 0)
-      let evidence = await manager.resolve(fingerprint, { runId })
-      while (evidence.outcome === 'NOT_FOUND' && clock() < resolveExpiresAt) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, Math.min(TARGET_RESOLVE_POLL_MS, Math.max(1, resolveExpiresAt - clock()))),
-        )
-        evidence = await manager.resolve(fingerprint, { runId })
+      const pollUntilFound = async (
+        start: TargetResolutionEvidence,
+        expiresAt: number,
+      ): Promise<TargetResolutionEvidence> => {
+        let evidence = start
+        while (evidence.outcome === 'NOT_FOUND' && clock() < expiresAt) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(TARGET_RESOLVE_POLL_MS, Math.max(1, expiresAt - clock()))),
+          )
+          evidence = await manager.resolve(fingerprint, { runId })
+        }
+        return evidence
       }
+
+      let evidence = await pollUntilFound(await manager.resolve(fingerprint, { runId }), resolveExpiresAt)
 
       // A target the pack says MUST be there, still absent after its deadline, is
       // the exact shape an unbidden overlay makes: everything under it reports
@@ -799,9 +841,25 @@ export function createGenericStepRuntime(options: {
       // more look. Only here — a target declared TREAT_AS_ABSENT has already been
       // answered, and sweeping on its behalf would dismiss a dialog to prove
       // something is missing.
+      //
+      // AND THEN WAIT AGAIN, MEASURED 2026-09-02 (run_2749145c).
+      //
+      // The re-look used to be a single immediate resolve, which is the very
+      // mistake the deadline loop above was written to correct — only worse,
+      // because a dismissal GUARANTEES the screen is mid-change. The sweep
+      // tapped the notification list's exit, reported it, and the one re-resolve
+      // landed while the dialog was still animating out: `close_search_bar`
+      // came back NOT_FOUND two tree generations later and the run stopped on a
+      // control that was about to be there. So the target gets its full deadline
+      // a second time, from the dismissal onwards.
       if (evidence.outcome === 'NOT_FOUND' && waitsForTarget) {
         const dismissed = await dismissHandledSurfaces()
-        if (dismissed.length > 0) evidence = await manager.resolve(fingerprint, { runId })
+        if (dismissed.length > 0) {
+          evidence = await pollUntilFound(
+            await manager.resolve(fingerprint, { runId }),
+            clock() + (typeof resolveDeadlineMs === 'number' ? resolveDeadlineMs : 0),
+          )
+        }
       }
 
       const evidenceRef = describeResolutionEvidence(evidence)
