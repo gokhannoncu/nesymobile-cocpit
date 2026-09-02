@@ -8,15 +8,14 @@ import {
   Layers,
   ListOrdered,
   Play,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Button } from '@nesy/metronic/components/ui/button'
-import { cn } from '@nesy/metronic/lib/utils'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
+import { AutomationHistoryStatCardsShimmer } from '@/components/automation/automation-history-page-shimmer'
+import { HeroRefreshButton } from '@/components/automation/shared/HeroRefreshButton'
 import {
   formatQueueShare,
   type ExecutionQueueFilter,
@@ -131,7 +130,17 @@ export function ExecutionQueueHeader({
         compact
         layout="stack"
         chips={['BridgeFlow engine', 'Live pipeline', 'Blocked-run fidelity']}
+        actions={
+          <HeroRefreshButton
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
+            label="Refresh execution queue"
+          />
+        }
       >
+        {isRefreshing ? (
+          <AutomationHistoryStatCardsShimmer />
+        ) : (
         <StatGrid cols={4}>
           {statCards.map((card) => (
             <StatCard
@@ -156,6 +165,7 @@ export function ExecutionQueueHeader({
             />
           ))}
         </StatGrid>
+        )}
       </HeroCallout>
 
       <div className="rounded-[8px] border border-border bg-card p-3">
@@ -213,21 +223,14 @@ export function ExecutionQueueHeader({
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {hasFilters ? (
-              <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={onClearFilters}>
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
                 Clear filters
-              </Button>
+              </button>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 shrink-0 rounded-[8px]"
-              onClick={onRefresh}
-              aria-label="Refresh execution queue"
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={cn('size-4', isRefreshing && 'animate-spin')} />
-            </Button>
           </div>
         </div>
 

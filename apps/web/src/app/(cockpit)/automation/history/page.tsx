@@ -1,7 +1,10 @@
 'use client'
 
 import { ProductPage } from '@/components/product'
-import { AutomationHistoryPageShimmer } from '@/components/automation/automation-history-page-shimmer'
+import {
+  AutomationHistoryPageShimmer,
+  AutomationHistoryTableShimmer,
+} from '@/components/automation/automation-history-page-shimmer'
 import { RunHistoryHeader } from '@/components/automation/run-history/RunHistoryHeader'
 import { RunHistoryTable } from '@/components/automation/run-history/RunHistoryTable'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -130,6 +133,8 @@ export default function AutomationHistoryPage() {
     }
   }
 
+  const reloadShimmerRows = Math.min(Math.max(visibleRuns.length, 1), 5)
+
   return (
     <ProductPage path="/automation/history" hideToolbar>
       <div className="space-y-5">
@@ -152,17 +157,22 @@ export default function AutomationHistoryPage() {
               onRefresh={() => void loadRuns()}
               onClearFilters={clearFilters}
               hasFilters={hasFilters}
+              isRefreshing={loading}
               searchInputRef={searchInputRef}
             />
 
-            <RunHistoryTable
-              runs={filteredRuns}
-              allRunsCount={visibleRuns.length}
-              sortBy={sortBy}
-              onClearFilters={clearFilters}
-              onDeleteRun={handleDeleteRun}
-              onBulkDeleteRuns={handleBulkDeleteRuns}
-            />
+            {loading ? (
+              <AutomationHistoryTableShimmer rowCount={reloadShimmerRows} />
+            ) : (
+              <RunHistoryTable
+                runs={filteredRuns}
+                allRunsCount={visibleRuns.length}
+                sortBy={sortBy}
+                onClearFilters={clearFilters}
+                onDeleteRun={handleDeleteRun}
+                onBulkDeleteRuns={handleBulkDeleteRuns}
+              />
+            )}
           </>
         )}
       </div>

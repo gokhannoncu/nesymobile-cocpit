@@ -850,6 +850,35 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     let deviceState: DeviceBridgeState | null = null
     let sessionSet = false
 
+    // A non-cold profile still has to bring the app FORWARD — without force
+    // stopping it, which is the whole point of reusing a session.
+    //
+    // Nothing did this before, so `nesy.launch.reuse-session` could start a run
+    // against whatever the phone happened to be showing. Measured on
+    // run_f7f3f2bb: the device sat on the Samsung launcher,
+    // `wait-stop-list-ready` still passed because it reads app STATE rather than
+    // the screen, and the very next step — which needs a real view to address —
+    // failed with an unresolved target. The run looked like a targeting defect
+    // and was an un-foregrounded app.
+    //
+    // Failure here is logged, not fatal: the app may already be forward, and any
+    // step that needs a real view reports its own absence far more precisely
+    // than a guess made here could.
+    if (!coldStart && launchProfile !== undefined) {
+      if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(applicationId)) {
+        await this.blockRun(item, `application id ${applicationId} is not a package name`)
+        return
+      }
+      try {
+        await (this.options.launch ?? launchApplication)(item.deviceId, applicationId)
+      } catch (error) {
+        console.warn(
+          `[BridgeFlowExecutionQueue] ${item.runId}: could not foreground ${applicationId}:`,
+          error instanceof Error ? error.message : error,
+        )
+      }
+    }
+
     if (coldStart && launchProfile !== undefined) {
       if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(applicationId)) {
         await this.blockRun(item, `application id ${applicationId} is not a package name`)

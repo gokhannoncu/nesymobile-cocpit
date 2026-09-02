@@ -11,6 +11,7 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { EventEmitter } from "node:events";
+import { getAdbPathHint, resolveAdbPath } from "@nesy/platform-paths";
 import { resolveEventName } from "@nesy/control-contract";
 import { parseTestEventLine, TestEventDeduper, type TestBridgeEvent } from "./test-event-bridge.js";
 import { getScreenReadinessObserver } from "./screen-readiness-observer.js";
@@ -79,6 +80,7 @@ export class LogcatSniffer extends EventEmitter {
   private deduper = new TestEventDeduper();
   private process: ReturnType<typeof spawn> | null = null;
   private running = false;
+  private lastStartError: string | null = null;
 
   constructor(options?: { deviceId?: string; runId?: string }) {
     super();
@@ -116,8 +118,28 @@ export class LogcatSniffer extends EventEmitter {
     return this.running;
   }
 
-  start(): void {
-    if (this.running) return;
+  /**
+   * @returns true when the logcat process is up. The result is returned rather
+   *   than swallowed because a sniffer that failed to start means the run will
+   *   produce no evidence at all — and the only symptom of that, before this,
+   *   was every continue gate timing out with no explanation anywhere.
+   */
+  start(): boolean {
+    if (this.running) return true;
+
+    // The project's own resolver, not bare "adb" from PATH. `DeviceWorker` in
+    // the SAME process already resolves the absolute path this way; this class
+    // asking PATH instead meant the sniffer died with ENOENT whenever the API
+    // was launched from an environment without platform-tools on PATH — which
+    // is the normal case when it starts from an IDE or a pnpm script — while
+    // every other adb call in the process kept working.
+    const adbPath = resolveAdbPath();
+    if (adbPath === null) {
+      this.lastStartError = `adb binary not found. ${getAdbPathHint()}`;
+      console.warn(`[LogcatSniffer] ${this.lastStartError}`);
+      this.running = false;
+      return false;
+    }
 
     const args: string[] = [];
 
@@ -128,15 +150,19 @@ export class LogcatSniffer extends EventEmitter {
     args.push("logcat", "-T", "1", "-s", "NESY_AUTO_BRIDGE:D", "NESY_TEST_EVENT:I", "-v", "time");
 
     try {
-      this.process = spawn("adb", args, {
+      this.process = spawn(adbPath, args, {
         stdio: ["ignore", "pipe", "pipe"],
       });
-    } catch {
-      console.warn("[LogcatSniffer] Failed to spawn adb, logcat monitoring disabled.");
+    } catch (err) {
+      this.lastStartError = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[LogcatSniffer] failed to spawn ${adbPath}: ${this.lastStartError}`,
+      );
       this.running = false;
-      return;
+      return false;
     }
 
+    this.lastStartError = null;
     this.running = true;
 
     const rl = createInterface({ input: this.process.stdout! });
@@ -153,12 +179,20 @@ export class LogcatSniffer extends EventEmitter {
 
     this.process.on("error", (err: NodeJS.ErrnoException) => {
       this.running = false;
+      this.lastStartError = err.message;
       if (err.code === "ENOENT") {
-        console.warn("[LogcatSniffer] adb not found in PATH, logcat monitoring disabled.");
+        console.warn(`[LogcatSniffer] adb vanished at ${adbPath}: ${err.message}`);
       } else {
         console.warn("[LogcatSniffer] adb process error:", err.message);
       }
     });
+
+    return true;
+  }
+
+  /** Why the last [start] failed, for a caller that wants to say so out loud. */
+  lastError(): string | null {
+    return this.lastStartError;
   }
 
   stop(): void {

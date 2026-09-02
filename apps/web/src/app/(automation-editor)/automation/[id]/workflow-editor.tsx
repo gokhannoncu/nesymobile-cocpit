@@ -77,6 +77,7 @@ import {
 } from "@nesy/metronic/components/ui/dropdown-menu";
 import { Input } from "@nesy/metronic/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@nesy/metronic/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@nesy/metronic/components/ui/tooltip";
 import { cn } from "@nesy/metronic/lib/utils";
 import { listNesyMobileAdbDevices, type NesyMobileAdbDevice } from "@/services/nesy-mobile-auth";
 import { toast } from "sonner";
@@ -93,6 +94,7 @@ import {
   workflowComponentRegistry,
   type WorkflowPaletteCategory,
 } from "./workflow-registry";
+import { collectMissingRunInputs, collectRunInputs } from "./workflow-run-inputs";
 import {
   buildEditorScaffoldingGroups,
   buildPackPaletteGroups,
@@ -202,6 +204,24 @@ function getDeviceTitle(device: NesyMobileAdbDevice) {
   return device.androidVersion ? `${model} \u2022 Android ${device.androidVersion}` : model;
 }
 
+function getDevicePrimaryLabel(device: NesyMobileAdbDevice) {
+  const model = getDeviceModelLabel(device);
+  const manufacturer = normalizeDeviceText(device.manufacturer);
+  if (manufacturer && model.toLowerCase().startsWith(manufacturer.toLowerCase())) {
+    const stripped = model.slice(manufacturer.length).trim();
+    if (stripped.length >= 3) return stripped;
+  }
+  return model;
+}
+
+function getDeviceStatusLabel(status: WorkflowDeviceStatus) {
+  if (status === "Online") return "Ready";
+  if (status === "Testing") return "In test";
+  if (status === "Emulator") return "Emulator";
+  if (status === "Unauthorized") return "Unauthorized";
+  return "Offline";
+}
+
 function getDeviceStatus(device: NesyMobileAdbDevice): WorkflowDeviceStatus {
   const status = device.status.toLowerCase();
   const model = `${device.id} ${device.modelName} ${device.marketName ?? ""}`.toLowerCase();
@@ -282,13 +302,13 @@ function WorkflowStatusSegments({
 
   return (
     <div
-      className="flex shrink-0 rounded-lg bg-slate-100/90 p-0.5"
+      className="flex shrink-0 rounded-md bg-slate-100/90 p-0.5"
       role="status"
       aria-label={publishedActive ? "Workflow published" : "Editing draft"}
     >
       <span
         className={cn(
-          "rounded-md px-2.5 py-1 text-[10px] font-semibold leading-none transition-all",
+          "rounded px-2 py-0.5 text-[10px] font-semibold leading-none transition-all",
           !publishedActive
             ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
             : "text-slate-500",
@@ -298,7 +318,7 @@ function WorkflowStatusSegments({
       </span>
       <span
         className={cn(
-          "rounded-md px-2.5 py-1 text-[10px] font-semibold leading-none transition-all",
+          "rounded px-2 py-0.5 text-[10px] font-semibold leading-none transition-all",
           publishedActive
             ? "bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-200/80"
             : "text-slate-500",
@@ -315,31 +335,28 @@ function WorkflowSyncIndicator({
   hasUnsavedChanges,
   isPublishing,
   isTestRunning,
+  compact = false,
 }: {
   persistStatus: PersistStatus;
   hasUnsavedChanges: boolean;
   isPublishing: boolean;
   isTestRunning: boolean;
+  compact?: boolean;
 }) {
   if (isTestRunning) {
     return (
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-blue-600">
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-blue-200/80 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
         <Loader2 className="size-3 shrink-0 animate-spin" />
         Test running
       </span>
     );
   }
   if (isPublishing) {
-    return (
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-red-600">
-        <Loader2 className="size-3 shrink-0 animate-spin" />
-        Publishing
-      </span>
-    );
+    return null;
   }
   if (persistStatus === "saving") {
     return (
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-slate-500">
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
         <Loader2 className="size-3 shrink-0 animate-spin" />
         Saving
       </span>
@@ -347,7 +364,7 @@ function WorkflowSyncIndicator({
   }
   if (persistStatus === "save_failed" && hasUnsavedChanges) {
     return (
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-red-600">
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-red-200/80 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
         <CircleX className="size-3 shrink-0" />
         Save failed
       </span>
@@ -355,11 +372,14 @@ function WorkflowSyncIndicator({
   }
   if (hasUnsavedChanges) {
     return (
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] font-medium text-amber-700">
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
         <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
-        Unsaved
+        Unsaved changes
       </span>
     );
+  }
+  if (compact) {
+    return null;
   }
   if (persistStatus === "saved_version") {
     return null;
@@ -370,39 +390,27 @@ function WorkflowSyncIndicator({
   return <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-slate-500">Saved</span>;
 }
 
-function WorkflowEditorHeaderShimmer({ verdictPanelOpen }: { verdictPanelOpen: boolean }) {
-  const centerMaxWidth = `min(42rem, calc(100vw - ${LEFT_PALETTE_WIDTH_PX + 280 + (verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX : 0)}px))`;
-
+function WorkflowEditorHeaderShimmer() {
   return (
     <>
-      <div
-        className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 overflow-hidden max-xl:hidden"
-        style={{ maxWidth: centerMaxWidth }}
-        aria-hidden
-      >
+      <div className="flex min-w-0 items-center justify-center gap-2 max-xl:hidden" aria-hidden>
         <ShimmerBlock className="h-3 w-14 shrink-0" />
         <ShimmerBlock className="size-3.5 shrink-0 rounded-sm" />
-        <ShimmerBlock className="h-4 w-[min(16rem,42vw)] shrink" />
-        <span className="h-4 w-px shrink-0 bg-slate-200/80" aria-hidden />
-        <ShimmerBlock className="h-7 w-[4.75rem] shrink-0 rounded-[8px]" />
+        <ShimmerBlock className="h-4 w-48 max-w-[min(24rem,40vw)] shrink" />
       </div>
 
-      <div
-        className="absolute top-1/2 flex -translate-y-1/2 items-center gap-2"
-        style={{ right: verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX + 16 : 16 }}
-        aria-hidden
-      >
-        <ShimmerBlock className="h-9 w-[5.5rem] shrink-0 rounded-[8px]" />
-        <ShimmerBlock className="h-9 w-[5.25rem] shrink-0 rounded-[8px]" />
-        <div className="flex h-9 max-w-[300px] items-center gap-2 rounded-[8px] border border-slate-200/70 bg-white px-2 max-lg:max-w-[260px] max-md:w-9 max-md:px-0">
-          <ShimmerBlock className="size-5 shrink-0 rounded-[6px]" />
-          <div className="min-w-0 flex-1 space-y-1 max-md:hidden">
-            <ShimmerBlock className="h-2.5 w-36" />
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5" aria-hidden>
+        <ShimmerBlock className="h-9 w-[5.5rem] shrink-0 rounded-[6px]" />
+        <ShimmerBlock className="h-9 w-[5.25rem] shrink-0 rounded-[6px]" />
+        <div className="flex h-9 min-w-[9.5rem] max-w-[17rem] flex-1 items-center gap-2 rounded-md border border-slate-200/70 bg-white px-2 max-md:w-9 max-md:min-w-0 max-md:flex-none max-md:px-0">
+          <ShimmerBlock className="size-3.5 shrink-0 rounded-sm" />
+          <div className="hidden min-w-0 flex-1 space-y-1 md:block">
+            <ShimmerBlock className="h-2.5 w-24" />
             <ShimmerBlock className="h-2 w-28" />
           </div>
           <ShimmerBlock className="size-3.5 shrink-0 rounded-sm max-md:hidden" />
         </div>
-        <ShimmerBlock className="size-9 shrink-0 rounded-[8px]" />
+        <ShimmerBlock className="size-9 shrink-0 rounded-[6px]" />
       </div>
     </>
   );
@@ -2602,14 +2610,17 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
       return;
     }
 
-    const selectRoute = nodes.find((node) => node.type === WorkflowNodeType.SELECT_ROUTE);
-    const selectRouteConfig = (selectRoute?.data.config ?? {}) as Record<string, unknown>;
-    const routeCode =
-      typeof selectRouteConfig.routeNumber === "string" ? selectRouteConfig.routeNumber.trim() : "";
-    if (selectRoute && routeCode.length === 0) {
-      selectNode(selectRoute.id);
+    // Every node's required run input, not just login and route. The two that
+    // were checked here by hand were also the only two that reached the run; a
+    // barcode typed into Load to Vehicle was validated nowhere and sent nowhere,
+    // and the run then failed several steps later blaming a different step.
+    const missingInputs = collectMissingRunInputs(nodes);
+    if (missingInputs.length > 0) {
+      const first = missingInputs[0]!;
+      selectNode(first.nodeId);
       setPropertiesPanelOpen(true);
-      toast.warning("Select Route requires a route number before Run Test.");
+      const label = workflowComponentRegistry[first.nodeType]?.label ?? first.nodeType;
+      toast.warning(`${label} requires ${first.configKey} before Run Test.`);
       return;
     }
 
@@ -2649,9 +2660,12 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         // profile: nothing launched the app, and its first wait for the login
         // screen timed out against whatever the device happened to be showing.
         profileKey: authLogin ? "nesy.launch.cold-real-login" : undefined,
+        // Collected from the canvas through one reviewable table rather than a
+        // pair of inline spreads — see `workflow-run-inputs.ts` for why, and for
+        // where each input name comes from.
         inputs: {
-          ...(authLogin ? { pin: pinCode, sessionCorrelationId } : {}),
-          ...(routeCode ? { routeCode } : {}),
+          ...collectRunInputs(nodes),
+          ...(authLogin ? { sessionCorrelationId } : {}),
         },
       });
       setActiveRunId(result.runId);
@@ -2755,10 +2769,14 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
         className="h-screen w-full overflow-hidden bg-slate-50 text-slate-950"
       >
         <header
-          className="fixed inset-x-0 top-0 z-30 h-14 min-h-14 shrink-0 overflow-visible border-b border-slate-200 bg-white px-4"
+          className={cn(
+            "fixed inset-x-0 top-0 z-30 grid h-14 min-h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 overflow-visible border-b border-slate-200 bg-white pl-4",
+            verdictPanelOpen ? "pr-[366px]" : "pr-4",
+          )}
           aria-busy={isWorkflowLoading}
         >
-          <div className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center gap-4">
+          <div className="flex min-w-0 items-center justify-self-start">
+            {isWorkflowLoading ? <span className="sr-only">Loading workflow…</span> : null}
             <button
               type="button"
               onClick={requestCloseEditor}
@@ -2767,22 +2785,17 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               aria-label="Back to workflow list"
             >
               <WorkflowMark />
-              <span className="whitespace-nowrap text-sm font-semibold tracking-[-0.02em] text-slate-900">
+              <span className="whitespace-nowrap text-sm font-semibold tracking-[-0.02em] text-slate-900 max-lg:hidden">
                 NESY AUTOMATION
               </span>
             </button>
           </div>
 
           {isWorkflowLoading ? (
-            <WorkflowEditorHeaderShimmer verdictPanelOpen={verdictPanelOpen} />
+            <WorkflowEditorHeaderShimmer />
           ) : (
             <>
-          <div
-            className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 overflow-hidden max-xl:hidden"
-            style={{
-              maxWidth: `min(42rem, calc(100vw - ${LEFT_PALETTE_WIDTH_PX + 280 + (verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX : 0)}px))`,
-            }}
-          >
+          <div className="flex min-w-0 max-w-[min(36rem,calc(100vw-28rem))] items-center justify-center max-xl:hidden">
             <nav aria-label="Workflow breadcrumb" className="flex min-w-0 items-center gap-1.5">
               <button
                 type="button"
@@ -2822,7 +2835,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
                     setIsTitleEditing(true);
                   }}
                   disabled={editorLocked || isTitleSaving}
-                  className="group flex min-w-0 max-w-full shrink items-center gap-1.5 truncate rounded-md px-1.5 py-1 text-left text-base font-semibold tracking-[-0.02em] text-slate-950 outline-none transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-300/90 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
+                  className="group flex min-w-0 max-w-full items-center gap-1.5 truncate rounded-md px-1.5 py-1 text-left text-sm font-semibold tracking-[-0.02em] text-slate-950 outline-none transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-300/90 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
                   aria-label="Edit workflow title"
                 >
                   <span className="min-w-0 truncate">{displayTitle}</span>
@@ -2834,8 +2847,22 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
                 </button>
               )}
             </nav>
+          </div>
 
-            <span className="h-4 w-px shrink-0 bg-slate-200/90" aria-hidden />
+          <div className="flex min-w-0 items-center justify-end justify-self-end gap-2 max-sm:gap-1.5">
+            <WorkflowSyncIndicator
+              persistStatus={persistStatus}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isPublishing={isPublishing}
+              isTestRunning={isTestRunning}
+              compact
+            />
+
+            {showValidationWarning && hasValidationErrors ? (
+              <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800">
+                Validation errors
+              </span>
+            ) : null}
 
             <WorkflowStatusSegments
               isPublishButtonPublished={isPublishButtonPublished}
@@ -2843,54 +2870,31 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               isPublishing={isPublishing}
             />
 
-            <WorkflowSyncIndicator
-              persistStatus={persistStatus}
-              hasUnsavedChanges={hasUnsavedChanges}
-              isPublishing={isPublishing}
-              isTestRunning={isTestRunning}
-            />
-
-            {showValidationWarning && hasValidationErrors ? (
-              <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-200/90 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                Validation errors
-              </span>
-            ) : null}
-          </div>
-
-          <div
-            className="absolute top-1/2 flex -translate-y-1/2 items-center gap-2"
-            style={{ right: verdictPanelOpen ? VERDICT_PANEL_WIDTH_PX + 16 : 16 }}
-          >
+            {hasUnpublishedChanges || isPublishing ? (
             <Button
               type="button"
               size="lg"
               variant="outline"
               disabled={editorLocked || isWorkflowLoading || isPublishing || !hasUnpublishedChanges}
               className={cn(
-                "h-9 min-h-9 max-h-9 shrink-0 rounded-[6px] px-4 font-semibold shadow-xs",
+                "h-9 min-h-9 max-h-9 shrink-0 rounded-[6px] px-3.5 font-semibold shadow-xs",
                 isPublishing
                   ? "cursor-default border-red-300 bg-red-50 text-red-600 hover:bg-red-50 hover:text-red-600"
-                  : isPublishButtonPublished
-                    ? "cursor-default border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
-                    : hasUnpublishedChanges
-                      ? "border-red-500 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
-                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:text-slate-950",
+                  : "border-red-500 bg-white text-red-600 hover:bg-red-50 hover:text-red-700",
               )}
               onClick={() => void saveWorkflowVersion()}
             >
               {isPublishing ? (
                 <Loader2 className="size-4 animate-spin text-red-600" />
               ) : (
-                <CheckCircle2
-                  className={cn(
-                    "size-4",
-                    isPublishButtonPublished && "text-emerald-600",
-                    !isPublishButtonPublished && hasUnpublishedChanges && "text-red-600",
-                  )}
-                />
+                <CheckCircle2 className="size-4 text-red-600" />
               )}
-              {isPublishing ? "Publishing..." : isPublishButtonPublished ? "Published" : "Publish"}
+              {isPublishing ? "Publishing..." : "Publish"}
             </Button>
+            ) : null}
+
+            <span className="hidden h-5 w-px shrink-0 bg-slate-200/90 sm:block" aria-hidden />
+
             <Button
               type="button"
               size="lg"
@@ -2974,7 +2978,6 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           </div>
             </>
           )}
-          {isWorkflowLoading ? <span className="sr-only">Loading workflow…</span> : null}
         </header>
 
         <UnsavedChangesDialog
@@ -3395,45 +3398,76 @@ function DeviceSelector({
   attention: boolean;
 }) {
   const selectedStatus = selectedDevice ? getDeviceStatus(selectedDevice) : null;
-  const selectedTitle = selectedDevice ? getDeviceTitle(selectedDevice) : "Select a device";
-  const selectedSubtitle = selectedDevice
-    ? `Device ID: ${selectedDevice.id} \u2022 ${selectedStatus === "Offline" ? "Disconnected" : "Connected"}`
-    : devices.length > 0
-      ? "Choose a connected Android device"
-      : "No ADB devices detected";
+  const primaryLabel = selectedDevice ? getDevicePrimaryLabel(selectedDevice) : "Select device";
+  const fullTitle = selectedDevice ? getDeviceTitle(selectedDevice) : null;
+  const statusLabel = selectedDevice && selectedStatus ? getDeviceStatusLabel(selectedStatus) : null;
+  const emptyHint =
+    devices.length > 0 ? "Tap to choose a device" : isLoading ? "Scanning…" : "No devices found";
+
+  const trigger = (
+    <button
+      type="button"
+      disabled={disabled}
+      title={fullTitle ?? undefined}
+      aria-label={selectedDevice ? `Test device: ${fullTitle}` : "Select test device"}
+      className={cn(
+        "group inline-flex min-h-9 w-full min-w-0 items-center gap-2 rounded-md border bg-white px-2 py-1 text-left transition-colors hover:border-slate-300 hover:bg-slate-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/40 disabled:pointer-events-none disabled:opacity-50 max-md:w-9 max-md:justify-center max-md:px-0",
+        attention && !selectedDevice ? "border-dashed border-slate-300" : "border-slate-200",
+        isOpen ? "border-slate-300 bg-slate-50/50" : "",
+      )}
+    >
+      <Smartphone className="size-3.5 shrink-0 text-slate-400 max-md:mx-auto" aria-hidden />
+
+      <span className="flex min-w-0 flex-1 flex-col justify-center gap-px leading-none max-md:hidden">
+        {selectedDevice ? (
+          <>
+            <span className="truncate text-[11px] font-medium text-slate-900">{primaryLabel}</span>
+            <span className="truncate text-[10px] text-slate-500">
+              {[statusLabel, selectedDevice.androidVersion ? `Android ${selectedDevice.androidVersion}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="truncate text-[11px] font-medium text-slate-800">{primaryLabel}</span>
+            <span className="truncate text-[10px] text-slate-500">{emptyHint}</span>
+          </>
+        )}
+      </span>
+
+      <ChevronDown
+        className={cn(
+          "size-3.5 shrink-0 text-slate-400 transition-transform max-md:hidden",
+          isOpen ? "rotate-180" : "",
+        )}
+        aria-hidden
+      />
+    </button>
+  );
 
   return (
     <Popover open={isOpen && !disabled} onOpenChange={disabled ? undefined : onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label="Select test device"
-          className={cn(
-            "group inline-flex h-9 w-fit max-w-[300px] shrink-0 items-center gap-1.5 overflow-hidden rounded-[8px] border bg-white pl-2 pr-1 text-left transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nesy/25 max-lg:max-w-[260px] max-md:w-9 max-md:max-w-none max-md:justify-center max-md:gap-0 max-md:overflow-visible max-md:px-0 disabled:pointer-events-none disabled:opacity-50",
-            attention ? "border-amber-400 ring-2 ring-amber-100" : "border-slate-200",
-            isOpen ? "border-slate-300" : "",
-          )}
-        >
-          <span className="flex min-w-0 flex-1 items-center gap-2 max-md:flex-none">
-            <span className="relative flex size-5 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-slate-50 text-slate-600">
-              <Smartphone className="size-3.5" aria-hidden />
-              {selectedDevice && selectedStatus !== "Offline" ? (
-                <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full border border-white bg-emerald-500" aria-hidden />
-              ) : null}
-            </span>
-            <span className="min-w-0 max-md:hidden flex flex-col justify-center">
-              <span className="block truncate text-[11px] font-semibold leading-tight text-slate-900">{selectedTitle}</span>
-              <span className="mt-px flex min-w-0 items-center gap-1 truncate text-[10px] font-medium leading-tight text-slate-500">
-                <span className="truncate">{selectedSubtitle}</span>
-              </span>
-            </span>
-          </span>
-          <span className="flex shrink-0 items-center text-slate-600 max-md:hidden">
-            <ChevronDown className={cn("size-3.5 text-slate-400 transition-transform", isOpen ? "rotate-180" : "")} aria-hidden />
-          </span>
-        </button>
-      </PopoverTrigger>
+      <div className="min-w-[9.5rem] max-w-[min(17rem,26vw)] flex-1 max-md:min-w-0 max-md:max-w-none max-md:flex-none">
+        {!isOpen && selectedDevice && fullTitle ? (
+          <Tooltip delayDuration={400}>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-xs text-xs">
+              <p className="font-semibold text-slate-900">{getDeviceModelLabel(selectedDevice)}</p>
+              <p className="mt-0.5 text-slate-600">
+                {selectedDevice.androidVersion ? `Android ${selectedDevice.androidVersion}` : "Android version unknown"}
+                {" · "}
+                {statusLabel}
+              </p>
+              <p className="mt-1 font-mono text-[10px] text-slate-500">{selectedDevice.id}</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        )}
+      </div>
       <PopoverContent
         align="end"
         sideOffset={8}

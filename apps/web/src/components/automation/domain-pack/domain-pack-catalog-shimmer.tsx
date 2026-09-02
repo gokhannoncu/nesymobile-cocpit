@@ -38,7 +38,7 @@ function DomainPackTableRowShimmer({ highlight }: { highlight?: boolean }) {
   )
 }
 
-function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?: boolean }) {
+export function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?: boolean }) {
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card" aria-hidden>
       {!compactHeader ? (
@@ -98,9 +98,10 @@ function DomainPackGroupCardShimmer({ compactHeader = false }: { compactHeader?:
 function DomainPackCatalogHeroShimmer() {
   return (
     <div
-      className="overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
+      className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-nesy-soft/80 via-background to-background p-4 lg:p-5"
       aria-hidden
     >
+      <ShimmerBlock className="absolute right-4 top-4 h-10 w-[7.5rem] rounded-full" />
       <ShimmerBlock className="h-3 w-36" />
       <ShimmerBlock className="mt-2 h-7 w-56" />
       <ShimmerBlock className="mt-2 h-4 w-full max-w-2xl" />
@@ -125,10 +126,7 @@ function DomainPackCatalogHeroShimmer() {
 function DomainPackCatalogCommandShimmer() {
   return (
     <div className="rounded-lg border border-border/80 bg-card p-3 shadow-xs" aria-hidden>
-      <div className="flex gap-2">
-        <ShimmerBlock className="h-10 flex-1 rounded-lg" />
-        <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
-      </div>
+      <ShimmerBlock className="h-10 w-full rounded-lg" />
       <div className="mt-3 flex flex-col gap-3 border-t border-border/70 pt-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-3">
           <ShimmerBlock className="size-10 shrink-0 rounded-lg" />

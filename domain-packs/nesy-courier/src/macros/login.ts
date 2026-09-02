@@ -63,7 +63,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "prepare-startup-permissions",
       sourceMapRef: "sm-login-3",
-      next: "resolve-pin-field",
+      next: "read-session-precheck",
       timeoutMs: 30_000,
     }),
     kind: "ANNOTATE",
@@ -97,6 +97,59 @@ const STEPS: readonly WorkflowStepV2[] = [
   // `bridge.node` operands resolve from evidence facts, not from a live node query,
   // so the condition would be UNKNOWN on every run. If that changes, this is where
   // the recovery branch belongs.
+  {
+    // Reads the session BEFORE deciding to sign in, so an already-signed-in app
+    // is a branch rather than a failure.
+    //
+    // Without this, an end-to-end run against a device that was left signed in
+    // died on the very next step: `resolve-pin-field` looks for a field that is
+    // not on screen, reported FAILED, and the run aborted six seconds in with
+    // no indication that the app was simply already past login. Measured on
+    // run_2fee9994 under `nesy.launch.reuse-session`.
+    //
+    // The comment above `resolve-pin-field` says a conditional tap ("only if the
+    // PIN field is absent") is not expressible, and that is still true — a
+    // target's absence is not a fact. This asks a different question, one the
+    // app answers directly: is a user session available? `select-route` has
+    // resolved its own idempotency this way since 1.3.0, and this is the same
+    // shape applied to the same problem.
+    ...stepBase({
+      planStepId: "read-session-precheck",
+      sourceMapRef: "sm-login-3a",
+      next: "check-already-signed-in",
+      timeoutMs: 15_000,
+      capabilityRequirements: [requires("domain.nesy.adapter.state-projection")],
+    }),
+    kind: "SDK_QUERY",
+    queryRef: NESY_ADAPTER_QUERY_REFS.sessionState,
+    maxRows: 1,
+    outputVariable: "sessionPrecheckRows",
+    // Deliberately NO `outputFactBindings`. Publishing
+    // `USER_SESSION_AVAILABLE_APP` from here would let the login oracle be
+    // satisfied by a session this run never established — the exact "reports
+    // PASS without any login having happened" failure recorded further down this
+    // file. The precheck steers control flow only; the evidence still comes from
+    // `read-app-session`, after the real sign-in.
+  },
+  {
+    ...stepBase({ planStepId: "check-already-signed-in", sourceMapRef: "sm-login-3b", next: null }),
+    kind: "CONDITION",
+    condition: {
+      kind: "comparison",
+      operator: "in",
+      left: { kind: "literal", value: "true" },
+      right: { kind: "operand", source: "step.output", path: "read-session-precheck.is_logged_in" },
+    },
+    // Already signed in: skip the four UI steps and go straight to reading the
+    // session, which is where this macro's evidence comes from either way.
+    onTrue: "read-app-session",
+    onFalse: "resolve-pin-field",
+    // UNKNOWN means the projection could not answer, and the safe reading of
+    // "I cannot tell whether anyone is signed in" is to sign in through the real
+    // screens — the path that produces evidence rather than assuming it.
+    unknownPolicy: "BRANCH",
+    onUnknown: "resolve-pin-field",
+  },
   {
     ...stepBase({
       planStepId: "resolve-pin-field",
@@ -326,6 +379,8 @@ const GENERIC_IR = irDocument({
   ],
   sourceMap: [
     sourceMapEntry("sm-login-3", "prepare-startup-permissions", NESY_LOGIN_MACRO_KEY, "post-launch setup"),
+    sourceMapEntry("sm-login-3a", "read-session-precheck", NESY_LOGIN_MACRO_KEY, "is anyone already signed in"),
+    sourceMapEntry("sm-login-3b", "check-already-signed-in", NESY_LOGIN_MACRO_KEY, "skip the UI login when they are"),
     sourceMapEntry("sm-login-4", "resolve-pin-field", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-5", "enter-pin", NESY_LOGIN_MACRO_KEY),
     sourceMapEntry("sm-login-6", "resolve-submit", NESY_LOGIN_MACRO_KEY),
@@ -369,15 +424,34 @@ const BRIDGE_PLAN: BridgeFlowPlanSnapshot = {
   ],
 };
 
-const LOGIN_REJECTED_STEPS: readonly WorkflowStepV2[] = STEPS.map((step) => {
+/**
+ * The rejected slice deliberately keeps the UNCONDITIONAL login path.
+ *
+ * `STEPS` gained a precheck that skips the UI login when a session already
+ * exists. That is right for a journey — but wrong here: this slice exists to
+ * prove a WRONG PIN is refused, and it can only do that by typing one into the
+ * real login screen. Skipping to the session read on an already-signed-in device
+ * would report the refusal as satisfied without any PIN having been rejected,
+ * which is the same "PASS without any login having happened" failure recorded
+ * further down this file. Its `FACT_FALSE(USER_SESSION_AVAILABLE_APP)`
+ * precondition already refuses that device; the branch must not quietly rescue
+ * it.
+ */
+const LOGIN_REJECTED_STEPS: readonly WorkflowStepV2[] = STEPS.flatMap((step) => {
+  if (step.planStepId === "read-session-precheck" || step.planStepId === "check-already-signed-in") {
+    return [];
+  }
+  if (step.planStepId === "prepare-startup-permissions") {
+    return [{ ...step, next: "resolve-pin-field" }];
+  }
   if (step.planStepId === "tap-submit") {
-    return {
+    return [{
       ...step,
       next: "assert-login-rejected",
-    };
+    }];
   }
   if (step.planStepId === "assert-login") {
-    return {
+    return [{
       ...stepBase({ planStepId: "assert-login-rejected", sourceMapRef: "sm-login-rejected-9", next: "clear-session" }),
       kind: "ASSERT_FACT",
       factKey: NESY_FACTS.LOGIN_REJECTED,
@@ -393,9 +467,9 @@ const LOGIN_REJECTED_STEPS: readonly WorkflowStepV2[] = STEPS.map((step) => {
           },
         ],
       },
-    } satisfies WorkflowStepV2;
+    } satisfies WorkflowStepV2];
   }
-  return step;
+  return [step];
 }).filter((step) => !["read-app-session", "read-local-session", "verify-backend-session"].includes(step.planStepId));
 
 const LOGIN_REJECTED_GENERIC_IR = irDocument({

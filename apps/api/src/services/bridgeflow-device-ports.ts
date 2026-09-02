@@ -255,8 +255,38 @@ export function createBridgeRuntimePort(options: {
         args[key] = resolveArgValue(value, runInputs, variables)
       }
       // Macro IR uses `valueRef: "run.input.pin"`; Bridge input_text needs `text`.
-      if (args['text'] === undefined && args['valueRef'] !== undefined) {
-        args['text'] = resolveArgValue(args['valueRef'], runInputs, variables)
+      //
+      // Read from `rawArgs`, not `args`: the loop above already put every arg
+      // through `resolveArgValue`, so `args['valueRef']` is the RESOLVED value
+      // (and `undefined` whenever the run input is missing) rather than the
+      // reference string. Reading it back from `args` therefore skipped this
+      // whole branch exactly when the input was absent — which is how a missing
+      // barcode reached the device as `String(undefined ?? '')`.
+      const rawValueRef = rawArgs['valueRef']
+      if (args['text'] === undefined && rawValueRef !== undefined) {
+        args['text'] = resolveArgValue(rawValueRef, runInputs, variables)
+      }
+      // A `valueRef` that resolved to nothing is a MISSING RUN INPUT, and it used
+      // to fall through to `String(undefined ?? '')` — an empty string the bridge
+      // accepted and reported as typed. The step went SUCCEEDED, the field stayed
+      // blank, the following confirm tap addressed an empty dialog, and the run
+      // failed several steps later with no mention of the real cause. Measured on
+      // run_d5bae2af: the pack asks for `run.input.scanValue`, the run was started
+      // with `{pin, routeCode}` only, and `enter-barcode` reported success.
+      //
+      // An explicitly authored empty `text` is still allowed — clearing a field is
+      // a real instruction. Only an UNRESOLVED reference fails here.
+      if (
+        (action === 'setText' || action === 'input_text') &&
+        rawValueRef !== undefined &&
+        rawArgs['text'] === undefined &&
+        (args['text'] === undefined || args['text'] === null)
+      ) {
+        return {
+          terminalState: 'FAILED',
+          effectVerified: false,
+          evidenceRef: `bridgeflow:unresolved-value-ref:${String(rawValueRef)}`,
+        }
       }
 
       if (action === 'back') {

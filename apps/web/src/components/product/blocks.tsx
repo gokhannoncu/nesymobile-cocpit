@@ -30,6 +30,8 @@ export function HeroCallout({
   compact = false,
   /** `split` = stats beside title (default). `stack` = full-width stats under the lead. */
   layout = 'split',
+  /** Top-right header actions (e.g. refresh). */
+  actions,
 }: {
   icon: LucideIcon
   eyebrow: string
@@ -44,6 +46,7 @@ export function HeroCallout({
   /** Tighter padding and type scale for denser page headers. */
   compact?: boolean
   layout?: 'split' | 'stack'
+  actions?: ReactNode
 }) {
   const stack = layout === 'stack'
   return (
@@ -57,6 +60,11 @@ export function HeroCallout({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: EASE }}
     >
+      {actions ? (
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-2 sm:right-4 sm:top-4">
+          {actions}
+        </div>
+      ) : null}
       {/* Decorative dot grid */}
       <div
         aria-hidden
@@ -69,7 +77,7 @@ export function HeroCallout({
           !stack && 'lg:flex-row lg:items-start',
         )}
       >
-        <div className="flex-1 min-w-0">
+        <div className={cn('flex-1 min-w-0', actions && 'pr-28 sm:pr-32')}>
           <div className={cn('flex items-start', compact ? 'gap-3' : 'gap-4')}>
             <span
               className={cn(

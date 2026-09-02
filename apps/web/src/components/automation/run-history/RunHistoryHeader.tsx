@@ -9,15 +9,15 @@ import {
   ClipboardCheck,
   History,
   Package,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Button } from '@nesy/metronic/components/ui/button'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
 import type { Tone } from '@/components/product/tones'
+import { AutomationHistoryStatCardsShimmer } from '@/components/automation/automation-history-page-shimmer'
+import { HeroRefreshButton } from '@/components/automation/shared/HeroRefreshButton'
 import {
   formatRunShare,
   type RunHistoryStatusFilter,
@@ -40,6 +40,7 @@ export function RunHistoryHeader({
   onRefresh,
   onClearFilters,
   hasFilters,
+  isRefreshing = false,
   searchInputRef,
 }: {
   totalCount: number
@@ -56,6 +57,7 @@ export function RunHistoryHeader({
   onRefresh: () => void
   onClearFilters: () => void
   hasFilters: boolean
+  isRefreshing?: boolean
   searchInputRef?: RefObject<HTMLInputElement | null>
 }) {
   const statCards: Array<{
@@ -133,7 +135,17 @@ export function RunHistoryHeader({
         compact
         layout="stack"
         chips={['Execution log', 'Pass rate', 'Bulk cleanup']}
+        actions={
+          <HeroRefreshButton
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
+            label="Refresh run history"
+          />
+        }
       >
+        {isRefreshing ? (
+          <AutomationHistoryStatCardsShimmer />
+        ) : (
         <StatGrid cols={4}>
           {statCards.map((card) => (
             <StatCard
@@ -158,6 +170,7 @@ export function RunHistoryHeader({
             />
           ))}
         </StatGrid>
+        )}
       </HeroCallout>
 
       <div className="rounded-[8px] border border-border bg-card p-3">
@@ -215,28 +228,22 @@ export function RunHistoryHeader({
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {hasFilters ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="inline-flex h-10 cursor-pointer items-center rounded-[8px] px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
                 Clear filters
-              </Button>
+              </button>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 shrink-0 rounded-[8px]"
-              onClick={onRefresh}
-              aria-label="Refresh run history"
-            >
-              <RefreshCw className="size-4" />
-            </Button>
           </div>
         </div>
 
-        {hasFilters ? (
+        {hasFilters || isRefreshing ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
             <span className="text-xs text-muted-foreground">Active view</span>
             <Badge variant="secondary" appearance="outline" size="sm">
-              {filteredCount} of {totalCount} runs
+              {isRefreshing ? 'Refreshing…' : `${filteredCount} of ${totalCount} runs`}
             </Badge>
             {statusFilter !== 'all' ? (
               <Badge variant="secondary" size="sm">

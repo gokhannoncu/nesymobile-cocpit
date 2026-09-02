@@ -78,12 +78,18 @@ export class DeviceWorker {
       queuedRunIds: [],
       queueLength: 0,
       logcatRunning: this.sniffer.isRunning(),
+      logcatError: this.sniffer.lastError(),
       metadata: this.metadata,
     };
   }
 
   async acquireBridge(runId: string, sessionId: string, runEpoch: number): Promise<BridgeDeviceManager> {
     await this.prepare();
+    // Evidence first: a run whose telemetry stream is down cannot satisfy a
+    // single oracle, and its only symptom used to be every continue gate timing
+    // out with nothing in the run record explaining why. Twelve hours of runs
+    // were lost to exactly that, so this is now a refusal rather than a warning.
+    this.ensureSnifferRunning();
     // The sniffer is persistent per device while runs are sequential. Its
     // structured-event filter therefore has to move with the active run; otherwise
     // the first run after process start works and later runs drop perfectly valid
@@ -179,18 +185,48 @@ export class DeviceWorker {
     TestEventWsServer.ensureStarted();
     TestEventWsServer.addSink(this.sniffer);
 
+    // The WebSocket path is OPTIONAL and, measured, has never once carried an
+    // event: all 17k stored events arrived over logcat. It used to share this
+    // try block with `sniffer.start()`, placed last — so a failed `adb reverse`
+    // or a rejected `setprop` silently took down the only channel that works.
+    // Setting up an unused path must not be able to break the used one.
     try {
       await adb(this.deviceId, ["reverse", `tcp:${TEST_EVENT_WS_PORT}`, `tcp:${TEST_EVENT_WS_PORT}`]);
       await adb(this.deviceId, ["shell", "setprop", "debug.nesy.ws_enabled", "1"]);
       await adb(this.deviceId, ["shell", "setprop", "debug.nesy.ws_port", String(TEST_EVENT_WS_PORT)]);
-      this.sniffer.start();
       console.log(`[DeviceWorker:${this.deviceId}] adb reverse tcp:${TEST_EVENT_WS_PORT} + WS sysprops set`);
     } catch (err) {
       console.warn(
-        `[DeviceWorker:${this.deviceId}] adb reverse/WS setup failed:`,
+        `[DeviceWorker:${this.deviceId}] adb reverse/WS setup failed (logcat unaffected):`,
         err instanceof Error ? err.message : err,
       );
     }
+  }
+
+  /**
+   * Starts the telemetry sniffer, or restarts it after the stream closed.
+   *
+   * Deliberately NOT inside [prepare]: that method returns early on
+   * `this.prepared`, so the "will restart on next bridge prepare" promise in the
+   * close handler was unreachable — once logcat closed (device unplugged, adb
+   * server restarted, phone asleep) it stayed closed for the life of the
+   * process, and every later run produced a run record with no events in it.
+   *
+   * @throws when the stream cannot be started, because a run without telemetry
+   *   is a run that cannot reach a verdict.
+   */
+  private ensureSnifferRunning(): void {
+    if (this.sniffer.isRunning()) return;
+
+    console.log(`[DeviceWorker:${this.deviceId}] telemetry sniffer down — starting`);
+    if (this.sniffer.start()) return;
+
+    const detail = this.sniffer.lastError() ?? "unknown reason";
+    throw new Error(
+      `[DeviceWorker:${this.deviceId}] telemetry sniffer could not start: ${detail}. ` +
+        `A run started now would record no SDK events and every oracle would ` +
+        `time out with no stated cause.`,
+    );
   }
 }
 

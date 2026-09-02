@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ExecutionQueueHeader } from '@/components/automation/execution-queue/ExecutionQueueHeader'
 import { ExecutionQueueTable } from '@/components/automation/execution-queue/ExecutionQueueTable'
+import { ExecutionQueueTableShimmer } from '@/components/automation/shimmers/operations-shimmers'
 import { fetchVerdictRunHistory } from '@/lib/verdict-runtime/client'
 import type { WorkflowRunApi } from '@/lib/verdict-runtime/types'
 import {
@@ -152,14 +153,18 @@ export function ExecutionQueueView({
         searchInputRef={searchInputRef}
       />
 
-      <ExecutionQueueTable
-        rows={filteredRows}
-        allRowsCount={rows.length}
-        sortBy={sortBy}
-        onClearFilters={clearFilters}
-        onDeleteRun={handleDeleteRun}
-        onBulkDeleteRuns={handleBulkDeleteRuns}
-      />
+      {loading ? (
+        <ExecutionQueueTableShimmer />
+      ) : (
+        <ExecutionQueueTable
+          rows={filteredRows}
+          allRowsCount={rows.length}
+          sortBy={sortBy}
+          onClearFilters={clearFilters}
+          onDeleteRun={handleDeleteRun}
+          onBulkDeleteRuns={handleBulkDeleteRuns}
+        />
+      )}
     </div>
   )
 }

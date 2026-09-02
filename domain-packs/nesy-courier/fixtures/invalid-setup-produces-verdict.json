@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 40,
+      "minor": 41,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -3990,7 +3990,7 @@
               {
                 "planStepId": "prepare-startup-permissions",
                 "sourceMapRef": "sm-login-3",
-                "next": "resolve-pin-field",
+                "next": "read-session-precheck",
                 "timeoutMs": 30000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -3999,6 +3999,55 @@
                 "capabilityRequirements": [],
                 "kind": "ANNOTATE",
                 "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
+              {
+                "planStepId": "read-session-precheck",
+                "sourceMapRef": "sm-login-3a",
+                "next": "check-already-signed-in",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.sessionState",
+                "maxRows": 1,
+                "outputVariable": "sessionPrecheckRows"
+              },
+              {
+                "planStepId": "check-already-signed-in",
+                "sourceMapRef": "sm-login-3b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "comparison",
+                  "operator": "in",
+                  "left": {
+                    "kind": "literal",
+                    "value": "true"
+                  },
+                  "right": {
+                    "kind": "operand",
+                    "source": "step.output",
+                    "path": "read-session-precheck.is_logged_in"
+                  }
+                },
+                "onTrue": "read-app-session",
+                "onFalse": "resolve-pin-field",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "resolve-pin-field"
               },
               {
                 "planStepId": "resolve-pin-field",
@@ -4309,6 +4358,18 @@
                 "note": "post-launch setup"
               },
               {
+                "ref": "sm-login-3a",
+                "planStepId": "read-session-precheck",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "is anyone already signed in"
+              },
+              {
+                "ref": "sm-login-3b",
+                "planStepId": "check-already-signed-in",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "skip the UI login when they are"
+              },
+              {
                 "ref": "sm-login-4",
                 "planStepId": "resolve-pin-field",
                 "domainSourceRef": "nesy.macro.login"
@@ -4366,6 +4427,18 @@
               "note": "post-launch setup"
             },
             {
+              "ref": "sm-login-3a",
+              "planStepId": "read-session-precheck",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "is anyone already signed in"
+            },
+            {
+              "ref": "sm-login-3b",
+              "planStepId": "check-already-signed-in",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "skip the UI login when they are"
+            },
+            {
               "ref": "sm-login-4",
               "planStepId": "resolve-pin-field",
               "domainSourceRef": "nesy.macro.login"
@@ -4420,6 +4493,8 @@
               "macroRef": "nesy.macro.login",
               "planStepIds": [
                 "prepare-startup-permissions",
+                "read-session-precheck",
+                "check-already-signed-in",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -6166,7 +6241,7 @@
               {
                 "planStepId": "prepare-startup-permissions",
                 "sourceMapRef": "sm-login-3",
-                "next": "resolve-pin-field",
+                "next": "read-session-precheck",
                 "timeoutMs": 30000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -6175,6 +6250,55 @@
                 "capabilityRequirements": [],
                 "kind": "ANNOTATE",
                 "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
+              {
+                "planStepId": "read-session-precheck",
+                "sourceMapRef": "sm-login-3a",
+                "next": "check-already-signed-in",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.sessionState",
+                "maxRows": 1,
+                "outputVariable": "sessionPrecheckRows"
+              },
+              {
+                "planStepId": "check-already-signed-in",
+                "sourceMapRef": "sm-login-3b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "comparison",
+                  "operator": "in",
+                  "left": {
+                    "kind": "literal",
+                    "value": "true"
+                  },
+                  "right": {
+                    "kind": "operand",
+                    "source": "step.output",
+                    "path": "read-session-precheck.is_logged_in"
+                  }
+                },
+                "onTrue": "read-app-session",
+                "onFalse": "resolve-pin-field",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "resolve-pin-field"
               },
               {
                 "planStepId": "resolve-pin-field",
@@ -6951,11 +7075,11 @@
                 "optional": false
               },
               {
-                "capability": "verdict.core.bridge.resolve-target",
+                "capability": "domain.nesy.adapter.state-projection",
                 "optional": false
               },
               {
-                "capability": "domain.nesy.adapter.state-projection",
+                "capability": "verdict.core.bridge.resolve-target",
                 "optional": false
               },
               {
@@ -6977,6 +7101,18 @@
                 "planStepId": "prepare-startup-permissions",
                 "domainSourceRef": "nesy.macro.login",
                 "note": "post-launch setup"
+              },
+              {
+                "ref": "sm-login-3a",
+                "planStepId": "read-session-precheck",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "is anyone already signed in"
+              },
+              {
+                "ref": "sm-login-3b",
+                "planStepId": "check-already-signed-in",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "skip the UI login when they are"
               },
               {
                 "ref": "sm-login-4",
@@ -7131,6 +7267,18 @@
               "note": "post-launch setup"
             },
             {
+              "ref": "sm-login-3a",
+              "planStepId": "read-session-precheck",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "is anyone already signed in"
+            },
+            {
+              "ref": "sm-login-3b",
+              "planStepId": "check-already-signed-in",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "skip the UI login when they are"
+            },
+            {
               "ref": "sm-login-4",
               "planStepId": "resolve-pin-field",
               "domainSourceRef": "nesy.macro.login"
@@ -7280,6 +7428,8 @@
               "macroRef": "nesy.macro.login-and-select-route",
               "planStepIds": [
                 "prepare-startup-permissions",
+                "read-session-precheck",
+                "check-already-signed-in",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -7314,6 +7464,8 @@
               "macroRef": "nesy.macro.login",
               "planStepIds": [
                 "prepare-startup-permissions",
+                "read-session-precheck",
+                "check-already-signed-in",
                 "resolve-pin-field",
                 "enter-pin",
                 "resolve-submit",
@@ -12513,7 +12665,7 @@
               {
                 "planStepId": "auth-prepare-startup-permissions",
                 "sourceMapRef": "sm-login-3",
-                "next": "auth-resolve-pin-field",
+                "next": "auth-read-session-precheck",
                 "timeoutMs": 30000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -12522,6 +12674,55 @@
                 "capabilityRequirements": [],
                 "kind": "ANNOTATE",
                 "message": "POST_LAUNCH_ANDROID_PERMISSION_BOOTSTRAP"
+              },
+              {
+                "planStepId": "auth-read-session-precheck",
+                "sourceMapRef": "sm-login-3a",
+                "next": "auth-check-already-signed-in",
+                "timeoutMs": 15000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [
+                  {
+                    "capability": "domain.nesy.adapter.state-projection",
+                    "optional": false
+                  }
+                ],
+                "kind": "SDK_QUERY",
+                "queryRef": "nesy.sessionState",
+                "maxRows": 1,
+                "outputVariable": "sessionPrecheckRows"
+              },
+              {
+                "planStepId": "auth-check-already-signed-in",
+                "sourceMapRef": "sm-login-3b",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "comparison",
+                  "operator": "in",
+                  "left": {
+                    "kind": "literal",
+                    "value": "true"
+                  },
+                  "right": {
+                    "kind": "operand",
+                    "source": "step.output",
+                    "path": "auth-read-session-precheck.is_logged_in"
+                  }
+                },
+                "onTrue": "auth-read-app-session",
+                "onFalse": "auth-resolve-pin-field",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "auth-resolve-pin-field"
               },
               {
                 "planStepId": "auth-resolve-pin-field",
@@ -15231,11 +15432,11 @@
                 "optional": false
               },
               {
-                "capability": "verdict.core.bridge.resolve-target",
+                "capability": "domain.nesy.adapter.state-projection",
                 "optional": false
               },
               {
-                "capability": "domain.nesy.adapter.state-projection",
+                "capability": "verdict.core.bridge.resolve-target",
                 "optional": false
               },
               {
@@ -15266,6 +15467,18 @@
                 "planStepId": "auth-prepare-startup-permissions",
                 "domainSourceRef": "nesy.macro.login",
                 "note": "post-launch setup"
+              },
+              {
+                "ref": "sm-login-3a",
+                "planStepId": "auth-read-session-precheck",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "is anyone already signed in"
+              },
+              {
+                "ref": "sm-login-3b",
+                "planStepId": "auth-check-already-signed-in",
+                "domainSourceRef": "nesy.macro.login",
+                "note": "skip the UI login when they are"
               },
               {
                 "ref": "sm-login-4",
@@ -15809,6 +16022,18 @@
               "note": "post-launch setup"
             },
             {
+              "ref": "sm-login-3a",
+              "planStepId": "auth-read-session-precheck",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "is anyone already signed in"
+            },
+            {
+              "ref": "sm-login-3b",
+              "planStepId": "auth-check-already-signed-in",
+              "domainSourceRef": "nesy.macro.login",
+              "note": "skip the UI login when they are"
+            },
+            {
               "ref": "sm-login-4",
               "planStepId": "auth-resolve-pin-field",
               "domainSourceRef": "nesy.macro.login"
@@ -16347,6 +16572,8 @@
               "macroRef": "nesy.macro.full-courier-day",
               "planStepIds": [
                 "auth-prepare-startup-permissions",
+                "auth-read-session-precheck",
+                "auth-check-already-signed-in",
                 "auth-resolve-pin-field",
                 "auth-enter-pin",
                 "auth-resolve-submit",
@@ -16451,6 +16678,8 @@
               "macroRef": "nesy.macro.login",
               "planStepIds": [
                 "auth-prepare-startup-permissions",
+                "auth-read-session-precheck",
+                "auth-check-already-signed-in",
                 "auth-resolve-pin-field",
                 "auth-enter-pin",
                 "auth-resolve-submit",

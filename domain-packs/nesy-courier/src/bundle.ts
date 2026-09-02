@@ -357,6 +357,17 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   ASSERT_FACT policy; the two had drifted, with the template still demanding
   //   the back-office assignment and gating on stops.
   //
+  // 1.41.0 — the login leg reads the session BEFORE deciding to sign in, so an
+  //   already-signed-in device is a branch and not a failure. A journey run
+  //   against a device left signed in used to die on `resolve-pin-field`: the
+  //   field is not on screen, the step failed, and the run aborted six seconds
+  //   in with nothing saying the app was simply already past login. The precheck
+  //   publishes NO facts — `USER_SESSION_AVAILABLE_APP` still comes from
+  //   `read-app-session` after a real sign-in — so the login oracle cannot be
+  //   satisfied by a session this run never established. The login-REJECTED
+  //   slice keeps the unconditional path on purpose: it exists to prove a wrong
+  //   PIN is refused, which needs the real screen.
+  //
   // 1.9.0 — route selection is judged by the SCHEDULE it produces, not by a
   //   back-office row. Picking a route is supposed to create today's schedule and
   //   store it; when that create call fails, `StopListFragment` falls back to
@@ -460,7 +471,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 40, patch: 0 },
+  version: { major: 1, minor: 41, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

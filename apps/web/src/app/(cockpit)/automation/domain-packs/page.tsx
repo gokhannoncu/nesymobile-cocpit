@@ -17,7 +17,7 @@ import {
 } from '@/lib/verdict-runtime/domain-pack-catalog'
 import { DomainPackCatalogHeader } from '@/components/automation/domain-pack/DomainPackCatalogHeader'
 import { DomainPackStateBadge } from '@/components/automation/domain-pack/DomainPackStateBadge'
-import { DomainPackCatalogPageShimmer } from '@/components/automation/domain-pack/domain-pack-catalog-shimmer'
+import { DomainPackCatalogPageShimmer, DomainPackGroupCardShimmer } from '@/components/automation/domain-pack/domain-pack-catalog-shimmer'
 import { ProductPage } from '@/components/product'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { cn } from '@nesy/metronic/lib/utils'
@@ -224,7 +224,7 @@ export default function DomainPacksCatalogPage() {
 
   return (
     <ProductPage path="/automation/domain-packs" hideToolbar>
-      {loading ? (
+      {loading && !data ? (
         <DomainPackCatalogPageShimmer />
       ) : (
         <div className="space-y-5">
@@ -243,9 +243,12 @@ export default function DomainPacksCatalogPage() {
             onRefresh={() => void loadData()}
             onClearFilters={clearFilters}
             hasFilters={hasFilters}
+            isRefreshing={loading}
           />
 
-      {error ? (
+      {loading ? (
+        <DomainPackGroupCardShimmer compactHeader={compactGroupHeader} />
+      ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 px-6 py-12 text-center">
           <AlertCircle className="mb-4 size-10 text-destructive" />
           <h3 className="text-lg font-semibold text-foreground">Failed to load domain packs</h3>

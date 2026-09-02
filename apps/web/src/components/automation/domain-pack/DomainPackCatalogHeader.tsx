@@ -6,13 +6,13 @@ import {
   FilePenLine,
   Layers,
   Package,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react'
 import { DomainPackFamilyStrip } from '@/components/automation/domain-pack/DomainPackFamilyStrip'
 import { Badge } from '@nesy/metronic/components/ui/badge'
-import { Button } from '@nesy/metronic/components/ui/button'
+import { AutomationHistoryStatCardsShimmer } from '@/components/automation/automation-history-page-shimmer'
+import { HeroRefreshButton } from '@/components/automation/shared/HeroRefreshButton'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
 import type { DomainPackState } from '@/lib/verdict-runtime/types'
@@ -34,6 +34,7 @@ export function DomainPackCatalogHeader({
   onRefresh,
   onClearFilters,
   hasFilters,
+  isRefreshing = false,
 }: {
   totalPacks: number
   totalVersions: number
@@ -49,6 +50,7 @@ export function DomainPackCatalogHeader({
   onRefresh: () => void
   onClearFilters: () => void
   hasFilters: boolean
+  isRefreshing?: boolean
 }) {
   const solePack = allPackGroups.length === 1 ? allPackGroups[0] : null
 
@@ -63,7 +65,17 @@ export function DomainPackCatalogHeader({
         compact
         layout="stack"
         chips={['Runtime catalog', 'Immutable publishes', 'Version lineage']}
+        actions={
+          <HeroRefreshButton
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
+            label="Refresh domain pack catalog"
+          />
+        }
       >
+        {isRefreshing ? (
+          <AutomationHistoryStatCardsShimmer />
+        ) : (
         <StatGrid cols={4}>
           <StatCard
             icon={Layers}
@@ -118,6 +130,7 @@ export function DomainPackCatalogHeader({
             }
           />
         </StatGrid>
+        )}
       </HeroCallout>
 
       <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-xs backdrop-blur-sm">
@@ -150,20 +163,14 @@ export function DomainPackCatalogHeader({
 
           <div className="flex shrink-0 items-center gap-2">
             {hasFilters ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
                 Clear filters
-              </Button>
+              </button>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 shrink-0"
-              onClick={onRefresh}
-              aria-label="Refresh catalog"
-            >
-              <RefreshCw className="size-4" />
-            </Button>
           </div>
         </div>
 
@@ -199,11 +206,11 @@ export function DomainPackCatalogHeader({
           </div>
         ) : null}
 
-        {hasFilters ? (
+        {hasFilters || isRefreshing ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
             <span className="text-xs text-muted-foreground">Active view</span>
             <Badge variant="secondary" appearance="outline" size="sm">
-              {visibleVersions} of {totalVersions} versions
+              {isRefreshing ? 'Refreshing…' : `${visibleVersions} of ${totalVersions} versions`}
             </Badge>
             {activeStatus ? (
               <Badge variant="secondary" size="sm">
