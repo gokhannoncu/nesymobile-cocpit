@@ -50,9 +50,9 @@ function KindFilterChip({
       className={cn(
         'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border transition',
         active
-          ? cn(testProfileKindBadgeClass(kind), 'shadow-xs ring-1 ring-nesy/15')
+          ? cn(testProfileKindBadgeClass(kind), 'shadow-xs')
           : cn(
-              'border-border bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              'border-border bg-background px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground',
               count === 0 && 'opacity-40',
             ),
       )}

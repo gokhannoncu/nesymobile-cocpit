@@ -140,11 +140,11 @@ function CampaignTypeGroupCard({
         <table className="min-w-full border-collapse text-[11px]">
           <thead>
             <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className={cn('w-24', thClass)}>Type</th>
+              <th className={cn('w-[7.5rem]', thClass)}>Type</th>
               <th className={cn('min-w-[200px]', thClass)}>Campaign</th>
-              <th className={cn('w-24', thClass)}>Status</th>
+              <th className={cn('w-[7rem]', thClass)}>Status</th>
               <th className={cn('hidden w-16 sm:table-cell', thClass)}>Cells</th>
-              <th className={cn('hidden w-28 md:table-cell', thClass)}>Gate</th>
+              <th className={cn('hidden w-[8.5rem] md:table-cell', thClass)}>Gate</th>
               <th className={cn('sm:hidden', thClass)}>Summary</th>
               <th className={cn('w-16 text-right', thClass)}>Open</th>
             </tr>

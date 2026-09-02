@@ -6,46 +6,59 @@ export type TestProfileKind = TestProfileCatalogItemApi['kind']
 export type TestProfileResult = 'PASS' | 'FAIL' | 'INCONCLUSIVE' | 'NOT_RUN' | string
 
 export const testProfileBadgeBase =
-  'inline-flex rounded-[4px] px-1.5 py-px text-[8px] font-bold uppercase tracking-wide leading-none ring-1 ring-inset'
+  'inline-flex items-center justify-center rounded-[4px] border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide leading-none whitespace-nowrap'
+
+export const testProfileResultBadgeBase =
+  'inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide leading-none whitespace-nowrap'
 
 const kindCoreBadge = cn(
   testProfileBadgeBase,
-  'bg-indigo-50 text-indigo-700 ring-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-800/50',
+  'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-700/55 dark:bg-indigo-950/45 dark:text-indigo-200',
 )
 
 const kindPreviewBadge = cn(
   testProfileBadgeBase,
-  'bg-teal-50 text-teal-700 ring-teal-200/80 dark:bg-teal-950/40 dark:text-teal-300 dark:ring-teal-800/50',
+  'border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-700/55 dark:bg-teal-950/45 dark:text-teal-200',
 )
 
 const kindFaultBadge = cn(
   testProfileBadgeBase,
-  'bg-amber-50 text-amber-800 ring-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/50',
+  'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/55 dark:bg-amber-950/45 dark:text-amber-200',
 )
 
 const badgeNeutral = cn(
   testProfileBadgeBase,
-  'bg-slate-100 text-slate-600 ring-slate-200/80 dark:bg-muted/40 dark:text-muted-foreground dark:ring-border/80',
+  'border-slate-200 bg-slate-50 text-slate-700 dark:border-border dark:bg-muted/45 dark:text-muted-foreground',
 )
 
 const resultPassBadge = cn(
-  testProfileBadgeBase,
-  'bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/50',
+  testProfileResultBadgeBase,
+  'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700/55 dark:bg-emerald-950/45 dark:text-emerald-200',
 )
 
 const resultFailBadge = cn(
-  testProfileBadgeBase,
-  'bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/50',
+  testProfileResultBadgeBase,
+  'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/55 dark:bg-rose-950/45 dark:text-rose-200',
 )
 
 const resultInconclusiveBadge = cn(
-  testProfileBadgeBase,
-  'bg-amber-50 text-amber-800 ring-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/50',
+  testProfileResultBadgeBase,
+  'border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-700/55 dark:bg-orange-950/45 dark:text-orange-200',
+)
+
+const resultNeutralBadge = cn(
+  testProfileResultBadgeBase,
+  'border-slate-200 bg-slate-100 text-slate-700 dark:border-border dark:bg-muted/50 dark:text-muted-foreground',
+)
+
+const resultBlockedBadge = cn(
+  testProfileResultBadgeBase,
+  'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/55 dark:bg-amber-950/45 dark:text-amber-200',
 )
 
 const gateBadge = cn(
-  testProfileBadgeBase,
-  'bg-sky-50 text-sky-700 ring-sky-200/80 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-800/50',
+  testProfileResultBadgeBase,
+  'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-700/55 dark:bg-sky-950/45 dark:text-sky-200',
 )
 
 /** @deprecated Use semantic kind/result helpers instead. */
@@ -73,7 +86,7 @@ export function testProfileKindBadgeClass(kind: TestProfileKind | string): strin
     case 'DIFFERENTIAL':
       return cn(
         testProfileBadgeBase,
-        'bg-violet-50 text-violet-700 ring-violet-200/80 dark:bg-violet-950/40 dark:text-violet-300 dark:ring-violet-800/50',
+        'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-700/55 dark:bg-violet-950/45 dark:text-violet-200',
       )
     case 'SOAK':
     case 'DIAGNOSTIC':
@@ -87,7 +100,7 @@ export function testProfileResultBadgeClass(
   result: TestProfileResult,
   blocked = false,
 ): string {
-  if (blocked) return kindFaultBadge
+  if (blocked) return resultBlockedBadge
 
   switch (result) {
     case 'PASS':
@@ -97,9 +110,9 @@ export function testProfileResultBadgeClass(
     case 'INCONCLUSIVE':
       return resultInconclusiveBadge
     case 'NOT_RUN':
-      return badgeNeutral
+      return resultNeutralBadge
     default:
-      return badgeNeutral
+      return resultNeutralBadge
   }
 }
 

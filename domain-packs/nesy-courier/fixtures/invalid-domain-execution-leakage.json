@@ -5,7 +5,7 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 42,
+      "minor": 43,
       "patch": 0
     },
     "trustTier": "FIRST_PARTY",
@@ -8569,6 +8569,23 @@
             ],
             "steps": [
               {
+                "planStepId": "wait-stop-list-ready",
+                "sourceMapRef": "sm-open-0",
+                "next": "read-available",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "WAIT_EVENT",
+                "factKey": "UI.ROUTE_LIST_READY",
+                "sourceLane": "UI",
+                "stableForMs": 200,
+                "requireCorrelation": false,
+                "onTimeout": "FAIL"
+              },
+              {
                 "planStepId": "read-available",
                 "sourceMapRef": "sm-open-1",
                 "next": "probe-search-field",
@@ -8916,7 +8933,7 @@
                 }
               }
             ],
-            "entryStepId": "read-available",
+            "entryStepId": "wait-stop-list-ready",
             "policies": {
               "runDeadlineMs": 600000,
               "cleanupDeadlineMs": 60000,
@@ -8955,6 +8972,12 @@
               }
             ],
             "sourceMap": [
+              {
+                "ref": "sm-open-0",
+                "planStepId": "wait-stop-list-ready",
+                "domainSourceRef": "nesy.macro.open-stop",
+                "note": "the stop list has to be on screen first"
+              },
               {
                 "ref": "sm-open-1",
                 "planStepId": "read-available",
@@ -9036,6 +9059,12 @@
             ]
           },
           "irSourceMap": [
+            {
+              "ref": "sm-open-0",
+              "planStepId": "wait-stop-list-ready",
+              "domainSourceRef": "nesy.macro.open-stop",
+              "note": "the stop list has to be on screen first"
+            },
             {
               "ref": "sm-open-1",
               "planStepId": "read-available",
@@ -9120,6 +9149,7 @@
               "ref": "ds-open-1",
               "macroRef": "nesy.macro.open-stop",
               "planStepIds": [
+                "wait-stop-list-ready",
                 "read-available",
                 "probe-search-field",
                 "check-search-open",
@@ -14174,7 +14204,7 @@
               {
                 "planStepId": "permit-assert-approved",
                 "sourceMapRef": "sm-appr-9",
-                "next": "visit-read-available",
+                "next": "visit-wait-stop-list-ready",
                 "timeoutMs": 60000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -14301,6 +14331,23 @@
                     "staging"
                   ]
                 }
+              },
+              {
+                "planStepId": "visit-wait-stop-list-ready",
+                "sourceMapRef": "sm-open-0",
+                "next": "visit-read-available",
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "WAIT_EVENT",
+                "factKey": "UI.ROUTE_LIST_READY",
+                "sourceLane": "UI",
+                "stableForMs": 200,
+                "requireCorrelation": false,
+                "onTimeout": "FAIL"
               },
               {
                 "planStepId": "visit-read-available",
@@ -15780,6 +15827,12 @@
                 "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
               },
               {
+                "ref": "sm-open-0",
+                "planStepId": "visit-wait-stop-list-ready",
+                "domainSourceRef": "nesy.macro.open-stop",
+                "note": "the stop list has to be on screen first"
+              },
+              {
                 "ref": "sm-open-1",
                 "planStepId": "visit-read-available",
                 "domainSourceRef": "nesy.macro.open-stop",
@@ -16333,6 +16386,12 @@
               "domainSourceRef": "nesy.macro.tour-approval-lifecycle"
             },
             {
+              "ref": "sm-open-0",
+              "planStepId": "visit-wait-stop-list-ready",
+              "domainSourceRef": "nesy.macro.open-stop",
+              "note": "the stop list has to be on screen first"
+            },
+            {
               "ref": "sm-open-1",
               "planStepId": "visit-read-available",
               "domainSourceRef": "nesy.macro.open-stop",
@@ -16631,6 +16690,7 @@
                 "permit-await-push",
                 "permit-assert-approved",
                 "permit-release-approval-fixture",
+                "visit-wait-stop-list-ready",
                 "visit-read-available",
                 "visit-probe-search-field",
                 "visit-check-search-open",
@@ -16769,6 +16829,7 @@
               "ref": "ds-full-day-visit",
               "macroRef": "nesy.macro.open-stop",
               "planStepIds": [
+                "visit-wait-stop-list-ready",
                 "visit-read-available",
                 "visit-probe-search-field",
                 "visit-check-search-open",

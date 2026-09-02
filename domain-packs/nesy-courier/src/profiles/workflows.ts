@@ -82,7 +82,7 @@ export const NESY_COURIER_FRAGMENTS: readonly ReusableFlowFragmentDefinition[] =
 export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflowDefinition[] = [
   {
     workflowKey: NESY_WORKFLOWS.login,
-    displayName: "Login works through the real UI",
+    displayName: "UI Login Success",
     businessMeaning: NESY_LOGIN_MACRO.businessMeaning,
     notResponsibleFor: NESY_LOGIN_MACRO.notResponsibleFor,
     macroRefs: [NESY_LOGIN_MACRO.macroKey],
@@ -94,7 +94,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.loginRejected,
-    displayName: "Wrong PIN is rejected through the real UI",
+    displayName: "Invalid PIN Rejection",
     businessMeaning: NESY_LOGIN_REJECTED_MACRO.businessMeaning,
     notResponsibleFor: NESY_LOGIN_REJECTED_MACRO.notResponsibleFor,
     macroRefs: [NESY_LOGIN_REJECTED_MACRO.macroKey],
@@ -105,7 +105,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.selectRoute,
-    displayName: "Route selection reaches the backend",
+    displayName: "Backend Route Assignment",
     businessMeaning: NESY_SELECT_ROUTE_MACRO.businessMeaning,
     notResponsibleFor: NESY_SELECT_ROUTE_MACRO.notResponsibleFor,
     // ONE macro. Signing in is a PRECONDITION of route selection, not part of
@@ -125,7 +125,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.loginAndSelectRoute,
-    displayName: "Login then select route",
+    displayName: "Login Route Selection",
     businessMeaning: NESY_LOGIN_AND_SELECT_ROUTE_MACRO.businessMeaning,
     notResponsibleFor: NESY_LOGIN_AND_SELECT_ROUTE_MACRO.notResponsibleFor,
     // ONE composed macro. Listing login + select-route separately would be two
@@ -139,7 +139,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.loadToVehicle,
-    displayName: "A scanned parcel enters the courier's schedule",
+    displayName: "Parcel Schedule Entry",
     businessMeaning: NESY_LOAD_TO_VEHICLE_MACRO.businessMeaning,
     notResponsibleFor: NESY_LOAD_TO_VEHICLE_MACRO.notResponsibleFor,
     // ONE macro, and no fragment. Having a route selected is a PRECONDITION —
@@ -155,7 +155,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.openStop,
-    displayName: "Opening a stop opens the requested stop",
+    displayName: "Target Stop Opening",
     businessMeaning: NESY_OPEN_STOP_MACRO.businessMeaning,
     notResponsibleFor: NESY_OPEN_STOP_MACRO.notResponsibleFor,
     macroRefs: [NESY_OPEN_STOP_MACRO.macroKey],
@@ -166,7 +166,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.processParcel,
-    displayName: "A scanned parcel is accepted and persisted",
+    displayName: "Parcel Scan Persistence",
     businessMeaning: NESY_PROCESS_PARCEL_MACRO.businessMeaning,
     notResponsibleFor: NESY_PROCESS_PARCEL_MACRO.notResponsibleFor,
     macroRefs: [NESY_PROCESS_PARCEL_MACRO.macroKey],
@@ -177,7 +177,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.completeDelivery,
-    displayName: "A completed delivery is confirmed by the backend",
+    displayName: "Backend Delivery Confirmation",
     businessMeaning: NESY_COMPLETE_DELIVERY_MACRO.businessMeaning,
     notResponsibleFor: NESY_COMPLETE_DELIVERY_MACRO.notResponsibleFor,
     // ONE macro, same reasoning as `selectRoute`: a scanned parcel is a
@@ -192,7 +192,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.tourApproval,
-    displayName: "Tour approval survives the courier/dispatcher handover",
+    displayName: "Tour Approval Continuity",
     businessMeaning: NESY_TOUR_APPROVAL_MACRO.businessMeaning,
     notResponsibleFor: NESY_TOUR_APPROVAL_MACRO.notResponsibleFor,
     macroRefs: [NESY_TOUR_APPROVAL_MACRO.macroKey],
@@ -203,7 +203,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.fullCourierDay,
-    displayName: "Full courier day — login through delivery",
+    displayName: "Full Courier Day",
     businessMeaning: NESY_FULL_COURIER_DAY_MACRO.businessMeaning,
     notResponsibleFor: NESY_FULL_COURIER_DAY_MACRO.notResponsibleFor,
     // ONE composed macro, for the same reason as `loginAndSelectRoute`: seven
@@ -221,7 +221,7 @@ export const NESY_COURIER_INDEPENDENT_WORKFLOWS: readonly IndependentTestWorkflo
   },
   {
     workflowKey: NESY_WORKFLOWS.fullCourierGolden,
-    displayName: "Full courier golden — nested stop/parcel FOR_EACH",
+    displayName: "Nested Parcel Processing",
     businessMeaning:
       "Discovers stops and parcels at runtime and processes them via nested FOR_EACH (max 20 barcodes), without static node duplication.",
     notResponsibleFor: [

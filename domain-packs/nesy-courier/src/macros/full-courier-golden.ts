@@ -167,7 +167,7 @@ const STEPS: readonly WorkflowStepV2[] = [
 
 export const NESY_FULL_COURIER_GOLDEN_IR = irDocument({
   workflowId: NESY_FULL_COURIER_GOLDEN_WORKFLOW_KEY,
-  name: "Full courier golden (nested FOR_EACH)",
+  name: "Nested Parcel Processing",
   sourceRef: NESY_FULL_COURIER_GOLDEN_SOURCE_REF,
   entryStepId: "query-route-items",
   inputs: [{ name: "routeCode", type: "string", required: true }],

@@ -180,7 +180,7 @@ function TestProfilePackGroupCard({
         <table className="min-w-full border-collapse text-[11px]">
           <thead>
             <tr className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className={cn('w-24', thClass)}>Kind</th>
+              <th className={cn('w-[5.5rem]', thClass)}>Kind</th>
               <th className={cn('min-w-[180px]', thClass)}>Profile</th>
               <th className={cn('w-28', thClass)}>Result</th>
               <th className={cn('hidden w-20 md:table-cell', thClass)}>Gate</th>

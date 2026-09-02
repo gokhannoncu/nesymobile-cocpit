@@ -6,7 +6,43 @@ export type CampaignStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'BLOCKED' | s
 export type CampaignGateResult = 'PASS' | 'FAIL' | 'NOT_EVALUATED' | string
 
 export const campaignBadgeBase =
-  'inline-flex rounded-[4px] border px-1.5 py-px text-[8px] font-bold uppercase tracking-wide leading-none'
+  'inline-flex items-center justify-center rounded-[4px] border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide leading-none whitespace-nowrap'
+
+/** Larger touch targets for catalog filter chips (search bar row). */
+export const campaignFilterChipBase =
+  'inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-[8px] border px-3 py-2 text-xs font-semibold uppercase tracking-wide leading-none transition min-h-9'
+
+export const campaignFilterChipInactive = cn(
+  campaignFilterChipBase,
+  'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground',
+)
+
+export const campaignFilterChipPrimaryActive = cn(
+  campaignFilterChipBase,
+  'border-nesy/30 bg-nesy-soft text-nesy-ink shadow-xs ring-1 ring-nesy/15 dark:border-nesy/35 dark:bg-nesy-soft/20 dark:text-nesy',
+)
+
+export function campaignTypeFilterChipActiveClass(type: string): string {
+  switch (normalizeCampaignType(type)) {
+    case 'RELEASE':
+      return campaignFilterChipPrimaryActive
+    case 'PR':
+    case 'NIGHTLY':
+    case 'WEEKLY':
+      return cn(
+        campaignFilterChipBase,
+        'border-nesy/25 bg-background text-nesy-ink shadow-xs ring-1 ring-nesy/10 dark:border-nesy/30 dark:bg-card dark:text-nesy',
+      )
+    default:
+      return cn(
+        campaignFilterChipBase,
+        'border-border bg-muted/35 text-foreground shadow-xs ring-1 ring-border/60',
+      )
+  }
+}
+
+export const campaignFilterChipCountBase =
+  'inline-flex min-w-[1.375rem] items-center justify-center rounded-[6px] px-1.5 py-0.5 text-[11px] font-bold tabular-nums leading-none'
 
 export const campaignBadgePrimary = cn(
   campaignBadgeBase,

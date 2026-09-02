@@ -35,7 +35,9 @@ const CHAIN: readonly { exit: string; entry: string }[] = [
   { exit: "auth-assert-login", entry: "route-read-current-route" },
   { exit: "route-assert-selection", entry: "load-wait-stop-list-ready" },
   { exit: "load-assert-loaded", entry: "permit-read-current-schedule" },
-  { exit: "permit-assert-approved", entry: "visit-read-available" },
+  // The visit leg now opens by WAITING for the stop list rather than probing it
+  // straight away; see open-stop 1.43.0.
+  { exit: "permit-assert-approved", entry: "visit-wait-stop-list-ready" },
   { exit: "visit-assert-correct-item", entry: "item-wait-task-list" },
   { exit: "item-assert-delivery-started", entry: "deliver-wait-flow" },
 ];

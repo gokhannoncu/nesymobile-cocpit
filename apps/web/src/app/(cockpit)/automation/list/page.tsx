@@ -916,7 +916,9 @@ function WorkflowCard({
             <Trash2 className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent variant="light">Delete workflow</TooltipContent>
+        <TooltipContent side="bottom" variant="light">
+          Delete workflow
+        </TooltipContent>
       </Tooltip>
 
       <Link

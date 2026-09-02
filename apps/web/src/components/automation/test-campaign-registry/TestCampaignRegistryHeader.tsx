@@ -13,7 +13,12 @@ import { Badge } from '@nesy/metronic/components/ui/badge'
 import { Button } from '@nesy/metronic/components/ui/button'
 import { HeroCallout } from '@/components/product/blocks'
 import { StatCard, StatGrid } from '@/components/product/stats'
-import { campaignTypeBadgeClass, campaignBadgePrimary } from '@/lib/verdict-runtime/test-campaign-registry'
+import {
+  campaignFilterChipCountBase,
+  campaignFilterChipInactive,
+  campaignFilterChipPrimaryActive,
+  campaignTypeFilterChipActiveClass,
+} from '@/lib/verdict-runtime/test-campaign-registry'
 import { cn } from '@nesy/metronic/lib/utils'
 
 export type CampaignTraitFilter = 'all' | 'running' | 'blocked' | 'gateFail'
@@ -29,28 +34,26 @@ function TypeChip({
   count: number
   onClick: () => void
 }) {
+  const isAll = label === 'All'
+
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      title={isAll ? 'All campaign types' : label}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border transition',
         active
-          ? cn(
-              label === 'All' ? campaignBadgePrimary : campaignTypeBadgeClass(label),
-              'shadow-xs ring-1 ring-nesy/15',
-            )
-          : cn(
-              'border-border bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-              count === 0 && 'opacity-40',
-            ),
+          ? isAll
+            ? campaignFilterChipPrimaryActive
+            : campaignTypeFilterChipActiveClass(label)
+          : cn(campaignFilterChipInactive, count === 0 && 'opacity-40'),
       )}
     >
-      <span>{label}</span>
+      <span className={cn(!isAll && 'max-w-[14rem] truncate')}>{label}</span>
       <span
         className={cn(
-          'rounded-[4px] px-1 py-px text-[9px] tabular-nums',
+          campaignFilterChipCountBase,
           active ? 'bg-nesy/15 text-nesy-ink' : 'bg-muted text-muted-foreground',
         )}
       >
@@ -159,7 +162,7 @@ export function TestCampaignRegistryHeader({
         </StatGrid>
       </HeroCallout>
 
-      <div className="rounded-[8px] border border-border/80 bg-card/95 p-3 backdrop-blur-sm">
+      <div className="rounded-[8px] border border-border/80 bg-card/95 p-4 backdrop-blur-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -207,25 +210,30 @@ export function TestCampaignRegistryHeader({
         </div>
 
         {typeEntries.length > 0 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Type
-            </span>
-            <TypeChip
-              active={activeType === null}
-              label="All"
-              count={totalCount}
-              onClick={() => onTypeChange(null)}
-            />
-            {typeEntries.map(([type, count]) => (
+          <div className="mt-4 space-y-2.5 border-t border-border pt-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-xs font-semibold text-foreground">Campaign type</p>
+              <p className="text-[11px] text-muted-foreground">
+                {activeType ? `Showing ${activeType}` : 'All types'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <TypeChip
-                key={type}
-                active={activeType === type}
-                label={type}
-                count={count}
-                onClick={() => onTypeChange(activeType === type ? null : type)}
+                active={activeType === null}
+                label="All"
+                count={totalCount}
+                onClick={() => onTypeChange(null)}
               />
-            ))}
+              {typeEntries.map(([type, count]) => (
+                <TypeChip
+                  key={type}
+                  active={activeType === type}
+                  label={type}
+                  count={count}
+                  onClick={() => onTypeChange(activeType === type ? null : type)}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 

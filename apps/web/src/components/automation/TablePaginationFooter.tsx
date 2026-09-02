@@ -77,6 +77,8 @@ export function TablePaginationFooter({
 
   const pages = buildPaginationPages(currentPage, totalPages)
   const label = pluralize(itemLabel, totalItems)
+  const paginationShellClass =
+    'inline-flex h-10 items-center rounded-lg border border-border/70 bg-background/90 shadow-xs'
 
   return (
     <footer className="border-t border-border/70 bg-muted/10 px-4 py-3">
@@ -99,7 +101,7 @@ export function TablePaginationFooter({
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
           {totalPages > 1 ? (
             <nav
-              className="inline-flex items-center gap-0.5 rounded-lg border border-border/70 bg-background/90 p-1 shadow-xs"
+              className={cn(paginationShellClass, 'gap-0.5 p-1')}
               aria-label={ariaLabel}
             >
               <PaginationIconButton
@@ -141,7 +143,10 @@ export function TablePaginationFooter({
 
           <label
             htmlFor={`${idPrefix}-page-size`}
-            className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 bg-background/90 px-2.5 py-1 shadow-xs sm:ml-0"
+            className={cn(
+              paginationShellClass,
+              'relative cursor-pointer gap-2 px-3',
+            )}
           >
             <span className="pointer-events-none select-none whitespace-nowrap text-xs font-medium text-muted-foreground">
               Per page

@@ -520,7 +520,7 @@ const IR_CAPABILITIES = mergeCapabilities(LEGS.flatMap((leg) => leg.capabilityRe
 
 const GENERIC_IR: WorkflowIrV2 = irDocument({
   workflowId: NESY_FULL_COURIER_DAY_WORKFLOW_KEY,
-  name: "Full courier day — login through delivery",
+  name: "Full Courier Day",
   sourceRef: NESY_FULL_COURIER_DAY_MACRO_KEY,
   inputs: mergeByName(LEGS.flatMap((leg) => leg.inputs)),
   variables: LEGS.flatMap((leg) => leg.variables),
@@ -623,7 +623,7 @@ export const NESY_FULL_COURIER_DAY_LEG_MACRO_KEYS: readonly string[] = LEGS.map(
 export const NESY_FULL_COURIER_DAY_MACRO: MacroDefinition = {
   macroKey: NESY_FULL_COURIER_DAY_MACRO_KEY,
   actionRef: NESY_ACTIONS.login,
-  displayName: "Full courier day — login through delivery",
+  displayName: "Full Courier Day",
   businessMeaning:
     "A courier signs in, takes today's route, loads a parcel onto the schedule, gets the tour approved, " +
     "opens the stop that parcel created, processes it and completes the delivery — one continuous run, " +

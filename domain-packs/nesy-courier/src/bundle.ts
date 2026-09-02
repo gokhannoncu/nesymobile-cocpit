@@ -357,6 +357,15 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   ASSERT_FACT policy; the two had drifted, with the template still demanding
   //   the back-office assignment and gating on stops.
   //
+  // 1.43.0 — open-stop waits for the stop list before probing it. The probe's
+  //   TREAT_AS_ABSENT answers "absent" both when the search bar is shut and when
+  //   the stop list is not on screen, and the slice read absent as the former:
+  //   it tapped for a toggle that only exists on that screen and reported a
+  //   targeting defect for a screen that had gone away. Measured on
+  //   run_bff4172e — the previous leg released its approval fixture, the app left
+  //   StopListFragment, and the toggle resolved `matched=0` fourteen seconds
+  //   later. `load-to-vehicle` has always opened with this wait.
+  //
   // 1.42.0 — the tour approval entity is keyed by the schedule the run OBSERVED
   //   (`var.approvalScheduleRows.schedule_id`) instead of `run.input.scheduleId`.
   //   In a journey the schedule is created by the run, so its id cannot be an
@@ -479,7 +488,7 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 42, patch: 0 },
+  version: { major: 1, minor: 43, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

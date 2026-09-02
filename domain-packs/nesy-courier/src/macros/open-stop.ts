@@ -61,6 +61,42 @@ export const NESY_OPEN_STOP_MACRO_KEY = "nesy.macro.open-stop";
 
 const STEPS: readonly WorkflowStepV2[] = [
   {
+    /**
+     * Wait for the stop list before asking the screen anything.
+     *
+     * This slice used to open by probing for the search field, and the probe's
+     * `notFoundPolicy: TREAT_AS_ABSENT` answers "absent" for TWO different
+     * reasons: the search bar is shut, or the stop list is not on screen at all.
+     * The macro read absent as the first and tapped for the toggle, which then
+     * could not be found either — reporting a targeting defect for what was
+     * really a screen that had gone away.
+     *
+     * Measured on run_bff4172e: the leg before this one released its tour
+     * approval fixture, the app left `StopListFragment` (`SCREEN_EXITED`, seq
+     * 48), and `resolve-search-toggle` ran 14 seconds later against no stop list
+     * — `matched=0` for `close_search_bar`, which is present on that screen and
+     * absent everywhere else.
+     *
+     * `load-to-vehicle` has opened with this same wait since it was written; the
+     * omission here was the difference between the two.
+     */
+    ...stepBase({
+      planStepId: "wait-stop-list-ready",
+      sourceMapRef: "sm-open-0",
+      next: "read-available",
+      timeoutMs: 20_000,
+    }),
+    kind: "WAIT_EVENT",
+    factKey: NESY_FACTS.ROUTE_LIST_READY,
+    sourceLane: "UI",
+    stableForMs: 200,
+    requireCorrelation: false,
+    // A stop list that never arrives is a real failure and has to say so here,
+    // where the reason is still legible, instead of two steps later as a target
+    // that "does not exist".
+    onTimeout: "FAIL",
+  },
+  {
     // Safeguard 2, part one: read the projection before touching the screen.
     ...stepBase({
       planStepId: "read-available",
@@ -355,13 +391,14 @@ const GENERIC_IR = irDocument({
     { name: "rowHandle", type: "string" },
   ],
   steps: STEPS,
-  entryStepId: "read-available",
+  entryStepId: "wait-stop-list-ready",
   capabilityRequirements: [
     requires("verdict.core.bridge.tap"),
     requires("verdict.core.bridge.resolve-target"),
     optionally("wait_any", "SEQUENTIAL_LEGS"),
   ],
   sourceMap: [
+    sourceMapEntry("sm-open-0", "wait-stop-list-ready", NESY_OPEN_STOP_MACRO_KEY, "the stop list has to be on screen first"),
     sourceMapEntry("sm-open-1", "read-available", NESY_OPEN_STOP_MACRO_KEY, "safeguard 2: read the projection first"),
     sourceMapEntry("sm-open-3", "probe-search-field", NESY_OPEN_STOP_MACRO_KEY, "the search bar is a toggle; ask before tapping"),
     sourceMapEntry("sm-open-3a", "check-search-open", NESY_OPEN_STOP_MACRO_KEY),
