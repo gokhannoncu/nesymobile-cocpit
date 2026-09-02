@@ -31,7 +31,11 @@
  *  ## Order of operations
  *
  *      pnpm --filter @nesy/nesy-courier-domain-pack build   (dist must be fresh)
- *      node scripts/publish-domain-pack.mjs
+ *      node apps/api/scripts/publish-domain-pack.mjs
+ *
+ *  It lives under `apps/api/scripts` rather than the repo root because it
+ *  imports workspace packages, which resolve from this package's own
+ *  `node_modules` and not from the root.
  *
  *  A published version is immutable, so re-running for the same version reports
  *  that and changes nothing. Bump `version` in the pack's `bundle.ts` first.
