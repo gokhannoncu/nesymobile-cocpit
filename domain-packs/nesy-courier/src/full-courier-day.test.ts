@@ -218,16 +218,45 @@ describe("full courier day composition", () => {
   it("keeps every leg's own final oracle policy on its assertion", () => {
     // The evidence compiler accumulates these across steps, so the run is judged
     // on all seven legs rather than only the last one.
+    //
+    // The load leg carries TWO, because a load has two distinguishable outcomes:
+    // the product refused (`load-assert-load-refused`, requirements timing out
+    // INCONCLUSIVE) and the product said nothing (`load-assert-loaded`, timing
+    // out FAIL). Only one of them is ever reached — see `check-load-refused`.
     const withPolicy = IR.steps.filter((entry) => entry.finalOraclePolicy !== undefined);
     expect(withPolicy.map((entry) => entry.planStepId)).toEqual([
       "auth-assert-login",
       "route-assert-selection",
       "load-assert-loaded",
+      "load-assert-load-refused",
       "permit-assert-approved",
       "visit-assert-correct-item",
       "item-assert-delivery-started",
       "deliver-assert-confirmed",
     ]);
+  });
+
+  it("routes a refused load to the untested terminal, not the failing one", () => {
+    // The regression, measured on run_38810dc0: the canvas held a barcode whose
+    // parcel had been delivered an hour earlier, the app said so in its own
+    // words, the refusal dialog was tapped away, and the run reported
+    // FAIL_PRODUCT for a product that had behaved correctly.
+    const branch = step("load-check-load-refused");
+    if (branch.kind !== "CONDITION") throw new Error("expected CONDITION");
+    expect(branch.onTrue).toBe("load-assert-loaded");
+    expect(branch.onFalse).toBe("load-assert-load-refused");
+    // Being unsure is not a refusal: the strict terminal is the default.
+    expect(branch.onUnknown).toBe("load-assert-loaded");
+
+    const refused = step("load-assert-load-refused");
+    expect(refused.next).toBeNull();
+    expect(
+      refused.finalOraclePolicy?.requirements.every((r) => r.onTimeout === "INCONCLUSIVE"),
+    ).toBe(true);
+    // And the strict terminal still blames the product when nothing was said.
+    expect(
+      step("load-assert-loaded").finalOraclePolicy?.requirements.every((r) => r.onTimeout === "FAIL"),
+    ).toBe(true);
   });
 
   // ── 3. the post-login gate ──────────────────────────────────────────────

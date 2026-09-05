@@ -499,17 +499,39 @@ export function validateWorkflowState(state: WorkflowGraphState): RuleValidation
     errors.push(postValidateForbiddenRuleState(node.id, node.type));
   }
 
+  /**
+   * ONE error per node, NAMING the fields.
+   *
+   * This used to push one result per missing field, each with the same
+   * `title` — `"<node> config is incomplete"` — and the field name only in
+   * `message`. Two things then hid it: `dedupeErrors` keys on
+   * `code:nodeId`, so a node missing two fields kept exactly one result, and the
+   * dialog renders `title ?? message`, so `message` was never displayed at all.
+   * The author was shown "Open Stop config is incomplete" and nothing else, for
+   * a node with two blank inputs and an eight-field settings panel to hunt
+   * through.
+   *
+   * So the fields are aggregated into the title, and the per-field sentences go
+   * to `detail`, which the dialog does render. Working WITH the dedupe key
+   * rather than around it — a second result for the same node would still be
+   * dropped, and a fix that depended on it not being dropped would rot.
+   */
   for (const node of state.nodes) {
     const configErrors = validateNodeConfig(node);
-    for (const configError of configErrors) {
-      errors.push({
-        valid: false,
-        code: "NODE_CONFIG_INVALID",
-        title: `${node.data.title} config is incomplete`,
-        message: configError.message,
-        nodeId: node.id,
-      });
-    }
+    if (configErrors.length === 0) continue;
+    const labels = configErrors.map((configError) =>
+      // `message` reads "Waybill is required." — the label is the part an author
+      // can act on, and the sentence stays in `detail` below.
+      configError.message.replace(/ is required\.?$/, ""),
+    );
+    errors.push({
+      valid: false,
+      code: "NODE_CONFIG_INVALID",
+      title: `${node.data.title} needs ${labels.join(", ")}`,
+      message: configErrors.map((configError) => configError.message).join(" "),
+      detail: configErrors.map((configError) => configError.message).join(" "),
+      nodeId: node.id,
+    });
   }
 
   return dedupeErrors(errors);

@@ -125,6 +125,41 @@ describe('run detail manager view model', () => {
     expect(view.kpis.find((item) => item.key === 'progress')?.value).toBe('1/2')
   })
 
+  it('reports a timed-out continue gate over a successful action', () => {
+    // Measured on run_3ef0e142: the gesture landed and the step's own closing
+    // condition then timed out, which is what STOPPED the run — and the step
+    // rendered green, leaving a cleanup three legs away as the only red row in
+    // the report.
+    const row = {
+      plan_step_id: 'deliver-tap-scan-confirm',
+      action_result: 'SUCCEEDED',
+      continue_gate_result: 'TIMED_OUT',
+      final_oracle_result: 'NOT_EVALUATED',
+      lifecycle: 'COMPLETED',
+    }
+    expect(stepResultOf(row)).toBe('TIMED_OUT')
+  })
+
+  it('still prefers a failed action over the gate', () => {
+    // A gesture that never landed is the more specific answer; the gate does not
+    // even run on it.
+    const row = {
+      plan_step_id: 'deliver-tap-scan-confirm',
+      action_result: 'FAILED',
+      continue_gate_result: 'TIMED_OUT',
+    }
+    expect(stepResultOf(row)).toBe('FAILED')
+  })
+
+  it('leaves a satisfied gate out of the way', () => {
+    const row = {
+      plan_step_id: 'deliver-tap-scan-confirm',
+      action_result: 'SUCCEEDED',
+      continue_gate_result: 'SATISFIED',
+    }
+    expect(stepResultOf(row)).toBe('SUCCEEDED')
+  })
+
   it('builds a flow diagram for long execution paths', () => {
     const steps = Array.from({ length: 12 }, (_, index) => ({
       plan_step_id: `step-${index + 1}`,

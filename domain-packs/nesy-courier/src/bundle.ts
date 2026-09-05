@@ -494,7 +494,23 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   bindings instead of requiring facts no step produced, and
   //   `REMOTE.AUTH_ACCEPTED` drops to OPTIONAL because the mapped back-office
   //   read resolves the dashboard admin token rather than the courier's.
-  version: { major: 1, minor: 44, patch: 0 },
+  // 1.45.0 — a REFUSED load is judged as untested, not as a product failure.
+  //   `check-load-refused` branches on whether the app raised a dialog on the
+  //   load path (`resolve-acknowledge` is TREAT_AS_ABSENT, so it already answers
+  //   this) and routes to `assert-load-refused`, whose requirements time out
+  //   INCONCLUSIVE instead of FAIL. Measured on run_38810dc0: a barcode naming a
+  //   parcel delivered an hour earlier drew the app's own
+  //   `DELY_DELR_STOR_LOST` dialog, nothing entered the schedule, and the run
+  //   reported FAIL_PRODUCT for a product that had refused correctly. Being
+  //   unsure still routes to the strict terminal — not knowing is not a refusal.
+  // 1.45.1 — `check-load-refused` is an EXISTENCE test, not an equality one.
+  //   The absent marker is present-or-missing by design, so comparing it to
+  //   `true` left the present-dialog case resolving to nothing — the same
+  //   mistake `open-stop`'s `check-search-open` already records. Caught on
+  //   run_5b038e00 while reverting the mirrored `absentTarget: false` the host
+  //   had briefly written, which would have made every existence test answer
+  //   true in both states.
+  version: { major: 1, minor: 45, patch: 1 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

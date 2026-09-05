@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BackofficeAdapter } from './nesy-backoffice-adapter.js'
 import {
@@ -403,5 +403,98 @@ describe('pending delivery status refresh', () => {
       observations.current('run-1').find((row) => row.factKey === DELIVERY_STATUS_COMPLETED_FACT)?.value,
     ).toBe('UNKNOWN')
     refresh.dispose()
+  })
+})
+
+/**
+ * The regression these pin, measured on run_08190755.
+ *
+ * `refresh()` was only called from `refreshOccurrenceEvidence`, so the 5s
+ * cadence was sampled at the oracle's ~20s re-evaluation rate. The device
+ * confirmed at 16:41:59, the proof appeared at 16:43:55 — inside the pack's 120s
+ * window — the last poll went out at ~16:43:46, and the assert timed out at
+ * 16:44:07 without asking again.
+ */
+describe('the poll cadence without an outside caller', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('keeps asking on its own once the delivery is submitted', async () => {
+    let calls = 0
+    const observations = new SdkObservationStore()
+    observations.record('run-1', {
+      factKey: DELIVERY_SUBMITTED_FACT,
+      value: true,
+      observedAtMs: 0,
+      queryRef: 'device-event',
+    })
+    // A clock that keeps pace with the interval, so the 5s guard inside
+    // `refresh()` lets each firing through rather than swallowing it.
+    let now = 0
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        async call() {
+          calls += 1
+          return {
+            terminal: { status: 'SUCCEEDED' },
+            normalizedResponse: { delivery: { status: 'REMOTE_PENDING' } },
+          }
+        },
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+      clock: () => now,
+    })
+
+    try {
+      // NOBODY calls refresh() here. That is the whole point: the proof appears
+      // on the product's schedule, so the asking must not depend on someone else
+      // happening to ask a question.
+      for (let tick = 1; tick <= 3; tick += 1) {
+        now = tick * REMOTE_EVENTUAL_POLL_MS
+        await vi.advanceTimersByTimeAsync(REMOTE_EVENTUAL_POLL_MS)
+      }
+      expect(calls).toBe(3)
+    } finally {
+      refresh.dispose()
+    }
+  })
+
+  it('stops asking once dispose runs', async () => {
+    let calls = 0
+    let now = 0
+    const observations = new SdkObservationStore()
+    observations.record('run-1', {
+      factKey: DELIVERY_SUBMITTED_FACT,
+      value: true,
+      observedAtMs: 0,
+      queryRef: 'device-event',
+    })
+    const refresh = createPendingDeliveryStatusRefresher({
+      adapter: {
+        async call() {
+          calls += 1
+          return { terminal: { status: 'SUCCEEDED' }, normalizedResponse: { delivery: { status: 'REMOTE_PENDING' } } }
+        },
+      },
+      observations,
+      runId: 'run-1',
+      runInputs: { proofLookupId: 'w1' },
+      clock: () => now,
+    })
+
+    now = REMOTE_EVENTUAL_POLL_MS
+    await vi.advanceTimersByTimeAsync(REMOTE_EVENTUAL_POLL_MS)
+    refresh.dispose()
+    // A timer left running past the run would keep hitting staging for a
+    // shipment nobody is waiting on any more.
+    now = 10 * REMOTE_EVENTUAL_POLL_MS
+    await vi.advanceTimersByTimeAsync(5 * REMOTE_EVENTUAL_POLL_MS)
+    expect(calls).toBe(1)
   })
 })

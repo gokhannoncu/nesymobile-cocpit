@@ -671,14 +671,43 @@ export function stepLabelOf(row: Row, index: number): string {
   return label
 }
 
+/**
+ * Gate outcomes that mean the step's own closing condition was NOT met.
+ *
+ * Anything else the gate can say — `SATISFIED`, `NOT_EVALUATED` — leaves the
+ * action's own result as the better answer.
+ */
+const UNMET_CONTINUE_GATE = new Set(['TIMED_OUT', 'UNSATISFIED', 'BLOCKED'])
+
 export function stepResultOf(row: Row): string {
   const finalOracle = fieldText(row, 'finalOracleResult', 'final_oracle_result')
   if (finalOracle && finalOracle !== 'NOT_EVALUATED') return finalOracle
 
   const actionResult = fieldText(row, 'actionResult', 'action_result')
+  const continueGate = fieldText(row, 'continueGateResult', 'continue_gate_result')
+
+  // A FAILED action is the most specific answer there is, so it still comes
+  // first — the gate never ran on a gesture that did not land.
+  if (actionResult && actionResult !== 'NOT_STARTED' && isFailure(actionResult)) return actionResult
+
+  // AN UNMET GATE OUTRANKS A SUCCESSFUL ACTION.
+  //
+  // `actionResult` used to be read before the gate was even looked at, and an
+  // action result is only half of a step's outcome: the continue gate is the
+  // step's own closing condition and the executor STOPS THE RUN on it. So a step
+  // whose gesture landed and whose gate then timed out was displayed as
+  // SUCCEEDED, and the run's only red row was the cleanup at the very end.
+  //
+  // Measured on run_3ef0e142: `deliver-tap-scan-confirm` reported
+  // `actionResult: SUCCEEDED, continueGateResult: TIMED_OUT` and rendered green,
+  // while `auth-clear-session` — a cleanup three legs away, failing for an
+  // unrelated prefix bug — was the step the report pointed at. The reader was
+  // asked to believe the delivery screen was fine and the login teardown was the
+  // problem.
+  if (continueGate && UNMET_CONTINUE_GATE.has(continueGate)) return continueGate
+
   if (actionResult && actionResult !== 'NOT_STARTED') return actionResult
 
-  const continueGate = fieldText(row, 'continueGateResult', 'continue_gate_result')
   if (continueGate && continueGate !== 'NOT_EVALUATED') return continueGate
 
   const cleanup = fieldText(row, 'cleanupResult', 'cleanup_result')

@@ -159,19 +159,33 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
     // to be recognised by something else or the tap matches twice and fails
     // closed on ambiguity. Measured 2026-08-13 — waybill typed in, short barcode
     // read off the row, exactly one match.
+    // REQUIRED, because `open-stop`'s IR declares both inputs `required: true`
+    // and the run cannot reach a stop without them. Measured on run_56582949:
+    // both were blank, Run Test allowed it, and the run died 35 steps later on
+    // `bridgeflow:unresolved-value-ref:run.input.searchTerm` — after a real cold
+    // login, a real route selection, a real load and a real tour approval. A
+    // missing input that is knowable at authoring time must not cost four
+    // minutes of device time to discover.
     {
       key: "waybill",
       label: "Waybill",
       type: "text",
-      placeholder: "e.g. 11333042800798",
-      helperText: "Searched for — typed into the stop search box",
+      required: true,
+      placeholder: "e.g. 30313215212281",
+      helperText: "Searched for — typed into the stop search box. The shipment's trackingNumber.",
     },
     {
       key: "shortBarcode",
       label: "Short Barcode",
       type: "text",
-      placeholder: "e.g. 688005",
-      helperText: "Shown ON the row — must differ from the waybill, or the row match is ambiguous",
+      required: true,
+      // The FULL legacy short barcode, not a prefix of it. Measured: the stop
+      // card binds `textViewLegacySystemId` to
+      // `shipmentItemList[].legacySystemShortBarcode` (StopsAdapter.kt:242-264),
+      // so the row prints all sixteen digits. Two runs were spent on an invented
+      // six-digit prefix that resolved `NOT_FOUND` every time.
+      placeholder: "e.g. 6880051000313416",
+      helperText: "Shown ON the row — the item's full legacySystemShortBarcode. Must differ from the waybill, or the row match is ambiguous.",
     },
     {
       key: "stopOrder",
@@ -191,6 +205,37 @@ const baseSchemas: Partial<Record<WorkflowNodeType, NodeConfigField[]>> = {
     },
   ],
   [WorkflowNodeType.DELIVERY_OPERATION]: [
+    // THE TWO INPUTS `complete-delivery` ACTUALLY DECLARES.
+    //
+    // Its IR marks both `consignmentNumber` and `proofLookupId` `required: true`
+    // and the node offered NEITHER — so the run could not be given them at all,
+    // and the binding table's `barcode` key pointed at a field that did not
+    // exist. Measured on run_3ef0e142: `deliver-type-barcode` resolved
+    // `run.input.consignmentNumber` to nothing, typed an empty string into the
+    // delivery scan field, the app emitted no `DELIVERY_PARCEL_SCANNED`, and the
+    // run died on a continue gate 20s later with the report pointing at a
+    // cleanup three legs away.
+    //
+    // Two DIFFERENT identities, for two different readers: the courier types the
+    // barcode printed on the parcel, and the dashboard knows the shipment by its
+    // tracking number. One value cannot serve both.
+    {
+      key: "barcode",
+      label: "Barcode",
+      type: "text",
+      required: true,
+      placeholder: "e.g. 6880051000313515",
+      helperText: "Typed into the delivery screen's scan field — the item's legacySystemShortBarcode.",
+    },
+    {
+      key: "proofLookupId",
+      label: "Proof Lookup Id",
+      type: "text",
+      required: true,
+      placeholder: "e.g. 72297210092948",
+      helperText:
+        "Looked up in the back office to confirm the delivery — the shipment's waybill / trackingNumber.",
+    },
     {
       key: "personDelivered",
       label: "Person Delivered",

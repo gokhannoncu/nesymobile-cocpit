@@ -45,6 +45,62 @@ const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
 const TARGET_RESOLVE_POLL_MS = 250
 
 /**
+ * How many times the sweep will tap one surface's exit before giving up.
+ *
+ * Three, because the failure it recovers from is a stale coordinate and one
+ * fresh resolution fixes that; a surface that survives three re-resolved taps is
+ * not a moved button, and hammering it would only delay the real failure.
+ */
+const SWEEP_DISMISS_ATTEMPTS = 3
+
+/** Time given to a dismissal before asking whether the surface is gone. */
+const SWEEP_SETTLE_MS = 400
+
+/**
+ * The login macro's session-reset cleanup, matched by SUFFIX.
+ *
+ * A COMPOSED journey renames every step it borrows: `full-courier-day` prefixes
+ * each leg, so `login`'s `clear-session` arrives as `auth-clear-session`. This
+ * used to be compared with `===`, so the cleanup matched nothing in any composed
+ * journey, fell through the whole `execute` chain and returned FAILED — with
+ * ZERO action transitions, because no branch had run. Measured 2026-09-02/03: it
+ * failed at the end of every `full-courier-day` run and passed in the
+ * single-macro workflows, which is exactly the shape a prefix bug makes. Worse
+ * than the failure itself was what it did to every report: a cleanup that always
+ * fails is the only FAILED occurrence in a run whose real stop was a continue
+ * gate, so `auth-clear-session` was named as the culprit for problems three legs
+ * away from it.
+ *
+ * `planRequestsStartupPermissionBootstrap` already learned this and matches with
+ * `endsWith`; this follows that convention rather than inventing a second one.
+ */
+const CLEAR_SESSION_PLAN_STEP_ID = 'clear-session'
+
+/**
+ * Anchored on the leg separator so a suffix match cannot widen into a
+ * namespace: `auth-clear-session` matches, and anything that merely ends in the
+ * same letters does not.
+ */
+function isClearSessionStep(planStepId: string): boolean {
+  return (
+    planStepId === CLEAR_SESSION_PLAN_STEP_ID ||
+    planStepId.endsWith(`-${CLEAR_SESSION_PLAN_STEP_ID}`)
+  )
+}
+
+/**
+ * Shallow enough to stay off the heavy quota, deep enough to name a screen.
+ *
+ * A `depth` dump is a scoped read — only `full` is charged as heavy — and eight
+ * levels reaches the fragment's own container ids on this app without walking
+ * every list row.
+ */
+const SCREEN_FINGERPRINT_DEPTH = 8
+
+/** How many ids the fingerprint names before it just counts the rest. */
+const SCREEN_FINGERPRINT_IDS = 8
+
+/**
  * Device rows arrive as strings — the named-query projection is a
  * `Map<String, String?>` on the Android side. `"true"`/`"false"` are the only
  * things treated as a proven boolean; anything else, including a missing column
@@ -140,6 +196,17 @@ function isAbsentTarget(value: unknown): value is AbsentTarget {
     (value as Partial<AbsentTarget>).absentTarget === true &&
     typeof (value as Partial<AbsentTarget>).targetRef === 'string'
   )
+}
+
+/**
+ * Is this raw arg a reference into the run's own state?
+ *
+ * The two namespaces `resolveArgValue` understands. A literal — including a
+ * literal empty string — is not one of them, which is what keeps "clear this
+ * field" a legitimate instruction.
+ */
+function isStateReference(raw: unknown): raw is string {
+  return typeof raw === 'string' && (raw.startsWith('run.input.') || raw.startsWith('var.'))
 }
 
 function resolveArgValue(
@@ -266,16 +333,36 @@ export function createBridgeRuntimePort(options: {
       if (args['text'] === undefined && rawValueRef !== undefined) {
         args['text'] = resolveArgValue(rawValueRef, runInputs, variables)
       }
-      // A `valueRef` that resolved to nothing is a MISSING RUN INPUT, and it used
-      // to fall through to `String(undefined ?? '')` — an empty string the bridge
-      // accepted and reported as typed. The step went SUCCEEDED, the field stayed
-      // blank, the following confirm tap addressed an empty dialog, and the run
-      // failed several steps later with no mention of the real cause. Measured on
-      // run_d5bae2af: the pack asks for `run.input.scanValue`, the run was started
-      // with `{pin, routeCode}` only, and `enter-barcode` reported success.
+      // A REFERENCE THAT RESOLVED TO NOTHING IS A MISSING INPUT — under ANY key.
       //
-      // An explicitly authored empty `text` is still allowed — clearing a field is
-      // a real instruction. Only an UNRESOLVED reference fails here.
+      // It used to fall through to `String(undefined ?? '')`: an empty string the
+      // bridge accepted and reported as typed. The step went SUCCEEDED, the field
+      // stayed blank, the following confirm tap addressed an empty dialog, and the
+      // run failed several steps later with no mention of the real cause. Measured
+      // on run_d5bae2af with `valueRef`, and the guard written for it checked
+      // `rawArgs['valueRef']` — so it was blind to the SAME bug under `text`.
+      // Measured again on run_3ef0e142: `complete-delivery` writes
+      // `args: { text: "run.input.consignmentNumber" }`, the input was never
+      // supplied, an empty string went into the delivery scan field, the app never
+      // emitted `DELIVERY_PARCEL_SCANNED` at all, and the run died 20s later on a
+      // continue gate three steps away from the actual cause.
+      //
+      // So the check is on the RAW value being a `run.input.*` / `var.*`
+      // reference, not on which key it sits under. A literal — including a literal
+      // empty string — is not a reference, which keeps "clear this field" a real
+      // instruction.
+      for (const [key, raw] of Object.entries(rawArgs)) {
+        if (!isStateReference(raw)) continue
+        const resolved = args[key]
+        if (resolved !== undefined && resolved !== null) continue
+        return {
+          terminalState: 'FAILED',
+          effectVerified: false,
+          evidenceRef: `bridgeflow:unresolved-value-ref:${raw}`,
+        }
+      }
+      // `valueRef` is mapped into `text` above, so its own resolution is checked
+      // there; this catches the case where the mapping produced nothing.
       if (
         (action === 'setText' || action === 'input_text') &&
         rawValueRef !== undefined &&
@@ -554,6 +641,71 @@ export function createGenericStepRuntime(options: {
    * UNIQUELY, and the sweep only ever taps that target. A surface that is not up
    * resolves to nothing and costs one probe.
    */
+  /**
+   * WHAT WAS ON SCREEN, recorded WITH the miss that needs explaining.
+   *
+   * MEASURED 2026-09-03 (run_5b038e00), and twice before it.
+   *
+   * A mandatory target that ends NOT_FOUND is the most common way a run stops,
+   * and the run record could only ever say `not_found`. Everything else had to
+   * be reconstructed by hand afterwards — and twice the answer was already gone:
+   * the API log had rotated past the run, and the device had moved on to another
+   * screen by the time anyone looked. So the same question was re-litigated from
+   * treeGen numbers alone: `visit-resolve-search-toggle` reported
+   * `close_search_bar:NOT_FOUND:treeGen=12286` and `visit-probe-search-field`
+   * reported `tietSearchText:NOT_FOUND:treeGen=12286` fifteen seconds apart, and
+   * "the tree is frozen" looked as plausible as "the screen is not the stop
+   * list". It was the second — the bridge answers `root_unavailable` as its own
+   * error, and neither read got that, so the tree was live and simply did not
+   * contain either control. Nothing in the run said which screen it DID contain.
+   *
+   * One shallow dump, taken only on the failing path, closes that permanently.
+   *
+   * IDS ONLY, deliberately. A node's text is user data — a consignee, an
+   * address, a barcode — and this string lands in a durable run record that
+   * feeds reports; ids are structural and name a screen just as well. The
+   * bridge's own redaction already runs over dump nodes, and not depending on it
+   * here means the guarantee does not rest on a policy in another repo.
+   */
+  const describeScreenOnMiss = async (): Promise<string> => {
+    try {
+      const envelope = await manager.dump(
+        { kind: 'depth', maxDepth: SCREEN_FINGERPRINT_DEPTH },
+        { runId },
+      )
+      if (envelope.ok !== true) {
+        // A refusal is itself the answer — `root_unavailable` here would mean
+        // there was no active window at all, which is a different failure from
+        // a control being absent.
+        const error = typeof envelope.error === 'string' && envelope.error !== '' ? envelope.error : 'unknown'
+        return `:screen=unreadable(${error})`
+      }
+      const nodes = Array.isArray(envelope['nodes']) ? envelope['nodes'] : []
+      const ids: string[] = []
+      for (const node of nodes) {
+        if (node === null || typeof node !== 'object') continue
+        const raw = (node as Record<string, unknown>)['id']
+        if (typeof raw !== 'string') continue
+        // `com.example.app:id/btn_exit` and `btn_exit` are the same control; the
+        // package prefix would be repeated on every entry and name nothing.
+        const id = (raw.split('/').pop() ?? '').trim()
+        if (id === '' || ids.includes(id)) continue
+        ids.push(id)
+      }
+      if (ids.length === 0) return `:screen=no-identified-nodes(${nodes.length})`
+      const named = ids.slice(0, SCREEN_FINGERPRINT_IDS).join(',')
+      const rest = ids.length - SCREEN_FINGERPRINT_IDS
+      return `:screen=${named}${rest > 0 ? `,+${String(rest)}` : ''}`
+    } catch (error) {
+      // Never the reason a step's outcome changes: this runs only when the step
+      // has already failed, and a broken probe must not rewrite that failure.
+      options.logger?.('[BridgeFlowGenericSteps] screen fingerprint probe failed', {
+        message: error instanceof Error ? error.message : String(error),
+      })
+      return ':screen=probe-failed'
+    }
+  }
+
   const dismissHandledSurfaces = async (): Promise<string[]> => {
     const dismissed: string[] = []
     // The sweep used to be silent, and a silent sweep is indistinguishable from
@@ -598,12 +750,49 @@ export function createGenericStepRuntime(options: {
           })
           continue
         }
-        const record = await manager.act(
-          fingerprint.selector.by === 'id' ? 'tap_id' : 'tap_text',
-          fingerprint,
-          { runId },
-        )
-        if (record.terminalState === 'SUCCEEDED') {
+        /**
+         * DISMISSAL IS PROVEN BY ABSENCE, NOT BY THE TAP'S OWN REPORT.
+         *
+         * Measured 2026-09-02 (run_125f3b1d): the sweep tapped the notification
+         * list's exit, the bridge answered SUCCEEDED, the evidence recorded
+         * `swept=nesy.notification-list-dialog` — and the dialog was still on
+         * screen minutes later, with `manuel_input` NOT_FOUND underneath it for a
+         * full second deadline. The exit itself was fine: tapping its CURRENT
+         * centre by hand closed it immediately. What had moved was the button —
+         * as pushes accumulate the list grows and `btn_exit` shifts upward
+         * ([940,338] at 19:26, [940,293] at 19:58), so a tap aimed at where it
+         * used to be lands on nothing and still reports a completed gesture.
+         *
+         * So the tap is retried against a FRESH resolution each time, and the
+         * surface only counts as dismissed once its own exit target stops
+         * resolving. That is the same test the sweep already uses to decide the
+         * surface is up, applied in the other direction — presence and absence
+         * judged by one measurement rather than presence by measurement and
+         * absence by hope.
+         */
+        let stillUp = true
+        for (let attempt = 1; attempt <= SWEEP_DISMISS_ATTEMPTS && stillUp; attempt += 1) {
+          const record = await manager.act(
+            fingerprint.selector.by === 'id' ? 'tap_id' : 'tap_text',
+            fingerprint,
+            { runId },
+          )
+          // A refused gesture is worth another look too: the refusal is often
+          // `stale_tree`, which the next resolution fixes by itself.
+          await new Promise((resolve) => setTimeout(resolve, SWEEP_SETTLE_MS))
+          const after = await manager.resolve(fingerprint, { runId })
+          stillUp = after.outcome === 'RESOLVED_UNIQUE'
+          if (stillUp) {
+            options.logger?.('[BridgeFlowGenericSteps] sweep: the surface is still up after tapping its exit', {
+              surfaceRef: surface.surfaceRef,
+              targetRef,
+              attempt,
+              tapResult: record.terminalState,
+              ...(record.error === undefined ? {} : { deviceError: record.error }),
+            })
+          }
+        }
+        if (!stillUp) {
           dismissed.push(surface.surfaceRef)
           options.logger?.('[BridgeFlowGenericSteps] dismissed a handled surface', {
             surfaceRef: surface.surfaceRef,
@@ -622,12 +811,24 @@ export function createGenericStepRuntime(options: {
 
   return {
     async execute(step: BridgeFlowPlanStep, context: StepExecutionContext): Promise<GenericStepResult> {
-      if (step.kind === 'CLEANUP' && step.planStepId === 'clear-session') {
+      if (step.kind === 'CLEANUP' && isClearSessionStep(step.planStepId)) {
+        // WHY IT FAILED BELONGS ON THE RUN, NOT ONLY IN A LOG.
+        //
+        // This cleanup has failed at the end of every run measured on
+        // 2026-09-02/03 and none of them can say why: the refusal code went to
+        // the logger, and by the time anyone read the run the buffer had rotated
+        // past it. `evidenceRef` is persisted with the occurrence, so the answer
+        // now survives with the thing it explains — the same correction already
+        // made for the interrupt sweep in this file.
         if (controlExecutor === undefined) {
           options.logger?.('[BridgeFlowGenericSteps] no SDK control executor for clear-session cleanup', {
             planStepId: step.planStepId,
           })
-          return { succeeded: false, actionResult: 'FAILED' }
+          return {
+            succeeded: false,
+            actionResult: 'FAILED',
+            evidenceRef: 'cleanup:reset_state:no-control-executor',
+          }
         }
         const result = await controlExecutor.run(manager.deviceId, {
           op: 'reset_state',
@@ -639,7 +840,11 @@ export function createGenericStepRuntime(options: {
             planStepId: step.planStepId,
             code: result.code,
           })
-          return { succeeded: false, actionResult: 'FAILED' }
+          return {
+            succeeded: false,
+            actionResult: 'FAILED',
+            evidenceRef: `cleanup:reset_state:refused:${result.code ?? 'no-code'}`,
+          }
         }
         return {
           succeeded: true,
@@ -852,8 +1057,20 @@ export function createGenericStepRuntime(options: {
       // came back NOT_FOUND two tree generations later and the run stopped on a
       // control that was about to be there. So the target gets its full deadline
       // a second time, from the dismissal onwards.
+      //
+      // WHAT THE SWEEP DID IS PART OF THE EVIDENCE, MEASURED 2026-09-02.
+      //
+      // The sweep's outcome was reported to the LOGGER only, and a log is not a
+      // channel this can rely on: diagnosing run_cde7f880 meant reading a buffer
+      // that had rotated past the run entirely, so "the sweep tapped the exit
+      // and it did not close" and "the sweep never considered that surface" were
+      // once again indistinguishable — the same ambiguity the logging was added
+      // to remove. The step's own `evidenceRef` is persisted with the run, so
+      // the answer is recorded there instead of somewhere that scrolls away.
+      let sweepNote = ''
       if (evidence.outcome === 'NOT_FOUND' && waitsForTarget) {
         const dismissed = await dismissHandledSurfaces()
+        sweepNote = dismissed.length === 0 ? ':swept=nothing' : `:swept=${dismissed.join(',')}`
         if (dismissed.length > 0) {
           evidence = await pollUntilFound(
             await manager.resolve(fingerprint, { runId }),
@@ -862,7 +1079,12 @@ export function createGenericStepRuntime(options: {
         }
       }
 
-      const evidenceRef = describeResolutionEvidence(evidence)
+      // Only for a target the pack says MUST be there, and only once it has
+      // genuinely failed: a `TREAT_AS_ABSENT` miss is an ANSWER, and dumping the
+      // screen to explain an expected absence would charge every run for it.
+      const screenNote =
+        evidence.outcome === 'NOT_FOUND' && waitsForTarget ? await describeScreenOnMiss() : ''
+      const evidenceRef = `${describeResolutionEvidence(evidence)}${sweepNote}${screenNote}`
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
         // The pack's `notFoundPolicy`, finally read. It has always been part of
         // `TargetResolutionPolicy` and this runtime ignored it, so a target that
@@ -896,6 +1118,17 @@ export function createGenericStepRuntime(options: {
         evidenceRef,
         output: {
           ...fingerprint,
+          // DELIBERATELY NO `absentTarget: false` HERE.
+          //
+          // Adding it looked symmetrical and broke a documented contract. The
+          // absent marker's whole job is to be PRESENT OR NOT: `open-stop`'s
+          // `check-search-open` is an existence test over
+          // `searchFieldProbe.absentTarget` precisely because the two states are
+          // "marker written" and "plain fingerprint", and its own note records
+          // that comparing the marker to `true` once stopped a run whose search
+          // bar was already open. Writing the key on this side too makes that
+          // existence test answer true in both states, so a pack asking "was the
+          // absent-tolerant target there?" would always be told yes.
           ...(evidence.treeGen === undefined ? {} : { capturedTreeGen: evidence.treeGen }),
         },
       }

@@ -98,3 +98,79 @@ describe('setText with an unresolved valueRef', () => {
     expect(acted).toEqual([{ command: 'input_text', text: '' }]);
   });
 });
+
+/**
+ * The same bug under the other arg key. Measured on run_3ef0e142:
+ * `complete-delivery` writes `args: { text: "run.input.consignmentNumber" }`,
+ * the guard written for `valueRef` never looked at it, an empty string went into
+ * the delivery scan field, and the app emitted no `DELIVERY_PARCEL_SCANNED` at
+ * all — so the run died 20s later on a continue gate three steps away.
+ */
+describe('an unresolved reference under any arg key', () => {
+  const textStep = {
+    planStepId: 'type-barcode',
+    timeoutMs: 5_000,
+    params: {
+      action: 'setText',
+      targetVariable: 'scanFieldHandle',
+      args: { text: 'run.input.consignmentNumber' },
+    },
+  } as unknown as Parameters<ReturnType<typeof createBridgeRuntimePort>['act']>[0];
+
+  it('fails the step instead of typing a blank', async () => {
+    const { port, acted } = harness({ pin: '3680' });
+
+    const result = await port.act(textStep, context);
+
+    expect(result.terminalState).toBe('FAILED');
+    expect(result.evidenceRef).toContain('unresolved-value-ref');
+    expect(result.evidenceRef).toContain('run.input.consignmentNumber');
+    expect(acted).toEqual([]);
+  });
+
+  it('types the value when the input is present', async () => {
+    const { port, acted } = harness({ consignmentNumber: '6880051000313515' });
+
+    const result = await port.act(textStep, context);
+
+    expect(result.terminalState).toBe('SUCCEEDED');
+    expect(acted).toEqual([{ command: 'input_text', text: '6880051000313515' }]);
+  });
+
+  it('still allows an authored empty string', async () => {
+    // Clearing a field is a real instruction, and a literal is not a reference.
+    const clearStep = {
+      planStepId: 'clear-field',
+      timeoutMs: 5_000,
+      params: { action: 'setText', targetVariable: 'scanFieldHandle', args: { text: '' } },
+    } as unknown as Parameters<ReturnType<typeof createBridgeRuntimePort>['act']>[0];
+
+    const { port, acted } = harness({});
+
+    const result = await port.act(clearStep, context);
+
+    expect(result.terminalState).toBe('SUCCEEDED');
+    expect(acted).toEqual([{ command: 'input_text', text: '' }]);
+  });
+
+  it('fails an unresolved var. reference on a non-text arg', async () => {
+    // `select-route` scrolls with `rowIndex: "var.offeredRouteRows.route_index"`.
+    // Scrolling to an undefined index addresses nothing, and reporting success
+    // for it is the same lie in a different place.
+    const scrollStep = {
+      planStepId: 'scroll-to-row',
+      timeoutMs: 5_000,
+      params: {
+        action: 'scrollToItem',
+        args: { listClass: 'android.widget.ListView', rowIndex: 'var.missingRows.route_index' },
+      },
+    } as unknown as Parameters<ReturnType<typeof createBridgeRuntimePort>['act']>[0];
+
+    const { port } = harness({});
+
+    const result = await port.act(scrollStep, context);
+
+    expect(result.terminalState).toBe('FAILED');
+    expect(result.evidenceRef).toContain('var.missingRows.route_index');
+  });
+});

@@ -1,15 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
+import { WorkflowCanvasLoadingShimmer } from "./workflow-canvas-loading-shimmer";
 
 const WorkflowEditorPage = dynamic(
   () => import("./workflow-editor").then((mod) => ({ default: mod.WorkflowEditorPage })),
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-dvh w-full items-center justify-center bg-slate-50">
-        <Loader2 className="size-8 animate-spin text-slate-400" aria-label="Loading workflow editor" />
+      <div className="h-dvh w-full" aria-label="Loading workflow editor">
+        <WorkflowCanvasLoadingShimmer />
       </div>
     ),
   },

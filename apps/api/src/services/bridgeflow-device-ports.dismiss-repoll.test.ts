@@ -52,8 +52,19 @@ function bundle() {
  * @param toggleAppearsAfterMs How long after the dismissal tap the toggle shows
  *   up. The real dialog's exit animation is what this stands for.
  */
-function harness(toggleAppearsAfterMs: number) {
+function harness(
+  toggleAppearsAfterMs: number,
+  tapsNeededToDismiss = 1,
+  /** What a shallow screen dump answers; `null` makes the dump itself refuse. */
+  dumpNodes: readonly Record<string, unknown>[] | null = [
+    { id: "com.example.app:id/rv_notifications" },
+    { id: "com.example.app:id/btn_exit" },
+    { id: "" },
+    { id: "com.example.app:id/rv_notifications" },
+  ],
+) {
   let dismissedAt: number | undefined;
+  let taps = 0;
 
   const resolve = vi.fn(async (fingerprint: { selector: { value: string } }) => {
     const id = fingerprint.selector.value;
@@ -72,10 +83,18 @@ function harness(toggleAppearsAfterMs: number) {
   const manager = {
     resolve,
     act: vi.fn(async () => {
-      dismissedAt = Date.now();
+      taps += 1;
+      // A tap that lands on a moved control still reports a completed gesture —
+      // which is the whole reason the sweep cannot trust this answer.
+      if (taps >= tapsNeededToDismiss) dismissedAt = Date.now();
       return { terminalState: "SUCCEEDED", actedBy: "ACCESSIBILITY", manualTouch: false };
     }),
     getScheduler: () => ({ setState: () => {} }),
+    dump: vi.fn(async () =>
+      dumpNodes === null
+        ? { ok: false, error: "root_unavailable" }
+        : { ok: true, nodes: [...dumpNodes] },
+    ),
   } as unknown as Parameters<typeof createGenericStepRuntime>[0]["manager"];
 
   const port = createGenericStepRuntime({
@@ -91,7 +110,7 @@ function harness(toggleAppearsAfterMs: number) {
     logger: () => {},
   });
 
-  return { port, resolve };
+  return { port, resolve, taps: () => taps, manager };
 }
 
 const step = {
@@ -114,6 +133,10 @@ describe("resolving a target behind a dismissible overlay", () => {
 
     expect(result.actionResult).toBe("SUCCEEDED");
     expect(result.evidenceRef).toContain("RESOLVED_UNIQUE");
+    // The sweep's outcome rides along in the persisted evidence, because the
+    // logger is a buffer that rotates and this question keeps being asked after
+    // the fact.
+    expect(result.evidenceRef).toContain("swept=s.notification-list");
   });
 
   it("still fails when the target never appears", async () => {
@@ -127,5 +150,87 @@ describe("resolving a target behind a dismissible overlay", () => {
     expect(result.evidenceRef).toContain("NOT_FOUND");
     // And it did keep looking rather than giving up on the first answer.
     expect(resolve.mock.calls.length).toBeGreaterThan(3);
+    // And the evidence says the overlay WAS closed, so a reader can tell this
+    // apart from a sweep that found nothing to close.
+    expect(result.evidenceRef).toContain("swept=s.notification-list");
+  });
+
+  it("records that the sweep found nothing when no overlay is up", async () => {
+    // Without this the two cases read identically: a target genuinely missing on
+    // a healthy screen, and one hidden under something nobody dismissed.
+    const { port } = harness(Number.POSITIVE_INFINITY);
+    // Nothing taps anything here — the exit probe answers NOT_FOUND from the
+    // start once the surface is reported absent.
+    const result = await port.execute(step, { ...context, requestId: "req-2" });
+
+    expect(result.actionResult).toBe("FAILED");
+    expect(result.evidenceRef).toMatch(/swept=/);
+  });
+
+  it("taps the exit again when the surface is still up", async () => {
+    // The regression, measured on run_125f3b1d: the bridge answered SUCCEEDED,
+    // the evidence said `swept=…`, and the dialog was still there — the exit had
+    // shifted upward as pushes piled into the list, so the tap hit nothing.
+    // Absence of the exit is now the only thing that counts as dismissed.
+    const { port, taps } = harness(200, 2);
+
+    const result = await port.execute(step, context);
+
+    expect(taps()).toBe(2);
+    expect(result.actionResult).toBe("SUCCEEDED");
+    expect(result.evidenceRef).toContain("swept=s.notification-list");
+  });
+
+  it("gives up rather than tapping a surface forever", async () => {
+    // Three attempts, then the failure is reported honestly. A surface that
+    // survives three re-resolved taps is not a moved button.
+    const { port, taps } = harness(200, 99);
+
+    const result = await port.execute(step, context);
+
+    expect(taps()).toBe(3);
+    expect(result.actionResult).toBe("FAILED");
+    // Nothing was dismissed, and the evidence must not claim otherwise.
+    expect(result.evidenceRef).toContain("swept=nothing");
+  });
+
+  /**
+   * A mandatory miss now records WHICH screen it missed on. Measured on
+   * run_5b038e00: two resolutions fifteen seconds apart both said
+   * `NOT_FOUND:treeGen=12286`, and nothing anywhere said what the tree DID hold,
+   * so "the tree is frozen" and "this is not the stop list" stayed
+   * indistinguishable until somebody dumped the device by hand.
+   */
+  it("names the screen when a mandatory target is missing", async () => {
+    const { port } = harness(Number.POSITIVE_INFINITY);
+
+    const result = await port.execute(step, context);
+
+    expect(result.actionResult).toBe("FAILED");
+    // Ids only, de-duplicated, package prefix stripped — the text of a node is
+    // user data and this string is persisted with the run.
+    expect(result.evidenceRef).toContain("screen=rv_notifications,btn_exit");
+  });
+
+  it("says the screen was unreadable rather than inventing one", async () => {
+    // `root_unavailable` is a DIFFERENT failure from a control being absent, and
+    // collapsing the two is what sent the last investigation down a blind alley.
+    const { port } = harness(Number.POSITIVE_INFINITY, 1, null);
+
+    const result = await port.execute(step, context);
+
+    expect(result.evidenceRef).toContain("screen=unreadable(root_unavailable)");
+  });
+
+  it("does not fingerprint the screen when the target resolved", async () => {
+    // The probe is for explaining failures. Paying a dump on the happy path
+    // would charge every resolved target for a diagnosis nobody asked for.
+    const { port, manager } = harness(400);
+
+    const result = await port.execute(step, context);
+
+    expect(result.actionResult).toBe("SUCCEEDED");
+    expect((manager as unknown as { dump: { mock: { calls: unknown[] } } }).dump.mock.calls).toHaveLength(0);
+    expect(result.evidenceRef).not.toContain("screen=");
   });
 });

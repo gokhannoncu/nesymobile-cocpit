@@ -287,7 +287,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "read-available-stops",
       sourceMapRef: "sm-load-13",
-      next: "assert-loaded",
+      next: "check-load-refused",
       timeoutMs: 15_000,
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
@@ -301,6 +301,53 @@ const STEPS: readonly WorkflowStepV2[] = [
     outputFactBindings: [{ factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, from: { kind: "ROWS_PRESENT" } }],
   },
   {
+    /**
+     * DID THE PRODUCT REFUSE, OR DID IT SAY NOTHING?
+     *
+     * Those are different outcomes and this slice used to report them as one.
+     * Measured on run_38810dc0: the canvas still held a barcode whose parcel had
+     * been DELIVERED an hour earlier, the app answered
+     * `DIALOG_SHOWN {dialog: "DELY_DELR_STOR_LOST", message: "6880051000310910-DELY"}`
+     * — its own words for "that parcel is already delivered" — the refusal dialog
+     * was tapped away by `tap-acknowledge`, nothing entered the schedule, and the
+     * run reported FAIL_PRODUCT. The product had behaved perfectly; the input
+     * named a spent parcel. A verdict that blames the app for refusing an
+     * impossible request is worse than no verdict, because somebody goes looking
+     * for a defect that is not there.
+     *
+     * The signal was already in the plan and thrown away. `resolve-acknowledge`
+     * is `TREAT_AS_ABSENT`, so it answers exactly this question: absent on the
+     * happy path, present when the app raised something. So the two outcomes get
+     * two terminals — the strict one below, and [assert-load-refused], whose
+     * requirements time out INCONCLUSIVE rather than FAIL.
+     *
+     * EXISTENCE, not equality — the same reasoning `open-stop`'s
+     * `check-search-open` records. The runtime writes `{ absentTarget: true }`
+     * when an absent-tolerant target is not there and a plain fingerprint when it
+     * is, so the marker is either present or missing; comparing it to `true`
+     * leaves the PRESENT-dialog case with an operand that resolves to nothing,
+     * and a two-state question would be answered UNKNOWN in one of its two
+     * states.
+     *
+     * `onUnknown` still routes to the STRICT terminal. A run that cannot say
+     * whether a dialog appeared must not be excused; being unsure is not a
+     * refusal, and the honest default is the harsher reading of a load that did
+     * not happen.
+     */
+    ...stepBase({ planStepId: "check-load-refused", sourceMapRef: "sm-load-13a", next: null }),
+    kind: "CONDITION",
+    condition: {
+      kind: "existence",
+      operator: "exists",
+      operand: { kind: "operand", source: "step.output", path: "dialogHandle.absentTarget" },
+    },
+    // Marker present → no dialog → judge the load strictly.
+    onTrue: "assert-loaded",
+    onFalse: "assert-load-refused",
+    unknownPolicy: "BRANCH",
+    onUnknown: "assert-loaded",
+  },
+  {
     ...stepBase({ planStepId: "assert-loaded", sourceMapRef: "sm-load-14", next: null }),
     kind: "ASSERT_FACT",
     factKey: NESY_FACTS.PARCEL_IN_SCHEDULE,
@@ -312,6 +359,43 @@ const STEPS: readonly WorkflowStepV2[] = [
         { factKey: NESY_FACTS.PARCEL_IN_SCHEDULE, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
         { factKey: NESY_FACTS.SCHEDULE_BODY_STORED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
         { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "FAIL" },
+      ],
+    },
+  },
+  {
+    /**
+     * The same three claims, judged as UNTESTED rather than as a product failure.
+     *
+     * Reached only when the app raised a dialog on the load path — see
+     * [check-load-refused]. The requirements are still REQUIRED, because this
+     * slice's job is still to put a parcel in the schedule and it demonstrably
+     * did not; what changes is `onTimeout`, from FAIL to INCONCLUSIVE. That is
+     * the exact difference between "the app failed to load a loadable parcel"
+     * and "the app declined, so loading was never exercised".
+     *
+     * Not PASS, and deliberately so. A run that ends here loaded nothing, and a
+     * green result would hide a spent test parcel until somebody trusted the
+     * suite. INCONCLUSIVE is the true answer: go look at the input.
+     *
+     * The refusal REASON is not asserted here. The app carries it — the
+     * `DELY_DELR_STOR_LOST` dialog's message names the barcode and its status —
+     * but that frame reaches the host without a BridgeFlow correlation tuple, so
+     * it stops at LEGACY_NO_CONTEXT and is not evidence anything may be judged
+     * on. Declaring a REQUIRED fact with no producer is the one thing this phase
+     * exists to stop, so the reason stays a diagnostic in the inbox until the app
+     * stamps that emit path.
+     */
+    ...stepBase({ planStepId: "assert-load-refused", sourceMapRef: "sm-load-14a", next: null }),
+    kind: "ASSERT_FACT",
+    factKey: NESY_FACTS.PARCEL_IN_SCHEDULE,
+    expected: true,
+    unknownPolicy: "INCONCLUSIVE",
+    entityBinding: { type: NESY_ENTITIES.parcel, id: "run.input.scanValue" },
+    finalOraclePolicy: {
+      requirements: [
+        { factKey: NESY_FACTS.PARCEL_IN_SCHEDULE, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "INCONCLUSIVE" },
+        { factKey: NESY_FACTS.SCHEDULE_BODY_STORED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "INCONCLUSIVE" },
+        { factKey: NESY_FACTS.AVAILABLE_STOPS_LOADED, obligation: "REQUIRED", timing: "IMMEDIATE", onTimeout: "INCONCLUSIVE" },
       ],
     },
   },
@@ -362,7 +446,9 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-load-11", "read-parcel-state", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "narrowed to THIS parcel"),
     sourceMapEntry("sm-load-12", "read-local-schedule", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "the schedule gained a body"),
     sourceMapEntry("sm-load-13", "read-available-stops", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "REQUIRED here, unlike select-route"),
+    sourceMapEntry("sm-load-13a", "check-load-refused", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "did the app refuse, or say nothing?"),
     sourceMapEntry("sm-load-14", "assert-loaded", NESY_LOAD_TO_VEHICLE_MACRO_KEY),
+    sourceMapEntry("sm-load-14a", "assert-load-refused", NESY_LOAD_TO_VEHICLE_MACRO_KEY, "refused: untested, not a product failure"),
   ],
 });
 

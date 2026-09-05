@@ -171,9 +171,36 @@ export function createPendingDeliveryStatusRefresher(options: {
     }
   }
 
+  /**
+   * THE CADENCE DRIVES ITSELF, MEASURED 2026-09-02 (run_08190755).
+   *
+   * `refresh()` was only ever called from `refreshOccurrenceEvidence`, so the 5s
+   * cadence above was merely SAMPLED at whatever rate the oracle happened to
+   * re-evaluate — about every 20s. That makes the effective poll 20s and loses
+   * any proof that lands in the window's final stretch, which is exactly what
+   * happened: the device confirmed at 16:41:59, the proof row appeared at
+   * 16:43:55 (109s later, comfortably inside the pack's 120s EVENTUAL window),
+   * the last sampled poll went out at ~16:43:46, and the assert timed out at
+   * 16:44:07 having never asked again. `flush()`'s 2s grace cannot cover a
+   * fresh request. Verified afterwards by hand: the same read returns
+   * `eventType: "Delivered"`, `completed: true`.
+   *
+   * An interval is the honest fix — the product publishes on ITS schedule, so
+   * the observation cadence must not be a side effect of how often something
+   * else asks a question. It costs nothing while `shouldWatch()` is false,
+   * which is every moment before the delivery is submitted and every moment
+   * after the proof is seen, and it is `unref`'d so it can never hold the
+   * process open.
+   */
+  const timer = setInterval(() => {
+    refresh()
+  }, REMOTE_EVENTUAL_POLL_MS)
+  timer.unref?.()
+
   refresh.dispose = () => {
     if (!active) return
     active = false
+    clearInterval(timer)
     controller.abort()
   }
   return refresh

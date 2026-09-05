@@ -5,8 +5,8 @@
     "packName": "Nesy Courier",
     "version": {
       "major": 1,
-      "minor": 44,
-      "patch": 0
+      "minor": 45,
+      "patch": 1
     },
     "trustTier": "FIRST_PARTY",
     "publicationState": "DRAFT",
@@ -8029,7 +8029,7 @@
               {
                 "planStepId": "read-available-stops",
                 "sourceMapRef": "sm-load-13",
-                "next": "assert-loaded",
+                "next": "check-load-refused",
                 "timeoutMs": 15000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -8053,6 +8053,31 @@
                     }
                   }
                 ]
+              },
+              {
+                "planStepId": "check-load-refused",
+                "sourceMapRef": "sm-load-13a",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "existence",
+                  "operator": "exists",
+                  "operand": {
+                    "kind": "operand",
+                    "source": "step.output",
+                    "path": "dialogHandle.absentTarget"
+                  }
+                },
+                "onTrue": "assert-loaded",
+                "onFalse": "assert-load-refused",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "assert-loaded"
               },
               {
                 "planStepId": "assert-loaded",
@@ -8091,6 +8116,47 @@
                       "obligation": "REQUIRED",
                       "timing": "IMMEDIATE",
                       "onTimeout": "FAIL"
+                    }
+                  ]
+                }
+              },
+              {
+                "planStepId": "assert-load-refused",
+                "sourceMapRef": "sm-load-14a",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ASSERT_FACT",
+                "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                "expected": true,
+                "unknownPolicy": "INCONCLUSIVE",
+                "entityBinding": {
+                  "type": "PARCEL",
+                  "id": "run.input.scanValue"
+                },
+                "finalOraclePolicy": {
+                  "requirements": [
+                    {
+                      "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
+                    },
+                    {
+                      "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
+                    },
+                    {
+                      "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
                     }
                   ]
                 }
@@ -8214,9 +8280,21 @@
                 "note": "REQUIRED here, unlike select-route"
               },
               {
+                "ref": "sm-load-13a",
+                "planStepId": "check-load-refused",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "did the app refuse, or say nothing?"
+              },
+              {
                 "ref": "sm-load-14",
                 "planStepId": "assert-loaded",
                 "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-14a",
+                "planStepId": "assert-load-refused",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "refused: untested, not a product failure"
               }
             ]
           },
@@ -8301,9 +8379,21 @@
               "note": "REQUIRED here, unlike select-route"
             },
             {
+              "ref": "sm-load-13a",
+              "planStepId": "check-load-refused",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "did the app refuse, or say nothing?"
+            },
+            {
               "ref": "sm-load-14",
               "planStepId": "assert-loaded",
               "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-14a",
+              "planStepId": "assert-load-refused",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "refused: untested, not a product failure"
             }
           ],
           "domainSourceMap": [
@@ -8325,7 +8415,9 @@
                 "read-parcel-state",
                 "read-local-schedule",
                 "read-available-stops",
-                "assert-loaded"
+                "check-load-refused",
+                "assert-loaded",
+                "assert-load-refused"
               ],
               "sliceRef": "LOAD_TO_VEHICLE",
               "note": "Linear. Two steps are absent-tolerant by target policy: the RS time-range picker and the refusal dialog."
@@ -13771,7 +13863,7 @@
               {
                 "planStepId": "load-read-available-stops",
                 "sourceMapRef": "sm-load-13",
-                "next": "load-assert-loaded",
+                "next": "load-check-load-refused",
                 "timeoutMs": 15000,
                 "retryPolicy": {
                   "maxAttempts": 1,
@@ -13795,6 +13887,31 @@
                     }
                   }
                 ]
+              },
+              {
+                "planStepId": "load-check-load-refused",
+                "sourceMapRef": "sm-load-13a",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "CONDITION",
+                "condition": {
+                  "kind": "existence",
+                  "operator": "exists",
+                  "operand": {
+                    "kind": "operand",
+                    "source": "step.output",
+                    "path": "loadDialogHandle.absentTarget"
+                  }
+                },
+                "onTrue": "load-assert-loaded",
+                "onFalse": "load-assert-load-refused",
+                "unknownPolicy": "BRANCH",
+                "onUnknown": "load-assert-loaded"
               },
               {
                 "planStepId": "load-assert-loaded",
@@ -13833,6 +13950,47 @@
                       "obligation": "REQUIRED",
                       "timing": "IMMEDIATE",
                       "onTimeout": "FAIL"
+                    }
+                  ]
+                }
+              },
+              {
+                "planStepId": "load-assert-load-refused",
+                "sourceMapRef": "sm-load-14a",
+                "next": null,
+                "timeoutMs": 20000,
+                "retryPolicy": {
+                  "maxAttempts": 1,
+                  "effectClass": "READ_ONLY"
+                },
+                "capabilityRequirements": [],
+                "kind": "ASSERT_FACT",
+                "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                "expected": true,
+                "unknownPolicy": "INCONCLUSIVE",
+                "entityBinding": {
+                  "type": "PARCEL",
+                  "id": "run.input.scanValue"
+                },
+                "finalOraclePolicy": {
+                  "requirements": [
+                    {
+                      "factKey": "LOCAL.PARCEL_IN_SCHEDULE",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
+                    },
+                    {
+                      "factKey": "LOCAL.SCHEDULE_BODY_STORED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
+                    },
+                    {
+                      "factKey": "APP.AVAILABLE_STOPS_LOADED",
+                      "obligation": "REQUIRED",
+                      "timing": "IMMEDIATE",
+                      "onTimeout": "INCONCLUSIVE"
                     }
                   ]
                 }
@@ -15754,9 +15912,21 @@
                 "note": "REQUIRED here, unlike select-route"
               },
               {
+                "ref": "sm-load-13a",
+                "planStepId": "load-check-load-refused",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "did the app refuse, or say nothing?"
+              },
+              {
                 "ref": "sm-load-14",
                 "planStepId": "load-assert-loaded",
                 "domainSourceRef": "nesy.macro.load-to-vehicle"
+              },
+              {
+                "ref": "sm-load-14a",
+                "planStepId": "load-assert-load-refused",
+                "domainSourceRef": "nesy.macro.load-to-vehicle",
+                "note": "refused: untested, not a product failure"
               },
               {
                 "ref": "sm-appr-0a",
@@ -16313,9 +16483,21 @@
               "note": "REQUIRED here, unlike select-route"
             },
             {
+              "ref": "sm-load-13a",
+              "planStepId": "load-check-load-refused",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "did the app refuse, or say nothing?"
+            },
+            {
               "ref": "sm-load-14",
               "planStepId": "load-assert-loaded",
               "domainSourceRef": "nesy.macro.load-to-vehicle"
+            },
+            {
+              "ref": "sm-load-14a",
+              "planStepId": "load-assert-load-refused",
+              "domainSourceRef": "nesy.macro.load-to-vehicle",
+              "note": "refused: untested, not a product failure"
             },
             {
               "ref": "sm-appr-0a",
@@ -16677,7 +16859,9 @@
                 "load-read-parcel-state",
                 "load-read-local-schedule",
                 "load-read-available-stops",
+                "load-check-load-refused",
                 "load-assert-loaded",
+                "load-assert-load-refused",
                 "permit-read-current-schedule",
                 "permit-check-request-already-open",
                 "permit-resolve-request-button",
@@ -16800,7 +16984,9 @@
                 "load-read-parcel-state",
                 "load-read-local-schedule",
                 "load-read-available-stops",
-                "load-assert-loaded"
+                "load-check-load-refused",
+                "load-assert-loaded",
+                "load-assert-load-refused"
               ],
               "sliceRef": "LOAD_TO_VEHICLE",
               "note": "Zimmet: the step that gives the empty schedule a body and a stop."

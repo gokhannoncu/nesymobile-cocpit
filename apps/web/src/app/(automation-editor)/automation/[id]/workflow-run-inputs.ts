@@ -85,8 +85,11 @@ export const WORKFLOW_RUN_INPUT_BINDINGS: Partial<
     { configKey: "waybill", runInputName: "searchTerm" },
     { configKey: "shortBarcode", runInputName: "rowKey" },
   ],
+  // `complete-delivery` reads BOTH, and requires both. The barcode is typed on
+  // the delivery screen; the proof id is what the back office is asked about.
   [WorkflowNodeType.DELIVERY_OPERATION]: [
     { configKey: "barcode", runInputName: "consignmentNumber" },
+    { configKey: "proofLookupId", runInputName: "proofLookupId" },
   ],
 };
 

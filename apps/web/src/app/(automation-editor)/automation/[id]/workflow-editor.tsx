@@ -126,6 +126,7 @@ import { BackendLaneNodeView } from "./BackendLaneNodeView";
 import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { VerdictEditorToolbar } from "@/components/automation/editor/VerdictEditorToolbar";
 import { ShimmerBlock } from "@/components/automation/automation-list-page-shimmer";
+import { WorkflowCanvasLoadingShimmer } from "./workflow-canvas-loading-shimmer";
 import {
   WorkflowNodeType,
   type BranchType,
@@ -3287,7 +3288,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
               aria-live="polite"
               aria-busy="true"
             >
-              <WorkflowCanvasContentShimmer title={displayTitle} />
+              <WorkflowCanvasLoadingShimmer title={displayTitle} />
             </div>
           ) : null}
 
@@ -4853,73 +4854,6 @@ function CanvasControls({ canvasTool, hasNodes, hasSelectedNode, isGridVisible, 
           <CanvasToolbarButton active={isGridVisible} label="Toggle grid" onClick={onToggleGrid}><Grid3X3 /></CanvasToolbarButton>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-function WorkflowCanvasNodeShimmer({ widthClass = "w-[228px]" }: { widthClass?: string }) {
-  return (
-    <div
-      className={cn("rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]", widthClass)}
-      aria-hidden
-    >
-      <div className="flex items-center gap-2.5">
-        <ShimmerBlock className="size-10 shrink-0 rounded-lg" />
-        <div className="min-w-0 flex-1">
-          <ShimmerBlock className="h-3.5 w-[72%]" />
-          <ShimmerBlock className="mt-1.5 h-2.5 w-[48%]" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WorkflowCanvasConnectorShimmer() {
-  return <div className="h-7 w-px bg-slate-200/90" aria-hidden />;
-}
-
-function WorkflowCanvasContentShimmer({ title }: { title: string }) {
-  return (
-    <div className="relative flex h-full w-full overflow-hidden bg-[#F8FAFC]">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.45]"
-        style={{
-          backgroundImage: `radial-gradient(circle, ${VIEWPORT_GRID_DOT} ${VIEWPORT_GRID_DOT_RADIUS_PX}px, transparent ${VIEWPORT_GRID_DOT_RADIUS_PX}px)`,
-          backgroundSize: `${VIEWPORT_GRID_SPACING_PX}px ${VIEWPORT_GRID_SPACING_PX}px`,
-        }}
-      />
-      <div className="relative flex flex-1 items-center justify-center px-8 py-12">
-        <div className="flex max-w-md flex-col items-center gap-5">
-          <div className="flex flex-col items-center" aria-hidden>
-            <WorkflowCanvasNodeShimmer />
-            <WorkflowCanvasConnectorShimmer />
-            <WorkflowCanvasNodeShimmer />
-            <WorkflowCanvasConnectorShimmer />
-            <WorkflowCanvasNodeShimmer />
-            <WorkflowCanvasConnectorShimmer />
-            <div className="flex gap-14">
-              <WorkflowCanvasNodeShimmer widthClass="w-[196px]" />
-              <WorkflowCanvasNodeShimmer widthClass="w-[196px]" />
-            </div>
-          </div>
-
-          <div
-            className="rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 text-center shadow-sm backdrop-blur-sm"
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Loader2 className="size-4 shrink-0 animate-spin text-slate-500" aria-hidden />
-              <p className="text-sm font-semibold text-slate-700">Loading workflow</p>
-            </div>
-            {title ? (
-              <p className="mt-1 truncate text-xs font-medium text-slate-500">{title}</p>
-            ) : null}
-            <p className="sr-only">Please wait while the workflow canvas loads.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -125,25 +125,62 @@ describe("collectMissingRunInputs", () => {
     expect(missing).toEqual([]);
   });
 
-  it("does not report an optional input", () => {
+  it("reports both of Delivery Operation's required inputs", () => {
+    // `complete-delivery` declares `consignmentNumber` and `proofLookupId`
+    // `required: true`, and the node used to offer neither field — so the run
+    // was started without them, an empty string went into the delivery scan
+    // field, and run_3ef0e142 died on a continue gate 20s later.
     const missing = collectMissingRunInputs([
-      node(WorkflowNodeType.DELIVERY_OPERATION, { barcode: "" }),
+      node(WorkflowNodeType.DELIVERY_OPERATION, { barcode: "", proofLookupId: "" }),
+    ]);
+
+    expect(missing.map((entry) => entry.runInputName).sort()).toEqual([
+      "consignmentNumber",
+      "proofLookupId",
+    ]);
+  });
+
+  it("reports nothing once Delivery Operation is filled in", () => {
+    const missing = collectMissingRunInputs([
+      node(WorkflowNodeType.DELIVERY_OPERATION, {
+        barcode: "6880051000313515",
+        proofLookupId: "72297210092948",
+        // `personDelivered` is optional and stays blank; an optional field must
+        // not be demanded.
+        personDelivered: "",
+      }),
     ]);
 
     expect(missing).toEqual([]);
   });
 
-  it("does not demand Open Stop's optional keys", () => {
+  it("does not demand Open Stop's stop order", () => {
     // The regression this pins: a duplicated `required: true` in the binding
     // table made Run Test refuse a valid canvas with "Open Stop requires
     // stopOrder", even though the node schema marks it optional — the journey
     // resolves the stop the loading just created. Requiredness now has one
     // source, the node schema.
     const missing = collectMissingRunInputs([
-      node(WorkflowNodeType.OPEN_STOP, { waybill: "", shortBarcode: "", stopOrder: "" }),
+      node(WorkflowNodeType.OPEN_STOP, {
+        waybill: "30313215212281",
+        shortBarcode: "6880051000313416",
+        stopOrder: "",
+      }),
     ]);
 
     expect(missing).toEqual([]);
+  });
+
+  it("demands Open Stop's two shipment keys", () => {
+    // The other half of the same rule, measured on run_56582949: both blank, and
+    // the run reached `visit-enter-search-term` — 35 steps and four minutes of
+    // device time later — before anything said the input was missing. The macro
+    // declares both `required: true`; the node schema now agrees.
+    const missing = collectMissingRunInputs([
+      node(WorkflowNodeType.OPEN_STOP, { waybill: "", shortBarcode: "" }, "visit"),
+    ]);
+
+    expect(missing.map((entry) => entry.runInputName).sort()).toEqual(["rowKey", "searchTerm"]);
   });
 
   it("reports each offending node separately", () => {

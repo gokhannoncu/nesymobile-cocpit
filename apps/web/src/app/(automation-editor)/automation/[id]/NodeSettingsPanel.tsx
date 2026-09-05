@@ -5,6 +5,7 @@ import { ChevronDown, Play, X } from "lucide-react";
 import { Button } from "@nesy/metronic/components/ui/button";
 import { cn } from "@nesy/metronic/lib/utils";
 import type { WorkflowNode } from "./workflow-types";
+import { getNodeConfigSchema } from "./workflow-node-config";
 import {
   AuthLoginSchema,
   CheckRouteSchema,
@@ -473,9 +474,161 @@ function SelectedNodeForm({
     );
   }
 
+  /**
+   * EVERY OTHER NODE, RENDERED FROM ITS SCHEMA.
+   *
+   * The blocks above are hand-written per node type, and a node without one used
+   * to fall through to "No editable properties form is defined for this node
+   * type yet." — while `workflow-node-config.ts` had a full field schema for it
+   * the whole time. Two definitions of the same thing, and only one of them
+   * reachable by an author.
+   *
+   * That went from cosmetic to blocking the moment Open Stop's two shipment keys
+   * became required: validation refused to run the workflow until they were
+   * filled, and the panel offered nowhere to fill them. A rule an author cannot
+   * satisfy is worse than no rule.
+   *
+   * `getNodeConfigSchema` already carries everything a form needs — label, type,
+   * requiredness, placeholder, helper text, options and `visibleIf`. Rendering
+   * from it makes the schema the single source for the panel as well as for
+   * validation, so a field added there cannot go missing here. The bespoke
+   * blocks stay: they hold controls this generic renderer has no business
+   * reproducing.
+   */
+  const schema = getNodeConfigSchema(node.type);
+  if (schema.length === 0) {
+    return (
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-500">
+        This node takes no settings.
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-500">
-      No editable properties form is defined for this node type yet.
+    <div className="space-y-4">
+      {schema.map((field) => {
+        // The schema's own conditional visibility, honoured rather than ignored:
+        // a hidden field is not required either (`isFieldRequired` reads the
+        // same rule), so showing it would demand a value nothing asks for.
+        if (field.visibleIf !== undefined) {
+          const other = config[field.visibleIf.field];
+          const matches =
+            typeof field.visibleIf.equals === "boolean"
+              ? Boolean(other) === field.visibleIf.equals
+              : String(other ?? "") === String(field.visibleIf.equals);
+          if (!matches) return null;
+        }
+
+        const raw = config[field.key];
+        const error = errors[field.key];
+
+        if (field.type === "select") {
+          return (
+            <FormField
+              key={field.key}
+              label={field.label}
+              required={field.required}
+              {...(field.helperText === undefined ? {} : { helperText: field.helperText })}
+              {...(error === undefined ? {} : { error })}
+            >
+              <div className="relative">
+                <select
+                  className={cn(getFieldControlClassName(Boolean(error)), "appearance-none pr-10")}
+                  value={String(raw ?? "")}
+                  onChange={(event) => onChange({ [field.key]: event.target.value })}
+                >
+                  {/* An explicit empty option, so a required select starts
+                      unanswered instead of silently defaulting to its first
+                      value — which would look like a choice the author made. */}
+                  <option value="">Select…</option>
+                  {(field.options ?? []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              </div>
+            </FormField>
+          );
+        }
+
+        if (field.type === "multiBarcodeChips") {
+          // A LIST, not a string. `validateNodeConfig` checks
+          // `Array.isArray(value) && value.length > 0` for this type, so a plain
+          // text control would write a string, leave the field reported as
+          // missing however much the author typed, and reproduce exactly the
+          // dead end this whole renderer exists to remove. `DEPS_OPERATION` and
+          // `DELIVERY_FAIL_OPERATION` reach here with no hand-written block.
+          //
+          // Deliberately a separated-values input rather than the chips control:
+          // it is honest about what it is, and it stores the right shape.
+          const values = Array.isArray(raw) ? raw.map((entry) => String(entry)) : [];
+          return (
+            <FormField
+              key={field.key}
+              label={field.label}
+              required={field.required}
+              helperText={field.helperText ?? "One per line, or separated by commas."}
+              {...(error === undefined ? {} : { error })}
+            >
+              <textarea
+                className={cn(getFieldControlClassName(Boolean(error)), "h-auto min-h-20 py-2")}
+                value={values.join("\n")}
+                placeholder={field.placeholder ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    [field.key]: event.target.value
+                      .split(/[\n,]/)
+                      .map((entry) => entry.trim())
+                      .filter((entry) => entry !== ""),
+                  })
+                }
+              />
+            </FormField>
+          );
+        }
+
+        if (field.type === "toggle") {
+          return (
+            <FormField
+              key={field.key}
+              label={field.label}
+              required={field.required}
+              {...(field.helperText === undefined ? {} : { helperText: field.helperText })}
+              {...(error === undefined ? {} : { error })}
+            >
+              <label className="flex items-center gap-2 text-[14px] text-slate-900">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-[#DDE5F0] text-orange-500 focus:ring-orange-500/20"
+                  checked={Boolean(raw)}
+                  onChange={(event) => onChange({ [field.key]: event.target.checked })}
+                />
+                {field.label}
+              </label>
+            </FormField>
+          );
+        }
+
+        return (
+          <FormField
+            key={field.key}
+            label={field.label}
+            required={field.required}
+            {...(field.helperText === undefined ? {} : { helperText: field.helperText })}
+            {...(error === undefined ? {} : { error })}
+          >
+            <input
+              type={field.type === "number" ? "number" : "text"}
+              className={getFieldControlClassName(Boolean(error))}
+              value={String(raw ?? "")}
+              placeholder={field.placeholder ?? ""}
+              onChange={(event) => onChange({ [field.key]: event.target.value })}
+            />
+          </FormField>
+        );
+      })}
     </div>
   );
 }
