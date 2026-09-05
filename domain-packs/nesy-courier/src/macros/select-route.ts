@@ -234,7 +234,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-confirm",
       sourceMapRef: "sm-route-8",
-      next: "read-local-schedule",
+      next: "wait-schedule-stored",
       timeoutMs: 25_000,
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
@@ -287,12 +287,59 @@ const STEPS: readonly WorkflowStepV2[] = [
       },
     ],
   },
+  // The confirm tap does not store anything by itself.
+  //
+  // `Task/CreateEmptyScheduleDocument` goes out AFTER the tap returns, and the
+  // store lands after that response plus several async hops
+  // (`StopListFragment.handleEmptyScheduleSuccess` → `saveScheduleToDb` →
+  // `ScheduleRepositoryImpl.saveScheduleToLocalSuspend`). Measured on
+  // run_070214b6 (2026-09-05): the read below ran 530 ms BEFORE the create call
+  // even started, found an empty Room, and the assert reported a correct empty
+  // day as a broken route selection.
+  //
+  // Waited on the STORE, not on the approval: `APP.SCHEDULE_STATUS_APPROVED`
+  // ships from the same choke point but carries the approval boolean, which a
+  // freshly selected route legitimately does not satisfy — and a wait resolves
+  // only on a true fact, so it would wait for the dispatcher. Not waited on
+  // `LOCAL.SCHEDULE_PERSISTED` either: that is produced by the read below, and a
+  // gate on a fact from a lower step is the trap `tap-confirm`'s own gate already
+  // paid for once.
+  {
+    ...stepBase({
+      planStepId: "wait-schedule-stored",
+      sourceMapRef: "sm-route-8d",
+      next: "read-local-schedule",
+      timeoutMs: 20_000,
+      capabilityRequirements: [requires("verdict.core.bridge.watch-fact")],
+    }),
+    kind: "WAIT_EVENT",
+    factKey: NESY_FACTS.SCHEDULE_STORED,
+    sourceLane: "APP",
+    // No `stableForMs`: this is a discrete store, not a screen settling. The
+    // APP-lane push wait in tour-approval omits it for the same reason.
+    //
+    // Correlation is not REQUIRED here, and that is a statement about what the
+    // run can know: the schedule id is what the store MINTS, so a run selecting
+    // a route has nothing to bind against — there is no schedule entity yet.
+    // What keeps an older store from answering is occurrence scoping: the
+    // executor only sees facts published into this occurrence, within their
+    // freshness bound.
+    requireCorrelation: false,
+    // A day that never stored a schedule is a real failure, not something to
+    // measure past — the whole leg below is about the plan the store produced.
+    onTimeout: "FAIL",
+  },
   // Selecting a route is supposed to CREATE today's schedule and store it. When
   // that creation fails the app falls back to `loadStopListFromLocal()` for ANY
   // schedule Room happens to hold — including yesterday's — and the screen looks
   // entirely normal. So the local plane is read on its own terms: is a schedule
-  // stored with its stops, and is it today's by the product's own rule. The
-  // derived fact correlates both against the id the session is actually using.
+  // stored, and is it today's by the product's own rule.
+  //
+  // "Stored" deliberately does NOT mean "carries stops". The SDK projection
+  // computes `schedule_persisted` as `schedule != null && meta != null` precisely
+  // because a freshly selected route's schedule is SUPPOSED to be empty; the
+  // count travels separately as `SCHEDULE_BODY_STORED`. Folding stops into
+  // "stored" would report the product's designed behaviour as a broken write.
   {
     ...stepBase({
       planStepId: "read-local-schedule",
@@ -436,6 +483,7 @@ const GENERIC_IR = irDocument({
     sourceMapEntry("sm-route-6", "tap-row", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-7", "resolve-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
     sourceMapEntry("sm-route-8", "tap-confirm", NESY_SELECT_ROUTE_MACRO_KEY),
+    sourceMapEntry("sm-route-8d", "wait-schedule-stored", NESY_SELECT_ROUTE_MACRO_KEY, "the confirm tap does not store; the store lands after a round trip"),
     sourceMapEntry("sm-route-8a", "read-selected-route", NESY_SELECT_ROUTE_MACRO_KEY, "app plane observed, not inferred"),
     sourceMapEntry("sm-route-8b", "read-available-stops", NESY_SELECT_ROUTE_MACRO_KEY, "stops loaded is a result-set property"),
     sourceMapEntry("sm-route-8c", "read-local-schedule", NESY_SELECT_ROUTE_MACRO_KEY, "Room truth: stored, and is it today's"),

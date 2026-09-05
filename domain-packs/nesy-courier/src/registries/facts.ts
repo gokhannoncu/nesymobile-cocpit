@@ -146,6 +146,21 @@ export const NESY_FACTS = {
    * wire; the device emits it at schedule-store time as a boolean.
    */
   SCHEDULE_STATUS_APPROVED: "APP.SCHEDULE_STATUS_APPROVED",
+  /**
+   * The device COMMITTED a schedule to its own storage. Always true when observed.
+   *
+   * Separate from [SCHEDULE_STATUS_APPROVED] because the two answer different
+   * questions and only this one can be WAITED on. Selecting a route creates an
+   * EMPTY schedule document — tasks arrive later by assignment or by loading the
+   * vehicle — so the approval boolean is legitimately false at that moment, and a
+   * wait resolves only on a true fact. Waiting on approval to learn about storage
+   * would wait for the dispatcher instead: a different leg, minutes away.
+   *
+   * Measured on run_070214b6 (2026-09-05): the route leg read Room 530 ms before
+   * the store landed, found nothing, and reported a correct empty day as a broken
+   * route selection. This fact is the signal that read was missing.
+   */
+  SCHEDULE_STORED: "APP.SCHEDULE_STORED",
   LOGIN_SUCCEEDED: "APP.LOGIN_SUCCEEDED",
   /**
    * The backend REFUSED the credentials.

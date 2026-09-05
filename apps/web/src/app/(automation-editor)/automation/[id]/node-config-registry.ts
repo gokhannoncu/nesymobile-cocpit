@@ -83,6 +83,12 @@ export const OpenParcelSchema = z.object({
 export type OpenParcelParams = z.infer<typeof OpenParcelSchema>;
 
 export const DeliveryOperationSchema = z.object({
+  barcode: z
+    .string({ required_error: "Barcode is required.", invalid_type_error: "Barcode is required." })
+    .min(1, "Barcode is required."),
+  proofLookupId: z
+    .string({ required_error: "Proof Lookup Id is required.", invalid_type_error: "Proof Lookup Id is required." })
+    .min(1, "Proof Lookup Id is required."),
   personDelivered: z.string().optional(),
   waitBeforeDelivery: z.coerce.number().default(0),
 });

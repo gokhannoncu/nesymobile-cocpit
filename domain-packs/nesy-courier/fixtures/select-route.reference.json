@@ -396,7 +396,7 @@
         {
           "planStepId": "tap-confirm",
           "sourceMapRef": "sm-route-8",
-          "next": "read-local-schedule",
+          "next": "wait-schedule-stored",
           "timeoutMs": 25000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -455,6 +455,27 @@
               "correlationColumn": "schedule_id"
             }
           ]
+        },
+        {
+          "planStepId": "wait-schedule-stored",
+          "sourceMapRef": "sm-route-8d",
+          "next": "read-local-schedule",
+          "timeoutMs": 20000,
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "effectClass": "READ_ONLY"
+          },
+          "capabilityRequirements": [
+            {
+              "capability": "verdict.core.bridge.watch-fact",
+              "optional": false
+            }
+          ],
+          "kind": "WAIT_EVENT",
+          "factKey": "APP.SCHEDULE_STORED",
+          "sourceLane": "APP",
+          "requireCorrelation": false,
+          "onTimeout": "FAIL"
         },
         {
           "planStepId": "read-local-schedule",
@@ -697,6 +718,12 @@
           "domainSourceRef": "nesy.macro.select-route"
         },
         {
+          "ref": "sm-route-8d",
+          "planStepId": "wait-schedule-stored",
+          "domainSourceRef": "nesy.macro.select-route",
+          "note": "the confirm tap does not store; the store lands after a round trip"
+        },
+        {
           "ref": "sm-route-8a",
           "planStepId": "read-selected-route",
           "domainSourceRef": "nesy.macro.select-route",
@@ -795,6 +822,12 @@
         "domainSourceRef": "nesy.macro.select-route"
       },
       {
+        "ref": "sm-route-8d",
+        "planStepId": "wait-schedule-stored",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the confirm tap does not store; the store lands after a round trip"
+      },
+      {
         "ref": "sm-route-8a",
         "planStepId": "read-selected-route",
         "domainSourceRef": "nesy.macro.select-route",
@@ -837,6 +870,7 @@
           "resolve-confirm",
           "tap-confirm",
           "read-selected-route",
+          "wait-schedule-stored",
           "read-local-schedule",
           "read-available-stops",
           "assert-selection"
@@ -1177,7 +1211,7 @@
       {
         "planStepId": "tap-confirm",
         "sourceMapRef": "sm-route-8",
-        "next": "read-local-schedule",
+        "next": "wait-schedule-stored",
         "timeoutMs": 25000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -1236,6 +1270,27 @@
             "correlationColumn": "schedule_id"
           }
         ]
+      },
+      {
+        "planStepId": "wait-schedule-stored",
+        "sourceMapRef": "sm-route-8d",
+        "next": "read-local-schedule",
+        "timeoutMs": 20000,
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "effectClass": "READ_ONLY"
+        },
+        "capabilityRequirements": [
+          {
+            "capability": "verdict.core.bridge.watch-fact",
+            "optional": false
+          }
+        ],
+        "kind": "WAIT_EVENT",
+        "factKey": "APP.SCHEDULE_STORED",
+        "sourceLane": "APP",
+        "requireCorrelation": false,
+        "onTimeout": "FAIL"
       },
       {
         "planStepId": "read-local-schedule",
@@ -1476,6 +1531,12 @@
         "ref": "sm-route-8",
         "planStepId": "tap-confirm",
         "domainSourceRef": "nesy.macro.select-route"
+      },
+      {
+        "ref": "sm-route-8d",
+        "planStepId": "wait-schedule-stored",
+        "domainSourceRef": "nesy.macro.select-route",
+        "note": "the confirm tap does not store; the store lands after a round trip"
       },
       {
         "ref": "sm-route-8a",

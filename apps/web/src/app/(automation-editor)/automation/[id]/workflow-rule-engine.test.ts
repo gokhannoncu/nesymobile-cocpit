@@ -98,6 +98,22 @@ describe("validateWorkflowState — stop list prerequisite", () => {
     expect(errors.map((error) => error.code)).toContain("MISSING_PERMISSIONS_AFTER_LAUNCH");
   });
 
+  it("rejects Delivery Operation with no barcode or proof lookup id, and names both", () => {
+    const nodes = seededCourierDay.map((entry) =>
+      entry.id === "deliver"
+        ? node("deliver", WorkflowNodeType.DELIVERY_OPERATION, { personDelivered: "Test" })
+        : entry,
+    );
+    const errors = validateWorkflowState({ nodes, connections: chain(nodes) });
+    const deliver = errors.filter((error) => error.nodeId === "deliver");
+
+    expect(deliver).toHaveLength(1);
+    expect(deliver[0]?.title).toContain("Barcode");
+    expect(deliver[0]?.title).toContain("Proof Lookup Id");
+    expect(deliver[0]?.detail).toContain("Barcode is required.");
+    expect(deliver[0]?.detail).toContain("Proof Lookup Id is required.");
+  });
+
   it("still rejects a courier operation with no route selection upstream", () => {
     const nodes = [
       node("launch-app", WorkflowNodeType.LAUNCH_APP, { country: "RS", environment: "stage", clearState: false }),

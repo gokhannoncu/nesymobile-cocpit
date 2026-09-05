@@ -378,6 +378,25 @@ const APP_SOURCES: readonly EvidenceSourceDefinition[] = [
     requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
   },
   {
+    sourceKey: "nesy.app.schedule-stored",
+    plane: "APP",
+    kind: "SDK_EVENT",
+    // PRIMARY: the device stating that its own store committed. Nothing else can
+    // answer it — the projection below reads the RESULT of this write, so a step
+    // that waits on the projection is waiting on itself.
+    authority: "PRIMARY",
+    displayName: "Device committed a schedule to local storage",
+    factKey: NESY_FACTS.SCHEDULE_STORED,
+    observationRef: "nesy.events.critical/schedule-stored",
+    freshness: APP_FRESHNESS,
+    // Entity-correlated on the schedule, like the status wire it ships beside, so
+    // a store belonging to another tour cannot answer for this one.
+    correlation: ENTITY_CORRELATION,
+    redaction: { redactPaths: [] },
+    preservesRawEvidence: true,
+    requiredCapabilityRefs: ["domain.nesy.adapter.event-stream"],
+  },
+  {
     sourceKey: "nesy.app.schedule-status-approved",
     plane: "APP",
     kind: "SDK_EVENT",
@@ -481,7 +500,11 @@ const LOCAL_SOURCES: readonly EvidenceSourceDefinition[] = [
     // AUTHORITATIVE, not confirmatory: Room is where the working plan actually
     // lives, and the screen reads from it. If they disagree, Room is the fact.
     authority: "PRIMARY",
-    displayName: "Schedule persisted with its stops",
+    // NOT "with its stops": the SDK computes this as `schedule != null && meta
+    // != null` on purpose, because a freshly selected route stores an empty
+    // schedule and the courier fills it by loading the vehicle. The stop count is
+    // a separate claim — see `nesy.local.schedule-body`.
+    displayName: "Schedule persisted",
     factKey: NESY_FACTS.SCHEDULE_PERSISTED,
     observationRef: "nesy.db.schedule",
     freshness: APP_FRESHNESS,

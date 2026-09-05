@@ -510,7 +510,19 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   run_5b038e00 while reverting the mirrored `absentTarget: false` the host
   //   had briefly written, which would have made every existence test answer
   //   true in both states.
-  version: { major: 1, minor: 45, patch: 1 },
+  // 1.46.0 — select-route waits for the STORE before reading Room. The confirm
+  //   tap does not persist anything: `Task/CreateEmptyScheduleDocument` goes out
+  //   after it returns and the write lands after that response plus several
+  //   async hops. Measured on run_070214b6 and run_bfd12672 (2026-09-05): the
+  //   local read ran ~530ms BEFORE the create call even started, found an empty
+  //   Room, and `route-assert-selection` reported four VIOLATED schedule
+  //   requirements — a correct empty day judged as a broken selection. Only the
+  //   "day already exists" path had ever been exercised, where the schedule was
+  //   already in Room and there was no race to lose. New `APP.SCHEDULE_STORED`
+  //   fact, fed by the device's own store-time wire, and a `wait-schedule-stored`
+  //   step between the tap and the read. Requires the mobile build that emits
+  //   `SCHEDULE_STORED`; an older APK cannot satisfy the wait.
+  version: { major: 1, minor: 46, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

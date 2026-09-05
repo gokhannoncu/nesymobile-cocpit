@@ -304,6 +304,25 @@ export function registerNesyDeviceEventSources(registry: EvidenceSourceRegistry)
     correlationField: 'schedule_id',
   })
   registry.register({
+    sourceEvent: 'SCHEDULE_STORED',
+    factKey: 'APP.SCHEDULE_STORED',
+    plane: 'APP',
+    subtype: 'schedule-stored',
+    authority: 'PRIMARY',
+    deliveryLanes: ['RECEIPT_SAFE', 'ORDERED_REQUIRED'],
+    freshnessMaxAgeMs: BUSINESS_EVENT_MAX_AGE_MS,
+    // Always `true` on the wire: the proposition IS the store, so unlike the
+    // approval below there is no negative case to observe. Selecting a route
+    // stores an EMPTY schedule on purpose, which is why the approval boolean
+    // cannot stand in for this — it is legitimately false at that moment, and a
+    // WAIT_EVENT resolves only on a true fact.
+    valueField: 'schedule_stored',
+    // Same schedule identity as the tour events, so a store can be joined to the
+    // tour it belongs to even though the route leg cannot bind an entity to it:
+    // the id is what this very store mints.
+    correlationField: 'schedule_id',
+  })
+  registry.register({
     sourceEvent: 'SCHEDULE_STATUS_APPROVED',
     factKey: 'APP.SCHEDULE_STATUS_APPROVED',
     plane: 'APP',

@@ -29,9 +29,6 @@ import {
   coerceOpenParcelParams,
   coerceOpenShipmentParams,
   coerceSelectRouteParams,
-  parseDeliveryOperationParams,
-  parseScanBarcodeParams,
-  parseWaitParams,
   ScanBarcodeSchema,
 } from "./node-config-registry";
 
@@ -398,11 +395,41 @@ function SelectedNodeForm({
   }
 
   if (node.type === "DELIVERY_OPERATION") {
+    const barcode = (config.barcode as string) ?? "";
+    const proofLookupId = (config.proofLookupId as string) ?? "";
     const personDelivered = (config.personDelivered as string) ?? "";
     const waitBeforeDelivery = String(config.waitBeforeDelivery ?? "0");
 
     return (
       <div className="space-y-4">
+        <FormField
+          label="Barcode"
+          required
+          helperText="Typed into the delivery screen's scan field — the item's legacySystemShortBarcode."
+          error={errors.barcode}
+        >
+          <input
+            type="text"
+            className={getFieldControlClassName(Boolean(errors.barcode))}
+            placeholder="e.g. 6880051000313515"
+            value={barcode}
+            onChange={(event) => onChange({ barcode: event.target.value })}
+          />
+        </FormField>
+        <FormField
+          label="Proof Lookup Id"
+          required
+          helperText="Looked up in the back office to confirm the delivery — the shipment's waybill / trackingNumber."
+          error={errors.proofLookupId}
+        >
+          <input
+            type="text"
+            className={getFieldControlClassName(Boolean(errors.proofLookupId))}
+            placeholder="e.g. 72297210092948"
+            value={proofLookupId}
+            onChange={(event) => onChange({ proofLookupId: event.target.value })}
+          />
+        </FormField>
         <FormField
           label="Person Delivered"
           helperText="Name of the person delivered to (if left blank, read from logcat)"
