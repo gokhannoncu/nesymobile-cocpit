@@ -45,3 +45,6 @@ apps/api/_*
 # here. RUN_PLAY once pointed at a script in this directory that had already
 # been deleted; anything a future run needs belongs in scripts/ instead.
 scratchpad/
+
+# Local opt-in performance traces (large, device-specific diagnostic artifacts).
+artifacts/live-profile/

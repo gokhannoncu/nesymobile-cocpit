@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
 import { buildRunManifest, createInitialStepOutcome } from '@nesy/execution-contract'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const canonicalOracleKey = vi.hoisted(() =>
   vi.fn(() => 'canonical-oracle-revision-key'),
@@ -16,6 +16,7 @@ vi.mock('@nesy/execution-contract', async (importOriginal) => {
 })
 
 import {
+  createPrismaExecutionPersistence,
   PrismaExecutionPersistence,
   type PrismaRuntimeClient,
 } from './bridgeflow-prisma-persistence.js'
@@ -737,6 +738,115 @@ describe('PrismaExecutionPersistence', () => {
     )
   })
 
+  it('combines step start and recovery checkpoint under one fenced transaction', async () => {
+    const client = clientFixture()
+    vi.mocked(client.bridgeFlowRunRuntime.findUnique).mockResolvedValue({
+      recoveryCheckpointRevision: 0,
+      recoveryCheckpoint: null,
+      recoveryLeaseToken: 'checkpoint-token',
+      recoveryLeaseEpoch: 1n,
+      recoveryLeaseExpiresAt: new Date('2026-08-05T16:01:00.000Z'),
+    } as never)
+    vi.mocked(client.bridgeFlowRunRuntime.updateMany).mockResolvedValue({ count: 1 } as never)
+    const persistence = new PrismaExecutionPersistence(
+      client,
+      () => new Date('2026-08-05T16:00:00.000Z'),
+    )
+
+    await persistence.persistStepStart({
+      occurrence: {
+        runId: 'run-batch-start',
+        occurrenceId: 'occ-1',
+        planStepId: 'step-1',
+        occurrenceIndex: 0,
+        iterationKey: 'root',
+        requestId: 'request-1',
+        startedAtMs: 1,
+        recoveryFence: { token: 'checkpoint-token', epoch: 1 },
+        outcome: { ...createInitialStepOutcome(), actionResult: 'RUNNING' },
+      },
+      checkpoint: {
+        runId: 'run-batch-start',
+        revision: 1,
+        nextStepId: 'step-1',
+        runtimeIterationKey: 'root',
+        occurrenceCounts: { 'step-1': 1 },
+        completedOccurrenceIds: [],
+        completedIterationKeys: [],
+        continuationStack: [],
+        outcomeState: {
+          stopped: false,
+          unknownEffect: false,
+          automationFailure: false,
+          evidenceInsufficient: false,
+          productVerdicts: [],
+          cleanupResult: 'SUCCEEDED',
+          resourceReleaseResult: 'RELEASED',
+          schedulerDisposition: 'RELEASED',
+          operationalDisposition: 'OK',
+        },
+        recoveryFence: { token: 'checkpoint-token', epoch: 1 },
+      },
+    } as never)
+
+    expect(client.$transaction).toHaveBeenCalledTimes(1)
+    expect(client.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(client.bridgeFlowStepOccurrence.upsert).toHaveBeenCalledTimes(1)
+    expect(client.bridgeFlowRunRuntime.updateMany).toHaveBeenCalledTimes(1)
+    expect(client.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      client.bridgeFlowStepOccurrence.upsert.mock.invocationCallOrder[0] ??
+        Number.POSITIVE_INFINITY,
+    )
+    expect(client.bridgeFlowStepOccurrence.upsert.mock.invocationCallOrder[0]).toBeLessThan(
+      client.bridgeFlowRunRuntime.updateMany.mock.invocationCallOrder[0] ??
+        Number.POSITIVE_INFINITY,
+    )
+  })
+
+  it('writes batched action transitions with one fence lock', async () => {
+    const client = clientFixture()
+    vi.mocked(client.bridgeFlowRunRuntime.findUnique).mockResolvedValue({
+      recoveryLeaseToken: 'action-token',
+      recoveryLeaseEpoch: 2n,
+      recoveryLeaseExpiresAt: new Date('2026-08-05T16:01:00.000Z'),
+    } as never)
+    const persistence = new PrismaExecutionPersistence(
+      client,
+      () => new Date('2026-08-05T16:00:00.000Z'),
+    )
+
+    await persistence.persistActionTransitions([
+      {
+        runId: 'run-actions',
+        occurrenceId: 'occ-1',
+        recoveryFence: { token: 'action-token', epoch: 2 },
+        transition: {
+          phase: 'RECEIVED',
+          requestId: 'request-1',
+          atMs: 1,
+          evidenceRef: 'executor:received',
+          terminal: null,
+        },
+      },
+      {
+        runId: 'run-actions',
+        occurrenceId: 'occ-1',
+        recoveryFence: { token: 'action-token', epoch: 2 },
+        transition: {
+          phase: 'TARGET_RESOLVED',
+          requestId: 'request-1',
+          atMs: 2,
+          evidenceRef: 'executor:target-resolved',
+          terminal: null,
+        },
+      },
+    ] as never)
+
+    expect(client.$transaction).toHaveBeenCalledTimes(1)
+    expect(client.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(client.bridgeFlowActionTransition.upsert).toHaveBeenCalledTimes(2)
+  })
+
   it('accepts legal loop-frame removal only at the next checkpoint revision', async () => {
     const client = clientFixture()
     vi.mocked(client.bridgeFlowRunRuntime.updateMany).mockResolvedValue({
@@ -1009,5 +1119,44 @@ describe('PrismaExecutionPersistence', () => {
     expect(migration).toContain(
       'CREATE FUNCTION "protect_published_verdict_domain_pack_version"()',
     )
+  })
+})
+
+describe('batch persistence switch', () => {
+  const original = process.env.NESY_PERSISTENCE_BATCH
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.NESY_PERSISTENCE_BATCH
+    else process.env.NESY_PERSISTENCE_BATCH = original
+  })
+
+  it('offers the merged step boundaries by default', () => {
+    delete process.env.NESY_PERSISTENCE_BATCH
+    const persistence = createPrismaExecutionPersistence()
+    expect(typeof persistence.persistStepStart).toBe('function')
+    expect(typeof persistence.persistStepCompletion).toBe('function')
+    expect(typeof persistence.persistActionTransitions).toBe('function')
+  })
+
+  it('hides them so the executor feature-detects the serial path', () => {
+    process.env.NESY_PERSISTENCE_BATCH = '0'
+    const persistence = createPrismaExecutionPersistence()
+    // The executor branches on `!== undefined`, so an own undefined property is
+    // what makes an A/B arm take the pre-batch route with the same build.
+    expect(persistence.persistStepStart).toBeUndefined()
+    expect(persistence.persistStepCompletion).toBeUndefined()
+    expect(persistence.persistActionTransitions).toBeUndefined()
+    expect(typeof persistence.persistStepOccurrence).toBe('function')
+    expect(typeof persistence.persistRecoveryCheckpoint).toBe('function')
+  })
+
+  it('applies to direct construction, which is what the execution queue uses', () => {
+    process.env.NESY_PERSISTENCE_BATCH = '0'
+    // `bridgeflow-execution-queue` builds this class itself, so a switch that
+    // only lived in the factory would silently leave every real run on batch.
+    const persistence = new PrismaExecutionPersistence({} as unknown as PrismaRuntimeClient)
+    expect(persistence.persistStepStart).toBeUndefined()
+    expect(persistence.persistStepCompletion).toBeUndefined()
+    expect(persistence.persistActionTransitions).toBeUndefined()
   })
 })

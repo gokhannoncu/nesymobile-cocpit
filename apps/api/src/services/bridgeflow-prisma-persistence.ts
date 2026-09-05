@@ -1,4 +1,5 @@
 import { Prisma, prisma, type PrismaClient } from '@nesy/db'
+import { batchPersistenceEnabled } from './diagnostics/live-profile-flags.js'
 import {
   assertInjectedFaultRecord,
   planInjectedFault,
@@ -37,9 +38,12 @@ type PersistedStepOccurrence = StepOccurrence & {
   recoveryFence?: RecoveryFence
 }
 
-interface PersistedRecoveryCheckpoint {
+type PersistStepBoundaryInput = Parameters<NonNullable<ExecutionPersistencePort['persistStepStart']>>[0]
+type PersistRecoveryCheckpointInput = Parameters<ExecutionPersistencePort['persistRecoveryCheckpoint']>[0]
+
+interface CompleteRecoveryCheckpoint {
   runId: string
-  revision: number
+  revision?: number
   nextStepId: string | null
   runtimeIterationKey: string
   occurrenceCounts: Readonly<Record<string, number>>
@@ -73,7 +77,20 @@ export class PrismaExecutionPersistence
   constructor(
     private readonly client: PrismaRuntimeClient,
     private readonly now: () => Date = () => new Date(),
-  ) {}
+  ) {
+    // The executor selects the merged step boundaries by feature-detecting these
+    // optional ports, so an own `undefined` is what returns an arm — or a
+    // rollback — to the pre-batch serial path without a second build. It belongs
+    // in the constructor because the execution queue builds this class directly
+    // and would otherwise never see a factory-level switch.
+    if (!batchPersistenceEnabled()) {
+      Object.assign(this, {
+        persistStepStart: undefined,
+        persistStepCompletion: undefined,
+        persistActionTransitions: undefined,
+      })
+    }
+  }
 
   async persistRunStart(record: PersistedRunStart): Promise<RecoveryFence> {
     const { manifest } = record
@@ -142,89 +159,35 @@ export class PrismaExecutionPersistence
   }
 
   async persistStepOccurrence(occurrence: PersistedStepOccurrence): Promise<void> {
-    const terminal = occurrence.outcome.actionResult !== 'RUNNING'
-    const data = {
-      planStepId: occurrence.planStepId,
-      occurrenceIndex: occurrence.occurrenceIndex,
-      iterationKey: occurrence.iterationKey,
-      requestId: occurrence.requestId,
-      lifecycle: terminal ? 'COMPLETED' : 'RUNNING',
-      actionResult: occurrence.outcome.actionResult,
-      continueGateResult: occurrence.outcome.continueGateResult,
-      finalOracleResult: occurrence.outcome.finalOracleResult,
-      cleanupResult: occurrence.outcome.cleanupResult,
-      startedAt:
-        occurrence.startedAtMs === undefined
-          ? this.now()
-          : new Date(occurrence.startedAtMs),
-      ...(terminal ? { completedAt: this.now() } : {}),
-    }
     await this.withFence(occurrence.runId, occurrence.recoveryFence, (client) =>
-      client.bridgeFlowStepOccurrence.upsert({
-      where: {
-        runId_occurrenceId: {
-          runId: occurrence.runId,
-          occurrenceId: occurrence.occurrenceId,
-        },
-      },
-      create: {
-        runId: occurrence.runId,
-        occurrenceId: occurrence.occurrenceId,
-        ...data,
-      },
-      update: data,
-      }))
-    publishRunLiveEvent({
-      runId: occurrence.runId,
-      kind: 'STEP',
-      level: terminal ? runLiveLevelFor(occurrence.outcome.actionResult) : 'INFO',
-      title: `${occurrence.planStepId} ${terminal ? 'COMPLETED' : 'RUNNING'}${
-        terminal ? ` · ${occurrence.outcome.actionResult}` : ''
-      }`,
-      dedupeKey: runLiveKeys.step(
-        occurrence.occurrenceId,
-        terminal ? 'COMPLETED' : 'RUNNING',
-        occurrence.outcome.actionResult,
-      ),
-      detail: {
-        occurrenceId: occurrence.occurrenceId,
-        planStepId: occurrence.planStepId,
-        iterationKey: occurrence.iterationKey,
-        actionResult: occurrence.outcome.actionResult,
-        continueGateResult: occurrence.outcome.continueGateResult,
-        finalOracleResult: occurrence.outcome.finalOracleResult,
-      },
+      this.persistStepOccurrenceWithin(client, occurrence))
+    this.publishStepOccurrence(occurrence)
+  }
+
+  async persistStepStart(input: PersistStepBoundaryInput): Promise<void> {
+    const checkpoint = this.requireCompleteRecoveryCheckpoint(input.checkpoint)
+    await this.withFence(input.occurrence.runId, input.occurrence.recoveryFence, async (client) => {
+      await this.persistStepOccurrenceWithin(client, input.occurrence)
+      await this.persistRecoveryCheckpointWithin(client, checkpoint)
     })
+    this.publishStepOccurrence(input.occurrence)
+  }
+
+  async persistStepCompletion(input: PersistStepBoundaryInput): Promise<void> {
+    const checkpoint = this.requireCompleteRecoveryCheckpoint(input.checkpoint)
+    await this.withFence(input.occurrence.runId, input.occurrence.recoveryFence, async (client) => {
+      await this.persistRecoveryCheckpointWithin(client, checkpoint)
+      await this.persistStepOccurrenceWithin(client, input.occurrence)
+    })
+    this.publishStepOccurrence(input.occurrence)
   }
 
   async persistActionTransition(
     record: PersistedActionTransition & { recoveryFence?: RecoveryFence },
   ): Promise<void> {
     const transition = record.transition
-    const data = {
-      atMs: BigInt(transition.atMs),
-      evidenceRef: transition.evidenceRef,
-      terminal: transition.terminal,
-    }
     await this.withFence(record.runId, record.recoveryFence, (client) =>
-      client.bridgeFlowActionTransition.upsert({
-      where: {
-        runId_occurrenceId_requestId_phase: {
-          runId: record.runId,
-          occurrenceId: record.occurrenceId,
-          requestId: transition.requestId,
-          phase: transition.phase,
-        },
-      },
-      create: {
-        runId: record.runId,
-        occurrenceId: record.occurrenceId,
-        requestId: transition.requestId,
-        phase: transition.phase,
-        ...data,
-      },
-      update: data,
-      }))
+      this.persistActionTransitionWithin(client, record))
     publishRunLiveEvent({
       runId: record.runId,
       kind: 'ACTION',
@@ -240,6 +203,40 @@ export class PrismaExecutionPersistence
         evidenceRef: transition.evidenceRef,
       },
     })
+  }
+
+  async persistActionTransitions(
+    records: readonly (PersistedActionTransition & { recoveryFence?: RecoveryFence })[],
+  ): Promise<void> {
+    if (records.length === 0) return
+    const first = records[0]!
+    for (const record of records) {
+      if (record.runId !== first.runId || record.recoveryFence?.token !== first.recoveryFence?.token ||
+          record.recoveryFence?.epoch !== first.recoveryFence?.epoch) {
+        throw new Error('batched action transitions must share one run fence')
+      }
+    }
+    await this.withFence(first.runId, first.recoveryFence, async (client) => {
+      for (const record of records) await this.persistActionTransitionWithin(client, record)
+    })
+    for (const record of records) {
+      const transition = record.transition
+      publishRunLiveEvent({
+        runId: record.runId,
+        kind: 'ACTION',
+        level: transition.terminal === null ? 'INFO' : runLiveLevelFor(transition.terminal),
+        title: `${record.occurrenceId} · ${transition.phase}`,
+        atMs: transition.atMs,
+        dedupeKey: runLiveKeys.action(record.occurrenceId, transition.requestId, transition.phase),
+        detail: {
+          occurrenceId: record.occurrenceId,
+          requestId: transition.requestId,
+          phase: transition.phase,
+          terminal: transition.terminal,
+          evidenceRef: transition.evidenceRef,
+        },
+      })
+    }
   }
 
   async persistWaitResult(
@@ -319,47 +316,13 @@ export class PrismaExecutionPersistence
   }
 
   async persistRecoveryCheckpoint(
-    checkpoint: PersistedRecoveryCheckpoint,
+    checkpoint: PersistRecoveryCheckpointInput,
   ): Promise<void> {
-    const persist = async (client: PrismaRuntimeClient): Promise<void> => {
-    const current = await client.bridgeFlowRunRuntime.findUnique({
-      where: { runId: checkpoint.runId },
-      select: {
-        recoveryCheckpoint: true,
-        recoveryCheckpointRevision: true,
-        recoveryLeaseToken: true,
-        recoveryLeaseEpoch: true,
-        recoveryLeaseExpiresAt: true,
-      },
-    })
-    if (current === null) throw new Error('cannot checkpoint a missing BridgeFlow run')
-    this.assertFenceRow(current, checkpoint.recoveryFence)
-    if (checkpoint.revision !== current.recoveryCheckpointRevision + 1) {
-      throw new Error('recovery checkpoint revision must advance by exactly one')
-    }
-    const previous = current.recoveryCheckpoint === null
-      ? undefined
-      : recoveryCheckpoint(current.recoveryCheckpoint, checkpoint.runId)
-    if (previous !== undefined) validateCheckpointTransition(previous, checkpoint)
-    const updated = await client.bridgeFlowRunRuntime.updateMany({
-      where: {
-        runId: checkpoint.runId,
-        recoveryCheckpointRevision: current.recoveryCheckpointRevision,
-        ...fenceWhere(checkpoint.recoveryFence, this.now()),
-      },
-      data: {
-        recoveryCheckpointRevision: checkpoint.revision,
-        recoveryCheckpoint: toInputJson(checkpoint),
-      },
-    })
-    if (updated.count !== 1) {
-      throw new Error('recovery checkpoint fence or revision lost')
-    }
-    }
+    const complete = this.requireCompleteRecoveryCheckpoint(checkpoint)
     await this.withFence(
-      checkpoint.runId,
-      checkpoint.recoveryFence,
-      persist,
+      complete.runId,
+      complete.recoveryFence,
+      (client) => this.persistRecoveryCheckpointWithin(client, complete),
     )
   }
 
@@ -864,6 +827,158 @@ export class PrismaExecutionPersistence
     if (released.count !== 1) throw new Error('recovery lease release lost ownership')
   }
 
+  private requireCompleteRecoveryCheckpoint(
+    checkpoint: PersistRecoveryCheckpointInput,
+  ): CompleteRecoveryCheckpoint {
+    if (checkpoint.revision === undefined) throw new Error('recovery checkpoint revision is required')
+    if (checkpoint.continuationStack === undefined) {
+      throw new Error('recovery checkpoint continuation stack is required')
+    }
+    if (checkpoint.outcomeState === undefined) {
+      throw new Error('recovery checkpoint outcome state is required')
+    }
+    return {
+      ...checkpoint,
+      revision: checkpoint.revision,
+      continuationStack: checkpoint.continuationStack,
+      outcomeState: checkpoint.outcomeState,
+    }
+  }
+
+  private async persistStepOccurrenceWithin(
+    client: PrismaRuntimeClient,
+    occurrence: PersistedStepOccurrence,
+  ): Promise<void> {
+    const terminal = occurrence.outcome.actionResult !== 'RUNNING'
+    const data = {
+      planStepId: occurrence.planStepId,
+      occurrenceIndex: occurrence.occurrenceIndex,
+      iterationKey: occurrence.iterationKey,
+      requestId: occurrence.requestId,
+      lifecycle: terminal ? 'COMPLETED' : 'RUNNING',
+      actionResult: occurrence.outcome.actionResult,
+      continueGateResult: occurrence.outcome.continueGateResult,
+      finalOracleResult: occurrence.outcome.finalOracleResult,
+      cleanupResult: occurrence.outcome.cleanupResult,
+      startedAt:
+        occurrence.startedAtMs === undefined
+          ? this.now()
+          : new Date(occurrence.startedAtMs),
+      ...(terminal ? { completedAt: this.now() } : {}),
+    }
+    await client.bridgeFlowStepOccurrence.upsert({
+      where: {
+        runId_occurrenceId: {
+          runId: occurrence.runId,
+          occurrenceId: occurrence.occurrenceId,
+        },
+      },
+      create: {
+        runId: occurrence.runId,
+        occurrenceId: occurrence.occurrenceId,
+        ...data,
+      },
+      update: data,
+    })
+  }
+
+  private publishStepOccurrence(occurrence: PersistedStepOccurrence): void {
+    const terminal = occurrence.outcome.actionResult !== 'RUNNING'
+    publishRunLiveEvent({
+      runId: occurrence.runId,
+      kind: 'STEP',
+      level: terminal ? runLiveLevelFor(occurrence.outcome.actionResult) : 'INFO',
+      title: `${occurrence.planStepId} ${terminal ? 'COMPLETED' : 'RUNNING'}${
+        terminal ? ` · ${occurrence.outcome.actionResult}` : ''
+      }`,
+      dedupeKey: runLiveKeys.step(
+        occurrence.occurrenceId,
+        terminal ? 'COMPLETED' : 'RUNNING',
+        occurrence.outcome.actionResult,
+      ),
+      detail: {
+        occurrenceId: occurrence.occurrenceId,
+        planStepId: occurrence.planStepId,
+        iterationKey: occurrence.iterationKey,
+        actionResult: occurrence.outcome.actionResult,
+        continueGateResult: occurrence.outcome.continueGateResult,
+        finalOracleResult: occurrence.outcome.finalOracleResult,
+      },
+    })
+  }
+
+  private async persistActionTransitionWithin(
+    client: PrismaRuntimeClient,
+    record: PersistedActionTransition & { recoveryFence?: RecoveryFence },
+  ): Promise<void> {
+    const transition = record.transition
+    const data = {
+      atMs: BigInt(transition.atMs),
+      evidenceRef: transition.evidenceRef,
+      terminal: transition.terminal,
+    }
+    await client.bridgeFlowActionTransition.upsert({
+      where: {
+        runId_occurrenceId_requestId_phase: {
+          runId: record.runId,
+          occurrenceId: record.occurrenceId,
+          requestId: transition.requestId,
+          phase: transition.phase,
+        },
+      },
+      create: {
+        runId: record.runId,
+        occurrenceId: record.occurrenceId,
+        requestId: transition.requestId,
+        phase: transition.phase,
+        ...data,
+      },
+      update: data,
+    })
+  }
+
+  private async persistRecoveryCheckpointWithin(
+    client: PrismaRuntimeClient,
+    checkpoint: CompleteRecoveryCheckpoint,
+  ): Promise<void> {
+    const current = await client.bridgeFlowRunRuntime.findUnique({
+      where: { runId: checkpoint.runId },
+      select: {
+        recoveryCheckpoint: true,
+        recoveryCheckpointRevision: true,
+        recoveryLeaseToken: true,
+        recoveryLeaseEpoch: true,
+        recoveryLeaseExpiresAt: true,
+      },
+    })
+    if (current === null) throw new Error('cannot checkpoint a missing BridgeFlow run')
+    this.assertFenceRow(current, checkpoint.recoveryFence)
+    if (checkpoint.revision === undefined) {
+      throw new Error('recovery checkpoint revision is required')
+    }
+    if (checkpoint.revision !== current.recoveryCheckpointRevision + 1) {
+      throw new Error('recovery checkpoint revision must advance by exactly one')
+    }
+    const previous = current.recoveryCheckpoint === null
+      ? undefined
+      : recoveryCheckpoint(current.recoveryCheckpoint, checkpoint.runId)
+    if (previous !== undefined) validateCheckpointTransition(previous, checkpoint)
+    const updated = await client.bridgeFlowRunRuntime.updateMany({
+      where: {
+        runId: checkpoint.runId,
+        recoveryCheckpointRevision: current.recoveryCheckpointRevision,
+        ...fenceWhere(checkpoint.recoveryFence, this.now()),
+      },
+      data: {
+        recoveryCheckpointRevision: checkpoint.revision,
+        recoveryCheckpoint: toInputJson(checkpoint),
+      },
+    })
+    if (updated.count !== 1) {
+      throw new Error('recovery checkpoint fence or revision lost')
+    }
+  }
+
   private async withFence<T>(
     runId: string,
     fence: RecoveryFence | undefined,
@@ -1060,7 +1175,7 @@ function recoveryCheckpoint(value: unknown, runId: string): RecoverySnapshot {
 
 function validateCheckpointTransition(
   previous: RecoverySnapshot,
-  incoming: PersistedRecoveryCheckpoint,
+  incoming: CompleteRecoveryCheckpoint,
 ): void {
   assertImmutablePrefix(
     previous.completedOccurrenceIds,

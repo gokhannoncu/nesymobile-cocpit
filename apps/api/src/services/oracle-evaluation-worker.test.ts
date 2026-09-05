@@ -397,3 +397,90 @@ describe('OracleEvaluationWorker', () => {
     await expect(resultPromise).resolves.toMatchObject({ status: 'CANCELLED' })
   })
 })
+
+describe('unchanged revisions are not rewritten every poll', () => {
+  /**
+   * A gate whose fact never arrives, with host-held state wired so the 250ms
+   * refresh poll is active. `run_a041c2e8` did exactly this for 120s and left
+   * 479 identical rows behind.
+   */
+  async function pollUntilTimeout(heartbeatMs: number) {
+    const runtime = new BridgeFlowEvidenceRuntime()
+    const { persistence, revisions } = persistenceFixture()
+    let refreshes = 0
+    const worker = new OracleEvaluationWorker({
+      runtime,
+      persistence,
+      refreshFacts: () => {
+        refreshes += 1
+      },
+      unchangedRevisionHeartbeatMs: heartbeatMs,
+    })
+    const result = await worker.runContinueGate({
+      ...scope,
+      policy: { allOf: ['delivery.persisted'], deadlineMs: 1_400, unknownPolicy: 'RETRY' },
+      startedAtMs: Date.now(),
+    })
+    return { result, revisions, refreshes }
+  }
+
+  it('collapses a repeated waiting decision to one row plus the timeout', async () => {
+    const { result, revisions, refreshes } = await pollUntilTimeout(60_000)
+
+    expect(result.status).toBe('TIMED_OUT')
+    // ~1400ms at a 250ms poll is five or six passes; only the first waiting
+    // evaluation and the terminal timeout may be durable.
+    expect(refreshes).toBeGreaterThanOrEqual(4)
+    expect(revisions).toHaveLength(2)
+    expect(revisions[0]?.revision).toBe(1)
+    expect(revisions[1]?.revision).toBe(2)
+    // The first row is the waiting decision, the last is the terminal timeout:
+    // deduplication must never be what swallows the record a run is judged on.
+    expect(revisions[0]?.evaluation.outcome).toBe('UNKNOWN')
+    expect(revisions.at(-1)?.evaluation.outcome).toBe('TIMED_OUT')
+  })
+
+  it('writes per poll again when the heartbeat is zero, which is the old cost', async () => {
+    const { result, revisions, refreshes } = await pollUntilTimeout(0)
+
+    expect(result.status).toBe('TIMED_OUT')
+    // One durable row per refresh, plus the timeout — the behaviour the
+    // deduplication replaces.
+    expect(revisions.length).toBeGreaterThanOrEqual(refreshes)
+  })
+
+  it('still writes a row as soon as the decision itself changes', async () => {
+    const runtime = new BridgeFlowEvidenceRuntime()
+    const { persistence, revisions } = persistenceFixture()
+    const worker = new OracleEvaluationWorker({
+      runtime,
+      persistence,
+      refreshFacts: () => undefined,
+      unchangedRevisionHeartbeatMs: 60_000,
+    })
+
+    const resultPromise = worker.runContinueGate({
+      ...scope,
+      policy: { allOf: ['delivery.persisted'], deadlineMs: 2_000, unknownPolicy: 'RETRY' },
+      startedAtMs: Date.now(),
+    })
+    setTimeout(() => {
+      runtime.publish({
+        runId: scope.runId,
+        fact: evidence('RECEIPT_SAFE'),
+        revision: 1,
+        lane: 'RECEIPT_SAFE',
+        correlationStatus: 'CORRELATED',
+        trust: 'RESOLVER_ACCEPTED',
+      })
+    }, 600)
+
+    const result = await resultPromise
+
+    expect(result.status).toBe('SATISFIED')
+    // The waiting decision once, then the satisfied one — never the same twice.
+    expect(revisions).toHaveLength(2)
+    expect(revisions[0]?.evaluation.outcome).toBe('UNKNOWN')
+    expect(revisions[1]?.evaluation.outcome).toBe('SATISFIED')
+  })
+})

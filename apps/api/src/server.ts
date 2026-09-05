@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { liveProfilingEnabled } from './services/diagnostics/live-profile-flags.js'
 import { loadEnv } from './env.js'
 import { buildApp } from './app.js'
 import { installNesyProxyDispatcher } from './lib/nesy-lan-proxy.js'
@@ -6,6 +7,12 @@ import { printStartupBanner } from './lib/startup-banner.js'
 import { startInboxRetentionSchedule } from './services/verdict-inbox-retention.js'
 
 async function main() {
+  // Prototypes are patched before the first run is queued, never at import.
+  if (liveProfilingEnabled()) {
+    await import('./services/diagnostics/live-run-profiler.js')
+    console.log('[live-profile] profiler hooks installed (NESY_LIVE_PROFILE)')
+  }
+
   const env = loadEnv()
 
   const proxy = await installNesyProxyDispatcher()

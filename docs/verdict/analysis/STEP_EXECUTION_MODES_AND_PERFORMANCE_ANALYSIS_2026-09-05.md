@@ -1,5 +1,7 @@
 # Adım bazında hızlı sürüş, seçilebilir doğrulama ve performans dönüşümü
 
+> Canlı ölçüm eklendi: [5 Eylül USB koşusu ve gerçek katman süreleri](LIVE_USB_WORKFLOW_BOTTLENECK_REPORT_2026-09-05.md). Aşağıdaki tarihsel run/kod analizi, yeni run ile birlikte okunmalı; farklı adım kapsamları nedeniyle toplam sürelerden hızlanma yüzdesi çıkarılmamalı.
+
 **Tarih:** 5 Eylül 2026  
 **Kapsam:** NesyMobile, uygulama içi Verdict SDK, Verdict Bridge, NesyMobileCocpit, yayınlanmış Nesy Courier paketi ve çalışan sistemin koşu kayıtları.  
 **Çalışma türü:** Kod ve kayıt analizi; önerilen tasarım ve uygulama sırası. Uygulama kodu, workflow, paket, veritabanı şeması ve çalışan servisler değiştirilmedi. Yeni cihaz koşusu başlatılmadı.

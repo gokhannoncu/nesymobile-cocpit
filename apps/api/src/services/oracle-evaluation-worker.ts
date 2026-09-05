@@ -69,6 +69,11 @@ export interface OracleWorkerOptions {
    * (or HTTP completion if that is absent), never the request start.
    */
   flushFacts?: (scope: EvidenceScope) => void | Promise<void>
+  /**
+   * Overrides {@link UNCHANGED_REVISION_HEARTBEAT_MS}. Zero restores the old
+   * write-every-poll behaviour, which is how a test can show the difference.
+   */
+  unchangedRevisionHeartbeatMs?: number
 }
 
 export interface ContinueGateWork extends EvidenceScope {
@@ -109,12 +114,63 @@ const NO_REFRESH = (): void => undefined
  */
 const HOST_STATE_POLL_MS = 250
 
+/**
+ * How long an UNCHANGED evaluation may go unrecorded.
+ *
+ * The 250ms poll is about reading often enough; it was never a reason to WRITE
+ * that often. Each pass used to persist a revision whether or not the decision
+ * had moved: one 120s wait for a dispatcher tour approval left 479 rows behind
+ * (`run_a041c2e8`, `permit-assert-approved`), every one of them the same
+ * outcome, and those writes were 89% of that run's entire database time. On the
+ * remote database the same wait would have spent roughly 43 seconds recording
+ * "still nothing", and the run's live feed showed 479 identical oracle entries.
+ *
+ * A revision is written when the decision changes and whenever it ends the
+ * loop. This heartbeat is the only reason an unchanged one is written at all:
+ * a two-minute wait should still look alive rather than silent.
+ */
+const UNCHANGED_REVISION_HEARTBEAT_MS = 5_000
+
+/**
+ * The decision-bearing shape of an evaluation, as a comparable string.
+ *
+ * `completedAtMs` is deliberately excluded: it moves with the clock rather than
+ * with the decision, and including it would defeat the deduplication it is
+ * supposed to permit. Everything a reader acts on — outcome, verdict, failure
+ * class, per-fact requirement states and the evidence behind them — is in.
+ */
+function decisionFingerprint(
+  evaluation: ContinueGateEvaluation | FinalOracleEvaluation,
+  reason: string | undefined,
+): string {
+  const requirements =
+    'requirementsByFact' in evaluation
+      ? Object.entries(evaluation.requirementsByFact)
+          .map(([factKey, requirement]) => ({
+            factKey,
+            state: requirement.state,
+            evidenceRefs: [...requirement.evidenceRefs].sort(),
+          }))
+          .sort((left, right) => left.factKey.localeCompare(right.factKey))
+      : null
+  return JSON.stringify({
+    outcome: evaluation.outcome,
+    productVerdict: 'productVerdict' in evaluation ? evaluation.productVerdict : null,
+    evaluationFailureClass:
+      'evaluationFailureClass' in evaluation ? evaluation.evaluationFailureClass : null,
+    reason: reason ?? ('reason' in evaluation ? evaluation.reason : null),
+    evidenceRefs: [...evaluation.evidenceRefs].sort(),
+    requirements,
+  })
+}
+
 export class OracleEvaluationWorker {
   private readonly runtime: BridgeFlowEvidenceRuntime
   private readonly persistence: OracleRevisionPersistencePort
   private readonly clock: () => number
   private readonly refreshFacts: (scope: EvidenceScope) => void
   private readonly flushFacts: ((scope: EvidenceScope) => void | Promise<void>) | undefined
+  private readonly unchangedRevisionHeartbeatMs: number
 
   constructor(options: OracleWorkerOptions) {
     this.runtime = options.runtime
@@ -122,6 +178,8 @@ export class OracleEvaluationWorker {
     this.clock = options.clock ?? Date.now
     this.refreshFacts = options.refreshFacts ?? NO_REFRESH
     this.flushFacts = options.flushFacts
+    this.unchangedRevisionHeartbeatMs =
+      options.unchangedRevisionHeartbeatMs ?? UNCHANGED_REVISION_HEARTBEAT_MS
   }
 
   async runContinueGate(work: ContinueGateWork): Promise<ContinueGateWorkerResult> {
@@ -149,6 +207,7 @@ export class OracleEvaluationWorker {
     })
     let evaluationRevision = checkpoint.latestRevision
     let afterEvidenceRevision = checkpoint.lastEvidenceRevision
+    const shouldWrite = this.revisionWriteGate()
 
     for (;;) {
       const before = this.preflight(work, deadlineAtMs)
@@ -186,15 +245,17 @@ export class OracleEvaluationWorker {
         }
         return beforePersist
       }
-      evaluationRevision += 1
-      await this.persist(
-        work,
-        'CONTINUE_GATE',
-        evaluationRevision,
-        afterEvidenceRevision,
-        evaluation,
-        evaluation.reason,
-      )
+      if (shouldWrite(evaluation, evaluation.reason, evaluation.outcome === 'SATISFIED')) {
+        evaluationRevision += 1
+        await this.persist(
+          work,
+          'CONTINUE_GATE',
+          evaluationRevision,
+          afterEvidenceRevision,
+          evaluation,
+          evaluation.reason,
+        )
+      }
 
       const afterPersist = this.preflight(work, deadlineAtMs)
       if (afterPersist !== undefined) {
@@ -264,6 +325,7 @@ export class OracleEvaluationWorker {
     })
     let evaluationRevision = checkpoint.latestRevision
     let afterEvidenceRevision = checkpoint.lastEvidenceRevision
+    const shouldWrite = this.revisionWriteGate()
 
     for (;;) {
       const before = this.preflight(work, deadlineAtMs)
@@ -318,14 +380,21 @@ export class OracleEvaluationWorker {
         }
         return beforePersist
       }
-      evaluationRevision += 1
-      await this.persist(
-        work,
-        'FINAL_ORACLE',
-        evaluationRevision,
-        afterEvidenceRevision,
-        evaluation,
+      const hasPending = Object.values(evaluation.requirementsByFact).some(
+        (requirement) => requirement.state === 'PENDING',
       )
+      if (
+        shouldWrite(evaluation, undefined, !hasPending || !hasEventualRequirements)
+      ) {
+        evaluationRevision += 1
+        await this.persist(
+          work,
+          'FINAL_ORACLE',
+          evaluationRevision,
+          afterEvidenceRevision,
+          evaluation,
+        )
+      }
 
       const afterPersist = this.preflight(work, deadlineAtMs)
       if (afterPersist !== undefined) {
@@ -339,9 +408,6 @@ export class OracleEvaluationWorker {
         }
         return afterPersist
       }
-      const hasPending = Object.values(evaluation.requirementsByFact).some(
-        (requirement) => requirement.state === 'PENDING',
-      )
       if (!hasPending) {
         if (evaluation.outcome === 'SATISFIED') return { status: 'SATISFIED', evaluation }
         if (evaluation.outcome === 'VIOLATED') return { status: 'VIOLATED', evaluation }
@@ -402,6 +468,37 @@ export class OracleEvaluationWorker {
    * The stability / requirement boundary still wins when it is sooner. Deadline
    * is only the last of the three: refresh wake, temporal boundary, deadline.
    */
+  /**
+   * One loop's decision about which evaluations earn a durable revision.
+   *
+   * Returns a predicate holding the previous decision, so callers keep their own
+   * revision counter and the timeout paths stay untouched — a timeout record
+   * must always land. `terminal` is passed by the caller for the evaluation that
+   * ends its loop: the dedupe must never be what drops the outcome a run is
+   * judged on, and asserting that here beats arguing it from the control flow.
+   */
+  private revisionWriteGate(): (
+    evaluation: ContinueGateEvaluation | FinalOracleEvaluation,
+    reason: string | undefined,
+    terminal: boolean,
+  ) => boolean {
+    let lastFingerprint: string | undefined
+    let lastWriteAtMs = Number.NEGATIVE_INFINITY
+    return (evaluation, reason, terminal) => {
+      const fingerprint = decisionFingerprint(evaluation, reason)
+      const nowMs = this.clock()
+      const write =
+        terminal ||
+        fingerprint !== lastFingerprint ||
+        nowMs - lastWriteAtMs >= this.unchangedRevisionHeartbeatMs
+      if (write) {
+        lastFingerprint = fingerprint
+        lastWriteAtMs = nowMs
+      }
+      return write
+    }
+  }
+
   private nextWake(
     stabilityBoundaryMs: number | undefined,
     nowMs: number,

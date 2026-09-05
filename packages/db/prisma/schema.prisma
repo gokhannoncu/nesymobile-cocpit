@@ -212,6 +212,8 @@ model WorkflowRun {
   bridgeflowFacts    BridgeFlowEvidenceFact[]
   bridgeflowRunBlocks BridgeFlowEvidenceRunBlock[]
   bridgeflowOracle   BridgeFlowOracleEvaluation[]
+  bridgeflowReportingOutbox BridgeFlowReportingOutbox[]
+  bridgeflowReportingProjections BridgeFlowReportingProjection[]
   testExecutions     VerdictTestExecution[]
   remoteActions      VerdictRemoteActionAttempt[]
   archives           WorkflowRunArchive[]
@@ -815,6 +817,63 @@ model BridgeFlowOracleEvaluation {
   @@unique([runId, occurrenceId, evaluatorKind, revision], map: "bridgeflow_oracle_evaluation_revision_key")
   @@index([runId, occurrenceId, evaluatorKind], map: "bridgeflow_oracle_evaluation_occurrence_idx")
   @@map("bridgeflow_oracle_evaluation")
+}
+
+/// Durable local outbox for derived reporting/projection events.
+/// Authoritative run state remains in the BridgeFlow runtime tables; these rows
+/// are retried at least once and deduped by a reporting sink.
+model BridgeFlowReportingOutbox {
+  id              String    @id @default(cuid())
+  eventId         String    @unique @map("event_id")
+  runId           String    @map("run_id")
+  occurrenceId    String?   @map("occurrence_id")
+  requestId       String?   @map("request_id")
+  originId        String    @map("origin_id")
+  schemaVersion   Int       @default(1) @map("schema_version")
+  sequence        BigInt
+  revision        Int       @default(1)
+  kind            String
+  payloadHash     String    @map("payload_hash")
+  payload         Json
+  status          String    @default("PENDING")
+  attempts        Int       @default(0)
+  claimedBy       String?   @map("claimed_by")
+  claimExpiresAt  DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  nextAttemptAt   DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError        String?   @map("last_error")
+  deliveredAt     DateTime? @map("delivered_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt, createdAt], map: "bridgeflow_reporting_outbox_pending_idx")
+  @@index([runId, sequence], map: "bridgeflow_reporting_outbox_run_sequence_idx")
+  @@map("bridgeflow_reporting_outbox")
+}
+
+/// Idempotent local reporting sink used by the outbox worker campaign tests.
+/// A future central sink must preserve the same event identity and monotonic
+/// projection revision semantics before it can replace this local sink.
+model BridgeFlowReportingProjection {
+  id              String   @id @default(cuid())
+  eventId         String   @unique @map("event_id")
+  runId           String   @map("run_id")
+  occurrenceId    String?  @map("occurrence_id")
+  originId        String   @map("origin_id")
+  schemaVersion   Int      @map("schema_version")
+  sequence        BigInt
+  revision        Int
+  kind            String
+  payloadHash     String   @map("payload_hash")
+  payload         Json
+  appliedAt       DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, originId, sequence], map: "bridgeflow_reporting_projection_sequence_key")
+  @@index([runId, revision], map: "bridgeflow_reporting_projection_revision_idx")
+  @@map("bridgeflow_reporting_projection")
 }
 
 /// Phase 5 TestExecutionQueue foundation.

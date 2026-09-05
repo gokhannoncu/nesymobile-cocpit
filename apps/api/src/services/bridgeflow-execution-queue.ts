@@ -62,6 +62,8 @@ import {
 } from './android-startup-permissions.js'
 import { deriveFacts, shipmentCorrelationAliases } from './derived-fact-engine.js'
 import { createControlExecutor } from '@nesy/control-channels/node'
+import { createProfiledControlExecutor } from './diagnostics/profiled-control.js'
+import { liveProfilingEnabled } from './diagnostics/live-profile-flags.js'
 import type { ControlExecutor } from '@nesy/control-contract'
 import {
   getScreenReadinessObserver,
@@ -1126,7 +1128,11 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
     // occurrence its emits belong to, and the generic-step runtime reads named
     // queries.
     const controlExecutor =
-      applicationId === undefined ? undefined : createControlExecutor({ applicationId })
+      applicationId === undefined
+        ? undefined
+        : liveProfilingEnabled()
+          ? createProfiledControlExecutor(applicationId)
+          : createControlExecutor({ applicationId })
     const telemetrySampler =
       deviceState?.runId === item.runId && deviceState.sessionId.trim() !== ''
         ? createRunTelemetrySampler({

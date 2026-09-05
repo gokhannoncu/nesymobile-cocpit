@@ -191,10 +191,19 @@ export interface ExecutionPersistencePort {
   persistRunStart(record: PersistedRunStart): MaybePromise<RecoveryFence | void>;
   persistStepOccurrence(occurrence: PersistedStepOccurrence): MaybePromise<void>;
   persistActionTransition(record: PersistedActionTransition): MaybePromise<void>;
+  persistActionTransitions?(records: readonly PersistedActionTransition[]): MaybePromise<void>;
   /** @deprecated Use settleWaitTerminal so every terminal source competes atomically. */
   persistWaitResult(result: PersistedWaitResult): MaybePromise<void>;
   settleWaitTerminal(result: PersistedWaitResult): MaybePromise<WaitTerminalSettlement>;
   persistRecoveryCheckpoint(checkpoint: PersistedRecoveryCheckpoint): MaybePromise<void>;
+  persistStepStart?(input: {
+    occurrence: PersistedStepOccurrence;
+    checkpoint: PersistedRecoveryCheckpoint;
+  }): MaybePromise<void>;
+  persistStepCompletion?(input: {
+    occurrence: PersistedStepOccurrence;
+    checkpoint: PersistedRecoveryCheckpoint;
+  }): MaybePromise<void>;
   persistOracleEvaluation(record: PersistedOracleEvaluation): MaybePromise<void>;
   persistRunResult(record: PersistedRunResult): MaybePromise<void>;
   /** Optional: fail closed before a physical/remote dispatch when the fence rotated. */
@@ -359,6 +368,10 @@ export class InMemoryExecutionPersistence implements ExecutionPersistencePort {
     this.actionTransitions.push(record.transition);
   }
 
+  persistActionTransitions(records: readonly PersistedActionTransition[]): void {
+    for (const record of records) this.persistActionTransition(record);
+  }
+
   persistWaitResult(result: PersistedWaitResult): void {
     void this.settleWaitTerminal(result);
   }
@@ -379,6 +392,22 @@ export class InMemoryExecutionPersistence implements ExecutionPersistencePort {
   persistRecoveryCheckpoint(checkpoint: PersistedRecoveryCheckpoint): void {
     this.assertExecutionFence(checkpoint.runId, checkpoint.recoveryFence);
     this.recoveryCheckpoints.push(structuredClone(checkpoint));
+  }
+
+  persistStepStart(input: {
+    occurrence: PersistedStepOccurrence;
+    checkpoint: PersistedRecoveryCheckpoint;
+  }): void {
+    this.persistStepOccurrence(input.occurrence);
+    this.persistRecoveryCheckpoint(input.checkpoint);
+  }
+
+  persistStepCompletion(input: {
+    occurrence: PersistedStepOccurrence;
+    checkpoint: PersistedRecoveryCheckpoint;
+  }): void {
+    this.persistRecoveryCheckpoint(input.checkpoint);
+    this.persistStepOccurrence(input.occurrence);
   }
 
   persistOracleEvaluation(record: PersistedOracleEvaluation): void {
@@ -919,8 +948,7 @@ export class BridgeFlowExecutor {
     };
     const outcome = createInitialStepOutcome();
     outcome.actionResult = "RUNNING";
-    await this.persistOccurrence(input.runId, step, context, outcome);
-    await this.persistRecoveryCheckpoint(input.runId, step.planStepId, runtimeIterationKey, state);
+    await this.persistStepStart(input.runId, step, context, outcome, step.planStepId, runtimeIterationKey, state);
 
     let next = step.next;
     let stop = false;
@@ -1220,8 +1248,7 @@ export class BridgeFlowExecutor {
       nextStepId: next,
       runtimeIterationKey,
     };
-    await this.persistRecoveryCheckpoint(input.runId, next, runtimeIterationKey, state);
-    await this.persistOccurrence(input.runId, step, context, outcome);
+    await this.persistStepCompletion(input.runId, step, context, outcome, next, runtimeIterationKey, state);
     return { next, stop };
   }
 
@@ -1240,15 +1267,18 @@ export class BridgeFlowExecutor {
     }
     await this.assertLiveFence(runId, context.recoveryFence);
     const transitions = this.buildPreEffectTransitions(context);
-    for (const transition of transitions) {
-      await this.options.persistence.persistActionTransition({
+    const records = transitions.map((transition) => ({
         runId,
         occurrenceId: context.occurrenceId,
         transition,
         ...(context.recoveryFence === undefined
           ? {}
           : { recoveryFence: context.recoveryFence }),
-      });
+      }));
+    if (this.options.persistence.persistActionTransitions !== undefined) {
+      await this.options.persistence.persistActionTransitions(records);
+    } else {
+      for (const record of records) await this.options.persistence.persistActionTransition(record);
     }
 
     if (typeof this.options.bridge.cancelAction !== "function") {
@@ -1619,13 +1649,16 @@ export class BridgeFlowExecutor {
         evidenceRef,
       },
     );
-    for (const transition of transitions) {
-      await this.options.persistence.persistActionTransition({
+    const records = transitions.map((transition) => ({
         runId,
         occurrenceId: context.occurrenceId,
         transition,
         ...(context.recoveryFence === undefined ? {} : { recoveryFence: context.recoveryFence }),
-      });
+      }));
+    if (this.options.persistence.persistActionTransitions !== undefined) {
+      await this.options.persistence.persistActionTransitions(records);
+    } else {
+      for (const record of records) await this.options.persistence.persistActionTransition(record);
     }
   }
 
@@ -1658,13 +1691,53 @@ export class BridgeFlowExecutor {
     );
   }
 
-  private async persistOccurrence(
+  private async persistStepStart(
     runId: string,
     step: BridgeFlowPlanStep,
     context: StepExecutionContext,
     outcome: StepOccurrence["outcome"],
+    nextStepId: string | null,
+    runtimeIterationKey: string,
+    state: ExecutionState,
   ): Promise<void> {
-    await this.options.persistence.persistStepOccurrence({
+    const occurrence = this.buildOccurrenceRecord(runId, step, context, outcome);
+    const checkpoint = this.buildRecoveryCheckpointRecord(runId, nextStepId, runtimeIterationKey, state);
+    if (this.options.persistence.persistStepStart !== undefined) {
+      await this.options.persistence.persistStepStart({ occurrence, checkpoint });
+    } else {
+      await this.options.persistence.persistStepOccurrence(occurrence);
+      await this.options.persistence.persistRecoveryCheckpoint(checkpoint);
+    }
+    this.markRecoveryCheckpointPersisted(checkpoint, state);
+  }
+
+  private async persistStepCompletion(
+    runId: string,
+    step: BridgeFlowPlanStep,
+    context: StepExecutionContext,
+    outcome: StepOccurrence["outcome"],
+    nextStepId: string | null,
+    runtimeIterationKey: string,
+    state: ExecutionState,
+  ): Promise<void> {
+    const checkpoint = this.buildRecoveryCheckpointRecord(runId, nextStepId, runtimeIterationKey, state);
+    const occurrence = this.buildOccurrenceRecord(runId, step, context, outcome);
+    if (this.options.persistence.persistStepCompletion !== undefined) {
+      await this.options.persistence.persistStepCompletion({ occurrence, checkpoint });
+    } else {
+      await this.options.persistence.persistRecoveryCheckpoint(checkpoint);
+      await this.options.persistence.persistStepOccurrence(occurrence);
+    }
+    this.markRecoveryCheckpointPersisted(checkpoint, state);
+  }
+
+  private buildOccurrenceRecord(
+    runId: string,
+    step: BridgeFlowPlanStep,
+    context: StepExecutionContext,
+    outcome: StepOccurrence["outcome"],
+  ): PersistedStepOccurrence {
+    return {
       occurrenceId: context.occurrenceId,
       runId,
       planStepId: step.planStepId,
@@ -1676,17 +1749,26 @@ export class BridgeFlowExecutor {
       ...(context.recoveryFence === undefined
         ? {}
         : { recoveryFence: context.recoveryFence }),
-    });
+    };
   }
 
-  private async persistRecoveryCheckpoint(
+  private async persistOccurrence(
+    runId: string,
+    step: BridgeFlowPlanStep,
+    context: StepExecutionContext,
+    outcome: StepOccurrence["outcome"],
+  ): Promise<void> {
+    await this.options.persistence.persistStepOccurrence(this.buildOccurrenceRecord(runId, step, context, outcome));
+  }
+
+  private buildRecoveryCheckpointRecord(
     runId: string,
     nextStepId: string | null,
     runtimeIterationKey: string,
     state: ExecutionState,
-  ): Promise<void> {
+  ): PersistedRecoveryCheckpoint {
     state.checkpointRevision += 1;
-    await this.options.persistence.persistRecoveryCheckpoint({
+    return {
       runId,
       revision: state.checkpointRevision,
       nextStepId,
@@ -1711,10 +1793,27 @@ export class BridgeFlowExecutor {
         ? {}
         : { lastCompletedControl: { ...state.lastCompletedControl } }),
       ...this.fenceRecord(state),
-    });
-    state.checkpointNextStepId = nextStepId;
-    state.checkpointIterationKey = runtimeIterationKey;
+    };
+  }
+
+  private markRecoveryCheckpointPersisted(
+    checkpoint: PersistedRecoveryCheckpoint,
+    state: ExecutionState,
+  ): void {
+    state.checkpointNextStepId = checkpoint.nextStepId;
+    state.checkpointIterationKey = checkpoint.runtimeIterationKey;
     state.checkpointedStopped = state.stopped;
+  }
+
+  private async persistRecoveryCheckpoint(
+    runId: string,
+    nextStepId: string | null,
+    runtimeIterationKey: string,
+    state: ExecutionState,
+  ): Promise<void> {
+    const checkpoint = this.buildRecoveryCheckpointRecord(runId, nextStepId, runtimeIterationKey, state);
+    await this.options.persistence.persistRecoveryCheckpoint(checkpoint);
+    this.markRecoveryCheckpointPersisted(checkpoint, state);
   }
 
   private waitAbortSettlement(
