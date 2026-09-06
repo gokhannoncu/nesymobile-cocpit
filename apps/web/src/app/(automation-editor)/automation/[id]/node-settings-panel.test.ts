@@ -16,6 +16,13 @@ function customBlock(nodeType: string, nextNodeType: string): string {
 }
 
 describe("NodeSettingsPanel — Delivery Operation", () => {
+  it("offers explicit strict, UI-check and unverified action modes for action nodes", () => {
+    expect(panelSource).toContain('label="Verification level"');
+    expect(panelSource).toContain('<option value="BUSINESS_PROOF">');
+    expect(panelSource).toContain('<option value="UI_CHECK">');
+    expect(panelSource).toContain('<option value="ACTION_ONLY">');
+  });
+
   it("offers every required schema field, so Run Test cannot demand a value the panel hides", () => {
     // The regression: `workflow-node-config` marked barcode + proofLookupId
     // required, Run Test blocked, and the custom form only showed Person

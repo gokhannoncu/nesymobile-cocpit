@@ -125,6 +125,26 @@ describe('run detail manager view model', () => {
     expect(view.kpis.find((item) => item.key === 'progress')?.value).toBe('1/2')
   })
 
+  it('shows reduced verification coverage without turning it into a business pass', () => {
+    const view = buildRunDetailViewModel(detail({
+      runtime: { productVerdict: 'NOT_EVALUATED' },
+      steps: [{
+        plan_step_id: 'auth-read-local-session',
+        lifecycle: 'COMPLETED',
+        action_result: 'SKIPPED',
+        metadata: {
+          verificationMode: 'UI_CHECK',
+          verificationRole: 'BUSINESS_PROOF',
+          verificationSkipped: true,
+        },
+      }],
+    }))
+
+    expect(view.workflowPath[0]?.verificationMode).toBe('UI_CHECK')
+    expect(view.alert).toMatchObject({ title: 'Mixed verification coverage', severity: 'warning' })
+    expect(view.kpis.find((item) => item.key === 'verdict')?.value).toBe('NOT_EVALUATED')
+  })
+
   it('reports a timed-out continue gate over a successful action', () => {
     // Measured on run_3ef0e142: the gesture landed and the step's own closing
     // condition then timed out, which is what STOPPED the run — and the step

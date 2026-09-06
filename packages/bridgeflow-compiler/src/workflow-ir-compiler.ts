@@ -186,6 +186,8 @@ function compileStep(
     next: step.next,
     entityBinding: step.entityBinding,
     capabilityRequirements: capReqs,
+    verificationMode: step.verificationMode,
+    verificationRole: step.verificationRole,
     continueGate: step.continueGate,
     finalOraclePolicy: step.finalOraclePolicy,
     evidenceRequirements: evidenceReqs,

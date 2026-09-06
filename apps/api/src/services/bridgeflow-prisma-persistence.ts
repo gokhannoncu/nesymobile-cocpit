@@ -860,6 +860,9 @@ export class PrismaExecutionPersistence
       continueGateResult: occurrence.outcome.continueGateResult,
       finalOracleResult: occurrence.outcome.finalOracleResult,
       cleanupResult: occurrence.outcome.cleanupResult,
+      metadata: occurrence.metadata === undefined
+        ? undefined
+        : occurrence.metadata as Prisma.InputJsonValue,
       startedAt:
         occurrence.startedAtMs === undefined
           ? this.now()
@@ -898,6 +901,7 @@ export class PrismaExecutionPersistence
       ),
       detail: {
         occurrenceId: occurrence.occurrenceId,
+        metadata: occurrence.metadata,
         planStepId: occurrence.planStepId,
         iterationKey: occurrence.iterationKey,
         actionResult: occurrence.outcome.actionResult,

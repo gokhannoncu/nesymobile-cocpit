@@ -19,7 +19,12 @@ import { deriveCapabilityManifest, BRIDGE_PROTOCOL_VERSION, type BridgeCapabilit
 import { compileDomainWorkflow } from '@nesy/bridgeflow-compiler'
 import type { CompileIssue } from '@nesy/bridgeflow-compiler'
 import type { DomainPackBundle, MacroExpansionSnapshot } from '@nesy/domain-pack-contracts'
-import type { WorkflowIrV2 } from '@nesy/workflow-contract'
+import type {
+  StepVerificationMode,
+  StepVerificationRole,
+  WorkflowIrV2,
+  WorkflowStepV2,
+} from '@nesy/workflow-contract'
 
 import { STARTUP_PERMISSION_PLAN_STEP_ID } from './android-startup-permissions.js'
 import { resolveDomainPack, type DomainPackResolution } from './domain-pack-registry.js'
@@ -92,6 +97,142 @@ function irRequiresStartupPermissions(ir: WorkflowIrV2): boolean {
   return ir.steps.some((step) => step.planStepId.endsWith(STARTUP_PERMISSION_PLAN_STEP_ID))
 }
 
+const STRICT_VERIFICATION_MODE: StepVerificationMode = 'BUSINESS_PROOF'
+
+const NODE_STEP_PREFIXES: Readonly<Record<string, string>> = {
+  AUTH_LOGIN: 'auth',
+  SELECT_ROUTE: 'route',
+  LOAD_TO_VEHICLE: 'load',
+  REQUEST_TOUR_START: 'permit',
+  OPEN_STOP: 'visit',
+  SCAN_BARCODE: 'item',
+  DELIVERY_OPERATION: 'deliver',
+}
+
+const NODE_MACRO_REFS: Readonly<Record<string, string>> = {
+  AUTH_LOGIN: 'nesy.macro.login',
+  SELECT_ROUTE: 'nesy.macro.select-route',
+  LOAD_TO_VEHICLE: 'nesy.macro.load-to-vehicle',
+  REQUEST_TOUR_START: 'nesy.macro.tour-approval-lifecycle',
+  OPEN_STOP: 'nesy.macro.open-stop',
+  SCAN_BARCODE: 'nesy.macro.process-parcel',
+  DELIVERY_OPERATION: 'nesy.macro.complete-delivery',
+}
+
+function asVerificationMode(value: unknown): StepVerificationMode | undefined {
+  return value === 'BUSINESS_PROOF' || value === 'UI_CHECK' || value === 'ACTION_ONLY'
+    ? value
+    : undefined
+}
+
+function isUiFact(factKey: string): boolean {
+  return factKey.toUpperCase().startsWith('UI.')
+}
+
+function valueReferencesVariable(value: unknown, variable: string): boolean {
+  if (typeof value === 'string') {
+    return value === variable || value === `var.${variable}` || value.includes(`var.${variable}.`)
+  }
+  if (Array.isArray(value)) return value.some((entry) => valueReferencesVariable(entry, variable))
+  if (value === null || typeof value !== 'object') return false
+  return Object.values(value as Record<string, unknown>).some((entry) => valueReferencesVariable(entry, variable))
+}
+
+function verificationRoleFor(step: WorkflowStepV2, ir: WorkflowIrV2): StepVerificationRole {
+  if (step.kind === 'ASSERT_FACT') return 'BUSINESS_PROOF'
+  if ((step.kind === 'REMOTE_ACTION' || step.kind === 'EXTERNAL_ACTION') && step.spec.role === 'VALIDATION') {
+    return 'BUSINESS_PROOF'
+  }
+  if (step.kind === 'SDK_QUERY' && (step.outputFactBindings?.length ?? 0) > 0) {
+    const feedsControlFlow = ir.steps.some(
+      (candidate) => candidate.planStepId !== step.planStepId && valueReferencesVariable(candidate, step.outputVariable),
+    )
+    if (!feedsControlFlow) return 'BUSINESS_PROOF'
+  }
+  if (step.kind === 'WAIT_EVENT') return isUiFact(step.factKey) ? 'UI_CHECK' : 'BUSINESS_PROOF'
+  if (step.kind === 'WAIT_ANY') {
+    return step.legs.every((leg) => isUiFact(leg.factKey)) ? 'UI_CHECK' : 'BUSINESS_PROOF'
+  }
+  return 'ACTION'
+}
+
+function uiOnlyGate(gate: WorkflowStepV2['continueGate']): WorkflowStepV2['continueGate'] {
+  if (gate === undefined) return undefined
+  const allOf = (gate.allOf ?? []).filter(isUiFact)
+  const anyOf = (gate.anyOf ?? []).filter(isUiFact)
+  const noneOf = (gate.noneOf ?? []).filter(isUiFact)
+  if (allOf.length + anyOf.length + noneOf.length === 0) return undefined
+  return {
+    ...gate,
+    ...(allOf.length === 0 ? { allOf: undefined } : { allOf }),
+    ...(anyOf.length === 0 ? { anyOf: undefined } : { anyOf }),
+    ...(noneOf.length === 0 ? { noneOf: undefined } : { noneOf }),
+  }
+}
+
+/**
+ * Applies editor verification choices to the pack-authored generic IR.
+ *
+ * The canvas node owns the choice, while the macro expansion owns executable
+ * steps. This is the deliberate join between them. Unknown node types are left
+ * strict instead of guessing a domain mapping.
+ */
+export function applyCanvasVerificationModes(ir: WorkflowIrV2, canvas: unknown): WorkflowIrV2 {
+  const modeByPrefix = new Map<string, StepVerificationMode>()
+  const modeByMacroRef = new Map<string, StepVerificationMode>()
+  const nodes = canvas !== null && typeof canvas === 'object' && !Array.isArray(canvas)
+    ? (canvas as { nodes?: unknown }).nodes
+    : undefined
+  for (const candidate of Array.isArray(nodes) ? nodes : []) {
+    if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const node = candidate as { id?: unknown; type?: unknown; data?: { config?: Record<string, unknown> }; config?: Record<string, unknown> }
+    const mode = asVerificationMode(node.data?.config?.verificationMode ?? node.config?.verificationMode)
+    if (mode === undefined || mode === STRICT_VERIFICATION_MODE) continue
+    const typePrefix = typeof node.type === 'string' ? NODE_STEP_PREFIXES[node.type] : undefined
+    const configuredMacroRef = node.data?.config?.macroRef ?? node.config?.macroRef
+    const macroRef = typeof configuredMacroRef === 'string'
+      ? configuredMacroRef
+      : typeof node.type === 'string' ? NODE_MACRO_REFS[node.type] : undefined
+    const idPrefix = typeof node.id === 'string' ? node.id.replace(/-login$/, '') : undefined
+    const prefix = typePrefix ?? idPrefix
+    if (prefix) modeByPrefix.set(prefix, mode)
+    if (macroRef) modeByMacroRef.set(macroRef, mode)
+  }
+  const hasReducedIrStep = ir.steps.some(
+    (step) => step.verificationMode !== undefined && step.verificationMode !== STRICT_VERIFICATION_MODE,
+  )
+  if (modeByPrefix.size === 0 && modeByMacroRef.size === 0 && !hasReducedIrStep) return ir
+  const anyPrefixMatches = ir.steps.some((step) =>
+    [...modeByPrefix.keys()].some((prefix) => step.planStepId.startsWith(`${prefix}-`)),
+  )
+  const sourceMacros = new Set(
+    ir.sourceMap.flatMap((entry) => entry.domainSourceRef === undefined ? [] : [entry.domainSourceRef]),
+  )
+  const singleCanvasMode = modeByPrefix.size === 1 && !anyPrefixMatches && sourceMacros.size <= 1
+    ? [...modeByPrefix.values()][0]
+    : undefined
+
+  return {
+    ...ir,
+    steps: ir.steps.map((step) => {
+      const prefix = [...modeByPrefix.keys()].find((candidate) => step.planStepId.startsWith(`${candidate}-`))
+      const domainSourceRef = ir.sourceMap.find((entry) => entry.planStepId === step.planStepId)?.domainSourceRef
+      const verificationMode =
+        step.verificationMode ??
+        (domainSourceRef === undefined ? undefined : modeByMacroRef.get(domainSourceRef)) ??
+        (prefix === undefined ? singleCanvasMode : modeByPrefix.get(prefix))
+      if (verificationMode === undefined || verificationMode === STRICT_VERIFICATION_MODE) return step
+      return {
+        ...step,
+        verificationMode,
+        verificationRole: verificationRoleFor(step, ir),
+        continueGate: verificationMode === 'UI_CHECK' ? uiOnlyGate(step.continueGate) : undefined,
+        finalOraclePolicy: undefined,
+      } as WorkflowStepV2
+    }),
+  }
+}
+
 /**
  * Editor canvas graphs (`nodes`/`connections`) are not BridgeFlow IR. When the
  * workflowRef matches a pack independent workflow/fragment with exactly one
@@ -104,7 +245,7 @@ function materializeWorkflowIr(
   workflowIr: unknown,
 ): { ok: true; ir: WorkflowIrV2 } | { ok: false; issue: CompileIssues[number] } {
   if (isWorkflowIrV2(workflowIr)) {
-    return { ok: true, ir: workflowIr }
+    return { ok: true, ir: applyCanvasVerificationModes(workflowIr, workflowIr) }
   }
 
   const workflow =
@@ -145,7 +286,7 @@ function materializeWorkflowIr(
         },
       }
     }
-    return { ok: true, ir }
+    return { ok: true, ir: applyCanvasVerificationModes(ir, workflowIr) }
   }
 
   return {

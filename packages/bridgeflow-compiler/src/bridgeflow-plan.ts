@@ -16,7 +16,9 @@ import type {
   IterationPath,
   OracleRequirement,
   EvidencePolicy,
-  FinalOraclePolicy
+  FinalOraclePolicy,
+  StepVerificationMode,
+  StepVerificationRole,
 } from "@nesy/workflow-contract";
 
 import type {
@@ -87,6 +89,10 @@ export interface BridgeFlowPlanStep {
   entityBinding?: EntityRef;
   iterationPath?: IterationPath;
   capabilityRequirements: readonly CompiledCapabilityRequirement[];
+  /** Explicit execution/verification policy; omitted is strict business proof. */
+  verificationMode?: StepVerificationMode;
+  /** Minimum level required to run this step. */
+  verificationRole?: StepVerificationRole;
   continueGate?: EvidencePolicy;
   finalOraclePolicy?: FinalOraclePolicy;
   evidenceRequirements: readonly CompiledEvidenceRequirement[];

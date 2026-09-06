@@ -83,6 +83,7 @@ export interface WorkflowPathStep {
   occurrenceId?: string
   /** Wall-clock time between the persisted start and completion of the occurrence. */
   durationMs: number | null
+  verificationMode: 'BUSINESS_PROOF' | 'UI_CHECK' | 'ACTION_ONLY'
   /** Null when the step declared no oracle policy, so nothing was evaluated. */
   layers: LayerApplicability[] | null
 }
@@ -172,6 +173,7 @@ export function buildRunDetailViewModel(
       tone: toneFor(status),
       occurrenceId,
       durationMs: stepDurationOf(step),
+      verificationMode: stepVerificationModeOf(step),
       layers: occurrenceId
         ? deriveStepLayerApplicability(occurrenceId, oracleEvaluations, stepActionTransitions)
         : null,
@@ -191,7 +193,9 @@ export function buildRunDetailViewModel(
         type: 'node' as const,
         label: step.label,
         variant: isFailure(step.status) ? 'error' as const : 'process' as const,
-        desc: step.status,
+        desc: step.verificationMode === 'BUSINESS_PROOF'
+          ? step.status
+          : `${step.status} · ${step.verificationMode === 'UI_CHECK' ? 'UI-check scope' : 'action unverified'}`,
         ...(step.durationMs === null ? {} : { durationMs: step.durationMs }),
         ...(step.layers ? { layers: step.layers } : {}),
       },
@@ -209,6 +213,9 @@ export function buildRunDetailViewModel(
   const failureDetail = nullableText(runtime.failureDetail)
   const urgentIncident = incidents.find((incident) => incident.severity === 'critical')
     ?? incidents.find((incident) => incident.severity === 'error')
+  const reducedVerificationSteps = workflowSteps.filter(
+    (step) => step.verificationMode !== 'BUSINESS_PROOF',
+  )
   const alert = urgentIncident
     ? {
         title: urgentIncident.event.replaceAll('_', ' '),
@@ -225,6 +232,12 @@ export function buildRunDetailViewModel(
           description: failureDetail ?? verdict,
           severity: 'destructive' as const,
         }
+      : reducedVerificationSteps.length > 0
+        ? {
+            title: 'Mixed verification coverage',
+            description: `${reducedVerificationSteps.length} executed step(s) used UI-only or unverified action mode. The product verdict covers only the business-proof steps.`,
+            severity: 'warning' as const,
+          }
       : riskTotal !== null && riskTotal > 0
         ? {
             title: 'Stability signals',
@@ -647,6 +660,12 @@ function fieldText(row: Row, ...keys: string[]): string | null {
     if (text) return text
   }
   return null
+}
+
+function stepVerificationModeOf(row: Row): 'BUSINESS_PROOF' | 'UI_CHECK' | 'ACTION_ONLY' {
+  const metadata = record(row.metadata)
+  const mode = metadata?.verificationMode
+  return mode === 'UI_CHECK' || mode === 'ACTION_ONLY' ? mode : 'BUSINESS_PROOF'
 }
 
 export function stepLabelOf(row: Row, index: number): string {

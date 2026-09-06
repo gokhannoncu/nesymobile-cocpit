@@ -494,6 +494,31 @@ interface StepResult {
   stop: boolean;
 }
 
+function verificationModeOf(step: BridgeFlowPlanStep): "BUSINESS_PROOF" | "UI_CHECK" | "ACTION_ONLY" {
+  return step.verificationMode ?? "BUSINESS_PROOF";
+}
+
+function skipsForVerificationMode(step: BridgeFlowPlanStep): boolean {
+  const mode = verificationModeOf(step);
+  const role = step.verificationRole ?? "ACTION";
+  if (mode === "BUSINESS_PROOF") return false;
+  if (mode === "UI_CHECK") return role === "BUSINESS_PROOF";
+  return role !== "ACTION";
+}
+
+function continueGateForVerificationMode(step: BridgeFlowPlanStep): BridgeFlowPlanStep["continueGate"] {
+  const gate = step.continueGate;
+  const mode = verificationModeOf(step);
+  if (gate === undefined || mode === "BUSINESS_PROOF") return gate;
+  if (mode === "ACTION_ONLY") return undefined;
+  const isUi = (factKey: string) => factKey.toUpperCase().startsWith("UI.");
+  const allOf = (gate.allOf ?? []).filter(isUi);
+  const anyOf = (gate.anyOf ?? []).filter(isUi);
+  const noneOf = (gate.noneOf ?? []).filter(isUi);
+  if (allOf.length + anyOf.length + noneOf.length === 0) return undefined;
+  return { ...gate, allOf, anyOf, noneOf };
+}
+
 export class BridgeFlowExecutor {
   private readonly activeWaits = new Map<string, StepExecutionContext>();
   private readonly activeActions = new Map<string, StepExecutionContext>();
@@ -948,12 +973,20 @@ export class BridgeFlowExecutor {
     };
     const outcome = createInitialStepOutcome();
     outcome.actionResult = "RUNNING";
-    await this.persistStepStart(input.runId, step, context, outcome, step.planStepId, runtimeIterationKey, state);
+    const verificationSkipped = skipsForVerificationMode(step);
+    if (!verificationSkipped) {
+      await this.persistStepStart(input.runId, step, context, outcome, step.planStepId, runtimeIterationKey, state);
+    }
 
     let next = step.next;
     let stop = false;
 
-    switch (step.kind) {
+    if (verificationSkipped) {
+      // The authored group explicitly reduced its verification scope. Preserve
+      // control flow and record the omission; do not invoke SDK/remote/oracle
+      // ports only to throw their result away.
+      outcome.actionResult = "SKIPPED";
+    } else switch (step.kind) {
       case "BRIDGE_ACTION": {
         const actionResult = await this.executeBridgeAction(input.runId, step, context, input.signal);
         if (actionResult.terminalState === "UNKNOWN_EFFECT") {
@@ -974,7 +1007,7 @@ export class BridgeFlowExecutor {
           outcome.actionResult = actionResult.terminalState;
           state.automationFailure = true;
           stop = true;
-        } else if (!actionResult.effectVerified) {
+        } else if (!actionResult.effectVerified && verificationModeOf(step) !== "ACTION_ONLY") {
           outcome.actionResult = "FAILED";
           state.evidenceInsufficient = true;
           stop = true;
@@ -1162,11 +1195,12 @@ export class BridgeFlowExecutor {
       }
     }
 
-    if (!stop && step.continueGate) {
+    const continueGate = continueGateForVerificationMode(step);
+    if (!stop && continueGate) {
       const gateResult = this.options.oracle === undefined
         ? undefined
         : await this.options.oracle.runContinueGate({
-            policy: step.continueGate,
+            policy: continueGate,
             runId: input.runId,
             occurrenceId,
             iterationKey,
@@ -1206,7 +1240,11 @@ export class BridgeFlowExecutor {
       }
     }
 
-    if (step.finalOraclePolicy && outcome.actionResult !== "UNKNOWN_EFFECT") {
+    if (
+      verificationModeOf(step) === "BUSINESS_PROOF" &&
+      step.finalOraclePolicy &&
+      outcome.actionResult !== "UNKNOWN_EFFECT"
+    ) {
       const oracleResult = this.options.oracle === undefined
         ? undefined
         : await this.options.oracle.runFinalOracle({
@@ -1294,7 +1332,9 @@ export class BridgeFlowExecutor {
     const result = await this.raceActionWithAbort(actionPromise, context, signal);
     this.activeActions.delete(context.requestId);
     const terminal: ActionTerminalState =
-      result.terminalState === "SUCCEEDED" && !result.effectVerified ? "FAILED" : result.terminalState;
+      result.terminalState === "SUCCEEDED" && !result.effectVerified
+        ? verificationModeOf(step) === "ACTION_ONLY" ? "SKIPPED" : "FAILED"
+        : result.terminalState;
     const finalTransition = appendActionTransition(transitions, {
       phase: "EFFECT_VERIFIED",
       requestId: context.requestId,
@@ -1737,6 +1777,14 @@ export class BridgeFlowExecutor {
     context: StepExecutionContext,
     outcome: StepOccurrence["outcome"],
   ): PersistedStepOccurrence {
+    const verificationMetadata =
+      step.verificationMode === undefined && step.verificationRole === undefined
+        ? undefined
+        : {
+            verificationMode: verificationModeOf(step),
+            verificationRole: step.verificationRole ?? "ACTION",
+            verificationSkipped: skipsForVerificationMode(step),
+          };
     return {
       occurrenceId: context.occurrenceId,
       runId,
@@ -1745,6 +1793,7 @@ export class BridgeFlowExecutor {
       iterationKey: context.iterationKey,
       requestId: context.requestId,
       startedAtMs: context.startedAtMs,
+      ...(verificationMetadata === undefined ? {} : { metadata: verificationMetadata }),
       outcome: { ...outcome },
       ...(context.recoveryFence === undefined
         ? {}

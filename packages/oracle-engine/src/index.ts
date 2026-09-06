@@ -233,6 +233,10 @@ export function evaluateFinalOracle(input: FinalOracleEvaluationInput): FinalOra
   };
 }
 
+function uniqueFactKeys(facts: readonly NormalizedEvidenceFact[]): string[] {
+  return [...new Set(facts.map((fact) => fact.factKey))].sort();
+}
+
 export function detectDerivedFactCycles(graph: readonly DerivedFactNode[]): readonly string[] {
   const byKey = new Map(graph.map((node) => [node.factKey, node]));
   const cycles = new Set<string>();
@@ -342,7 +346,7 @@ function evaluateRequirement(
       factKey: requirement.factKey,
       state: "EVIDENCE_CONFLICT",
       requirement,
-      evidenceRefs: facts.map((fact) => fact.factKey),
+      evidenceRefs: uniqueFactKeys(facts),
     };
   }
 
@@ -351,7 +355,7 @@ function evaluateRequirement(
       factKey: requirement.factKey,
       state: "VIOLATED",
       requirement,
-      evidenceRefs: facts.map((fact) => fact.factKey),
+      evidenceRefs: uniqueFactKeys(facts),
     };
   }
 
@@ -360,7 +364,7 @@ function evaluateRequirement(
       factKey: requirement.factKey,
       state: "SATISFIED",
       requirement,
-      evidenceRefs: facts.map((fact) => fact.factKey),
+      evidenceRefs: uniqueFactKeys(facts),
     };
   }
 

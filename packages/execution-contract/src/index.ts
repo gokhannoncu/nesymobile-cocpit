@@ -79,6 +79,7 @@ export interface StepOccurrence {
   occurrenceIndex: number;
   iterationKey: string;
   requestId?: string;
+  metadata?: Readonly<Record<string, unknown>>;
   outcome: StepOutcomeAxes;
 }
 

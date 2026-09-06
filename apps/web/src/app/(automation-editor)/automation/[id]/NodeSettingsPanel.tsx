@@ -133,12 +133,19 @@ export function NodeSettingsPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-white p-4">
         {selectedNode ? (
-          <SelectedNodeForm
-            node={selectedNode}
-            config={selectedConfig}
-            errors={validationErrors}
-            onChange={updateConfig}
-          />
+          <div className="space-y-4">
+            {selectedNode.kind === "action" &&
+            selectedNode.type !== "LAUNCH_APP" &&
+            selectedNode.type !== "GRANT_PERMISSIONS" ? (
+              <VerificationModeField config={selectedConfig} onChange={updateConfig} />
+            ) : null}
+            <SelectedNodeForm
+              node={selectedNode}
+              config={selectedConfig}
+              errors={validationErrors}
+              onChange={updateConfig}
+            />
+          </div>
         ) : (
           <p className="text-xs text-gray-500">Select a node on the canvas.</p>
         )}
@@ -157,6 +164,38 @@ export function NodeSettingsPanel({
         </Button>
       </div>
     </div>
+  );
+}
+
+function VerificationModeField({
+  config,
+  onChange,
+}: {
+  config: Record<string, unknown>;
+  onChange: (patch: Record<string, unknown>) => void;
+}) {
+  const value =
+    config.verificationMode === "UI_CHECK" || config.verificationMode === "ACTION_ONLY"
+      ? config.verificationMode
+      : "BUSINESS_PROOF";
+  return (
+    <FormField
+      label="Verification level"
+      helperText="Business proof is the release-grade default. UI check waits only for visible UI evidence. Action only dispatches without post-action proof and is reported as unverified."
+    >
+      <div className="relative">
+        <select
+          className={cn(getFieldControlClassName(), "appearance-none pr-10")}
+          value={value}
+          onChange={(event) => onChange({ verificationMode: event.target.value })}
+        >
+          <option value="BUSINESS_PROOF">Business proof (strict)</option>
+          <option value="UI_CHECK">UI check (fast)</option>
+          <option value="ACTION_ONLY">Action only (unverified)</option>
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+      </div>
+    </FormField>
   );
 }
 

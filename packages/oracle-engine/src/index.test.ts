@@ -133,6 +133,36 @@ describe("oracle engine v2", () => {
     expect(result.requirementsByFact["app.state.persisted"]?.state).toBe("REQUIRED_TIMEOUT");
   });
 
+  it("deduplicates repeated observations of the same fact in oracle evidence references", () => {
+    const fact = {
+      ...baseFact,
+      factKey: "app.delivery.submitted",
+      plane: "APP" as const,
+      subtype: "sdk",
+      value: true as const,
+      deliveryLane: "ORDERED_REQUIRED" as const,
+    };
+    const result = evaluateFinalOracle({
+      policy: {
+        requirements: [{
+          factKey: fact.factKey,
+          obligation: "REQUIRED",
+          timing: "EVENTUAL",
+          deadlineMs: 1_000,
+          onTimeout: "INCONCLUSIVE",
+        }],
+      },
+      facts: [fact, { ...fact, observedAtMs: 110 }, { ...fact, observedAtMs: 120 }],
+      occurrenceId: baseFact.occurrenceId,
+      iterationKey: baseFact.iterationKey,
+      nowMs: 130,
+      startedAtMs: 100,
+    });
+
+    expect(result.evidenceRefs).toEqual([fact.factKey]);
+    expect(result.requirementsByFact[fact.factKey]?.evidenceRefs).toEqual([fact.factKey]);
+  });
+
   it("rejects stale, wrong-occurrence and conflicting facts before producing PASS", () => {
     const result = evaluateFinalOracle({
       policy: {

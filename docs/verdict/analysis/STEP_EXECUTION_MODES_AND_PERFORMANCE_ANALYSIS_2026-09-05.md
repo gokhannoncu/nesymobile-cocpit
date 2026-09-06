@@ -1,5 +1,45 @@
 # Adım bazında hızlı sürüş, seçilebilir doğrulama ve performans dönüşümü
 
+## 6 Eylül 2026 güncellemesi — DB hızlandıktan sonra planın geçerliliği
+
+**Karar: adım/grup bazında İş doğrulaması / UI doğrulaması / Yalnız aksiyon planı hâlâ geçerli. Öncelikler değişti; aşağıdaki 5 Eylül tarihsel DB darboğazı mevcut koşunun darboğazı olarak okunmamalı.**
+
+İncelenen yeni [run](http://localhost:4002/automation/nesy.workflow.full-courier-day/runs/run_6ef22d25-3d7b-4403-9c8a-e0635f6b80b4): API history `159.815 ms`, 97 occurrence, `PASS_ONLINE`, termination `COMPLETED`, cleanup `NOT_REQUIRED`. Paket `1.48.0`; plan hash `sha256:2d20c39338b6e3f6d4454792bd8f3da928cc32ab43621a08157637498becd8be`. Eski planla hash ve adım kapsamı farklı; toplam sürelerden DB hızlanma yüzdesi çıkarılmadı. Yeni cihaz koşusu başlatılmadı, uygulama kodu değiştirilmedi.
+
+### Son koşunun süre dağılımı
+
+| Bölüm | Süre | Yorum |
+|---|---:|---|
+| `deliver-assert-confirmed` | **120.378 ms** | Son iş kanıtını bekleyen adım; toplamın yaklaşık %75,3'ü |
+| `visit-resolve-search-toggle` | **10.691 ms** | Target resolution; history evidenceRef içinde `swept=nesy.notification-list-dialog` |
+| Diğer adımlar + history boşlukları | **28.746 ms** | Yukarıdaki iki adım dışındaki tüm history süresi |
+| Toplam | **159.815 ms** | Step süre toplamı 159.340 ms, kalan 475 ms |
+
+Sıradan adımlar artık saniye ölçeğinde değil: `auth-resolve-pin-field` 41 ms, `auth-enter-pin` 273 ms, `route-check-already-selected` 21 ms. Önceki profilli koşuda aynı isimli adımlar sırasıyla yaklaşık 2.805, 4.361 ve 1.864 ms idi. Bu gözlem hızlanmayı gösterir; değişen plan/build/başlangıç durumu nedeniyle yalnız DB değişikliğinin kontrollü A/B kazancı sayılmaz. Yeni koşu için ayrıntılı host span bulunamadı; API telemetry `PARTIAL`, `spanCount=null`. Bu yüzden yeni DB toplamı veya DB yüzdesi verilmedi.
+
+### 120 saniyede ne beklenmiş?
+
+Son oracle için **479 değerlendirme** var: 478 `INCONCLUSIVE`, sonuncusu `SATISFIED`. Başlangıçta `APP.DELIVERY_SUBMITTED` zaten sağlanmış; `REMOTE.DELIVERY_CONFIRMED` ve `REMOTE.DELIVERY_STATUS_COMPLETED` REQUIRED/EVENTUAL olarak PENDING. İkisinin deadline'ı 120.000 ms. Son değerlendirmede ikisi de SATISFIED oluyor. Dolayısıyla bu koşu eksik kanıtı SKIPPED diyerek geçmemiş: ASSERT_FACT'in tek seferlik okuması yetkiyi kendi final oracle'ına bırakmış; oracle sonunda iş kanıtını kabul etmiş.
+
+Kodda `pending-delivery-status-refresh.ts`, mobil DELIVER_PARCELS isteğinin 120 saniyelik waiting-request davranışını ve backend proof'un tekrar okunmasını ele alıyor. `oracle-evaluation-worker.ts` deadline yolunda başlamış proof sorgusunu sınırlı `flushFacts` ile bekleyip tekrar değerlendiriyor. Yeni telemetry'de `/Task/DeliverParcels/` çağrısı da koşunun sonlarına denk geliyor. Bunlar mobil gönderim/remote proof yoluyla uyumlu; **120 saniyenin tamamı DB veya saf HTTP response süresi diye etiketlenemez**. Kurulu APK/flag durumu ve request enqueue/send/proof zamanları bir arada ölçülmeden tam alt katman ayrımı iddia edilmez.
+
+### Yeni inceleme maddesi: oracle tekrarları
+
+Aynı son oracle'ın ilk değerlendirmesinde `APP.DELIVERY_SUBMITTED` evidenceRefs uzunluğu 2, sonuncusunda 480; tekrar eden factKey'ler aynı listede birikiyor. Mevcut `decisionFingerprint` requirement evidenceRefs listesini sıralıyor fakat benzersizleştirmiyor. Bu liste büyümesi, karar aynı kalırken fingerprint'i değiştirebilir ve revision dedupe'un yararını azaltabilir. Bu run'da 479 revision kaydı gerçekten mevcut. Çözüm yalnız listeyi kör biçimde kısaltmak değildir: publication kimliği/revision ve tekrar yayınlama semantiği incelenmeli; gerçekten yeni kanıt veya çelişki kaybolmamalı. Bu kayıt çoğalması 120 saniyenin temel nedeni olarak henüz ölçülmedi.
+
+### Uygulama sırası artık nasıl olmalı?
+
+1. **Mevcut hızlı persistence'i temel al.** Local DB, batch ve outbox değişiklikleri kodda mevcut; eski önerileri tekrar baştan uygulama. Gerçek aktif davranış ve ilgili testleri kontrol et.
+2. **Adım/grup politikasını compiler'a taşı.** Güncel `materializeWorkflowIr` pack workflow için macro snapshot'ı kullanmaya devam ediyor; canvas checkbox'ının kaydedilmesi tek başına compiled planı değiştirmez. Mod plan hash'ine/snapshot'ına ve history proof kapsamına yansımalı; varsayılan mevcut strict davranış olmalı.
+3. **Doğrulama bağımlılıklarını ayır.** Login hızlı seçilince yalnız submit gate'ini değil, yalnız login assertion'ına hizmet eden APP/LOCAL/REMOTE sorgu ve assert adımlarını da değerlendir. Sonraki adımın gerçekten kullandığı session/entity/route verisi veya yan etkili iş adımı silinmez.
+4. **Sonraki iş kanıtını koru.** Login UI-only, teslimat business-proof ise son 120 saniyelik remote bekleme hâlâ kalabilir. Bu beklemeyi kaldırmak için teslimat doğrulama kapsamını da değiştirmek gerekir; o koşu online teslimatı ispatlamış gibi raporlanmaz. SDK ekran bazında kapatılmaz.
+5. **10,7 saniyelik overlay/target beklemesini ayrı düzelt.** Bu adım business oracle taşımıyor; proof checkbox'ı onu kendiliğinden hızlandırmaz. Bilinen dialog'u daha erken ele alma ve hedef/poll politikasını incele; rastgele popup kapatma uygulama.
+6. **Sonuç semantiğini açık tut.** UI sonucu, yalnız yürütülmüş/doğrulanmamış adım ve iş kanıtı farklı kapsamdır. Mevcut ASSERT_FACT `SKIPPED` sonucu bir “kanıtsız mod” değildir. Kullanıcının seçimiyle düşürülen proof, sessiz PRODUCT_PASS'e dönüşmez.
+
+Yalnız son kanıt adımının 120.378 ms'sini aritmetik olarak çıkarmak 39.437 ms bırakıyor. Bu **ölçülmüş UI-only run süresi veya performans garantisi değildir**; daha küçük planın koşulları ve gerekli senkronizasyonları ayrıca ölçülmelidir. Login'i hafifletmek, teslimatın remote proof beklemesini hızlandırmaz.
+
+---
+
 > Canlı ölçüm eklendi: [5 Eylül USB koşusu ve gerçek katman süreleri](LIVE_USB_WORKFLOW_BOTTLENECK_REPORT_2026-09-05.md). Aşağıdaki tarihsel run/kod analizi, yeni run ile birlikte okunmalı; farklı adım kapsamları nedeniyle toplam sürelerden hızlanma yüzdesi çıkarılmamalı.
 
 **Tarih:** 5 Eylül 2026  
@@ -679,6 +719,8 @@ Bu ilk sürüm işi olmamalı. Final oracle şu anda executor tarafından await 
 EVENTUAL deadline bir sabit sleep değildir; veri erken geldiyse erken tamamlanmalı. Asenkronlaştırma sadece bağımsız işleri örtüştürür, ihtiyaç duyulan gerçek veriyi ortadan kaldırmaz.
 
 ## 14. Doğrulama ve benchmark planı
+
+> **6 Eylül uygulama sonucu:** Faz 1'in mevcut batch persistence tabanı korundu; Faz 2'nin adım modu, compiler overlay, executor pruning, kapsam raporu ve canlı USB login doğrulaması uygulandı. Bilinen overlay ilk zorunlu hedef miss'inde ele alınıyor ve oracle evidenceRef tekrarları dedupe ediliyor. Gerçek PIN ile UI_CHECK login 5,332 sn tamamlandı; 4,345 sn login sonrası UI gate'iydi. Ayrıntılı kayıt: [run playbook](../run-playbooks/step-verification-modes-2026-09-06/RUN_PLAY.md) ve [result](../run-playbooks/step-verification-modes-2026-09-06/RESULT.md).
 
 Bu analiz sırasında aşağıdaki testler **çalıştırılmadı**. Bunlar dönüşümün kabul planıdır.
 

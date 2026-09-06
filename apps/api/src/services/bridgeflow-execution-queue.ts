@@ -810,6 +810,20 @@ export class BridgeFlowExecutionQueue implements WorkflowRunExecutionQueue {
       return
     }
 
+    if (
+      item.releaseGate === true &&
+      plan.steps.some((step) => {
+        const mode = (step as typeof step & { verificationMode?: unknown }).verificationMode
+        return mode !== undefined && mode !== 'BUSINESS_PROOF'
+      })
+    ) {
+      await this.blockRun(
+        item,
+        'release gate cannot run a plan with UI_CHECK or ACTION_ONLY verification groups',
+      )
+      return
+    }
+
     const resolvePack = this.options.resolvePack ?? resolveDomainPack
     const resolution = resolvePack({
       packKey: item.domainPackKey,

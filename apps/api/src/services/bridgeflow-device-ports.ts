@@ -1067,7 +1067,27 @@ export function createGenericStepRuntime(options: {
         return evidence
       }
 
-      let evidence = await pollUntilFound(await manager.resolve(fingerprint, { runId }), resolveExpiresAt)
+      let evidence = await manager.resolve(fingerprint, { runId })
+      let sweepNote = ''
+
+      // A known handled surface is cheap to probe and expensive to discover
+      // only after the target's full deadline. Run that probe on the first
+      // mandatory miss. If no overlay is present, normal event-driven polling
+      // continues with the original deadline; if one is dismissed, the target
+      // receives a fresh full deadline from the changed screen.
+      if (evidence.outcome === 'NOT_FOUND' && !allowsAbsence && dismissibleSurfaces.length > 0) {
+        const dismissed = await dismissHandledSurfaces()
+        sweepNote = dismissed.length === 0 ? ':swept=nothing' : `:swept=${dismissed.join(',')}`
+        if (dismissed.length > 0) {
+          evidence = await manager.resolve(fingerprint, { runId })
+        }
+      }
+      evidence = await pollUntilFound(
+        evidence,
+        sweepNote !== '' && !sweepNote.endsWith('nothing')
+          ? clock() + (typeof resolveDeadlineMs === 'number' ? resolveDeadlineMs : 0)
+          : resolveExpiresAt,
+      )
 
       // A target the pack says MUST be there, still absent after its deadline, is
       // the exact shape an unbidden overlay makes: everything under it reports
@@ -1097,10 +1117,11 @@ export function createGenericStepRuntime(options: {
       // once again indistinguishable — the same ambiguity the logging was added
       // to remove. The step's own `evidenceRef` is persisted with the run, so
       // the answer is recorded there instead of somewhere that scrolls away.
-      let sweepNote = ''
       if (evidence.outcome === 'NOT_FOUND' && !allowsAbsence) {
-        const dismissed = await dismissHandledSurfaces()
-        sweepNote = dismissed.length === 0 ? ':swept=nothing' : `:swept=${dismissed.join(',')}`
+        const dismissed = sweepNote === '' ? await dismissHandledSurfaces() : []
+        if (sweepNote === '') {
+          sweepNote = dismissed.length === 0 ? ':swept=nothing' : `:swept=${dismissed.join(',')}`
+        }
         if (dismissed.length > 0) {
           evidence = await pollUntilFound(
             await manager.resolve(fingerprint, { runId }),

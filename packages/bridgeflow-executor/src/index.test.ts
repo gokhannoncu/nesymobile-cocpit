@@ -64,6 +64,90 @@ function planFixture(overrides: Partial<BridgeFlowPlan> = {}): BridgeFlowPlan {
 }
 
 describe("bridgeflow executor", () => {
+  it("skips proof-only work in UI_CHECK mode and records the reduced scope", async () => {
+    const persistence = new InMemoryExecutionPersistence();
+    let genericCalls = 0;
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async () => ({ terminalState: "SUCCEEDED", effectVerified: true, evidenceRef: "bridge:act" }),
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 1 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: { factsForOccurrence: () => [] },
+      genericSteps: {
+        execute: async () => {
+          genericCalls += 1;
+          return { succeeded: true };
+        },
+      },
+      clock: () => 10,
+    });
+
+    const result = await executor.execute({
+      runId: "run-ui-check",
+      deviceId: "device-1",
+      plan: planFixture({
+        steps: [{
+          planStepId: "step-1",
+          kind: "SDK_QUERY",
+          sourceMapRef: "src:1",
+          timeoutMs: 1_000,
+          next: null,
+          capabilityRequirements: [],
+          evidenceRequirements: [],
+          verificationMode: "UI_CHECK",
+          verificationRole: "BUSINESS_PROOF",
+          params: { queryRef: "proof", outputVariable: "proof" },
+        }],
+      }),
+    });
+
+    expect(result.lifecycle).toBe("CLOSED");
+    expect(result.productVerdict).toBe("NOT_EVALUATED");
+    expect(genericCalls).toBe(0);
+    expect(persistence.stepOccurrences.at(-1)?.outcome.actionResult).toBe("SKIPPED");
+    expect(persistence.stepOccurrences.at(-1)?.metadata).toMatchObject({
+      verificationMode: "UI_CHECK",
+      verificationRole: "BUSINESS_PROOF",
+      verificationSkipped: true,
+    });
+  });
+
+  it("allows an explicit ACTION_ONLY step to continue after an unverified completed gesture", async () => {
+    const persistence = new InMemoryExecutionPersistence();
+    const executor = new BridgeFlowExecutor({
+      persistence,
+      mutationAdmission: createInMemoryMutationAdmission(),
+      bridge: {
+        act: async () => ({ terminalState: "SUCCEEDED", effectVerified: false, evidenceRef: "bridge:gesture-only" }),
+        waitAny: async (): Promise<WaitAnyResult> => ({ status: "EXPECTED_MATCH", key: "ready", elapsedMs: 1 }),
+        cancelWait: async () => ({ status: "CANCELLED" }),
+        cancelAction: async () => ({ status: "CANCELLED" }),
+      },
+      evidence: { factsForOccurrence: () => [] },
+      clock: () => 10,
+    });
+
+    const result = await executor.execute({
+      runId: "run-action-only",
+      deviceId: "device-1",
+      plan: planFixture({
+        steps: [{ ...planFixture().steps[0]!, verificationMode: "ACTION_ONLY", verificationRole: "ACTION" }],
+      }),
+    });
+
+    expect(result.lifecycle).toBe("CLOSED");
+    expect(result.evaluationFailureClass).toBe("NONE");
+    expect(persistence.stepOccurrences.at(-1)?.outcome.actionResult).toBe("SUCCEEDED");
+    expect(persistence.stepOccurrences.at(-1)?.metadata).toMatchObject({
+      verificationMode: "ACTION_ONLY",
+      verificationSkipped: false,
+    });
+  });
+
   it("adapts compiled UiWaitPlan to bridge wait runtime without full-dump hot path fields", () => {
     const wait = adaptCompiledUiWaitPlan({
       waitPlanId: "wait-1",

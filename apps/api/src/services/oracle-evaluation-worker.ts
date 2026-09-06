@@ -149,7 +149,7 @@ function decisionFingerprint(
           .map(([factKey, requirement]) => ({
             factKey,
             state: requirement.state,
-            evidenceRefs: [...requirement.evidenceRefs].sort(),
+            evidenceRefs: [...new Set(requirement.evidenceRefs)].sort(),
           }))
           .sort((left, right) => left.factKey.localeCompare(right.factKey))
       : null
@@ -159,7 +159,7 @@ function decisionFingerprint(
     evaluationFailureClass:
       'evaluationFailureClass' in evaluation ? evaluation.evaluationFailureClass : null,
     reason: reason ?? ('reason' in evaluation ? evaluation.reason : null),
-    evidenceRefs: [...evaluation.evidenceRefs].sort(),
+    evidenceRefs: [...new Set(evaluation.evidenceRefs)].sort(),
     requirements,
   })
 }

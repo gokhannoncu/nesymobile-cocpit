@@ -61,6 +61,24 @@ export const WORKFLOW_STEP_KINDS: readonly WorkflowStepKind[] = [
   "NOOP",
 ];
 
+/**
+ * How much evidence an authored workflow group asks the runtime to collect.
+ *
+ * The default is BUSINESS_PROOF. Reduced modes are explicit author choices and
+ * travel in the compiled plan, so a fast UI run can never be mistaken for a
+ * fully proved transaction merely because both happened to finish green.
+ */
+export type StepVerificationMode = "BUSINESS_PROOF" | "UI_CHECK" | "ACTION_ONLY";
+
+export const STEP_VERIFICATION_MODES: readonly StepVerificationMode[] = [
+  "BUSINESS_PROOF",
+  "UI_CHECK",
+  "ACTION_ONLY",
+];
+
+/** The minimum verification level needed for a compiled step to execute. */
+export type StepVerificationRole = "ACTION" | "UI_CHECK" | "BUSINESS_PROOF";
+
 // ───────────────────────────────────────────────────────────────────────────
 //  Cross-cutting policies
 // ───────────────────────────────────────────────────────────────────────────
@@ -170,6 +188,10 @@ export interface WorkflowStepBase {
   timeoutMs: number;
   retryPolicy: StepRetryPolicy;
   capabilityRequirements: readonly WorkflowCapabilityRequirement[];
+  /** Omitted means BUSINESS_PROOF, preserving every existing workflow. */
+  verificationMode?: StepVerificationMode;
+  /** Compiler annotation used to skip proof-only work in reduced modes. */
+  verificationRole?: StepVerificationRole;
   continueGate?: EvidencePolicy;
   finalOraclePolicy?: FinalOraclePolicy;
   artifactPolicy?: ArtifactPolicy;

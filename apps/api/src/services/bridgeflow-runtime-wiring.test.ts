@@ -122,6 +122,71 @@ describe('BridgeFlow compile adapter', () => {
     expect(result.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([])
   })
 
+  it('carries a fast UI choice from the canvas into executable login steps', () => {
+    const store = new InMemoryCompiledPlanStore()
+    const service = createBridgeFlowCompileService(store)
+    const result = service.compileWorkflow({
+      workflowRef: 'nesy.workflow.login',
+      workflowIr: {
+        nodes: [
+          { id: 'permissions', type: 'GRANT_PERMISSIONS' },
+          { id: 'auth-login', type: 'AUTH_LOGIN', data: { config: { verificationMode: 'UI_CHECK' } } },
+        ],
+        connections: [],
+      },
+      domainPackKey: PACK.packKey,
+      domainPackVersion: PACK.packVersion,
+      domainPackDigest: PACK.packDigest,
+    })
+
+    expect(result.ok).toBe(true)
+    const plan = store.get({
+      planRef: result.compiledPlanRef,
+      planHash: result.compiledPlanHash,
+    }) as unknown as BridgeFlowPlan
+    const authSteps = plan.steps
+    expect(authSteps.length).toBeGreaterThan(0)
+    expect(authSteps.every((step) => step.verificationMode === 'UI_CHECK')).toBe(true)
+    expect(authSteps.some((step) => step.verificationRole === 'BUSINESS_PROOF')).toBe(true)
+    expect(authSteps.every((step) => step.finalOraclePolicy === undefined)).toBe(true)
+    expect(authSteps.flatMap((step) => step.continueGate?.allOf ?? []).every((fact) => fact.startsWith('UI.'))).toBe(true)
+  })
+
+  it('reduces only the selected group inside the full courier workflow', () => {
+    const store = new InMemoryCompiledPlanStore()
+    const service = createBridgeFlowCompileService(store)
+    const result = service.compileWorkflow({
+      workflowRef: 'nesy.workflow.full-courier-day',
+      workflowIr: {
+        nodes: [
+          { id: 'permissions', type: 'GRANT_PERMISSIONS' },
+          { id: 'auth-login', type: 'AUTH_LOGIN', data: { config: { verificationMode: 'UI_CHECK' } } },
+          { id: 'route', type: 'SELECT_ROUTE', data: { config: {} } },
+        ],
+        connections: [],
+      },
+      domainPackKey: PACK.packKey,
+      domainPackVersion: PACK.packVersion,
+      domainPackDigest: PACK.packDigest,
+    })
+
+    expect(result.ok).toBe(true)
+    const plan = store.get({
+      planRef: result.compiledPlanRef,
+      planHash: result.compiledPlanHash,
+    }) as unknown as BridgeFlowPlan
+    const authSteps = plan.steps.filter((step) => step.planStepId.startsWith('auth-'))
+    const routeSteps = plan.steps.filter((step) => step.planStepId.startsWith('route-'))
+    expect(authSteps.length).toBeGreaterThan(0)
+    expect(routeSteps.length).toBeGreaterThan(0)
+    expect(authSteps.every(
+      (step) => step.verificationMode === 'UI_CHECK',
+    )).toBe(true)
+    expect(routeSteps.every(
+      (step) => step.verificationMode === undefined,
+    )).toBe(true)
+  })
+
   it('materializes canvas IR for the login-then-select-route composition', () => {
     const service = createBridgeFlowCompileService(new InMemoryCompiledPlanStore())
     const result = service.compileWorkflow({
@@ -792,6 +857,7 @@ describe('execution queue device gating', () => {
   function queueHarness(
     acquireBridge: () => Promise<BridgeDeviceManager>,
     overrides: Partial<ConstructorParameters<typeof BridgeFlowExecutionQueue>[0]> = {},
+    planStepOverrides: Record<string, unknown> = {},
   ) {
     const statuses: string[] = []
     const runRowStatuses: string[] = []
@@ -866,6 +932,7 @@ describe('execution queue device gating', () => {
             targetRef: 'nesy.target.login-pin-field',
             outputVariable: 'target',
           },
+          ...planStepOverrides,
         },
       ],
       evidenceManifest: {
@@ -900,6 +967,25 @@ describe('execution queue device gating', () => {
     domainPackDigest: PACK.packDigest,
     dependencyKind: 'INDEPENDENT' as const,
   }
+
+  it('blocks reduced-verification plans from being used as release gates', async () => {
+    let acquired = false
+    const { queue, statuses, runtimeWrites } = queueHarness(
+      async () => {
+        acquired = true
+        throw new Error('bridge must not be acquired')
+      },
+      {},
+      { verificationMode: 'UI_CHECK', verificationRole: 'ACTION' },
+    )
+
+    queue.enqueue({ ...item, releaseGate: true })
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(acquired).toBe(false)
+    expect(statuses).toContain('BLOCKED')
+    expect(runtimeWrites[0]?.failureDetail).toContain('release gate cannot run')
+  })
 
   it('blocks the run with the preflight remediation when the device Bridge is unavailable', async () => {
     const { queue, statuses, runRowStatuses, runtimeWrites } = queueHarness(async () => {
