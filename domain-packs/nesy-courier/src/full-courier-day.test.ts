@@ -186,7 +186,7 @@ describe("full courier day composition", () => {
       // Every compensated id must be a step that exists, or teardown silently
       // compensates nothing.
       for (const id of cleanup.compensatesStepIds) expect(step(id).planStepId).toBe(id);
-      expect(cleanup.runOnFailure).toBe(true);
+      expect(cleanup.runOnFailure).toBe(cleanup.planStepId !== "auth-clear-session");
     }
     const permitCleanup = cleanups.find((entry) => entry.planStepId === "permit-release-approval-fixture");
     if (permitCleanup?.kind !== "CLEANUP") throw new Error("expected CLEANUP");
@@ -243,10 +243,10 @@ describe("full courier day composition", () => {
     // FAIL_PRODUCT for a product that had behaved correctly.
     const branch = step("load-check-load-refused");
     if (branch.kind !== "CONDITION") throw new Error("expected CONDITION");
-    expect(branch.onTrue).toBe("load-assert-loaded");
+    expect(branch.onTrue).toBe("load-read-parcel-state");
     expect(branch.onFalse).toBe("load-assert-load-refused");
     // Being unsure is not a refusal: the strict terminal is the default.
-    expect(branch.onUnknown).toBe("load-assert-loaded");
+    expect(branch.onUnknown).toBe("load-read-parcel-state");
 
     const refused = step("load-assert-load-refused");
     expect(refused.next).toBeNull();

@@ -522,7 +522,14 @@ export const NESY_COURIER_MANIFEST: DomainPackManifest = {
   //   fact, fed by the device's own store-time wire, and a `wait-schedule-stored`
   //   step between the tap and the read. Requires the mobile build that emits
   //   `SCHEDULE_STORED`; an older APK cannot satisfy the wait.
-  version: { major: 1, minor: 46, patch: 0 },
+  // 1.47.0 — loading waits for the optional time-slot picker to appear before
+  //   declaring it absent. run_c03e5606 probed before the shipment response,
+  //   skipped the picker and judged the still-empty schedule FAIL_PRODUCT.
+  //   WAIT_THEN_ABSENT uses the target's deadline without changing immediate
+  //   probes or dismissing overlays on an expected absence.
+  // 1.48.0 — observe the loaded parcel, schedule body and available stops until
+  //   they are stored; do not reset the session on a failed full-day journey.
+  version: { major: 1, minor: 48, patch: 0 },
   trustTier: "FIRST_PARTY",
   publicationState: "DRAFT",
   owner: "courier-mobile-quality",

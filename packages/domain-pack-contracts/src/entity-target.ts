@@ -87,8 +87,13 @@ export const AMBIGUITY_POLICIES: readonly AmbiguityPolicy[] = [
 
 export const DEFAULT_AMBIGUITY_POLICY: AmbiguityPolicy = "FAIL";
 
-/** What to do when nothing matches at all. */
-export type NotFoundPolicy = "FAIL" | "OPERATOR_ATTENTION" | "TREAT_AS_ABSENT";
+/**
+ * What to do when nothing matches at all.
+ * TREAT_AS_ABSENT probes the current frame. WAIT_THEN_ABSENT observes until
+ * deadlineMs before declaring absence, for optional controls that appear async.
+ * Neither policy tolerates ambiguous or stale evidence.
+ */
+export type NotFoundPolicy = "FAIL" | "OPERATOR_ATTENTION" | "TREAT_AS_ABSENT" | "WAIT_THEN_ABSENT";
 
 /**
  * The provider chain for one target.

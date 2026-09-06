@@ -25,9 +25,10 @@
  *  ### TRAP 1 — the country rule is a POLICY here, not an `if`
  *
  *  Serbia asks for a delivery time range before the task is created; nobody else
- *  does. That is expressed as `notFoundPolicy: TREAT_AS_ABSENT` on the picker's
- *  confirm target: a missing picker is a correct state, and the dependent tap
- *  reports `SKIPPED` rather than failing. A `countryCode == "RS"` branch in the
+ *  does. That is expressed as `notFoundPolicy: WAIT_THEN_ABSENT` on the picker's
+ *  confirm target: it waits for asynchronous appearance before accepting absence,
+ *  and the dependent tap reports `SKIPPED` when the picker remains absent.
+ *  A `countryCode == "RS"` branch in the
  *  macro would have put a device-side condition into pack vocabulary, and every
  *  new country would edit the macro.
  *
@@ -224,7 +225,7 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "tap-acknowledge",
       sourceMapRef: "sm-load-10a",
-      next: "read-parcel-state",
+      next: "check-load-refused",
       capabilityRequirements: [requires("verdict.core.bridge.tap")],
     }),
     kind: "BRIDGE_ACTION",
@@ -241,11 +242,14 @@ const STEPS: readonly WorkflowStepV2[] = [
       planStepId: "read-parcel-state",
       sourceMapRef: "sm-load-11",
       next: "read-local-schedule",
-      timeoutMs: 15_000,
+      timeoutMs: 40_000,
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
     queryRef: NESY_ADAPTER_QUERY_REFS.parcelState,
+    // The tap starts CreateInstantTask + schedule refresh asynchronously.
+    // Wait for THIS barcode's stored row, not the earlier empty-route event.
+    waitUntil: { kind: "ROWS_PRESENT" },
     // Narrowed to THIS parcel, which is what makes a row an answer about the
     // requested one rather than about any loaded parcel. `waybillNumber` carries
     // the shipment id when the author had that instead; the projection needs one
@@ -268,11 +272,12 @@ const STEPS: readonly WorkflowStepV2[] = [
       planStepId: "read-local-schedule",
       sourceMapRef: "sm-load-12",
       next: "read-available-stops",
-      timeoutMs: 15_000,
+      timeoutMs: 40_000,
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
     queryRef: NESY_ADAPTER_QUERY_REFS.dbSchedule,
+    waitUntil: { kind: "COLUMN", column: "schedule_body_stored" },
     maxRows: 1,
     outputVariable: "loadScheduleRows",
     outputFactBindings: [
@@ -287,12 +292,13 @@ const STEPS: readonly WorkflowStepV2[] = [
     ...stepBase({
       planStepId: "read-available-stops",
       sourceMapRef: "sm-load-13",
-      next: "check-load-refused",
-      timeoutMs: 15_000,
+      next: "assert-loaded",
+      timeoutMs: 40_000,
       capabilityRequirements: [requires("domain.nesy.adapter.named-query")],
     }),
     kind: "SDK_QUERY",
     queryRef: NESY_ADAPTER_QUERY_REFS.availableStops,
+    waitUntil: { kind: "ROWS_PRESENT" },
     maxRows: 200,
     outputVariable: "loadedRows",
     // REQUIRED here, unlike in select-route. There the schedule is supposed to be
@@ -342,10 +348,10 @@ const STEPS: readonly WorkflowStepV2[] = [
       operand: { kind: "operand", source: "step.output", path: "dialogHandle.absentTarget" },
     },
     // Marker present → no dialog → judge the load strictly.
-    onTrue: "assert-loaded",
+    onTrue: "read-parcel-state",
     onFalse: "assert-load-refused",
     unknownPolicy: "BRANCH",
-    onUnknown: "assert-loaded",
+    onUnknown: "read-parcel-state",
   },
   {
     ...stepBase({ planStepId: "assert-loaded", sourceMapRef: "sm-load-14", next: null }),
@@ -643,7 +649,7 @@ export const LOAD_TO_VEHICLE_SLICE: NesyReferenceSlice = {
       scenario:
         "Serbia asks for a delivery time range; a macro that always expects the picker fails in every other country, and one that never expects it hangs in Serbia.",
       refusedBy:
-        "The picker's confirm target declares notFoundPolicy TREAT_AS_ABSENT, so its absence is a correct state and its presence is handled — without a country conditional in the macro.",
+        "The picker's confirm target declares WAIT_THEN_ABSENT: it waits up to its deadline for the asynchronous picker, then accepts absence if it never appears, without a country conditional in the macro.",
     },
     {
       caseKey: "STEP_WIRE_REQUIRED_WITHOUT_A_PRODUCER",

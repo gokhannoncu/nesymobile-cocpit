@@ -34,6 +34,7 @@ import type {
   VariableRuntimePort,
 } from '@nesy/bridgeflow-executor'
 import type { TargetDefinition, DomainPackBundle } from '@nesy/domain-pack-contracts'
+import type { SdkQueryOutputFactBinding } from '@nesy/workflow-contract'
 import type { BridgeDeviceManager } from './bridge-device-manager.js'
 import type { SdkObservationStore } from './sdk-observation-store.js'
 import { buildTargetFingerprint, isTargetFingerprint } from './bridgeflow-target-fingerprint.js'
@@ -43,6 +44,15 @@ const NO_TARGET = 'bridgeflow:bridge-action-without-resolved-target'
 
 /** Gap between resolution attempts while a target's own deadline still runs. */
 const TARGET_RESOLVE_POLL_MS = 250
+
+function queryPredicateValue(rows: readonly unknown[], predicate: SdkQueryOutputFactBinding['from']) {
+  const firstRow = (rows[0] ?? {}) as Record<string, unknown>
+  return predicate.kind === 'ROWS_PRESENT'
+    ? rows.length > 0
+    : predicate.kind === 'COLUMN_NOT_IN'
+      ? asColumnNotInValue(firstRow[predicate.column], predicate.values)
+      : asFactValue(firstRow[predicate.column])
+}
 
 /**
  * How many times the sweep will tap one surface's exit before giving up.
@@ -883,23 +893,41 @@ export function createGenericStepRuntime(options: {
           }
         }
 
-        const result = await controlExecutor.run(manager.deviceId, {
-          op: 'sql_named',
-          requestId: context.requestId,
-          scope: runId,
-          name: queryRef,
-          ...(Object.keys(queryParams).length === 0 ? {} : { params: queryParams }),
-          maxRows,
-        })
-        if (!result.ok) {
-          options.logger?.('[BridgeFlowGenericSteps] SDK_QUERY failed', {
-            planStepId: step.planStepId,
-            queryRef,
-            code: result.code,
+        const waitUntil = step.params['waitUntil'] as SdkQueryOutputFactBinding['from'] | undefined
+        const expiresAt = clock() + step.timeoutMs
+        let attempt = 0
+        let rows: unknown[]
+        for (;;) {
+          attempt += 1
+          const result = await controlExecutor.run(manager.deviceId, {
+            op: 'sql_named',
+            // A new request id avoids replaying the SDK's cached empty response.
+            requestId: attempt === 1 ? context.requestId : `${context.requestId}:poll-${attempt}`,
+            scope: runId,
+            name: queryRef,
+            ...(Object.keys(queryParams).length === 0 ? {} : { params: queryParams }),
+            maxRows,
           })
-          return { succeeded: false, actionResult: 'FAILED' }
+          if (!result.ok) {
+            options.logger?.('[BridgeFlowGenericSteps] SDK_QUERY failed', {
+              planStepId: step.planStepId,
+              queryRef,
+              code: result.code,
+            })
+            return { succeeded: false, actionResult: 'FAILED' }
+          }
+          rows = Array.isArray(result.data.rows) ? result.data.rows.slice(0, maxRows) : []
+          if (waitUntil === undefined || queryPredicateValue(rows, waitUntil) === true) break
+          const remaining = expiresAt - clock()
+          if (remaining <= 0) {
+            return {
+              succeeded: false,
+              actionResult: 'FAILED',
+              evidenceRef: `sdk-query:observation-timeout:${queryRef}:attempts=${attempt}`,
+            }
+          }
+          await new Promise((resolve) => setTimeout(resolve, Math.min(250, remaining)))
         }
-        const rows = Array.isArray(result.data.rows) ? result.data.rows.slice(0, maxRows) : []
         variables.set(outputVariable, rows)
         // Also under the STEP ID, because that is the name a `step.output` operand
         // uses: `step.output` + path `read-offered-routes.route_code` reads as "the
@@ -931,12 +959,7 @@ export function createGenericStepRuntime(options: {
             // An empty result set is a PROVEN negative, not an unknown: the query
             // ran and the app had nothing to show. A missing column is not — that
             // is a projection that never carried the answer.
-            const value =
-              binding.from.kind === 'ROWS_PRESENT'
-                ? rows.length > 0
-                : binding.from.kind === 'COLUMN_NOT_IN'
-                  ? asColumnNotInValue(firstRow[binding.from.column], binding.from.values)
-                  : asFactValue(firstRow[binding.from.column])
+            const value = queryPredicateValue(rows, binding.from)
             // WHICH entity this observation is about, when the pack asked for it.
             // A derivation that has to prove the observed stop is the requested
             // one needs the identity, not only that some stop was observed.
@@ -1011,14 +1034,18 @@ export function createGenericStepRuntime(options: {
       // the run stopped, while a manual repeat of the same two calls with a
       // pause between them found it every time.
       //
-      // Only NOT_FOUND is worth waiting out. AMBIGUOUS and STALE_TREE are answers
+      // NOT_FOUND and a temporarily unavailable root can recover while a dialog
+      // opens. TREE_UNAVAILABLE must still fail if it lasts past the deadline;
+      // it is never proof of absence. AMBIGUOUS and STALE_TREE are answers
       // — "I found several" and "the tree moved under me" — and retrying them
       // would be waiting for a different reply to the same question.
-      // ...but only for a target the pack says MUST be there. `TREAT_AS_ABSENT`
-      // means absence is a legitimate answer, so the first NOT_FOUND IS the
-      // answer — waiting it out would charge every run the full deadline for a
-      // control it was told might not exist, and would turn a fast "is this open
-      // right now?" probe into a ten-second stall.
+      // TREAT_AS_ABSENT is an immediate probe. WAIT_THEN_ABSENT gives an optional
+      // control time to appear before accepting absence. run_c03e5606 probed a
+      // picker before its network response and skipped the confirmation even
+      // though the picker appeared about 430 ms later.
+      const allowsAbsence =
+        target.resolution.notFoundPolicy === 'TREAT_AS_ABSENT' ||
+        target.resolution.notFoundPolicy === 'WAIT_THEN_ABSENT'
       const waitsForTarget = target.resolution.notFoundPolicy !== 'TREAT_AS_ABSENT'
       const resolveDeadlineMs = target.resolution.deadlineMs
       const resolveExpiresAt =
@@ -1028,7 +1055,10 @@ export function createGenericStepRuntime(options: {
         expiresAt: number,
       ): Promise<TargetResolutionEvidence> => {
         let evidence = start
-        while (evidence.outcome === 'NOT_FOUND' && clock() < expiresAt) {
+        while (
+          (evidence.outcome === 'NOT_FOUND' || evidence.outcome === 'TREE_UNAVAILABLE') &&
+          clock() < expiresAt
+        ) {
           await new Promise((resolve) =>
             setTimeout(resolve, Math.min(TARGET_RESOLVE_POLL_MS, Math.max(1, expiresAt - clock()))),
           )
@@ -1043,8 +1073,8 @@ export function createGenericStepRuntime(options: {
       // the exact shape an unbidden overlay makes: everything under it reports
       // NOT_FOUND while the screen is perfectly healthy. So ask the pack whether
       // anything it knows how to close is up, close it, and give the target ONE
-      // more look. Only here — a target declared TREAT_AS_ABSENT has already been
-      // answered, and sweeping on its behalf would dismiss a dialog to prove
+      // more look. An optional target has already been answered (immediately or
+      // after its deadline), and sweeping on its behalf would dismiss a dialog to prove
       // something is missing.
       //
       // AND THEN WAIT AGAIN, MEASURED 2026-09-02 (run_2749145c).
@@ -1068,7 +1098,7 @@ export function createGenericStepRuntime(options: {
       // to remove. The step's own `evidenceRef` is persisted with the run, so
       // the answer is recorded there instead of somewhere that scrolls away.
       let sweepNote = ''
-      if (evidence.outcome === 'NOT_FOUND' && waitsForTarget) {
+      if (evidence.outcome === 'NOT_FOUND' && !allowsAbsence) {
         const dismissed = await dismissHandledSurfaces()
         sweepNote = dismissed.length === 0 ? ':swept=nothing' : `:swept=${dismissed.join(',')}`
         if (dismissed.length > 0) {
@@ -1080,10 +1110,10 @@ export function createGenericStepRuntime(options: {
       }
 
       // Only for a target the pack says MUST be there, and only once it has
-      // genuinely failed: a `TREAT_AS_ABSENT` miss is an ANSWER, and dumping the
+      // genuinely failed: an optional target's miss is an ANSWER, and dumping the
       // screen to explain an expected absence would charge every run for it.
       const screenNote =
-        evidence.outcome === 'NOT_FOUND' && waitsForTarget ? await describeScreenOnMiss() : ''
+        evidence.outcome === 'NOT_FOUND' && !allowsAbsence ? await describeScreenOnMiss() : ''
       const evidenceRef = `${describeResolutionEvidence(evidence)}${sweepNote}${screenNote}`
       if (evidence.outcome !== 'RESOLVED_UNIQUE') {
         // The pack's `notFoundPolicy`, finally read. It has always been part of
@@ -1096,7 +1126,7 @@ export function createGenericStepRuntime(options: {
         // Only NOT_FOUND is tolerated, and only when the pack says so. AMBIGUOUS,
         // STALE_TREE and a rejected weak target stay failures: those are "we
         // could not tell", which is the opposite of "it is not there".
-        if (evidence.outcome === 'NOT_FOUND' && target.resolution.notFoundPolicy === 'TREAT_AS_ABSENT') {
+        if (evidence.outcome === 'NOT_FOUND' && allowsAbsence) {
           return {
             succeeded: true,
             actionResult: 'SUCCEEDED',

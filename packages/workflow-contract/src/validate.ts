@@ -343,6 +343,19 @@ function validateStep(ctx: Ctx, step: Record<string, unknown>, path: string): vo
         push(ctx, `${path}.maxRows`, "INVALID_TYPE", "maxRows must be an integer >= 1; an unbounded query is an exfiltration primitive");
       }
       const bindings = step.outputFactBindings;
+      if (step.waitUntil !== undefined) {
+        const predicate = step.waitUntil as Record<string, unknown> | null;
+        if (predicate?.kind === "COLUMN" || predicate?.kind === "COLUMN_NOT_IN") {
+          requireString(ctx, predicate.column, `${path}.waitUntil.column`);
+          if (predicate.kind === "COLUMN_NOT_IN" &&
+              (!Array.isArray(predicate.values) || predicate.values.length === 0 ||
+               predicate.values.some((value) => typeof value !== "string"))) {
+            push(ctx, `${path}.waitUntil.values`, "INVALID_TYPE", "values must be a non-empty string array");
+          }
+        } else if (predicate?.kind !== "ROWS_PRESENT") {
+          push(ctx, `${path}.waitUntil`, "INVALID_TYPE", "waitUntil must be a query fact predicate");
+        }
+      }
       if (bindings !== undefined) {
         if (!Array.isArray(bindings)) {
           push(ctx, `${path}.outputFactBindings`, "INVALID_TYPE", "outputFactBindings must be an array");

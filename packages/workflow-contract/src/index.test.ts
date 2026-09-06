@@ -50,6 +50,28 @@ const sports = (): WorkflowIrV2 => fixture<WorkflowIrV2>("sports-content-generic
 // ===========================================================================
 
 describe("IR v2 schema validation", () => {
+  it.each([
+    { kind: "ROWS_PRESENT" },
+    { kind: "COLUMN", column: "ready" },
+    { kind: "COLUMN_NOT_IN", column: "pending", values: ["0"] },
+  ])("accepts a bounded query wait predicate %j", (waitUntil) => {
+    const ir = courier();
+    expect(validateWorkflowIrV2({ ...ir, steps: ir.steps.map(s =>
+      s.kind === "SDK_QUERY" ? { ...s, waitUntil } : s,
+    ) })).toEqual([]);
+  });
+
+  it.each([null, true, { kind: "OTHER" }, { kind: "COLUMN" },
+    { kind: "COLUMN_NOT_IN", column: "pending", values: [] },
+    { kind: "COLUMN_NOT_IN", column: "pending", values: [1] },
+  ])("rejects a malformed query wait predicate %j", (waitUntil) => {
+    const ir = courier();
+    const issues = validateWorkflowIrV2({ ...ir, steps: ir.steps.map(s =>
+      s.kind === "SDK_QUERY" ? { ...s, waitUntil } : s,
+    ) });
+    expect(issues.some(issue => issue.path.includes("waitUntil"))).toBe(true);
+  });
+
   it("accepts both generic domain fixtures with no issues", () => {
     expect(validateWorkflowIrV2(courier())).toEqual([]);
     expect(validateWorkflowIrV2(sports())).toEqual([]);

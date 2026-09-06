@@ -404,6 +404,12 @@ const STITCH_EDGES: ReadonlyMap<string, string> = new Map(
 );
 
 function stitchStep(step: WorkflowStepV2): WorkflowStepV2 {
+  // A failed business journey may still have an in-flight schedule refresh.
+  // Resetting Room and credentials cannot undo the remote task; it races the
+  // response and forces logout (run_4bd2e80d). Keep the session for diagnosis.
+  if (step.kind === "CLEANUP" && step.planStepId === "auth-clear-session") {
+    return { ...step, runOnFailure: false };
+  }
   const continuation = STITCH_EDGES.get(step.planStepId);
   if (continuation !== undefined) {
     return { ...step, next: continuation };

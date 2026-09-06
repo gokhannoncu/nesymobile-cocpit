@@ -222,10 +222,11 @@ export const NESY_COURIER_TARGETS: readonly TargetDefinition[] = [
       // unselected waybill), so a missing picker is a CORRECT state — unlike a
       // missing OK button on the typed-barcode dialog above, which is a defect.
       //
-      // The host now honours this: NOT_FOUND with TREAT_AS_ABSENT resolves to an
-      // absent marker and the dependent action reports `SKIPPED`. It briefly did
-      // not, and the pack had to declare FAIL and call itself RS-only.
-      notFoundPolicy: "TREAT_AS_ABSENT",
+      // The shipment response opens this picker asynchronously. An immediate
+      // absence probe races that response (run_c03e5606); observe for the declared
+      // deadline, returning as soon as the picker appears. Only a sustained miss
+      // becomes an absent marker and a SKIPPED tap in countries without a picker.
+      notFoundPolicy: "WAIT_THEN_ABSENT",
       deadlineMs: 8_000,
       reverifyBeforeAction: true,
     },

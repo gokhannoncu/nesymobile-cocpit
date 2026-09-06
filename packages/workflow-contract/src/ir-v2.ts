@@ -254,6 +254,10 @@ export interface SdkQueryStep extends WorkflowStepBase {
    * declares none is a read, not evidence.
    */
   outputFactBindings?: readonly SdkQueryOutputFactBinding[];
+  /** Re-read until this predicate is true, bounded by timeoutMs. Only the final
+   * successful observation is published; transient empty rows are not failures.
+   */
+  waitUntil?: SdkQueryOutputFactBinding["from"];
 }
 
 /** Turn a logical target into a concrete, fingerprinted device target. */

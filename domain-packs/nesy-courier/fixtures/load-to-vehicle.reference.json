@@ -330,7 +330,7 @@
         {
           "planStepId": "tap-acknowledge",
           "sourceMapRef": "sm-load-10a",
-          "next": "read-parcel-state",
+          "next": "check-load-refused",
           "timeoutMs": 20000,
           "retryPolicy": {
             "maxAttempts": 1,
@@ -350,7 +350,7 @@
           "planStepId": "read-parcel-state",
           "sourceMapRef": "sm-load-11",
           "next": "read-local-schedule",
-          "timeoutMs": 15000,
+          "timeoutMs": 40000,
           "retryPolicy": {
             "maxAttempts": 1,
             "effectClass": "READ_ONLY"
@@ -363,6 +363,9 @@
           ],
           "kind": "SDK_QUERY",
           "queryRef": "nesy.parcelState",
+          "waitUntil": {
+            "kind": "ROWS_PRESENT"
+          },
           "params": {
             "barcode": "run.input.scanValue",
             "waybillNumber": "run.input.alternateKey"
@@ -383,7 +386,7 @@
           "planStepId": "read-local-schedule",
           "sourceMapRef": "sm-load-12",
           "next": "read-available-stops",
-          "timeoutMs": 15000,
+          "timeoutMs": 40000,
           "retryPolicy": {
             "maxAttempts": 1,
             "effectClass": "READ_ONLY"
@@ -396,6 +399,10 @@
           ],
           "kind": "SDK_QUERY",
           "queryRef": "nesy.db.schedule",
+          "waitUntil": {
+            "kind": "COLUMN",
+            "column": "schedule_body_stored"
+          },
           "maxRows": 1,
           "outputVariable": "loadScheduleRows",
           "outputFactBindings": [
@@ -412,8 +419,8 @@
         {
           "planStepId": "read-available-stops",
           "sourceMapRef": "sm-load-13",
-          "next": "check-load-refused",
-          "timeoutMs": 15000,
+          "next": "assert-loaded",
+          "timeoutMs": 40000,
           "retryPolicy": {
             "maxAttempts": 1,
             "effectClass": "READ_ONLY"
@@ -426,6 +433,9 @@
           ],
           "kind": "SDK_QUERY",
           "queryRef": "nesy.availableStops",
+          "waitUntil": {
+            "kind": "ROWS_PRESENT"
+          },
           "maxRows": 200,
           "outputVariable": "loadedRows",
           "outputFactBindings": [
@@ -457,10 +467,10 @@
               "path": "dialogHandle.absentTarget"
             }
           },
-          "onTrue": "assert-loaded",
+          "onTrue": "read-parcel-state",
           "onFalse": "assert-load-refused",
           "unknownPolicy": "BRANCH",
-          "onUnknown": "assert-loaded"
+          "onUnknown": "read-parcel-state"
         },
         {
           "planStepId": "assert-loaded",
@@ -1057,7 +1067,7 @@
       {
         "planStepId": "tap-acknowledge",
         "sourceMapRef": "sm-load-10a",
-        "next": "read-parcel-state",
+        "next": "check-load-refused",
         "timeoutMs": 20000,
         "retryPolicy": {
           "maxAttempts": 1,
@@ -1077,7 +1087,7 @@
         "planStepId": "read-parcel-state",
         "sourceMapRef": "sm-load-11",
         "next": "read-local-schedule",
-        "timeoutMs": 15000,
+        "timeoutMs": 40000,
         "retryPolicy": {
           "maxAttempts": 1,
           "effectClass": "READ_ONLY"
@@ -1090,6 +1100,9 @@
         ],
         "kind": "SDK_QUERY",
         "queryRef": "nesy.parcelState",
+        "waitUntil": {
+          "kind": "ROWS_PRESENT"
+        },
         "params": {
           "barcode": "run.input.scanValue",
           "waybillNumber": "run.input.alternateKey"
@@ -1110,7 +1123,7 @@
         "planStepId": "read-local-schedule",
         "sourceMapRef": "sm-load-12",
         "next": "read-available-stops",
-        "timeoutMs": 15000,
+        "timeoutMs": 40000,
         "retryPolicy": {
           "maxAttempts": 1,
           "effectClass": "READ_ONLY"
@@ -1123,6 +1136,10 @@
         ],
         "kind": "SDK_QUERY",
         "queryRef": "nesy.db.schedule",
+        "waitUntil": {
+          "kind": "COLUMN",
+          "column": "schedule_body_stored"
+        },
         "maxRows": 1,
         "outputVariable": "loadScheduleRows",
         "outputFactBindings": [
@@ -1139,8 +1156,8 @@
       {
         "planStepId": "read-available-stops",
         "sourceMapRef": "sm-load-13",
-        "next": "check-load-refused",
-        "timeoutMs": 15000,
+        "next": "assert-loaded",
+        "timeoutMs": 40000,
         "retryPolicy": {
           "maxAttempts": 1,
           "effectClass": "READ_ONLY"
@@ -1153,6 +1170,9 @@
         ],
         "kind": "SDK_QUERY",
         "queryRef": "nesy.availableStops",
+        "waitUntil": {
+          "kind": "ROWS_PRESENT"
+        },
         "maxRows": 200,
         "outputVariable": "loadedRows",
         "outputFactBindings": [
@@ -1184,10 +1204,10 @@
             "path": "dialogHandle.absentTarget"
           }
         },
-        "onTrue": "assert-loaded",
+        "onTrue": "read-parcel-state",
         "onFalse": "assert-load-refused",
         "unknownPolicy": "BRANCH",
-        "onUnknown": "assert-loaded"
+        "onUnknown": "read-parcel-state"
       },
       {
         "planStepId": "assert-loaded",
@@ -1522,7 +1542,7 @@
     {
       "caseKey": "RS_PICKER_TREATED_AS_A_FAILURE",
       "scenario": "Serbia asks for a delivery time range; a macro that always expects the picker fails in every other country, and one that never expects it hangs in Serbia.",
-      "refusedBy": "The picker's confirm target declares notFoundPolicy TREAT_AS_ABSENT, so its absence is a correct state and its presence is handled — without a country conditional in the macro."
+      "refusedBy": "The picker's confirm target declares WAIT_THEN_ABSENT: it waits up to its deadline for the asynchronous picker, then accepts absence if it never appears, without a country conditional in the macro."
     },
     {
       "caseKey": "STEP_WIRE_REQUIRED_WITHOUT_A_PRODUCER",
